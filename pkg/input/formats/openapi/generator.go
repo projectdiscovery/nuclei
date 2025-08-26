@@ -20,7 +20,7 @@ import (
 	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/projectdiscovery/utils/generic"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/valyala/fasttemplate"
@@ -217,7 +217,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					return nil
 				} else {
 					// if it is in path then remove it from path
-					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
 						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
@@ -233,7 +233,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					return nil
 				} else {
 					// if it is in path then remove it from path
-					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
 						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
@@ -244,7 +244,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		}
 		if opts.requiredOnly && !value.Required {
 			// remove them from path if any
-			opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+			opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 			continue // Skip this parameter if it is not required and we want only required ones
 		}
 
@@ -327,7 +327,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 							_ = multipartWriter.WriteField(k, types.ToString(v))
 						}
 					}
-					multipartWriter.Close()
+					_ = multipartWriter.Close()
 					// body = buffer.String()
 					cloned.Body = io.NopCloser(buffer)
 					cloned.ContentLength = int64(len(buffer.Bytes()))
@@ -395,7 +395,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 func GetGlobalParamsForSecurityRequirement(schema *openapi3.T, requirement *openapi3.SecurityRequirements) ([]*openapi3.ParameterRef, error) {
 	globalParams := openapi3.NewParameters()
 	if len(schema.Components.SecuritySchemes) == 0 {
-		return nil, errorutil.NewWithTag("openapi", "security requirements (%+v) without any security schemes found in openapi file", schema.Security)
+		return nil, errkit.Newf("security requirements (%+v) without any security schemes found in openapi file", schema.Security)
 	}
 	found := false
 	// this api is protected for each security scheme pull its corresponding scheme
@@ -415,11 +415,11 @@ schemaLabel:
 		}
 		if !found && len(security) > 1 {
 			// if this is case then both security schemes are required
-			return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", security)
+			return nil, errkit.Newf("security requirement (%+v) not found in openapi file", security)
 		}
 	}
 	if !found {
-		return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", requirement)
+		return nil, errkit.Newf("security requirement (%+v) not found in openapi file", requirement)
 	}
 
 	return globalParams, nil
@@ -428,12 +428,12 @@ schemaLabel:
 // GenerateParameterFromSecurityScheme generates an example from a schema object
 func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*openapi3.Parameter, error) {
 	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey") {
-		return nil, errorutil.NewWithTag("openapi", "unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
+		return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
 	}
 	if scheme.Value.Type == "http" {
 		// check scheme
 		if !generic.EqualsAny(scheme.Value.Scheme, "basic", "bearer") {
-			return nil, errorutil.NewWithTag("openapi", "unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)
+			return nil, errkit.Newf("unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)
 		}
 		// HTTP authentication schemes basic or bearer use the Authorization header
 		headerName := scheme.Value.Name
@@ -458,10 +458,10 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 	if scheme.Value.Type == "apiKey" {
 		// validate name and in
 		if scheme.Value.Name == "" {
-			return nil, errorutil.NewWithTag("openapi", "security scheme (%s) name is empty", scheme.Value.Type)
+			return nil, errkit.Newf("security scheme (%s) name is empty", scheme.Value.Type)
 		}
 		if !generic.EqualsAny(scheme.Value.In, "query", "header", "cookie") {
-			return nil, errorutil.NewWithTag("openapi", "unsupported security scheme (%s) in (%s) found in openapi file", scheme.Value.Type, scheme.Value.In)
+			return nil, errkit.Newf("unsupported security scheme (%s) in (%s) found in openapi file", scheme.Value.Type, scheme.Value.In)
 		}
 		// create parameters using the scheme
 		switch scheme.Value.In {
@@ -482,5 +482,5 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 			return c, nil
 		}
 	}
-	return nil, errorutil.NewWithTag("openapi", "unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
+	return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
 }

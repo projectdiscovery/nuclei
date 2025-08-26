@@ -2,6 +2,7 @@ package headless
 
 import (
 	"fmt"
+	"maps"
 	"net/url"
 	"strings"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 
 	"github.com/pkg/errors"
-	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -54,10 +54,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
 	if request.options.HasTemplateCtx(input.MetaInput) {
-		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		vars = generators.MergeMaps(vars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
+
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
+	vars = generators.MergeMaps(vars, metadata, optionVars, variablesMap, request.options.Constants)
 
 	// check for operator matches by wrapping callback
 	gotmatches := false
@@ -117,7 +118,9 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
-	defer instance.Close()
+	defer func() {
+		_ = instance.Close()
+	}()
 
 	instance.SetInteractsh(request.options.Interactsh)
 
@@ -159,13 +162,13 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 			if act.ActionType.ActionType == engine.ActionNavigate {
 				value := act.GetArg("url")
 				if reqLog[value] != "" {
-					reqBuilder.WriteString(fmt.Sprintf("\tnavigate => %v\n", reqLog[value]))
+					_, _ = fmt.Fprintf(reqBuilder, "\tnavigate => %v\n", reqLog[value])
 				} else {
-					reqBuilder.WriteString(fmt.Sprintf("%v not found in %v\n", value, reqLog))
+					_, _ = fmt.Fprintf(reqBuilder, "%v not found in %v\n", value, reqLog)
 				}
 			} else {
 				actStepStr := act.String()
-				reqBuilder.WriteString("\t" + actStepStr + "\n")
+				_, _ = fmt.Fprintf(reqBuilder, "\t%s\n", actStepStr)
 			}
 		}
 		gologger.Debug().Msg(reqBuilder.String())
@@ -189,12 +192,9 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	for k, v := range out {
-		outputEvent[k] = v
-	}
-	for k, v := range payloads {
-		outputEvent[k] = v
-	}
+
+	maps.Copy(outputEvent, out)
+	maps.Copy(outputEvent, payloads)
 
 	var event *output.InternalWrappedEvent
 	if len(page.InteractshURLs) == 0 {
@@ -223,10 +223,15 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecutorOptions, responseBody string, input string) {
-	cliOptions := requestOptions.Options
-	if cliOptions.Debug || cliOptions.DebugResponse {
-		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBody, cliOptions.NoColor, false)
-		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
+	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped Headless response for %s\n\n", requestOptions.TemplateID, input)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
+			resp := responsehighlighter.Highlight(event.OperatorsResult, responseBody, requestOptions.Options.NoColor, false)
+			gologger.Debug().Msgf("%s%s", msg, resp)
+		}
+		if requestOptions.Options.StoreResponse {
+			requestOptions.Output.WriteStoreDebugData(input, requestOptions.TemplateID, "headless", fmt.Sprintf("%s%s", msg, responseBody))
+		}
 	}
 }
 
@@ -239,7 +244,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 			return true
 		}
 		newInput := input.Clone()
-		newInput.MetaInput.Input = gr.Request.URL.String()
+		newInput.MetaInput.Input = gr.Request.String()
 		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, callback); err != nil {
 			return false
 		}

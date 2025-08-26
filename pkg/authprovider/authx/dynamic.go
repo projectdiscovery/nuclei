@@ -8,7 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
@@ -43,8 +43,8 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 		domainRegex = append(domainRegex, secret.DomainsRegex...)
 	}
 	if d.Secret != nil {
-		domains = append(domains, d.Secret.Domains...)
-		domainRegex = append(domainRegex, d.Secret.DomainsRegex...)
+		domains = append(domains, d.Domains...)
+		domainRegex = append(domainRegex, d.DomainsRegex...)
 	}
 	uniqueDomains := sliceutil.Dedupe(domains)
 	uniqueDomainRegex := sliceutil.Dedupe(domainRegex)
@@ -52,14 +52,19 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 }
 
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
-	if err := json.Unmarshal(data, &d); err != nil {
+	if d == nil {
+		return errkit.New("cannot unmarshal into nil Dynamic struct")
+	}
+
+	// Use an alias type (auxiliary) to avoid a recursive call in this method.
+	type Alias Dynamic
+
+	// If d.Secret was nil, json.Unmarshal will allocate a new Secret object
+	// and populate it from the top level JSON fields.
+	if err := json.Unmarshal(data, (*Alias)(d)); err != nil {
 		return err
 	}
-	var s Secret
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	d.Secret = &s
+
 	return nil
 }
 
@@ -67,14 +72,14 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 func (d *Dynamic) Validate() error {
 	d.m = &sync.Mutex{}
 	if d.TemplatePath == "" {
-		return errorutil.New(" template-path is required for dynamic secret")
+		return errkit.New(" template-path is required for dynamic secret")
 	}
 	if len(d.Variables) == 0 {
-		return errorutil.New("variables are required for dynamic secret")
+		return errkit.New("variables are required for dynamic secret")
 	}
 
 	if d.Secret != nil {
-		d.Secret.skipCookieParse = true // skip cookie parsing in dynamic secrets during validation
+		d.skipCookieParse = true // skip cookie parsing in dynamic secrets during validation
 		if err := d.Secret.Validate(); err != nil {
 			return err
 		}
@@ -187,7 +192,7 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	}
 	var strategies []AuthStrategy
 	if d.Secret != nil {
-		strategies = append(strategies, d.Secret.GetStrategy())
+		strategies = append(strategies, d.GetStrategy())
 	}
 	for _, secret := range d.Secrets {
 		strategies = append(strategies, secret.GetStrategy())

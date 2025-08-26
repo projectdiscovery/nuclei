@@ -35,20 +35,28 @@ type (
 // const isRDP = rdp.IsRDP('acme.com', 3389);
 // log(toJSON(isRDP));
 // ```
-func IsRDP(host string, port int) (IsRDPResponse, error) {
-	return memoizedisRDP(host, port)
+func IsRDP(ctx context.Context, host string, port int) (IsRDPResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedisRDP(executionId, host, port)
 }
 
 // @memo
-func isRDP(host string, port int) (IsRDPResponse, error) {
+func isRDP(executionId string, host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsRDPResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	timeout := 5 * time.Second
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	server, isRDP, err := rdp.DetectRDP(conn, timeout)
 	if err != nil {
@@ -86,20 +94,27 @@ type (
 // const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
 // log(toJSON(checkRDPAuth));
 // ```
-func CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
-	return memoizedcheckRDPAuth(host, port)
+func CheckRDPAuth(ctx context.Context, host string, port int) (CheckRDPAuthResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedcheckRDPAuth(executionId, host, port)
 }
 
 // @memo
-func checkRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
+func checkRDPAuth(executionId string, host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return CheckRDPAuthResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	timeout := 5 * time.Second
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	pluginInfo, auth, err := rdp.DetectRDPAuth(conn, timeout)
 	if err != nil {

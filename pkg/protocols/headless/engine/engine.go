@@ -15,15 +15,19 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
+	processutil "github.com/projectdiscovery/utils/process"
 )
 
 // Browser is a browser structure for nuclei headless module
 type Browser struct {
-	customAgent string
-	tempDir     string
-	engine      *rod.Browser
-	options     *types.Options
-	launcher    *launcher.Launcher
+	customAgent    string
+	defaultHeaders map[string]string
+	tempDir        string
+	previousPIDs   map[int32]struct{} // track already running PIDs
+	engine         *rod.Browser
+	options        *types.Options
+	launcher       *launcher.Launcher
+
 	// use getHTTPClient to get the http client
 	httpClient     *http.Client
 	httpClientOnce *sync.Once
@@ -35,6 +39,7 @@ func New(options *types.Options) (*Browser, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
+	previousPIDs := processutil.FindProcesses(processutil.IsChromeProcess)
 
 	chromeLauncher := launcher.New().
 		Leakless(false).
@@ -91,6 +96,7 @@ func New(options *types.Options) (*Browser, error) {
 	if browserErr := browser.Connect(); browserErr != nil {
 		return nil, browserErr
 	}
+	defaultHeaders := make(map[string]string)
 	customAgent := ""
 	for _, option := range options.CustomHeaders {
 		parts := strings.SplitN(option, ":", 2)
@@ -99,17 +105,26 @@ func New(options *types.Options) (*Browser, error) {
 		}
 		if strings.EqualFold(parts[0], "User-Agent") {
 			customAgent = parts[1]
+		} else {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			if k == "" || v == "" {
+				continue
+			}
+			defaultHeaders[k] = v
 		}
 	}
 
 	engine := &Browser{
 		tempDir:        dataStore,
 		customAgent:    customAgent,
+		defaultHeaders: defaultHeaders,
 		engine:         browser,
 		options:        options,
 		httpClientOnce: &sync.Once{},
 		launcher:       chromeLauncher,
 	}
+	engine.previousPIDs = previousPIDs
 	return engine, nil
 }
 
@@ -130,6 +145,30 @@ func (b *Browser) UserAgent() string {
 	return b.customAgent
 }
 
+// applyDefaultHeaders setsheaders passed via cli -H flag
+func (b *Browser) applyDefaultHeaders(p *rod.Page) error {
+	pairs := make([]string, 0, len(b.defaultHeaders)*2+2)
+
+	hasAcceptLanguage := false
+	for k := range b.defaultHeaders {
+		if strings.EqualFold(k, "Accept-Language") {
+			hasAcceptLanguage = true
+			break
+		}
+	}
+	if !hasAcceptLanguage {
+		pairs = append(pairs, "Accept-Language", "en, en-GB, en-us;")
+	}
+	for k, v := range b.defaultHeaders {
+		pairs = append(pairs, k, v)
+	}
+	if len(pairs) == 0 {
+		return nil
+	}
+	_, err := p.SetExtraHeaders(pairs)
+	return err
+}
+
 func (b *Browser) getHTTPClient() (*http.Client, error) {
 	var err error
 	b.httpClientOnce.Do(func() {
@@ -140,7 +179,8 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 
 // Close closes the browser engine
 func (b *Browser) Close() {
-	b.engine.Close()
+	_ = b.engine.Close()
 	b.launcher.Kill()
-	os.RemoveAll(b.tempDir)
+	_ = os.RemoveAll(b.tempDir)
+	processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
 }

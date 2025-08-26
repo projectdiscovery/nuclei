@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 var templatesDirTestCases = []TestCaseInfo{
@@ -17,9 +17,11 @@ type templateDirWithTargetTest struct{}
 func (h *templateDirWithTargetTest) Execute(filePath string) error {
 	tempdir, err := os.MkdirTemp("", "nuclei-update-dir-*")
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to create temp dir")
+		return errkit.Wrap(err, "failed to create temp dir")
 	}
-	defer os.RemoveAll(tempdir)
+	defer func() {
+		_ = os.RemoveAll(tempdir)
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-ud", tempdir)
 	if err != nil {

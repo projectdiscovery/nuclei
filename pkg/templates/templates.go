@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/code"
@@ -25,7 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
@@ -187,7 +186,7 @@ func (template *Template) Type() types.ProtocolType {
 		return types.CodeProtocol
 	case len(template.RequestsJavascript) > 0:
 		return types.JavascriptProtocol
-	case len(template.Workflow.Workflows) > 0:
+	case len(template.Workflows) > 0:
 		return types.WorkflowProtocol
 	default:
 		return types.InvalidProtocol
@@ -310,10 +309,8 @@ func (template *Template) validateAllRequestIDs() {
 // MarshalYAML forces recursive struct validation during marshal operation
 func (template *Template) MarshalYAML() ([]byte, error) {
 	out, marshalErr := yaml.Marshal(template)
-	// Review: we are adding requestIDs for templateContext
-	// if we are using this method then we might need to purge manually added IDS that start with `templatetype_`
-	// this is only applicable if there are more than 1 request fields in protocol
-	errValidate := validate.New().Struct(template)
+	// Use shared validator to avoid rebuilding struct cache for every template marshal
+	errValidate := tplValidator.Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }
 
@@ -328,14 +325,14 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	*template = Template(*alias)
 
 	if !ReTemplateID.MatchString(template.ID) {
-		return errorutil.New("template id must match expression %v", ReTemplateID).WithTag("invalid template")
+		return errkit.New("template id must match expression %v", ReTemplateID, "tag", "invalid_template")
 	}
 	info := template.Info
 	if utils.IsBlank(info.Name) {
-		return errorutil.New("no template name field provided").WithTag("invalid template")
+		return errkit.New("no template name field provided", "tag", "invalid_template")
 	}
 	if info.Authors.IsEmpty() {
-		return errorutil.New("no template author field provided").WithTag("invalid template")
+		return errkit.New("no template author field provided", "tag", "invalid_template")
 	}
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
@@ -343,10 +340,10 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 
 	if len(alias.RequestsHTTP) > 0 && len(alias.RequestsWithHTTP) > 0 {
-		return errorutil.New("use http or requests, both are not supported").WithTag("invalid template")
+		return errkit.New("use http or requests, both are not supported", "tag", "invalid_template")
 	}
 	if len(alias.RequestsNetwork) > 0 && len(alias.RequestsWithTCP) > 0 {
-		return errorutil.New("use tcp or network, both are not supported").WithTag("invalid template")
+		return errkit.New("use tcp or network, both are not supported", "tag", "invalid_template")
 	}
 	if len(alias.RequestsWithHTTP) > 0 {
 		template.RequestsHTTP = alias.RequestsWithHTTP
@@ -354,7 +351,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	if len(alias.RequestsWithTCP) > 0 {
 		template.RequestsNetwork = alias.RequestsWithTCP
 	}
-	err = validate.New().Struct(template)
+	err = tplValidator.Struct(template)
 	if err != nil {
 		return err
 	}
@@ -364,7 +361,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 		var tempmap yaml.MapSlice
 		err = unmarshal(&tempmap)
 		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("failed to unmarshal multi protocol template %s", template.ID)
+			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
 		arr := []string{}
 		for _, v := range tempmap {
@@ -389,7 +386,9 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		// load file respecting sandbox
 		data, err := options.Options.LoadHelperFile(source, options.TemplatePath, options.Catalog)
 		if err == nil {
-			defer data.Close()
+			defer func() {
+				_ = data.Close()
+			}()
 			bin, err := io.ReadAll(data)
 			if err == nil {
 				return string(bin), true
@@ -523,7 +522,7 @@ func (template *Template) hasMultipleRequests() bool {
 func (template *Template) MarshalJSON() ([]byte, error) {
 	type TemplateAlias Template //avoid recursion
 	out, marshalErr := json.Marshal((*TemplateAlias)(template))
-	errValidate := validate.New().Struct(template)
+	errValidate := tplValidator.Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }
 
@@ -536,7 +535,7 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*template = Template(*alias)
-	err = validate.New().Struct(template)
+	err = tplValidator.Struct(template)
 	if err != nil {
 		return err
 	}
@@ -546,7 +545,7 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 		var tempMap map[string]interface{}
 		err = json.Unmarshal(data, &tempMap)
 		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("failed to unmarshal multi protocol template %s", template.ID)
+			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
 		arr := []string{}
 		for k := range tempMap {

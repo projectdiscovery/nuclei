@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -336,11 +337,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	pipeClient := rawhttp.NewPipelineClient(pipeOptions)
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
-	maxWorkers := defaultMaxWorkers
 	// in case the queue is bigger increase the workers
-	if pipeOptions.MaxPendingRequests > maxWorkers {
-		maxWorkers = pipeOptions.MaxPendingRequests
-	}
+	maxWorkers := max(pipeOptions.MaxPendingRequests, defaultMaxWorkers)
 
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
@@ -745,8 +743,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		})
 	} else {
 		//** For Normal requests **//
-		hostname = generatedRequest.request.URL.Host
-		formedURL = generatedRequest.request.URL.String()
+		hostname = generatedRequest.request.Host
+		formedURL = generatedRequest.request.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
@@ -821,11 +819,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	}
 
+	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
+	if dialers == nil {
+		return fmt.Errorf("dialers not found for execution id %s", request.options.Options.ExecutionId)
+	}
+
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
 			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 		request.options.Progress.IncrementErrorsBy(1)
@@ -841,7 +844,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = dialers.Fastdialer.GetDialedIP(hostname)
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -861,8 +864,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
-		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, err := http2curl.GetCurlCommand(generatedRequest.request.Request)
+		// Use a clone to avoid a race condition with the http transport
+		req := resp.Request.Clone(resp.Request.Context())
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		command, err := http2curl.GetCurlCommand(req)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}
@@ -920,7 +925,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 		if generatedRequest.request != nil {
-			matchedURL = generatedRequest.request.URL.String()
+			matchedURL = generatedRequest.request.String()
 		}
 		// Give precedence to the final URL from response
 		if respChain.Request() != nil {
@@ -961,7 +966,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			dialer := protocolstate.GetDialer()
+			dialer := dialers.Fastdialer
 			if dialer != nil {
 				outputEvent["ip"] = dialer.GetDialedIP(hostname)
 			}
@@ -972,12 +977,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
-		for k, v := range previousEvent {
-			finalEvent[k] = v
-		}
-		for k, v := range outputEvent {
-			finalEvent[k] = v
-		}
+		maps.Copy(finalEvent, previousEvent)
+		maps.Copy(finalEvent, outputEvent)
 
 		// Add to history the current request number metadata if asked by the user.
 		if request.NeedsRequestCondition() {
@@ -1085,11 +1086,11 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 
 // addCNameIfAvailable adds the cname to the event if available
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
-	if protocolstate.Dialer == nil {
+	if request.dialer == nil {
 		return
 	}
 
-	data, err := protocolstate.Dialer.GetDNSData(hostname)
+	data, err := request.dialer.GetDNSData(hostname)
 	if err == nil {
 		switch len(data.CNAME) {
 		case 0:
@@ -1156,7 +1157,7 @@ func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirect
 		response := string(redirectedResponse)
 
 		var highlightedResult string
-		if responseContentType == "application/octet-stream" || ((responseContentType == "" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response)) {
+		if (responseContentType == "application/octet-stream" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response) {
 			highlightedResult = createResponseHexDump(event, response, cliOptions.NoColor)
 		} else {
 			highlightedResult = responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, false)

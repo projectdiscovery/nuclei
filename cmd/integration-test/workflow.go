@@ -62,7 +62,7 @@ type workflowBasic struct{}
 func (h *workflowBasic) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -81,7 +81,7 @@ type workflowConditionMatched struct{}
 func (h *workflowConditionMatched) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -100,7 +100,7 @@ type workflowConditionUnmatch struct{}
 func (h *workflowConditionUnmatch) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -119,7 +119,7 @@ type workflowMatcherName struct{}
 func (h *workflowMatcherName) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -138,7 +138,7 @@ type workflowComplexConditions struct{}
 func (h *workflowComplexConditions) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -162,11 +162,11 @@ type workflowHttpKeyValueShare struct{}
 func (h *workflowHttpKeyValueShare) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/path1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "href=\"test-value\"")
+		_, _ = fmt.Fprintf(w, "href=\"test-value\"")
 	})
 	router.GET("/path2", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		body, _ := io.ReadAll(r.Body)
-		fmt.Fprintf(w, "%s", body)
+		_, _ = fmt.Fprintf(w, "%s", body)
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -214,11 +214,11 @@ func (h *workflowMultiProtocolKeyValueShare) Execute(filePath string) error {
 	router := httprouter.New()
 	// the response of path1 contains a domain that will be extracted and shared with the second template
 	router.GET("/path1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "href=\"blog.projectdiscovery.io\"")
+		_, _ = fmt.Fprintf(w, "href=\"blog.projectdiscovery.io\"")
 	})
 	// path2 responds with the value of the "extracted" query parameter, e.g.: /path2?extracted=blog.projectdiscovery.io => blog.projectdiscovery.io
 	router.GET("/path2", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "%s", r.URL.Query().Get("extracted"))
+		_, _ = fmt.Fprintf(w, "%s", r.URL.Query().Get("extracted"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -238,15 +238,15 @@ func (h *workflowMultiMatchKeyValueShare) Execute(filePath string) error {
 	var receivedData []string
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	router.GET("/path1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "href=\"test-value-%s\"", r.URL.Query().Get("v"))
+		_, _ = fmt.Fprintf(w, "href=\"test-value-%s\"", r.URL.Query().Get("v"))
 	})
 	router.GET("/path2", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		body, _ := io.ReadAll(r.Body)
 		receivedData = append(receivedData, string(body))
-		fmt.Fprintf(w, "test-value")
+		_, _ = fmt.Fprintf(w, "test-value")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()

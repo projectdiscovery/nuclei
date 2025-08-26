@@ -2,6 +2,7 @@ package vnc
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -34,20 +35,27 @@ type (
 // const isVNC = vnc.IsVNC('acme.com', 5900);
 // log(toJSON(isVNC));
 // ```
-func IsVNC(host string, port int) (IsVNCResponse, error) {
-	return memoizedisVNC(host, port)
+func IsVNC(ctx context.Context, host string, port int) (IsVNCResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedisVNC(executionId, host, port)
 }
 
 // @memo
-func isVNC(host string, port int) (IsVNCResponse, error) {
+func isVNC(executionId string, host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsVNCResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	vncPlugin := vnc.VNCPlugin{}
 	service, err := vncPlugin.Run(conn, timeout, plugins.Target{Host: host})

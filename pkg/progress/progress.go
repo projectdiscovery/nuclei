@@ -148,7 +148,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 		if startedAt, ok := stats.GetStatic("startedAt"); ok {
 			if startedAtTime, ok := startedAt.(time.Time); ok {
 				duration = time.Since(startedAtTime)
-				builder.WriteString(fmt.Sprintf("[%s]", fmtDuration(duration)))
+				_, _ = fmt.Fprintf(builder, "[%s]", fmtDuration(duration))
 			}
 		}
 
@@ -203,7 +203,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 			builder.WriteRune('\n')
 		}
 
-		fmt.Fprintf(os.Stderr, "%s", builder.String())
+		_, _ = fmt.Fprintf(os.Stderr, "%s", builder.String())
 		return builder.String()
 	}
 }
@@ -211,7 +211,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 func printCallbackJSON(stats clistats.StatisticsClient) interface{} {
 	builder := &strings.Builder{}
 	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
-		fmt.Fprintf(os.Stderr, "%s", builder.String())
+		_, _ = fmt.Fprintf(os.Stderr, "%s", builder.String())
 	}
 	return builder.String()
 }

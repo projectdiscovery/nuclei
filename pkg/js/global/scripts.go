@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
@@ -17,7 +17,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
-	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -113,8 +112,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			"isPortOpen(host string, port string, [timeout int]) bool",
 		},
 		Description: "isPortOpen checks if given TCP port is open on host. timeout is optional and defaults to 5 seconds",
-		FuncDecl: func(host string, port string, timeout ...int) (bool, error) {
-			ctx := context.Background()
+		FuncDecl: func(ctx context.Context, host string, port string, timeout ...int) (bool, error) {
 			if len(timeout) > 0 {
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout[0])*time.Second)
@@ -123,7 +121,14 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			if host == "" || port == "" {
 				return false, errkit.New("isPortOpen: host or port is empty")
 			}
-			conn, err := protocolstate.Dialer.Dial(ctx, "tcp", net.JoinHostPort(host, port))
+
+			executionId := ctx.Value("executionId").(string)
+			dialer := protocolstate.GetDialersWithId(executionId)
+			if dialer == nil {
+				panic("dialers with executionId " + executionId + " not found")
+			}
+
+			conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, port))
 			if err != nil {
 				return false, err
 			}
@@ -138,8 +143,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			"isUDPPortOpen(host string, port string, [timeout int]) bool",
 		},
 		Description: "isUDPPortOpen checks if the given UDP port is open on the host. Timeout is optional and defaults to 5 seconds.",
-		FuncDecl: func(host string, port string, timeout ...int) (bool, error) {
-			ctx := context.Background()
+		FuncDecl: func(ctx context.Context, host string, port string, timeout ...int) (bool, error) {
 			if len(timeout) > 0 {
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout[0])*time.Second)
@@ -148,7 +152,14 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			if host == "" || port == "" {
 				return false, errkit.New("isPortOpen: host or port is empty")
 			}
-			conn, err := protocolstate.Dialer.Dial(ctx, "udp", net.JoinHostPort(host, port))
+
+			executionId := ctx.Value("executionId").(string)
+			dialer := protocolstate.GetDialersWithId(executionId)
+			if dialer == nil {
+				panic("dialers with executionId " + executionId + " not found")
+			}
+
+			conn, err := dialer.Fastdialer.Dial(ctx, "udp", net.JoinHostPort(host, port))
 			if err != nil {
 				return false, err
 			}
@@ -245,7 +256,7 @@ func RegisterNativeScripts(runtime *goja.Runtime) error {
 	// import default modules
 	_, err = runtime.RunString(defaultImports)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not import default modules %v", defaultImports)
+		return errkit.Wrapf(err, "could not import default modules %v", defaultImports)
 	}
 
 	return nil

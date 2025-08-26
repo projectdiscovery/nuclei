@@ -5,6 +5,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // validateTemplateMandatoryFields validates the mandatory fields of a template
@@ -15,17 +16,17 @@ func validateTemplateMandatoryFields(template *Template) error {
 	var validateErrors []error
 
 	if utils.IsBlank(info.Name) {
-		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("name"))
+		validateErrors = append(validateErrors, errkit.Newf("mandatory '%s' field is missing", "name"))
 	}
 
 	if info.Authors.IsEmpty() {
-		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("author"))
+		validateErrors = append(validateErrors, errkit.Newf("mandatory '%s' field is missing", "author"))
 	}
 
 	if template.ID == "" {
-		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("id"))
+		validateErrors = append(validateErrors, errkit.Newf("mandatory '%s' field is missing", "id"))
 	} else if !ReTemplateID.MatchString(template.ID) {
-		validateErrors = append(validateErrors, ErrInvalidField.Msgf("id", ReTemplateID.String()))
+		validateErrors = append(validateErrors, errkit.Newf("invalid field format for '%s' (allowed format is %s)", "id", ReTemplateID.String()))
 	}
 
 	if len(validateErrors) > 0 {
@@ -53,7 +54,7 @@ func validateTemplateOptionalFields(template *Template) error {
 	var warnings []error
 
 	if template.Type() != types.WorkflowProtocol && utils.IsBlank(info.SeverityHolder.Severity.String()) {
-		warnings = append(warnings, ErrWarningFieldMissing.Msgf("severity"))
+		warnings = append(warnings, errkit.Newf("field '%s' is missing", "severity"))
 	}
 
 	if len(warnings) > 0 {

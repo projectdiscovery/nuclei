@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -30,16 +30,20 @@ func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvi
 		return nil, ErrNoSecrets
 	}
 	if len(store.Dynamic) > 0 && callback == nil {
-		return nil, errorutil.New("lazy fetch callback is required for dynamic secrets")
+		return nil, errkit.New("lazy fetch callback is required for dynamic secrets")
 	}
 	for _, secret := range store.Secrets {
 		if err := secret.Validate(); err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("invalid secret in file: %s", path)
+			errorErr := errkit.FromError(err)
+			errorErr.Msgf("invalid secret in file: %s", path)
+			return nil, errorErr
 		}
 	}
 	for i, dynamic := range store.Dynamic {
 		if err := dynamic.Validate(); err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("invalid dynamic in file: %s", path)
+			errorErr := errkit.FromError(err)
+			errorErr.Msgf("invalid dynamic in file: %s", path)
+			return nil, errorErr
 		}
 		dynamic.SetLazyFetchCallback(callback)
 		store.Dynamic[i] = dynamic
