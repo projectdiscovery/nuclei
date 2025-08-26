@@ -77,8 +77,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/python@v1
-      - uses: docker/setup-docker-action@v4
-        if: ${{ matrix.os != 'ubuntu-latest' }}
       - run: bash run.sh "${{ matrix.os }}"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

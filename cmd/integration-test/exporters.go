@@ -11,6 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	mongocontainer "github.com/testcontainers/testcontainers-go/modules/mongodb"
 
+	osutil "github.com/projectdiscovery/utils/os"
 	mongoclient "go.mongodb.org/mongo-driver/mongo"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -21,7 +22,9 @@ const (
 )
 
 var exportersTestCases = []TestCaseInfo{
-	{Path: "exporters/mongo", TestCase: &mongoExporter{}},
+	{Path: "exporters/mongo", TestCase: &mongoExporter{}, DisableOn: func() bool {
+		return osutil.IsWindows() || osutil.IsOSX()
+	}},
 }
 
 type mongoExporter struct{}
