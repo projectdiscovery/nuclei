@@ -191,7 +191,7 @@ func (ctr *customTemplateGitHubRepo) pullChanges(repoPath, githubToken string) e
 
 	err = w.Pull(pullOpts)
 	if err != nil {
-		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
+		return errors.Wrapf(err, "%s/%s", ctr.owner, ctr.reponame)
 	}
 
 	return nil
