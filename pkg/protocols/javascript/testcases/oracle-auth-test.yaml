@@ -1,0 +1,31 @@
+id: oracle-auth-test
+
+info:
+  name: Oracle - Authentication Test
+  author: pdteam
+  severity: info
+  tags: js,oracle,network,auth
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host,Port);
+    code: |
+      let o = require('nuclei/oracle');
+      let c = o.OracleClient();
+      c.Connect(Host, Port, ServiceName, User, Pass);
+      
+    args:
+      ServiceName: "XE"
+      Host: "{{Host}}"
+      Port: "1521"
+      User: "system"
+      Pass: "{{passwords}}"
+
+    payloads:
+      passwords:
+        - mysecret
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "response == true"
