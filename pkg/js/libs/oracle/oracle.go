@@ -32,9 +32,11 @@ type (
 	// @example
 	// ```javascript
 	// const oracle = require('nuclei/oracle');
-	// const client = new oracle.OracleClient;
+	// const client = new oracle.OracleClient();
 	// ```
-	OracleClient struct{}
+	OracleClient struct {
+		connector *goora.OracleConnector
+	}
 )
 
 // IsOracle checks if a host is running an Oracle server
@@ -81,7 +83,11 @@ func isOracle(executionId string, host string, port int) (IsOracleResponse, erro
 	return resp, nil
 }
 
-func oracleDbInstance(connStr string, executionId string) (*goora.OracleConnector, error) {
+func (c *OracleClient) oracleDbInstance(connStr string, executionId string) (*goora.OracleConnector, error) {
+	if c.connector != nil {
+		return c.connector, nil
+	}
+
 	connector := goora.NewConnector(connStr)
 	oraConnector, ok := connector.(*goora.OracleConnector)
 	if !ok {
@@ -95,6 +101,8 @@ func oracleDbInstance(connStr string, executionId string) (*goora.OracleConnecto
 
 	oraConnector.Dialer(customDialer)
 
+	c.connector = oraConnector
+
 	return oraConnector, nil
 }
 
@@ -106,11 +114,15 @@ func oracleDbInstance(connStr string, executionId string) (*goora.OracleConnecto
 // client.Connect('acme.com', 1521, 'XE', 'user', 'password');
 // ```
 func (c *OracleClient) Connect(ctx context.Context, host string, port int, serviceName string, username string, password string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
-
 	connStr := goora.BuildUrl(host, port, serviceName, username, password, nil)
 
-	connector, err := oracleDbInstance(connStr, executionId)
+	return c.ConnectWithDSN(ctx, connStr)
+}
+
+func (c *OracleClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+
+	connector, err := c.oracleDbInstance(dsn, executionId)
 	if err != nil {
 		return false, err
 	}
@@ -142,8 +154,6 @@ func (c *OracleClient) Connect(ctx context.Context, host string, port int, servi
 // log(to_json(result));
 // ```
 func (c *OracleClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
-	executionId := ctx.Value("executionId").(string)
-
 	if host == "" || port <= 0 {
 		return nil, fmt.Errorf("invalid host or port")
 	}
@@ -158,7 +168,21 @@ func (c *OracleClient) ExecuteQuery(ctx context.Context, host string, port int, 
 
 	connStr := goora.BuildUrl(host, port, dbName, username, password, nil)
 
-	connector, err := oracleDbInstance(connStr, executionId)
+	return c.ExecuteQueryWithDSN(ctx, connStr, query)
+}
+
+// ExecuteQueryWithDSN executes a query on an Oracle database using a DSN
+// @example
+// ```javascript
+// const oracle = require('nuclei/oracle');
+// const client = new oracle.OracleClient;
+// const result = client.ExecuteQueryWithDSN('oracle://user:password@host:port/service', 'SELECT @@version');
+// log(to_json(result));
+// ```
+func (c *OracleClient) ExecuteQueryWithDSN(ctx context.Context, dsn string, query string) (*utils.SQLResult, error) {
+	executionId := ctx.Value("executionId").(string)
+
+	connector, err := c.oracleDbInstance(dsn, executionId)
 	if err != nil {
 		return nil, err
 	}
