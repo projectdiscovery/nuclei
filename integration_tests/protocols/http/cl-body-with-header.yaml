@@ -1,0 +1,15 @@
+id: cl-body-with-header
+
+info:
+  name: CL Get Request - Body with header
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: dsl
+        dsl:
+          - "content_length==50000 && len(body)==14"

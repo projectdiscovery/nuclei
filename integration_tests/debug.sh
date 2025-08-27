@@ -8,7 +8,7 @@ if [ $1 = "-h" ]; then
  printf " \$ ./debug.sh http self\n\n"
  printf "3. To run all integration tests of 'x' protocol that contains 'y' in template name and pass extra args to nuclei:\n"
  printf " \$ ./debug.sh http self -svd -debug-req\n\n"
- printf "nuclei binary is created everytime script is run but integration-test binary is not"
+ printf "nuclei binary is created every time script is run but integration-test binary is not"
  exit 0
 fi
 
@@ -17,11 +17,11 @@ export GORACE="halt_on_error=1"
 
 echo "::group::Build nuclei"
 rm nuclei 2>/dev/null
-cd ../v2/cmd/nuclei
+cd ../cmd/nuclei
 go build -race .
-mv nuclei ../../../integration_tests/nuclei 
+mv nuclei ../../integration_tests/nuclei 
 echo -e "::endgroup::\n"
-cd ../../../integration_tests
+cd ../../integration_tests
 cmdstring=""
 
 if [ -n "$1" ]; then

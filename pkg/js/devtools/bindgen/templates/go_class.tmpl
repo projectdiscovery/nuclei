@@ -1,0 +1,45 @@
+package {{.PackageName}}
+
+{{$pkgName:=(printf "lib_%s" .PackageName) -}}
+
+import (
+	{{$pkgName}} "{{.PackagePath}}"
+
+	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+)
+
+var (
+	module = gojs.NewGojaModule("nuclei/{{.PackageName}}")
+)
+
+func init() {
+	module.Set(
+		gojs.Objects{
+			{{- $pkgFuncs:=.PackageFuncs}}
+			// Functions
+			{{- range $objName, $objDefine := .PackageFuncs}}
+			"{{$objName}}": {{$pkgName}}.{{$objDefine}},
+			{{- end}}
+
+			// Var and consts
+			{{- range $objName, $objDefine := .PackageVars}}
+			"{{$objName}}": {{$pkgName}}.{{$objDefine}},
+			{{- end}}
+
+			// Objects / Classes
+			{{- range $objName, $objDefine := .PackageTypes}}
+			{{- if $objDefine}}
+			"{{$objName}}": {{$pkgName}}.{{$objDefine}},
+			{{- else}}
+			"{{$objName}}": gojs.GetClassConstructor[{{$pkgName}}.{{$objName}}](&{{$pkgName}}.{{$objName}}{}),
+			{{- end}}
+			{{- end}}
+
+			},
+		).Register()
+}
+
+func Enable(runtime *goja.Runtime) {
+	module.Enable(runtime)
+}

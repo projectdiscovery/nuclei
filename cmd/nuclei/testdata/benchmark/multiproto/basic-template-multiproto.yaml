@@ -1,0 +1,170 @@
+id: basic-template-multiproto
+
+info:
+  name: Test Template Multiple Protocols
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    id: first_iter_http
+    path:
+      - '{{BaseURL}}/1'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/2'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/3'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/4'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/5'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/6'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/7'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/8'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/9'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/10'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/11'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/12'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/13'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/14'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/15'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/16'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/17'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - method: GET
+    path:
+      - '{{BaseURL}}/18'
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"

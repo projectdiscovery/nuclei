@@ -1,0 +1,26 @@
+id: http-multi-request
+
+info:
+  name: http multi request template
+  author: pdteam
+  severity: info
+  description: template with multiple http request with combined logic
+  reference: https://example-reference-link
+
+# requestURI is reflected back as response body here
+http:
+  - raw:
+      - |
+        GET /ping HTTP/1.1
+        Host: {{Hostname}}
+     
+      - |
+        GET /pong HTTP/1.1
+        Host: {{Hostname}}
+    
+    matchers:
+        - type: dsl
+          dsl:
+            - 'body_1 == "ping"'
+            - 'body_2 == "pong"'
+          condition: and

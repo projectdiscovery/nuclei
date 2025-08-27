@@ -1,0 +1,17 @@
+id: go-integration-test
+
+info:
+  name: Basic Go Integration Test
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    headers:
+      test: nuclei
+    matchers:
+      - type: word
+        words:
+          - "This is test headers matcher text"

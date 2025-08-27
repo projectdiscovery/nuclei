@@ -1,0 +1,29 @@
+id: flow-hide-matcher
+
+info:
+  name: Test Flow Hide Matcher
+  author: pdteam
+  severity: info
+  description: In Template any matcher can be marked as internal which hides it from the output.
+
+flow: http(1) && http(2)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: word
+        words:
+          - ok
+        internal: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: word
+        words:
+          - "Failed event"

@@ -23,14 +23,16 @@
   <a href="#개발자를-위한">개발자를 위한</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">문서</a> •
   <a href="#credits">Credits</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">FAQs</a> •
   <a href="https://discord.gg/projectdiscovery"> Discord 참가</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">한국어</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">한국어</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">스페인어</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">포르투갈어</a>
 </p>
 
 ---
@@ -50,10 +52,10 @@ Nuclei는 템플릿을 기반으로 대상 간에 요청을 보내기 위해 사
 
 # 설치
 
-Nuclei를 성공적으로 설치하기 위해서 **go1.19**가 필요합니다. 다음 명령을 실행하여 최신 버전을 설치합니다.
+Nuclei를 성공적으로 설치하기 위해서 **go1.22**가 필요합니다. 다음 명령을 실행하여 최신 버전을 설치합니다.
 
 ```sh
-go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 ```
 
 **자세한 설치 방법은 [여기](https://nuclei.projectdiscovery.io/nuclei/get-started/)에서 찾을 수 있습니다.**
@@ -85,139 +87,207 @@ nuclei -h
 
 
 ```console
-Nuclei is a fast, template based vulnerability scanner focusing
-on extensive configurability, massive extensibility and ease of use.
+Nuclei는 빠르고, 템플릿 기반의 취약점 스캐너로
+넓은 설정 가능성, 대규모 확장성 및 사용 편의성에 중점을 두고 있습니다.
 
-Usage:
-  nuclei [flags]
+사용법:
+  ./nuclei [flags]
 
-Flags:
 TARGET:
-   -u, -target string[]  스캔할 URLs/hosts 대상
-   -l, -list string      스캔할 URLs/hosts 대상 목록이 포함된 파일 경로(줄당 하나씩)
-   -resume string        resume.cfg를 사용한 스캔 재개(클러스터링이 비활성화됨)
+   -u, -target string[]       스캔할 대상 URL/호스트
+   -l, -list string           스캔할 대상 URL/호스트 목록이 있는 파일 경로 (한 줄에 하나씩)
+   -resume string             resume.cfg를 사용하여 스캔 재개 (클러스터링은 비활성화됨)
+   -sa, -scan-all-ips         dns 레코드와 관련된 모든 IP 스캔
+   -iv, -ip-version string[]  스캔할 호스트의 IP 버전 (4,6) - (기본값 4)
 
 TEMPLATES:
-   -nt, -new-templates          nuclei-templates에 가장 최근에 추가된 새 템플릿만 실행
-   -as, -automatic-scan         태그 매핑에 대한 wappalyzer 기술 탐지를 사용한 자동 웹 스캔
-   -t, -templates string[]      실행할 템플릿 또는 템플릿 디렉터리 목록(쉼표로 구분된 파일)
-   -tu, -template-url string[]  실행할 템플릿 URL 목록(쉼표로 구분된 파일)
-   -w, -workflows string[]      실행할 워크플로 또는 워크플로 디렉터리 목록(쉼표로 구분된 파일)
-   -wu, -workflow-url string[]  실행할 워크플로 URL 목록(쉼표로 구분된 파일)
-   -validate                    nuclei로 전달된 템플릿 검증
-   -tl                          사용 가능한 모든 템플릿 목록
-   -td                          템플릿 내용 표시
+   -nt, -new-templates                    최신 nuclei-templates 릴리스에 추가된 새 템플릿만 실행
+   -ntv, -new-templates-version string[]  특정 버전에 추가된 새 템플릿 실행
+   -as, -automatic-scan                   wappalyzer 기술 감지를 사용하여 태그 매핑으로 자동 웹 스캔
+   -t, -templates string[]                실행할 템플릿 또는 템플릿 디렉토리 목록 (쉼표로 구분, 파일)
+   -turl, -template-url string[]          실행할 템플릿 url 또는 템플릿 url 목록 (쉼표로 구분, 파일)
+   -w, -workflows string[]                실행할 워크플로우 또는 워크플로우 디렉토리 목록 (쉼표로 구분, 파일)
+   -wurl, -workflow-url string[]          실행할 워크플로우 url 또는 워크플로우 url 목록 (쉼표로 구분, 파일)
+   -validate                              nuclei에 전달된 템플릿 검증
+   -nss, -no-strict-syntax                템플릿에서 엄격한 구문 검사 비활성화
+   -td, -template-display                 템플릿 내용 표시
+   -tl                                    사용 가능한 모든 템플릿 목록
+   -sign                                  NUCLEI_SIGNATURE_PRIVATE_KEY 환경 변수에서 정의된 개인 키로 템플릿에 서명
+   -code                                  코드 프로토콜 기반 템플릿 로딩 활성화
 
 FILTERING:
-   -a, -author string[]              작성자를 기준으로 실행할 템플릿(쉼표로 구분된 파일)
-   -tags string[]                    태그를 기준으로 실행할 템플릿(쉼표로 구분된 파일)
-   -etags, -exclude-tags string[]    태그를 기준으로 제외할 템플릿(쉼표로 구분된 파일)
-   -itags, -include-tags string[]    태그가 기본 또는 구성에 의해 제외된 경우에도 실행됨
-   -id, -template-id string[]        템플릿 ID들을 기준으로 실행할 템플릿(쉼표로 구분된 파일)
-   -eid, -exclude-id string[]        템플릿 ID들을 기준으로 제외할 템플릿(쉼표로 구분된 파일)
-   -it, -include-templates string[]  템플릿이 기본 또는 구성에 의해 제외된 경우에도 실행됨
-   -et, -exclude-templates string[]  제외할 템플릿 또는 템플릿 디렉터리(파일로 구분됨, 파일)
-   -s, -severity value[]             심각도를 기준으로 실행할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
-   -es, -exclude-severity value[]    심각도를 기준으로 제외할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
-   -pt, -type value[]                프로토콜 유형을 기준으로 실행할 템플릿. 가능한 값: dns, file, http, headless, network, workflow, ssl, websocket, whois
-   -ept, -exclude-type value[]       프로토콜 유형에 따라 제외할 템플릿. 가능한 값: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -a, -author string[]               저자를 기반으로 실행할 템플릿 (쉼표로 구분, 파일)
+   -tags string[]                     태그를 기반으로 실행할 템플릿 (쉼표로 구분, 파일)
+   -etags, -exclude-tags string[]     태그를 기반으로 제외할 템플릿 (쉼표로 구분, 파일)
+   -itags, -include-tags string[]     기본값 또는 구성에 의해 제외되더라도 실행되어야 하는 태그
+   -id, -template-id string[]         템플릿 id를 기반으로 실행할 템플릿 (쉼표로 구분, 파일, 와일드카드 허용)
+   -eid, -exclude-id string[]         템플릿 id를 기반으로 제외할 템플릿 (쉼표로 구분, 파일)
+   -it, -include-templates string[]   기본값 또는 구성에 의해 제외되더라도 실행되어야 하는 템플릿
+   -et, -exclude-templates string[]   제외할 템플릿 또는 템플릿 디렉토리 (쉼표로 구분, 파일)
+   -em, -exclude-matchers string[]    결과에서 제외할 템플릿 매처
+   -s, -severity value[]              심각도를 기반으로 실행할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
+   -es, -exclude-severity value[]     심각도를 기반으로 제외할 템플릿. 가능한 값: info, low, medium, high, critical, unknown
+   -pt, -type value[]                 프로토콜 유형을 기반으로 실행할 템플릿. 가능한 값: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
+   -ept, -exclude-type value[]        프로토콜 유형을 기반으로 제외할 템플릿. 가능한 값: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
+   -tc, -template-condition string[]  표현식 조건을 기반으로 실행할 템플릿
 
 OUTPUT:
-   -o, -output string            발견된 문제/취약점를 쓰기 위한 출력 파일
-   -sresp, -store-resp           nuclei을 통해 전달된 모든 요청/응답을 출력 디렉터리에 저장
-   -srd, -store-resp-dir string  nuclei을 통해 전달된 모든 요청/응답을 사용자 지정 디렉터리에 저장(기본 "output")
+   -o, -output string            발견된 문제/취약점을 작성할 출력 파일
+   -sresp, -store-resp           모든 요청/응답을 nuclei를 통해 출력 디렉토리에 저장
+   -srd, -store-resp-dir string  모든 요청/응답을 nuclei를 통해 사용자 정의 디렉토리에 저장 (기본값 "output")
    -silent                       결과만 표시
-   -nc, -no-color                출력 내용 색상 비활성화 (ANSI escape codes)
-   -j, -jsonl                    JSONL(ines) 형식으로 출력
-   -irr, -include-rr             JSONL 출력에 요청/응답 쌍 포함(결과만)
-   -nm, -no-meta                 cli 출력에서 결과 메타데이터 출력 비활성화
-   -nts, -no-timestamp           cli 출력에서 결과 타임스탬프 출력 비활성화
-   -rdb, -report-db string       nuclei 보고 데이터베이스(보고서 데이터를 유지하려면 항상 이것을 사용)
+   -nc, -no-color                출력 내용 색상 비활성화 (ANSI 이스케이프 코드)
+   -j, -jsonl                    JSONL(ines) 형식으로 출력 작성
+   -irr, -include-rr -omit-raw   JSON, JSONL, Markdown 출력에 요청/응답 쌍 포함 (결과만 해당) [사용 중단 -omit-raw 사용] (기본값 true)
+   -or, -omit-raw                JSON, JSONL, Markdown 출력에서 요청/응답 쌍 생략 (결과만 해당)
+   -ot, -omit-template           JSON, JSONL 출력에서 인코딩된 템플릿 생략
+   -nm, -no-meta                 CLI 출력에서 결과 메타데이터 인쇄 비활성화
+   -ts, -timestamp               CLI 출력에 타임스탬프 인쇄 활성화
+   -rdb, -report-db string       nuclei 보고 데이터베이스 (보고 데이터를 유지하려면 항상 이것을 사용)
    -ms, -matcher-status          매치 실패 상태 표시
-   -me, -markdown-export string  마크다운 형식으로 결과를 내보낼 디렉터리
-   -se, -sarif-export string     결과를 SARIF 형식으로 내보내는 파일
+   -me, -markdown-export string  Markdown 형식으로 결과를 내보낼 디렉토리
+   -se, -sarif-export string     SARIF 형식으로 결과를 내보낼 파일
+   -je, -json-export string      JSON 형식으로 결과를 내보낼 파일
+   -jle, -jsonl-export string    JSONL(ine) 형식으로 결과를 내보낼 파일
 
 CONFIGURATIONS:
-   -config string              nuclei 환경 설정 파일 경로
-   -fr, -follow-redirects      http 템플릿에 following redirects 활성화
-   -mr, -max-redirects int     http 템플릿에 따라야 할 최대 리디렉션 수(기본값 10)
-   -dr, -disable-redirects     http 템플릿에 대한 리디렉션 비활성화
-   -rc, -report-config string  nuclei 보고 모듈 환경 설정 파일
-   -H, -header string[]        헤더:값 형식의 모든 http 요청에 포함할 사용자 정의 헤더/쿠키(cli, file)
-   -V, -var value              키=값 형식의 사용자 정의 변수
-   -r, -resolvers string       nuclei에 대한 리졸버 목록이 포함된 파일
-   -sr, -system-resolvers      에러 fallback으로 시스템 DNS 리졸빙 사용
-   -passive                    수동 HTTP 응답 처리 모드 활성화
-   -ev, -env-vars              템플릿에서 환경 변수를 사용할 수 있도록 설정
-   -cc, -client-cert string    스캔된 호스트에 인증하는 데 사용되는 클라이언트 인증서 파일(PEM-encoded)
-   -ck, -client-key string     스캔된 호스트에 인증하는 데 사용되는 클라이언트 key 파일(PEM-encoded)
-   -ca, -client-ca string      스캔된 호스트에 인증하는 데 사용되는 클라이언트 인증 기관 파일(PEM-encoded)
-   -sml, -show-match-line      파일 템플릿에 대해 일치하는 줄 표시, extractors에서만 작동
-   -ztls                       tls13의 표준으로 autofallback과 함께 ztls 라이브러리 사용
-   -sni string                 사용할 tls sni 호스트 이름(기본: 입력한 도메인 이름)
+   -config string                        nuclei 구성 파일 경로
+   -fr, -follow-redirects                http 템플릿에 대한 리디렉션 따라가기 활성화
+   -fhr, -follow-host-redirects          같은 호스트에서 리디렉션 따라가기
+   -mr, -max-redirects int               http 템플릿에 대해 따라갈 최대 리디렉션 수 (기본값 10)
+   -dr, -disable-redirects               http 템플릿에 대한 리디렉션 비활성화
+   -rc, -report-config string            nuclei 보고 모듈 구성 파일
+   -H, -header string[]                  모든 http 요청에 포함할 사용자 정의 헤더/쿠키 (header:value 형식) (cli, file)
+   -V, -var value                        key=value 형식의 사용자 정의 변수
+   -r, -resolvers string                 nuclei에 대한 리졸버 목록이 있는 파일
+   -sr, -system-resolvers                오류 대체로 시스템 DNS 해결 사용
+   -dc, -disable-clustering              요청 클러스터링 비활성화
+   -passive                              수동 HTTP 응답 처리 모드 활성화
+   -fh2, -force-http2                    요청에 http2 연결 강제
+   -ev, -env-vars                        템플릿에서 환경 변수 사용 활성화
+   -cc, -client-cert string              스캔 대상 호스트에 대한 인증에 사용되는 클라이언트 인증서 파일 (PEM 인코딩)
+   -ck, -client-key string               스캔 대상 호스트에 대한 인증에 사용되는 클라이언트 키 파일 (PEM 인코딩)
+   -ca, -client-ca string                스캔 대상 호스트에 대한 인증에 사용되는 클라이언트 인증서 기관 파일 (PEM 인코딩)
+   -sml, -show-match-line                파일 템플릿에 대한 매치 라인 표시, 추출기만 작동
+   -ztls                                 ztls 라이브러리 사용, tls13에 대한 표준 하나로 자동 대체 [사용 중단] 자동 대체는 기본적으로 ztls로 활성화됨
+   -sni string                           사용할 tls sni 호스트 이름 (기본값: 입력 도메인 이름)
+   -lfa, -allow-local-file-access        시스템 어디에서나 파일 (페이로드) 액세스 허용
+   -lna, -restrict-local-network-access  로컬 / 개인 네트워크로의 연결 차단
+   -i, -interface string                 네트워크 스캔에 사용할 네트워크 인터페이스
+   -at, -attack-type string              수행할 페이로드 조합 유형 (batteringram,pitchfork,clusterbomb)
+   -sip, -source-ip string               네트워크 스캔에 사용할 소스 IP 주소
+   -rsr, -response-size-read int         바이트 단위로 읽을 최대 응답 크기 (기본값 10485760)
+   -rss, -response-size-save int         바이트 단위로 읽을 최대 응답 크기 (기본값 1048576)
+   -reset                                reset은 모든 nuclei 구성 및 데이터 파일을 제거합니다 (nuclei-templates 포함)
+   -tlsi, -tls-impersonate               실험적인 클라이언트 hello (ja3) tls 무작위화 활성화
 
 INTERACTSH:
-   -iserver, -interactsh-server string  자체 호스팅된 인스턴스에 대한 interactsh 서버 URL (기본: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
-   -itoken, -interactsh-token string    자체 호스팅된 interactsh 서버에 대한 인증 토큰
-   -interactions-cache-size int         상호 작용 캐시에 유지할 요청 수 (기본 5000)
-   -interactions-eviction int           캐시에서 요청을 제거하기 전에 대기할 시간(초) (기본 60)
-   -interactions-poll-duration int      각 상호 작용 폴링 요청 전에 대기할 시간(초) (기본 5)
-   -interactions-cooldown-period int    종료 전 상호작용 폴링을 위한 추가 시간 (기본 5)
-   -ni, -no-interactsh                  OAST 테스트를 위해 interactsh 서버 비활성화, OAST 기반 템플릿 제외
+   -iserver, -interactsh-server string  자체 호스팅 인스턴스를 위한 interactsh 서버 url (기본값: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
+   -itoken, -interactsh-token string    자체 호스팅 interactsh 서버를 위한 인증 토큰
+   -interactions-cache-size int         상호 작용 캐시에 유지할 요청 수 (기본값 5000)
+   -interactions-eviction int           캐시에서 요청을 제거하기 전에 기다릴 초 수 (기본값 60)
+   -interactions-poll-duration int      각 상호 작용 폴 요청 사이에 기다릴 초 수 (기본값 5)
+   -interactions-cooldown-period int    종료 전에 상호 작용 폴링에 추가 시간 (기본값 5)
+   -ni, -no-interactsh                  OAST 테스트를 위한 interactsh 서버 비활성화, OAST 기반 템플릿 제외
+
+FUZZING:
+   -ft, -fuzzing-type string  템플릿에 설정된 퍼징 유형 재정의 (replace, prefix, postfix, infix)
+   -fm, -fuzzing-mode string  템플릿에 설정된 퍼징 모드 재정의 (multiple, single)
+
+UNCOVER:
+   -uc, -uncover                  uncover 엔진 활성화
+   -uq, -uncover-query string[]   uncover 검색 쿼리
+   -ue, -uncover-engine string[]  uncover 검색 엔진 (shodan,censys,fofa,shodan-idb,quake,hunter,zoomeye,netlas,criminalip,publicwww,hunterhow) (기본값 shodan)
+   -uf, -uncover-field string     반환할 uncover 필드 (ip,port,host) (기본값 "ip:port")
+   -ul, -uncover-limit int        반환할 uncover 결과 (기본값 100)
+   -ur, -uncover-ratelimit int    알려지지 않은 ratelimit의 엔진을 재정의하는 ratelimit (기본값 60 req/min) (기본값 60)
 
 RATE-LIMIT:
-   -rl, -rate-limit int            초당 보낼 최대 요청 수 (기본 150)
-   -rlm, -rate-limit-minute int    분당 보낼 최대 요청 수
-   -bs, -bulk-size int             템플릿당 병렬로 분석할 최대 호스트 수 (기본 25)
-   -c, -concurrency int            병렬로 실행할 최대 템플릿 수 (기본 25)
-   -hbs, -headless-bulk-size int   템플릿당 병렬로 분석할 최대 headless 호스트 수 (기본 10)
-   -hc, -headless-concurrency int  병렬로 실행할 최대 headless 템플릿 수 (기본 10)
+   -rl, -rate-limit int               초당 보낼 최대 요청 수 (기본값 150)
+   -rlm, -rate-limit-minute int       분당 보낼 최대 요청 수
+   -bs, -bulk-size int                템플릿당 병렬로 분석할 최대 호스트 수 (기본값 25)
+   -c, -concurrency int               병렬로 실행할 최대 템플릿 수 (기본값 25)
+   -hbs, -headless-bulk-size int      템플릿당 병렬로 분석할 최대 headless 호스트 수 (기본값 10)
+   -headc, -headless-concurrency int  병렬로 실행할 최대 headless 템플릿 수 (기본값 10)
 
 OPTIMIZATIONS:
-   -timeout int                타임아웃 전 대기 시간(초) (기본 5)
-   -retries int                실패한 요청을 재시도하는 횟수 (기본 1)
-   -ldp, -leave-default-ports  leave default HTTP/HTTPS ports (eg. host:80,host:443
-   -mhe, -max-host-error int   스캔을 건너뛰기 전에 호스트에 대한 최대 오류 수 (기본 30)
-   -te, -track-error string[]  주어진 오류를 max-host-error 감시 목록(표준, 파일)에 추가
-   -nmhe, -no-mhe                      disable skipping host from scan based on errors
-   -project                    프로젝트 폴더를 사용하여 동일한 요청을 여러 번 보내지 않음
-   -project-path string        특정 프로젝트 경로 설정
-   -spm, -stop-at-first-match  첫 번째 일치 후 HTTP 요청 처리 중지 (template/workflow 로직이 중단될 수 있음)
-   -stream                     stream 모드 - 입력을 정렬하지 않고 elaborating 시작
+   -timeout int                     타임아웃 전에 기다릴 초 수 (기본값 10)
+   -retries int                     실패한 요청을 재시도하는 횟수 (기본값 1)
+   -ldp, -leave-default-ports       기본 HTTP/HTTPS 포트 남겨두기 (예: host:80,host:443)
+   -mhe, -max-host-error int        스캔에서 건너뛰기 전에 호스트에서 허용되는 최대 오류 수 (기본값 30)
+   -te, -track-error string[]       최대 호스트 오류 감시 목록에 주어진 오류 추가 (표준, 파일)
+   -nmhe, -no-mhe                   오류를 기반으로 스캔에서 호스트 건너뛰기 비활성화
+   -project                         동일한 요청을 여러 번 보내는 것을 피하기 위해 프로젝트 폴더 사용
+   -project-path string             특정 프로젝트 경로 설정 (기본값 "/tmp")
+   -spm, -stop-at-first-match       첫 번째 매치 후 HTTP 요청 처리 중지 (템플릿/워크플로우 로직이 깨질 수 있음)
+   -stream                          스트림 모드 - 입력 정렬 없이 시작
+   -ss, -scan-strategy value        스캔하는 동안 사용할 전략(auto/host-spray/template-spray) (기본값 auto)
+   -irt, -input-read-timeout value  입력 읽기 시간 초과 (기본값 3m0s)
+   -nh, -no-httpx                   비 URL 입력에 대한 httpx 프로브 비활성화
+   -no-stdin                        stdin 처리를 비활성화합니다
 
 HEADLESS:
-   -headless            헤드리스 브라우저 지원이 필요한 템플릿 활성화(root user on linux will disable sandbox)
-   -page-timeout int    헤드리스 모드에서 각 페이지를 기다리는 시간(초)(기본 20)
-   -sb, -show-browser   헤드리스 모드로 템플릿을 실행할 때 화면에 브라우저 표시
-   -sc, -system-chrome  설치된 nuclei 대신 로컬에 설치된 chrome 브라우저 사용
+   -headless                        headless 브라우저 지원이 필요한 템플릿 활성화 (Linux의 root 사용자는 샌드박스 비활성화)
+   -page-timeout int                headless 모드에서 각 페이지를 기다리는 시간(초) (기본값 20)
+   -sb, -show-browser               headless 모드로 실행하는 템플릿에서 브라우저 화면 표시
+   -ho, -headless-options string[]  추가 옵션으로 headless chrome 시작
+   -sc, -system-chrome              nuclei가 설치한 Chrome 대신 로컬에 설치된 Chrome 브라우저 사용
+   -lha, -list-headless-action      사용 가능한 headless 액션 목록 표시
 
 DEBUG:
-   -debug                    모든 요청 및 응답 표시
+   -debug                    모든 요청과 응답 표시
    -dreq, -debug-req         보낸 모든 요청 표시
    -dresp, -debug-resp       받은 모든 응답 표시
-   -p, -proxy string[]       사용할 http/socks5 프록시 목록(쉼표로 구분하거나 파일 입력)
-   -pi, -proxy-internal      모든 내부 요청을 프록시
+   -p, -proxy string[]       사용할 http/socks5 프록시 목록 (쉼표로 구분하거나 파일 입력)
+   -pi, -proxy-internal      모든 내부 요청을 프록시를 통해 전송
+   -ldf, -list-dsl-function  지원되는 모든 DSL 함수 시그니처 목록 표시
    -tlog, -trace-log string  보낸 요청 추적 로그를 기록할 파일
    -elog, -error-log string  보낸 요청 오류 로그를 기록할 파일
-   -version                  nuclei 버전 출력
-   -hm, -hang-monitor        nuclei hang monitoring 활성화
-   -v, -verbose              상세 출력 표시
-   -vv                       스캔을 위해 로드된 디스플레이 템플릿 표시
-   -ep, -enable-pprof        pprof debugging server 활성화
-   -tv, -templates-version   설치된 nuclei-templates 버전 출력
+   -version                  nuclei 버전 표시
+   -hm, -hang-monitor        nuclei 멈춤 모니터링 활성화
+   -v, -verbose              자세한 출력 표시
+   -profile-mem string       선택적인 nuclei 메모리 프로필 덤프 파일
+   -vv                       스캔에 로드된 템플릿 표시
+   -svd, -show-var-dump      디버깅을 위한 변수 덤프 표시
+   -ep, -enable-pprof        pprof 디버깅 서버 활성화
+   -tv, -templates-version   설치된 nuclei-templates의 버전 표시
+   -hc, -health-check        진단 검사 실행
 
 UPDATE:
-   -update                        최신 릴리스 버전으로 nuclei 엔진 업데이트
-   -ut, -update-templates         최신 릴리스 버전으로 nuclei-templates 엔진 업데이트
-   -ud, -update-directory string  nuclei-templates를 설치할 기본 디렉터리를 덮어씀
-   -duc, -disable-update-check    자동 nuclei/templates 업데이트 확인 비활성화
+   -up, -update                      최신 릴리스 버전으로 nuclei 엔진 업데이트
+   -ut, -update-templates            최신 릴리스 버전으로 nuclei-templates 업데이트
+   -ud, -update-template-dir string  nuclei-templates를 설치/업데이트할 사용자 지정 디렉토리
+   -duc, -disable-update-check       자동 nuclei/templates 업데이트 확인 비활성화
 
 STATISTICS:
    -stats                    실행 중인 스캔에 대한 통계 표시
-   -sj, -stats-json          JSONL(ines) 형식으로 출력 파일에 통계 데이터 쓰기
-   -si, -stats-interval int  통계 업데이트를 표시할 때까지 대기하는 시간(초) (기본 5)
-   -m, -metrics              expose nuclei metrics on a port
-   -mp, -metrics-port int    port to expose nuclei metrics on (기본 9092)
+   -sj, -stats-json          JSONL(ines) 형식으로 통계 표시
+   -si, -stats-interval int  통계 업데이트를 표시하기까지 기다릴 초 수 (기본값 5)
+   -mp, -metrics-port int    nuclei 메트릭스를 노출할 포트 (기본값 9092)
+
+CLOUD:
+   -auth                  projectdiscovery 클라우드 (pdcp) API 키 구성
+   -cup, -cloud-upload    스캔 결과를 pdcp 대시보드에 업로드
+   -sid, -scan-id string  주어진 스캔 ID에 스캔 결과 업로드
+
+
+예시:
+단일 호스트에서 nuclei 실행:
+	$ nuclei -target example.com
+
+특정 템플릿 디렉토리로 nuclei 실행:
+	$ nuclei -target example.com -t http/cves/ -t ssl
+
+호스트 목록에 대해 nuclei 실행:
+	$ nuclei -list hosts.txt
+
+JSON 출력으로 nuclei 실행:
+	$ nuclei -target example.com -json-export output.json
+
+정렬된 Markdown 출력으로 nuclei 실행 (환경 변수 사용):
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+
+추가 문서는 여기에서 확인할 수 있습니다: https://docs.nuclei.sh/getting-started/running
 ```
 
 ### Nuclei 실행
@@ -271,7 +341,7 @@ Nuclei를 사용하면 자체 검사 모음으로 테스트 접근 방식을 사
 - 몇 분 안에 수천 개의 호스트를 처리할 수 있음.
 - 간단한 YAML DSL로 사용자 지정 테스트 접근 방식을 쉽게 자동화할 수 있음.
 
-버그 바운티 워크플로에 맞는 다른 오픈 소스 프로젝트를 확인할 수 있습니다.: [github.com/projectdiscovery](http://github.com/projectdiscovery), 또한, 우리는 매일 [Chaos에서 DNS 데이터를 갱신해 호스팅합니다.](http://chaos.projectdiscovery.io).
+버그 바운티 워크플로에 맞는 다른 오픈 소스 프로젝트를 확인할 수 있습니다.: [github.com/projectdiscovery](http://github.com/projectdiscovery), 또한, 우리는 매일 [Chaos에서 DNS 데이터를 갱신해 호스팅합니다](http://chaos.projectdiscovery.io).
 
 </td>
 </tr>
@@ -289,7 +359,7 @@ Nuclei는 수동적이고 반복적인 프로세스를 보강하여 보안 평�
 침투 테스터는 평가 프로세스, 특히 수정 사항을 쉽게 확인할 수 있는 회귀 주기를 통해 공개 템플릿 및 사용자 지정 기능을 최대한 활용할 수 있습니다.
 
 - 규정 준수, 표준 제품군(예: OWASP Top 10) 체크리스트 쉽게 생성.
-- Nuclei의 [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) 및 [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows) 같은 기능으로 복잡한 수동 단계와 반복 평가를 쉽게 자동화할 수 있음.
+- Nuclei의 [fuzz](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/) 및 [workflows](https://nuclei.projectdiscovery.io/templating-guide/workflows/) 같은 기능으로 복잡한 수동 단계와 반복 평가를 쉽게 자동화할 수 있음.
 - 템플릿 재실행으로 취약점 수정 재테스트 용이.
 
 </td>

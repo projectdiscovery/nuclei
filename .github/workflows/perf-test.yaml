@@ -1,0 +1,43 @@
+name: 🔨 Performance Test
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly
+  workflow_dispatch:
+
+jobs:
+  perf-test:
+    strategy:
+      matrix:
+        count: [50, 100, 150]
+    runs-on: ubuntu-latest
+    if: github.repository == 'projectdiscovery/nuclei'
+    env:
+      LIST_FILE: "/tmp/targets-${{ matrix.count }}.txt"
+      PROFILE_MEM: "/tmp/nuclei-perf-test-${{ matrix.count }}"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/go@v1
+      - run: make verify
+      - name: Generate list
+        run: for i in {1..${{ matrix.count }}}; do echo "https://honey.scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
+      - run: go run . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}"
+        env:
+          NUCLEI_ARGS: host-error-stats
+        working-directory: cmd/nuclei/
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-cpu
+        with:
+          profile: "${{ env.PROFILE_MEM }}.cpu"
+          name: "${{ env.FLAMEGRAPH_NAME }} CPU profiles"
+        continue-on-error: true
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-mem
+        with:
+          profile: "${{ env.PROFILE_MEM }}.mem"
+          name: "${{ env.FLAMEGRAPH_NAME }} memory profiles"
+        continue-on-error: true
+      - if: ${{ steps.flamegraph-mem.outputs.message == '' }}
+        run: |
+          echo "::notice::CPU flamegraph: ${{ steps.flamegraph-cpu.outputs.url }}"
+          echo "::notice::Memory (heap) flamegraph: ${{ steps.flamegraph-mem.outputs.url }}"

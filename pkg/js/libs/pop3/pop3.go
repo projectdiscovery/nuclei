@@ -1,0 +1,71 @@
+package pop3
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"strconv"
+	"time"
+
+	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/pop3"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+)
+
+type (
+	// IsPOP3Response is the response from the IsPOP3 function.
+	// this is returned by IsPOP3 function.
+	// @example
+	// ```javascript
+	// const pop3 = require('nuclei/pop3');
+	// const isPOP3 = pop3.IsPOP3('acme.com', 110);
+	// log(toJSON(isPOP3));
+	// ```
+	IsPOP3Response struct {
+		IsPOP3 bool
+		Banner string
+	}
+)
+
+// IsPOP3 checks if a host is running a POP3 server.
+// @example
+// ```javascript
+// const pop3 = require('nuclei/pop3');
+// const isPOP3 = pop3.IsPOP3('acme.com', 110);
+// log(toJSON(isPOP3));
+// ```
+func IsPOP3(ctx context.Context, host string, port int) (IsPOP3Response, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedisPoP3(executionId, host, port)
+}
+
+// @memo
+func isPoP3(executionId string, host string, port int) (IsPOP3Response, error) {
+	resp := IsPOP3Response{}
+
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsPOP3Response{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	timeout := 5 * time.Second
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	if err != nil {
+		return resp, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	pop3Plugin := pop3.POP3Plugin{}
+	service, err := pop3Plugin.Run(conn, timeout, plugins.Target{Host: host})
+	if err != nil {
+		return resp, err
+	}
+	if service == nil {
+		return resp, nil
+	}
+	resp.Banner = service.Metadata().(plugins.ServicePOP3).Banner
+	resp.IsPOP3 = true
+	return resp, nil
+}

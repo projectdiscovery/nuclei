@@ -1,0 +1,208 @@
+package mssql
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"net"
+	"net/url"
+	"strings"
+	"time"
+
+	_ "github.com/microsoft/go-mssqldb"
+	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+)
+
+type (
+	// Client is a client for MS SQL database.
+	// Internally client uses microsoft/go-mssqldb driver.
+	// @example
+	// ```javascript
+	// const mssql = require('nuclei/mssql');
+	// const client = new mssql.MSSQLClient;
+	// ```
+	MSSQLClient struct{}
+)
+
+// Connect connects to MS SQL database using given credentials.
+// If connection is successful, it returns true.
+// If connection is unsuccessful, it returns false and error.
+// The connection is closed after the function returns.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const client = new mssql.MSSQLClient;
+// const connected = client.Connect('acme.com', 1433, 'username', 'password');
+// ```
+func (c *MSSQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedconnect(executionId, host, port, username, password, "master")
+}
+
+// ConnectWithDB connects to MS SQL database using given credentials and database name.
+// If connection is successful, it returns true.
+// If connection is unsuccessful, it returns false and error.
+// The connection is closed after the function returns.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const client = new mssql.MSSQLClient;
+// const connected = client.ConnectWithDB('acme.com', 1433, 'username', 'password', 'master');
+// ```
+func (c *MSSQLClient) ConnectWithDB(ctx context.Context, host string, port int, username, password, dbName string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedconnect(executionId, host, port, username, password, dbName)
+}
+
+// @memo
+func connect(executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
+	if host == "" || port <= 0 {
+		return false, fmt.Errorf("invalid host or port")
+	}
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied(host)
+	}
+
+	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+
+	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
+		url.PathEscape(username),
+		url.PathEscape(password),
+		target,
+		dbName)
+
+	db, err := sql.Open("sqlserver", connString)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = db.Close()
+	}()
+
+	_, err = db.Exec("select 1")
+	if err != nil {
+		switch {
+		case strings.Contains(err.Error(), "connect: connection refused"):
+			fallthrough
+		case strings.Contains(err.Error(), "no pg_hba.conf entry for host"):
+			fallthrough
+		case strings.Contains(err.Error(), "network unreachable"):
+			fallthrough
+		case strings.Contains(err.Error(), "reset"):
+			fallthrough
+		case strings.Contains(err.Error(), "i/o timeout"):
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
+}
+
+// IsMssql checks if the given host is running MS SQL database.
+// If the host is running MS SQL database, it returns true.
+// If the host is not running MS SQL database, it returns false.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const isMssql = mssql.IsMssql('acme.com', 1433);
+// ```
+func (c *MSSQLClient) IsMssql(ctx context.Context, host string, port int) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedisMssql(executionId, host, port)
+}
+
+// @memo
+func isMssql(executionId string, host string, port int) (bool, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied(host)
+	}
+
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	data, check, err := mssql.DetectMSSQL(conn, 5*time.Second)
+	if check && err != nil {
+		return false, nil
+	} else if !check && err != nil {
+		return false, err
+	}
+	if data.Version != "" {
+		return true, nil
+	}
+	return false, nil
+}
+
+// ExecuteQuery connects to MS SQL database using given credentials and executes a query.
+// It returns the results of the query or an error if something goes wrong.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const client = new mssql.MSSQLClient;
+// const result = client.ExecuteQuery('acme.com', 1433, 'username', 'password', 'master', 'SELECT @@version');
+// log(to_json(result));
+// ```
+func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	executionId := ctx.Value("executionId").(string)
+	if host == "" || port <= 0 {
+		return nil, fmt.Errorf("invalid host or port")
+	}
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied(host)
+	}
+
+	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+
+	ok, err := c.IsMssql(ctx, host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a mssql service")
+	}
+
+	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
+		url.PathEscape(username),
+		url.PathEscape(password),
+		target,
+		dbName)
+
+	db, err := sql.Open("sqlserver", connString)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = db.Close()
+	}()
+
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := utils.UnmarshalSQLRows(rows)
+	if err != nil {
+		if data != nil && len(data.Rows) > 0 {
+			return data, nil
+		}
+		return nil, err
+	}
+	return data, nil
+}

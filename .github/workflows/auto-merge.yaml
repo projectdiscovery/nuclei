@@ -1,0 +1,28 @@
+name: 🤖 Auto Merge
+
+on:
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    workflows: ["♾️ Compatibility Check"]
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  issues: write
+  repository-projects: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.DEPENDABOT_PAT }}
+
+      - uses: ahmadnassri/action-dependabot-auto-merge@v2
+        with:
+          github-token: ${{ secrets.DEPENDABOT_PAT }}
+          target: all

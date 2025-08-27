@@ -1,0 +1,24 @@
+id: headless-waitevent
+
+info:
+    name: WaitEvent
+    severity: info
+    author: pdteam
+
+headless:
+  - steps:
+      # note waitevent must be used before navigating to any page
+      # unlike waitload
+      - action: waitevent
+        args:
+            event: 'Page.loadEventFired'
+            max-duration: 15s
+  
+      - action: navigate  
+        args:
+          url: "{{BaseURL}}/"
+
+    matchers:
+      - type: word
+        words:
+          - "<html>"

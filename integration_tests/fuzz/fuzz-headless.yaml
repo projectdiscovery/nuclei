@@ -1,0 +1,31 @@
+id: headless-query-fuzzing
+
+info:
+  name: Example Query Fuzzing
+  author: pdteam
+  severity: info
+
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}"
+      - action: waitload
+
+    payloads:
+      redirect:
+        - "blog.com"
+        - "portal.com"
+
+    fuzzing:
+      - part: query
+        mode: single
+        type: replace
+        fuzz:
+          - "https://{{redirect}}"
+
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "{{redirect}}"

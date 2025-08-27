@@ -1,0 +1,22 @@
+id: multiprotocol-value-sharing-template
+
+info:
+  name: MultiProtocol Value Sharing Template
+  author: tovask
+  severity: info
+
+dns:
+  - name: "{{extracted}}"
+    type: PTR
+    matchers:
+      - type: word
+        words:
+          - "blog.projectdiscovery.io"
+
+http:
+  - path:
+      - "{{BaseURL}}/path2?extracted={{extracted}}"
+    matchers:
+      - type: word
+        words:
+          - "blog.projectdiscovery.io"

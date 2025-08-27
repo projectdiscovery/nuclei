@@ -1,0 +1,15 @@
+id: workflow-shared-cookies
+
+info:
+  name: Test Workflow Shared Cookies
+  author: pdteam
+  severity: info
+
+workflows:
+  # store cookies to standard http client cookie-jar
+  - template: workflow/http-1.yaml
+  - template: workflow/http-2.yaml
+  # store cookie in native browser context
+  - template: workflow/headless-1.yaml
+  # retrieve 2 standard library cookies + headless cookie
+  - template: workflow/http-3.yaml

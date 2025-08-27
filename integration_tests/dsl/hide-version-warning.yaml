@@ -1,0 +1,18 @@
+id: basic-example
+
+info:
+  name: Test HTTP Template
+  author: pdteam
+  severity: info
+  reference: |
+    test case for default behaviour of version warning (dsl parsing error)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - compare_versions("GG", '< 4.8.5')

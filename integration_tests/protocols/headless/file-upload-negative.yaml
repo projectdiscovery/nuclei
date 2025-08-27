@@ -1,0 +1,29 @@
+id: file-upload
+# template for testing when file upload is disabled
+info:
+  name: Basic File Upload
+  author: pdteam
+  severity: info
+
+headless:
+  - steps:
+    - action: navigate
+      args:
+        url: "{{BaseURL}}"
+    - action: waitload
+    - action: files
+      args:
+        by: xpath
+        xpath: /html/body/form/input[1]
+        value: headless/file-upload.yaml
+    - action: sleep
+      args:
+        duration: 2
+    - action: click
+      args:
+        by: x
+        xpath: /html/body/form/input[2]
+    matchers:
+      - type: word
+        words:
+          - "Basic File Upload"

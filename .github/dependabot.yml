@@ -1,12 +1,25 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
 version: 2
 updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    allow:
+      - dependency-name: "github.com/projectdiscovery/*"
+    groups:
+      modules:
+        patterns: ["github.com/projectdiscovery/*"]
+      security:
+        applies-to: "security-updates"
+        patterns: ["*"]
+        exclude-patterns: ["github.com/projectdiscovery/*"]
+    labels:
+      - "Type: Maintenance"
 
-  # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -15,29 +28,21 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    groups:
+      workflows:
+        patterns: ["*"]
+        exclude-patterns: ["projectdiscovery/actions/*"]
     labels:
       - "Type: Maintenance"
 
-  # Maintain dependencies for go modules
-  - package-ecosystem: "gomod"
-    directory: "v2/"
-    schedule:
-      interval: "weekly"
-    target-branch: "dev"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "Type: Maintenance"
-
-  # Maintain dependencies for docker
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    target-branch: "dev"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "Type: Maintenance"
+#  # Maintain dependencies for docker
+#  - package-ecosystem: "docker"
+#    directory: "/"
+#    schedule:
+#      interval: "weekly"
+#    target-branch: "dev"
+#    commit-message:
+#      prefix: "chore"
+#      include: "scope"
+#    labels:
+#      - "Type: Maintenance"

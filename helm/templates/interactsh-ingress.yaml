@@ -1,12 +1,13 @@
 {{- if .Values.interactsh.ingress.enabled -}}
 {{- $fullName := include "nuclei.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
-{{- if and .Values.interactsh.ingress.className (not (semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion)) }}
+{{- $svcPort := .Values.interactsh.service.port -}}
+{{- $svcName := .Values.interactsh.service.name -}}
+{{- if and .Values.interactsh.ingress.className (not (semverCompare ">=1.20-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.interactsh.ingress.annotations "kubernetes.io/ingress.class") }}
   {{- $_ := set .Values.interactsh.ingress.annotations "kubernetes.io/ingress.class" .Values.interactsh.ingress.className}}
   {{- end }}
 {{- end }}
-{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+{{- if semverCompare ">=1.20-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1
 {{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1beta1
@@ -23,7 +24,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and .Values.interactsh.ingress.className (semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion) }}
+  {{- if and .Values.interactsh.ingress.className (semverCompare ">=1.20-0" .Capabilities.KubeVersion.GitVersion) }}
   ingressClassName: {{ .Values.interactsh.ingress.className }}
   {{- end }}
   {{- if .Values.interactsh.ingress.tls }}
@@ -43,17 +44,17 @@ spec:
         paths:
           {{- range .paths }}
           - path: {{ .path }}
-            {{- if and .pathType (semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion) }}
+            {{- if and .pathType (semverCompare ">=1.20-0" $.Capabilities.KubeVersion.GitVersion) }}
             pathType: {{ .pathType }}
             {{- end }}
             backend:
-              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              {{- if semverCompare ">=1.20-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ $fullName }}
+                name: {{ $svcName }}
                 port:
                   number: {{ $svcPort }}
               {{- else }}
-              serviceName: {{ $fullName }}
+              serviceName: {{ $svcName }}
               servicePort: {{ $svcPort }}
               {{- end }}
           {{- end }}

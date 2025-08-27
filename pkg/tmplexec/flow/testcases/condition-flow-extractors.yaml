@@ -1,0 +1,28 @@
+id: condition-flow-extractors
+info:
+  name: Condition Flow Extractors
+  author: pdteam
+  severity: info
+
+flow: dns() && http()
+
+dns:
+  - name: "{{FQDN}}"
+    type: A
+
+    extractors:
+      - type: dsl
+        name: a
+        internal: true
+        dsl:
+          - a
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?ref={{a}}"
+
+    matchers:
+      - type: word
+        words:
+          - "ok"

@@ -1,0 +1,106 @@
+id: helper-functions-examples
+
+info:
+  name: RAW Template with Helper Functions
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      # Note for the integration test: dsl expression should not contain commas
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+        01: {{base64("Hello")}}
+        02: {{base64(1234)}}
+        03: {{base64_decode("SGVsbG8=")}}
+        04: {{base64_py("Hello")}}
+        05: {{compare_versions('v1.0.0', '>v0.0.1', '<v1.0.1')}}
+        06: {{concat("Hello", "world")}}
+        07: {{contains("Hello", "lo")}}
+        08: {{contains_all("Hello everyone", "lo", "every")}}
+        09: {{contains_any("Hello everyone", "abc", "llo")}}
+        10: {{date_time("%Y-%M-%D")}}
+        11: {{date_time("%Y-%M-%D", unix_time())}}
+        12: {{date_time("%H-%m")}}
+        13: {{date_time("02-01-2006 15:04")}}
+        14: {{date_time("02-01-2006 15:04", unix_time())}}
+        15: {{dec_to_hex(11111)}}
+        16: {{generate_java_gadget("commons-collections3.1", "wget http://scanme.sh", "base64")}}
+        17: {{gzip("Hello")}}
+        18: {{gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))}}
+        19: {{hex_decode("6161")}}
+        20: {{hex_encode("aa")}}
+        21: {{hmac("sha1", "test", "scrt")}}
+        22: {{hmac("sha256", "test", "scrt")}}
+        23: {{hmac("sha512", "test", "scrt")}}
+        24: {{html_escape("<body>test</body>")}}
+        25: {{html_unescape("&lt;body&gt;test&lt;/body&gt;")}}
+        26: {{join("_", "hello", "world")}}
+        27: {{len("Hello")}}
+        28: {{len(5555)}}
+        29: {{md5("Hello")}}
+        30: {{md5(1234)}}
+        31: {{mmh3("Hello")}}
+        32: {{print_debug(1+2, "Hello")}}
+        33: {{rand_base(5, "abc")}}
+        34: {{rand_base(5, "")}}
+        35: {{rand_base(5)}}
+        36: {{rand_char("abc")}}
+        37: {{rand_char("")}}
+        38: {{rand_char()}}
+        39: {{rand_int(1, 10)}}
+        40: {{rand_int(10)}}
+        41: {{rand_int()}}
+        42: {{rand_ip("192.168.0.0/24")}}
+        43: {{rand_ip("2002:c0a8::/24")}}
+        44: {{rand_ip("192.168.0.0/24","10.0.100.0/24")}}
+        45: {{rand_text_alpha(10, "abc")}}
+        46: {{rand_text_alpha(10, "")}}
+        47: {{rand_text_alpha(10)}}
+        48: {{rand_text_alphanumeric(10, "ab12")}}
+        49: {{rand_text_alphanumeric(10)}}
+        50: {{rand_text_numeric(10, 123)}}
+        51: {{rand_text_numeric(10)}}
+        52: {{regex("H([a-z]+)o", "Hello")}}
+        53: {{remove_bad_chars("abcd", "bc")}}
+        54: {{repeat("a", 5)}}
+        55: {{replace("Hello", "He", "Ha")}}
+        56: {{replace_regex("He123llo", "(\\d+)", "")}}
+        57: {{reverse("abc")}}
+        58: {{sha1("Hello")}}
+        59: {{sha256("Hello")}}
+        60: {{sha512("Hello")}}
+        61: {{to_lower("HELLO")}}
+        62: {{to_upper("hello")}}
+        63: {{trim("aaaHelloddd", "ad")}}
+        64: {{trim_left("aaaHelloddd", "ad")}}
+        65: {{trim_prefix("aaHelloaa", "aa")}}
+        66: {{trim_right("aaaHelloddd", "ad")}}
+        67: {{trim_space("  Hello  ")}}
+        68: {{trim_suffix("aaHelloaa", "aa")}}
+        69: {{unix_time(10)}}
+        70: {{url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")}}
+        71: {{url_encode("https://projectdiscovery.io/test?a=1")}}
+        72: {{wait_for(1)}}
+        73: {{zlib("Hello")}}
+        74: {{zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"))}}
+        75: {{hex_encode(aes_gcm("AES256Key-32Characters1234567890", "exampleplaintext"))}}
+        76: {{starts_with("Hello", "He")}}
+        77: {{ends_with("Hello", "lo")}}
+        78: {{line_starts_with("Hi\nHello", "He")}}
+        79: {{line_ends_with("Hello\nHi", "lo")}}
+        80: {{sort("a1b2c3d4e5")}}
+        81: {{uniq("abcabdaabbccd")}}
+        82: {{join(" ", sort("b", "a", "2", "c", "3", "1", "d", "4"))}}
+        83: {{join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))}}
+        84: {{split("ab,cd,efg", ",")}}
+        85: {{split("ab,cd,efg", ",", 2)}}
+        86: {{ip_format('127.0.0.1', 3)}}
+        87: {{ip_format('127.0.1.0', 11)}}
+        88: {{jarm('scanme.sh:443')}}
+    extractors:
+      - type: regex
+        name: results
+        regex:
+          - '\d+: [^\s]+'

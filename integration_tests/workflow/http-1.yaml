@@ -1,0 +1,11 @@
+id: http1
+
+info:
+  name: http1
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/http1"

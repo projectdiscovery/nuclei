@@ -1,0 +1,18 @@
+id: file-matcher-with-nested-and
+
+info:
+  name: File Matcher With nested AND
+  author: pdteam
+  severity: info
+  tags: file
+
+file:
+  - extensions:
+      - all
+
+    matchers:
+      - type: word
+        words:
+          - "CCC"
+          - "DDD"
+        condition: and

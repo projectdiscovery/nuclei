@@ -1,0 +1,29 @@
+id: dns-http-dynamic-values
+
+info:
+  name: multi protocol request with dynamic values
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}" # DNS Request
+    type: cname
+
+    extractors:
+      - type: dsl
+        name: blogid
+        dsl:
+          - trim_suffix(cname,'.vercel-dns.com')
+        internal: true
+
+http:
+  - method: GET # http request
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - contains(body,'home') # check for http string
+          - blogid == 'cname' # check for cname (extracted information from dns response)
+        condition: and

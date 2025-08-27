@@ -1,0 +1,43 @@
+id: redis-pass-brute
+info:
+  name: redis password bruteforce
+  author: tarunKoyalwar
+  severity: high
+  description: |
+    This template bruteforces passwords for protected redis instances.
+    If redis is not protected with password. it is also matched
+  metadata:
+    shodan-query: product:"redis"
+
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host,Port)
+
+    code: |
+      var m = require("nuclei/redis");
+      m.GetServerInfoAuth(Host,Port,Password);
+
+    args:
+      Host: "{{Host}}"
+      Port: "6379"
+      Password: "{{passwords}}"
+
+    payloads:
+      passwords:
+        - ""
+        - root
+        - password
+        - admin
+        - iamadmin
+    stop-at-first-match: true
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "redis_version"
+      - type: word
+        negative: true
+        words:
+          - "redis_mode:sentinel"

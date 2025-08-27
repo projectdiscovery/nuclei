@@ -1,0 +1,63 @@
+id: raw-unsafe-path
+
+info:
+  name: Test RAW Unsafe Paths
+  author: pd-team
+  severity: info
+  description: >
+    - https://github.com/projectdiscovery/nuclei/pull/3211
+    - https://github.com/projectdiscovery/nuclei/pull/3127
+  reference:
+    # adding expected results here for context and debugging
+    - "1337"
+    - "1337?with=param"
+    - "/some%0A/%0D"
+    - "/%20test%0a"
+    - "/text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d"
+    - "/test/..;/..;/"
+    - "/xyz/%u2s/%invalid"
+    - "//CFIDE/wizards/common/utils.cfc"
+
+
+# Test all unsafe URL Handling Edgecases
+http:
+  - raw:
+    # relative path without leading slash
+      - |+
+        GET 1337 HTTP/1.1 
+        Host: scanme.sh
+    # same but with param
+      - |+
+        GET 1337?with=param HTTP/1.1 
+        Host: scanme.sh
+    # url encoded characters in path
+      - |+
+        GET /some%0A/%0D HTTP/1.1
+        Host: scanme.sh
+    # test unsupported  chars in path
+      - |+
+        GET /%20test%0a HTTP/1.1
+        Host: scanme.sh
+    # test payload integrity params
+      - |+
+        GET /text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d HTTP/1.1
+        Host: scanme.sh
+    # test for missing trailing slash
+      - |+
+        GET /test/..;/..;/ HTTP/1.1
+        Host: scanme.sh
+        Origin: {{BaseURL}}
+    # test relative path with invalid/corrupted characters
+      - |+
+        GET /xyz/%u2s/%invalid HTTP/1.1
+        Host: scanme.sh
+    # test relative path start with // (should not be removed)
+      - |+
+        GET //CFIDE/wizards/common/utils.cfc HTTP/1.1
+        Host: scanme.sh
+
+    unsafe: true
+    matchers:
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,43 @@
+id: dns-ns-probe
+
+info:
+  name: Nuclei flow dns ns probe
+  author: pdteam
+  severity: info
+  description: Description of the Template
+  reference: https://example-reference-link
+
+flow: |
+  dns("fetch-ns");
+  for(let ns of template["nameservers"]) {
+    set("nameserver",ns);
+    dns("probe-ns");
+  };
+
+dns:
+  - id: "fetch-ns"
+    name: "{{FQDN}}"
+    type: NS
+    matchers:
+      - type: word
+        words:
+          - "IN\tNS"
+        internal: true
+    extractors:
+      - type: regex
+        internal: true
+        name: "nameservers"
+        group: 1
+        regex:
+          - "IN\tNS\t(.+)"
+
+  - id: "probe-ns"
+    name: "{{nameserver}}"
+    type: A
+    class: inet
+    retries: 3
+    recursion: true
+    extractors:
+      - type: dsl
+        dsl:
+          - "a"

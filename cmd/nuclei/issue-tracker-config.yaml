@@ -1,0 +1,175 @@
+# global allow/deny list. this will affect both exporters
+# as well as issue trackers. you can filter trackers with
+# a tracker level filter on top of an exporter by setting
+# allow-list/deny-list per tracker.
+#
+#allow-list:
+#  severity: high, critical
+#deny-list:
+#  severity: low
+#
+# GitHub contains configuration options for GitHub issue tracker
+#github:
+#  # base-url is the optional self-hosted GitHub application url
+#  base-url: https://localhost:8443/github
+#  # username is the username of the GitHub user
+#  username: test-username
+#  # owner is the owner name of the repository for issues
+#  owner: test-owner
+#  # token is the token for GitHub account
+#  token: test-token
+#  # project-name is the name of the repository
+#  project-name: test-project
+#  # issue-label is the label of the created issue type
+#  issue-label: bug
+#  # allow-list sets a tracker level filter to only create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  allow-list:
+#    severity: high, critical
+#    tags: network
+#  # deny-list sets a tracker level filter to never create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: low
+#  # duplicate-issue-check flag to enable duplicate tracking issue check.
+#  duplicate-issue-check: false
+#
+# GitLab contains configuration options for gitlab issue tracker
+#gitlab:
+#  # base-url is the optional self-hosted GitLab application url
+#  base-url: https://localhost:8443/gitlab
+#  # username is the username of the GitLab user
+#  username: test-username
+#  # token is the token for GitLab account
+#  token: test-token
+#  # project-name is the name/id of the project(repository)
+#  project-name: "1234"
+#  # issue-label is the label of the created issue type
+#  issue-label: bug
+#  # allow-list sets a tracker level filter to only create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  allow-list:
+#    severity: high, critical
+#    tags: network
+#  # deny-list sets a tracker level filter to never create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: low
+#
+# Gitea contains configuration options for a gitea issue tracker
+#gitea:
+#  # base-url is the optional self-hosted Gitea application url (defaults to https://gitea.com)
+#  base-url: https://localhost:8443/
+#  # token is the token for a Gitea account to use
+#  token: test-token
+#  # project-owner is the owner (user or org) of the repository
+#  project-owner: "1234"
+#  # project-name is the name of the repository
+#  project-name: "1234"
+#  # issue-label is a custom label to add to created issues
+#  issue-label: bug
+#  # severity-as-label (optional) adds the severity as a label of the created issue
+#  severity-as-label: true
+#  # allow-list sets a tracker level filter to only create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  allow-list:
+#    severity: high, critical
+#    tags: network
+#  # deny-list sets a tracker level filter to never create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: low
+#  # duplicate-issue-check (optional) flag to enable duplicate tracking issue check
+#  duplicate-issue-check: false
+#
+# Jira contains configuration options for Jira issue tracker
+#jira:
+#  # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
+#  cloud: true
+#  # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
+#  update-existing: false
+#  # URL is the jira application url
+#  url: https://localhost/jira
+#  # account-id is the account-id of the Jira user or username in case of on-prem Jira
+#  account-id: test-account-id
+#  # email is the email of the user for Jira instance
+#  email: test@test.com
+#  # token is the token for Jira instance or password in case of on-prem Jira
+#  token: test-token
+#  # project-name is the name of the project.
+#  project-name: test-project-name
+#  # issue-type is the name of the created issue type (case sensitive)
+#  issue-type: Bug
+#  # SeverityAsLabel (optional) sends the severity as the label of the created issue
+#  # User custom fields for Jira Cloud instead
+#  severity-as-label: true
+#  # allow-list sets a tracker level filter to only create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  allow-list:
+#    severity: high, critical
+#    tags: network
+#  # deny-list sets a tracker level filter to never create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: low
+#  # Whatever your final status is that you want to use as a closed ticket - Closed, Done, Remediated, etc
+#  # When checking for duplicates, the JQL query will filter out status's that match this.
+#  # If it finds a match _and_ the ticket does have this status, a new one will be created.
+# status-not: Closed
+#  # Customfield supports name, id and freeform. name and id are to be used when the custom field is a dropdown.
+#  # freeform can be used if the custom field is just a text entry
+#  # Variables can be used to pull various pieces of data from the finding itself. 
+#  # Supported variables: $CVSSMetrics, $CVEID, $CWEID, $Host, $Severity, $CVSSScore, $Name
+# custom-fields:
+#  customfield_00001: 
+#    name: "Nuclei"
+#  customfield_00002:
+#    freeform: $CVSSMetrics
+#  customfield_00003:
+#    freeform: $CVSSScore
+# elasticsearch contains configuration options for elasticsearch exporter
+#elasticsearch:
+#  # IP for elasticsearch instance
+#  ip: 127.0.0.1
+#  # Port is the port of elasticsearch instance
+#  port: 9200
+#  # IndexName is the name of the elasticsearch index
+#  index-name: nuclei
+#  # SSL enables ssl for elasticsearch connection
+#  ssl: false
+#  # SSLVerification disables SSL verification for elasticsearch
+#  ssl-verification: false
+#  # Username for the elasticsearch instance
+#  username: test
+#  # Password is the password for elasticsearch instance
+#  password: test
+#linear:
+#  # api-key is the API key for the linear account
+#  api-key: ""
+#  # allow-list sets a tracker level filter to only create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: critical
+#  # deny-list sets a tracker level filter to never create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: low
+#  # team-id is the ID of the team in Linear
+#  team-id: ""
+#  # project-id is the ID of the project in Linear
+#  project-id: ""
+#  # duplicate-issue-check flag to enable duplicate tracking issue check
+#  duplicate-issue-check: false
+#  # open-state-id is the ID of the open state in Linear
+#  open-state-id: ""
+#mongodb:
+#  # the connection string to the MongoDB database
+#  # (e.g., mongodb://root:example@localhost:27017/nuclei?ssl=false&authSource=admin)
+#  connection-string: ""
+#  # the name of the collection to store the issues
+#  collection-name: ""
+#  # excludes the Request and Response from the results (helps with filesize)
+#  omit-raw: false
+#  # determines the number of results to be kept in memory before writing it to the database or 0 to
+#  # persist all in memory and write all results at the end (default)
+#  batch-size: 0
