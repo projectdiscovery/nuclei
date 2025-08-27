@@ -10,8 +10,8 @@ import (
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/oracledb"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	go_ora "github.com/sijms/go-ora/v2"
 	goora "github.com/sijms/go-ora/v2"
 )
 
@@ -81,6 +81,23 @@ func isOracle(executionId string, host string, port int) (IsOracleResponse, erro
 	return resp, nil
 }
 
+func oracleDbInstance(connStr string, executionId string) (*goora.OracleConnector, error) {
+	connector := goora.NewConnector(connStr)
+	oraConnector, ok := connector.(*goora.OracleConnector)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast connector to OracleConnector")
+	}
+
+	// Create custom dialer wrapper
+	customDialer := &oracleCustomDialer{
+		executionId: executionId,
+	}
+
+	oraConnector.Dialer(customDialer)
+
+	return oraConnector, nil
+}
+
 // Connect connects to an Oracle database
 // @example
 // ```javascript
@@ -93,26 +110,77 @@ func (c *OracleClient) Connect(ctx context.Context, host string, port int, servi
 
 	connStr := goora.BuildUrl(host, port, serviceName, username, password, nil)
 
-	connector := goora.NewConnector(connStr)
-	oraConnector, ok := connector.(*go_ora.OracleConnector)
-	if !ok {
-		return false, fmt.Errorf("failed to cast connector to OracleConnector")
+	connector, err := oracleDbInstance(connStr, executionId)
+	if err != nil {
+		return false, err
 	}
 
-	// Create custom dialer wrapper
-	customDialer := &oracleCustomDialer{
-		executionId: executionId,
-	}
-
-	oraConnector.Dialer(customDialer)
 	db := sql.OpenDB(connector)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
+
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
 
 	// Test the connection
-	err := db.Ping()
+	err = db.Ping()
 	if err != nil {
 		return false, err
 	}
 
 	return true, nil
+}
+
+// ExecuteQuery connects to MS SQL database using given credentials and executes a query.
+// It returns the results of the query or an error if something goes wrong.
+// @example
+// ```javascript
+// const oracle = require('nuclei/oracle');
+// const client = new oracle.OracleClient;
+// const result = client.ExecuteQuery('acme.com', 1521, 'username', 'password', 'XE', 'SELECT @@version');
+// log(to_json(result));
+// ```
+func (c *OracleClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	executionId := ctx.Value("executionId").(string)
+
+	if host == "" || port <= 0 {
+		return nil, fmt.Errorf("invalid host or port")
+	}
+
+	isOracleResp, err := c.IsOracle(ctx, host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !isOracleResp.IsOracle {
+		return nil, fmt.Errorf("not a oracle service")
+	}
+
+	connStr := goora.BuildUrl(host, port, dbName, username, password, nil)
+
+	connector, err := oracleDbInstance(connStr, executionId)
+	if err != nil {
+		return nil, err
+	}
+	db := sql.OpenDB(connector)
+	defer func() {
+		_ = db.Close()
+	}()
+
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := utils.UnmarshalSQLRows(rows)
+	if err != nil {
+		if data != nil && len(data.Rows) > 0 {
+			return data, nil
+		}
+		return nil, err
+	}
+	return data, nil
 }
