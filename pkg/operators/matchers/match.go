@@ -20,7 +20,7 @@ var (
 	showDSLErr = strings.EqualFold(os.Getenv("SHOW_DSL_ERRORS"), "true")
 )
 
-// maxRegexScanBytes limits the number of bytes scanned by regex to avoid excessive CPU on huge bodies.
+// maxRegexScanBytes is a threshold used to avoid caching extremely large inputs.
 const maxRegexScanBytes = 4 << 20 // 4 MiB
 
 // MatchStatusCode matches a status code check against a corpus

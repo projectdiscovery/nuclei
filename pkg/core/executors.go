@@ -101,26 +101,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 						return
 					}
 
-					var match bool
-					var err error
-					ctxArgs := contextargs.New(ctx)
-					ctxArgs.MetaInput = t.value
-					ctx := scan.NewScanContext(ctx, ctxArgs)
-					switch template.Type() {
-					case types.WorkflowProtocol:
-						match = e.executeWorkflow(ctx, template.CompiledWorkflow)
-					default:
-						if e.Callback != nil {
-							if results, err := template.Executer.ExecuteWithResults(ctx); err == nil {
-								for _, result := range results {
-									e.Callback(result)
-								}
-							}
-							match = true
-						} else {
-							match, err = template.Executer.Execute(ctx)
-						}
-					}
+					match, err := e.executeTemplateOnInput(ctx, template, t.value)
 					if err != nil {
 						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), t.value.Input, err)
 					}
@@ -224,30 +205,33 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
 			defer wg.Done()
 
-			var match bool
-			var err error
-			ctxArgs := contextargs.New(ctx)
-			ctxArgs.MetaInput = value
-			ctx := scan.NewScanContext(ctx, ctxArgs)
-			switch template.Type() {
-			case types.WorkflowProtocol:
-				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
-			default:
-				if e.Callback != nil {
-					if results, err := template.Executer.ExecuteWithResults(ctx); err == nil {
-						for _, result := range results {
-							e.Callback(result)
-						}
-					}
-					match = true
-				} else {
-					match, err = template.Executer.Execute(ctx)
-				}
-			}
+			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)
+	}
+}
+
+// executeTemplateOnInput performs template execution for a single input and returns match status and error
+func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
+	ctxArgs := contextargs.New(ctx)
+	ctxArgs.MetaInput = value
+	scanCtx := scan.NewScanContext(ctx, ctxArgs)
+
+	switch template.Type() {
+	case types.WorkflowProtocol:
+		return e.executeWorkflow(scanCtx, template.CompiledWorkflow), nil
+	default:
+		if e.Callback != nil {
+			if results, err := template.Executer.ExecuteWithResults(scanCtx); err == nil {
+				for _, result := range results {
+					e.Callback(result)
+				}
+			}
+			return true, nil
+		}
+		return template.Executer.Execute(scanCtx)
 	}
 }

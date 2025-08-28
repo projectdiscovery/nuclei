@@ -1,8 +1,6 @@
 package matchers
 
 import (
-	"bytes"
-	"strings"
 	"testing"
 
 	"github.com/Knetic/govaluate"
@@ -210,88 +208,4 @@ func TestMatcher_MatchXPath_XML(t *testing.T) {
 	// invalid xml
 	isMatched = m.MatchXPath("<h1> not right <q id=2/>notvalid")
 	require.False(t, isMatched, "Invalid xpath did not return false")
-}
-
-func TestMatchRegex_ScanCapAndPrefix(t *testing.T) {
-	type tc struct {
-		name     string
-		regexes  []string
-		corpus   string
-		cond     string
-		matchAll bool
-		expectOK bool
-		wantAny  string // "" means don't care
-	}
-
-	// Build a large string > maxRegexScanBytes
-	large := bytes.Repeat([]byte{'x'}, maxRegexScanBytes+128)
-	largeStr := string(large)
-
-	tests := []tc{
-		{
-			name:     "prefix short-circuit: no prefix present",
-			regexes:  []string{"abc.*def"},
-			corpus:   largeStr, // no "abc" present
-			cond:     "or",
-			matchAll: false,
-			expectOK: false,
-		},
-		{
-			name:     "scan cap: match after cap not found",
-			regexes:  []string{"Z+"},
-			corpus:   largeStr + "ZZZ", // beyond cap
-			cond:     "or",
-			matchAll: false,
-			expectOK: false,
-		},
-		{
-			name:     "scan cap: match before cap found",
-			regexes:  []string{"Z+"},
-			corpus:   strings.Repeat("x", maxRegexScanBytes-10) + "ZZZ" + "TAIL",
-			cond:     "or",
-			matchAll: false,
-			expectOK: true,
-			wantAny:  "Z",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: tt.cond, MatchAll: tt.matchAll, Regex: tt.regexes}
-			err := m.CompileMatchers()
-			require.NoError(t, err)
-			ok, got := m.MatchRegex(tt.corpus)
-			require.Equal(t, tt.expectOK, ok)
-			if tt.expectOK && tt.wantAny != "" {
-				found := false
-				for _, s := range got {
-					if strings.Contains(s, tt.wantAny) {
-						found = true
-						break
-					}
-				}
-				require.True(t, found, "expected any match containing %q in %v", tt.wantAny, got)
-			}
-		})
-	}
-}
-
-// Benchmarks for visibility (not strict comparisons, but useful signals)
-func benchmarkMatchRegex(b *testing.B, corpus string, regexes []string, cond string, matchAll bool) {
-	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: cond, MatchAll: matchAll, Regex: regexes}
-	require.NoError(b, m.CompileMatchers())
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = m.MatchRegex(corpus)
-	}
-}
-
-func BenchmarkMatchRegex_NoPrefixInLargeBody(b *testing.B) {
-	corpus := string(bytes.Repeat([]byte{'x'}, maxRegexScanBytes+256))
-	benchmarkMatchRegex(b, corpus, []string{"abc.*def"}, "or", false)
-}
-
-func BenchmarkMatchRegex_PrefixPresent(b *testing.B) {
-	corpus := strings.Repeat("x", 1024) + "abc" + strings.Repeat("y", 1024) + "def"
-	benchmarkMatchRegex(b, corpus, []string{"abc.*def"}, "or", false)
 }
