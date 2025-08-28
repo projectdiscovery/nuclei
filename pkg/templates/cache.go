@@ -46,6 +46,10 @@ func (t *Cache) Store(id string, tpl *Template, raw []byte, err error) {
 	entry.err = err
 	entry.raw = conversion.String(raw)
 	_ = t.items.Set(id, *entry)
+	// zero before pooling to avoid retaining references
+	entry.template = nil
+	entry.err = nil
+	entry.raw = ""
 	t.parsedTemplatePool.Put(entry)
 }
 
@@ -56,6 +60,9 @@ func (t *Cache) StoreWithoutRaw(id string, tpl *Template, err error) {
 	entry.err = err
 	entry.raw = ""
 	_ = t.items.Set(id, *entry)
+	// zero before pooling to avoid retaining references
+	entry.template = nil
+	entry.err = nil
 	t.parsedTemplatePool.Put(entry)
 }
 

@@ -7,6 +7,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTryFillCustomHeaders_BufferDetached(t *testing.T) {
+	r := &Request{
+		UnsafeRawBytes: []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\nBody"),
+	}
+	if err := r.TryFillCustomHeaders([]string{"X-Test: 1"}); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	before := string(r.UnsafeRawBytes)
+	// call again to ensure pooled buffer reuse won't corrupt previous slice
+	if err := r.TryFillCustomHeaders([]string{"X-Another: 2"}); err != nil {
+		t.Fatalf("unexpected err on second call: %v", err)
+	}
+	after := string(r.UnsafeRawBytes)
+	if before == after {
+		t.Fatalf("expected second modification to change bytes; got identical")
+	}
+}
+
 func TestParseRawRequestWithPort(t *testing.T) {
 	request, err := Parse(`GET /gg/phpinfo.php HTTP/1.1
 Host: {{Hostname}}:123

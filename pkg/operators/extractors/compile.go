@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
@@ -16,13 +17,9 @@ var (
 	extractorDslCache          sync.Map // map[string]*govaluate.EvaluableExpression
 	extractorMaxRegexCacheSize = 4096
 	extractorMaxDslCacheSize   = 4096
+	extractorRegexCacheSize    atomic.Int64
+	extractorDslCacheSize      atomic.Int64
 )
-
-func extractorCacheLen(m *sync.Map) int {
-	n := 0
-	m.Range(func(key, value any) bool { n++; return true })
-	return n
-}
 
 // CompileExtractors performs the initial setup operation on an extractor
 func (e *Extractor) CompileExtractors() error {
@@ -42,11 +39,12 @@ func (e *Extractor) CompileExtractors() error {
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
-		if extractorCacheLen(&extractorRegexCache) < extractorMaxRegexCacheSize {
+		if extractorRegexCacheSize.Load() < int64(extractorMaxRegexCacheSize) {
 			if prev, loaded := extractorRegexCache.LoadOrStore(regex, compiled); loaded {
 				e.regexCompiled = append(e.regexCompiled, prev.(*regexp.Regexp))
 			} else {
 				e.regexCompiled = append(e.regexCompiled, compiled)
+				extractorRegexCacheSize.Add(1)
 			}
 		} else {
 			e.regexCompiled = append(e.regexCompiled, compiled)
@@ -77,11 +75,12 @@ func (e *Extractor) CompileExtractors() error {
 		if err != nil {
 			return &dsl.CompilationError{DslSignature: dslExp, WrappedError: err}
 		}
-		if extractorCacheLen(&extractorDslCache) < extractorMaxDslCacheSize {
+		if extractorDslCacheSize.Load() < int64(extractorMaxDslCacheSize) {
 			if prev, loaded := extractorDslCache.LoadOrStore(dslExp, compiled); loaded {
 				e.dslCompiled = append(e.dslCompiled, prev.(*govaluate.EvaluableExpression))
 			} else {
 				e.dslCompiled = append(e.dslCompiled, compiled)
+				extractorDslCacheSize.Add(1)
 			}
 		} else {
 			e.dslCompiled = append(e.dslCompiled, compiled)

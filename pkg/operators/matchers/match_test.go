@@ -209,3 +209,12 @@ func TestMatcher_MatchXPath_XML(t *testing.T) {
 	isMatched = m.MatchXPath("<h1> not right <q id=2/>notvalid")
 	require.False(t, isMatched, "Invalid xpath did not return false")
 }
+
+func TestMatchRegex_CaseInsensitivePrefixSkip(t *testing.T) {
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "or", Regex: []string{"(?i)abc"}}
+	err := m.CompileMatchers()
+	require.NoError(t, err)
+	ok, got := m.MatchRegex("zzz AbC yyy")
+	require.True(t, ok)
+	require.NotEmpty(t, got)
+}

@@ -225,12 +225,14 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 		return e.executeWorkflow(scanCtx, template.CompiledWorkflow), nil
 	default:
 		if e.Callback != nil {
-			if results, err := template.Executer.ExecuteWithResults(scanCtx); err == nil {
-				for _, result := range results {
-					e.Callback(result)
-				}
+			results, err := template.Executer.ExecuteWithResults(scanCtx)
+			if err != nil {
+				return false, err
 			}
-			return true, nil
+			for _, result := range results {
+				e.Callback(result)
+			}
+			return len(results) > 0, nil
 		}
 		return template.Executer.Execute(scanCtx)
 	}

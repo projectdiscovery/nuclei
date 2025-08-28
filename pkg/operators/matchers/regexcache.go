@@ -89,15 +89,18 @@ func cachedFindAllString(regex *regexp.Regexp, corpus string, n int) []string {
 	pattern := regex.String()
 
 	if cachedMatches, _, found := globalRegexResultCache.get(pattern, corpus); found {
-		if n < 0 || len(cachedMatches) <= n {
+		if n < 0 || n >= len(cachedMatches) {
 			return cachedMatches
 		}
 		return cachedMatches[:n]
 	}
 
-	matches := regex.FindAllString(corpus, n)
-	globalRegexResultCache.set(pattern, corpus, matches, nil)
-	return matches
+	all := regex.FindAllString(corpus, -1)
+	globalRegexResultCache.set(pattern, corpus, all, nil)
+	if n < 0 || n >= len(all) {
+		return all
+	}
+	return all[:n]
 }
 
 func CachedFindAllStringSubmatch(regex *regexp.Regexp, corpus string, n int) [][]string {
@@ -109,13 +112,13 @@ func CachedFindAllStringSubmatch(regex *regexp.Regexp, corpus string, n int) [][
 	pattern := regex.String()
 
 	if _, cachedSubmatches, found := globalRegexResultCache.get(pattern, corpus); found && cachedSubmatches != nil {
-		if n < 0 || len(cachedSubmatches) <= n {
+		if n < 0 || n >= len(cachedSubmatches) {
 			return cachedSubmatches
 		}
 		return cachedSubmatches[:n]
 	}
 
-	submatches := regex.FindAllStringSubmatch(corpus, n)
+	submatches := regex.FindAllStringSubmatch(corpus, -1)
 	var matches []string
 	for _, submatch := range submatches {
 		if len(submatch) > 0 {
@@ -123,5 +126,8 @@ func CachedFindAllStringSubmatch(regex *regexp.Regexp, corpus string, n int) [][
 		}
 	}
 	globalRegexResultCache.set(pattern, corpus, matches, submatches)
-	return submatches
+	if n < 0 || n >= len(submatches) {
+		return submatches
+	}
+	return submatches[:n]
 }

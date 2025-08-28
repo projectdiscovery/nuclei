@@ -110,25 +110,28 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range matcher.regexCompiled {
-		// Literal prefix short-circuit to avoid regex engine when clearly absent
-		if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
-			if !strings.Contains(corpus, prefix) {
-				switch matcher.condition {
-				case ANDCondition:
-					return false, []string{}
-				case ORCondition:
-					continue
+		// Literal prefix short-circuit
+		rstr := regex.String()
+		if !strings.Contains(rstr, "(?i") { // covers (?i) and (?i:
+			if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
+				if !strings.Contains(corpus, prefix) {
+					switch matcher.condition {
+					case ANDCondition:
+						return false, []string{}
+					case ORCondition:
+						continue
+					}
 				}
 			}
 		}
 
 		// Fast OR-path: return first match without full scan
 		if matcher.condition == ORCondition && !matcher.MatchAll {
-			m := regex.FindString(corpus)
-			if m == "" {
+			m := cachedFindAllString(regex, corpus, 1)
+			if len(m) == 0 {
 				continue
 			}
-			return true, []string{m}
+			return true, m
 		}
 
 		// Single scan: get all matches with caching

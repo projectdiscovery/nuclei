@@ -254,19 +254,20 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		go func() {
 			defer workersWg.Done()
 			for t := range tasks {
+				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+					continue
+				}
 				spmHandler.Acquire()
-				// putting ratelimiter here prevents any unnecessary waiting if any
-				request.options.RateLimitTake()
-				// after ratelimit take, check if we need to stop
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					spmHandler.Release()
 					continue
 				}
+				request.options.RateLimitTake()
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
 					continue
-				case spmHandler.ResultChan <- request.executeRequest(input, t.req, make(map[string]interface{}), false, wrappedCallback, 0):
+				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), false, wrappedCallback, 0):
 					spmHandler.Release()
 				}
 			}

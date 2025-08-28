@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Knetic/govaluate"
 
@@ -17,13 +18,9 @@ var (
 	dslCache          sync.Map // map[string]*govaluate.EvaluableExpression
 	maxRegexCacheSize = 4096
 	maxDslCacheSize   = 4096
+	regexCacheSize    atomic.Int64
+	dslCacheSize      atomic.Int64
 )
-
-func cacheLen(m *sync.Map) int {
-	n := 0
-	m.Range(func(key, value any) bool { n++; return true })
-	return n
-}
 
 // CompileMatchers performs the initial setup operation on a matcher
 func (matcher *Matcher) CompileMatchers() error {
@@ -66,11 +63,12 @@ func (matcher *Matcher) CompileMatchers() error {
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
-		if cacheLen(&regexCache) < maxRegexCacheSize {
+		if regexCacheSize.Load() < int64(maxRegexCacheSize) {
 			if prev, loaded := regexCache.LoadOrStore(regex, compiled); loaded {
 				matcher.regexCompiled = append(matcher.regexCompiled, prev.(*regexp.Regexp))
 			} else {
 				matcher.regexCompiled = append(matcher.regexCompiled, compiled)
+				regexCacheSize.Add(1)
 			}
 		} else {
 			matcher.regexCompiled = append(matcher.regexCompiled, compiled)
@@ -96,11 +94,12 @@ func (matcher *Matcher) CompileMatchers() error {
 		if err != nil {
 			return &dsl.CompilationError{DslSignature: dslExpression, WrappedError: err}
 		}
-		if cacheLen(&dslCache) < maxDslCacheSize {
+		if dslCacheSize.Load() < int64(maxDslCacheSize) {
 			if prev, loaded := dslCache.LoadOrStore(dslExpression, compiledExpression); loaded {
 				matcher.dslCompiled = append(matcher.dslCompiled, prev.(*govaluate.EvaluableExpression))
 			} else {
 				matcher.dslCompiled = append(matcher.dslCompiled, compiledExpression)
+				dslCacheSize.Add(1)
 			}
 		} else {
 			matcher.dslCompiled = append(matcher.dslCompiled, compiledExpression)

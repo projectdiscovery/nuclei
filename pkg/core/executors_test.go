@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -28,7 +29,7 @@ func (f *fakeExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.Resu
 
 // newTestEngine creates a minimal Engine for tests
 func newTestEngine() *Engine {
-	return &Engine{options: &types.Options{}}
+	return New(&types.Options{})
 }
 
 func Test_executeTemplateOnInput_CallbackPath(t *testing.T) {
@@ -62,5 +63,29 @@ func Test_executeTemplateOnInput_ExecutePath(t *testing.T) {
 	}
 	if !ok {
 		t.Fatalf("expected match true from Execute path")
+	}
+}
+
+type fakeExecuterErr struct{}
+
+func (f *fakeExecuterErr) Compile() error                              { return nil }
+func (f *fakeExecuterErr) Requests() int                               { return 1 }
+func (f *fakeExecuterErr) Execute(ctx *scan.ScanContext) (bool, error) { return false, nil }
+func (f *fakeExecuterErr) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	return nil, fmt.Errorf("boom")
+}
+
+func Test_executeTemplateOnInput_CallbackErrorPropagates(t *testing.T) {
+	e := newTestEngine()
+	e.Callback = func(*output.ResultEvent) {}
+	tpl := &templates.Template{}
+	tpl.Executer = &fakeExecuterErr{}
+
+	ok, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "x"})
+	if err == nil {
+		t.Fatalf("expected error to propagate")
+	}
+	if ok {
+		t.Fatalf("expected match to be false on error")
 	}
 }

@@ -63,3 +63,20 @@ func BenchmarkRegexWithCache(b *testing.B) {
 		cachedFindAllString(pattern, corpus, -1)
 	}
 }
+
+func TestRegexCache_RespectsDifferentN(t *testing.T) {
+	pattern := regexp.MustCompile(`a`)
+	corpus := "aaaaa"
+	// Clear cache
+	globalRegexResultCache.cache = make(map[regexCacheKey]*regexCacheEntry)
+
+	got1 := cachedFindAllString(pattern, corpus, 2)
+	if len(got1) != 2 {
+		t.Fatalf("expected 2 matches, got %d", len(got1))
+	}
+	// Now ask for more than previously cached n; should still return full
+	got2 := cachedFindAllString(pattern, corpus, -1)
+	if len(got2) != 5 {
+		t.Fatalf("expected 5 matches from cache, got %d", len(got2))
+	}
+}

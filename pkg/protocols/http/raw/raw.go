@@ -277,10 +277,12 @@ func (r *Request) TryFillCustomHeaders(headers []string) error {
 			buf.Reset()
 			buf.Write(r.UnsafeRawBytes[:newLineIndex])
 			for _, header := range headers {
-				fmt.Fprintf(buf, "%s\r\n", header)
+				buf.WriteString(header)
+				buf.WriteString("\r\n")
 			}
 			buf.Write(r.UnsafeRawBytes[newLineIndex:])
-			r.UnsafeRawBytes = buf.Bytes()
+			r.UnsafeRawBytes = append([]byte(nil), buf.Bytes()...)
+			buf.Reset()
 			bufferPool.Put(buf)
 			return nil
 		}
