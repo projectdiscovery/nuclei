@@ -1,6 +1,7 @@
 package reporting
 
 import (
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
@@ -23,6 +24,8 @@ type Options struct {
 	AllowList *filters.Filter `yaml:"allow-list"`
 	// DenyList contains a list of denied events for reporting module
 	DenyList *filters.Filter `yaml:"deny-list"`
+	// ValidatorCallback is a callback function that is called to validate an event before it is reported
+	ValidatorCallback func(event *output.ResultEvent) bool `yaml:"validator-callback"`
 	// GitHub contains configuration options for GitHub Issue Tracker
 	GitHub *github.Options `yaml:"github"`
 	// GitLab contains configuration options for GitLab Issue Tracker
