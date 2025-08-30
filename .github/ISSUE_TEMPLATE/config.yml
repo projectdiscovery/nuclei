@@ -3,11 +3,11 @@ blank_issues_enabled: false
 contact_links:
 
   - name: 🐛 Report a Bug (Start with Discussion)
-    url: https://github.com/projectdiscovery/nuclei/discussions/categories/q-a
+    url: https://github.com/projectdiscovery/nuclei/discussions/new?category=q-a
     about: Start by reporting your issue in discussions for proper triage. Issues will be created after review to avoid duplicate/invalid reports.
 
   - name: 💡 Request a Feature (Start with Discussion)
-    url: https://github.com/projectdiscovery/nuclei/discussions/categories/ideas
+    url: https://github.com/projectdiscovery/nuclei/discussions/new?category=ideas
     about: Share your feature idea in discussions first. This helps validate and refine the request before creating an issue.
 
   - name: ❓ Ask Questions / Get Help
