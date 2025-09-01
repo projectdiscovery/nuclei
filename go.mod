@@ -35,7 +35,7 @@ require (
 	github.com/spf13/cast v1.9.2
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/valyala/fasttemplate v1.2.2
-	github.com/weppos/publicsuffix-go v0.40.3-0.20250408071509-6074bbe7fd39
+	github.com/weppos/publicsuffix-go v0.50.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.43.0
 	golang.org/x/oauth2 v0.30.0
@@ -95,7 +95,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.54
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.1.0
-	github.com/projectdiscovery/httpx v1.7.1
+	github.com/projectdiscovery/httpx v1.7.1-0.20250901093029-3909667cbaa6
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/networkpolicy v0.1.21
