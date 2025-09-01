@@ -275,7 +275,16 @@ func (c *Client) readUntil(ctx context.Context, needles ...string) (matched stri
 	var b strings.Builder
 	tmp := make([]byte, 1)
 
+	// Maximum iteration counter to prevent infinite loops
+	maxIterations := 20
+	iterationCount := 0
+
 	for {
+		iterationCount++
+		// if we have iterated more than maxIterations, return
+		if iterationCount > maxIterations {
+			return "", b.String(), nil
+		}
 		// honor context deadline on every read
 		c.setDeadlineFromCtx(ctx, false)
 		_, err := c.rd.Read(tmp)
