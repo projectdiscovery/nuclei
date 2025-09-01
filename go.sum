@@ -1265,8 +1265,6 @@ github.com/projectdiscovery/hmap v0.0.93 h1:iIRdioT4byGJ4Hz5cOjo1fd3HFFi1MUFPv+E
 github.com/projectdiscovery/hmap v0.0.93/go.mod h1:oKgtWo2QMD7BkW25ezYbFCqKO3IctZ2ByEaG2XWW0t0=
 github.com/projectdiscovery/httpx v1.7.1-0.20250901093029-3909667cbaa6 h1:LrO3ryyJikuyZmHk/vWlQGnio65gVIqkgQK1+2L80+Q=
 github.com/projectdiscovery/httpx v1.7.1-0.20250901093029-3909667cbaa6/go.mod h1:lV4GZJb6TArwq/VT+AdZbysG+Ukneyfr9cXsYTrLbbE=
-github.com/projectdiscovery/httpx v1.7.1 h1:XmhUGGUdmpWWXyQC8utV9gyHVrjzXBcT2SAUOgFOQV8=
-github.com/projectdiscovery/httpx v1.7.1/go.mod h1:fejxELITLvQ0uXB/pnBiekjMmGdoE7+7p+DpIYhAhJU=
 github.com/projectdiscovery/interactsh v1.2.4 h1:WUSj+fxbcV53J64oIAhbYzCKD1w/IyenyRBhkI5jiqI=
 github.com/projectdiscovery/interactsh v1.2.4/go.mod h1:E/IVNZ80/WKz8zTwGJWQygxIbhlRmuzZFsZwcGSZTdc=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb h1:MGtI4oE12ruWv11ZlPXXd7hl/uAaQZrFvrIDYDeVMd8=
@@ -1481,8 +1479,7 @@ github.com/weppos/publicsuffix-go v0.12.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8L
 github.com/weppos/publicsuffix-go v0.13.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln16JPQ02lHAdn5k=
 github.com/weppos/publicsuffix-go v0.30.0/go.mod h1:kBi8zwYnR0zrbm8RcuN1o9Fzgpnnn+btVN8uWPMyXAY=
 github.com/weppos/publicsuffix-go v0.30.2/go.mod h1:/hGscit36Yt+wammfBBwdMdxBT8btsTt6KvwO9OvMyM=
-github.com/weppos/publicsuffix-go v0.40.3-0.20250408071509-6074bbe7fd39 h1:Bz/zVM/LoGZ9IztGBHrq2zlFQQbEG8dBYnxb4hamIHM=
-github.com/weppos/publicsuffix-go v0.40.3-0.20250408071509-6074bbe7fd39/go.mod h1:2oFzEwGYI7lhiqG0YkkcKa6VcpjVinQbWxaPzytDmLA=
+github.com/weppos/publicsuffix-go v0.50.0 h1:M178k6l8cnh9T1c1cStkhytVxdk5zPd6gGZf8ySIuVo=
 github.com/weppos/publicsuffix-go v0.50.0/go.mod h1:VXhClBYMlDrUsome4pOTpe68Ui0p6iQRAbyHQD1yKoU=
 github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220927085643-dc0d00c92642/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
 github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=
