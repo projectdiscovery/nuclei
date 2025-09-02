@@ -105,13 +105,13 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		var finalErr error
 		ctx.OnResult = func(e *output.InternalWrappedEvent) {
 			if e == nil {
-				finalErr = fmt.Errorf("no result found for template: %s", d.TemplatePath)
 				return
 			}
+
 			if !e.HasOperatorResult() {
-				finalErr = fmt.Errorf("no result found for template: %s", d.TemplatePath)
 				return
 			}
+
 			// dynamic values
 			for k, v := range e.OperatorsResult.DynamicValues {
 				// Iterate through all the values and choose the
@@ -123,31 +123,37 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 					}
 				}
 			}
+
 			// named extractors
 			for k, v := range e.OperatorsResult.Extracts {
 				if len(v) > 0 {
-					data[k] = v[0]
+					// NOTE(dwisiswant0): Only set if we don't already have a
+					// value -- or -- if the new value is non-empty.
+					if _, exists := data[k]; !exists || data[k] == "" {
+						data[k] = v[0]
+					}
 				}
 			}
-			if len(data) == 0 {
-				if e.OperatorsResult.Matched {
-					finalErr = fmt.Errorf("match found but no (dynamic/extracted) values found for template: %s", d.TemplatePath)
-				} else {
-					finalErr = fmt.Errorf("no match or (dynamic/extracted) values found for template: %s", d.TemplatePath)
-				}
-			}
+
 			// log result of template in result file/screen
 			_ = writer.WriteResult(e, opts.ExecOpts.Output, opts.ExecOpts.Progress, opts.ExecOpts.IssuesClient)
 		}
+
 		_, err := tmpl.Executer.ExecuteWithResults(ctx)
 		if err != nil {
 			finalErr = err
 		}
+
+		if len(data) == 0 && finalErr == nil {
+			finalErr = fmt.Errorf("no extracted values found for template: %s", d.TemplatePath)
+		}
+
 		// store extracted result in auth context
 		d.Extracted = data
 		if finalErr != nil && opts.OnError != nil {
 			opts.OnError(finalErr)
 		}
+
 		return finalErr
 	}
 }
