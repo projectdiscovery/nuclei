@@ -18,6 +18,10 @@ type IgnoreFile struct {
 func ReadIgnoreFile() IgnoreFile {
 	file, err := os.Open(DefaultConfig.GetIgnoreFilePath())
 	if err != nil {
+		if os.IsNotExist(err) {
+			gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
+			return IgnoreFile{}
+		}
 		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n%s\n", err, string(debug.Stack()))
 		return IgnoreFile{}
 	}
