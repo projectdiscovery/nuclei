@@ -3,6 +3,7 @@ package nuclei_test
 import (
 	"context"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -34,4 +35,29 @@ func TestContextCancelNucleiEngine(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled, "was expecting context cancellation error")
 	}
 	defer ne.Close()
+}
+
+func TestSharedParserOptIn(t *testing.T) {
+	os.Setenv("NUCLEI_USE_SHARED_PARSER", "1")
+	t.Cleanup(func() { os.Unsetenv("NUCLEI_USE_SHARED_PARSER") })
+
+	ne, err := nuclei.NewNucleiEngineCtx(context.Background())
+	if err != nil {
+		t.Fatalf("engine error: %v", err)
+	}
+	p := ne.GetParser()
+	if p == nil {
+		t.Fatalf("expected templates.Parser")
+	}
+	ne2, err := nuclei.NewNucleiEngineCtx(context.Background())
+	if err != nil {
+		t.Fatalf("engine2 error: %v", err)
+	}
+	p2 := ne2.GetParser()
+	if p2 == nil {
+		t.Fatalf("expected templates.Parser2")
+	}
+	if p.Cache() != p2.Cache() {
+		t.Fatalf("expected shared parsed cache across engines when opt-in is set")
+	}
 }

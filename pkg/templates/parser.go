@@ -29,20 +29,42 @@ type Parser struct {
 	sync.Mutex
 }
 
-func NewParser() *Parser {
-	p := &Parser{
-		parsedTemplatesCache:   NewCache(),
-		compiledTemplatesCache: NewCache(),
-	}
+var (
+	sharedParsedCacheOnce sync.Once
+	sharedParsedCache     *Cache
+)
 
-	return p
+var (
+	sharedCompiledCacheOnce sync.Once
+	sharedCompiledCache     *Cache
+)
+
+// NewParser returns a new parser with a fresh cache
+func NewParser() *Parser {
+	return &Parser{parsedTemplatesCache: NewCache(), compiledTemplatesCache: NewCache()}
 }
 
+// NewParserWithParsedCache returns a parser using provided cache
 func NewParserWithParsedCache(cache *Cache) *Parser {
-	return &Parser{
-		parsedTemplatesCache:   cache,
-		compiledTemplatesCache: NewCache(),
-	}
+	return &Parser{parsedTemplatesCache: cache, compiledTemplatesCache: NewCache()}
+}
+
+// NewSharedParser returns a parser backed by a process-wide shared parsed cache.
+// Safe for concurrent use since Cache is concurrency-safe.
+func NewSharedParser() *Parser {
+	sharedParsedCacheOnce.Do(func() {
+		sharedParsedCache = NewCache()
+	})
+	return &Parser{parsedTemplatesCache: sharedParsedCache, compiledTemplatesCache: NewCache()}
+}
+
+// NewSharedParserWithCompiledCache returns a parser backed by process-wide shared
+// parsed and compiled caches. Intended for scenarios where compiled executers
+// can be safely reused across engines by copying option-bearing fields.
+func NewSharedParserWithCompiledCache() *Parser {
+	sharedParsedCacheOnce.Do(func() { sharedParsedCache = NewCache() })
+	sharedCompiledCacheOnce.Do(func() { sharedCompiledCache = NewCache() })
+	return &Parser{parsedTemplatesCache: sharedParsedCache, compiledTemplatesCache: sharedCompiledCache}
 }
 
 // Cache returns the parsed templates cache

@@ -3,6 +3,7 @@ package nuclei
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,21 @@ import (
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
 )
+
+// enginePool provides shared parsed-cache across engines (opt-in)
+var (
+	sharedParsedOnce sync.Once
+	sharedParsed     *templates.Cache
+)
+
+func getSharedParser() *templates.Parser {
+	// Initialize the shared parsed cache once
+	sharedParsedOnce.Do(func() {
+		sharedParsed = templates.NewCache()
+	})
+	// Return a fresh Parser each call that reuses only the shared parsed cache,
+	return templates.NewParserWithParsedCache(sharedParsed)
+}
 
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
@@ -123,7 +139,12 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	if e.parser == nil {
-		e.parser = templates.NewParser()
+		//TODO: remove this feature flag after testing
+		if os.Getenv("NUCLEI_USE_SHARED_COMPILED") == "1" {
+			e.parser = templates.NewSharedParserWithCompiledCache()
+		} else {
+			e.parser = templates.NewParser()
+		}
 	}
 
 	if protocolstate.ShouldInit(e.opts.ExecutionId) {

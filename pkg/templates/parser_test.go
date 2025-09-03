@@ -3,6 +3,7 @@ package templates
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -155,4 +156,32 @@ func TestLoadTemplate(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestNewSharedParserSharesCache(t *testing.T) {
+	p1 := NewSharedParser()
+	p2 := NewSharedParser()
+	if p1.Cache() != p2.Cache() {
+		t.Fatalf("expected shared cache instance")
+	}
+}
+
+func TestNewSharedParserConcurrency(t *testing.T) {
+	var wg sync.WaitGroup
+	const goroutines = 50
+	parsers := make([]*Parser, goroutines)
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func(i int) {
+			defer wg.Done()
+			parsers[i] = NewSharedParser()
+		}(i)
+	}
+	wg.Wait()
+	base := parsers[0].Cache()
+	for i := 1; i < goroutines; i++ {
+		if parsers[i].Cache() != base {
+			t.Fatalf("expected all parsers to share the same cache")
+		}
+	}
 }

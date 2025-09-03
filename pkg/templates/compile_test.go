@@ -206,3 +206,161 @@ func TestWrongWorkflow(t *testing.T) {
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "workflows cannot have other protocols")
 }
+
+func Test_SharedCompiledCache_SharedAcrossParsers(t *testing.T) {
+	setup()
+	p1 := templates.NewSharedParserWithCompiledCache()
+	p2 := templates.NewSharedParserWithCompiledCache()
+
+	exec1 := &protocols.ExecutorOptions{
+		Output:      testutils.NewMockOutputWriter(testutils.DefaultOptions.OmitTemplate),
+		Options:     testutils.DefaultOptions,
+		Progress:    executerOpts.Progress,
+		Catalog:     executerOpts.Catalog,
+		RateLimiter: executerOpts.RateLimiter,
+		Parser:      p1,
+	}
+	// reinit options fully for isolation
+	opts2 := testutils.DefaultOptions
+	testutils.Init(opts2)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	exec2 := &protocols.ExecutorOptions{
+		Output:      testutils.NewMockOutputWriter(opts2.OmitTemplate),
+		Options:     opts2,
+		Progress:    progressImpl,
+		Catalog:     executerOpts.Catalog,
+		RateLimiter: executerOpts.RateLimiter,
+		Parser:      p2,
+	}
+
+	filePath := "tests/match-1.yaml"
+
+	got1, err := templates.Parse(filePath, nil, exec1)
+	require.NoError(t, err)
+	require.NotNil(t, got1)
+
+	got2, err := templates.Parse(filePath, nil, exec2)
+	require.NoError(t, err)
+	require.NotNil(t, got2)
+
+	require.Equal(t, p1.CompiledCache(), p2.CompiledCache())
+	require.Greater(t, p1.CompiledCount(), 0)
+	require.Equal(t, p1.CompiledCount(), p2.CompiledCount())
+}
+
+func Test_SharedCompiledCache_OptionsIsolation(t *testing.T) {
+	setup()
+	p1 := templates.NewSharedParserWithCompiledCache()
+	p2 := templates.NewSharedParserWithCompiledCache()
+
+	exec1 := &protocols.ExecutorOptions{
+		Output:      testutils.NewMockOutputWriter(testutils.DefaultOptions.OmitTemplate),
+		Options:     testutils.DefaultOptions,
+		Progress:    executerOpts.Progress,
+		Catalog:     executerOpts.Catalog,
+		RateLimiter: executerOpts.RateLimiter,
+		Parser:      p1,
+	}
+	// reinit options fully for isolation
+	opts2 := testutils.DefaultOptions
+	testutils.Init(opts2)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	exec2 := &protocols.ExecutorOptions{
+		Output:      testutils.NewMockOutputWriter(opts2.OmitTemplate),
+		Options:     opts2,
+		Progress:    progressImpl,
+		Catalog:     executerOpts.Catalog,
+		RateLimiter: executerOpts.RateLimiter,
+		Parser:      p2,
+	}
+
+	filePath := "tests/match-1.yaml"
+
+	got1, err := templates.Parse(filePath, nil, exec1)
+	require.NoError(t, err)
+	require.NotNil(t, got1)
+
+	got2, err := templates.Parse(filePath, nil, exec2)
+	require.NoError(t, err)
+	require.NotNil(t, got2)
+
+	require.NotEqual(t, got1.Options, got2.Options)
+}
+
+// compiled cache does not retain engine-scoped fields
+func Test_CompiledCache_SanitizesOptions(t *testing.T) {
+	setup()
+	p := templates.NewSharedParserWithCompiledCache()
+	exec := executerOpts
+	exec.Parser = p
+	filePath := "tests/match-1.yaml"
+
+	got, err := templates.Parse(filePath, nil, exec)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+
+	cached, raw, err := p.CompiledCache().Has(filePath)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+	require.Nil(t, raw)
+
+	// cached template must not hold engine-scoped references
+	require.Nil(t, cached.Options.Options)
+	require.Empty(t, cached.Options.TemplateVerifier)
+	require.Empty(t, cached.Options.TemplateID)
+	require.Empty(t, cached.Options.TemplatePath)
+	require.False(t, cached.Options.StopAtFirstMatch)
+}
+
+// different engines see different Options pointers
+func Test_EngineIsolation_NoCrossLeaks(t *testing.T) {
+	setup()
+	p1 := templates.NewSharedParserWithCompiledCache()
+	p2 := templates.NewSharedParserWithCompiledCache()
+
+	// engine 1
+	exec1 := &protocols.ExecutorOptions{
+		Output:      executerOpts.Output,
+		Options:     executerOpts.Options,
+		Progress:    executerOpts.Progress,
+		Catalog:     executerOpts.Catalog,
+		RateLimiter: executerOpts.RateLimiter,
+		Parser:      p1,
+	}
+	// engine 2 with a fresh options instance
+	opts2 := testutils.DefaultOptions
+	testutils.Init(opts2)
+	progress2, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	exec2 := &protocols.ExecutorOptions{
+		Output:      testutils.NewMockOutputWriter(opts2.OmitTemplate),
+		Options:     opts2,
+		Progress:    progress2,
+		Catalog:     executerOpts.Catalog,
+		RateLimiter: executerOpts.RateLimiter,
+		Parser:      p2,
+	}
+
+	filePath := "tests/match-1.yaml"
+
+	got1, err := templates.Parse(filePath, nil, exec1)
+	require.NoError(t, err)
+	got2, err := templates.Parse(filePath, nil, exec2)
+	require.NoError(t, err)
+
+	// template options must be distinct per engine
+	require.NotEqual(t, got1.Options, got2.Options)
+
+	// http request options must bind to engine-specific ExecutorOptions copies (not shared)
+	require.NotEmpty(t, got1.RequestsHTTP)
+	require.NotEmpty(t, got2.RequestsHTTP)
+	r1 := got1.RequestsHTTP[0]
+	r2 := got2.RequestsHTTP[0]
+	// ensure options structs are not the same pointer
+	require.NotSame(t, r1.Options().Options, r2.Options().Options)
+	// mutate engine2 options and ensure it doesn't affect engine1
+	r2.Options().Options.RateLimit = 999
+	require.NotEqual(t, r1.Options().Options.RateLimit, r2.Options().Options.RateLimit)
+
+	// compiled cache instance shared, but without engine leakage
+	require.Equal(t, p1.CompiledCache(), p2.CompiledCache())
+}
