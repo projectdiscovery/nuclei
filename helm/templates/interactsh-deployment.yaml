@@ -31,6 +31,7 @@ spec:
         - name: {{ .Chart.Name }}-interactsh
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml .Values.security_context.run_as_user | nindent 10.000}}
           image: "{{ .Values.interactsh.image.repository }}:{{ .Values.interactsh.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.interactsh.image.pullPolicy }}
           command: ["interactsh-server", "-skip-acme", "-d", "{{ .Values.interactsh.service.name }}"]
