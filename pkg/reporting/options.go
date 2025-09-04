@@ -25,7 +25,7 @@ type Options struct {
 	// DenyList contains a list of denied events for reporting module
 	DenyList *filters.Filter `yaml:"deny-list"`
 	// ValidatorCallback is a callback function that is called to validate an event before it is reported
-	ValidatorCallback func(event *output.ResultEvent) bool `yaml:"validator-callback"`
+	ValidatorCallback func(event *output.ResultEvent) bool `yaml:"-"`
 	// GitHub contains configuration options for GitHub Issue Tracker
 	GitHub *github.Options `yaml:"github"`
 	// GitLab contains configuration options for GitLab Issue Tracker
