@@ -1,7 +1,6 @@
 package protocolstate
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -68,12 +67,12 @@ func NormalizePath(options *types.Options, filePath string) (string, error) {
 	}
 	cleaned, err := fileutil.ResolveNClean(filePath, config.DefaultConfig.GetTemplateDir())
 	if err != nil {
-		return "", errkit.Append(errkit.New(fmt.Sprintf("could not resolve and clean path %v", filePath)), err)
+		return "", errkit.Wrapf(err, "could not resolve and clean path %v", filePath)
 	}
 	// only allow files inside nuclei-templates directory
 	// even current working directory is not allowed
 	if strings.HasPrefix(cleaned, config.DefaultConfig.GetTemplateDir()) {
 		return cleaned, nil
 	}
-	return "", errkit.New(fmt.Sprintf("path %v is outside nuclei-template directory and -lfa is not enabled", filePath)).Build()
+	return "", errkit.Newf("path %v is outside nuclei-template directory and -lfa is not enabled", filePath)
 }

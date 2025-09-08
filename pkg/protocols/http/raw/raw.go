@@ -51,7 +51,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
 		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
 		if err != nil {
-			return nil, errkit.New(fmt.Sprintf("raw: failed to parse url %v from template: %s", rawrequest.Path, err)).Build()
+			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
 		}
 		cloned := inputURL.Clone()
 		cloned.Params.IncludeEquals = true
@@ -60,7 +60,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		}
 		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
 		if parseErr != nil {
-			return nil, errkit.Append(errkit.New(fmt.Sprintf("raw: could not automergepath for template path %v", urlx.GetRelativePath())), parseErr)
+			return nil, errkit.Wrapf(parseErr, "could not automergepath for template path %v", urlx.GetRelativePath())
 		}
 		rawrequest.Path = cloned.GetRelativePath()
 	// If unsafe changes must be made in raw request string itself
@@ -97,7 +97,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			}
 			err = cloned.MergePath(rawrequest.Path, true)
 			if err != nil {
-				return nil, errkit.New(fmt.Sprintf("raw: failed to automerge %v from unsafe template: %s", rawrequest.Path, err)).Build()
+				return nil, errkit.Wrapf(err, "failed to automerge %v from unsafe template", rawrequest.Path)
 			}
 			unsafeRelativePath = cloned.GetRelativePath()
 		}
@@ -119,7 +119,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		}
 		parseErr := cloned.MergePath(rawrequest.Path, true)
 		if parseErr != nil {
-			return nil, errkit.Append(errkit.New(fmt.Sprintf("raw: could not automergepath for template path %v", rawrequest.Path)), parseErr)
+			return nil, errkit.Wrapf(parseErr, "could not automergepath for template path %v", rawrequest.Path)
 		}
 		rawrequest.Path = cloned.GetRelativePath()
 	}
@@ -148,18 +148,18 @@ func ParseRawRequest(request string, unsafe bool) (*Request, error) {
 	if strings.HasPrefix(req.Path, "http") {
 		urlx, err := urlutil.Parse(req.Path)
 		if err != nil {
-			return nil, errkit.Append(errkit.New(fmt.Sprintf("failed to parse url %v", req.Path)), err)
+			return nil, errkit.Wrapf(err, "failed to parse url %v", req.Path)
 		}
 		req.Path = urlx.GetRelativePath()
 		req.FullURL = urlx.String()
 	} else {
 
 		if req.Path == "" {
-			return nil, errkit.New("self-contained-raw: path cannot be empty in self contained request").Build()
+			return nil, errkit.New("path cannot be empty in self contained request")
 		}
 		// given url is relative construct one using Host Header
 		if _, ok := req.Headers["Host"]; !ok {
-			return nil, errkit.New("self-contained-raw: host header is required for relative path").Build()
+			return nil, errkit.New("host header is required for relative path")
 		}
 		// Review: Current default scheme in self contained templates if relative path is provided is http
 		req.FullURL = fmt.Sprintf("%s://%s%s", urlutil.HTTP, strings.TrimSpace(req.Headers["Host"]), req.Path)
