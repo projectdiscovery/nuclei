@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
-	github.com/projectdiscovery/fastdialer v0.4.7
+	github.com/projectdiscovery/fastdialer v0.4.9
 	github.com/projectdiscovery/hmap v0.0.93
 	github.com/projectdiscovery/interactsh v1.2.4
 	github.com/projectdiscovery/rawhttp v0.1.90
-	github.com/projectdiscovery/retryabledns v1.0.106
-	github.com/projectdiscovery/retryablehttp-go v1.0.121
+	github.com/projectdiscovery/retryabledns v1.0.107
+	github.com/projectdiscovery/retryablehttp-go v1.0.123
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -87,7 +87,7 @@ require (
 	github.com/microsoft/go-mssqldb v1.9.2
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/dsl v0.5.1
+	github.com/projectdiscovery/dsl v0.6.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
@@ -95,22 +95,22 @@ require (
 	github.com/projectdiscovery/gologger v1.1.54
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.1.0
-	github.com/projectdiscovery/httpx v1.7.1-0.20250902174407-8d6c2658663f
+	github.com/projectdiscovery/httpx v1.7.1
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.21
+	github.com/projectdiscovery/networkpolicy v0.1.23
 	github.com/projectdiscovery/ratelimit v0.0.82
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.2.1
 	github.com/projectdiscovery/uncover v1.1.0
 	github.com/projectdiscovery/useragent v0.0.101
-	github.com/projectdiscovery/utils v0.4.24-0.20250823123502-bd7f2849ddb4
-	github.com/projectdiscovery/wappalyzergo v0.2.43
+	github.com/projectdiscovery/utils v0.5.0
+	github.com/projectdiscovery/wappalyzergo v0.2.45
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/testcontainers/testcontainers-go v0.38.0
 	github.com/testcontainers/testcontainers-go/modules/mongodb v0.37.0
@@ -312,7 +312,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/cdncheck v1.1.33 // indirect
+	github.com/projectdiscovery/cdncheck v1.1.35 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
@@ -338,7 +338,7 @@ require (
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	github.com/ulikunitz/xz v0.5.12 // indirect
+	github.com/ulikunitz/xz v0.5.14 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
