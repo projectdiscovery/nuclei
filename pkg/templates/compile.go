@@ -87,64 +87,64 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			// as not using a cache at all, but may be necessary.
 
 			for i, r := range tplCopy.RequestsDNS {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsDNS[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsDNS[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsHTTP {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsHTTP[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsHTTP[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsCode {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsCode[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsCode[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsFile {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsFile[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsFile[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsHeadless {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsHeadless[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsHeadless[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsNetwork {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsNetwork[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsNetwork[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsJavascript {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsJavascript[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsJavascript[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsSSL {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsSSL[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				// rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsSSL[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsWHOIS {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsWHOIS[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				// rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsWHOIS[i] = &rCopy
 			}
 			for i, r := range tplCopy.RequestsWebsocket {
-				if r != nil {
-					r.UpdateOptions(tplCopy.Options)
-					tplCopy.RequestsWebsocket[i] = r
-				}
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				// rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsWebsocket[i] = &rCopy
 			}
 			template := &tplCopy
 
@@ -585,10 +585,7 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	options.TemplateVerifier = template.TemplateVerifier
 	//nolint
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
-		// Retain raw template only when allowed and reasonably small
-		if template.Options.Options != nil && !template.Options.Options.OmitTemplate && len(data) <= protocols.MaxTemplateFileSizeForEncoding {
-			template.Options.RawTemplate = data
-		}
+		template.Options.RawTemplate = data
 	}
 	return template, nil
 }

@@ -1,7 +1,6 @@
 package generators
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -17,9 +16,8 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 	for name, payload := range payloads {
 		switch payloadType := payload.(type) {
 		case string:
-			// check if it's a multiline string list
 			if strings.ContainsRune(payloadType, '\n') {
-				return errors.New("invalid number of lines in payload")
+				continue
 			}
 
 			// For historical reasons, "validate" checks to see if the payload file exist.

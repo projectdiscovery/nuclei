@@ -10,7 +10,7 @@ import (
 
 var (
 	initOnce sync.Once
-	mu       sync.Mutex
+	mu       sync.RWMutex
 
 	regexCap = 4096
 	dslCap   = 4096
@@ -27,13 +27,20 @@ func initCaches() {
 }
 
 func SetCapacities(regexCapacity, dslCapacity int) {
+	// ensure caches are initialized under initOnce, so later Regex()/DSL() won't re-init
+	initCaches()
+
 	mu.Lock()
 	defer mu.Unlock()
+
 	if regexCapacity > 0 {
 		regexCap = regexCapacity
 	}
 	if dslCapacity > 0 {
 		dslCap = dslCapacity
+	}
+	if regexCapacity <= 0 && dslCapacity <= 0 {
+		return
 	}
 	// rebuild caches with new capacities
 	regexCache = gcache.New[string, *regexp.Regexp](regexCap).LRU().Build()
@@ -42,10 +49,14 @@ func SetCapacities(regexCapacity, dslCapacity int) {
 
 func Regex() gcache.Cache[string, *regexp.Regexp] {
 	initCaches()
+	mu.RLock()
+	defer mu.RUnlock()
 	return regexCache
 }
 
 func DSL() gcache.Cache[string, *govaluate.EvaluableExpression] {
 	initCaches()
+	mu.RLock()
+	defer mu.RUnlock()
 	return dslCache
 }

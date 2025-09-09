@@ -63,6 +63,14 @@ func TestLoadPayloads_InlineMultiline(t *testing.T) {
 	}
 }
 
+func TestValidate_AllowsInlineMultiline(t *testing.T) {
+	g := newTestGenerator()
+	inline := "x\ny\n"
+	if err := g.validate(map[string]interface{}{"E": inline}, ""); err != nil {
+		t.Fatalf("validate rejected inline multiline: %v", err)
+	}
+}
+
 func TestLoadPayloads_SingleLineFallsBackToFile(t *testing.T) {
 	g := newTestGenerator()
 	inline := "fileA.txt" // single line, should be treated as file path

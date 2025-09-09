@@ -65,3 +65,31 @@ func TestRegexCache_EvictionByCapacity(t *testing.T) {
 		t.Fatalf("expected 'c' present")
 	}
 }
+
+func TestSetCapacities_NoRebuildOnZero(t *testing.T) {
+	// init
+	SetCapacities(4, 4)
+	c1 := Regex()
+	_ = c1.Set("k", regexp.MustCompile("k"))
+	if _, err := c1.GetIFPresent("k"); err != nil {
+		t.Fatalf("expected key present: %v", err)
+	}
+	// zero changes should not rebuild/clear caches
+	SetCapacities(0, 0)
+	c2 := Regex()
+	if _, err := c2.GetIFPresent("k"); err != nil {
+		t.Fatalf("key lost after zero-capacity SetCapacities: %v", err)
+	}
+}
+
+func TestSetCapacities_BeforeFirstUse(t *testing.T) {
+	// This should not be overridden by later initCaches
+	SetCapacities(2, 0)
+	c := Regex()
+	_ = c.Set("a", regexp.MustCompile("a"))
+	_ = c.Set("b", regexp.MustCompile("b"))
+	_ = c.Set("c", regexp.MustCompile("c"))
+	if _, err := c.GetIFPresent("a"); err == nil {
+		t.Fatalf("expected 'a' to be evicted under cap=2")
+	}
+}
