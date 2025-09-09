@@ -19,9 +19,6 @@ var (
 	showDSLErr = strings.EqualFold(os.Getenv("SHOW_DSL_ERRORS"), "true")
 )
 
-// maxRegexScanBytes is a threshold used to avoid caching extremely large inputs.
-const maxRegexScanBytes = 4 << 20 // 4 MiB
-
 // MatchStatusCode matches a status code check against a corpus
 func (matcher *Matcher) MatchStatusCode(statusCode int) bool {
 	// Iterate over all the status codes accepted as valid

@@ -2,7 +2,6 @@ package generators
 
 import (
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -30,9 +29,9 @@ func newTestGenerator() *PayloadGenerator {
 	opts.LoadHelperFileFunction = func(path, templatePath string, _ catalog.Catalog) (io.ReadCloser, error) {
 		switch path {
 		case "fileA.txt":
-			return ioutil.NopCloser(strings.NewReader("one\n two\n\nthree\n")), nil
+			return io.NopCloser(strings.NewReader("one\n two\n\nthree\n")), nil
 		default:
-			return ioutil.NopCloser(strings.NewReader("x\ny\nz\n")), nil
+			return io.NopCloser(strings.NewReader("x\ny\nz\n")), nil
 		}
 	}
 	return &PayloadGenerator{options: opts, catalog: &fakeCatalog{}}
@@ -63,14 +62,6 @@ func TestLoadPayloads_InlineMultiline(t *testing.T) {
 	}
 }
 
-func TestValidate_AllowsInlineMultiline(t *testing.T) {
-	g := newTestGenerator()
-	inline := "x\ny\n"
-	if err := g.validate(map[string]interface{}{"E": inline}, ""); err != nil {
-		t.Fatalf("validate rejected inline multiline: %v", err)
-	}
-}
-
 func TestLoadPayloads_SingleLineFallsBackToFile(t *testing.T) {
 	g := newTestGenerator()
 	inline := "fileA.txt" // single line, should be treated as file path
@@ -98,12 +89,20 @@ func TestLoadPayloads_InterfaceSlice(t *testing.T) {
 
 func TestLoadPayloadsFromFile_SkipsEmpty(t *testing.T) {
 	g := newTestGenerator()
-	rc := ioutil.NopCloser(strings.NewReader("a\n\n\n b \n"))
+	rc := io.NopCloser(strings.NewReader("a\n\n\n b \n"))
 	lines, err := g.loadPayloadsFromFile(rc)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if len(lines) != 2 || lines[0] != "a" || lines[1] != " b " {
 		t.Fatalf("unexpected: %#v", lines)
+	}
+}
+
+func TestValidate_AllowsInlineMultiline(t *testing.T) {
+	g := newTestGenerator()
+	inline := "x\ny\n"
+	if err := g.validate(map[string]interface{}{"E": inline}, ""); err != nil {
+		t.Fatalf("validate rejected inline multiline: %v", err)
 	}
 }
