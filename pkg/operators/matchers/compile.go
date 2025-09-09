@@ -5,21 +5,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	"github.com/Knetic/govaluate"
-
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
-)
-
-var (
-	regexCache        sync.Map // map[string]*regexp.Regexp
-	dslCache          sync.Map // map[string]*govaluate.EvaluableExpression
-	maxRegexCacheSize = 4096
-	maxDslCacheSize   = 4096
-	regexCacheSize    atomic.Int64
-	dslCacheSize      atomic.Int64
 )
 
 // CompileMatchers performs the initial setup operation on a matcher
@@ -53,26 +42,18 @@ func (matcher *Matcher) CompileMatchers() error {
 		matcher.Part = "body"
 	}
 
-	// Compile the regexes (with cache)
+	// Compile the regexes (with shared cache)
 	for _, regex := range matcher.Regex {
-		if cached, ok := regexCache.Load(regex); ok {
-			matcher.regexCompiled = append(matcher.regexCompiled, cached.(*regexp.Regexp))
+		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
+			matcher.regexCompiled = append(matcher.regexCompiled, cached)
 			continue
 		}
 		compiled, err := regexp.Compile(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
-		if regexCacheSize.Load() < int64(maxRegexCacheSize) {
-			if prev, loaded := regexCache.LoadOrStore(regex, compiled); loaded {
-				matcher.regexCompiled = append(matcher.regexCompiled, prev.(*regexp.Regexp))
-			} else {
-				matcher.regexCompiled = append(matcher.regexCompiled, compiled)
-				regexCacheSize.Add(1)
-			}
-		} else {
-			matcher.regexCompiled = append(matcher.regexCompiled, compiled)
-		}
+		_ = cache.Regex().Set(regex, compiled)
+		matcher.regexCompiled = append(matcher.regexCompiled, compiled)
 	}
 
 	// Compile and validate binary Values in matcher
@@ -84,26 +65,18 @@ func (matcher *Matcher) CompileMatchers() error {
 		}
 	}
 
-	// Compile the dsl expressions (with cache)
+	// Compile the dsl expressions (with shared cache)
 	for _, dslExpression := range matcher.DSL {
-		if cached, ok := dslCache.Load(dslExpression); ok {
-			matcher.dslCompiled = append(matcher.dslCompiled, cached.(*govaluate.EvaluableExpression))
+		if cached, err := cache.DSL().GetIFPresent(dslExpression); err == nil && cached != nil {
+			matcher.dslCompiled = append(matcher.dslCompiled, cached)
 			continue
 		}
 		compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, dsl.HelperFunctions)
 		if err != nil {
 			return &dsl.CompilationError{DslSignature: dslExpression, WrappedError: err}
 		}
-		if dslCacheSize.Load() < int64(maxDslCacheSize) {
-			if prev, loaded := dslCache.LoadOrStore(dslExpression, compiledExpression); loaded {
-				matcher.dslCompiled = append(matcher.dslCompiled, prev.(*govaluate.EvaluableExpression))
-			} else {
-				matcher.dslCompiled = append(matcher.dslCompiled, compiledExpression)
-				dslCacheSize.Add(1)
-			}
-		} else {
-			matcher.dslCompiled = append(matcher.dslCompiled, compiledExpression)
-		}
+		_ = cache.DSL().Set(dslExpression, compiledExpression)
+		matcher.dslCompiled = append(matcher.dslCompiled, compiledExpression)
 	}
 
 	// Set up the condition type, if any.

@@ -11,18 +11,15 @@ func TestTryFillCustomHeaders_BufferDetached(t *testing.T) {
 	r := &Request{
 		UnsafeRawBytes: []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\nBody"),
 	}
-	if err := r.TryFillCustomHeaders([]string{"X-Test: 1"}); err != nil {
-		t.Fatalf("unexpected err: %v", err)
-	}
-	before := string(r.UnsafeRawBytes)
-	// call again to ensure pooled buffer reuse won't corrupt previous slice
-	if err := r.TryFillCustomHeaders([]string{"X-Another: 2"}); err != nil {
-		t.Fatalf("unexpected err on second call: %v", err)
-	}
-	after := string(r.UnsafeRawBytes)
-	if before == after {
-		t.Fatalf("expected second modification to change bytes; got identical")
-	}
+	// first fill
+	err := r.TryFillCustomHeaders([]string{"X-Test: 1"})
+	require.NoError(t, err, "unexpected error on first call")
+	prev := r.UnsafeRawBytes
+	prevStr := string(prev) // content snapshot
+	err = r.TryFillCustomHeaders([]string{"X-Another: 2"})
+	require.NoError(t, err, "unexpected error on second call")
+	require.Equal(t, prevStr, string(prev), "first slice mutated after second call; buffer not detached")
+	require.NotEqual(t, prevStr, string(r.UnsafeRawBytes), "request bytes did not change after second call")
 }
 
 func TestParseRawRequestWithPort(t *testing.T) {

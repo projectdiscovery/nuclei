@@ -7,7 +7,6 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
@@ -24,9 +23,9 @@ func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 			}
 		}
 
-		matches := matchers.CachedFindAllStringSubmatch(regex, corpus, -1)
+		submatches := regex.FindAllStringSubmatch(corpus, -1)
 
-		for _, match := range matches {
+		for _, match := range submatches {
 			if len(match) < groupPlusOne {
 				continue
 			}

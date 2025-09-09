@@ -126,15 +126,15 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 
 		// Fast OR-path: return first match without full scan
 		if matcher.condition == ORCondition && !matcher.MatchAll {
-			m := cachedFindAllString(regex, corpus, 1)
+			m := regex.FindAllString(corpus, 1)
 			if len(m) == 0 {
 				continue
 			}
 			return true, m
 		}
 
-		// Single scan: get all matches with caching
-		currentMatches := cachedFindAllString(regex, corpus, -1)
+		// Single scan: get all matches directly
+		currentMatches := regex.FindAllString(corpus, -1)
 		if len(currentMatches) == 0 {
 			switch matcher.condition {
 			case ANDCondition:

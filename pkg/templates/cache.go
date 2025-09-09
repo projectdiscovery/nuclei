@@ -1,8 +1,6 @@
 package templates
 
 import (
-	"sync"
-
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -10,16 +8,12 @@ import (
 // Templates is a cache for caching and storing templates for reuse.
 type Cache struct {
 	items *mapsutil.SyncLockMap[string, parsedTemplate]
-
-	// parsedTemplatePool reduces allocation overhead when storing cache entries
-	parsedTemplatePool *sync.Pool
 }
 
 // New returns a new templates cache
 func NewCache() *Cache {
 	return &Cache{
-		items:              mapsutil.NewSyncLockMap[string, parsedTemplate](),
-		parsedTemplatePool: &sync.Pool{New: func() any { return &parsedTemplate{} }},
+		items: mapsutil.NewSyncLockMap[string, parsedTemplate](),
 	}
 }
 
@@ -41,29 +35,22 @@ func (t *Cache) Has(template string) (*Template, []byte, error) {
 
 // Store stores a template with data and error
 func (t *Cache) Store(id string, tpl *Template, raw []byte, err error) {
-	entry := t.parsedTemplatePool.Get().(*parsedTemplate)
-	entry.template = tpl
-	entry.err = err
-	entry.raw = conversion.String(raw)
-	_ = t.items.Set(id, *entry)
-	// zero before pooling to avoid retaining references
-	entry.template = nil
-	entry.err = nil
-	entry.raw = ""
-	t.parsedTemplatePool.Put(entry)
+	entry := parsedTemplate{
+		template: tpl,
+		err:      err,
+		raw:      conversion.String(raw),
+	}
+	_ = t.items.Set(id, entry)
 }
 
 // StoreWithoutRaw stores a template without raw data for memory efficiency
 func (t *Cache) StoreWithoutRaw(id string, tpl *Template, err error) {
-	entry := t.parsedTemplatePool.Get().(*parsedTemplate)
-	entry.template = tpl
-	entry.err = err
-	entry.raw = ""
-	_ = t.items.Set(id, *entry)
-	// zero before pooling to avoid retaining references
-	entry.template = nil
-	entry.err = nil
-	t.parsedTemplatePool.Put(entry)
+	entry := parsedTemplate{
+		template: tpl,
+		err:      err,
+		raw:      "",
+	}
+	_ = t.items.Set(id, entry)
 }
 
 // Get returns only the template without raw bytes
