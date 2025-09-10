@@ -13,6 +13,8 @@ import (
 	"github.com/andygrunwald/go-jira"
 	"github.com/pkg/errors"
 	"github.com/trivago/tgo/tcontainer"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -67,7 +69,22 @@ func evaluateTemplate(templateStr string, ctx *TemplateContext) (string, error) 
 		return templateStr, nil
 	}
 
-	tmpl, err := template.New("field").Parse(templateStr)
+	// Create template with useful functions for JIRA custom fields
+	funcMap := template.FuncMap{
+		"upper":     strings.ToUpper,
+		"lower":     strings.ToLower,
+		"title":     cases.Title(language.English).String,
+		"contains":  strings.Contains,
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
+		"trim":      strings.Trim,
+		"trimSpace": strings.TrimSpace,
+		"replace":   strings.ReplaceAll,
+		"split":     strings.Split,
+		"join":      strings.Join,
+	}
+
+	tmpl, err := template.New("field").Funcs(funcMap).Parse(templateStr)
 	if err != nil {
 		return templateStr, fmt.Errorf("failed to parse template: %w", err)
 	}
