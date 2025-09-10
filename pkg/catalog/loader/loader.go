@@ -347,7 +347,7 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 				continue
 			}
 
-			loadedTemplateIDs.Set(template.ID, struct{}{})
+			_ = loadedTemplateIDs.Set(template.ID, struct{}{})
 			template.Path = templatePath
 			store.templates = append(store.templates, template)
 		}
@@ -509,7 +509,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			return
 		}
 
-		loadedTemplateIDs.Set(tmpl.ID, struct{}{})
+		_ = loadedTemplateIDs.Set(tmpl.ID, struct{}{})
 
 		loadedTemplates.Append(tmpl)
 		// increment signed/unsigned counters
