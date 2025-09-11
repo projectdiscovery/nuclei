@@ -78,8 +78,8 @@ func connectWithDSN(dsn string) (bool, error) {
 		return false, err
 	}
 	defer func() {
-         _ = db.Close()
-       }()
+		_ = db.Close()
+	}()
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 

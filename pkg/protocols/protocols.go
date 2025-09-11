@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -133,6 +134,8 @@ type ExecutorOptions struct {
 	ExportReqURLPattern bool
 	// GlobalMatchers is the storage for global matchers with http passive templates
 	GlobalMatchers *globalmatchers.Storage
+	// Logger is the shared logging instance
+	Logger *gologger.Logger
 	// CustomFastdialer is a fastdialer dialer instance
 	CustomFastdialer *fastdialer.Dialer
 }
@@ -140,15 +143,21 @@ type ExecutorOptions struct {
 // todo: centralizing components is not feasible with current clogged architecture
 // a possible approach could be an internal event bus with pub-subs? This would be less invasive than
 // reworking dep injection from scratch
-func (eo *ExecutorOptions) RateLimitTake() {
-	if eo.RateLimiter.GetLimit() != uint(eo.Options.RateLimit) {
-		eo.RateLimiter.SetLimit(uint(eo.Options.RateLimit))
-		eo.RateLimiter.SetDuration(eo.Options.RateLimitDuration)
+func (e *ExecutorOptions) RateLimitTake() {
+	// The code below can race and there isn't a great way to fix this without adding an idempotent
+	// function to the rate limiter implementation. For now, stick with whatever rate is already set.
+	/*
+		if e.RateLimiter.GetLimit() != uint(e.Options.RateLimit) {
+			e.RateLimiter.SetLimit(uint(e.Options.RateLimit))
+			e.RateLimiter.SetDuration(e.Options.RateLimitDuration)
+		}
+	*/
+	if e.RateLimiter != nil {
+		e.RateLimiter.Take()
 	}
-	eo.RateLimiter.Take()
 }
 
-// GetThreadsForPayloadRequests returns the number of threads to use as default for
+// GetThreadsForNPayloadRequests returns the number of threads to use as default for
 // given max-request of payloads
 func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
 	if currentThreads > 0 {
@@ -186,6 +195,11 @@ func (e *ExecutorOptions) HasTemplateCtx(input *contextargs.MetaInput) bool {
 // GetTemplateCtx returns template context for given input
 func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contextargs.Context {
 	scanId := input.GetScanHash(e.TemplateID)
+	if e.templateCtxStore == nil {
+		// if template context store is not initialized create it
+		e.CreateTemplateCtxStore()
+	}
+	// get template context from store
 	templateCtx, ok := e.templateCtxStore.Get(scanId)
 	if !ok {
 		// if template context does not exist create new and add it to store and return it
@@ -246,8 +260,46 @@ func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateT
 }
 
 // Copy returns a copy of the executeroptions structure
-func (e ExecutorOptions) Copy() ExecutorOptions {
-	copy := e
+func (e *ExecutorOptions) Copy() *ExecutorOptions {
+	copy := &ExecutorOptions{
+		TemplateID:          e.TemplateID,
+		TemplatePath:        e.TemplatePath,
+		TemplateInfo:        e.TemplateInfo,
+		TemplateVerifier:    e.TemplateVerifier,
+		RawTemplate:         e.RawTemplate,
+		Output:              e.Output,
+		Options:             e.Options,
+		IssuesClient:        e.IssuesClient,
+		Progress:            e.Progress,
+		RateLimiter:         e.RateLimiter,
+		Catalog:             e.Catalog,
+		ProjectFile:         e.ProjectFile,
+		Browser:             e.Browser,
+		Interactsh:          e.Interactsh,
+		HostErrorsCache:     e.HostErrorsCache,
+		StopAtFirstMatch:    e.StopAtFirstMatch,
+		Variables:           e.Variables,
+		Constants:           e.Constants,
+		ExcludeMatchers:     e.ExcludeMatchers,
+		InputHelper:         e.InputHelper,
+		FuzzParamsFrequency: e.FuzzParamsFrequency,
+		FuzzStatsDB:         e.FuzzStatsDB,
+		Operators:           e.Operators,
+		DoNotCache:          e.DoNotCache,
+		Colorizer:           e.Colorizer,
+		WorkflowLoader:      e.WorkflowLoader,
+		ResumeCfg:           e.ResumeCfg,
+		ProtocolType:        e.ProtocolType,
+		Flow:                e.Flow,
+		IsMultiProtocol:     e.IsMultiProtocol,
+		JsCompiler:          e.JsCompiler,
+		AuthProvider:        e.AuthProvider,
+		TemporaryDirectory:  e.TemporaryDirectory,
+		Parser:              e.Parser,
+		ExportReqURLPattern: e.ExportReqURLPattern,
+		GlobalMatchers:      e.GlobalMatchers,
+		Logger:              e.Logger,
+	}
 	copy.CreateTemplateCtxStore()
 	return copy
 }
@@ -385,4 +437,39 @@ func (e *ExecutorOptions) EncodeTemplate() string {
 		return base64.StdEncoding.EncodeToString(e.RawTemplate)
 	}
 	return ""
+}
+
+// ApplyNewEngineOptions updates an existing ExecutorOptions with options from a new engine. This
+// handles things like the ExecutionID that need to be updated.
+func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
+	// TODO: cached code|headless templates have nil ExecuterOptions if -code or -headless are not enabled
+	if e == nil || n == nil || n.Options == nil {
+		return
+	}
+
+	e.Options = n.Options.Copy()
+	e.Output = n.Output
+	e.IssuesClient = n.IssuesClient
+	e.Progress = n.Progress
+	e.RateLimiter = n.RateLimiter
+	e.Catalog = n.Catalog
+	e.ProjectFile = n.ProjectFile
+	e.Browser = n.Browser
+	e.Interactsh = n.Interactsh
+	e.HostErrorsCache = n.HostErrorsCache
+	e.InputHelper = n.InputHelper
+	e.FuzzParamsFrequency = n.FuzzParamsFrequency
+	e.FuzzStatsDB = n.FuzzStatsDB
+	e.DoNotCache = n.DoNotCache
+	e.Colorizer = n.Colorizer
+	e.WorkflowLoader = n.WorkflowLoader
+	e.ResumeCfg = n.ResumeCfg
+	e.JsCompiler = n.JsCompiler
+	e.AuthProvider = n.AuthProvider
+	e.TemporaryDirectory = n.TemporaryDirectory
+	e.Parser = n.Parser
+	e.ExportReqURLPattern = n.ExportReqURLPattern
+	e.GlobalMatchers = n.GlobalMatchers
+	e.Logger = n.Logger
+	e.CustomFastdialer = n.CustomFastdialer
 }
