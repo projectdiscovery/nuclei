@@ -30,8 +30,9 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	m             *sync.Mutex            `json:"-" yaml:"-"` // mutex for lazy fetch
+	m             *sync.RWMutex          `json:"-" yaml:"-"` // rwmutex for lazy fetch
 	fetched       bool                   `json:"-" yaml:"-"` // flag to check if the secret has been fetched
+	fetching      bool                   `json:"-" yaml:"-"` // flag to prevent recursive fetch calls
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -70,7 +71,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.m = &sync.Mutex{}
+	d.m = &sync.RWMutex{}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -97,9 +98,7 @@ func (d *Dynamic) Validate() error {
 func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 	d.fetchCallback = func(d *Dynamic) error {
 		err := callback(d)
-		d.fetched = true
 		if err != nil {
-			d.error = err
 			return err
 		}
 		if len(d.Extracted) == 0 {
@@ -184,9 +183,28 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // GetStrategy returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
-	if !d.fetched {
-		_ = d.Fetch(true)
+	// First check if we're already fetching to prevent recursion
+	d.m.RLock()
+	if d.fetching {
+		// Already fetching, return empty to avoid deadlock
+		d.m.RUnlock()
+		return nil
 	}
+	if d.fetched {
+		// Already fetched, safe to proceed
+		d.m.RUnlock()
+	} else {
+		// Need to fetch
+		d.m.RUnlock()
+
+		// Call Fetch outside of read lock to avoid deadlock
+		_ = d.Fetch(true)
+
+		// Re-acquire read lock to check final state
+		d.m.RLock()
+		defer d.m.RUnlock()
+	}
+
 	if d.error != nil {
 		return nil
 	}
@@ -205,10 +223,34 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 func (d *Dynamic) Fetch(isFatal bool) error {
 	d.m.Lock()
 	defer d.m.Unlock()
+
 	if d.fetched {
-		return nil
+		return d.error
 	}
-	d.error = d.fetchCallback(d)
+
+	// Check if we're already fetching to prevent recursive calls
+	if d.fetching {
+		// Already fetching, return the current error or nil
+		return d.error
+	}
+
+	// Set fetching flag to prevent recursive calls
+	d.fetching = true
+
+	// Release the lock before calling the callback to prevent deadlock
+	d.m.Unlock()
+
+	// Call the callback without holding the lock
+	err := d.fetchCallback(d)
+
+	// Re-acquire the lock to update state
+	d.m.Lock()
+
+	// Update state
+	d.error = err
+	d.fetched = true
+	d.fetching = false
+
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
 	}
