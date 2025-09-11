@@ -590,7 +590,9 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			if err != nil {
 				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
 			}
-			defer file.Close()
+			defer func() {
+				_ = file.Close()
+			}()
 			data := make(map[string]interface{})
 			err = yaml.NewDecoder(file).Decode(&data)
 			if err != nil {
