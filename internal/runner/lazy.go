@@ -17,22 +17,22 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/env"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 type AuthLazyFetchOptions struct {
 	TemplateStore *loader.Store
-	ExecOpts      protocols.ExecutorOptions
+	ExecOpts      *protocols.ExecutorOptions
 	OnError       func(error)
 }
 
 // GetAuthTmplStore create new loader for loading auth templates
-func GetAuthTmplStore(opts types.Options, catalog catalog.Catalog, execOpts protocols.ExecutorOptions) (*loader.Store, error) {
+func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *protocols.ExecutorOptions) (*loader.Store, error) {
 	tmpls := []string{}
 	for _, file := range opts.SecretsFile {
 		data, err := authx.GetTemplatePathsFromSecretFile(file)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("failed to get template paths from secrets file")
+			return nil, errkit.Wrap(err, "failed to get template paths from secrets file")
 		}
 		tmpls = append(tmpls, data...)
 	}
@@ -54,11 +54,11 @@ func GetAuthTmplStore(opts types.Options, catalog catalog.Catalog, execOpts prot
 	opts.Protocols = nil
 	opts.ExcludeProtocols = nil
 	opts.IncludeConditions = nil
-	cfg := loader.NewConfig(&opts, catalog, execOpts)
+	cfg := loader.NewConfig(opts, catalog, execOpts)
 	cfg.StoreId = loader.AuthStoreId
 	store, err := loader.New(cfg)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("failed to initialize dynamic auth templates store")
+		return nil, errkit.Wrap(err, "failed to initialize dynamic auth templates store")
 	}
 	return store, nil
 }

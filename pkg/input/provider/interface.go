@@ -13,12 +13,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
-	ErrNotImplemented = errorutil.NewWithFmt("provider %s does not implement %s")
+	ErrNotImplemented = errkit.New("provider does not implement method")
 	ErrInactiveInput  = fmt.Errorf("input is inactive")
 )
 
@@ -59,11 +59,11 @@ type InputProvider interface {
 	// Iterate over all inputs in order
 	Iterate(callback func(value *contextargs.MetaInput) bool)
 	// Set adds item to input provider
-	Set(value string)
+	Set(executionId string, value string)
 	// SetWithProbe adds item to input provider with http probing
-	SetWithProbe(value string, probe types.InputLivenessProbe) error
+	SetWithProbe(executionId string, value string, probe types.InputLivenessProbe) error
 	// SetWithExclusions adds item to input provider if it doesn't match any of the exclusions
-	SetWithExclusions(value string) error
+	SetWithExclusions(executionId string, value string) error
 	// InputType returns the type of input provider
 	InputType() string
 	// Close the input provider and cleanup any resources

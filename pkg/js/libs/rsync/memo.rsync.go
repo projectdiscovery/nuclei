@@ -8,11 +8,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisRsync(host string, port int) (IsRsyncResponse, error) {
+func memoizedisRsync(executionId string, host string, port int) (IsRsyncResponse, error) {
 	hash := "isRsync" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isRsync(host, port)
+		return isRsync(executionId, host, port)
 	})
 	if err != nil {
 		return IsRsyncResponse{}, err

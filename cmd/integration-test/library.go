@@ -68,16 +68,20 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	defer cache.Close()
 
+	defaultOpts := types.DefaultOptions()
+	defaultOpts.ExecutionId = "test"
+
 	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, err := reporting.New(&reporting.Options{}, "", false)
+	reportingClient, err := reporting.New(&reporting.Options{ExecutionId: defaultOpts.ExecutionId}, "", false)
 	if err != nil {
 		return nil, err
 	}
 	defer reportingClient.Close()
 
-	defaultOpts := types.DefaultOptions()
 	_ = protocolstate.Init(defaultOpts)
 	_ = protocolinit.Init(defaultOpts)
+
+	defer protocolstate.Close(defaultOpts.ExecutionId)
 
 	defaultOpts.Templates = goflags.StringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
@@ -100,7 +104,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
 
-	executerOpts := protocols.ExecutorOptions{
+	executerOpts := &protocols.ExecutorOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
 		Progress:        mockProgress,
@@ -116,7 +120,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := parsers.NewLoader(executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}
@@ -128,7 +132,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	}
 	store.Load()
 
-	_ = engine.Execute(context.Background(), store.Templates(), provider.NewSimpleInputProviderWithUrls(templateURL))
+	_ = engine.Execute(context.Background(), store.Templates(), provider.NewSimpleInputProviderWithUrls(defaultOpts.ExecutionId, templateURL))
 	engine.WorkPool().Wait() // Wait for the scan to finish
 
 	return results, nil

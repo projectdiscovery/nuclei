@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/hex"
 	"fmt"
+	maps0 "maps"
 	"net"
 	"net/url"
 	"os"
@@ -30,7 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -303,8 +304,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 	_ = conn.SetDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
 	var interactshURLs []string
@@ -361,7 +362,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
+				return errkit.Wrap(err, "could not read response from connection")
 			}
 
 			responseBuilder.Write(buffer)
@@ -375,9 +376,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
 				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{input.Name: bufferStr}, request.Extract)
-				for k, v := range values {
-					payloads[k] = v
-				}
+				maps0.Copy(payloads, values)
 			}
 		}
 	}
@@ -427,15 +426,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
 	}
-	for k, v := range previous {
-		outputEvent[k] = v
-	}
-	for k, v := range interimValues {
-		outputEvent[k] = v
-	}
-	for k, v := range inputEvents {
-		outputEvent[k] = v
-	}
+	maps0.Copy(outputEvent, previous)
+	maps0.Copy(outputEvent, interimValues)
+	maps0.Copy(outputEvent, inputEvents)
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
 	}
