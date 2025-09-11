@@ -1,6 +1,8 @@
 module github.com/projectdiscovery/nuclei/v3
 
-go 1.24.1
+go 1.24.2
+
+toolchain go1.24.4
 
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
@@ -44,17 +46,18 @@ require (
 )
 
 require (
-	code.gitea.io/sdk/gitea v0.21.0
+	carvel.dev/ytt v0.52.0
+	code.gitea.io/sdk/gitea v0.17.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.1
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.1.0
 	github.com/DataDog/gostackparse v0.7.0
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
 	github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697
 	github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883
 	github.com/alitto/pond v1.9.2
 	github.com/antchfx/xmlquery v1.4.4
-	github.com/antchfx/xpath v1.3.4
+	github.com/antchfx/xpath v1.3.3
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go-v2 v1.36.5
 	github.com/aws/aws-sdk-go-v2/config v1.29.17
@@ -128,7 +131,6 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
-	github.com/42wim/httpsig v1.2.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
@@ -255,6 +257,7 @@ require (
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/k14s/starlark-go v0.0.0-20200720175618-3a5c849cc368 // indirect
 	github.com/kataras/jwt v0.1.10 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
