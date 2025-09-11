@@ -76,7 +76,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			if errors.Is(err, ErrMissingVars) {
 				return err
 			}
-			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
 		}
 		return nil
 	}
@@ -103,13 +103,13 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		// in case of any error, return it
 		if fuzz.IsErrRuleNotApplicable(err) {
 			// log and fail silently
-			gologger.Verbose().Msgf("[%s] fuzz: rule not applicable : %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 			return nil
 		}
 		if errors.Is(err, ErrMissingVars) {
 			return err
 		}
-		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
+		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
 	}
 	return nil
 }
@@ -158,7 +158,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 			continue
 		}
 		if fuzz.IsErrRuleNotApplicable(err) {
-			gologger.Verbose().Msgf("[%s] fuzz: rule not applicable : %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 			continue
 		}
 		if err == types.ErrNoMoreRequests {
@@ -168,8 +168,9 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 	}
 
 	if !applicable {
-		return fuzz.ErrRuleNotApplicable.Msgf(fmt.Sprintf("no rule was applicable for this request: %v", input.MetaInput.Input))
+		return fmt.Errorf("no rule was applicable for this request: %v", input.MetaInput.Input)
 	}
+
 	return nil
 }
 
@@ -311,7 +312,7 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 			if strings.EqualFold(k, "content_type") {
 				m["content_type"] = v
 			}
-			fmt.Fprintf(sb, "%s: %s\n", k, v)
+			_, _ = fmt.Fprintf(sb, "%s: %s\n", k, v)
 			return true
 		})
 		m["header"] = sb.String()
