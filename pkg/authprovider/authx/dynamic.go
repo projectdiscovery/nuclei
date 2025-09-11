@@ -30,8 +30,8 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	fetched       atomic.Bool            `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
-	fetching      atomic.Bool            `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
+	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
+	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -70,6 +70,8 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
+	d.fetched = &atomic.Bool{}
+	d.fetching = &atomic.Bool{}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
