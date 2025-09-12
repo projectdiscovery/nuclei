@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -315,6 +316,8 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	}
 	templatesCache := parserItem.Cache()
 
+	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
+
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
 
@@ -339,6 +342,12 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 		}
 
 		if template != nil {
+			if loadedTemplateIDs.Has(template.ID) {
+				store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", template.ID, templatePath)
+				continue
+			}
+
+			_ = loadedTemplateIDs.Set(template.ID, struct{}{})
 			template.Path = templatePath
 			store.templates = append(store.templates, template)
 		}
@@ -492,8 +501,16 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	templatePathMap := store.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := sliceutil.NewSyncSlice[*templates.Template]()
+	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
 
 	loadTemplate := func(tmpl *templates.Template) {
+		if loadedTemplateIDs.Has(tmpl.ID) {
+			store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", tmpl.ID, tmpl.Path)
+			return
+		}
+
+		_ = loadedTemplateIDs.Set(tmpl.ID, struct{}{})
+
 		loadedTemplates.Append(tmpl)
 		// increment signed/unsigned counters
 		if tmpl.Verified {
