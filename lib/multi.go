@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/rs/xid"
 )
@@ -53,11 +53,7 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 	if opts.RateLimit > 0 && opts.RateLimitDuration == 0 {
 		opts.RateLimitDuration = time.Second
 	}
-	if opts.RateLimit == 0 && opts.RateLimitDuration == 0 {
-		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(ctx)
-	} else {
-		u.executerOpts.RateLimiter = ratelimit.New(ctx, uint(opts.RateLimit), opts.RateLimitDuration)
-	}
+	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)
 	return u, nil
