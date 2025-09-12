@@ -34,7 +34,7 @@ func wrapWithContext(runtime *goja.Runtime, fn interface{}) interface{} {
 	}
 
 	// Only wrap if first parameter is context.Context
-	if fnType.NumIn() == 0 || fnType.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
+	if fnType.NumIn() == 0 || fnType.In(0) != reflect.TypeFor[context.Context]() {
 		return fn // Return original function unchanged if it doesn't have context.Context as first arg
 	}
 
