@@ -2,7 +2,6 @@ package customtemplates
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,7 +64,9 @@ func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
 	if options.AwsBucketName != "" && !options.AwsTemplateDisableDownload {
 		s3c, err := getS3Client(context.TODO(), options.AwsAccessKey, options.AwsSecretKey, options.AwsRegion, options.AwsProfile)
 		if err != nil {
-			return nil, errkit.Append(errkit.New(fmt.Sprintf("error downloading s3 bucket %s", options.AwsBucketName)), err)
+			errx := errkit.FromError(err)
+			errx.Msgf("error downloading s3 bucket %s", options.AwsBucketName)
+			return nil, errx
 		}
 		ctBucket := &customTemplateS3Bucket{
 			bucketName: options.AwsBucketName,

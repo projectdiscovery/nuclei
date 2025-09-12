@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/utils/errkit"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -102,7 +103,7 @@ type InteractshOpts interactsh.Options
 func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("WithInteractshOptions")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithInteractshOptions")
 		}
 		optsPtr := &opts
 		e.interactshOpts = (*interactsh.Options)(optsPtr)
@@ -229,7 +230,7 @@ type StatsOptions struct {
 func EnableStatsWithOpts(opts StatsOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("EnableStatsWithOpts")
+			return errkit.Wrap(ErrOptionsNotSupported, "EnableStatsWithOpts")
 		}
 		if opts.Interval == 0 {
 			opts.Interval = 5 //sec
@@ -257,7 +258,7 @@ type VerbosityOptions struct {
 func WithVerbosity(opts VerbosityOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("WithVerbosity")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithVerbosity")
 		}
 		e.opts.Verbose = opts.Verbose
 		e.opts.Silent = opts.Silent
@@ -290,7 +291,7 @@ type NetworkConfig struct {
 func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("WithNetworkConfig")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithNetworkConfig")
 		}
 		e.opts.NoHostErrors = opts.DisableMaxHostErr
 		e.opts.MaxHostError = opts.MaxHostError
@@ -321,7 +322,7 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 func WithProxy(proxy []string, proxyInternalRequests bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("WithProxy")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithProxy")
 		}
 		e.opts.Proxy = proxy
 		e.opts.ProxyInternal = proxyInternalRequests
@@ -346,7 +347,7 @@ type OutputWriter output.Writer
 func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("UseOutputWriter")
+			return errkit.Wrap(ErrOptionsNotSupported, "UseOutputWriter")
 		}
 		e.customWriter = writer
 		return nil
@@ -361,7 +362,7 @@ type StatsWriter progress.Progress
 func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("UseStatsWriter")
+			return errkit.Wrap(ErrOptionsNotSupported, "UseStatsWriter")
 		}
 		e.customProgress = writer
 		return nil
@@ -375,7 +376,7 @@ func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(newVersion string)) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("WithTemplateUpdateCallback")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithTemplateUpdateCallback")
 		}
 		e.disableTemplatesAutoUpgrade = disableTemplatesAutoUpgrade
 		e.onUpdateAvailableCallback = callback
@@ -387,7 +388,7 @@ func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(
 func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported("WithSandboxOptions")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithSandboxOptions")
 		}
 		e.opts.AllowLocalFileAccess = allowLocalFileAccess
 		e.opts.RestrictLocalNetworkAccess = restrictLocalNetworkAccess

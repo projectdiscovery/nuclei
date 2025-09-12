@@ -237,7 +237,9 @@ func GetAuthDataFromYAML(data []byte) (*Authx, error) {
 	var auth Authx
 	err := yaml.Unmarshal(data, &auth)
 	if err != nil {
-		return nil, errkit.Append(errkit.New("could not unmarshal yaml"), err)
+		errorErr := errkit.FromError(err)
+		errorErr.Msgf("could not unmarshal yaml")
+		return nil, errorErr
 	}
 	return &auth, nil
 }
@@ -247,7 +249,9 @@ func GetAuthDataFromJSON(data []byte) (*Authx, error) {
 	var auth Authx
 	err := json.Unmarshal(data, &auth)
 	if err != nil {
-		return nil, errkit.Append(errkit.New("could not unmarshal json"), err)
+		errorErr := errkit.FromError(err)
+		errorErr.Msgf("could not unmarshal json")
+		return nil, errorErr
 	}
 	return &auth, nil
 }

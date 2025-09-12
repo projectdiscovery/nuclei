@@ -17,7 +17,7 @@ type templateDirWithTargetTest struct{}
 func (h *templateDirWithTargetTest) Execute(filePath string) error {
 	tempdir, err := os.MkdirTemp("", "nuclei-update-dir-*")
 	if err != nil {
-		return errkit.Append(errkit.New("failed to create temp dir"), err)
+		return errkit.Wrap(err, "failed to create temp dir")
 	}
 	defer func() {
 		_ = os.RemoveAll(tempdir)

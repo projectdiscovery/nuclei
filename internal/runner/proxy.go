@@ -50,7 +50,7 @@ func loadProxyServers(options *types.Options) error {
 	}
 	proxyURL, err := url.Parse(aliveProxy)
 	if err != nil {
-		return errkit.Append(errkit.New(fmt.Sprintf("failed to parse proxy got %v", err)), err)
+		return errkit.Wrapf(err, "failed to parse proxy got %v", err)
 	}
 	if options.ProxyInternal {
 		_ = os.Setenv(HTTP_PROXY_ENV, proxyURL.String())

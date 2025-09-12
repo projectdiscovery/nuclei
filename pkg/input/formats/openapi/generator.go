@@ -395,7 +395,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 func GetGlobalParamsForSecurityRequirement(schema *openapi3.T, requirement *openapi3.SecurityRequirements) ([]*openapi3.ParameterRef, error) {
 	globalParams := openapi3.NewParameters()
 	if len(schema.Components.SecuritySchemes) == 0 {
-		return nil, errkit.New(fmt.Sprintf("openapi: security requirements (%+v) without any security schemes found in openapi file", schema.Security)).Build()
+		return nil, errkit.Newf("security requirements (%+v) without any security schemes found in openapi file", schema.Security)
 	}
 	found := false
 	// this api is protected for each security scheme pull its corresponding scheme
@@ -415,11 +415,11 @@ schemaLabel:
 		}
 		if !found && len(security) > 1 {
 			// if this is case then both security schemes are required
-			return nil, errkit.New(fmt.Sprintf("openapi: security requirement (%+v) not found in openapi file", security)).Build()
+			return nil, errkit.Newf("security requirement (%+v) not found in openapi file", security)
 		}
 	}
 	if !found {
-		return nil, errkit.New(fmt.Sprintf("openapi: security requirement (%+v) not found in openapi file", requirement)).Build()
+		return nil, errkit.Newf("security requirement (%+v) not found in openapi file", requirement)
 	}
 
 	return globalParams, nil
@@ -428,12 +428,12 @@ schemaLabel:
 // GenerateParameterFromSecurityScheme generates an example from a schema object
 func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*openapi3.Parameter, error) {
 	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey") {
-		return nil, errkit.New(fmt.Sprintf("openapi: unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)).Build()
+		return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
 	}
 	if scheme.Value.Type == "http" {
 		// check scheme
 		if !generic.EqualsAny(scheme.Value.Scheme, "basic", "bearer") {
-			return nil, errkit.New(fmt.Sprintf("openapi: unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)).Build()
+			return nil, errkit.Newf("unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)
 		}
 		// HTTP authentication schemes basic or bearer use the Authorization header
 		headerName := scheme.Value.Name
@@ -458,10 +458,10 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 	if scheme.Value.Type == "apiKey" {
 		// validate name and in
 		if scheme.Value.Name == "" {
-			return nil, errkit.New(fmt.Sprintf("openapi: security scheme (%s) name is empty", scheme.Value.Type)).Build()
+			return nil, errkit.Newf("security scheme (%s) name is empty", scheme.Value.Type)
 		}
 		if !generic.EqualsAny(scheme.Value.In, "query", "header", "cookie") {
-			return nil, errkit.New(fmt.Sprintf("openapi: unsupported security scheme (%s) in (%s) found in openapi file", scheme.Value.Type, scheme.Value.In)).Build()
+			return nil, errkit.Newf("unsupported security scheme (%s) in (%s) found in openapi file", scheme.Value.Type, scheme.Value.In)
 		}
 		// create parameters using the scheme
 		switch scheme.Value.In {
@@ -482,5 +482,5 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 			return c, nil
 		}
 	}
-	return nil, errkit.New(fmt.Sprintf("openapi: unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)).Build()
+	return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
 }
