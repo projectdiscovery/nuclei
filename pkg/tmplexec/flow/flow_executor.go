@@ -22,10 +22,10 @@ import (
 	"go.uber.org/multierr"
 )
 
-// ErrInvalidRequestID returns an error for invalid request IDs
-func ErrInvalidRequestID(templateID, requestID string) error {
-	return errkit.New(fmt.Sprintf("[%s] invalid request id '%s' provided", templateID, requestID)).Build()
-}
+var (
+	// ErrInvalidRequestID is a request id error
+	ErrInvalidRequestID = errkit.New("invalid request id provided")
+)
 
 // ProtoOptions are options that can be passed to flow protocol callback
 // ex: dns(protoOptions) <- protoOptions are optional and can be anything
@@ -256,12 +256,12 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	f.reconcileProgress()
 	if err != nil {
 		ctx.LogError(err)
-		return errkit.Append(errkit.New(fmt.Sprintf("failed to execute flow\n%v\n", f.options.Flow)), err)
+		return errkit.Wrapf(err, "failed to execute flow\n%v\n", f.options.Flow)
 	}
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
 		ctx.LogError(runtimeErr)
-		return errkit.Append(errkit.New("got following errors while executing flow"), runtimeErr)
+		return errkit.Wrap(runtimeErr, "got following errors while executing flow")
 	}
 
 	return nil
@@ -283,7 +283,7 @@ func (f *FlowExecutor) reconcileProgress() {
 func (f *FlowExecutor) GetRuntimeErrors() error {
 	errs := []error{}
 	for proto, err := range f.allErrs.GetAll() {
-		errs = append(errs, errkit.Append(errkit.New(fmt.Sprintf("failed to execute %v protocol", proto)), err))
+		errs = append(errs, errkit.Wrapf(err, "failed to execute %v protocol", proto))
 	}
 	return multierr.Combine(errs...)
 }

@@ -1,16 +1,20 @@
 package jira
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"text/template"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/pkg/errors"
 	"github.com/trivago/tgo/tcontainer"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -23,6 +27,120 @@ import (
 
 type Formatter struct {
 	util.MarkdownFormatter
+}
+
+// TemplateContext holds the data available for template evaluation
+type TemplateContext struct {
+	Severity    string
+	Name        string
+	Host        string
+	CVSSScore   string
+	CVEID       string
+	CWEID       string
+	CVSSMetrics string
+	Tags        []string
+}
+
+// buildTemplateContext creates a template context from a ResultEvent
+func buildTemplateContext(event *output.ResultEvent) *TemplateContext {
+	ctx := &TemplateContext{
+		Host: event.Host,
+		Name: event.Info.Name,
+		Tags: event.Info.Tags.ToSlice(),
+	}
+
+	// Set severity string
+	ctx.Severity = event.Info.SeverityHolder.Severity.String()
+
+	if event.Info.Classification != nil {
+		ctx.CVSSScore = fmt.Sprintf("%.2f", ptr.Safe(event.Info.Classification).CVSSScore)
+		ctx.CVEID = strings.Join(ptr.Safe(event.Info.Classification).CVEID.ToSlice(), ", ")
+		ctx.CWEID = strings.Join(ptr.Safe(event.Info.Classification).CWEID.ToSlice(), ", ")
+		ctx.CVSSMetrics = ptr.Safe(event.Info.Classification).CVSSMetrics
+	}
+
+	return ctx
+}
+
+// evaluateTemplate executes a template string with the given context
+func evaluateTemplate(templateStr string, ctx *TemplateContext) (string, error) {
+	// If no template markers found, return as-is for backward compatibility
+	if !strings.Contains(templateStr, "{{") {
+		return templateStr, nil
+	}
+
+	// Create template with useful functions for JIRA custom fields
+	funcMap := template.FuncMap{
+		"upper":     strings.ToUpper,
+		"lower":     strings.ToLower,
+		"title":     cases.Title(language.English).String,
+		"contains":  strings.Contains,
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
+		"trim":      strings.Trim,
+		"trimSpace": strings.TrimSpace,
+		"replace":   strings.ReplaceAll,
+		"split":     strings.Split,
+		"join":      strings.Join,
+	}
+
+	tmpl, err := template.New("field").Funcs(funcMap).Parse(templateStr)
+	if err != nil {
+		return templateStr, fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, ctx); err != nil {
+		return templateStr, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	return buf.String(), nil
+}
+
+// evaluateCustomFieldValue evaluates a custom field value, supporting both new template syntax and legacy $variable syntax
+func (i *Integration) evaluateCustomFieldValue(value string, templateCtx *TemplateContext, event *output.ResultEvent) (interface{}, error) {
+	// Try template evaluation first (supports {{...}} syntax)
+	if strings.Contains(value, "{{") {
+		return evaluateTemplate(value, templateCtx)
+	}
+
+	// Handle legacy $variable syntax for backward compatibility
+	if strings.HasPrefix(value, "$") {
+		variableName := strings.TrimPrefix(value, "$")
+		switch variableName {
+		case "CVSSMetrics":
+			if event.Info.Classification != nil {
+				return ptr.Safe(event.Info.Classification).CVSSMetrics, nil
+			}
+			return "", nil
+		case "CVEID":
+			if event.Info.Classification != nil {
+				return strings.Join(ptr.Safe(event.Info.Classification).CVEID.ToSlice(), ", "), nil
+			}
+			return "", nil
+		case "CWEID":
+			if event.Info.Classification != nil {
+				return strings.Join(ptr.Safe(event.Info.Classification).CWEID.ToSlice(), ", "), nil
+			}
+			return "", nil
+		case "CVSSScore":
+			if event.Info.Classification != nil {
+				return fmt.Sprintf("%.2f", ptr.Safe(event.Info.Classification).CVSSScore), nil
+			}
+			return "", nil
+		case "Host":
+			return event.Host, nil
+		case "Severity":
+			return event.Info.SeverityHolder.Severity.String(), nil
+		case "Name":
+			return event.Info.Name, nil
+		default:
+			return value, nil // return as-is if variable not found
+		}
+	}
+
+	// Return as-is if no template or variable syntax found
+	return value, nil
 }
 
 func (jiraFormatter *Formatter) MakeBold(text string) string {
@@ -155,12 +273,12 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 	if label := i.options.IssueType; label != "" {
 		labels = append(labels, label)
 	}
-	// for each custom value, take the name of the custom field and
-	// set the value of the custom field to the value specified in the
-	// configuration options
+	// Build template context for evaluating custom field templates
+	templateCtx := buildTemplateContext(event)
+
+	// Process custom fields with template evaluation support
 	customFields := tcontainer.NewMarshalMap()
 	for name, value := range i.options.CustomFields {
-		//customFields[name] = map[string]interface{}{"value": value}
 		if valueMap, ok := value.(map[interface{}]interface{}); ok {
 			// Iterate over nested map
 			for nestedName, nestedValue := range valueMap {
@@ -168,32 +286,21 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 				if !ok {
 					return nil, fmt.Errorf(`couldn't iterate on nested item "%s": %s`, nestedName, nestedValue)
 				}
-				if strings.HasPrefix(fmtNestedValue, "$") {
-					nestedValue = strings.TrimPrefix(fmtNestedValue, "$")
-					switch nestedValue {
-					case "CVSSMetrics":
-						nestedValue = ptr.Safe(event.Info.Classification).CVSSMetrics
-					case "CVEID":
-						nestedValue = ptr.Safe(event.Info.Classification).CVEID
-					case "CWEID":
-						nestedValue = ptr.Safe(event.Info.Classification).CWEID
-					case "CVSSScore":
-						nestedValue = ptr.Safe(event.Info.Classification).CVSSScore
-					case "Host":
-						nestedValue = event.Host
-					case "Severity":
-						nestedValue = event.Info.SeverityHolder
-					case "Name":
-						nestedValue = event.Info.Name
-					}
+
+				// Evaluate template or handle legacy $variable syntax
+				evaluatedValue, err := i.evaluateCustomFieldValue(fmtNestedValue, templateCtx, event)
+				if err != nil {
+					gologger.Warning().Msgf("Failed to evaluate template for field %s.%s: %v", name, nestedName, err)
+					evaluatedValue = fmtNestedValue // fallback to original value
 				}
+
 				switch nestedName {
 				case "id":
-					customFields[name] = map[string]interface{}{"id": nestedValue}
+					customFields[name] = map[string]interface{}{"id": evaluatedValue}
 				case "name":
-					customFields[name] = map[string]interface{}{"value": nestedValue}
+					customFields[name] = map[string]interface{}{"value": evaluatedValue}
 				case "freeform":
-					customFields[name] = nestedValue
+					customFields[name] = evaluatedValue
 				}
 			}
 		}
