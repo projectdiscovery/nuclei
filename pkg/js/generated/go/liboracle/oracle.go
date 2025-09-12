@@ -15,7 +15,6 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"IsOracle": lib_oracle.IsOracle,
 
 			// Var and consts
 
