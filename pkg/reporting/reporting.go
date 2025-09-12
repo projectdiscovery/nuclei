@@ -288,6 +288,10 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
+	if c.options.ValidatorCallback != nil && !c.options.ValidatorCallback(event) {
+		return nil
+	}
+
 	var err error
 	unique := true
 	if c.dedupe != nil {
