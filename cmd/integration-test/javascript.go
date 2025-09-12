@@ -15,13 +15,15 @@ var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
+	{Path: "protocols/javascript/oracle-auth-test.yaml", TestCase: &javascriptOracleAuthTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 }
 
 var (
-	redisResource *dockertest.Resource
-	sshResource   *dockertest.Resource
-	pool          *dockertest.Pool
-	defaultRetry  = 3
+	redisResource  *dockertest.Resource
+	sshResource    *dockertest.Resource
+	oracleResource *dockertest.Resource
+	pool           *dockertest.Pool
+	defaultRetry   = 3
 )
 
 type javascriptNetHttps struct{}
@@ -76,6 +78,38 @@ func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
 	tempPort := sshResource.GetPort("2222/tcp")
 	finalURL := "localhost:" + tempPort
 	defer purge(sshResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let ssh server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
+}
+
+type javascriptOracleAuthTest struct{}
+
+func (j *javascriptOracleAuthTest) Execute(filePath string) error {
+	if oracleResource == nil || pool == nil {
+		// skip test as oracle is not running
+		return nil
+	}
+	tempPort := oracleResource.GetPort("1521/tcp")
+	finalURL := "localhost:" + tempPort
+	defer purge(oracleResource)
 	errs := []error{}
 	for i := 0; i < defaultRetry; i++ {
 		results := []string{}
@@ -162,5 +196,24 @@ func init() {
 	// by default expire after 30 sec
 	if err := sshResource.Expire(30); err != nil {
 		log.Printf("Could not expire resource: %s", err)
+	}
+
+	// setup a temporary oracle instance
+	oracleResource, err = pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "gvenzl/oracle-xe",
+		Tag:        "latest",
+		Env: []string{
+			"ORACLE_PASSWORD=mysecret",
+		},
+		Platform: "linux/amd64",
+	})
+	if err != nil {
+		log.Printf("Could not start Oracle resource: %s", err)
+		return
+	}
+
+	// by default expire after 30 sec
+	if err := oracleResource.Expire(30); err != nil {
+		log.Printf("Could not expire Oracle resource: %s", err)
 	}
 }
