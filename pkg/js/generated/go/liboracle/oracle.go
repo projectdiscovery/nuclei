@@ -21,6 +21,7 @@ func init() {
 
 			// Objects / Classes
 			"IsOracleResponse": gojs.GetClassConstructor[lib_oracle.IsOracleResponse](&lib_oracle.IsOracleResponse{}),
+			"OracleClient":     gojs.GetClassConstructor[lib_oracle.OracleClient](&lib_oracle.OracleClient{}),
 		},
 	).Register()
 }
