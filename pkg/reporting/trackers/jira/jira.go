@@ -345,10 +345,10 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		}
 
 		var searchResult struct {
-			Total  int `json:"total"`
 			Issues []struct {
-				ID  string `json:"id"`
-				Key string `json:"key"`
+				ID   string `json:"id"`
+				Key  string `json:"key"`
+				Self string `json:"self"`
 			} `json:"issues"`
 		}
 
@@ -362,13 +362,11 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 			return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
 		}
 
-		switch searchResult.Total {
-		case 0:
+		if len(searchResult.Issues) == 0 {
 			return jira.Issue{}, nil
-		default:
-			first := searchResult.Issues[0]
-			return jira.Issue{ID: first.ID, Key: first.Key}, nil
 		}
+		first := searchResult.Issues[0]
+		return jira.Issue{ID: first.ID, Key: first.Key, Self: first.Self}, nil
 	}
 
 	searchOptions := &jira.SearchOptions{
