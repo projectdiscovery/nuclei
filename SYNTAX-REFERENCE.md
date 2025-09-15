@@ -1194,6 +1194,8 @@ be provided as payload which will be read on run-time.
 
 Headers contains HTTP Headers to send with the request.
 
+**Note:** When using headers in authentication secrets files (via `-sf` flag), header names preserve exact casing (e.g., `barAuthToken` stays as `barAuthToken`). This is useful for APIs that require case-sensitive header names. Template headers are canonicalized by default.
+
 
 
 Examples:
@@ -1423,6 +1425,8 @@ Valid values:
 <div class="dt">
 
 SkipSecretFile skips the authentication or authorization configured in the secret file.
+
+**Note:** Authentication secrets files preserve exact header casing, which is useful for case-sensitive APIs.
 
 </div>
 
