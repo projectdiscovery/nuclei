@@ -22,12 +22,12 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
-	github.com/projectdiscovery/fastdialer v0.4.9
-	github.com/projectdiscovery/hmap v0.0.93
+	github.com/projectdiscovery/fastdialer v0.4.10
+	github.com/projectdiscovery/hmap v0.0.94
 	github.com/projectdiscovery/interactsh v1.2.4
 	github.com/projectdiscovery/rawhttp v0.1.90
 	github.com/projectdiscovery/retryabledns v1.0.107
-	github.com/projectdiscovery/retryablehttp-go v1.0.123
+	github.com/projectdiscovery/retryablehttp-go v1.0.124
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -55,6 +55,7 @@ require (
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
 	github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697
 	github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883
+	github.com/alexsnet/go-vnc v0.1.0
 	github.com/alitto/pond v1.9.2
 	github.com/antchfx/xmlquery v1.4.4
 	github.com/antchfx/xpath v1.3.3
@@ -90,7 +91,7 @@ require (
 	github.com/microsoft/go-mssqldb v1.9.2
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/dsl v0.6.0
+	github.com/projectdiscovery/dsl v0.7.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
@@ -101,7 +102,7 @@ require (
 	github.com/projectdiscovery/httpx v1.7.2-0.20250911192144-fc425deb041a
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.23
+	github.com/projectdiscovery/networkpolicy v0.1.24
 	github.com/projectdiscovery/ratelimit v0.0.82
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.0.1
@@ -109,7 +110,7 @@ require (
 	github.com/projectdiscovery/uncover v1.1.0
 	github.com/projectdiscovery/useragent v0.0.101
 	github.com/projectdiscovery/utils v0.5.0
-	github.com/projectdiscovery/wappalyzergo v0.2.45
+	github.com/projectdiscovery/wappalyzergo v0.2.46
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -149,7 +150,6 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
-	github.com/alexsnet/go-vnc v0.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.2-0.20250424173009-453214e765f3 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.11 // indirect
@@ -250,6 +250,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
+	github.com/iangcarroll/cookiemonster v1.6.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
@@ -317,7 +318,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/cdncheck v1.1.35 // indirect
+	github.com/projectdiscovery/cdncheck v1.1.36 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
