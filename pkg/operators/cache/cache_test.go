@@ -93,3 +93,22 @@ func TestSetCapacities_BeforeFirstUse(t *testing.T) {
 		t.Fatalf("expected 'a' to be evicted under cap=2")
 	}
 }
+
+func TestSetCapacities_ConcurrentAccess(t *testing.T) {
+	SetCapacities(64, 64)
+	stop := make(chan struct{})
+
+	go func() {
+		for i := 0; i < 5000; i++ {
+			_ = Regex().Set("k"+string(rune('a'+(i%26))), regexp.MustCompile("a"))
+			_, _ = Regex().GetIFPresent("k" + string(rune('a'+(i%26))))
+			_, _ = DSL().GetIFPresent("1+2==3")
+		}
+		close(stop)
+	}()
+
+	for i := 0; i < 200; i++ {
+		SetCapacities(64+(i%5), 64+((i+1)%5))
+	}
+	<-stop
+}

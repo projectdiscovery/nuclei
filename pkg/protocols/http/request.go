@@ -249,11 +249,16 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	var workersWg sync.WaitGroup
 	currentWorkers := maxWorkers
 	tasks := make(chan task, maxWorkers)
-	spawnWorker := func() {
+	spawnWorker := func(ctx context.Context) {
 		workersWg.Add(1)
 		go func() {
 			defer workersWg.Done()
 			for t := range tasks {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					continue
 				}
@@ -274,7 +279,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}()
 	}
 	for i := 0; i < currentWorkers; i++ {
-		spawnWorker()
+		spawnWorker(ctx)
 	}
 
 	// iterate payloads and make requests
@@ -299,7 +304,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			// if payload concurrency increased, add more workers
 			if spmHandler.Size() > currentWorkers {
 				for i := 0; i < spmHandler.Size()-currentWorkers; i++ {
-					spawnWorker()
+					spawnWorker(ctx)
 				}
 				currentWorkers = spmHandler.Size()
 			}
@@ -328,7 +333,17 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			spmHandler.Cancel()
 			return nil
 		}
-		tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput}
+		select {
+		case <-spmHandler.Done():
+			close(tasks)
+			workersWg.Wait()
+			spmHandler.Wait()
+			if spmHandler.FoundFirstMatch() {
+				return nil
+			}
+			return multierr.Combine(spmHandler.CombinedResults()...)
+		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput}:
+		}
 		request.options.Progress.IncrementRequests()
 	}
 	close(tasks)

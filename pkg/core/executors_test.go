@@ -3,12 +3,17 @@ package core
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
+	"time"
 
+	inputtypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	tmpltypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -88,4 +93,56 @@ func Test_executeTemplateOnInput_CallbackErrorPropagates(t *testing.T) {
 	if ok {
 		t.Fatalf("expected match to be false on error")
 	}
+}
+
+type fakeTargetProvider struct {
+	values []*contextargs.MetaInput
+}
+
+func (f *fakeTargetProvider) Count() int64 { return int64(len(f.values)) }
+func (f *fakeTargetProvider) Iterate(cb func(value *contextargs.MetaInput) bool) {
+	for _, v := range f.values {
+		if !cb(v) {
+			return
+		}
+	}
+}
+func (f *fakeTargetProvider) Set(string, string) {}
+func (f *fakeTargetProvider) SetWithProbe(string, string, inputtypes.InputLivenessProbe) error {
+	return nil
+}
+func (f *fakeTargetProvider) SetWithExclusions(string, string) error { return nil }
+func (f *fakeTargetProvider) InputType() string                      { return "test" }
+func (f *fakeTargetProvider) Close()                                 {}
+
+type slowExecuter struct{}
+
+func (s *slowExecuter) Compile() error { return nil }
+func (s *slowExecuter) Requests() int  { return 1 }
+func (s *slowExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+	select {
+	case <-ctx.Context().Done():
+		return false, ctx.Context().Err()
+	case <-time.After(200 * time.Millisecond):
+		return true, nil
+	}
+}
+func (s *slowExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	return nil, nil
+}
+
+func Test_executeTemplateWithTargets_RespectsCancellation(t *testing.T) {
+	e := newTestEngine()
+	e.SetExecuterOptions(&protocols.ExecutorOptions{Logger: e.Logger, ResumeCfg: types.NewResumeCfg(), ProtocolType: tmpltypes.HTTPProtocol})
+
+	tpl := &templates.Template{}
+	tpl.Executer = &slowExecuter{}
+
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "a"}, {Input: "b"}, {Input: "c"}}}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var matched atomic.Bool
+	e.executeTemplateWithTargets(ctx, tpl, targets, &matched)
 }

@@ -48,10 +48,14 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 
 // executeTemplateWithTargets executes a given template on x targets (with a internal targetpool(i.e concurrency))
 func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
+	if e.workPool == nil {
+		e.workPool = e.GetWorkPool()
+	}
 	// Bounded worker pool using input concurrency
-	workerCount := e.workPool.InputPool(template.Type()).Size
-	if workerCount <= 0 {
-		workerCount = 1
+	pool := e.workPool.InputPool(template.Type())
+	workerCount := 1
+	if pool != nil && pool.Size > 0 {
+		workerCount = pool.Size
 	}
 
 	var (
@@ -97,6 +101,11 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			for t := range tasks {
 				func() {
 					defer cleanupInFlight(t.index)
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
 					if t.skip {
 						return
 					}
