@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
-	github.com/andygrunwald/go-jira v1.16.0
+	github.com/andygrunwald/go-jira v1.16.1
 	github.com/antchfx/htmlquery v1.3.4
 	github.com/bluele/gcache v0.0.2
 	github.com/go-playground/validator/v10 v10.26.0
