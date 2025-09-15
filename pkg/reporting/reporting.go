@@ -192,11 +192,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 	}
 
-	storage, err := dedupe.New(db)
-	if err != nil {
-		return nil, err
+	if db != "" || len(client.trackers) > 0 || len(client.exporters) > 0 {
+		storage, err := dedupe.New(db)
+		if err != nil {
+			return nil, err
+		}
+		client.dedupe = storage
 	}
-	client.dedupe = storage
 	return client, nil
 }
 
