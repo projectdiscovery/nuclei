@@ -17,9 +17,19 @@ func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 
 	groupPlusOne := e.RegexGroup + 1
 	for _, regex := range e.regexCompiled {
-		matches := regex.FindAllStringSubmatch(corpus, -1)
+		// skip prefix short-circuit for case-insensitive patterns
+		rstr := regex.String()
+		if !strings.Contains(rstr, "(?i") {
+			if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
+				if !strings.Contains(corpus, prefix) {
+					continue
+				}
+			}
+		}
 
-		for _, match := range matches {
+		submatches := regex.FindAllStringSubmatch(corpus, -1)
+
+		for _, match := range submatches {
 			if len(match) < groupPlusOne {
 				continue
 			}

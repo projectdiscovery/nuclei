@@ -12,7 +12,9 @@ type Cache struct {
 
 // New returns a new templates cache
 func NewCache() *Cache {
-	return &Cache{items: mapsutil.NewSyncLockMap[string, parsedTemplate]()}
+	return &Cache{
+		items: mapsutil.NewSyncLockMap[string, parsedTemplate](),
+	}
 }
 
 type parsedTemplate struct {
@@ -33,7 +35,31 @@ func (t *Cache) Has(template string) (*Template, []byte, error) {
 
 // Store stores a template with data and error
 func (t *Cache) Store(id string, tpl *Template, raw []byte, err error) {
-	_ = t.items.Set(id, parsedTemplate{template: tpl, raw: conversion.String(raw), err: err})
+	entry := parsedTemplate{
+		template: tpl,
+		err:      err,
+		raw:      conversion.String(raw),
+	}
+	_ = t.items.Set(id, entry)
+}
+
+// StoreWithoutRaw stores a template without raw data for memory efficiency
+func (t *Cache) StoreWithoutRaw(id string, tpl *Template, err error) {
+	entry := parsedTemplate{
+		template: tpl,
+		err:      err,
+		raw:      "",
+	}
+	_ = t.items.Set(id, entry)
+}
+
+// Get returns only the template without raw bytes
+func (t *Cache) Get(id string) (*Template, error) {
+	value, ok := t.items.Get(id)
+	if !ok {
+		return nil, nil
+	}
+	return value.template, value.err
 }
 
 // Purge the cache

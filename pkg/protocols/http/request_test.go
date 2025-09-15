@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -256,4 +257,117 @@ func TestReqURLPattern(t *testing.T) {
 	require.Equal(t, 1, matchCount, "could not get correct match count")
 	require.NotEmpty(t, finalEvent.Results[0].ReqURLPattern, "could not get req url pattern")
 	require.Equal(t, `/{{rand_char("abc")}}/{{interactsh-url}}/123?query={{rand_int(1, 10)}}&data={{randstr}}`, finalEvent.Results[0].ReqURLPattern)
+}
+
+// fakeHostErrorsCache implements hosterrorscache.CacheInterface minimally for tests
+type fakeHostErrorsCache struct{}
+
+func (f *fakeHostErrorsCache) SetVerbose(bool)                                {}
+func (f *fakeHostErrorsCache) Close()                                         {}
+func (f *fakeHostErrorsCache) Remove(*contextargs.Context)                    {}
+func (f *fakeHostErrorsCache) MarkFailed(string, *contextargs.Context, error) {}
+func (f *fakeHostErrorsCache) MarkFailedOrRemove(string, *contextargs.Context, error) {
+}
+
+// Check always returns true to simulate an already unresponsive host
+func (f *fakeHostErrorsCache) Check(string, *contextargs.Context) bool { return true }
+
+func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	// server that always matches
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "match")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-stop-first"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"match"},
+			}},
+		},
+		StopAtFirstMatch: true,
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := req.Compile(executerOpts)
+	require.NoError(t, err)
+
+	var matches int32
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			atomic.AddInt32(&matches, 1)
+		}
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(1), atomic.LoadInt32(&matches), "expected only first match to be processed")
+}
+
+func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	// server that would match if reached
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "match")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-skip-unresponsive"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"match"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	// inject fake host errors cache that forces skip
+	executerOpts.HostErrorsCache = &fakeHostErrorsCache{}
+
+	err := req.Compile(executerOpts)
+	require.NoError(t, err)
+
+	var matches int32
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			atomic.AddInt32(&matches, 1)
+		}
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(0), atomic.LoadInt32(&matches), "expected no matches when host is marked unresponsive")
 }
