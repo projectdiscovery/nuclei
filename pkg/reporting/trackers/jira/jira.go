@@ -330,47 +330,6 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		jql = fmt.Sprintf("%s AND status != \"%s\"", jql, i.options.StatusNot)
 	}
 
-	// Hotfix: Use Jira Cloud Enhanced Search when running against Cloud.
-	// Reference: go-jira PR addressing JQL search deprecation: https://github.com/andygrunwald/go-jira/pull/725
-	// Issue: https://github.com/andygrunwald/go-jira/issues/715
-	if i.options.Cloud {
-		params := url.Values{}
-		params.Set("jql", jql)
-		params.Set("maxResults", "1")
-		params.Set("fields", "id,key")
-
-		req, err := i.jira.NewRequest("GET", "/rest/api/3/search/jql"+"?"+params.Encode(), nil)
-		if err != nil {
-			return jira.Issue{}, err
-		}
-
-		var searchResult struct {
-			Total  int `json:"total"`
-			Issues []struct {
-				ID  string `json:"id"`
-				Key string `json:"key"`
-			} `json:"issues"`
-		}
-
-		resp, err := i.jira.Do(req, &searchResult)
-		if err != nil {
-			var data string
-			if resp != nil && resp.Body != nil {
-				d, _ := io.ReadAll(resp.Body)
-				data = string(d)
-			}
-			return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
-		}
-
-		switch searchResult.Total {
-		case 0:
-			return jira.Issue{}, nil
-		default:
-			first := searchResult.Issues[0]
-			return jira.Issue{ID: first.ID, Key: first.Key}, nil
-		}
-	}
-
 	searchOptions := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
 	}
