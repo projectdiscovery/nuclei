@@ -437,11 +437,12 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		jql = fmt.Sprintf("%s AND status != \"%s\"", jql, i.options.StatusNot)
 	}
 
-	searchOptions := &jira.SearchOptions{
+	searchOptions := &jira.SearchOptionsV2{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
+		Fields:     []string{"summary", "description", "issuetype", "status", "priority", "project"},
 	}
 
-	chunk, resp, err := i.jira.Issue.Search(jql, searchOptions)
+	issues, resp, err := i.jira.Issue.SearchV2JQL(jql, searchOptions)
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
@@ -455,10 +456,10 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 	case 0:
 		return jira.Issue{}, nil
 	case 1:
-		return chunk[0], nil
+		return issues[0], nil
 	default:
-		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, chunk[0].ID)
-		return chunk[0], nil
+		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, issues[0].ID)
+		return issues[0], nil
 	}
 }
 
