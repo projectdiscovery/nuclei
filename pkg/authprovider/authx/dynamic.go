@@ -32,6 +32,7 @@ type Dynamic struct {
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
 	m             *sync.Mutex            `json:"-" yaml:"-"` // mutex for lazy fetch
 	fetched       bool                   `json:"-" yaml:"-"` // flag to check if the secret has been fetched
+	fetching      bool                   `json:"-" yaml:"-"` // flag to check if we're currently fetching (prevents recursion)
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -184,20 +185,44 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // GetStrategy returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
-	if !d.fetched {
-		_ = d.Fetch(true)
+	getStrategies := func() []AuthStrategy {
+		var strategies []AuthStrategy
+		if d.Secret != nil {
+			strategies = append(strategies, d.GetStrategy())
+		}
+
+		for _, secret := range d.Secrets {
+			strategies = append(strategies, secret.GetStrategy())
+		}
+
+		return strategies
 	}
+
+	d.m.Lock()
+	isFetched := d.fetched
+	isFetching := d.fetching
+	d.m.Unlock()
+
+	if isFetched {
+		if d.error != nil {
+			return nil
+		}
+
+		return getStrategies()
+	}
+
+	if isFetching {
+		// NOTE(dwisiswant0): Bail out w/ empty here, or we will yeet into
+		// recursion hell. See line 242-245.
+		return nil
+	}
+
+	_ = d.Fetch(true)
 	if d.error != nil {
 		return nil
 	}
-	var strategies []AuthStrategy
-	if d.Secret != nil {
-		strategies = append(strategies, d.GetStrategy())
-	}
-	for _, secret := range d.Secrets {
-		strategies = append(strategies, secret.GetStrategy())
-	}
-	return strategies
+
+	return getStrategies()
 }
 
 // Fetch fetches the dynamic secret
@@ -205,13 +230,29 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 func (d *Dynamic) Fetch(isFatal bool) error {
 	d.m.Lock()
 	defer d.m.Unlock()
+
 	if d.fetched {
+		return d.error
+	}
+
+	if d.fetching {
 		return nil
 	}
+
+	d.fetching = true
+	defer func() {
+		d.fetching = false
+	}()
+
 	d.error = d.fetchCallback(d)
-	if d.error != nil && isFatal {
-		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
+	if d.error != nil {
+		if isFatal {
+			gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
+		}
+	} else {
+		d.fetched = true
 	}
+
 	return d.error
 }
 
