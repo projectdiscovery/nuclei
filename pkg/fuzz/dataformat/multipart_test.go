@@ -240,3 +240,131 @@ Python
 	assert.Contains(t, documentsArray, "fake_pdf_content_1")
 	assert.Contains(t, documentsArray, "fake_pdf_content_2")
 }
+
+func TestMultiPartForm_SetGetFileMetadata(t *testing.T) {
+	form := NewMultiPartForm()
+	metadata := FileMetadata{
+		ContentType: "image/jpeg",
+		Filename:    "test.jpg",
+	}
+	form.SetFileMetadata("avatar", metadata)
+
+	// Test GetFileMetadata for existing field
+	retrievedMetadata, exists := form.GetFileMetadata("avatar")
+	assert.True(t, exists)
+	assert.Equal(t, metadata.ContentType, retrievedMetadata.ContentType)
+	assert.Equal(t, metadata.Filename, retrievedMetadata.Filename)
+
+	// Test GetFileMetadata for non-existing field
+	_, exists = form.GetFileMetadata("nonexistent")
+	assert.False(t, exists)
+}
+
+func TestMultiPartForm_FilesMetadataInitialization(t *testing.T) {
+	form := NewMultiPartForm()
+	assert.NotNil(t, form.filesMetadata)
+
+	metadata := FileMetadata{
+		ContentType: "text/plain",
+		Filename:    "test.txt",
+	}
+	form.SetFileMetadata("file", metadata)
+
+	retrievedMetadata, exists := form.GetFileMetadata("file")
+	assert.True(t, exists)
+	assert.Equal(t, metadata, retrievedMetadata)
+}
+
+func TestMultiPartForm_BoundaryValidation(t *testing.T) {
+	form := NewMultiPartForm()
+
+	// Test valid boundary
+	err := form.ParseBoundary("multipart/form-data; boundary=testboundary")
+	assert.NoError(t, err)
+	assert.Equal(t, "testboundary", form.boundary)
+
+	// Test missing boundary
+	err = form.ParseBoundary("multipart/form-data")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no boundary found")
+
+	// Test boundary too long (over 70 characters)
+	longBoundary := "multipart/form-data; boundary=" + string(make([]byte, 71))
+	for i := range longBoundary[len("multipart/form-data; boundary="):] {
+		longBoundary = longBoundary[:len("multipart/form-data; boundary=")+i] + "a" + longBoundary[len("multipart/form-data; boundary=")+i+1:]
+	}
+
+	err = form.ParseBoundary(longBoundary)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "boundary exceeds maximum length")
+}
+
+func TestMultiPartForm_DecodeRequiresBoundary(t *testing.T) {
+	form := NewMultiPartForm()
+
+	// Decode should fail if boundary is not set
+	_, err := form.Decode("some data")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "boundary not set")
+}
+
+func TestMultiPartForm_MultipleFilesMetadata(t *testing.T) {
+	form := NewMultiPartForm()
+	form.boundary = "----WebKitFormBoundaryMultiFileTest"
+
+	// Test with multiple files having the same field name
+	multipartData := `------WebKitFormBoundaryMultiFileTest
+Content-Disposition: form-data; name="documents"; filename="file1.txt"
+Content-Type: text/plain
+
+content1
+------WebKitFormBoundaryMultiFileTest
+Content-Disposition: form-data; name="documents"; filename="file2.txt"
+Content-Type: text/plain
+
+content2
+------WebKitFormBoundaryMultiFileTest--
+`
+
+	decoded, err := form.Decode(multipartData)
+	require.NoError(t, err)
+
+	// Verify files are decoded correctly
+	documents := decoded.Get("documents")
+	require.NotNil(t, documents)
+	documentsArray, ok := documents.([]interface{})
+	require.True(t, ok)
+	require.Len(t, documentsArray, 2)
+	assert.Contains(t, documentsArray, "content1")
+	assert.Contains(t, documentsArray, "content2")
+
+	// Verify metadata for the field exists (should be from the first file)
+	metadata, exists := form.GetFileMetadata("documents")
+	assert.True(t, exists)
+	assert.Equal(t, "text/plain", metadata.ContentType)
+	assert.Equal(t, "file1.txt", metadata.Filename) // Should be from first file, not last
+}
+
+func TestMultiPartForm_SetFileMetadataWithNilMap(t *testing.T) {
+	form := &MultiPartForm{}
+
+	// SetFileMetadata should handle nil filesMetadata
+	metadata := FileMetadata{
+		ContentType: "application/pdf",
+		Filename:    "document.pdf",
+	}
+	form.SetFileMetadata("doc", metadata)
+
+	// Should be able to retrieve the metadata
+	retrievedMetadata, exists := form.GetFileMetadata("doc")
+	assert.True(t, exists)
+	assert.Equal(t, metadata, retrievedMetadata)
+}
+
+func TestMultiPartForm_GetFileMetadataWithNilMap(t *testing.T) {
+	form := &MultiPartForm{}
+
+	// GetFileMetadata should handle nil filesMetadata gracefully
+	_, exists := form.GetFileMetadata("anything")
+	assert.False(t, exists)
+}
