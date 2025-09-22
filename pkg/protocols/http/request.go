@@ -292,6 +292,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 		select {
 		case <-input.Context().Done():
+			close(tasks)
+			workersWg.Wait()
 			return input.Context().Err()
 		default:
 		}
@@ -299,6 +301,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		// resize check point - nop if there are no changes
 		if shouldFollowGlobal && spmHandler.Size() != request.options.Options.PayloadConcurrency {
 			if err := spmHandler.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
+				close(tasks)
+				workersWg.Wait()
 				return err
 			}
 			// if payload concurrency increased, add more workers
@@ -322,6 +326,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				break
 			}
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			close(tasks)
+			workersWg.Wait()
 			return err
 		}
 		if input.MetaInput.Input == "" {
@@ -331,6 +337,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if request.isUnresponsiveAddress(updatedInput) {
 			// skip on unresponsive host no need to continue
 			spmHandler.Cancel()
+			close(tasks)
+			workersWg.Wait()
 			return nil
 		}
 		select {

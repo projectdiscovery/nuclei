@@ -33,6 +33,11 @@ func Init(options *types.Options) {
 	_ = protocolinit.Init(options)
 }
 
+// Cleanup cleans up the protocols and their configurations
+func Cleanup(options *types.Options) {
+	protocolstate.Close(options.ExecutionId)
+}
+
 // DefaultOptions is the default options structure for nuclei during mocking.
 var DefaultOptions = &types.Options{
 	Metrics:                    false,
