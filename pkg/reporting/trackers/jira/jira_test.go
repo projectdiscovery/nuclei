@@ -226,7 +226,7 @@ func TestJiraLive_SearchV2UsesJqlEndpoint(t *testing.T) {
 		statusNot = "Done"
 	}
 
-	isCloud := !(strings.EqualFold(jiraCloud, "false") || jiraCloud == "0")
+	isCloud := !strings.EqualFold(jiraCloud, "false") && jiraCloud != "0"
 
 	rec := &recordingTransport{}
 	rc := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
