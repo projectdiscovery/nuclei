@@ -449,14 +449,14 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 			return jira.Issue{}, err
 		}
 
-    var searchResult struct {
-            Issues []struct {
-                ID  string `json:"id"`
-                Key string `json:"key"`
-            } `json:"issues"`
-            IsLast        bool   `json:"isLast"`
-            NextPageToken string `json:"nextPageToken"`
-        }
+		var searchResult struct {
+			Issues []struct {
+				ID  string `json:"id"`
+				Key string `json:"key"`
+			} `json:"issues"`
+			IsLast        bool   `json:"isLast"`
+			NextPageToken string `json:"nextPageToken"`
+		}
 
 		resp, err := i.jira.Do(req, &searchResult)
 		if err != nil {
@@ -468,16 +468,16 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 			return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
 		}
 
-        if len(searchResult.Issues) == 0 {
-            return jira.Issue{}, nil
-        }
-        first := searchResult.Issues[0]
-        base := strings.TrimRight(i.options.URL, "/")
-        return jira.Issue{
-            ID:   first.ID,
-            Key:  first.Key,
-            Self: fmt.Sprintf("%s/rest/api/3/issue/%s", base, first.ID),
-        }, nil
+		if len(searchResult.Issues) == 0 {
+			return jira.Issue{}, nil
+		}
+		first := searchResult.Issues[0]
+		base := strings.TrimRight(i.options.URL, "/")
+		return jira.Issue{
+			ID:   first.ID,
+			Key:  first.Key,
+			Self: fmt.Sprintf("%s/rest/api/3/issue/%s", base, first.ID),
+		}, nil
 	}
 
 	searchOptions := &jira.SearchOptionsV2{
