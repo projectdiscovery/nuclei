@@ -200,11 +200,11 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 
 			buffer := new(bytes.Buffer)
 			if _, err := buffer.ReadFrom(file); err != nil {
-				file.Close()
+				_ = file.Close()
 
 				return KV{}, err
 			}
-			file.Close()
+			_ = file.Close()
 
 			fileContents = append(fileContents, buffer.String())
 
