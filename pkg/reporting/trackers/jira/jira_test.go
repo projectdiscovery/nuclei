@@ -1,6 +1,8 @@
 package jira
 
 import (
+	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -9,8 +11,22 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
+
+type recordingTransport struct {
+	inner http.RoundTripper
+	paths []string
+}
+
+func (rt *recordingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if rt.inner == nil {
+		rt.inner = http.DefaultTransport
+	}
+	rt.paths = append(rt.paths, req.URL.Path)
+	return rt.inner.RoundTrip(req)
+}
 
 func TestLinkCreation(t *testing.T) {
 	jiraIntegration := &Integration{}
@@ -187,4 +203,71 @@ Priority: {{if eq .Severity "critical"}}{{.Severity | upper}}{{else}}{{.Severity
 		require.Contains(t, result, "OTHER")
 		require.Contains(t, result, "CRITICAL")
 	})
+}
+
+// Live test to verify SearchV2JQL hits /rest/api/3/search/jql when creds are provided via env
+func TestJiraLive_SearchV2UsesJqlEndpoint(t *testing.T) {
+	jiraURL := os.Getenv("JIRA_URL")
+	jiraEmail := os.Getenv("JIRA_EMAIL")
+	jiraAccountID := os.Getenv("JIRA_ACCOUNT_ID")
+	jiraToken := os.Getenv("JIRA_TOKEN")
+	jiraPAT := os.Getenv("JIRA_PAT")
+	jiraProjectName := os.Getenv("JIRA_PROJECT_NAME")
+	jiraProjectID := os.Getenv("JIRA_PROJECT_ID")
+	jiraStatusNot := os.Getenv("JIRA_STATUS_NOT")
+	jiraCloud := os.Getenv("JIRA_CLOUD")
+
+	if jiraURL == "" || (jiraPAT == "" && jiraToken == "") || (jiraEmail == "" && jiraAccountID == "") || (jiraProjectName == "" && jiraProjectID == "") {
+		t.Skip("live Jira test skipped: missing JIRA_* env vars")
+	}
+
+	statusNot := jiraStatusNot
+	if statusNot == "" {
+		statusNot = "Done"
+	}
+
+	isCloud := true
+	if strings.EqualFold(jiraCloud, "false") || jiraCloud == "0" {
+		isCloud = false
+	}
+
+	rec := &recordingTransport{}
+	rc := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	rc.HTTPClient.Transport = rec
+
+	opts := &Options{
+		Cloud:               isCloud,
+		URL:                 jiraURL,
+		Email:               jiraEmail,
+		AccountID:           jiraAccountID,
+		Token:               jiraToken,
+		PersonalAccessToken: jiraPAT,
+		ProjectName:         jiraProjectName,
+		ProjectID:           jiraProjectID,
+		IssueType:           "Task",
+		StatusNot:           statusNot,
+		HttpClient:          rc,
+	}
+
+	integration, err := New(opts)
+	require.NoError(t, err)
+
+	event := &output.ResultEvent{
+		Host: "example.com",
+		Info: model.Info{
+			Name:           "Nuclei Live Verify",
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+		},
+	}
+
+	_, _ = integration.FindExistingIssue(event, true)
+
+	var hitSearchV2 bool
+	for _, p := range rec.paths {
+		if strings.HasSuffix(p, "/rest/api/3/search/jql") {
+			hitSearchV2 = true
+			break
+		}
+	}
+	require.True(t, hitSearchV2, "expected client to call /rest/api/3/search/jql, got paths: %v", rec.paths)
 }

@@ -437,6 +437,45 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		jql = fmt.Sprintf("%s AND status != \"%s\"", jql, i.options.StatusNot)
 	}
 
+	// Hotfix for Jira Cloud: use Enhanced Search API (v3) to avoid deprecated v2 path
+	if i.options.Cloud {
+		params := url.Values{}
+		params.Set("jql", jql)
+		params.Set("maxResults", "1")
+		params.Set("fields", "id,key")
+
+		req, err := i.jira.NewRequest("GET", "/rest/api/3/search/jql"+"?"+params.Encode(), nil)
+		if err != nil {
+			return jira.Issue{}, err
+		}
+
+		var searchResult struct {
+			Total  int `json:"total"`
+			Issues []struct {
+				ID  string `json:"id"`
+				Key string `json:"key"`
+			} `json:"issues"`
+		}
+
+		resp, err := i.jira.Do(req, &searchResult)
+		if err != nil {
+			var data string
+			if resp != nil && resp.Body != nil {
+				d, _ := io.ReadAll(resp.Body)
+				data = string(d)
+			}
+			return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
+		}
+
+		switch searchResult.Total {
+		case 0:
+			return jira.Issue{}, nil
+		default:
+			first := searchResult.Issues[0]
+			return jira.Issue{ID: first.ID, Key: first.Key}, nil
+		}
+	}
+
 	searchOptions := &jira.SearchOptionsV2{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
 		Fields:     []string{"summary", "description", "issuetype", "status", "priority", "project"},
