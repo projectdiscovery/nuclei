@@ -28,12 +28,17 @@ func StartActiveMemGuardian(ctx context.Context) {
 
 	memTimer = time.NewTicker(memguardian.DefaultInterval)
 	ctx, cancelFunc = context.WithCancel(ctx)
-	go func() {
+
+	ticker := memTimer
+	go func(t *time.Ticker) {
+		if t == nil {
+			return
+		}
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-memTimer.C:
+			case <-t.C:
 				if IsLowOnMemory() {
 					_ = GlobalGuardBytesBufferAlloc()
 				} else {
@@ -41,7 +46,7 @@ func StartActiveMemGuardian(ctx context.Context) {
 				}
 			}
 		}
-	}()
+	}(ticker)
 }
 
 func StopActiveMemGuardian() {
@@ -52,9 +57,13 @@ func StopActiveMemGuardian() {
 		return
 	}
 
+	if cancelFunc != nil {
+		cancelFunc()
+		cancelFunc = nil
+	}
 	if memTimer != nil {
 		memTimer.Stop()
-		cancelFunc()
+		memTimer = nil
 	}
 }
 
