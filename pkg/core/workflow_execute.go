@@ -36,7 +36,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	for _, template := range w.Workflows {
 		swg.Add()
 
-		func(template *workflows.WorkflowTemplate) {
+		go func(template *workflows.WorkflowTemplate) {
 			defer swg.Done()
 
 			if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
