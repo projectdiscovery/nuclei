@@ -381,6 +381,7 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
 		goleak.IgnoreAnyContainingPkg("github.com/go-rod/rod"),
 		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/server"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/client"),
 		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
 		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb/util.(*BufferPool).drain"),
 		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).compactionError"),
