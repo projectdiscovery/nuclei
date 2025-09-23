@@ -139,7 +139,10 @@ func TestFileExecuteWithResults(t *testing.T) {
 func TestFileProtocolConcurrentExecution(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "nuclei-test-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	numFiles := 5
 	for i := range numFiles {
