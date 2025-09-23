@@ -7,8 +7,10 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tarunKoyalwar/goleak"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -370,4 +372,157 @@ func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, int32(0), atomic.LoadInt32(&matches), "expected no matches when host is marked unresponsive")
+}
+
+// TestExecuteParallelHTTP_GoroutineLeaks uses goleak to detect goroutine leaks in all HTTP parallel execution scenarios
+func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
+	defer goleak.VerifyNone(t,
+		goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
+		goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
+		goleak.IgnoreAnyContainingPkg("github.com/go-rod/rod"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/server"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/client"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb/util.(*BufferPool).drain"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).compactionError"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).mpoolDrain"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).tCompaction"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).mCompaction"),
+	)
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	defer testutils.Cleanup(options)
+
+	// Test Case 1: Normal execution with StopAtFirstMatch
+	t.Run("StopAtFirstMatch", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(10 * time.Millisecond)
+			_, _ = fmt.Fprintf(w, "test response")
+		}))
+		defer ts.Close()
+
+		req := &Request{
+			ID:      "parallel-stop-first-match",
+			Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:    []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads: 4,
+			Payloads: map[string]interface{}{
+				"payload": []string{"1", "2", "3", "4", "5", "6", "7", "8"},
+			},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Part:  "body",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"test response"},
+				}},
+			},
+			StopAtFirstMatch: true,
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-stop-first-match",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		metadata := make(output.InternalEvent)
+		previous := make(output.InternalEvent)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+
+		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+		require.NoError(t, err)
+	})
+
+	// Test Case 2: Unresponsive host scenario
+	t.Run("UnresponsiveHost", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprintf(w, "response")
+		}))
+		defer ts.Close()
+
+		req := &Request{
+			ID:      "parallel-unresponsive",
+			Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:    []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads: 3,
+			Payloads: map[string]interface{}{
+				"payload": []string{"1", "2", "3", "4", "5"},
+			},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Part:  "body",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"response"},
+				}},
+			},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-unresponsive",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+		executerOpts.HostErrorsCache = &fakeHostErrorsCache{}
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		metadata := make(output.InternalEvent)
+		previous := make(output.InternalEvent)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+
+		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+		require.NoError(t, err)
+	})
+
+	// Test Case 3: Context cancellation scenario
+	t.Run("ContextCancellation", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(200 * time.Millisecond)
+			_, _ = fmt.Fprintf(w, "response")
+		}))
+		defer ts.Close()
+
+		req := &Request{
+			ID:      "parallel-context-cancel",
+			Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:    []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads: 3,
+			Payloads: map[string]interface{}{
+				"payload": []string{"1", "2", "3", "4", "5"},
+			},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Part:  "body",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"response"},
+				}},
+			},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-context-cancel",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		metadata := make(output.InternalEvent)
+		previous := make(output.InternalEvent)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		ctxArgs := contextargs.NewWithInput(ctx, ts.URL)
+
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+
+		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+		require.Error(t, err)
+		require.Equal(t, context.Canceled, err)
+	})
 }
