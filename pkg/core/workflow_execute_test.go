@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -173,6 +175,116 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
 	require.Equal(t, "", secondInput, "could not get correct second input")
+}
+
+func TestWorkflowsConcurrentExecution(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
+	numTemplates := 4
+	processingTime := 40 * time.Millisecond
+	var allExecutionTimes []time.Time
+	var timesMutex sync.Mutex
+	var executedInputs []string
+	var inputsMutex sync.Mutex
+
+	var workflowTemplates []*workflows.WorkflowTemplate
+	for range numTemplates {
+		template := &workflows.WorkflowTemplate{
+			Executers: []*workflows.ProtocolExecuterPair{{
+				Executer: &timedMockExecuter{
+					result:         true,
+					processingTime: processingTime,
+					timesMutex:     &timesMutex,
+					executeHook: func(input *contextargs.MetaInput) {
+						inputsMutex.Lock()
+						executedInputs = append(executedInputs, input.Input)
+						inputsMutex.Unlock()
+					},
+				},
+				Options: &protocols.ExecutorOptions{Progress: progressBar},
+			}},
+		}
+		workflowTemplates = append(workflowTemplates, template)
+	}
+
+	workflow := &workflows.Workflow{
+		Options: &protocols.ExecutorOptions{
+			Options: &types.Options{TemplateThreads: numTemplates},
+		},
+		Workflows: workflowTemplates,
+	}
+
+	engine := &Engine{}
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
+
+	startTime := time.Now()
+	matched := engine.executeWorkflow(ctx, workflow)
+	totalTime := time.Since(startTime)
+
+	// Collect execution times from all executers
+	for _, template := range workflowTemplates {
+		for _, executer := range template.Executers {
+			if timedExec, ok := executer.Executer.(*timedMockExecuter); ok {
+				timesMutex.Lock()
+				allExecutionTimes = append(allExecutionTimes, timedExec.executionTimes...)
+				timesMutex.Unlock()
+			}
+		}
+	}
+
+	t.Logf("Workflow execution completed in: %v", totalTime)
+	t.Logf("Templates executed: %d", len(executedInputs))
+	t.Logf("Execution times collected: %d", len(allExecutionTimes))
+
+	// test 1: verify workflow execution completed successfully
+	require.True(t, matched, "Workflow execution should have matched")
+
+	// test 2: verify all templates were executed
+	inputsMutex.Lock()
+	require.Equal(t, numTemplates, len(executedInputs), "All templates should have been executed")
+	inputsMutex.Unlock()
+}
+
+// timedMockExecuter extends mockExecuter with timing capabilities for concurrency testing
+type timedMockExecuter struct {
+	result         bool
+	executeHook    func(input *contextargs.MetaInput)
+	outputs        []*output.InternalWrappedEvent
+	processingTime time.Duration
+	executionTimes []time.Time
+	timesMutex     *sync.Mutex
+}
+
+func (m *timedMockExecuter) Compile() error { return nil }
+func (m *timedMockExecuter) Requests() int  { return 1 }
+
+func (m *timedMockExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+	// Track execution start time
+	if m.timesMutex != nil {
+		m.timesMutex.Lock()
+		m.executionTimes = append(m.executionTimes, time.Now())
+		m.timesMutex.Unlock()
+	}
+
+	if m.executeHook != nil {
+		m.executeHook(ctx.Input.MetaInput)
+	}
+
+	// Simulate processing time
+	if m.processingTime > 0 {
+		time.Sleep(m.processingTime)
+	}
+
+	return m.result, nil
+}
+
+func (m *timedMockExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	_, err := m.Execute(ctx)
+	for _, output := range m.outputs {
+		ctx.LogEvent(output)
+	}
+	return ctx.GenerateResult(), err
 }
 
 type mockExecuter struct {
