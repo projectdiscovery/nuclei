@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"log"
 	"regexp"
+	"runtime"
+	"strings"
+	"sync"
 )
 
 type WafDetector struct {
 	wafs       map[string]waf
 	regexCache map[string]*regexp.Regexp
+	mu         sync.RWMutex
 }
 
 // waf represents a web application firewall definition
@@ -53,19 +57,55 @@ func NewWafDetector() *WafDetector {
 }
 
 func (d *WafDetector) DetectWAF(content string) (string, bool) {
-	if d == nil || d.regexCache == nil {
+	if d == nil || d.regexCache == nil || len(content) == 0 {
 		return "", false
 	}
 
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	// Limit content size to prevent regex catastrophic backtracking
+	maxContentSize := 50000 // 50KB limit
+	if len(content) > maxContentSize {
+		content = content[:maxContentSize]
+	}
+
 	for id, regex := range d.regexCache {
-		if regex != nil && regex.MatchString(content) {
+		if regex == nil {
+			continue
+		}
+
+		// Safely test each regex with panic recovery
+		matched := func() bool {
+			defer func() {
+				if r := recover(); r != nil {
+					// Get stack trace and format in one line
+					buf := make([]byte, 4096)
+					n := runtime.Stack(buf, false)
+					stack := strings.ReplaceAll(string(buf[:n]), "\n", " | ")
+
+					log.Printf("regex panic for WAF %s: %v: %v", id, r, stack)
+				}
+			}()
+			return regex.MatchString(content)
+		}()
+
+		if matched {
 			return id, true
 		}
 	}
+
 	return "", false
 }
 
 func (d *WafDetector) GetWAF(id string) (waf, bool) {
+	if d == nil {
+		return waf{}, false
+	}
+
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
 	waf, ok := d.wafs[id]
 	return waf, ok
 }
