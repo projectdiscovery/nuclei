@@ -580,7 +580,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						// check if the template is a DAST template
 						// also allow global matchers template to be loaded
 						if parsed.IsFuzzing() || parsed.Options.GlobalMatchers != nil && parsed.Options.GlobalMatchers.HasMatchers() {
-							loadTemplate(parsed)
+							if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+								stats.Increment(templates.ExcludedHeadlessTmplStats)
+								if config.DefaultConfig.LogAllEvents {
+									store.logger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+								}
+							} else {
+								loadTemplate(parsed)
+							}
 						}
 					} else if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 						// donot include headless template in final list if headless flag is not set
