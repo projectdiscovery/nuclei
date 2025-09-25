@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -56,6 +57,7 @@ var (
 		"flow":            flowTestcases,
 		"javascript":      jsTestcases,
 		"matcher-status":  matcherStatusTestcases,
+		"exporters":       exportersTestCases,
 	}
 	// flakyTests are run with a retry count of 3
 	flakyTests = map[string]bool{
@@ -89,7 +91,9 @@ func main() {
 	// start fuzz playground server
 	defer fuzzplayground.Cleanup()
 	server := fuzzplayground.GetPlaygroundServer()
-	defer server.Close()
+	defer func() {
+		_ = server.Close()
+	}()
 	go func() {
 		if err := server.Start("localhost:8082"); err != nil {
 			if !strings.Contains(err.Error(), "Server closed") {
@@ -208,7 +212,7 @@ func execute(testCase testutils.TestCase, templatePath string) (string, error) {
 }
 
 func expectResultsCount(results []string, expectedNumbers ...int) error {
-	results = filterHeadlessLogs(results)
+	results = filterLines(results)
 	match := sliceutil.Contains(expectedNumbers, len(results))
 	if !match {
 		return fmt.Errorf("incorrect number of results: %d (actual) vs %v (expected) \nResults:\n\t%s\n", len(results), expectedNumbers, strings.Join(results, "\n\t")) // nolint:all
@@ -222,6 +226,13 @@ func normalizeSplit(str string) []string {
 	})
 }
 
+// filterLines applies all filtering functions to the results
+func filterLines(results []string) []string {
+	results = filterHeadlessLogs(results)
+	results = filterUnsignedTemplatesWarnings(results)
+	return results
+}
+
 // if chromium is not installed go-rod installs it in .cache directory
 // this function filters out the logs from download and installation
 func filterHeadlessLogs(results []string) []string {
@@ -229,6 +240,19 @@ func filterHeadlessLogs(results []string) []string {
 	filtered := []string{}
 	for _, result := range results {
 		if strings.Contains(result, "[launcher.Browser]") {
+			continue
+		}
+		filtered = append(filtered, result)
+	}
+	return filtered
+}
+
+// filterUnsignedTemplatesWarnings filters out warning messages about unsigned templates
+func filterUnsignedTemplatesWarnings(results []string) []string {
+	filtered := []string{}
+	unsignedTemplatesRegex := regexp.MustCompile(`Loading \d+ unsigned templates for scan\. Use with caution\.`)
+	for _, result := range results {
+		if unsignedTemplatesRegex.MatchString(result) {
 			continue
 		}
 		filtered = append(filtered, result)

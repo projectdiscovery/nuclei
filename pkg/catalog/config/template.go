@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -74,7 +73,9 @@ func getTemplateID(filePath string) (string, error) {
 		return "", err
 	}
 
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	return GetTemplateIDFromReader(file, filePath)
 }
 
@@ -96,7 +97,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 				return index, nil
 			}
 		}
-		gologger.Error().Msgf("failed to read index file creating new one: %v", err)
+		DefaultConfig.Logger.Error().Msgf("failed to read index file creating new one: %v", err)
 	}
 
 	ignoreDirs := DefaultConfig.GetAllCustomTemplateDirs()
@@ -107,7 +108,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 	}
 	err := filepath.WalkDir(DefaultConfig.TemplatesDirectory, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			gologger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
+			DefaultConfig.Logger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
 			return nil
 		}
 		if d.IsDir() || !IsTemplate(path) || stringsutil.ContainsAny(path, ignoreDirs...) {
@@ -116,7 +117,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 		// get template id from file
 		id, err := getTemplateID(path)
 		if err != nil || id == "" {
-			gologger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", path, id, err)
+			DefaultConfig.Logger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", path, id, err)
 			return nil
 		}
 		index[id] = path

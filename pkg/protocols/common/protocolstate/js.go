@@ -1,8 +1,8 @@
 package protocolstate
 
 import (
-	"github.com/dop251/goja"
-	"github.com/dop251/goja/parser"
+	"github.com/Mzack9999/goja"
+	"github.com/Mzack9999/goja/parser"
 	"github.com/projectdiscovery/gologger"
 )
 

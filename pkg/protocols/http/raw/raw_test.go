@@ -7,6 +7,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTryFillCustomHeaders_BufferDetached(t *testing.T) {
+	r := &Request{
+		UnsafeRawBytes: []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\nBody"),
+	}
+	// first fill
+	err := r.TryFillCustomHeaders([]string{"X-Test: 1"})
+	require.NoError(t, err, "unexpected error on first call")
+	prev := r.UnsafeRawBytes
+	prevStr := string(prev) // content snapshot
+	err = r.TryFillCustomHeaders([]string{"X-Another: 2"})
+	require.NoError(t, err, "unexpected error on second call")
+	require.Equal(t, prevStr, string(prev), "first slice mutated after second call; buffer not detached")
+	require.NotEqual(t, prevStr, string(r.UnsafeRawBytes), "request bytes did not change after second call")
+}
+
 func TestParseRawRequestWithPort(t *testing.T) {
 	request, err := Parse(`GET /gg/phpinfo.php HTTP/1.1
 Host: {{Hostname}}:123

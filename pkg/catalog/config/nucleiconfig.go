@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/env"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 )
@@ -41,15 +41,18 @@ type Config struct {
 	// local cache of nuclei version check endpoint
 	// these fields are only update during nuclei version check
 	// TODO: move these fields to a separate unexported struct as they are not meant to be used directly
-	LatestNucleiVersion          string `json:"nuclei-latest-version"`
-	LatestNucleiTemplatesVersion string `json:"nuclei-templates-latest-version"`
-	LatestNucleiIgnoreHash       string `json:"nuclei-latest-ignore-hash,omitempty"`
+	LatestNucleiVersion          string           `json:"nuclei-latest-version"`
+	LatestNucleiTemplatesVersion string           `json:"nuclei-templates-latest-version"`
+	LatestNucleiIgnoreHash       string           `json:"nuclei-latest-ignore-hash,omitempty"`
+	Logger                       *gologger.Logger `json:"-"` // logger
 
 	// internal / unexported fields
 	disableUpdates bool     `json:"-"` // disable updates both version check and template updates
 	homeDir        string   `json:"-"` //  User Home Directory
 	configDir      string   `json:"-"` //  Nuclei Global Config Directory
 	debugArgs      []string `json:"-"` // debug args
+
+	m sync.Mutex
 }
 
 // IsCustomTemplate determines whether a given template is custom-built or part of the official Nuclei templates.
@@ -104,21 +107,29 @@ func (c *Config) GetTemplateDir() string {
 
 // DisableUpdateCheck disables update check and template updates
 func (c *Config) DisableUpdateCheck() {
+	c.m.Lock()
+	defer c.m.Unlock()
 	c.disableUpdates = true
 }
 
 // CanCheckForUpdates returns true if update check is enabled
 func (c *Config) CanCheckForUpdates() bool {
+	c.m.Lock()
+	defer c.m.Unlock()
 	return !c.disableUpdates
 }
 
 // NeedsTemplateUpdate returns true if template installation/update is required
 func (c *Config) NeedsTemplateUpdate() bool {
+	c.m.Lock()
+	defer c.m.Unlock()
 	return !c.disableUpdates && (c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion) || !fileutil.FolderExists(c.TemplatesDirectory))
 }
 
 // NeedsIgnoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
 func (c *Config) NeedsIgnoreFileUpdate() bool {
+	c.m.Lock()
+	defer c.m.Unlock()
 	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
 }
 
@@ -129,13 +140,13 @@ func (c *Config) UpdateNucleiIgnoreHash() error {
 	if fileutil.FileExists(ignoreFilePath) {
 		bin, err := os.ReadFile(ignoreFilePath)
 		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not read nuclei ignore file")
+			return errkit.Newf("could not read nuclei ignore file: %v", err)
 		}
 		c.NucleiIgnoreHash = fmt.Sprintf("%x", md5.Sum(bin))
 		// write config to disk
 		return c.WriteTemplatesConfig()
 	}
-	return errorutil.NewWithTag("config", "ignore file not found: could not update nuclei ignore hash")
+	return errkit.New("ignore file not found: could not update nuclei ignore hash")
 }
 
 // GetConfigDir returns the nuclei configuration directory
@@ -210,7 +221,7 @@ func (c *Config) GetCacheDir() string {
 func (c *Config) SetConfigDir(dir string) {
 	c.configDir = dir
 	if err := c.createConfigDirIfNotExists(); err != nil {
-		gologger.Fatal().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
+		c.Logger.Fatal().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
 	}
 
 	// if folder already exists read config or create new
@@ -218,7 +229,7 @@ func (c *Config) SetConfigDir(dir string) {
 		// create new config
 		applyDefaultConfig()
 		if err2 := c.WriteTemplatesConfig(); err2 != nil {
-			gologger.Fatal().Msgf("Could not create nuclei config file at %s: %s", c.getTemplatesConfigFilePath(), err2)
+			c.Logger.Fatal().Msgf("Could not create nuclei config file at %s: %s", c.getTemplatesConfigFilePath(), err2)
 		}
 	}
 
@@ -246,7 +257,7 @@ func (c *Config) SetTemplatesVersion(version string) error {
 	c.TemplateVersion = version
 	// write config to disk
 	if err := c.WriteTemplatesConfig(); err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not write nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Newf("could not write nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
 	}
 	return nil
 }
@@ -254,15 +265,15 @@ func (c *Config) SetTemplatesVersion(version string) error {
 // ReadTemplatesConfig reads the nuclei templates config file
 func (c *Config) ReadTemplatesConfig() error {
 	if !fileutil.FileExists(c.getTemplatesConfigFilePath()) {
-		return errorutil.NewWithTag("config", "nuclei config file at %s does not exist", c.getTemplatesConfigFilePath())
+		return errkit.Newf("nuclei config file at %s does not exist", c.getTemplatesConfigFilePath())
 	}
 	var cfg *Config
 	bin, err := os.ReadFile(c.getTemplatesConfigFilePath())
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not read nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Newf("could not read nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
 	}
 	if err := json.Unmarshal(bin, &cfg); err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not unmarshal nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Newf("could not unmarshal nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
 	}
 	// apply config
 	c.TemplatesDirectory = cfg.TemplatesDirectory
@@ -281,10 +292,10 @@ func (c *Config) WriteTemplatesConfig() error {
 	}
 	bin, err := json.Marshal(c)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to marshal nuclei config")
+		return errkit.Newf("failed to marshal nuclei config: %v", err)
 	}
 	if err = os.WriteFile(c.getTemplatesConfigFilePath(), bin, 0600); err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to write nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Newf("failed to write nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
 	}
 	return nil
 }
@@ -308,7 +319,7 @@ func (c *Config) getTemplatesConfigFilePath() string {
 func (c *Config) createConfigDirIfNotExists() error {
 	if !fileutil.FolderExists(c.configDir) {
 		if err := fileutil.CreateFolder(c.configDir); err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not create nuclei config directory at %s", c.configDir)
+			return errkit.Newf("could not create nuclei config directory at %s: %v", c.configDir, err)
 		}
 	}
 	return nil
@@ -318,14 +329,14 @@ func (c *Config) createConfigDirIfNotExists() error {
 // to the current config directory
 func (c *Config) copyIgnoreFile() {
 	if err := c.createConfigDirIfNotExists(); err != nil {
-		gologger.Error().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
+		c.Logger.Error().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
 		return
 	}
 	ignoreFilePath := c.GetIgnoreFilePath()
 	if !fileutil.FileExists(ignoreFilePath) {
 		// copy ignore file from default config directory
 		if err := fileutil.CopyFile(filepath.Join(folderutil.AppConfigDirOrDefault(FallbackConfigFolderName, BinaryName), NucleiIgnoreFileName), ignoreFilePath); err != nil {
-			gologger.Error().Msgf("Could not copy nuclei ignore file at %s: %s", ignoreFilePath, err)
+			c.Logger.Error().Msgf("Could not copy nuclei ignore file at %s: %s", ignoreFilePath, err)
 		}
 	}
 }
@@ -334,12 +345,7 @@ func (c *Config) copyIgnoreFile() {
 // this could be a feature specific to debugging like PPROF or printing stats
 // of max host error etc
 func (c *Config) IsDebugArgEnabled(arg string) bool {
-	for _, v := range c.debugArgs {
-		if v == arg {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.debugArgs, arg)
 }
 
 // parseDebugArgs from string
@@ -371,9 +377,6 @@ func (c *Config) parseDebugArgs(data string) {
 }
 
 func init() {
-	// first attempt to migrate all files from old config directory to new config directory
-	goflags.AttemptConfigMigration() // regardless how many times this is called it will only migrate once based on condition
-
 	ConfigDir := folderutil.AppConfigDirOrDefault(FallbackConfigFolderName, BinaryName)
 
 	if cfgDir := os.Getenv(NucleiConfigDirEnv); cfgDir != "" {
@@ -389,6 +392,7 @@ func init() {
 	DefaultConfig = &Config{
 		homeDir:   folderutil.HomeDirOrDefault(""),
 		configDir: ConfigDir,
+		Logger:    gologger.DefaultLogger,
 	}
 
 	// when enabled will log events in more verbosity than -v or -debug
@@ -410,9 +414,7 @@ func init() {
 			gologger.Error().Msgf("failed to write config file at %s got: %s", DefaultConfig.getTemplatesConfigFilePath(), err)
 		}
 	}
-	// attempt to migrate resume files
-	// this also happens once regardless of how many times this is called
-	migrateResumeFiles()
+
 	// Loads/updates paths of custom templates
 	// Note: custom templates paths should not be updated in config file
 	// and even if it is changed we don't follow it since it is not expected behavior
@@ -426,62 +428,4 @@ func applyDefaultConfig() {
 	DefaultConfig.TemplatesDirectory = filepath.Join(DefaultConfig.homeDir, NucleiTemplatesDirName)
 	// updates all necessary paths
 	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
-}
-
-func migrateResumeFiles() {
-	// attempt to migrate old resume files to new directory structure
-	// after migration has been done in goflags
-	oldResumeDir := DefaultConfig.GetConfigDir()
-	// migrate old resume file to new directory structure
-	if !fileutil.FileOrFolderExists(DefaultConfig.GetCacheDir()) && fileutil.FileOrFolderExists(oldResumeDir) {
-		// this means new cache dir doesn't exist, so we need to migrate
-		// first check if old resume file exists if not then no need to migrate
-		exists := false
-		files, err := os.ReadDir(oldResumeDir)
-		if err != nil {
-			// log silently
-			log.Printf("could not read old resume dir: %s\n", err)
-			return
-		}
-		for _, file := range files {
-			if strings.HasSuffix(file.Name(), ".cfg") {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			// no need to migrate
-			return
-		}
-
-		// create new cache dir
-		err = os.MkdirAll(DefaultConfig.GetCacheDir(), os.ModePerm)
-		if err != nil {
-			// log silently
-			log.Printf("could not create new cache dir: %s\n", err)
-			return
-		}
-		err = filepath.WalkDir(oldResumeDir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				return nil
-			}
-			if !strings.HasSuffix(path, ".cfg") {
-				return nil
-			}
-			err = os.Rename(path, filepath.Join(DefaultConfig.GetCacheDir(), filepath.Base(path)))
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			// log silently
-			log.Printf("could not migrate old resume files: %s\n", err)
-			return
-		}
-
-	}
 }

@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/dop251/goja"
-	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
@@ -33,7 +32,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
-	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 const (
@@ -94,9 +92,31 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
+		errMsg := fmt.Sprintf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
+
+		// NOTE(dwisiswant0): In validation mode, skip engine avail check to
+		// allow template validation w/o requiring all engines to be installed
+		// on the host.
+		//
+		// TODO: Ideally, error checking should be done at the highest level
+		// (e.g. runner, main function). For example, we can reuse errors[1][2]
+		// from the `projectdiscovery/gozero` package and wrap (yes, not string
+		// format[3][4]) em inside `projectdiscovery/utils/errors` package to
+		// preserve error semantics and enable runtime type assertion via
+		// builtin `errors.Is` func for granular err handling in the call stack.
+		//
+		// [1]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L20
+		// [2]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L35
+		// [3]: https://github.com/projectdiscovery/utils/blob/v0.4.21/errors/enriched.go#L85
+		// [4]: https://github.com/projectdiscovery/utils/blob/v0.4.21/errors/enriched.go#L137
+		if options.Options.Validate {
+			options.Logger.Error().Msgf("%s <- %s", errMsg, err)
+		} else {
+			return errkit.Wrap(err, errMsg)
+		}
+	} else {
+		request.gozero = engine
 	}
-	request.gozero = engine
 
 	var src *gozero.Source
 
@@ -111,7 +131,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.ExcludeMatchers = options.ExcludeMatchers
 		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
-			return errors.Wrap(err, "could not compile operators")
+			return errkit.Wrap(err, "could not compile operators")
 		}
 		for _, matcher := range compiled.Matchers {
 			// default matcher part for code protocol is response
@@ -130,9 +150,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// compile pre-condition if any
 	if request.PreCondition != "" {
-		preConditionCompiled, err := compiler.WrapScriptNCompile(request.PreCondition, false)
+		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
+			return errkit.Newf("could not compile pre-condition: %s", err)
 		}
 		request.preConditionCompiled = preConditionCompiled
 	}
@@ -201,6 +221,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
+				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
@@ -208,7 +229,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				Context:         input.Context(),
 			})
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+			return errkit.Newf("could not execute pre-condition: %s", err)
 		}
 		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
@@ -248,14 +269,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		gologger.Debug().MsgFunc(func() string {
 			dashes := strings.Repeat("-", 15)
 			sb := &strings.Builder{}
-			sb.WriteString(fmt.Sprintf("[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input))
-			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Source Code:", dashes))
+			fmt.Fprintf(sb, "[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input)
+			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Source Code:", dashes)
 			sb.WriteString(interpretEnvVars(request.Source, allvars))
 			sb.WriteString("\n")
-			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes))
+			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes)
 			sb.WriteString(interpretEnvVars(gOutput.Command, allvars))
 			sb.WriteString("\n")
-			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Output:", dashes))
+			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Output:", dashes)
 			sb.WriteString(gOutput.DebugData.String())
 			sb.WriteString("\n")
 			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are seperate (use -v -svd flags for more details)")
@@ -430,4 +451,9 @@ func prettyPrint(templateId string, buff string) {
 		}
 	}
 	gologger.Debug().Msgf(" [%v] Pre-condition Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

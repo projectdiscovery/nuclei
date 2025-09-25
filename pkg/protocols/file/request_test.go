@@ -102,7 +102,9 @@ func TestFileExecuteWithResults(t *testing.T) {
 
 		tempDir, err := os.MkdirTemp("", "test-*")
 		require.Nil(t, err, "could not create temporary directory")
-		defer os.RemoveAll(tempDir)
+		defer func() {
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		files := map[string][]byte{
 			tt.fileName: tt.data,

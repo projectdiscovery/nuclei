@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -196,10 +196,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			}
 			portInt, err := strconv.Atoi(port)
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("could not parse port %v from '%s'", port, request.Port)
+				return errkit.Wrapf(err, "could not parse port %v from '%s'", port, request.Port)
 			}
 			if portInt < 1 || portInt > 65535 {
-				return errorutil.NewWithTag(request.TemplateID, "port %v is not in valid range", portInt)
+				return errkit.Newf("port %v is not in valid range", portInt)
 			}
 			request.ports = append(request.ports, port)
 		}
@@ -237,7 +237,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	// Create a client for the class
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
+	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
+		CustomDialer: options.CustomFastdialer,
+	})
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}
@@ -262,4 +264,9 @@ func (request *Request) Requests() int {
 
 func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
 	request.dialer = dialer
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

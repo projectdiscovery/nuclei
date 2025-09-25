@@ -35,22 +35,30 @@ type (
 // const mysql = require('nuclei/mysql');
 // const isMySQL = mysql.IsMySQL('acme.com', 3306);
 // ```
-func (c *MySQLClient) IsMySQL(host string, port int) (bool, error) {
+func (c *MySQLClient) IsMySQL(ctx context.Context, host string, port int) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
 	// todo: why this is exposed? Service fingerprint should be automatic
-	return memoizedisMySQL(host, port)
+	return memoizedisMySQL(executionId, host, port)
 }
 
 // @memo
-func isMySQL(host string, port int) (bool, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func isMySQL(executionId string, host string, port int) (bool, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	plugin := &mysqlplugin.MYSQLPlugin{}
 	service, err := plugin.Run(conn, 5*time.Second, plugins.Target{Host: host})
@@ -73,14 +81,15 @@ func isMySQL(host string, port int) (bool, error) {
 // const client = new mysql.MySQLClient;
 // const connected = client.Connect('acme.com', 3306, 'username', 'password');
 // ```
-func (c *MySQLClient) Connect(host string, port int, username, password string) (bool, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func (c *MySQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	// executing queries implies the remote mysql service
-	ok, err := c.IsMySQL(host, port)
+	ok, err := c.IsMySQL(ctx, host, port)
 	if err != nil {
 		return false, err
 	}
@@ -125,22 +134,30 @@ type (
 // const info = mysql.FingerprintMySQL('acme.com', 3306);
 // log(to_json(info));
 // ```
-func (c *MySQLClient) FingerprintMySQL(host string, port int) (MySQLInfo, error) {
-	return memoizedfingerprintMySQL(host, port)
+func (c *MySQLClient) FingerprintMySQL(ctx context.Context, host string, port int) (MySQLInfo, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedfingerprintMySQL(executionId, host, port)
 }
 
 // @memo
-func fingerprintMySQL(host string, port int) (MySQLInfo, error) {
+func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, error) {
 	info := MySQLInfo{}
-	if !protocolstate.IsHostAllowed(host) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return info, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return MySQLInfo{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return info, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	plugin := &mysqlplugin.MYSQLPlugin{}
 	service, err := plugin.Run(conn, 5*time.Second, plugins.Target{Host: host})
@@ -188,14 +205,15 @@ func (c *MySQLClient) ConnectWithDSN(dsn string) (bool, error) {
 // const result = mysql.ExecuteQueryWithOpts(options, 'SELECT * FROM users');
 // log(to_json(result));
 // ```
-func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*utils.SQLResult, error) {
-	if !protocolstate.IsHostAllowed(opts.Host) {
+func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOptions, query string) (*utils.SQLResult, error) {
+	executionId := ctx.Value("executionId").(string)
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
 	// executing queries implies the remote mysql service
-	ok, err := c.IsMySQL(opts.Host, opts.Port)
+	ok, err := c.IsMySQL(ctx, opts.Host, opts.Port)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +230,9 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*ut
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
@@ -240,9 +260,9 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*ut
 // const result = mysql.ExecuteQuery('acme.com', 3306, 'username', 'password', 'SELECT * FROM users');
 // log(to_json(result));
 // ```
-func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, query string) (*utils.SQLResult, error) {
+func (c *MySQLClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, query string) (*utils.SQLResult, error) {
 	// executing queries implies the remote mysql service
-	ok, err := c.IsMySQL(host, port)
+	ok, err := c.IsMySQL(ctx, host, port)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +270,7 @@ func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, qu
 		return nil, fmt.Errorf("not a mysql service")
 	}
 
-	return c.ExecuteQueryWithOpts(MySQLOptions{
+	return c.ExecuteQueryWithOpts(ctx, MySQLOptions{
 		Host:     host,
 		Port:     port,
 		Protocol: "tcp",
@@ -267,8 +287,8 @@ func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, qu
 // const result = mysql.ExecuteQueryOnDB('acme.com', 3306, 'username', 'password', 'dbname', 'SELECT * FROM users');
 // log(to_json(result));
 // ```
-func (c *MySQLClient) ExecuteQueryOnDB(host string, port int, username, password, dbname, query string) (*utils.SQLResult, error) {
-	return c.ExecuteQueryWithOpts(MySQLOptions{
+func (c *MySQLClient) ExecuteQueryOnDB(ctx context.Context, host string, port int, username, password, dbname, query string) (*utils.SQLResult, error) {
+	return c.ExecuteQueryWithOpts(ctx, MySQLOptions{
 		Host:     host,
 		Port:     port,
 		Protocol: "tcp",
