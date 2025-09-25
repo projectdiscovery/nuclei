@@ -117,7 +117,7 @@ func ClusterID(templates []*Template) string {
 	return cryptoutil.SHA256Sum(ids)
 }
 
-func ClusterTemplates(templatesList []*Template, options protocols.ExecutorOptions) ([]*Template, int) {
+func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOptions) ([]*Template, int) {
 	if options.Options.OfflineHTTP || options.Options.DisableClustering {
 		return templatesList, 0
 	}
@@ -146,7 +146,7 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecutorOptio
 				RequestsDNS:   cluster[0].RequestsDNS,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
 				RequestsSSL:   cluster[0].RequestsSSL,
-				Executer:      NewClusterExecuter(cluster, &executerOpts),
+				Executer:      NewClusterExecuter(cluster, executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP) + len(cluster[0].RequestsDNS),
 			})
 			clusterCount += len(cluster)
@@ -201,15 +201,16 @@ func NewClusterExecuter(requests []*Template, options *protocols.ExecutorOptions
 		})
 	}
 	for _, req := range requests {
-		if executer.templateType == types.DNSProtocol {
+		switch executer.templateType {
+		case types.DNSProtocol:
 			if req.RequestsDNS[0].CompiledOperators != nil {
 				appendOperator(req, req.RequestsDNS[0].CompiledOperators)
 			}
-		} else if executer.templateType == types.HTTPProtocol {
+		case types.HTTPProtocol:
 			if req.RequestsHTTP[0].CompiledOperators != nil {
 				appendOperator(req, req.RequestsHTTP[0].CompiledOperators)
 			}
-		} else if executer.templateType == types.SSLProtocol {
+		case types.SSLProtocol:
 			if req.RequestsSSL[0].CompiledOperators != nil {
 				appendOperator(req, req.RequestsSSL[0].CompiledOperators)
 			}

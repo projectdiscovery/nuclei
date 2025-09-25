@@ -76,9 +76,9 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		// handle scheme
 		switch {
 		case stringsutil.HasPrefixI(value, "http://"):
-			request.URL.Scheme = "http"
+			request.Scheme = "http"
 		case stringsutil.HasPrefixI(value, "https://"):
-			request.URL.Scheme = "https"
+			request.Scheme = "https"
 		}
 
 		value = stringsutil.TrimPrefixAny(value, "http://", "https://")
@@ -87,7 +87,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 			request.URL.Host = value
 		} else {
 			hostPort := value
-			port := request.URL.Port()
+			port := request.Port()
 			if port != "" {
 				hostPort = net.JoinHostPort(hostPort, port)
 			}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -140,10 +141,8 @@ func (c Catalog) ResolvePath(templateName, second string) (string, error) {
 	}
 
 	// check if templateName is already an absolute path to c key
-	for _, key := range keys {
-		if key == templateName {
-			return templateName, nil
-		}
+	if slices.Contains(keys, templateName) {
+		return templateName, nil
 	}
 
 	return "", fmt.Errorf("no such path found: %s%s for keys: %v", second, templateName, keys)

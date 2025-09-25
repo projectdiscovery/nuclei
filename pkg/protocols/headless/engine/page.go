@@ -18,25 +18,26 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Page is a single page in an isolated browser instance
 type Page struct {
-	ctx            *contextargs.Context
-	inputURL       *urlutil.URL
-	options        *Options
-	page           *rod.Page
-	rules          []rule
-	instance       *Instance
-	hijackRouter   *rod.HijackRouter
-	hijackNative   *Hijack
-	mutex          *sync.RWMutex
-	History        []HistoryData
-	InteractshURLs []string
-	payloads       map[string]interface{}
-	variables      map[string]interface{}
+	ctx                *contextargs.Context
+	inputURL           *urlutil.URL
+	options            *Options
+	page               *rod.Page
+	rules              []rule
+	instance           *Instance
+	hijackRouter       *rod.HijackRouter
+	hijackNative       *Hijack
+	mutex              *sync.RWMutex
+	History            []HistoryData
+	InteractshURLs     []string
+	payloads           map[string]interface{}
+	variables          map[string]interface{}
+	lastActionNavigate *Action
 }
 
 // HistoryData contains the page request/response pairs
@@ -60,6 +61,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	}
 	page = page.Timeout(options.Timeout)
 
+	if err = i.browser.applyDefaultHeaders(page); err != nil {
+		return nil, nil, err
+	}
+
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
 			return nil, nil, userAgentErr
@@ -73,7 +78,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	target := ctx.MetaInput.Input
 	input, err := urlutil.Parse(target)
 	if err != nil {
-		return nil, nil, errorutil.NewWithErr(err).Msgf("could not parse URL %s", target)
+		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
 	}
 
 	hasTrailingSlash := httputil.HasTrailingSlash(target)
@@ -126,10 +131,6 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		Width:  float64(1920),
 		Height: float64(1080),
 	}}); err != nil {
-		return nil, nil, err
-	}
-
-	if _, err := page.SetExtraHeaders([]string{"Accept-Language", "en, en-GB, en-us;"}); err != nil {
 		return nil, nil, err
 	}
 
@@ -200,7 +201,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
-			resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 		}
 	}
 
@@ -215,7 +218,7 @@ func (p *Page) Close() {
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	p.page.Close()
+	_ = p.page.Close()
 }
 
 // Page returns the current page for the actions
@@ -272,6 +275,17 @@ func (p *Page) hasModificationRules() bool {
 		}
 	}
 	return false
+}
+
+// updateLastNavigatedURL updates the last navigated URL in the instance's
+// request log.
+func (p *Page) updateLastNavigatedURL() {
+	if p.lastActionNavigate == nil {
+		return
+	}
+
+	templateURL := p.lastActionNavigate.GetArg("url")
+	p.instance.requestLog[templateURL] = p.URL()
 }
 
 func containsModificationActions(actions ...*Action) bool {

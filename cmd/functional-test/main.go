@@ -27,7 +27,7 @@ var (
 func main() {
 	flag.Parse()
 
-	debug := os.Getenv("DEBUG") == "true"
+	debug := os.Getenv("DEBUG") == "true" || os.Getenv("RUNNER_DEBUG") == "1"
 
 	if err, errored := runFunctionalTests(debug); err != nil {
 		log.Fatalf("Could not run functional tests: %s\n", err)
@@ -41,7 +41,9 @@ func runFunctionalTests(debug bool) (error, bool) {
 	if err != nil {
 		return errors.Wrap(err, "could not open test cases"), true
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	errored, failedTestCases := runTestCases(file, debug)
 

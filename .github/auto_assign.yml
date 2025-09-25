@@ -2,6 +2,7 @@ addReviewers: true
 reviewers:
   - dogancanbakir
   - dwisiswant0
+  - mzack9999
 
 numberOfReviewers: 1
 skipKeywords:

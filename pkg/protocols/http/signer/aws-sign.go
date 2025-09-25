@@ -14,7 +14,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/projectdiscovery/gologger"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 const defaultEmptyPayloadHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -60,7 +60,7 @@ func (a *AWSSigner) SignHTTP(ctx context.Context, request *http.Request) error {
 	// contentHash is sha256 hash of response body
 	contentHash := a.getPayloadHash(request)
 	if err := a.signer.SignHTTP(ctx, *a.creds, request, contentHash, a.options.Service, a.options.Region, time.Now()); err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to sign http request using aws v4 signer")
+		return errkit.Wrap(err, "failed to sign http request using aws v4 signer")
 	}
 	// add x-amz-content-sha256 header to request
 	request.Header.Set("x-amz-content-sha256", contentHash)

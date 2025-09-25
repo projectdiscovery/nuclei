@@ -31,7 +31,7 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">한국어</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">스페인어</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">스페인어</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">포르투갈어</a>
 </p>
 
@@ -341,7 +341,7 @@ Nuclei를 사용하면 자체 검사 모음으로 테스트 접근 방식을 사
 - 몇 분 안에 수천 개의 호스트를 처리할 수 있음.
 - 간단한 YAML DSL로 사용자 지정 테스트 접근 방식을 쉽게 자동화할 수 있음.
 
-버그 바운티 워크플로에 맞는 다른 오픈 소스 프로젝트를 확인할 수 있습니다.: [github.com/projectdiscovery](http://github.com/projectdiscovery), 또한, 우리는 매일 [Chaos에서 DNS 데이터를 갱신해 호스팅합니다.](http://chaos.projectdiscovery.io).
+버그 바운티 워크플로에 맞는 다른 오픈 소스 프로젝트를 확인할 수 있습니다.: [github.com/projectdiscovery](http://github.com/projectdiscovery), 또한, 우리는 매일 [Chaos에서 DNS 데이터를 갱신해 호스팅합니다](http://chaos.projectdiscovery.io).
 
 </td>
 </tr>

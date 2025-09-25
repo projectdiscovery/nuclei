@@ -10,7 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
@@ -31,9 +31,9 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	router := httprouter.New()
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
+			_, _ = fmt.Fprintf(w, "This is test headers matcher text")
 		}
 	})
 
@@ -55,7 +55,9 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove("test-config.yaml")
+	defer func() {
+		_ = os.Remove("test-config.yaml")
+	}()
 
 	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-template-url", ts.URL+"/template_list", "-config", "test-config.yaml")
 	if err != nil {
@@ -72,9 +74,9 @@ func (h *excludedTemplate) Execute(templateList string) error {
 	router := httprouter.New()
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
+			_, _ = fmt.Fprintf(w, "This is test headers matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -95,9 +97,9 @@ func (h *remoteTemplateListNotAllowed) Execute(templateList string) error {
 	router := httprouter.New()
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
+			_, _ = fmt.Fprintf(w, "This is test headers matcher text")
 		}
 	})
 
@@ -130,9 +132,9 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 	router := httprouter.New()
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
+			_, _ = fmt.Fprintf(w, "This is test headers matcher text")
 		}
 	})
 
@@ -154,7 +156,9 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove("test-config.yaml")
+	defer func() {
+		_ = os.Remove("test-config.yaml")
+	}()
 
 	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-workflow-url", ts.URL+"/workflow_list", "-config", "test-config.yaml")
 	if err != nil {
@@ -177,7 +181,9 @@ func (h *nonExistentTemplateList) Execute(nonExistingTemplateList string) error 
 	if err != nil {
 		return err
 	}
-	defer os.Remove("test-config.yaml")
+	defer func() {
+		_ = os.Remove("test-config.yaml")
+	}()
 
 	_, err = testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-template-url", ts.URL+"/404", "-config", "test-config.yaml")
 	if err == nil {
@@ -200,7 +206,9 @@ func (h *nonExistentWorkflowList) Execute(nonExistingWorkflowList string) error 
 	if err != nil {
 		return err
 	}
-	defer os.Remove("test-config.yaml")
+	defer func() {
+		_ = os.Remove("test-config.yaml")
+	}()
 
 	_, err = testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-workflow-url", ts.URL+"/404", "-config", "test-config.yaml")
 	if err == nil {
@@ -215,7 +223,7 @@ type loadTemplateWithID struct{}
 func (h *loadTemplateWithID) Execute(nooop string) error {
 	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", "scanme.sh", "-id", "self-signed-ssl")
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
+		return errkit.Wrap(err, "failed to load template with id")
 	}
 	return expectResultsCount(results, 1)
 }
