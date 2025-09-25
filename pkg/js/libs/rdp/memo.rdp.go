@@ -40,11 +40,11 @@ func memoizedcheckRDPAuth(executionId string, host string, port int) (CheckRDPAu
 	return CheckRDPAuthResponse{}, errors.New("could not convert cached result")
 }
 
-func memoizedcheckRDPEncryption(host string, port int) (RDPEncryptionResponse, error) {
+func memoizedcheckRDPEncryption(executionId string, host string, port int) (RDPEncryptionResponse, error) {
 	hash := "checkRDPEncryption" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return checkRDPEncryption(host, port)
+		return checkRDPEncryption(executionId, host, port)
 	})
 	if err != nil {
 		return RDPEncryptionResponse{}, err

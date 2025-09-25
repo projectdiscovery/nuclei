@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
@@ -130,6 +131,29 @@ func checkRDPAuth(executionId string, host string, port int) (CheckRDPAuthRespon
 }
 
 type (
+	SecurityLayer string
+)
+
+const (
+	SecurityLayerNativeRDP                = "NativeRDP"
+	SecurityLayerSSL                      = "SSL"
+	SecurityLayerCredSSP                  = "CredSSP"
+	SecurityLayerRDSTLS                   = "RDSTLS"
+	SecurityLayerCredSSPWithEarlyUserAuth = "CredSSPWithEarlyUserAuth"
+)
+
+type (
+	EncryptionLevel string
+)
+
+const (
+	EncryptionLevelRC4_40bit  = "RC4_40bit"
+	EncryptionLevelRC4_56bit  = "RC4_56bit"
+	EncryptionLevelRC4_128bit = "RC4_128bit"
+	EncryptionLevelFIPS140_1  = "FIPS140_1"
+)
+
+type (
 	// RDPEncryptionResponse is the response from the CheckRDPEncryption function.
 	// This is returned by CheckRDPEncryption function.
 	// @example
@@ -139,19 +163,18 @@ type (
 	// log(toJSON(encryption));
 	// ```
 	RDPEncryptionResponse struct {
-		SecurityLayer struct {
-			NativeRDP                bool
-			SSL                      bool
-			CredSSP                  bool
-			RDSTLS                   bool
-			CredSSPWithEarlyUserAuth bool
-		}
-		EncryptionLevel struct {
-			RC4_40bit  bool
-			RC4_56bit  bool
-			RC4_128bit bool
-			FIPS140_1  bool
-		}
+		// Protocols
+		NativeRDP                bool
+		SSL                      bool
+		CredSSP                  bool
+		RDSTLS                   bool
+		CredSSPWithEarlyUserAuth bool
+
+		// EncryptionLevels
+		RC4_40bit  bool
+		RC4_56bit  bool
+		RC4_128bit bool
+		FIPS140_1  bool
 	}
 )
 
@@ -163,76 +186,89 @@ type (
 // const encryption = rdp.CheckRDPEncryption('acme.com', 3389);
 // log(toJSON(encryption));
 // ```
-func CheckRDPEncryption(host string, port int) (RDPEncryptionResponse, error) {
-	return memoizedcheckRDPEncryption(host, port)
+func CheckRDPEncryption(ctx context.Context, host string, port int) (RDPEncryptionResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedcheckRDPEncryption(executionId, host, port)
 }
 
 // @memo
-func checkRDPEncryption(host string, port int) (RDPEncryptionResponse, error) {
+func checkRDPEncryption(executionId string, host string, port int) (RDPEncryptionResponse, error) {
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return RDPEncryptionResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	resp := RDPEncryptionResponse{}
-	timeout := 5 * time.Second
+	defaultTimeout := 5 * time.Second
 
 	// Test different security protocols
-	protocols := map[string]int{
-		"NativeRDP":                0,
-		"SSL":                      1,
-		"CredSSP":                  3,
-		"RDSTLS":                   4,
-		"CredSSPWithEarlyUserAuth": 8,
+	protocols := map[SecurityLayer]int{
+		SecurityLayerNativeRDP:                0,
+		SecurityLayerSSL:                      1,
+		SecurityLayerCredSSP:                  3,
+		SecurityLayerRDSTLS:                   4,
+		SecurityLayerCredSSPWithEarlyUserAuth: 8,
 	}
 
 	for name, value := range protocols {
-		conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+		ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+		defer cancel()
+		conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
 			continue
 		}
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 
 		// Test protocol
-		isRDP, err := testRDPProtocol(conn, timeout, value)
+		isRDP, err := testRDPProtocol(conn, value)
 		if err == nil && isRDP {
-			switch name {
-			case "NativeRDP":
-				resp.SecurityLayer.NativeRDP = true
-			case "SSL":
-				resp.SecurityLayer.SSL = true
-			case "CredSSP":
-				resp.SecurityLayer.CredSSP = true
-			case "RDSTLS":
-				resp.SecurityLayer.RDSTLS = true
-			case "CredSSPWithEarlyUserAuth":
-				resp.SecurityLayer.CredSSPWithEarlyUserAuth = true
+			switch SecurityLayer(name) {
+			case SecurityLayerNativeRDP:
+				resp.NativeRDP = true
+			case SecurityLayerSSL:
+				resp.SSL = true
+			case SecurityLayerCredSSP:
+				resp.CredSSP = true
+			case SecurityLayerRDSTLS:
+				resp.RDSTLS = true
+			case SecurityLayerCredSSPWithEarlyUserAuth:
+				resp.CredSSPWithEarlyUserAuth = true
 			}
 		}
 	}
 
 	// Test different encryption levels
-	ciphers := map[string]int{
-		"RC4_40bit":  1,
-		"RC4_56bit":  8,
-		"RC4_128bit": 2,
-		"FIPS140_1":  16,
+	ciphers := map[EncryptionLevel]int{
+		EncryptionLevelRC4_40bit:  1,
+		EncryptionLevelRC4_56bit:  8,
+		EncryptionLevelRC4_128bit: 2,
+		EncryptionLevelFIPS140_1:  16,
 	}
 
-	for name, value := range ciphers {
-		conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	for encryptionLevel, value := range ciphers {
+		ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+		defer cancel()
+		conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
 			continue
 		}
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 
 		// Test cipher
-		isRDP, err := testRDPCipher(conn, timeout, value)
+		isRDP, err := testRDPCipher(conn, value)
 		if err == nil && isRDP {
-			switch name {
-			case "RC4_40bit":
-				resp.EncryptionLevel.RC4_40bit = true
-			case "RC4_56bit":
-				resp.EncryptionLevel.RC4_56bit = true
-			case "RC4_128bit":
-				resp.EncryptionLevel.RC4_128bit = true
-			case "FIPS140_1":
-				resp.EncryptionLevel.FIPS140_1 = true
+			switch encryptionLevel {
+			case EncryptionLevelRC4_40bit:
+				resp.RC4_40bit = true
+			case EncryptionLevelRC4_56bit:
+				resp.RC4_56bit = true
+			case EncryptionLevelRC4_128bit:
+				resp.RC4_128bit = true
+			case EncryptionLevelFIPS140_1:
+				resp.FIPS140_1 = true
 			}
 		}
 	}
@@ -241,13 +277,7 @@ func checkRDPEncryption(host string, port int) (RDPEncryptionResponse, error) {
 }
 
 // testRDPProtocol tests RDP with a specific security protocol
-func testRDPProtocol(conn net.Conn, timeout time.Duration, protocol int) (bool, error) {
-	// Set connection timeout
-	_ = conn.SetDeadline(time.Now().Add(timeout))
-	defer func() {
-		_ = conn.SetDeadline(time.Time{})
-	}()
-
+func testRDPProtocol(conn net.Conn, protocol int) (bool, error) {
 	// Send RDP connection request with specific protocol
 	// This is a simplified version - in reality you'd need to implement the full RDP protocol
 	// including the negotiation phase with the specified protocol
@@ -280,13 +310,7 @@ func testRDPProtocol(conn net.Conn, timeout time.Duration, protocol int) (bool, 
 }
 
 // testRDPCipher tests RDP with a specific encryption level
-func testRDPCipher(conn net.Conn, timeout time.Duration, cipher int) (bool, error) {
-	// Set connection timeout
-	_ = conn.SetDeadline(time.Now().Add(timeout))
-	defer func() {
-		_ = conn.SetDeadline(time.Time{})
-	}()
-
+func testRDPCipher(conn net.Conn, cipher int) (bool, error) {
 	// Send RDP connection request with specific cipher
 	// This is a simplified version - in reality you'd need to implement the full RDP protocol
 	// including the negotiation phase with the specified cipher
