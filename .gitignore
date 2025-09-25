@@ -28,6 +28,8 @@
 /scrapefunc
 /scrapefuncs
 /tsgen
+/integration_tests/integration-test
+/integration_tests/nuclei
 
 # Templates
 /*.yaml

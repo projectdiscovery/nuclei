@@ -65,3 +65,13 @@ func (mw *MultiWriter) RequestStatsLog(statusCode, response string) {
 		writer.RequestStatsLog(statusCode, response)
 	}
 }
+
+func (mw *MultiWriter) ResultCount() int {
+	count := 0
+	for _, writer := range mw.writers {
+		if count := writer.ResultCount(); count > 0 {
+			return count
+		}
+	}
+	return count
+}

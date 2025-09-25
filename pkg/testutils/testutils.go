@@ -33,6 +33,11 @@ func Init(options *types.Options) {
 	_ = protocolinit.Init(options)
 }
 
+// Cleanup cleans up the protocols and their configurations
+func Cleanup(options *types.Options) {
+	protocolstate.Close(options.ExecutionId)
+}
+
 // DefaultOptions is the default options structure for nuclei during mocking.
 var DefaultOptions = &types.Options{
 	Metrics:                    false,
@@ -131,6 +136,10 @@ func (m *MockOutputWriter) Close() {}
 // Colorizer returns the colorizer instance for writer
 func (m *MockOutputWriter) Colorizer() aurora.Aurora {
 	return m.aurora
+}
+
+func (m *MockOutputWriter) ResultCount() int {
+	return 0
 }
 
 // Write writes the event to file and/or screen.

@@ -21,7 +21,9 @@ type sslBasic struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *sslBasic) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
 			return
@@ -42,7 +44,9 @@ type sslBasicZtls struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *sslBasicZtls) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
 			return
@@ -63,7 +67,9 @@ type sslCustomCipher struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *sslCustomCipher) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{CipherSuites: []uint16{tls.TLS_AES_128_GCM_SHA256}}, defaultStaticPort, func(conn net.Conn) {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
 			return
@@ -84,7 +90,9 @@ type sslCustomVersion struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *sslCustomVersion) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS12}, defaultStaticPort, func(conn net.Conn) {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
 			return
@@ -104,7 +112,9 @@ type sslWithVars struct{}
 
 func (h *sslWithVars) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
 			return
@@ -128,7 +138,9 @@ func (h *sslMultiReq) Execute(filePath string) error {
 		MinVersion: tls.VersionSSL30,
 		MaxVersion: tls.VersionTLS11,
 	}, defaultStaticPort, func(conn net.Conn) {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
 			return

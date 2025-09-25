@@ -100,7 +100,7 @@ func (request *Request) GetID() string {
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// if there are no matchers/extractors, we trigger an error as no operation would be performed on the template
-	if request.Operators.IsEmpty() {
+	if request.IsEmpty() {
 		return errors.New("empty operators")
 	}
 	compiled := &request.Operators
@@ -190,4 +190,9 @@ func extractMimeTypes(m []string) []string {
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
 	return 0
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

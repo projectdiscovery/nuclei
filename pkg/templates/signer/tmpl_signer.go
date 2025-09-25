@@ -16,7 +16,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 var (
@@ -82,13 +82,13 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 			arr := strings.SplitN(string(existingSignature), ":", 3)
 			if len(arr) == 2 {
 				// signature has no fragment
-				return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
+				return "", errkit.New("re-signing code templates are not allowed for security reasons.")
 			}
 			if len(arr) == 3 {
 				// signature has fragment verify if it is equal to current fragment
 				fragment := t.GetUserFragment()
 				if fragment != arr[2] {
-					return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
+					return "", errkit.New("re-signing code templates are not allowed for security reasons.")
 				}
 			}
 		}

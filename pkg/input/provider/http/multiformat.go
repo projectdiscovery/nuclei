@@ -73,7 +73,7 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 	}
 	defer func() {
 		if inputFile != nil {
-			inputFile.Close()
+			_ = inputFile.Close()
 		}
 	}()
 
@@ -115,17 +115,17 @@ func (i *HttpInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 
 // Set adds item to input provider
 // No-op for this provider
-func (i *HttpInputProvider) Set(value string) {}
+func (i *HttpInputProvider) Set(_ string, value string) {}
 
 // SetWithProbe adds item to input provider with http probing
 // No-op for this provider
-func (i *HttpInputProvider) SetWithProbe(value string, probe types.InputLivenessProbe) error {
+func (i *HttpInputProvider) SetWithProbe(_ string, value string, probe types.InputLivenessProbe) error {
 	return nil
 }
 
 // SetWithExclusions adds item to input provider if it doesn't match any of the exclusions
 // No-op for this provider
-func (i *HttpInputProvider) SetWithExclusions(value string) error {
+func (i *HttpInputProvider) SetWithExclusions(_ string, value string) error {
 	return nil
 }
 

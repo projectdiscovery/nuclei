@@ -47,7 +47,7 @@ func DoHealthCheck(options *types.Options) string {
 	}
 	c4, err := net.Dial("tcp4", "scanme.sh:80")
 	if err == nil && c4 != nil {
-		c4.Close()
+		_ = c4.Close()
 	}
 	testResult = "Ok"
 	if err != nil {
@@ -56,7 +56,7 @@ func DoHealthCheck(options *types.Options) string {
 	test.WriteString(fmt.Sprintf("IPv4 connectivity to scanme.sh:80 => %s\n", testResult))
 	c6, err := net.Dial("tcp6", "scanme.sh:80")
 	if err == nil && c6 != nil {
-		c6.Close()
+		_ = c6.Close()
 	}
 	testResult = "Ok"
 	if err != nil {
@@ -65,7 +65,7 @@ func DoHealthCheck(options *types.Options) string {
 	test.WriteString(fmt.Sprintf("IPv6 connectivity to scanme.sh:80 => %s\n", testResult))
 	u4, err := net.Dial("udp4", "scanme.sh:53")
 	if err == nil && u4 != nil {
-		u4.Close()
+		_ = u4.Close()
 	}
 	testResult = "Ok"
 	if err != nil {

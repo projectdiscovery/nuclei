@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,7 +66,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				gologger.Error().Msgf("%s\n", err)
 				return
 			}
-			defer fi.Close()
+			defer func() {
+				_ = fi.Close()
+			}()
 			format, stream, _ := archives.Identify(input.Context(), filePath, fi)
 			switch {
 			case format != nil:
@@ -82,7 +86,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 							gologger.Error().Msgf("%s\n", err)
 							return err
 						}
-						defer reader.Close()
+						defer func() {
+							_ = reader.Close()
+						}()
 						event, fileMatches, err := request.processReader(reader, archiveFileName, input, file.Size(), previous)
 						if err != nil {
 							if errors.Is(err, errEmptyResult) {
@@ -123,8 +129,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
 					}
-					defer tmpFileOut.Close()
-					defer os.RemoveAll(tmpFileOut.Name())
+					defer func() {
+						if err := tmpFileOut.Close(); err != nil {
+							panic(fmt.Errorf("could not close: %+v", err))
+						}
+
+						if err := os.Remove(tmpFileOut.Name()); err != nil {
+							panic(fmt.Errorf("could not remove: %+v", err))
+						}
+					}()
 					_, err = io.Copy(tmpFileOut, reader)
 					if err != nil {
 						gologger.Error().Msgf("%s\n", err)
@@ -189,7 +202,9 @@ func (request *Request) processFile(filePath string, input *contextargs.Context,
 	if err != nil {
 		return nil, nil, errors.Errorf("Could not open file path %s: %s\n", filePath, err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	stat, err := file.Stat()
 	if err != nil {
@@ -262,9 +277,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 
 		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
 		dslMap := request.responseToDSLMap(lineContent, input.MetaInput.Input, filePath)
-		for k, v := range previous {
-			dslMap[k] = v
-		}
+		maps.Copy(dslMap, previous)
 		// add vars to template context
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, dslMap)
 		// add template context variables to DSL map
@@ -333,9 +346,7 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 	exprLines := make(map[string][]int)
 	exprBytes := make(map[string][]int)
 	internalEvent := request.responseToDSLMap("", input, filePath)
-	for k, v := range previous {
-		internalEvent[k] = v
-	}
+	maps.Copy(internalEvent, previous)
 	for _, fileMatch := range fileMatches {
 		exprLines[fileMatch.Expr] = append(exprLines[fileMatch.Expr], fileMatch.Line)
 		exprBytes[fileMatch.Expr] = append(exprBytes[fileMatch.Expr], fileMatch.ByteIndex)

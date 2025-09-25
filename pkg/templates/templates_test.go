@@ -9,6 +9,32 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+func TestCachePoolZeroing(t *testing.T) {
+	c := NewCache()
+
+	tpl := &Template{ID: "x"}
+	raw := []byte("SOME BIG RAW")
+
+	c.Store("id1", tpl, raw, nil)
+	gotTpl, gotErr := c.Get("id1")
+	if gotErr != nil {
+		t.Fatalf("unexpected err: %v", gotErr)
+	}
+	if gotTpl == nil || gotTpl.ID != "x" {
+		t.Fatalf("unexpected tpl: %#v", gotTpl)
+	}
+
+	// StoreWithoutRaw should not retain raw
+	c.StoreWithoutRaw("id2", tpl, nil)
+	gotTpl2, gotErr2 := c.Get("id2")
+	if gotErr2 != nil {
+		t.Fatalf("unexpected err: %v", gotErr2)
+	}
+	if gotTpl2 == nil || gotTpl2.ID != "x" {
+		t.Fatalf("unexpected tpl2: %#v", gotTpl2)
+	}
+}
+
 func TestTemplateStruct(t *testing.T) {
 	templatePath := "./tests/match-1.yaml"
 	bin, err := os.ReadFile(templatePath)

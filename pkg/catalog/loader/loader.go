@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -18,16 +17,20 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/rs/xid"
 )
 
 const (
@@ -65,7 +68,8 @@ type Config struct {
 	IncludeConditions []string
 
 	Catalog         catalog.Catalog
-	ExecutorOptions protocols.ExecutorOptions
+	ExecutorOptions *protocols.ExecutorOptions
+	Logger          *gologger.Logger
 }
 
 // Store is a storage for loaded nuclei templates
@@ -82,13 +86,15 @@ type Store struct {
 
 	preprocessor templates.Preprocessor
 
+	logger *gologger.Logger
+
 	// NotFoundCallback is called for each not found template
 	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts protocols.ExecutorOptions) *Config {
+func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts *protocols.ExecutorOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,
@@ -111,6 +117,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 		Catalog:                  catalog,
 		ExecutorOptions:          executerOpts,
 		AITemplatePrompt:         options.AITemplatePrompt,
+		Logger:                   options.Logger,
 	}
 	loaderConfig.RemoteTemplateDomainList = append(loaderConfig.RemoteTemplateDomainList, TrustedTemplateDomains...)
 	return &loaderConfig
@@ -145,6 +152,7 @@ func New(cfg *Config) (*Store, error) {
 		}, cfg.Catalog),
 		finalTemplates: cfg.Templates,
 		finalWorkflows: cfg.Workflows,
+		logger:         cfg.Logger,
 	}
 
 	// Do a check to see if we have URLs in templates flag, if so
@@ -231,13 +239,15 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 		uri = handleTemplatesEditorURLs(uri)
 		remoteTemplates, _, err := getRemoteTemplatesAndWorkflows([]string{uri}, nil, store.config.RemoteTemplateDomainList)
 		if err != nil || len(remoteTemplates) == 0 {
-			return nil, errorutil.NewWithErr(err).Msgf("Could not load template %s: got %v", uri, remoteTemplates)
+			return nil, errkit.Wrapf(err, "Could not load template %s: got %v", uri, remoteTemplates)
 		}
 		resp, err := retryablehttp.Get(remoteTemplates[0])
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		return io.ReadAll(resp.Body)
 	} else {
 		return os.ReadFile(uri)
@@ -293,11 +303,11 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
 				stats.Increment(templates.TemplatesExcludedStats)
 				if config.DefaultConfig.LogAllEvents {
-					gologger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+					store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 				}
 				continue
 			}
-			gologger.Warning().Msg(err.Error())
+			store.logger.Warning().Msg(err.Error())
 		}
 	}
 	parserItem, ok := store.config.ExecutorOptions.Parser.(*templates.Parser)
@@ -305,6 +315,8 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 		return errors.New("invalid parser")
 	}
 	templatesCache := parserItem.Cache()
+
+	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
 
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
@@ -330,6 +342,12 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 		}
 
 		if template != nil {
+			if loadedTemplateIDs.Has(template.ID) {
+				store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", template.ID, templatePath)
+				continue
+			}
+
+			_ = loadedTemplateIDs.Set(template.ID, struct{}{})
 			template.Path = templatePath
 			store.templates = append(store.templates, template)
 		}
@@ -356,15 +374,13 @@ func (store *Store) ValidateTemplates() error {
 
 func (store *Store) areWorkflowsValid(filteredWorkflowPaths map[string]struct{}) bool {
 	return store.areWorkflowOrTemplatesValid(filteredWorkflowPaths, true, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
-		return false, nil
-		// return store.config.ExecutorOptions.Parser.LoadWorkflow(templatePath, store.config.Catalog)
+		return store.config.ExecutorOptions.Parser.LoadWorkflow(templatePath, store.config.Catalog)
 	})
 }
 
 func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{}) bool {
 	return store.areWorkflowOrTemplatesValid(filteredTemplatePaths, false, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
-		return false, nil
-		// return store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		return store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 	})
 }
 
@@ -373,7 +389,7 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
-			if isParsingError("Error occurred loading template %s: %s\n", templatePath, err) {
+			if isParsingError(store, "Error occurred loading template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
 				continue
 			}
@@ -381,7 +397,7 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 
 		template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 		if err != nil {
-			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
+			if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
 				continue
 			}
@@ -406,7 +422,7 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 				// TODO: until https://github.com/projectdiscovery/nuclei-templates/issues/11324 is deployed
 				// disable strict validation to allow GH actions to run
 				// areTemplatesValid = false
-				gologger.Warning().Msgf("Found duplicate template ID during validation '%s' => '%s': %s\n", templatePath, existingTemplatePath, template.ID)
+				store.logger.Warning().Msgf("Found duplicate template ID during validation '%s' => '%s': %s\n", templatePath, existingTemplatePath, template.ID)
 			}
 			if !isWorkflow && len(template.Workflows) > 0 {
 				continue
@@ -429,7 +445,7 @@ func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemp
 		}
 		_, err := store.config.Catalog.GetTemplatePath(workflow.Template)
 		if err != nil {
-			if isParsingError("Error occurred loading template %s: %s\n", workflow.Template, err) {
+			if isParsingError(store, "Error occurred loading template %s: %s\n", workflow.Template, err) {
 				return false
 			}
 		}
@@ -437,14 +453,14 @@ func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemp
 	return true
 }
 
-func isParsingError(message string, template string, err error) bool {
+func isParsingError(store *Store, message string, template string, err error) bool {
 	if errors.Is(err, templates.ErrExcluded) {
 		return false
 	}
 	if errors.Is(err, templates.ErrCreateTemplateExecutor) {
 		return false
 	}
-	gologger.Error().Msgf(message, template, err)
+	store.logger.Error().Msgf(message, template, err)
 	return true
 }
 
@@ -463,12 +479,12 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 	for workflowPath := range workflowPathMap {
 		loaded, err := store.config.ExecutorOptions.Parser.LoadWorkflow(workflowPath, store.config.Catalog)
 		if err != nil {
-			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
+			store.logger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
 		if loaded {
 			parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
-				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
+				store.logger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
 			} else if parsed != nil {
 				loadedWorkflows = append(loadedWorkflows, parsed)
 			}
@@ -485,8 +501,16 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	templatePathMap := store.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := sliceutil.NewSyncSlice[*templates.Template]()
+	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
 
 	loadTemplate := func(tmpl *templates.Template) {
+		if loadedTemplateIDs.Has(tmpl.ID) {
+			store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", tmpl.ID, tmpl.Path)
+			return
+		}
+
+		_ = loadedTemplateIDs.Set(tmpl.ID, struct{}{})
+
 		loadedTemplates.Append(tmpl)
 		// increment signed/unsigned counters
 		if tmpl.Verified {
@@ -500,10 +524,22 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		}
 	}
 
-	var wgLoadTemplates sync.WaitGroup
+	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(50))
+	if errWg != nil {
+		panic("could not create wait group")
+	}
+
+	if store.config.ExecutorOptions.Options.ExecutionId == "" {
+		store.config.ExecutorOptions.Options.ExecutionId = xid.New().String()
+	}
+
+	dialers := protocolstate.GetDialersWithId(store.config.ExecutorOptions.Options.ExecutionId)
+	if dialers == nil {
+		panic("dialers with executionId " + store.config.ExecutorOptions.Options.ExecutionId + " not found")
+	}
 
 	for templatePath := range templatePathMap {
-		wgLoadTemplates.Add(1)
+		wgLoadTemplates.Add()
 		go func(templatePath string) {
 			defer wgLoadTemplates.Done()
 
@@ -515,7 +551,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					if !errors.Is(err, templates.ErrIncompatibleWithOfflineMatching) {
 						stats.Increment(templates.RuntimeWarningsStats)
 					}
-					gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
+					store.logger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 				} else if parsed != nil {
 					if !parsed.Verified && store.config.ExecutorOptions.Options.DisableUnsignedTemplates {
 						// skip unverified templates when prompted to
@@ -544,19 +580,26 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						// check if the template is a DAST template
 						// also allow global matchers template to be loaded
 						if parsed.IsFuzzing() || parsed.Options.GlobalMatchers != nil && parsed.Options.GlobalMatchers.HasMatchers() {
-							loadTemplate(parsed)
+							if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+								stats.Increment(templates.ExcludedHeadlessTmplStats)
+								if config.DefaultConfig.LogAllEvents {
+									store.logger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+								}
+							} else {
+								loadTemplate(parsed)
+							}
 						}
 					} else if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 						// donot include headless template in final list if headless flag is not set
 						stats.Increment(templates.ExcludedHeadlessTmplStats)
 						if config.DefaultConfig.LogAllEvents {
-							gologger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+							store.logger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
 					} else if len(parsed.RequestsCode) > 0 && !store.config.ExecutorOptions.Options.EnableCodeTemplates {
 						// donot include 'Code' protocol custom template in final list if code flag is not set
 						stats.Increment(templates.ExcludedCodeTmplStats)
 						if config.DefaultConfig.LogAllEvents {
-							gologger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+							store.logger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
 					} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 						// donot include unverified 'Code' protocol custom template in final list
@@ -564,12 +607,12 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						// these will be skipped so increment skip counter
 						stats.Increment(templates.SkippedUnsignedStats)
 						if config.DefaultConfig.LogAllEvents {
-							gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
+							store.logger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
 					} else if parsed.IsFuzzing() && !store.config.ExecutorOptions.Options.DAST {
 						stats.Increment(templates.ExludedDastTmplStats)
 						if config.DefaultConfig.LogAllEvents {
-							gologger.Print().Msgf("[%v] -dast flag is required for DAST template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+							store.logger.Print().Msgf("[%v] -dast flag is required for DAST template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
 					} else {
 						loadTemplate(parsed)
@@ -580,11 +623,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
 					stats.Increment(templates.TemplatesExcludedStats)
 					if config.DefaultConfig.LogAllEvents {
-						gologger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+						store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 					}
 					return
 				}
-				gologger.Warning().Msg(err.Error())
+				store.logger.Warning().Msg(err.Error())
 			}
 		}(templatePath)
 	}
@@ -640,7 +683,7 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 func (s *Store) logErroredTemplates(erred map[string]error) {
 	for template, err := range erred {
 		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
-			gologger.Error().Msgf("Could not find template '%s': %s", template, err)
+			s.logger.Error().Msgf("Could not find template '%s': %s", template, err)
 		}
 	}
 }

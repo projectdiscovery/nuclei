@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -43,7 +43,7 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 		// we use a dummy input here because goal of flow executor at this point is to just check
 		// syntax and other things are correct before proceeding to actual execution
 		// during execution new instance of flow will be created as it is tightly coupled with lot of executor options
-		p, err := compiler.WrapScriptNCompile(options.Flow, false)
+		p, err := compiler.SourceAutoMode(options.Flow, false)
 		if err != nil {
 			return nil, fmt.Errorf("could not compile flow: %s", err)
 		}

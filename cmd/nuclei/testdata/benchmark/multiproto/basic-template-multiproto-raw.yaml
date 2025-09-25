@@ -1,0 +1,292 @@
+id: basic-template-multiproto-raw
+
+info:
+  name: Test Template Multiple Protocols RAW
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        GET /1 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /2 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /3 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /4 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /5 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /6 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /7 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /8 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /9 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /10 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /11 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /12 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /13 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /14 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /15 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /16 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /17 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"
+
+  - raw:
+      - |
+        GET /18 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+        Connection: close
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+        Accept-Language: en-US,en;q=0.9
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test matcher text"

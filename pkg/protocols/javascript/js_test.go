@@ -23,7 +23,7 @@ var (
 		"testcases/redis-pass-brute.yaml",
 		"testcases/ssh-server-fingerprint.yaml",
 	}
-	executerOpts protocols.ExecutorOptions
+	executerOpts *protocols.ExecutorOptions
 )
 
 func setup() {
@@ -31,7 +31,7 @@ func setup() {
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
-	executerOpts = protocols.ExecutorOptions{
+	executerOpts = &protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
 		Options:      options,
 		Progress:     progressImpl,
@@ -42,7 +42,7 @@ func setup() {
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 		Parser:       templates.NewParser(),
 	}
-	workflowLoader, err := workflow.NewLoader(&executerOpts)
+	workflowLoader, err := workflow.NewLoader(executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}

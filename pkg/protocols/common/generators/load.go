@@ -17,6 +17,20 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 	for name, payload := range payloads {
 		switch pt := payload.(type) {
 		case string:
+			// Fast path: if no newline, treat as file path
+			if !strings.ContainsRune(pt, '\n') {
+				file, err := generator.options.LoadHelperFile(pt, templatePath, generator.catalog)
+				if err != nil {
+					return nil, errors.Wrap(err, "could not load payload file")
+				}
+				payloads, err := generator.loadPayloadsFromFile(file)
+				if err != nil {
+					return nil, errors.Wrap(err, "could not load payloads")
+				}
+				loadedPayloads[name] = payloads
+				break
+			}
+			// Multiline inline payloads
 			elements := strings.Split(pt, "\n")
 			//golint:gomnd // this is not a magic number
 			if len(elements) >= 2 {
@@ -42,7 +56,9 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 // loadPayloadsFromFile loads a file to a string slice
 func (generator *PayloadGenerator) loadPayloadsFromFile(file io.ReadCloser) ([]string, error) {
 	var lines []string
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

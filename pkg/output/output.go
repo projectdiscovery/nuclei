@@ -54,6 +54,8 @@ type Writer interface {
 	RequestStatsLog(statusCode, response string)
 	//  WriteStoreDebugData writes the request/response debug data to file
 	WriteStoreDebugData(host, templateID, eventType string, data string)
+	// ResultCount returns the total number of results written
+	ResultCount() int
 }
 
 // StandardWriter is a writer writing output to file and screen for results.
@@ -79,6 +81,8 @@ type StandardWriter struct {
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
+
+	resultCount atomic.Int32
 }
 
 var _ Writer = &StandardWriter{}
@@ -225,10 +229,8 @@ type IssueTrackerMetadata struct {
 
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
-	resumeBool := false
-	if options.Resume != "" {
-		resumeBool = true
-	}
+	resumeBool := options.Resume != ""
+
 	auroraColorizer := aurora.NewAurora(!options.NoColor)
 
 	var outputFile io.WriteCloser
@@ -287,8 +289,16 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	return writer, nil
 }
 
+func (w *StandardWriter) ResultCount() int {
+	return int(w.resultCount.Load())
+}
+
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
+	if event.Error != "" && !w.matcherStatus {
+		return nil
+	}
+
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID), event.TemplateVerifier)
@@ -336,6 +346,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
+	w.resultCount.Add(1)
 	return nil
 }
 
@@ -443,13 +454,13 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
 	if w.outputFile != nil {
-		w.outputFile.Close()
+		_ = w.outputFile.Close()
 	}
 	if w.traceFile != nil {
-		w.traceFile.Close()
+		_ = w.traceFile.Close()
 	}
 	if w.errorFile != nil {
-		w.errorFile.Close()
+		_ = w.errorFile.Close()
 	}
 }
 
@@ -551,11 +562,11 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		filename = filepath.Join(subFolder, fmt.Sprintf("%s.txt", filename))
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
-			fmt.Print(err)
+			gologger.Error().Msgf("Could not open debug output file: %s", err)
 			return
 		}
-		_, _ = f.WriteString(fmt.Sprintln(data))
-		f.Close()
+		_, _ = fmt.Fprintln(f, data)
+		_ = f.Close()
 	}
 }
 

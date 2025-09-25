@@ -18,10 +18,12 @@ func TestTemplateInstallation(t *testing.T) {
 	tm := &TemplateManager{}
 	dir, err := os.MkdirTemp("", "nuclei-templates-*")
 	require.Nil(t, err)
-	defer os.RemoveAll(dir)
 	cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 	require.Nil(t, err)
-	defer os.RemoveAll(cfgdir)
+	defer func() {
+		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(cfgdir)
+	}()
 
 	// set the config directory to a temporary directory
 	config.DefaultConfig.SetConfigDir(cfgdir)
@@ -56,4 +58,43 @@ func TestTemplateInstallation(t *testing.T) {
 	// every time we install templates, it should override the ignore file with latest one
 	require.FileExists(t, config.DefaultConfig.GetIgnoreFilePath())
 	t.Logf("Installed %d templates", counter)
+}
+
+func TestIsOutdatedVersion(t *testing.T) {
+	testCases := []struct {
+		current  string
+		latest   string
+		expected bool
+		desc     string
+	}{
+		// Test the empty latest version case (main bug fix)
+		{"v10.2.7", "", false, "Empty latest version should not trigger update"},
+
+		// Test same versions
+		{"v10.2.7", "v10.2.7", false, "Same versions should not trigger update"},
+
+		// Test outdated version
+		{"v10.2.6", "v10.2.7", true, "Older version should trigger update"},
+
+		// Test newer current version (edge case)
+		{"v10.2.8", "v10.2.7", false, "Newer current version should not trigger update"},
+
+		// Test dev versions
+		{"v10.2.7-dev", "v10.2.7", false, "Dev version matching release should not trigger update"},
+		{"v10.2.6-dev", "v10.2.7", true, "Outdated dev version should trigger update"},
+
+		// Test invalid semver fallback
+		{"invalid-version", "v10.2.7", true, "Invalid current version should trigger update (fallback)"},
+		{"v10.2.7", "invalid-version", true, "Invalid latest version should trigger update (fallback)"},
+		{"same-invalid", "same-invalid", false, "Same invalid versions should not trigger update (fallback)"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			result := config.IsOutdatedVersion(tc.current, tc.latest)
+			require.Equal(t, tc.expected, result,
+				"IsOutdatedVersion(%q, %q) = %t, expected %t",
+				tc.current, tc.latest, result, tc.expected)
+		})
+	}
 }

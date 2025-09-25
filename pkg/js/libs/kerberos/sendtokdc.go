@@ -68,6 +68,12 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 	kclient.nj.HandleError(err, "error getting KDCs")
 	kclient.nj.Require(len(kdcs) > 0, "no KDCs found")
 
+	executionId := kclient.nj.ExecutionId()
+	dialers := protocolstate.GetDialersWithId(executionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		host, port, err := net.SplitHostPort(kdcs[i])
@@ -75,12 +81,14 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		tcpConn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+		tcpConn, err := dialers.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue
 		}
-		defer tcpConn.Close()
+		defer func() {
+			_ = tcpConn.Close()
+		}()
 		_ = tcpConn.SetDeadline(time.Now().Add(time.Duration(kclient.config.timeout) * time.Second)) //read and write deadline
 		rb, err := sendTCP(tcpConn.(*net.TCPConn), []byte(msg))
 		if err != nil {
@@ -101,6 +109,11 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 	kclient.nj.HandleError(err, "error getting KDCs")
 	kclient.nj.Require(len(kdcs) > 0, "no KDCs found")
 
+	executionId := kclient.nj.ExecutionId()
+	dialers := protocolstate.GetDialersWithId(executionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		host, port, err := net.SplitHostPort(kdcs[i])
@@ -108,12 +121,14 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		udpConn, err := protocolstate.Dialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+		udpConn, err := dialers.Fastdialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue
 		}
-		defer udpConn.Close()
+		defer func() {
+			_ = udpConn.Close()
+		}()
 		_ = udpConn.SetDeadline(time.Now().Add(time.Duration(kclient.config.timeout) * time.Second)) //read and write deadline
 		rb, err := sendUDP(udpConn.(*net.UDPConn), []byte(msg))
 		if err != nil {
@@ -132,7 +147,9 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 // sendUDP sends bytes to connection over UDP.
 func sendUDP(conn *net.UDPConn, b []byte) ([]byte, error) {
 	var r []byte
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	_, err := conn.Write(b)
 	if err != nil {
 		return r, fmt.Errorf("error sending to (%s): %v", conn.RemoteAddr().String(), err)
@@ -151,7 +168,9 @@ func sendUDP(conn *net.UDPConn, b []byte) ([]byte, error) {
 
 // sendTCP sends bytes to connection over TCP.
 func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	var r []byte
 	// RFC 4120 7.2.2 specifies the first 4 bytes indicate the length of the message in big endian order.
 	hb := make([]byte, 4)

@@ -1,12 +1,13 @@
 package ssh
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
@@ -45,12 +46,14 @@ func (c *SSHClient) SetTimeout(sec int) {
 // const client = new ssh.SSHClient();
 // const connected = client.Connect('acme.com', 22, 'username', 'password');
 // ```
-func (c *SSHClient) Connect(host string, port int, username, password string) (bool, error) {
+func (c *SSHClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
 	conn, err := connect(&connectOptions{
-		Host:     host,
-		Port:     port,
-		User:     username,
-		Password: password,
+		Host:        host,
+		Port:        port,
+		User:        username,
+		Password:    password,
+		ExecutionId: executionId,
 	})
 	if err != nil {
 		return false, err
@@ -71,12 +74,14 @@ func (c *SSHClient) Connect(host string, port int, username, password string) (b
 // const privateKey = `-----BEGIN RSA PRIVATE KEY----- ...`;
 // const connected = client.ConnectWithKey('acme.com', 22, 'username', privateKey);
 // ```
-func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) (bool, error) {
+func (c *SSHClient) ConnectWithKey(ctx context.Context, host string, port int, username, key string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
 	conn, err := connect(&connectOptions{
-		Host:       host,
-		Port:       port,
-		User:       username,
-		PrivateKey: key,
+		Host:        host,
+		Port:        port,
+		User:        username,
+		PrivateKey:  key,
+		ExecutionId: executionId,
 	})
 
 	if err != nil {
@@ -100,10 +105,12 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // const info = client.ConnectSSHInfoMode('acme.com', 22);
 // log(to_json(info));
 // ```
-func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
+func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port int) (*ssh.HandshakeLog, error) {
+	executionId := ctx.Value("executionId").(string)
 	return memoizedconnectSSHInfoMode(&connectOptions{
-		Host: host,
-		Port: port,
+		Host:        host,
+		Port:        port,
+		ExecutionId: executionId,
 	})
 }
 
@@ -122,13 +129,15 @@ func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog
 // ```
 func (c *SSHClient) Run(cmd string) (string, error) {
 	if c.connection == nil {
-		return "", errorutil.New("no connection")
+		return "", errkit.New("no connection")
 	}
 	session, err := c.connection.NewSession()
 	if err != nil {
 		return "", err
 	}
-	defer session.Close()
+	defer func() {
+		_ = session.Close()
+	}()
 
 	data, err := session.Output(cmd)
 	if err != nil {
@@ -157,22 +166,23 @@ func (c *SSHClient) Close() (bool, error) {
 
 // unexported functions
 type connectOptions struct {
-	Host       string
-	Port       int
-	User       string
-	Password   string
-	PrivateKey string
-	Timeout    time.Duration // default 10s
+	Host        string
+	Port        int
+	User        string
+	Password    string
+	PrivateKey  string
+	Timeout     time.Duration // default 10s
+	ExecutionId string
 }
 
 func (c *connectOptions) validate() error {
 	if c.Host == "" {
-		return errorutil.New("host is required")
+		return errkit.New("host is required")
 	}
 	if c.Port <= 0 {
-		return errorutil.New("port is required")
+		return errkit.New("port is required")
 	}
-	if !protocolstate.IsHostAllowed(c.Host) {
+	if !protocolstate.IsHostAllowed(c.ExecutionId, c.Host) {
 		// host is not valid according to network policy
 		return protocolstate.ErrHostDenied.Msgf(c.Host)
 	}
@@ -203,7 +213,9 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	return data, nil
 }
