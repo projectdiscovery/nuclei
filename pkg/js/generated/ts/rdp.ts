@@ -71,19 +71,18 @@ export interface CheckRDPAuthResponse {
  * ```
  */
 export interface RDPEncryptionResponse {
-    SecurityLayer: {
-        NativeRDP: boolean;
-        SSL: boolean;
-        CredSSP: boolean;
-        RDSTLS: boolean;
-        CredSSPWithEarlyUserAuth: boolean;
-    };
-    EncryptionLevel: {
-        RC4_40bit: boolean;
-        RC4_56bit: boolean;
-        RC4_128bit: boolean;
-        FIPS140_1: boolean;
-    };
+    // Security Layer Protocols
+    NativeRDP: boolean;
+    SSL: boolean;
+    CredSSP: boolean;
+    RDSTLS: boolean;
+    CredSSPWithEarlyUserAuth: boolean;
+    
+    // Encryption Levels
+    RC4_40bit: boolean;
+    RC4_56bit: boolean;
+    RC4_128bit: boolean;
+    FIPS140_1: boolean;
 }
 
 /**
