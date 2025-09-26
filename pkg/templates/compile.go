@@ -224,9 +224,29 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 	}
 	template.Path = filePath
 	if !options.DoNotCache {
-		parser.compiledTemplatesCache.Store(filePath, template, nil, err)
+		// Store a sanitized template in compiled cache to avoid retaining engine-scoped state.
+		cacheTpl := *template
+		cacheTpl.Options = sanitizeOptionsForCache(template.Options)
+		// Raw template bytes are not needed in compiled cache; keep per-engine
+		cacheTpl.Options.RawTemplate = nil
+		parser.compiledTemplatesCache.Store(filePath, &cacheTpl, nil, err)
 	}
 	return template, nil
+}
+
+// sanitizeOptionsForCache strips engine-scoped fields from ExecutorOptions to avoid
+// retaining per-engine references in the shared compiled cache.
+func sanitizeOptionsForCache(src *protocols.ExecutorOptions) *protocols.ExecutorOptions {
+	if src == nil {
+		return nil
+	}
+	return &protocols.ExecutorOptions{
+		// Intentionally exclude TemplateID/Path/Verifier and RawTemplate to avoid engine leakage
+		StopAtFirstMatch: src.StopAtFirstMatch,
+		ProtocolType:     src.ProtocolType,
+		Flow:             src.Flow,
+		IsMultiProtocol:  src.IsMultiProtocol,
+	}
 }
 
 // isGlobalMatchersEnabled checks if any of requests in the template
