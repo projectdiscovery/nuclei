@@ -792,6 +792,25 @@ func (request *Request) getPorts() []string {
 	return []string{}
 }
 
+// getPorts returns a slice of ports from the Port argument
+func (request *Request) getPorts() []string {
+	portStr := request.getPort()
+	if portStr == "" {
+		return []string{}
+	}
+
+	// Split by comma and clean up whitespace
+	ports := strings.Split(portStr, ",")
+	var cleanedPorts []string
+	for _, port := range ports {
+		cleaned := strings.TrimSpace(port)
+		if cleaned != "" {
+			cleanedPorts = append(cleanedPorts, cleaned)
+		}
+	}
+	return cleanedPorts
+}
+
 func (request *Request) getExcludePorts() string {
 	for k, v := range request.Args {
 		if strings.EqualFold(k, "exclude-ports") {
