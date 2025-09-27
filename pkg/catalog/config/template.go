@@ -12,7 +12,10 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-var knownConfigFiles = []string{"cves.json", "contributors.json", "TEMPLATES-STATS.json"}
+var (
+	knownConfigFiles     = []string{"cves.json", "contributors.json", "TEMPLATES-STATS.json"}
+	knownMiscDirectories = []string{".git/", ".github/", "helpers/"}
+)
 
 // TemplateFormat
 type TemplateFormat uint8
@@ -47,6 +50,11 @@ func IsTemplate(filename string) bool {
 	if stringsutil.ContainsAny(filename, knownConfigFiles...) {
 		return false
 	}
+
+	if stringsutil.ContainsAny(filename, knownMiscDirectories...) {
+		return false
+	}
+
 	return stringsutil.EqualFoldAny(filepath.Ext(filename), GetSupportTemplateFileExtensions()...)
 }
 
