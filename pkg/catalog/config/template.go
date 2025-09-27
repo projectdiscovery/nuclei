@@ -14,7 +14,7 @@ import (
 
 var (
 	knownConfigFiles     = []string{"cves.json", "contributors.json", "TEMPLATES-STATS.json"}
-	knownMiscDirectories = []string{".git/", ".github/", "helpers/"}
+	knownMiscDirectories = []string{".git", ".github", "helpers"}
 )
 
 // TemplateFormat
@@ -25,6 +25,20 @@ const (
 	JSON
 	Unknown
 )
+
+// GetKnownConfigFiles returns known config files
+func GetKnownConfigFiles() []string {
+	return knownConfigFiles
+}
+
+func GetKnownMiscDirectories() []string {
+	trailedSlashDirs := make([]string, 0, len(knownMiscDirectories))
+	for _, dir := range knownMiscDirectories {
+		trailedSlashDirs = append(trailedSlashDirs, dir+string(os.PathSeparator))
+	}
+
+	return trailedSlashDirs
+}
 
 // GetTemplateFormatFromExt returns template format
 func GetTemplateFormatFromExt(filePath string) TemplateFormat {
@@ -44,18 +58,21 @@ func GetSupportTemplateFileExtensions() []string {
 	return []string{extensions.YAML, extensions.JSON}
 }
 
-// IsTemplate is a callback function used by goflags to decide if given file should be read
-// if it is not a nuclei-template file only then file is read
-func IsTemplate(filename string) bool {
-	if stringsutil.ContainsAny(filename, knownConfigFiles...) {
+// IsTemplate returns true if the file is a template based on its path.
+// It used by goflags and other places to filter out non-template files.
+func IsTemplate(fpath string) bool {
+	fname := filepath.Base(fpath)
+	fext := strings.ToLower(filepath.Ext(fpath))
+
+	if stringsutil.ContainsAny(fname, GetKnownConfigFiles()...) {
 		return false
 	}
 
-	if stringsutil.ContainsAny(filename, knownMiscDirectories...) {
+	if stringsutil.ContainsAny(fpath, GetKnownMiscDirectories()...) {
 		return false
 	}
 
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), GetSupportTemplateFileExtensions()...)
+	return stringsutil.EqualFoldAny(fext, GetSupportTemplateFileExtensions()...)
 }
 
 type template struct {
