@@ -282,11 +282,60 @@ func (request *Request) GetID() string {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 
+	// Get all ports to test
+	ports := request.getPorts()
+
+	// Check if target already has a specific port (from URL like host:port)
+	targetURL, err := urlutil.Parse(target.MetaInput.Input)
+	var urlPort string
+	if err == nil {
+		urlPort = targetURL.Port()
+	}
+
+	// Create a map to track unique ports and avoid duplicates
+	uniquePorts := make(map[string]bool)
+
+	// Add URL port if it exists
+	if urlPort != "" {
+		uniquePorts[urlPort] = true
+	}
+
+	// Add template ports
+	for _, port := range ports {
+		uniquePorts[port] = true
+	}
+
+	// If no ports found, fallback to single port behavior
+	if len(uniquePorts) == 0 {
+		return request.executeWithSinglePort(target, dynamicValues, previous, callback)
+	}
+
+	// Execute for each unique port
+	for port := range uniquePorts {
+		input := target.Clone()
+		// use network port updates input with new port requested in template file
+		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
+		// idea is to reduce redundant dials to http ports
+		if err := input.UseNetworkPort(port, request.getExcludePorts()); err != nil {
+			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+		}
+
+		if err := request.executeWithSinglePort(input, dynamicValues, previous, callback); err != nil {
+			gologger.Debug().Msgf("Error executing request for port %s: %s\n", port, err)
+		}
+	}
+
+	return nil
+}
+
+// executeWithSinglePort executes the request for a single port
+func (request *Request) executeWithSinglePort(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	input := target.Clone()
 	// use network port updates input with new port requested in template file
 	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
 	// idea is to reduce redundant dials to http ports
-	if err := input.UseNetworkPort(request.getPort(), request.getExcludePorts()); err != nil {
+	// Note: target already has the correct port set from the multi-port loop or from URL
+	if err := input.UseNetworkPort("", request.getExcludePorts()); err != nil {
 		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 	}
 
@@ -762,6 +811,25 @@ func (request *Request) getPort() string {
 		}
 	}
 	return ""
+}
+
+// getPorts returns a slice of ports from the Port argument
+func (request *Request) getPorts() []string {
+	portStr := request.getPort()
+	if portStr == "" {
+		return []string{}
+	}
+
+	// Split by comma and clean up whitespace
+	ports := strings.Split(portStr, ",")
+	var cleanedPorts []string
+	for _, port := range ports {
+		cleaned := strings.TrimSpace(port)
+		if cleaned != "" {
+			cleanedPorts = append(cleanedPorts, cleaned)
+		}
+	}
+	return cleanedPorts
 }
 
 func (request *Request) getExcludePorts() string {
