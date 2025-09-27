@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -310,20 +311,47 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 		return request.executeWithSinglePort(target, dynamicValues, previous, callback)
 	}
 
-	// Execute for each unique port
+	// Execute for each unique port in parallel
+	var wg sync.WaitGroup
+	portList := make([]string, 0, len(uniquePorts))
 	for port := range uniquePorts {
-		input := target.Clone()
-		// use network port updates input with new port requested in template file
-		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
-		// idea is to reduce redundant dials to http ports
-		if err := input.UseNetworkPort(port, request.getExcludePorts()); err != nil {
-			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
-		}
-
-		if err := request.executeWithSinglePort(input, dynamicValues, previous, callback); err != nil {
-			gologger.Debug().Msgf("Error executing request for port %s: %s\n", port, err)
-		}
+		portList = append(portList, port)
 	}
+
+	// Use a semaphore to limit concurrent goroutines (max 10 concurrent port tests)
+	semaphore := make(chan struct{}, 10)
+
+	for _, port := range portList {
+		wg.Add(1)
+		go func(port string) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			gologger.Debug().Msgf("Testing port: %s\n", port)
+			input := target.Clone()
+
+			// Parse the original input to get hostname
+			originalURL, err := urlutil.Parse(target.MetaInput.Input)
+			if err != nil {
+				gologger.Debug().Msgf("Could not parse original input: %s\n", err)
+				return
+			}
+
+			// Create new input with the specific port
+			newInput := fmt.Sprintf("%s:%s", originalURL.Hostname(), port)
+			input.MetaInput.Input = newInput
+
+			if err := request.executeWithSinglePort(input, dynamicValues, previous, callback); err != nil {
+				gologger.Debug().Msgf("Error executing request for port %s: %s\n", port, err)
+			}
+		}(port)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
 
 	return nil
 }
@@ -331,13 +359,8 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 // executeWithSinglePort executes the request for a single port
 func (request *Request) executeWithSinglePort(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	input := target.Clone()
-	// use network port updates input with new port requested in template file
-	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
-	// idea is to reduce redundant dials to http ports
-	// Note: target already has the correct port set from the multi-port loop or from URL
-	if err := input.UseNetworkPort("", request.getExcludePorts()); err != nil {
-		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
-	}
+	// Note: target already has the correct port set from the multi-port loop
+	// No need to call UseNetworkPort again as the port is already set in the target
 
 	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {

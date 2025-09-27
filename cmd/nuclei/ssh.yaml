@@ -23,7 +23,7 @@ javascript:
       Export(response);
     args:
       Host: "{{Host}}"
-      Port: "222,2222,22"
+      Port: "222,22"
 
     extractors:
       - type: json
