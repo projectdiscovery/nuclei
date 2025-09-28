@@ -387,13 +387,10 @@ func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{})
 func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *templates.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
 
-	parser, ok := store.config.ExecutorOptions.Parser.(*templates.Parser)
-	if !ok {
-		store.logger.Error().Msg("Invalid parser type during validation")
-
-		return false
+	var parsedCache *templates.Cache
+	if parser, ok := store.config.ExecutorOptions.Parser.(*templates.Parser); ok {
+		parsedCache = parser.Cache()
 	}
-	parsedCache := parser.Cache()
 
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
@@ -406,9 +403,13 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 		var template *templates.Template
 		var err error
 
-		if cachedTemplate, _, cacheErr := parsedCache.Has(templatePath); cachedTemplate != nil && cacheErr == nil {
-			template = cachedTemplate
-		} else {
+		if parsedCache != nil {
+			if cachedTemplate, _, cacheErr := parsedCache.Has(templatePath); cacheErr == nil && cachedTemplate != nil {
+				template = cachedTemplate
+			}
+		}
+
+		if template == nil {
 			template, err = templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
