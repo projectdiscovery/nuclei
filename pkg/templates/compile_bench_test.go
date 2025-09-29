@@ -31,7 +31,9 @@ func BenchmarkParseTemplateFromReader(b *testing.B) {
 	if err != nil {
 		b.Fatalf("could not open template file: %s", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	content, err := io.ReadAll(file)
 	if err != nil {
