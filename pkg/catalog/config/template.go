@@ -26,11 +26,16 @@ const (
 	Unknown
 )
 
-// GetKnownConfigFiles returns known config files
+// GetKnownConfigFiles returns known config files.
 func GetKnownConfigFiles() []string {
 	return knownConfigFiles
 }
 
+// GetKnownMiscDirectories returns known misc directories with trailing slashes.
+//
+// The trailing slash ensures that directory matching is explicit and avoids
+// falsely match files with similar names (e.g. "helpers" matching
+// "some-helpers.yaml"), since [IsTemplate] checks against normalized full paths.
 func GetKnownMiscDirectories() []string {
 	trailedSlashDirs := make([]string, 0, len(knownMiscDirectories))
 	for _, dir := range knownMiscDirectories {
@@ -61,6 +66,7 @@ func GetSupportTemplateFileExtensions() []string {
 // IsTemplate returns true if the file is a template based on its path.
 // It used by goflags and other places to filter out non-template files.
 func IsTemplate(fpath string) bool {
+	fpath = filepath.FromSlash(fpath)
 	fname := filepath.Base(fpath)
 	fext := strings.ToLower(filepath.Ext(fpath))
 
