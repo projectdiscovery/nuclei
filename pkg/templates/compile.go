@@ -34,9 +34,6 @@ var (
 	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
 	// track how many templates are verfied and by which signer
 	SignatureStats = map[string]*atomic.Uint64{}
-
-	parserAccessCache = map[*protocols.ExecutorOptions]*Parser{}
-	parserCacheMutex  sync.RWMutex
 )
 
 const (
@@ -48,8 +45,6 @@ func init() {
 		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
 	}
 	SignatureStats[Unsigned] = &atomic.Uint64{}
-
-	parserAccessCache = make(map[*protocols.ExecutorOptions]*Parser)
 }
 
 // updateRequestOptions updates options for all request types in a template
@@ -171,27 +166,10 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 
 // getParser returns a cached parser instance
 func getParser(options *protocols.ExecutorOptions) *Parser {
-	parserCacheMutex.RLock()
-	if parser, exists := parserAccessCache[options]; exists {
-		parserCacheMutex.RUnlock()
-
-		return parser
-	}
-	parserCacheMutex.RUnlock()
-
-	parserCacheMutex.Lock()
-	defer parserCacheMutex.Unlock()
-
-	if parser, exists := parserAccessCache[options]; exists {
-		return parser
-	}
-
 	parser, ok := options.Parser.(*Parser)
-	if !ok {
+	if !ok || parser == nil {
 		panic("invalid parser")
 	}
-
-	parserAccessCache[options] = parser
 
 	return parser
 }
