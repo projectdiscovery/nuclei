@@ -94,9 +94,6 @@ type TemplateInfo struct {
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	executerOpts := &protocols.ExecutorOptions{
-		TemplateID:   info.ID,
-		TemplateInfo: info.Info,
-		TemplatePath: info.Path,
 		Output:       NewMockOutputWriter(options.OmitTemplate),
 		Options:      options,
 		Progress:     progressImpl,
@@ -106,7 +103,15 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
+
+	if info != nil {
+		executerOpts.TemplateInfo = info.Info
+		executerOpts.TemplateID = info.ID
+		executerOpts.TemplatePath = info.Path
+	}
+
 	executerOpts.CreateTemplateCtxStore()
+
 	return executerOpts
 }
 
