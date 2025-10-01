@@ -33,7 +33,7 @@ import (
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -121,7 +121,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		CustomDialer: options.CustomFastdialer,
 	})
 	if err != nil {
-		return errorutil.NewWithTag("ssl", "could not get network client").Wrap(err)
+		return errkit.Wrap(err, "could not get network client")
 	}
 	request.dialer = client
 	switch {
@@ -130,7 +130,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.ScanMode = "auto"
 
 	case !stringsutil.EqualFoldAny(request.ScanMode, "auto", "openssl", "ztls", "ctls"):
-		return errorutil.NewWithTag(request.TemplateID, "template %v does not contain valid scan-mode", request.TemplateID)
+		return errkit.Newf("template %v does not contain valid scan-mode", request.TemplateID)
 
 	case request.ScanMode == "openssl" && !openssl.IsAvailable():
 		// if openssl is not installed instead of failing "auto" scanmode is used
@@ -169,7 +169,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	tlsxService, err := tlsx.New(tlsxOptions)
 	if err != nil {
-		return errorutil.NewWithTag(request.TemplateID, "could not create tlsx service")
+		return errkit.New("could not create tlsx service")
 	}
 	request.tlsx = tlsxService
 
@@ -178,7 +178,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.ExcludeMatchers = options.ExcludeMatchers
 		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile operators got %v", err)
+			return errkit.Newf("could not compile operators got %v", err)
 		}
 		request.CompiledOperators = compiled
 	}
@@ -236,7 +236,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	addressToDial := string(finalAddress)
 	host, port, err := net.SplitHostPort(addressToDial)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not split input host port")
+		return errkit.Wrap(err, "could not split input host port")
 	}
 
 	var hostIp string
@@ -250,7 +250,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errorutil.NewWithTag(request.TemplateID, "could not connect to server").Wrap(err)
+		return errkit.Wrap(err, "could not connect to server")
 	}
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
@@ -287,7 +287,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// if response is not struct compatible, error out
 	if !structs.IsStruct(response) {
-		return errorutil.NewWithTag("ssl", "response cannot be parsed into a struct: %v", response)
+		return errkit.Newf("response cannot be parsed into a struct: %v", response)
 	}
 
 	// Convert response to key value pairs and first cert chain item as well
@@ -307,7 +307,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// if certificate response is not struct compatible, error out
 	if !structs.IsStruct(response.CertificateResponse) {
-		return errorutil.NewWithTag("ssl", "certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
+		return errkit.Newf("certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
 	}
 
 	responseParsed = structs.New(response.CertificateResponse)

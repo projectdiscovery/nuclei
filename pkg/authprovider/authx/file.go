@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/projectdiscovery/utils/generic"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"gopkg.in/yaml.v3"
@@ -55,7 +55,7 @@ type Secret struct {
 	Type            string   `json:"type" yaml:"type"`
 	Domains         []string `json:"domains" yaml:"domains"`
 	DomainsRegex    []string `json:"domains-regex" yaml:"domains-regex"`
-	Headers         []KV     `json:"headers" yaml:"headers"`
+	Headers         []KV     `json:"headers" yaml:"headers"` // Headers preserve exact casing (useful for case-sensitive APIs)
 	Cookies         []Cookie `json:"cookies" yaml:"cookies"`
 	Params          []KV     `json:"params" yaml:"params"`
 	Username        string   `json:"username" yaml:"username"` // can be either email or username
@@ -148,7 +148,7 @@ func (s *Secret) Validate() error {
 }
 
 type KV struct {
-	Key   string `json:"key" yaml:"key"`
+	Key   string `json:"key" yaml:"key"`   // Header key (preserves exact casing)
 	Value string `json:"value" yaml:"value"`
 }
 
@@ -237,7 +237,9 @@ func GetAuthDataFromYAML(data []byte) (*Authx, error) {
 	var auth Authx
 	err := yaml.Unmarshal(data, &auth)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not unmarshal yaml")
+		errorErr := errkit.FromError(err)
+		errorErr.Msgf("could not unmarshal yaml")
+		return nil, errorErr
 	}
 	return &auth, nil
 }
@@ -247,7 +249,9 @@ func GetAuthDataFromJSON(data []byte) (*Authx, error) {
 	var auth Authx
 	err := json.Unmarshal(data, &auth)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not unmarshal json")
+		errorErr := errkit.FromError(err)
+		errorErr.Msgf("could not unmarshal json")
+		return nil, errorErr
 	}
 	return &auth, nil
 }

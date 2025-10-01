@@ -31,7 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -362,7 +362,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
+				return errkit.Wrap(err, "could not read response from connection")
 			}
 
 			responseBuilder.Write(buffer)
