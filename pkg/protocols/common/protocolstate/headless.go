@@ -9,7 +9,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"go.uber.org/multierr"
@@ -18,9 +18,18 @@ import (
 // initialize state of headless protocol
 
 var (
-	ErrURLDenied  = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
-	ErrHostDenied = errorutil.NewWithFmt("host %v dropped by network policy")
+	ErrURLDenied  = errkit.New("headless: url dropped by rule")
+	ErrHostDenied = errorTemplate{format: "host %v dropped by network policy"}
 )
+
+// errorTemplate provides a way to create formatted errors like the old errorutil.NewWithFmt
+type errorTemplate struct {
+	format string
+}
+
+func (e errorTemplate) Msgf(args ...interface{}) error {
+	return errkit.Newf(e.format, args...)
+}
 
 func GetNetworkPolicy(ctx context.Context) *networkpolicy.NetworkPolicy {
 	execCtx := GetExecutionContext(ctx)
@@ -41,15 +50,15 @@ func ValidateNFailRequest(options *types.Options, page *rod.Page, e *proto.Fetch
 	normalized := strings.ToLower(reqURL)      // normalize url to lowercase
 	normalized = strings.TrimSpace(normalized) // trim leading & trailing whitespaces
 	if !IsLfaAllowed(options) && stringsutil.HasPrefixI(normalized, "file:") {
-		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
+		return multierr.Combine(FailWithReason(page, e), errkit.Newf("headless: url %v dropped by rule: %v", reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
 	}
 	// validate potential invalid schemes
 	// javascript protocol is allowed for xss fuzzing
 	if stringsutil.HasPrefixAnyI(normalized, "ftp:", "externalfile:", "chrome:", "chrome-extension:") {
-		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "protocol blocked by network policy"))
+		return multierr.Combine(FailWithReason(page, e), errkit.Newf("headless: url %v dropped by rule: %v", reqURL, "protocol blocked by network policy"))
 	}
 	if !isValidHost(options, reqURL) {
-		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "address blocked by network policy"))
+		return multierr.Combine(FailWithReason(page, e), errkit.Newf("headless: url %v dropped by rule: %v", reqURL, "address blocked by network policy"))
 	}
 	return nil
 }

@@ -41,7 +41,7 @@ func TestLoadTemplate(t *testing.T) {
 			name:        "emptyTemplate",
 			template:    &Template{},
 			isValid:     false,
-			expectedErr: errors.New("mandatory 'name' field is missing\nmandatory 'author' field is missing\nmandatory 'id' field is missing"),
+			expectedErr: errors.New("cause=\"Could not load template emptyTemplate: cause=\\\"mandatory 'name' field is missing\\\"\\ncause=\\\"mandatory 'author' field is missing\\\"\\ncause=\\\"mandatory 'id' field is missing\\\"\""),
 		},
 		{
 			name: "emptyNameWithInvalidID",
@@ -52,7 +52,7 @@ func TestLoadTemplate(t *testing.T) {
 					SeverityHolder: severity.Holder{Severity: severity.Medium},
 				},
 			},
-			expectedErr: errors.New("mandatory 'name' field is missing\ninvalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
+			expectedErr: errors.New("cause=\"Could not load template emptyNameWithInvalidID: cause=\\\"mandatory 'name' field is missing\\\"\\ncause=\\\"invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)\\\"\""),
 		},
 		{
 			name: "emptySeverity",

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
@@ -129,7 +129,7 @@ func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port in
 // ```
 func (c *SSHClient) Run(cmd string) (string, error) {
 	if c.connection == nil {
-		return "", errorutil.New("no connection")
+		return "", errkit.New("no connection")
 	}
 	session, err := c.connection.NewSession()
 	if err != nil {
@@ -177,10 +177,10 @@ type connectOptions struct {
 
 func (c *connectOptions) validate() error {
 	if c.Host == "" {
-		return errorutil.New("host is required")
+		return errkit.New("host is required")
 	}
 	if c.Port <= 0 {
-		return errorutil.New("port is required")
+		return errkit.New("port is required")
 	}
 	if !protocolstate.IsHostAllowed(c.ExecutionId, c.Host) {
 		// host is not valid according to network policy

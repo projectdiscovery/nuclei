@@ -7,6 +7,7 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 )
 
@@ -20,10 +21,15 @@ func (e *Extractor) CompileExtractors() error {
 	e.extractorType = computedType
 	// Compile the regexes
 	for _, regex := range e.Regex {
+		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
+			e.regexCompiled = append(e.regexCompiled, cached)
+			continue
+		}
 		compiled, err := regexp.Compile(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
+		_ = cache.Regex().Set(regex, compiled)
 		e.regexCompiled = append(e.regexCompiled, compiled)
 	}
 	for i, kval := range e.KVal {
@@ -43,10 +49,15 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	for _, dslExp := range e.DSL {
+		if cached, err := cache.DSL().GetIFPresent(dslExp); err == nil && cached != nil {
+			e.dslCompiled = append(e.dslCompiled, cached)
+			continue
+		}
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(dslExp, dsl.HelperFunctions)
 		if err != nil {
 			return &dsl.CompilationError{DslSignature: dslExp, WrappedError: err}
 		}
+		_ = cache.DSL().Set(dslExp, compiled)
 		e.dslCompiled = append(e.dslCompiled, compiled)
 	}
 

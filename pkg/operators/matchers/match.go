@@ -8,7 +8,6 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
-	dslRepo "github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -107,10 +106,33 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range matcher.regexCompiled {
-		// Continue if the regex doesn't match
-		if !regex.MatchString(corpus) {
-			// If we are in an AND request and a match failed,
-			// return false as the AND condition fails on any single mismatch.
+		// Literal prefix short-circuit
+		rstr := regex.String()
+		if !strings.Contains(rstr, "(?i") { // covers (?i) and (?i:
+			if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
+				if !strings.Contains(corpus, prefix) {
+					switch matcher.condition {
+					case ANDCondition:
+						return false, []string{}
+					case ORCondition:
+						continue
+					}
+				}
+			}
+		}
+
+		// Fast OR-path: return first match without full scan
+		if matcher.condition == ORCondition && !matcher.MatchAll {
+			m := regex.FindAllString(corpus, 1)
+			if len(m) == 0 {
+				continue
+			}
+			return true, m
+		}
+
+		// Single scan: get all matches directly
+		currentMatches := regex.FindAllString(corpus, -1)
+		if len(currentMatches) == 0 {
 			switch matcher.condition {
 			case ANDCondition:
 				return false, []string{}
@@ -119,12 +141,7 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 			}
 		}
 
-		currentMatches := regex.FindAllString(corpus, -1)
-		// If the condition was an OR, return on the first match.
-		if matcher.condition == ORCondition && !matcher.MatchAll {
-			return true, currentMatches
-		}
-
+		// If the condition was an OR (and MatchAll true), we still need to gather all
 		matchedRegexes = append(matchedRegexes, currentMatches...)
 
 		// If we are at the end of the regex, return with true
@@ -316,7 +333,7 @@ func (m *Matcher) ignoreErr(err error) bool {
 	if showDSLErr {
 		return false
 	}
-	if stringsutil.ContainsAny(err.Error(), "No parameter", dslRepo.ErrParsingArg.Error()) {
+	if stringsutil.ContainsAny(err.Error(), "No parameter", "error parsing argument value") {
 		return true
 	}
 	return false

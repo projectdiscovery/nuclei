@@ -1,5 +1,3 @@
-
-
 /**
  * CheckRDPAuth checks if the given host and port are running rdp server
  * with authentication and returns their metadata.
@@ -15,7 +13,19 @@ export function CheckRDPAuth(host: string, port: number): CheckRDPAuthResponse |
     return null;
 }
 
-
+/**
+ * CheckRDPEncryption checks the RDP server's supported security layers and encryption levels.
+ * It tests different protocols and ciphers to determine what is supported.
+ * @example
+ * ```javascript
+ * const rdp = require('nuclei/rdp');
+ * const encryption = rdp.CheckRDPEncryption('acme.com', 3389);
+ * log(toJSON(encryption));
+ * ```
+ */
+export function CheckRDPEncryption(host: string, port: number): RDPEncryptionResponse | null {
+    return null;
+}
 
 /**
  * IsRDP checks if the given host and port are running rdp server.
@@ -32,8 +42,6 @@ export function CheckRDPAuth(host: string, port: number): CheckRDPAuthResponse |
 export function IsRDP(host: string, port: number): IsRDPResponse | null {
     return null;
 }
-
-
 
 /**
  * CheckRDPAuthResponse is the response from the CheckRDPAuth function.
@@ -52,7 +60,30 @@ export interface CheckRDPAuthResponse {
     Auth?: boolean,
 }
 
-
+/**
+ * RDPEncryptionResponse is the response from the CheckRDPEncryption function.
+ * This is returned by CheckRDPEncryption function.
+ * @example
+ * ```javascript
+ * const rdp = require('nuclei/rdp');
+ * const encryption = rdp.CheckRDPEncryption('acme.com', 3389);
+ * log(toJSON(encryption));
+ * ```
+ */
+export interface RDPEncryptionResponse {
+    // Security Layer Protocols
+    NativeRDP: boolean;
+    SSL: boolean;
+    CredSSP: boolean;
+    RDSTLS: boolean;
+    CredSSPWithEarlyUserAuth: boolean;
+    
+    // Encryption Levels
+    RC4_40bit: boolean;
+    RC4_56bit: boolean;
+    RC4_128bit: boolean;
+    FIPS140_1: boolean;
+}
 
 /**
  * IsRDPResponse is the response from the IsRDP function.
@@ -70,8 +101,6 @@ export interface IsRDPResponse {
     
     OS?: string,
 }
-
-
 
 /**
  * ServiceRDP Interface

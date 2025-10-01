@@ -28,7 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/rs/xid"
 )
 
@@ -37,13 +37,13 @@ type NucleiSDKOptions func(e *NucleiEngine) error
 
 var (
 	// ErrNotImplemented is returned when a feature is not implemented
-	ErrNotImplemented = errorutil.New("Not implemented")
+	ErrNotImplemented = errkit.New("Not implemented")
 	// ErrNoTemplatesAvailable is returned when no templates are available to execute
-	ErrNoTemplatesAvailable = errorutil.New("No templates available")
+	ErrNoTemplatesAvailable = errkit.New("No templates available")
 	// ErrNoTargetsAvailable is returned when no targets are available to scan
-	ErrNoTargetsAvailable = errorutil.New("No targets available")
+	ErrNoTargetsAvailable = errkit.New("No targets available")
 	// ErrOptionsNotSupported is returned when an option is not supported in thread safe mode
-	ErrOptionsNotSupported = errorutil.NewWithFmt("Option %v not supported in thread safe mode")
+	ErrOptionsNotSupported = errkit.New("Option not supported in thread safe mode")
 )
 
 type engineMode uint
@@ -98,13 +98,13 @@ type NucleiEngine struct {
 func (e *NucleiEngine) LoadAllTemplates() error {
 	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
-		return errorutil.New("Could not create workflow loader: %s\n", err)
+		return errkit.Wrapf(err, "Could not create workflow loader: %s", err)
 	}
 	e.executerOpts.WorkflowLoader = workflowLoader
 
 	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, e.executerOpts))
 	if err != nil {
-		return errorutil.New("Could not create loader client: %s\n", err)
+		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	e.store.Load()
 	e.templatesLoaded = true

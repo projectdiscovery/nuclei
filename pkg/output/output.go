@@ -295,6 +295,10 @@ func (w *StandardWriter) ResultCount() int {
 
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
+	if event.Error != "" && !w.matcherStatus {
+		return nil
+	}
+
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID), event.TemplateVerifier)

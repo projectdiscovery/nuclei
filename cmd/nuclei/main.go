@@ -20,6 +20,7 @@ import (
 	_ "github.com/projectdiscovery/utils/pprof"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/rs/xid"
+	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger/levels"
@@ -39,7 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/monitor"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	unitutils "github.com/projectdiscovery/utils/unit"
 	updateutils "github.com/projectdiscovery/utils/update"
@@ -187,7 +188,7 @@ func main() {
 			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
+				return errkit.Wrap(err, "couldn't create crash resume file")
 			}
 			return nil
 		})
@@ -263,6 +264,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "list", fmt.Sprintf("mode of input file (%v)", provider.SupportedInputFormats())),
 		flagSet.BoolVarP(&options.FormatUseRequiredOnly, "required-only", "ro", false, "use only required fields in input format when generating requests"),
 		flagSet.BoolVarP(&options.SkipFormatValidation, "skip-format-validation", "sfv", false, "skip format validation (like missing vars) when parsing input file"),
+		flagSet.BoolVarP(&options.VarsTextTemplating, "vars-text-templating", "vtt", false, "enable text templating for vars in input file (only for yaml input mode)"),
+		flagSet.StringSliceVarP(&options.VarsFilePaths, "var-file-paths", "vfp", nil, "list of yaml file contained vars to inject into yaml input", goflags.CommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",
@@ -572,6 +575,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		config.DefaultConfig.SetConfigDir(customConfigDir)
 		readFlagsConfig(flagSet)
 	}
+
 	if cfgFile != "" {
 		if !fileutil.FileExists(cfgFile) {
 			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
@@ -579,6 +583,41 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		// merge config file with flags
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
+		}
+
+		if !options.Vars.IsEmpty() {
+			// Maybe we should add vars to the config file as well even if they are set via flags?
+			file, err := os.Open(cfgFile)
+			if err != nil {
+				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
+			}
+			defer func() {
+				_ = file.Close()
+			}()
+			data := make(map[string]interface{})
+			err = yaml.NewDecoder(file).Decode(&data)
+			if err != nil {
+				gologger.Fatal().Msgf("Could not decode config file: %s\n", err)
+			}
+
+			variables := data["var"]
+			if variables != nil {
+				if varSlice, ok := variables.([]interface{}); ok {
+					for _, value := range varSlice {
+						if strVal, ok := value.(string); ok {
+							err = options.Vars.Set(strVal)
+							if err != nil {
+								gologger.Warning().Msgf("Could not set variable from config file: %s\n", err)
+							}
+						} else {
+							gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
+						}
+					}
+				} else {
+					gologger.Warning().Msgf("No 'var' section found in config file: %s", cfgFile)
+				}
+			}
+
 		}
 	}
 	if options.NewTemplatesDirectory != "" {
@@ -757,11 +796,4 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
-}
-
-func init() {
-	// print stacktrace of errors in debug mode
-	if strings.EqualFold(os.Getenv("DEBUG"), "true") {
-		errorutil.ShowStackTrace = true
-	}
 }

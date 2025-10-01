@@ -16,7 +16,7 @@ import (
 
 	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"go.uber.org/multierr"
@@ -24,7 +24,7 @@ import (
 
 var (
 	// ErrInvalidRequestID is a request id error
-	ErrInvalidRequestID = errorutil.NewWithFmt("[%s] invalid request id '%s' provided")
+	ErrInvalidRequestID = errkit.New("invalid request id provided")
 )
 
 // ProtoOptions are options that can be passed to flow protocol callback
@@ -256,12 +256,12 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	f.reconcileProgress()
 	if err != nil {
 		ctx.LogError(err)
-		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
+		return errkit.Wrapf(err, "failed to execute flow\n%v\n", f.options.Flow)
 	}
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
 		ctx.LogError(runtimeErr)
-		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
+		return errkit.Wrap(runtimeErr, "got following errors while executing flow")
 	}
 
 	return nil
@@ -283,7 +283,7 @@ func (f *FlowExecutor) reconcileProgress() {
 func (f *FlowExecutor) GetRuntimeErrors() error {
 	errs := []error{}
 	for proto, err := range f.allErrs.GetAll() {
-		errs = append(errs, errorutil.NewWithErr(err).Msgf("failed to execute %v protocol", proto))
+		errs = append(errs, errkit.Wrapf(err, "failed to execute %v protocol", proto))
 	}
 	return multierr.Combine(errs...)
 }

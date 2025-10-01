@@ -16,7 +16,7 @@ jobs:
       LIST_FILE: "/tmp/targets-${{ matrix.count }}.txt"
       PROFILE_MEM: "/tmp/nuclei-perf-test-${{ matrix.count }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: projectdiscovery/actions/setup/go@v1
       - run: make verify
       - name: Generate list
