@@ -20,6 +20,8 @@ import (
 	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
+const DefaultTemplateLoadingConcurrency = 50
+
 var (
 	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
 	ErrNoMoreRequests = io.EOF
@@ -785,7 +787,7 @@ func DefaultOptions() *Options {
 		PayloadConcurrency:         25,
 		HeadlessTemplateThreads:    10,
 		ProbeConcurrency:           50,
-		TemplateLoadingConcurrency: 50,
+		TemplateLoadingConcurrency: DefaultTemplateLoadingConcurrency,
 		Timeout:                    5,
 		Retries:                    1,
 		MaxHostError:               30,
