@@ -24,7 +24,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -238,7 +239,7 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 		uri = handleTemplatesEditorURLs(uri)
 		remoteTemplates, _, err := getRemoteTemplatesAndWorkflows([]string{uri}, nil, store.config.RemoteTemplateDomainList)
 		if err != nil || len(remoteTemplates) == 0 {
-			return nil, errorutil.NewWithErr(err).Msgf("Could not load template %s: got %v", uri, remoteTemplates)
+			return nil, errkit.Wrapf(err, "Could not load template %s: got %v", uri, remoteTemplates)
 		}
 		resp, err := retryablehttp.Get(remoteTemplates[0])
 		if err != nil {
@@ -315,6 +316,8 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	}
 	templatesCache := parserItem.Cache()
 
+	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
+
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
 
@@ -339,6 +342,12 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 		}
 
 		if template != nil {
+			if loadedTemplateIDs.Has(template.ID) {
+				store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", template.ID, templatePath)
+				continue
+			}
+
+			_ = loadedTemplateIDs.Set(template.ID, struct{}{})
 			template.Path = templatePath
 			store.templates = append(store.templates, template)
 		}
@@ -492,8 +501,16 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	templatePathMap := store.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := sliceutil.NewSyncSlice[*templates.Template]()
+	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
 
 	loadTemplate := func(tmpl *templates.Template) {
+		if loadedTemplateIDs.Has(tmpl.ID) {
+			store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", tmpl.ID, tmpl.Path)
+			return
+		}
+
+		_ = loadedTemplateIDs.Set(tmpl.ID, struct{}{})
+
 		loadedTemplates.Append(tmpl)
 		// increment signed/unsigned counters
 		if tmpl.Verified {
@@ -563,7 +580,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						// check if the template is a DAST template
 						// also allow global matchers template to be loaded
 						if parsed.IsFuzzing() || parsed.Options.GlobalMatchers != nil && parsed.Options.GlobalMatchers.HasMatchers() {
-							loadTemplate(parsed)
+							if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+								stats.Increment(templates.ExcludedHeadlessTmplStats)
+								if config.DefaultConfig.LogAllEvents {
+									store.logger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+								}
+							} else {
+								loadTemplate(parsed)
+							}
 						}
 					} else if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 						// donot include headless template in final list if headless flag is not set

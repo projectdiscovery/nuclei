@@ -125,6 +125,14 @@ func New(options *types.Options) (*Runner, error) {
 			}
 		}
 
+		// if template list or template display is enabled, enable all templates
+		if options.TemplateList || options.TemplateDisplay {
+			options.EnableCodeTemplates = true
+			options.EnableFileTemplates = true
+			options.EnableSelfContainedTemplates = true
+			options.EnableGlobalMatchersTemplates = true
+		}
+
 		// check for custom template updates and update if available
 		ctm, err := customtemplates.NewCustomTemplatesManager(options)
 		if err != nil {
@@ -376,11 +384,7 @@ func New(options *types.Options) (*Runner, error) {
 	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
 		options.RateLimitDuration = time.Second
 	}
-	if options.RateLimit == 0 && options.RateLimitDuration == 0 {
-		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
-	} else {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
-	}
+	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
 		runner.tmpDir = tmpDir

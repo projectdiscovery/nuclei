@@ -54,7 +54,7 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
-	var transport http.RoundTripper = http.DefaultTransport
+	var transport = http.DefaultTransport
 	if options.HttpClient != nil && options.HttpClient.HTTPClient.Transport != nil {
 		transport = options.HttpClient.HTTPClient.Transport
 	}

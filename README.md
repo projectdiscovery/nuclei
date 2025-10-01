@@ -356,6 +356,7 @@ CLOUD:
 AUTHENTICATION:
    -sf, -secret-file string[]  path to config file containing secrets for nuclei authenticated scan
    -ps, -prefetch-secrets      prefetch secrets from the secrets file
+   # NOTE: Headers in secrets files preserve exact casing (useful for case-sensitive APIs)
 
 
 EXAMPLES:

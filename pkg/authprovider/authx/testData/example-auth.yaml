@@ -12,6 +12,8 @@ info:
 # static secrets
 static:
   # for header based auth session
+  # NOTE: Headers preserve exact casing (e.g., x-pdcp-key stays as x-pdcp-key)
+  # This is useful for APIs that require case-sensitive header names
   - type: header
     domains:
       - api.projectdiscovery.io
@@ -20,6 +22,8 @@ static:
     headers:
       - key: x-pdcp-key
         value: <api-key-here>
+      - key: barAuthToken
+        value: <auth-token-here>
 
   # for query based auth session
   - type: Query
