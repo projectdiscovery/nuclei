@@ -230,9 +230,19 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		Auth:    []ssh.AuthMethod{},
 		Timeout: opts.Timeout,
 	}
+
 	if len(opts.Password) > 0 {
 		conf.Auth = append(conf.Auth, ssh.Password(opts.Password))
+
+		cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+			if len(questions) == 1 {
+				return []string{opts.Password}, nil
+			}
+			return []string{}, nil
+		}
+		conf.Auth = append(conf.Auth, ssh.KeyboardInteractiveChallenge(cb))
 	}
+
 	if len(opts.PrivateKey) > 0 {
 		signer, err := ssh.ParsePrivateKey([]byte(opts.PrivateKey))
 		if err != nil {
