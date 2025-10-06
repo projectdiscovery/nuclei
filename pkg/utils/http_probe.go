@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/projectdiscovery/httpx/common/httpx"
@@ -9,15 +10,38 @@ import (
 	"github.com/projectdiscovery/useragent"
 )
 
-var (
-	HttpSchemes = []string{"https", "http"}
-)
+var commonHttpPorts = []string{
+	":80",
+	":8080",
+}
+var httpSchemesHttpFirst = []string{"http", "https"}
+var httpSchemesHttpsFirst = []string{"https", "http"}
 
-// ProbeURL probes the scheme for a URL. first HTTPS is tried
-// and if any errors occur http is tried. If none succeeds, probing
-// is abandoned for such URLs.
+// If url contains a port that is commonly used for HTTP,
+// return http first, otherwise return https first.
+func determineSchemeOrder(input string) []string {
+	// Full urls (with http(s):// prefix) are not probed
+	_, port, err := net.SplitHostPort(input)
+	if err == nil {
+		// Check if port is a known HTTP port
+		portWithColon := ":" + port
+		for _, httpPort := range commonHttpPorts {
+			if portWithColon == httpPort {
+				return httpSchemesHttpFirst
+			}
+		}
+	}
+	return httpSchemesHttpsFirst
+}
+
+// ProbeURL probes the scheme for a URL.
+// First http scheme tried is selected based on heuristics
+// If none succeeds, probing is abandoned for such URLs.
 func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
-	for _, scheme := range HttpSchemes {
+
+	httpSchemesOrdered := determineSchemeOrder(input)
+
+	for _, scheme := range httpSchemesOrdered {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
 		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
 		if err != nil {
@@ -39,7 +63,7 @@ type inputLivenessChecker struct {
 	client *httpx.HTTPX
 }
 
-// ProbeURL probes the scheme for a URL. first HTTPS is tried
+// ProbeURL probes the scheme for a URL.
 func (i *inputLivenessChecker) ProbeURL(input string) (string, error) {
 	return ProbeURL(input, i.client), nil
 }
