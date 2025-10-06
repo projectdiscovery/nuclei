@@ -7,7 +7,6 @@ import (
 	"maps"
 	"net"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -37,6 +36,7 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	iputil "github.com/projectdiscovery/utils/ip"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -134,8 +134,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	// "Port" is a special variable and it should not contains any dsl expressions
-	if strings.Contains(request.getPort(), "{{") {
-		return errkit.New("'Port' variable cannot contain any dsl expressions")
+	ports := request.getPorts()
+	for _, port := range ports {
+		if strings.Contains(port, "{{") {
+			return errkit.New("'Port' variable cannot contain any dsl expressions")
+		}
 	}
 
 	if request.Init != "" {
@@ -282,85 +285,28 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-
-	// Get all ports to test
+	// Get default port(s) if specified in template
 	ports := request.getPorts()
 
-	// Check if target already has a specific port (from URL like host:port)
-	targetURL, err := urlutil.Parse(target.MetaInput.Input)
-	var urlPort string
-	if err == nil {
-		urlPort = targetURL.Port()
-	}
-
-	// Create a map to track unique ports and avoid duplicates
-	uniquePorts := make(map[string]bool)
-
-	// Add URL port if it exists
-	if urlPort != "" {
-		uniquePorts[urlPort] = true
-	}
-
-	// Add template ports
 	for _, port := range ports {
-		uniquePorts[port] = true
+		err := request.executeWithResults(port, target, dynamicValues, previous, callback)
+		if err != nil {
+			return err
+		}
 	}
-
-	// If no ports found, fallback to single port behavior
-	if len(uniquePorts) == 0 {
-		return request.executeWithSinglePort(target, dynamicValues, previous, callback)
-	}
-
-	// Execute for each unique port in parallel
-	var wg sync.WaitGroup
-	portList := make([]string, 0, len(uniquePorts))
-	for port := range uniquePorts {
-		portList = append(portList, port)
-	}
-
-	// Use a semaphore to limit concurrent goroutines (max 10 concurrent port tests)
-	semaphore := make(chan struct{}, 10)
-
-	for _, port := range portList {
-		wg.Add(1)
-		go func(port string) {
-			defer wg.Done()
-
-			// Acquire semaphore
-			semaphore <- struct{}{}
-			defer func() { <-semaphore }()
-
-			gologger.Debug().Msgf("Testing port: %s\n", port)
-			input := target.Clone()
-
-			// Parse the original input to get hostname
-			originalURL, err := urlutil.Parse(target.MetaInput.Input)
-			if err != nil {
-				gologger.Debug().Msgf("Could not parse original input: %s\n", err)
-				return
-			}
-
-			// Create new input with the specific port
-			newInput := fmt.Sprintf("%s:%s", originalURL.Hostname(), port)
-			input.MetaInput.Input = newInput
-
-			if err := request.executeWithSinglePort(input, dynamicValues, previous, callback); err != nil {
-				gologger.Debug().Msgf("Error executing request for port %s: %s\n", port, err)
-			}
-		}(port)
-	}
-
-	// Wait for all goroutines to complete
-	wg.Wait()
 
 	return nil
 }
 
-// executeWithSinglePort executes the request for a single port
-func (request *Request) executeWithSinglePort(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+// executeWithResults executes the request
+func (request *Request) executeWithResults(port string, target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	input := target.Clone()
-	// Note: target already has the correct port set from the multi-port loop
-	// No need to call UseNetworkPort again as the port is already set in the target
+	// use network port updates input with new port requested in template file
+	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
+	// idea is to reduce redundant dials to http ports
+	if err := input.UseNetworkPort(port, request.getExcludePorts()); err != nil {
+		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+	}
 
 	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
@@ -827,32 +773,14 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.JavascriptProtocol
 }
 
-func (request *Request) getPort() string {
+func (request *Request) getPorts() []string {
 	for k, v := range request.Args {
 		if strings.EqualFold(k, "Port") {
-			return types.ToString(v)
+			ports := types.ToStringSlice(strings.Split(types.ToString(v), ","))
+			return sliceutil.Dedupe(ports)
 		}
 	}
-	return ""
-}
-
-// getPorts returns a slice of ports from the Port argument
-func (request *Request) getPorts() []string {
-	portStr := request.getPort()
-	if portStr == "" {
-		return []string{}
-	}
-
-	// Split by comma and clean up whitespace
-	ports := strings.Split(portStr, ",")
-	var cleanedPorts []string
-	for _, port := range ports {
-		cleaned := strings.TrimSpace(port)
-		if cleaned != "" {
-			cleanedPorts = append(cleanedPorts, cleaned)
-		}
-	}
-	return cleanedPorts
+	return []string{}
 }
 
 func (request *Request) getExcludePorts() string {
