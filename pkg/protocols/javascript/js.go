@@ -288,14 +288,16 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	// Get default port(s) if specified in template
 	ports := request.getPorts()
 
+	var errs []error
+
 	for _, port := range ports {
 		err := request.executeWithResults(port, target, dynamicValues, previous, callback)
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errkit.Join(errs...)
 }
 
 // executeWithResults executes the request
