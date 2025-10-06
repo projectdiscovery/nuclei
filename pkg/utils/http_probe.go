@@ -8,40 +8,40 @@ import (
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/useragent"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 var commonHttpPorts = []string{
-	":80",
-	":8080",
+	"80",
+	"8080",
 }
-var httpSchemesHttpFirst = []string{"http", "https"}
-var httpSchemesHttpsFirst = []string{"https", "http"}
+var defaultHttpSchemes = []string{
+	"https",
+	"http",
+}
+var httpFirstSchemes = []string{
+	"http",
+	"https",
+}
 
-// If url contains a port that is commonly used for HTTP,
-// return http first, otherwise return https first.
+// determineSchemeOrder for the input
 func determineSchemeOrder(input string) []string {
-	// Full urls (with http(s):// prefix) are not probed
-	_, port, err := net.SplitHostPort(input)
-	if err == nil {
-		// Check if port is a known HTTP port
-		portWithColon := ":" + port
-		for _, httpPort := range commonHttpPorts {
-			if portWithColon == httpPort {
-				return httpSchemesHttpFirst
-			}
+	// if input has port that is commonly used for HTTP, return http then https
+	if _, port, err := net.SplitHostPort(input); err == nil {
+		if sliceutil.Contains(commonHttpPorts, port) {
+			return httpFirstSchemes
 		}
 	}
-	return httpSchemesHttpsFirst
+
+	return defaultHttpSchemes
 }
 
 // ProbeURL probes the scheme for a URL.
-// First http scheme tried is selected based on heuristics
+// http schemes are selected with heuristics
 // If none succeeds, probing is abandoned for such URLs.
 func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
-
-	httpSchemesOrdered := determineSchemeOrder(input)
-
-	for _, scheme := range httpSchemesOrdered {
+	schemes := determineSchemeOrder(input)
+	for _, scheme := range schemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
 		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
 		if err != nil {
