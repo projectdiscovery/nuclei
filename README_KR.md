@@ -209,6 +209,7 @@ RATE-LIMIT:
    -c, -concurrency int               병렬로 실행할 최대 템플릿 수 (기본값 25)
    -hbs, -headless-bulk-size int      템플릿당 병렬로 분석할 최대 headless 호스트 수 (기본값 10)
    -headc, -headless-concurrency int  병렬로 실행할 최대 headless 템플릿 수 (기본값 10)
+   -tlc, -template-loading-concurrency int  최대 동시 템플릿 로딩 작업 수 (기본값 50)
 
 OPTIMIZATIONS:
    -timeout int                     타임아웃 전에 기다릴 초 수 (기본값 10)
