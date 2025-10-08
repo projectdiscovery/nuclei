@@ -238,6 +238,7 @@ UNCOVER引擎:
    -c, -concurrency int                  并行执行的最大模板数量（默认：25）
    -hbs, -headless-bulk-size int         每个模板并行运行的无头主机最大数量（默认：10）
    -headc, -headless-concurrency int     并行指定无头主机最大数量（默认：10）
+   -tlc, -template-loading-concurrency int  最大并发模板加载操作数（默认：50）
 
 
 优化：
