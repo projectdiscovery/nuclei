@@ -9,8 +9,8 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	"github.com/xanzy/go-gitlab"
+	"github.com/projectdiscovery/utils/errkit"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 var _ Provider = &customTemplateGitLabRepo{}
@@ -28,7 +28,9 @@ func NewGitLabProviders(options *types.Options) ([]*customTemplateGitLabRepo, er
 		// Establish a connection to GitLab and build a client object with which to download templates from GitLab
 		gitLabClient, err := getGitLabClient(options.GitLabServerURL, options.GitLabToken)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)
+			errx := errkit.FromError(err)
+			errx.Msgf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)
+			return nil, errx
 		}
 
 		// Create a new GitLab service client
@@ -83,8 +85,8 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 
 		// Get the directory listing for the files in the project
 		tree, _, err := bk.gitLabClient.Repositories.ListTree(projectID, &gitlab.ListTreeOptions{
-			Ref:       gitlab.String(project.DefaultBranch),
-			Recursive: gitlab.Bool(true),
+			Ref:       gitlab.Ptr(project.DefaultBranch),
+			Recursive: gitlab.Ptr(true),
 		})
 		if err != nil {
 			gologger.Error().Msgf("error retrieving files from GitLab project: %s (%d) %s", project.Name, projectID, err)
@@ -95,7 +97,7 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 			// If the object is not a file or file extension is not .yaml, skip it
 			if file.Type == "blob" && filepath.Ext(file.Path) == ".yaml" {
 				gf := &gitlab.GetFileOptions{
-					Ref: gitlab.String(project.DefaultBranch),
+					Ref: gitlab.Ptr(project.DefaultBranch),
 				}
 				f, _, err := bk.gitLabClient.RepositoryFiles.GetFile(projectID, file.Path, gf)
 				if err != nil {

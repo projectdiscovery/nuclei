@@ -15,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/oauth2"
 )
@@ -63,11 +62,9 @@ func New(options *Options) (*Integration, error) {
 	)
 	tc := oauth2.NewClient(ctx, ts)
 
-	// patch transport to support proxy - only http
-	// TODO: investigate if it's possible to reuse existing retryablehttp
-	if types.ProxyURL != "" {
-		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
-			tc.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
+		if tcTransport, ok := tc.Transport.(*http.Transport); ok {
+			tcTransport.Proxy = options.HttpClient.HTTPClient.Transport.(*http.Transport).Proxy
 		}
 	}
 
@@ -175,15 +172,15 @@ func (i *Integration) Name() string {
 
 // ShouldFilter determines if an issue should be logged to this tracker
 func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
-	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
+	if i.options.AllowList != nil && !i.options.AllowList.GetMatch(event) {
 		return false
 	}
 
 	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }
 
 func (i *Integration) findIssueByTitle(ctx context.Context, title string) (*github.Issue, error) {

@@ -161,7 +161,7 @@ Server: Google Frontend
 		router := httprouter.New()
 		router.GET("/", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 			w.Header().Add("Server", "Google Frontend")
-			fmt.Fprintf(w, "%s", `<!DOCTYPE html>
+			_, _ = fmt.Fprintf(w, "%s", `<!DOCTYPE html>
 			<html>
 			<head>
 			<title>Firing Range</title>
@@ -182,7 +182,9 @@ Server: Google Frontend
 
 		data, err := client.Get(ts.URL)
 		require.Nil(t, err, "could not dial url")
-		defer data.Body.Close()
+		defer func() {
+			_ = data.Body.Close()
+		}()
 
 		b, err := httputil.DumpResponse(data, true)
 		require.Nil(t, err, "could not dump response")

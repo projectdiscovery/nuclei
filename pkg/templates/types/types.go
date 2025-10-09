@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // ProtocolType is the type of the request protocol specified
@@ -65,6 +65,18 @@ func GetSupportedProtocolTypes() ProtocolTypes {
 	var result []ProtocolType
 	for index := ProtocolType(1); index < limit; index++ {
 		result = append(result, index)
+	}
+	return result
+}
+
+// SupportedProtocolsStrings returns a slice of strings of supported protocols
+func SupportedProtocolsStrings() []string {
+	var result []string
+	for _, protocol := range GetSupportedProtocolTypes() {
+		if protocol.String() == "" {
+			continue
+		}
+		result = append(result, protocol.String())
 	}
 	return result
 }

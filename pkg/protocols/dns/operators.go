@@ -114,6 +114,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
@@ -149,9 +150,9 @@ func traceToString(traceData *retryabledns.TraceData, withSteps bool) string {
 	if traceData != nil {
 		for i, dnsRecord := range traceData.DNSData {
 			if withSteps {
-				buffer.WriteString(fmt.Sprintf("request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ",")))
+				fmt.Fprintf(buffer, "request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ","))
 			}
-			buffer.WriteString(dnsRecord.Raw)
+			_, _ = fmt.Fprintf(buffer, "%s\n", dnsRecord.Raw)
 		}
 	}
 	return buffer.String()

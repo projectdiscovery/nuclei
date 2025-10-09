@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
@@ -93,7 +94,14 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 
 		if len(template.RequestsCode) > 0 {
 			if !options.Options.EnableCodeTemplates {
-				gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
+				// NOTE(dwisiswant0): It is safe to continue here during
+				// validation mode, because the template has already been parsed
+				// and syntax-validated by templates.Parse() above. It only
+				// prevents adding to workflow's executer list and suppresses
+				// warning messages.
+				if !options.Options.Validate {
+					gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
+				}
 				continue
 			} else if !template.Verified {
 				// unverfied code templates are not allowed in workflows
@@ -105,7 +113,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 		// increment signed/unsigned counters
 		if template.Verified {
 			if template.TemplateVerifier == "" {
-				SignatureStats[PDVerifier].Add(1)
+				SignatureStats[keys.PDVerifier].Add(1)
 			} else {
 				SignatureStats[template.TemplateVerifier].Add(1)
 			}

@@ -7,7 +7,7 @@ info:
 
 
 variables:
-  cname_filtered: '{{trim_suffix(dns_cname,".ghost.io")}}'
+  cname_filtered: '{{trim_suffix(dns_cname,".vercel-dns.com")}}'
 
 dns:
   - name: "{{FQDN}}" # DNS Request
@@ -24,7 +24,7 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - contains(http_body,'ProjectDiscovery.io') # check for http string
-          - cname_filtered == 'projectdiscovery' # check for cname (extracted information from dns response)
-          - ssl_subject_cn == 'blog.projectdiscovery.io'
+          - contains(http_body,'home') # check for http string
+          - cname_filtered == 'cname' # check for cname (extracted information from dns response)
+          - ssl_subject_cn == 'docs.projectdiscovery.io'
         condition: and

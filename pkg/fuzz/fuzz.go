@@ -24,12 +24,27 @@ type Rule struct {
 	ruleType ruleType
 	// description: |
 	//   Part is the part of request to fuzz.
-	//
-	//   query fuzzes the query part of url. More parts will be added later.
 	// values:
 	//   - "query"
+	//   - "header"
+	//   - "path"
+	//   - "body"
+	//   - "cookie"
+	//   - "request"
 	Part     string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query,enum=header,enum=path,enum=body,enum=cookie,enum=request"`
 	partType partType
+	// description: |
+	//   Parts is the list of parts to fuzz. If multiple parts need to be
+	//   defined while excluding some, this should be used instead of singular part.
+	// values:
+	//   - "query"
+	//   - "header"
+	//   - "path"
+	//   - "body"
+	//   - "cookie"
+	//   - "request"
+	Parts []string `yaml:"parts,omitempty" json:"parts,omitempty" jsonschema:"title=parts of rule,description=Part of request rule to fuzz,enum=query,enum=header,enum=path,enum=body,enum=cookie,enum=request"`
+
 	// description: |
 	//   Mode is the mode of fuzzing to perform.
 	//

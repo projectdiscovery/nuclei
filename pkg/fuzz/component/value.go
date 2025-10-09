@@ -73,12 +73,22 @@ func (v *Value) SetParsed(data dataformat.KV, dataFormat string) {
 
 // SetParsedValue sets the parsed value for a key
 // in the parsed map
-func (v *Value) SetParsedValue(key string, value string) bool {
+func (v *Value) SetParsedValue(key, value string) bool {
+	if key == "" {
+		return false
+	}
+
 	origValue := v.parsed.Get(key)
 	if origValue == nil {
 		v.parsed.Set(key, value)
 		return true
 	}
+
+	// TODO(dwisiswant0): I'm sure that this can be simplified because
+	// `dataformat.KV.*` is a type of `mapsutil.*` where the value is `any`. So,
+	// it looks like we won't type conversion here or even have its own methods
+	// inside `dataformat.KV`.
+
 	// If the value is a list, append to it
 	// otherwise replace it
 	switch v := origValue.(type) {

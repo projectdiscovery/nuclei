@@ -12,11 +12,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisPostgres(host string, port int) (bool, error) {
+func memoizedisPostgres(executionId string, host string, port int) (bool, error) {
 	hash := "isPostgres" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isPostgres(host, port)
+		return isPostgres(executionId, host, port)
 	})
 	if err != nil {
 		return false, err
@@ -28,11 +28,11 @@ func memoizedisPostgres(host string, port int) (bool, error) {
 	return false, errors.New("could not convert cached result")
 }
 
-func memoizedexecuteQuery(host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
+func memoizedexecuteQuery(executionId string, host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
 	hash := "executeQuery" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(username) + ":" + fmt.Sprint(password) + ":" + fmt.Sprint(dbName) + ":" + fmt.Sprint(query)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return executeQuery(host, port, username, password, dbName, query)
+		return executeQuery(executionId, host, port, username, password, dbName, query)
 	})
 	if err != nil {
 		return nil, err
@@ -44,11 +44,11 @@ func memoizedexecuteQuery(host string, port int, username string, password strin
 	return nil, errors.New("could not convert cached result")
 }
 
-func memoizedconnect(host string, port int, username string, password string, dbName string) (bool, error) {
+func memoizedconnect(executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
 	hash := "connect" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(username) + ":" + fmt.Sprint(password) + ":" + fmt.Sprint(dbName)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connect(host, port, username, password, dbName)
+		return connect(executionId, host, port, username, password, dbName)
 	})
 	if err != nil {
 		return false, err

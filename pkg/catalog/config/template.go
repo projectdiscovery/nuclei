@@ -7,13 +7,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-var knownConfigFiles = []string{"cves.json", "contributors.json", "TEMPLATES-STATS.json"}
+var (
+	knownConfigFiles     = []string{"cves.json", "contributors.json", "TEMPLATES-STATS.json"}
+	knownMiscDirectories = []string{".git", ".github", "helpers"}
+)
 
 // TemplateFormat
 type TemplateFormat uint8
@@ -23,6 +25,25 @@ const (
 	JSON
 	Unknown
 )
+
+// GetKnownConfigFiles returns known config files.
+func GetKnownConfigFiles() []string {
+	return knownConfigFiles
+}
+
+// GetKnownMiscDirectories returns known misc directories with trailing slashes.
+//
+// The trailing slash ensures that directory matching is explicit and avoids
+// falsely match files with similar names (e.g. "helpers" matching
+// "some-helpers.yaml"), since [IsTemplate] checks against normalized full paths.
+func GetKnownMiscDirectories() []string {
+	trailedSlashDirs := make([]string, 0, len(knownMiscDirectories))
+	for _, dir := range knownMiscDirectories {
+		trailedSlashDirs = append(trailedSlashDirs, dir+string(os.PathSeparator))
+	}
+
+	return trailedSlashDirs
+}
 
 // GetTemplateFormatFromExt returns template format
 func GetTemplateFormatFromExt(filePath string) TemplateFormat {
@@ -37,18 +58,27 @@ func GetTemplateFormatFromExt(filePath string) TemplateFormat {
 	}
 }
 
-// GetSupportedTemplateFileExtensions returns all supported template file extensions
+// GetSupportTemplateFileExtensions returns all supported template file extensions
 func GetSupportTemplateFileExtensions() []string {
 	return []string{extensions.YAML, extensions.JSON}
 }
 
-// isTemplate is a callback function used by goflags to decide if given file should be read
-// if it is not a nuclei-template file only then file is read
-func IsTemplate(filename string) bool {
-	if stringsutil.ContainsAny(filename, knownConfigFiles...) {
+// IsTemplate returns true if the file is a template based on its path.
+// It used by goflags and other places to filter out non-template files.
+func IsTemplate(fpath string) bool {
+	fpath = filepath.FromSlash(fpath)
+	fname := filepath.Base(fpath)
+	fext := strings.ToLower(filepath.Ext(fpath))
+
+	if stringsutil.ContainsAny(fname, GetKnownConfigFiles()...) {
 		return false
 	}
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), GetSupportTemplateFileExtensions()...)
+
+	if stringsutil.ContainsAny(fpath, GetKnownMiscDirectories()...) {
+		return false
+	}
+
+	return stringsutil.EqualFoldAny(fext, GetSupportTemplateFileExtensions()...)
 }
 
 type template struct {
@@ -74,7 +104,9 @@ func getTemplateID(filePath string) (string, error) {
 		return "", err
 	}
 
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	return GetTemplateIDFromReader(file, filePath)
 }
 
@@ -96,7 +128,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 				return index, nil
 			}
 		}
-		gologger.Error().Msgf("failed to read index file creating new one: %v", err)
+		DefaultConfig.Logger.Error().Msgf("failed to read index file creating new one: %v", err)
 	}
 
 	ignoreDirs := DefaultConfig.GetAllCustomTemplateDirs()
@@ -107,7 +139,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 	}
 	err := filepath.WalkDir(DefaultConfig.TemplatesDirectory, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			gologger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
+			DefaultConfig.Logger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
 			return nil
 		}
 		if d.IsDir() || !IsTemplate(path) || stringsutil.ContainsAny(path, ignoreDirs...) {
@@ -116,7 +148,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 		// get template id from file
 		id, err := getTemplateID(path)
 		if err != nil || id == "" {
-			gologger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", path, id, err)
+			DefaultConfig.Logger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", path, id, err)
 			return nil
 		}
 		index[id] = path

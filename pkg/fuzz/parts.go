@@ -2,6 +2,7 @@ package fuzz
 
 import (
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
@@ -9,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // executePartRule executes part rules based on type
@@ -18,7 +20,7 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload ValueOrKeyVal
 
 // checkRuleApplicableOnComponent checks if a rule is applicable on given component
 func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) bool {
-	if rule.Part != component.Name() {
+	if rule.Part != component.Name() && !sliceutil.Contains(rule.Parts, component.Name()) && rule.partType != requestPartType {
 		return false
 	}
 	foundAny := false
@@ -40,14 +42,14 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrK
 		return rule.executePartComponentOnKV(input, payload, ruleComponent.Clone())
 	} else {
 		// for value only fuzzing
-		return rule.executePartComponentOnValues(input, payload.Value, ruleComponent.Clone())
+		return rule.executePartComponentOnValues(input, payload.Value, payload.OriginalPayload, ruleComponent.Clone())
 	}
 }
 
 // executePartComponentOnValues executes this rule on a given component and payload
 // this supports both single and multiple [ruleType] modes
 // i.e if component has multiple values, they can be replaced once or all depending on mode
-func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadStr string, ruleComponent component.Component) error {
+func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadStr, originalPayload string, ruleComponent component.Component) error {
 	finalErr := ruleComponent.Iterate(func(key string, value interface{}) error {
 		valueStr := types.ToString(value)
 		if !rule.matchKeyOrValue(key, valueStr) {
@@ -55,8 +57,13 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 			return nil
 		}
 
-		var evaluated string
+		var evaluated, originalEvaluated string
 		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
+		if input.ApplyPayloadInitialTransformation != nil {
+			evaluated = input.ApplyPayloadInitialTransformation(evaluated, input.AnalyzerParams)
+			originalEvaluated, _ = rule.executeEvaluate(input, key, valueStr, originalPayload, input.InteractURLs)
+		}
+
 		if err := ruleComponent.SetValue(key, evaluated); err != nil {
 			// gologger.Warning().Msgf("could not set value due to format restriction original(%s, %s[%T]) , new(%s,%s[%T])", key, valueStr, value, key, evaluated, evaluated)
 			return nil
@@ -68,7 +75,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, valueStr, originalEvaluated, valueStr, key, evaluated); qerr != nil {
 				return qerr
 			}
 			// fmt.Printf("executed with value: %s\n", evaluated)
@@ -90,7 +97,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		if err != nil {
 			return err
 		}
-		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); qerr != nil {
+		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", ""); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -125,8 +132,8 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
-				return err
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value, "", "", "", ""); qerr != nil {
+				return qerr
 			}
 
 			// after building change back to original value to avoid repeating it in furthur requests
@@ -144,13 +151,34 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 }
 
 // execWithInput executes a rule with input via callback
-func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter string) error {
+func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter, parameterValue, originalPayload, originalValue, key, value string) error {
+	// If the parameter is a number, replace it with the parameter value
+	// or if the parameter is empty and the parameter value is not empty
+	// replace it with the parameter value
+	actualParameter := parameter
+	if _, err := strconv.Atoi(parameter); err == nil || (parameter == "" && parameterValue != "") {
+		actualParameter = parameterValue
+	}
+	// If the parameter is frequent, skip it if the option is enabled
+	if rule.options.FuzzParamsFrequency != nil {
+		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
+			parameter,
+			httpReq.String(),
+			rule.options.TemplateID,
+		) {
+			return nil
+		}
+	}
 	request := GeneratedRequest{
-		Request:       httpReq,
-		InteractURLs:  interactURLs,
-		DynamicValues: input.Values,
-		Component:     component,
-		Parameter:     parameter,
+		Request:         httpReq,
+		InteractURLs:    interactURLs,
+		DynamicValues:   input.Values,
+		Component:       component,
+		Parameter:       actualParameter,
+		Key:             key,
+		Value:           value,
+		OriginalValue:   originalValue,
+		OriginalPayload: originalPayload,
 	}
 	if !input.Callback(request) {
 		return types.ErrNoMoreRequests
@@ -163,9 +191,9 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 // for fuzzing.
 func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload string, interactshURLs []string) (string, []string) {
 	// TODO: Handle errors
-	values := generators.MergeMaps(input.Values, map[string]interface{}{
+	values := generators.MergeMaps(rule.options.Variables.GetAll(), map[string]interface{}{
 		"value": value,
-	}, rule.options.Options.Vars.AsMap(), rule.options.Variables.GetAll())
+	}, rule.options.Options.Vars.AsMap(), input.Values)
 	firstpass, _ := expressions.Evaluate(payload, values)
 	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
 	evaluated, _ := expressions.Evaluate(interactData, values)

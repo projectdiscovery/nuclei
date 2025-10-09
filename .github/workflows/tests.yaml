@@ -1,0 +1,179 @@
+name: 🔨 Tests
+
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - '**.go'
+      - '**.mod'
+  pull_request:
+    paths:
+      - '**.go'
+      - '**.mod'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: "Lint"
+    if: "${{ !endsWith(github.actor, '[bot]') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/golangci-lint/v2@v1
+
+  tests:
+    name: "Tests"
+    needs: ["lint"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: projectdiscovery/actions/setup/go@v1
+      - run: make vet
+      - run: make build
+      - run: make test
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+      - run: go run -race . -l ../functional-test/targets.txt -id tech-detect,tls-version
+        if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
+        working-directory: cmd/nuclei/
+
+  sdk:
+    name: "Run example SDK"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: projectdiscovery/actions/setup/go@v1
+      - name: "Simple"
+        run: go run .
+        working-directory: examples/simple/
+      # - run: go run . # Temporarily disabled very flaky in github actions
+      #   working-directory: examples/advanced/
+
+      # TODO: FIX with ExecutionID (ref: https://github.com/projectdiscovery/nuclei/pull/6296)
+      # - name: "with Speed Control"
+      #   run: go run .
+      #   working-directory: examples/with_speed_control/
+
+  integration:
+    name: "Integration tests"
+    needs: ["tests"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/setup/python@v1
+      - run: bash run.sh "${{ matrix.os }}"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+        timeout-minutes: 50
+        working-directory: integration_tests/
+
+  functional:
+    name: "Functional tests"
+    needs: ["tests"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/setup/python@v1
+      - run: bash run.sh
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        working-directory: cmd/functional-test/
+
+  validate:
+    name: "Template validate"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: projectdiscovery/actions/setup/go@v1
+      - run: make template-validate
+
+  codeql:
+    name: "CodeQL analysis"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: 'go'
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+
+  release:
+    name: "Release test"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/goreleaser@v1
+
+  flamegraph:
+    name: "Flamegraph"
+    needs: ["tests"]
+    env:
+      PROFILE_MEM: "/tmp/nuclei"
+      TARGET_URL: "http://scanme.sh/a/?b=c"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: make build
+      - name: "Setup environment (push)"
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          echo "PROFILE_MEM=${PROFILE_MEM}-${GITHUB_REF_NAME}-${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "FLAMEGRAPH_NAME=nuclei-${GITHUB_REF_NAME} (${GITHUB_SHA})" >> $GITHUB_ENV
+      - name: "Setup environment (pull_request)"
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          echo "PROFILE_MEM=${PROFILE_MEM}-pr-${{ github.event.number }}" >> $GITHUB_ENV
+          echo "FLAMEGRAPH_NAME=nuclei (PR #${{ github.event.number }})" >> $GITHUB_ENV
+      - run: ./bin/nuclei -silent -update-templates
+      - run: ./bin/nuclei -silent -u "${TARGET_URL}" -profile-mem="${PROFILE_MEM}"
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-cpu
+        with:
+          profile: "${{ env.PROFILE_MEM }}.cpu"
+          name: "${{ env.FLAMEGRAPH_NAME }} CPU profiles"
+        continue-on-error: true
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-mem
+        with:
+          profile: "${{ env.PROFILE_MEM }}.mem"
+          name: "${{ env.FLAMEGRAPH_NAME }} memory profiles"
+        continue-on-error: true
+      - if: ${{ steps.flamegraph-mem.outputs.message == '' }}
+        run: |
+          echo "::notice::CPU flamegraph: ${{ steps.flamegraph-cpu.outputs.url }}"
+          echo "::notice::Memory (heap) flamegraph: ${{ steps.flamegraph-mem.outputs.url }}"
+
+  perf-regression:
+    needs: ["tests"]
+    uses: ./.github/workflows/perf-regression.yaml

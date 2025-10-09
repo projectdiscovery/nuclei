@@ -99,7 +99,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Whois Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Whois Protocol request variables: %s\n", vardump.DumpVariables(variables))
 	}
 
 	// and replace placeholders
@@ -177,6 +177,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
+		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
@@ -194,4 +195,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WHOISProtocol
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

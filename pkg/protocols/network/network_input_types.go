@@ -1,11 +1,11 @@
 package network
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // NetworkInputType is the type of the network input specified

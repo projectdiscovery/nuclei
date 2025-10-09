@@ -50,9 +50,11 @@ func NewWithInput(ctx context.Context, input string) *Context {
 	if err != nil {
 		gologger.Error().Msgf("contextargs: could not create cookie jar: %s\n", err)
 	}
+	metaInput := NewMetaInput()
+	metaInput.Input = input
 	return &Context{
 		ctx:       ctx,
-		MetaInput: &MetaInput{Input: input},
+		MetaInput: metaInput,
 		CookieJar: jar,
 		args: &mapsutil.SyncLockMap[string, interface{}]{
 			Map:      make(map[string]interface{}),

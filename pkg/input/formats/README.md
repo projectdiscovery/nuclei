@@ -67,7 +67,7 @@ This module parser Postman Collection JSON files.
 
 ### 3. Auth Type Parsing:
  Able to parse and set the `Authentication` options provided in the postman collection in the request headers.
-  Supported types of authentiction:
+  Supported types of authentication:
 
    1. **API Key**: In header
    2. **Basic**: Setting basic auth through username, password.

@@ -1,17 +1,16 @@
 package fuzz
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	_ json.Marshaler   = &SliceOrMapSlice{}
-	_ json.Unmarshaler = &SliceOrMapSlice{}
+	_ json.JSONCodec   = &SliceOrMapSlice{}
 	_ yaml.Marshaler   = &SliceOrMapSlice{}
 	_ yaml.Unmarshaler = &SliceOrMapSlice{}
 )
@@ -19,6 +18,8 @@ var (
 type ValueOrKeyValue struct {
 	Key   string
 	Value string
+
+	OriginalPayload string
 }
 
 func (v *ValueOrKeyValue) IsKV() bool {

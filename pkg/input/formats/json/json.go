@@ -1,14 +1,13 @@
 package json
 
 import (
-	"encoding/json"
 	"io"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // JSONFormat is a JSON format parser for nuclei
@@ -46,14 +45,8 @@ func (j *JSONFormat) SetOptions(options formats.InputFormatOptions) {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *JSONFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
-	file, err := os.Open(input)
-	if err != nil {
-		return errors.Wrap(err, "could not open json file")
-	}
-	defer file.Close()
-
-	decoder := json.NewDecoder(file)
+func (j *JSONFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
+	decoder := json.NewDecoder(input)
 	for {
 		var request proxifyRequest
 		err := decoder.Decode(&request)

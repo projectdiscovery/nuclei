@@ -2,7 +2,7 @@
 
 /**
  * Client is a client for MS SQL database.
- * Internally client uses denisenkom/go-mssqldb driver.
+ * Internally client uses microsoft/go-mssqldb driver.
  * @example
  * ```javascript
  * const mssql = require('nuclei/mssql');
@@ -63,5 +63,33 @@ export class MSSQLClient {
     }
     
 
+    /**
+    * ExecuteQuery connects to MS SQL database using given credentials and executes a query.
+    * It returns the results of the query or an error if something goes wrong.
+    * @example
+    * ```javascript
+    * const mssql = require('nuclei/mssql');
+    * const client = new mssql.MSSQLClient;
+    * const result = client.ExecuteQuery('acme.com', 1433, 'username', 'password', 'master', 'SELECT @@version');
+    * log(to_json(result));
+    * ```
+    */
+    public ExecuteQuery(host: string, port: number, username: string): SQLResult | null | null {
+        return null;
+    }
+    
+
+}
+
+
+
+/**
+ * SQLResult Interface
+ */
+export interface SQLResult {
+    
+    Count?: number,
+    
+    Columns?: string[],
 }
 

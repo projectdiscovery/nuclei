@@ -2,6 +2,7 @@ package headless
 
 import (
 	"fmt"
+	"maps"
 	"net/url"
 	"strings"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 
 	"github.com/pkg/errors"
-	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -30,7 +29,7 @@ import (
 
 var _ protocols.Request = &Request{}
 
-const errCouldGetHtmlElement = "could get html element"
+const errCouldNotGetHtmlElement = "could not get html element"
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
@@ -52,14 +51,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 
 	vars := protocolutils.GenerateVariablesWithContextArgs(input, false)
-	payloads := generators.BuildPayloadFromOptions(request.options.Options)
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
-	values := generators.MergeMaps(vars, metadata, payloads)
 	if request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		vars = generators.MergeMaps(vars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	variablesMap := request.options.Variables.Evaluate(values)
-	payloads = generators.MergeMaps(variablesMap, payloads, request.options.Constants)
+
+	variablesMap := request.options.Variables.Evaluate(vars)
+	vars = generators.MergeMaps(vars, metadata, optionVars, variablesMap, request.options.Constants)
 
 	// check for operator matches by wrapping callback
 	gotmatches := false
@@ -71,7 +70,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	// verify if fuzz elaboration was requested
 	if len(request.Fuzzing) > 0 {
-		return request.executeFuzzingRule(input, payloads, previous, wrappedCallback)
+		return request.executeFuzzingRule(input, vars, previous, wrappedCallback)
 	}
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -83,13 +82,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
 				return nil
 			}
-			value = generators.MergeMaps(value, payloads)
+			value = generators.MergeMaps(value, vars)
 			if err := request.executeRequestWithPayloads(input, value, previous, wrappedCallback); err != nil {
 				return err
 			}
 		}
 	} else {
-		value := maps.Clone(payloads)
+		value := maps.Clone(vars)
 		if err := request.executeRequestWithPayloads(input, value, previous, wrappedCallback); err != nil {
 			return err
 		}
@@ -117,20 +116,18 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
-	defer instance.Close()
-
-	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Headless Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
-	}
+	defer func() {
+		_ = instance.Close()
+	}()
 
 	instance.SetInteractsh(request.options.Interactsh)
 
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	options := &engine.Options{
 		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
@@ -146,7 +143,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer page.Close()
 
@@ -165,16 +162,16 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 			if act.ActionType.ActionType == engine.ActionNavigate {
 				value := act.GetArg("url")
 				if reqLog[value] != "" {
-					reqBuilder.WriteString(fmt.Sprintf("\tnavigate => %v\n", reqLog[value]))
+					_, _ = fmt.Fprintf(reqBuilder, "\tnavigate => %v\n", reqLog[value])
 				} else {
-					reqBuilder.WriteString(fmt.Sprintf("%v not found in %v\n", value, reqLog))
+					_, _ = fmt.Fprintf(reqBuilder, "%v not found in %v\n", value, reqLog)
 				}
 			} else {
 				actStepStr := act.String()
-				reqBuilder.WriteString("\t" + actStepStr + "\n")
+				_, _ = fmt.Fprintf(reqBuilder, "\t%s\n", actStepStr)
 			}
 		}
-		gologger.Debug().Msgf(reqBuilder.String())
+		gologger.Debug().Msg(reqBuilder.String())
 	}
 
 	var responseBody string
@@ -183,18 +180,21 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	header := out.GetOrDefault("header", "").(string)
+
+	// NOTE(dwisiswant0): `status_code` key should be an integer type.
+	// Ref: https://github.com/projectdiscovery/nuclei/pull/5545#discussion_r1721291013
+	statusCode := out.GetOrDefault("status_code", "").(string)
+
+	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	for k, v := range out {
-		outputEvent[k] = v
-	}
-	for k, v := range payloads {
-		outputEvent[k] = v
-	}
+
+	maps.Copy(outputEvent, out)
+	maps.Copy(outputEvent, payloads)
 
 	var event *output.InternalWrappedEvent
 	if len(page.InteractshURLs) == 0 {
@@ -215,14 +215,23 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	}
 
 	dumpResponse(event, request.options, responseBody, input.MetaInput.Input)
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	if shouldStopAtFirstMatch && event.HasOperatorResult() {
+		return types.ErrNoMoreRequests
+	}
 	return nil
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecutorOptions, responseBody string, input string) {
-	cliOptions := requestOptions.Options
-	if cliOptions.Debug || cliOptions.DebugResponse {
-		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBody, cliOptions.NoColor, false)
-		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
+	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped Headless response for %s\n\n", requestOptions.TemplateID, input)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
+			resp := responsehighlighter.Highlight(event.OperatorsResult, responseBody, requestOptions.Options.NoColor, false)
+			gologger.Debug().Msgf("%s%s", msg, resp)
+		}
+		if requestOptions.Options.StoreResponse {
+			requestOptions.Output.WriteStoreDebugData(input, requestOptions.TemplateID, "headless", fmt.Sprintf("%s%s", msg, responseBody))
+		}
 	}
 }
 
@@ -235,7 +244,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 			return true
 		}
 		newInput := input.Clone()
-		newInput.MetaInput.Input = gr.Request.URL.String()
+		newInput.MetaInput.Input = gr.Request.String()
 		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, callback); err != nil {
 			return false
 		}

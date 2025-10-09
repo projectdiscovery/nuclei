@@ -1,6 +1,7 @@
 package sdk_test
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"testing"
@@ -28,7 +29,8 @@ func TestSimpleNuclei(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
-		ne, err := nuclei.NewNucleiEngine(
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
 			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
 			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
 		)
@@ -62,7 +64,8 @@ func TestSimpleNucleiRemote(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
-		ne, err := nuclei.NewNucleiEngine(
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
 			nuclei.WithTemplatesOrWorkflows(
 				nuclei.TemplateSources{
 					RemoteTemplates: []string{"https://cloud.projectdiscovery.io/public/nameserver-fingerprint.yaml"},
@@ -100,7 +103,7 @@ func TestThreadSafeNuclei(t *testing.T) {
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
 		// create nuclei engine with options
-		ne, err := nuclei.NewThreadSafeNucleiEngine()
+		ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.TODO())
 		require.Nil(t, err)
 
 		// scan 1 = run dns templates on scanme.sh
@@ -122,6 +125,40 @@ func TestThreadSafeNuclei(t *testing.T) {
 	if env.GetEnvOrDefault("TestThreadSafeNuclei", false) {
 		cmd := exec.Command(os.Args[0], "-test.run=TestThreadSafeNuclei")
 		cmd.Env = append(os.Environ(), "TestThreadSafeNuclei=true")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("process ran with error %s, output: %s", err, out)
+		}
+	} else {
+		fn()
+	}
+}
+
+func TestWithVarsNuclei(t *testing.T) {
+	fn := func() {
+		defer func() {
+			// resources like leveldb have a delay to commit in-memory resources
+			// to disk, typically 1-2 seconds, so we wait for 2 seconds
+			time.Sleep(2 * time.Second)
+			goleak.VerifyNone(t, knownLeaks...)
+		}()
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
+			nuclei.EnableSelfContainedTemplates(),
+			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{"http/token-spray/api-1forge.yaml"}}),
+			nuclei.WithVars([]string{"token=foobar"}),
+			nuclei.WithVerbosity(nuclei.VerbosityOptions{Debug: true}),
+		)
+		require.Nil(t, err)
+		ne.LoadTargets([]string{"scanme.sh"}, true) // probe http/https target is set to true here
+		err = ne.ExecuteWithCallback(nil)
+		require.Nil(t, err)
+		defer ne.Close()
+	}
+	// this is shared test so needs to be run as seperate process
+	if env.GetEnvOrDefault("TestWithVarsNuclei", false) {
+		cmd := exec.Command(os.Args[0], "-test.run=TestWithVarsNuclei")
+		cmd.Env = append(os.Environ(), "TestWithVarsNuclei=true")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("process ran with error %s, output: %s", err, out)

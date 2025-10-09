@@ -19,17 +19,17 @@ func NewMultiAuthProvider(providers ...AuthProvider) AuthProvider {
 	return &MultiAuthProvider{Providers: providers}
 }
 
-func (m *MultiAuthProvider) LookupAddr(host string) authx.AuthStrategy {
+func (m *MultiAuthProvider) LookupAddr(host string) []authx.AuthStrategy {
 	for _, provider := range m.Providers {
 		strategy := provider.LookupAddr(host)
-		if strategy != nil {
+		if len(strategy) > 0 {
 			return strategy
 		}
 	}
 	return nil
 }
 
-func (m *MultiAuthProvider) LookupURL(u *url.URL) authx.AuthStrategy {
+func (m *MultiAuthProvider) LookupURL(u *url.URL) []authx.AuthStrategy {
 	for _, provider := range m.Providers {
 		strategy := provider.LookupURL(u)
 		if strategy != nil {
@@ -39,7 +39,7 @@ func (m *MultiAuthProvider) LookupURL(u *url.URL) authx.AuthStrategy {
 	return nil
 }
 
-func (m *MultiAuthProvider) LookupURLX(u *urlutil.URL) authx.AuthStrategy {
+func (m *MultiAuthProvider) LookupURLX(u *urlutil.URL) []authx.AuthStrategy {
 	for _, provider := range m.Providers {
 		strategy := provider.LookupURLX(u)
 		if strategy != nil {

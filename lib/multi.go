@@ -12,8 +12,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/utils/errkit"
+	"github.com/rs/xid"
 )
 
 // unsafeOptions are those nuclei objects/instances/types
@@ -21,14 +22,14 @@ import (
 // hence they are ephemeral and are created on every ExecuteNucleiWithOpts invocation
 // in ThreadSafeNucleiEngine
 type unsafeOptions struct {
-	executerOpts protocols.ExecutorOptions
+	executerOpts *protocols.ExecutorOptions
 	engine       *core.Engine
 }
 
 // createEphemeralObjects creates ephemeral nuclei objects/instances/types
-func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
+func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
-	u.executerOpts = protocols.ExecutorOptions{
+	u.executerOpts = &protocols.ExecutorOptions{
 		Output:          base.customWriter,
 		Options:         opts,
 		Progress:        base.customProgress,
@@ -40,6 +41,10 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          base.parser,
+		Browser:         base.browserInstance,
+	}
+	if opts.ShouldUseHostError() && base.hostErrCache != nil {
+		u.executerOpts.HostErrorsCache = base.hostErrCache
 	}
 	if opts.RateLimitMinute > 0 {
 		opts.RateLimit = opts.RateLimitMinute
@@ -48,11 +53,7 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 	if opts.RateLimit > 0 && opts.RateLimitDuration == 0 {
 		opts.RateLimitDuration = time.Second
 	}
-	if opts.RateLimit == 0 && opts.RateLimitDuration == 0 {
-		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
-	} else {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), opts.RateLimitDuration)
-	}
+	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)
 	return u, nil
@@ -83,10 +84,12 @@ type ThreadSafeNucleiEngine struct {
 // NewThreadSafeNucleiEngine creates a new nuclei engine with given options
 // whose methods are thread-safe and can be used concurrently
 // Note: Non-thread-safe methods start with Global prefix
-func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
+func NewThreadSafeNucleiEngineCtx(ctx context.Context, opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
+	defaultOptions := types.DefaultOptions()
+	defaultOptions.ExecutionId = xid.New().String()
 	// default options
 	e := &NucleiEngine{
-		opts: types.DefaultOptions(),
+		opts: defaultOptions,
 		mode: threadSafe,
 	}
 	for _, option := range opts {
@@ -94,10 +97,15 @@ func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngin
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
+	if err := e.init(ctx); err != nil {
 		return nil, err
 	}
 	return &ThreadSafeNucleiEngine{eng: e}, nil
+}
+
+// Deprecated: use NewThreadSafeNucleiEngineCtx instead
+func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
+	return NewThreadSafeNucleiEngineCtx(context.Background(), opts...)
 }
 
 // GlobalLoadAllTemplates loads all templates from nuclei-templates repo
@@ -116,15 +124,16 @@ func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *outpu
 // by invoking this method with different options and targets
 // Note: Not all options are thread-safe. this method will throw error if you try to use non-thread-safe options
 func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, targets []string, opts ...NucleiSDKOptions) error {
-	baseOpts := *e.eng.opts
-	tmpEngine := &NucleiEngine{opts: &baseOpts, mode: threadSafe}
+	baseOpts := e.eng.opts.Copy()
+	tmpEngine := &NucleiEngine{opts: baseOpts, mode: threadSafe}
 	for _, option := range opts {
 		if err := option(tmpEngine); err != nil {
 			return err
 		}
 	}
+
 	// create ephemeral nuclei objects/instances/types using base nuclei engine
-	unsafeOpts, err := createEphemeralObjects(e.eng, tmpEngine.opts)
+	unsafeOpts, err := createEphemeralObjects(ctx, e.eng, tmpEngine.opts)
 	if err != nil {
 		return err
 	}
@@ -132,19 +141,19 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	defer closeEphemeralObjects(unsafeOpts)
 
 	// load templates
-	workflowLoader, err := workflow.NewLoader(&unsafeOpts.executerOpts)
+	workflowLoader, err := workflow.NewLoader(unsafeOpts.executerOpts)
 	if err != nil {
-		return errorutil.New("Could not create workflow loader: %s\n", err)
+		return errkit.Wrapf(err, "Could not create workflow loader: %s", err)
 	}
 	unsafeOpts.executerOpts.WorkflowLoader = workflowLoader
 
 	store, err := loader.New(loader.NewConfig(tmpEngine.opts, e.eng.catalog, unsafeOpts.executerOpts))
 	if err != nil {
-		return errorutil.New("Could not create loader client: %s\n", err)
+		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	store.Load()
 
-	inputProvider := provider.NewSimpleInputProviderWithUrls(targets...)
+	inputProvider := provider.NewSimpleInputProviderWithUrls(e.eng.opts.ExecutionId, targets...)
 
 	if len(store.Templates()) == 0 && len(store.Workflows()) == 0 {
 		return ErrNoTemplatesAvailable
@@ -156,7 +165,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	engine := core.New(tmpEngine.opts)
 	engine.SetExecuterOptions(unsafeOpts.executerOpts)
 
-	_ = engine.ExecuteScanWithOpts(context.Background(), store.Templates(), inputProvider, false)
+	_ = engine.ExecuteScanWithOpts(ctx, store.Templates(), inputProvider, false)
 
 	engine.WorkPool().Wait()
 	return nil

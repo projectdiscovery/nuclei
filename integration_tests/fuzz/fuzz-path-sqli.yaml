@@ -15,21 +15,18 @@ http:
       - type: dsl
         dsl:
           - 'method == "GET"'
-          - regex("/(.*?/)([0-9]+)(/.*)?",path)
         condition: and
     
     payloads:
       pathsqli:
-        - "'OR1=1"
         - '%20OR%20True'
     
     fuzzing:
       - part: path
-        type: replace-regex
+        type: postfix
         mode: single
-        replace-regex: '/(.*?/)([0-9]+)(/.*)?'
         fuzz:
-          - '/${1}${2}{{pathsqli}}${3}'
+          - '{{pathsqli}}'
 
     matchers:
       - type: status

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -108,9 +109,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 // responseToDSLMap converts an HTTP response to a map for use in DSL matching
 func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) output.InternalEvent {
 	data := make(output.InternalEvent, 12+len(extra)+len(resp.Header)+len(resp.Cookies()))
-	for k, v := range extra {
-		data[k] = v
-	}
+	maps.Copy(data, extra)
 	for _, cookie := range resp.Cookies() {
 		request.setHashOrDefault(data, strings.ToLower(cookie.Name), cookie.Value)
 	}
@@ -166,10 +165,19 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if types.ToString(wrapped.InternalEvent["path"]) != "" {
 		fields.Path = types.ToString(wrapped.InternalEvent["path"])
 	}
+	var isGlobalMatchers bool
+	if value, ok := wrapped.InternalEvent["global-matchers"]; ok {
+		isGlobalMatchers = value.(bool)
+	}
+	var analyzerDetails string
+	if value, ok := wrapped.InternalEvent["analyzer_details"]; ok {
+		analyzerDetails = value.(string)
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             fields.Host,
 		Port:             fields.Port,
@@ -182,11 +190,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Timestamp:        time.Now(),
 		MatcherStatus:    true,
 		IP:               fields.Ip,
+		GlobalMatchers:   isGlobalMatchers,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
+		AnalyzerDetails:  analyzerDetails,
 	}
 	return data
 }

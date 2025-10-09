@@ -4,12 +4,13 @@
 package events
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 var _ ScanEventWorker = &ScanStatsWorker{}
@@ -23,7 +24,8 @@ type ScanStatsWorker struct {
 	config    *ScanConfig
 	m         *sync.Mutex
 	directory string
-	enc       *json.Encoder
+	file      *os.File
+	enc       json.Encoder
 }
 
 // Init initializes the scan stats worker
@@ -56,6 +58,7 @@ func (s *ScanStatsWorker) initEventsFile() error {
 	if err != nil {
 		return err
 	}
+	s.file = f
 	s.enc = json.NewEncoder(f)
 	return nil
 }
@@ -77,4 +80,23 @@ func AddScanEvent(event ScanEvent) {
 		return
 	}
 	defaultWorker.AddScanEvent(event)
+}
+
+// Close closes the file associated with the worker
+func (s *ScanStatsWorker) Close() {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	if s.file != nil {
+		_ = s.file.Close()
+		s.file = nil
+	}
+}
+
+// Close closes the file associated with the worker
+func Close() {
+	if defaultWorker == nil {
+		return
+	}
+	defaultWorker.Close()
 }

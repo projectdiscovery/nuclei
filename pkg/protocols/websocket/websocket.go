@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -100,7 +101,9 @@ const (
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
+	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
+		CustomDialer: options.CustomFastdialer,
+	})
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}
@@ -207,7 +210,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	}
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Websocket Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("WebSocket Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
@@ -233,7 +236,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	responseBuilder := &strings.Builder{}
 	if readBuffer != nil {
@@ -270,12 +275,8 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	request.options.AddTemplateVars(target.MetaInput, request.Type(), request.ID, data)
 	data = generators.MergeMaps(data, request.options.GetTemplateCtx(target.MetaInput).GetAll())
 
-	for k, v := range previous {
-		data[k] = v
-	}
-	for k, v := range events {
-		data[k] = v
-	}
+	maps.Copy(data, previous)
+	maps.Copy(data, events)
 
 	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
@@ -333,9 +334,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
 				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
-				for k, v := range values {
-					inputEvents[k] = v
-				}
+				maps.Copy(inputEvents, values)
 			}
 		}
 	}
@@ -402,6 +401,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
+		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             fields.Host,
 		Port:             fields.Port,
@@ -422,4 +422,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WebsocketProtocol
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

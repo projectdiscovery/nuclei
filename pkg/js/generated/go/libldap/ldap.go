@@ -3,7 +3,7 @@ package ldap
 import (
 	lib_ldap "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/ldap"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 
@@ -53,10 +53,12 @@ func init() {
 			"FilterWorkstationTrustAccount":    lib_ldap.FilterWorkstationTrustAccount,
 
 			// Objects / Classes
-			"ADObject": gojs.GetClassConstructor[lib_ldap.ADObject](&lib_ldap.ADObject{}),
-			"Client":   lib_ldap.NewClient,
-			"Config":   gojs.GetClassConstructor[lib_ldap.Config](&lib_ldap.Config{}),
-			"Metadata": gojs.GetClassConstructor[lib_ldap.Metadata](&lib_ldap.Metadata{}),
+			"Client":         lib_ldap.NewClient,
+			"Config":         gojs.GetClassConstructor[lib_ldap.Config](&lib_ldap.Config{}),
+			"LdapAttributes": gojs.GetClassConstructor[lib_ldap.LdapAttributes](&lib_ldap.LdapAttributes{}),
+			"LdapEntry":      gojs.GetClassConstructor[lib_ldap.LdapEntry](&lib_ldap.LdapEntry{}),
+			"Metadata":       gojs.GetClassConstructor[lib_ldap.Metadata](&lib_ldap.Metadata{}),
+			"SearchResult":   gojs.GetClassConstructor[lib_ldap.SearchResult](&lib_ldap.SearchResult{}),
 		},
 	).Register()
 }

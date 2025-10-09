@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -10,25 +11,28 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/env"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 type AuthLazyFetchOptions struct {
 	TemplateStore *loader.Store
-	ExecOpts      protocols.ExecutorOptions
+	ExecOpts      *protocols.ExecutorOptions
 	OnError       func(error)
 }
 
 // GetAuthTmplStore create new loader for loading auth templates
-func GetAuthTmplStore(opts types.Options, catalog catalog.Catalog, execOpts protocols.ExecutorOptions) (*loader.Store, error) {
+func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *protocols.ExecutorOptions) (*loader.Store, error) {
 	tmpls := []string{}
 	for _, file := range opts.SecretsFile {
 		data, err := authx.GetTemplatePathsFromSecretFile(file)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("failed to get template paths from secrets file")
+			return nil, errkit.Wrap(err, "failed to get template paths from secrets file")
 		}
 		tmpls = append(tmpls, data...)
 	}
@@ -50,10 +54,11 @@ func GetAuthTmplStore(opts types.Options, catalog catalog.Catalog, execOpts prot
 	opts.Protocols = nil
 	opts.ExcludeProtocols = nil
 	opts.IncludeConditions = nil
-	cfg := loader.NewConfig(&opts, catalog, execOpts)
+	cfg := loader.NewConfig(opts, catalog, execOpts)
+	cfg.StoreId = loader.AuthStoreId
 	store, err := loader.New(cfg)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("failed to initialize dynamic auth templates store")
+		return nil, errkit.Wrap(err, "failed to initialize dynamic auth templates store")
 	}
 	return store, nil
 }
@@ -74,7 +79,25 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		vars := map[string]interface{}{}
 		mainCtx := context.Background()
 		ctx := scan.NewScanContext(mainCtx, contextargs.NewWithInput(mainCtx, d.Input))
+
+		cliVars := map[string]interface{}{}
+		if opts.ExecOpts.Options != nil {
+			// gets variables passed from cli -v and -env-vars
+			cliVars = generators.BuildPayloadFromOptions(opts.ExecOpts.Options)
+		}
+
 		for _, v := range d.Variables {
+			//  Check if the template has any env variables and expand them
+			if strings.HasPrefix(v.Value, "$") {
+				env.ExpandWithEnv(&v.Value)
+			}
+			if strings.Contains(v.Value, "{{") {
+				// if variables had value like {{username}}, then replace it with the value from cliVars
+				// variables:
+				//     - key: username
+				//       value: {{username}}
+				v.Value = replacer.Replace(v.Value, cliVars)
+			}
 			vars[v.Key] = v.Value
 			ctx.Input.Add(v.Key, v.Value)
 		}
@@ -91,8 +114,13 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 			}
 			// dynamic values
 			for k, v := range e.OperatorsResult.DynamicValues {
-				if len(v) > 0 {
-					data[k] = v[0]
+				// Iterate through all the values and choose the
+				// largest value as the extracted value
+				for _, value := range v {
+					oldVal, ok := data[k]
+					if !ok || len(value) > len(oldVal.(string)) {
+						data[k] = value
+					}
 				}
 			}
 			// named extractors

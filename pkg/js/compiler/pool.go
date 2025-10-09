@@ -3,14 +3,14 @@ package compiler
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"sync"
 
-	"github.com/dop251/goja"
-	"github.com/dop251/goja_nodejs/console"
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/Mzack9999/goja"
+	"github.com/Mzack9999/goja_nodejs/console"
+	"github.com/Mzack9999/goja_nodejs/require"
+	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
@@ -36,6 +36,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
@@ -83,12 +84,20 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 		if opts != nil && opts.Cleanup != nil {
 			opts.Cleanup(runtime)
 		}
+		runtime.RemoveContextValue("executionId")
 	}()
+
+	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
+		if ci.IsCI() {
+			return
+		}
+
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %s", r)
 		}
 	}()
+
 	// set template ctx
 	_ = runtime.Set("template", args.TemplateCtx)
 	// set args
@@ -100,8 +109,11 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 		if err := opts.Callback(runtime); err != nil {
 			return nil, err
 		}
-
 	}
+
+	// inject execution id and context
+	runtime.SetContextValue("executionId", opts.ExecutionId)
+
 	// execute the script
 	return runtime.RunProgram(p)
 }
@@ -241,5 +253,5 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 		}
 	}
 	// for everything else stringify
-	return fmt.Sprintf("%v", value)
+	return fmt.Sprintf("%+v", value)
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"io"
+	"maps"
 	"net/http"
 )
 
@@ -17,7 +18,7 @@ func hash(v interface{}) (string, error) {
 
 	sh := sha256.New()
 
-	if _, err = io.WriteString(sh, string(data)); err != nil {
+	if _, err = sh.Write(data); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(sh.Sum(nil)), nil
@@ -85,9 +86,7 @@ func toInternalResponse(resp *http.Response, body []byte) *InternalResponse {
 	intResp.HTTPMinor = resp.ProtoMinor
 	intResp.StatusCode = resp.StatusCode
 	intResp.StatusReason = resp.Status
-	for k, v := range resp.Header {
-		intResp.Headers[k] = v
-	}
+	maps.Copy(intResp.Headers, resp.Header)
 	intResp.Body = body
 	return intResp
 }

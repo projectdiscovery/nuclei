@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kitabisa/go-ci"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 
@@ -15,9 +16,8 @@ import (
 )
 
 var (
-	success      = aurora.Green("[✓]").String()
-	failed       = aurora.Red("[✘]").String()
-	githubAction = os.Getenv("GH_ACTION") == "true"
+	success = aurora.Green("[✓]").String()
+	failed  = aurora.Red("[✘]").String()
 
 	mainNucleiBinary = flag.String("main", "", "Main Branch Nuclei Binary")
 	devNucleiBinary  = flag.String("dev", "", "Dev Branch Nuclei Binary")
@@ -27,7 +27,7 @@ var (
 func main() {
 	flag.Parse()
 
-	debug := os.Getenv("DEBUG") == "true"
+	debug := os.Getenv("DEBUG") == "true" || os.Getenv("RUNNER_DEBUG") == "1"
 
 	if err, errored := runFunctionalTests(debug); err != nil {
 		log.Fatalf("Could not run functional tests: %s\n", err)
@@ -41,11 +41,13 @@ func runFunctionalTests(debug bool) (error, bool) {
 	if err != nil {
 		return errors.Wrap(err, "could not open test cases"), true
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	errored, failedTestCases := runTestCases(file, debug)
 
-	if githubAction {
+	if ci.IsCI() {
 		fmt.Println("::group::Failed tests with debug")
 		for _, failedTestCase := range failedTestCases {
 			_ = runTestCase(failedTestCase, true)

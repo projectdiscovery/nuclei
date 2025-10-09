@@ -1,0 +1,18 @@
+id: headless-dsl
+
+info:
+  name: Headless DSL
+  author: dwisiswant0
+  severity: info
+  tags: headless
+
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}/?_={{urlencode(concat('foo', '-', 'bar'))}}"
+      - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "foo-bar"

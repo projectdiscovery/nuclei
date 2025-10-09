@@ -1,13 +1,13 @@
 package generic
 
 import (
-	"strings"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -64,17 +64,9 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 				// ideally this should never happen since protocol exits on error and callback is not called
 				return
 			}
-			ID := req.GetID()
-			if ID != "" {
-				builder := &strings.Builder{}
-				for k, v := range event.InternalEvent {
-					builder.WriteString(ID)
-					builder.WriteString("_")
-					builder.WriteString(k)
-					_ = previous.Set(builder.String(), v)
-					builder.Reset()
-				}
-			}
+
+			utils.FillPreviousEvent(req.GetID(), event, previous)
+
 			if event.HasOperatorResult() {
 				g.results.CompareAndSwap(false, true)
 			}
@@ -84,10 +76,10 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 		})
 		if err != nil {
 			ctx.LogError(err)
-			if g.options.HostErrorsCache != nil {
-				g.options.HostErrorsCache.MarkFailed(ctx.Input, err)
-			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
+		}
+		if g.options.HostErrorsCache != nil {
+			g.options.HostErrorsCache.MarkFailedOrRemove(g.options.ProtocolType.String(), ctx.Input, err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if g.results.Load() && (g.options.StopAtFirstMatch || g.options.Options.StopAtFirstMatch) {

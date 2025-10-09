@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/go-ldap/ldap/v3"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -86,12 +86,18 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	u, err := url.Parse(ldapUrl)
 	c.nj.HandleError(err, "invalid ldap url supported schemas are ldap://, ldaps://, ldapi://, and cldap://")
 
+	executionId := c.nj.ExecutionId()
+	dialers := protocolstate.GetDialersWithId(executionId)
+	if dialers == nil {
+		panic("dialers with executionId " + executionId + " not found")
+	}
+
 	var conn net.Conn
 	if u.Scheme == "ldapi" {
 		if u.Path == "" || u.Path == "/" {
 			u.Path = "/var/run/slapd/ldapi"
 		}
-		conn, err = protocolstate.Dialer.Dial(context.TODO(), "unix", u.Path)
+		conn, err = dialers.Fastdialer.Dial(context.TODO(), "unix", u.Path)
 		c.nj.HandleError(err, "failed to connect to ldap server")
 	} else {
 		host, port, err := net.SplitHostPort(u.Host)
@@ -110,12 +116,12 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 			if port == "" {
 				port = ldap.DefaultLdapPort
 			}
-			conn, err = protocolstate.Dialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+			conn, err = dialers.Fastdialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
 		case "ldap":
 			if port == "" {
 				port = ldap.DefaultLdapPort
 			}
-			conn, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+			conn, err = dialers.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
 		case "ldaps":
 			if port == "" {
 				port = ldap.DefaultLdapsPort
@@ -124,7 +130,7 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 			if c.cfg.ServerName != "" {
 				serverName = c.cfg.ServerName
 			}
-			conn, err = protocolstate.Dialer.DialTLSWithConfig(context.TODO(), "tcp", net.JoinHostPort(host, port),
+			conn, err = dialers.Fastdialer.DialTLSWithConfig(context.TODO(), "tcp", net.JoinHostPort(host, port),
 				&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, ServerName: serverName})
 		default:
 			err = fmt.Errorf("unsupported ldap url schema %v", u.Scheme)
@@ -155,7 +161,7 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 // const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
 // client.Authenticate('user', 'password');
 // ```
-func (c *Client) Authenticate(username, password string) {
+func (c *Client) Authenticate(username, password string) bool {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
 		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
@@ -163,19 +169,21 @@ func (c *Client) Authenticate(username, password string) {
 	if err := c.conn.NTLMBind(c.Realm, username, password); err == nil {
 		// if bind with NTLMBind(), there is nothing
 		// else to do, you are authenticated
-		return
+		return true
 	}
 
+	var err error
 	switch password {
 	case "":
-		if err := c.conn.UnauthenticatedBind(username); err != nil {
+		if err = c.conn.UnauthenticatedBind(username); err != nil {
 			c.nj.ThrowError(err)
 		}
 	default:
-		if err := c.conn.Bind(username, password); err != nil {
+		if err = c.conn.Bind(username, password); err != nil {
 			c.nj.ThrowError(err)
 		}
 	}
+	return err == nil
 }
 
 // AuthenticateWithNTLMHash authenticates with the ldap server using the given username and NTLM hash
@@ -185,14 +193,16 @@ func (c *Client) Authenticate(username, password string) {
 // const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
 // client.AuthenticateWithNTLMHash('pdtm', 'hash');
 // ```
-func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
+func (c *Client) AuthenticateWithNTLMHash(username, hash string) bool {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
 		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
 	}
-	if err := c.conn.NTLMBindWithHash(c.Realm, username, hash); err != nil {
+	var err error
+	if err = c.conn.NTLMBindWithHash(c.Realm, username, hash); err != nil {
 		c.nj.ThrowError(err)
 	}
+	return err == nil
 }
 
 // Search accepts whatever filter and returns a list of maps having provided attributes
@@ -203,38 +213,24 @@ func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
 // const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
 // const results = client.Search('(objectClass=*)', 'cn', 'mail');
 // ```
-func (c *Client) Search(filter string, attributes ...string) []map[string][]string {
+func (c *Client) Search(filter string, attributes ...string) SearchResult {
 	c.nj.Require(c.conn != nil, "no existing connection")
+	c.nj.Require(c.BaseDN != "", "base dn cannot be empty")
+	c.nj.Require(len(attributes) > 0, "attributes cannot be empty")
 
 	res, err := c.conn.Search(
 		ldap.NewSearchRequest(
-			c.BaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-			0, 0, false, filter, attributes, nil,
+			"",
+			ldap.ScopeWholeSubtree,
+			ldap.NeverDerefAliases,
+			0, 0, false,
+			filter,
+			attributes,
+			nil,
 		),
 	)
 	c.nj.HandleError(err, "ldap search request failed")
-	if len(res.Entries) == 0 {
-		// return empty list
-		return nil
-	}
-
-	// convert ldap.Entry to []map[string][]string
-	var out []map[string][]string
-	for _, r := range res.Entries {
-		app := make(map[string][]string)
-		empty := true
-		for _, a := range attributes {
-			v := r.GetAttributeValues(a)
-			if len(v) > 0 {
-				app[a] = v
-				empty = false
-			}
-		}
-		if !empty {
-			out = append(out, app)
-		}
-	}
-	return out
+	return *getSearchResult(res)
 }
 
 // AdvancedSearch accepts all values of search request type and return Ldap Entry
@@ -250,7 +246,7 @@ func (c *Client) AdvancedSearch(
 	TypesOnly bool,
 	Filter string,
 	Attributes []string,
-	Controls []ldap.Control) ldap.SearchResult {
+	Controls []ldap.Control) SearchResult {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
 		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
@@ -259,7 +255,7 @@ func (c *Client) AdvancedSearch(
 	res, err := c.conn.Search(req)
 	c.nj.HandleError(err, "ldap search request failed")
 	c.nj.Require(res != nil, "ldap search request failed got nil response")
-	return *res
+	return *getSearchResult(res)
 }
 
 type (
@@ -293,6 +289,7 @@ func (c *Client) CollectMetadata() Metadata {
 	}
 	metadata.BaseDN = c.BaseDN
 
+	// Use scope as Base since Root DSE doesn't have subentries
 	srMetadata := ldap.NewSearchRequest(
 		"",
 		ldap.ScopeBaseObject,
@@ -330,6 +327,37 @@ func (c *Client) CollectMetadata() Metadata {
 	return metadata
 }
 
+// GetVersion returns the LDAP versions being used by the server
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const versions = client.GetVersion();
+// log(versions);
+// ```
+func (c *Client) GetVersion() []string {
+	c.nj.Require(c.conn != nil, "no existing connection")
+
+	// Query root DSE for supported LDAP versions
+	sr := ldap.NewSearchRequest(
+		"",
+		ldap.ScopeBaseObject,
+		ldap.NeverDerefAliases,
+		0, 0, false,
+		"(objectClass=*)",
+		[]string{"supportedLDAPVersion"},
+		nil)
+
+	res, err := c.conn.Search(sr)
+	c.nj.HandleError(err, "failed to get LDAP version")
+
+	if len(res.Entries) > 0 {
+		return res.Entries[0].GetAttributeValues("supportedLDAPVersion")
+	}
+
+	return []string{"unknown"}
+}
+
 // close the ldap connection
 // @example
 // ```javascript
@@ -338,5 +366,5 @@ func (c *Client) CollectMetadata() Metadata {
 // client.Close();
 // ```
 func (c *Client) Close() {
-	c.conn.Close()
+	_ = c.conn.Close()
 }

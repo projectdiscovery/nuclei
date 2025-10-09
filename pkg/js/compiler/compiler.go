@@ -4,11 +4,12 @@ package compiler
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
+	"github.com/kitabisa/go-ci"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -31,6 +32,9 @@ func New() *Compiler {
 
 // ExecuteOptions provides options for executing a script.
 type ExecuteOptions struct {
+	// ExecutionId is the id of the execution
+	ExecutionId string
+
 	// Callback can be used to register new runtime helper functions
 	// ex: export etc
 	Callback func(runtime *goja.Runtime) error
@@ -38,12 +42,12 @@ type ExecuteOptions struct {
 	// Cleanup is extra cleanup function to be called after execution
 	Cleanup func(runtime *goja.Runtime)
 
-	/// Timeout for this script execution
-	Timeout int
 	// Source is original source of the script
 	Source *string
 
 	Context context.Context
+
+	TimeoutVariants *types.Timeouts
 
 	// Manually exported objects
 	exports map[string]interface{}
@@ -53,6 +57,11 @@ type ExecuteOptions struct {
 type ExecuteArgs struct {
 	Args        map[string]interface{} //these are protocol variables
 	TemplateCtx map[string]interface{} // templateCtx contains template scoped variables
+}
+
+// Map returns a merged map of the TemplateCtx and Args fields.
+func (e *ExecuteArgs) Map() map[string]interface{} {
+	return generators.MergeMaps(e.TemplateCtx, e.Args)
 }
 
 // NewExecuteArgs returns a new execute arguments.
@@ -66,26 +75,29 @@ func NewExecuteArgs() *ExecuteArgs {
 // ExecuteResult is the result of executing a script.
 type ExecuteResult map[string]interface{}
 
+// Map returns the map representation of the ExecuteResult
+func (e ExecuteResult) Map() map[string]interface{} {
+	if e == nil {
+		return make(map[string]interface{})
+	}
+	return e
+}
+
+// NewExecuteResult returns a new execute result instance
 func NewExecuteResult() ExecuteResult {
 	return make(map[string]interface{})
 }
 
 // GetSuccess returns whether the script was successful or not.
 func (e ExecuteResult) GetSuccess() bool {
+	if e == nil {
+		return false
+	}
 	val, ok := e["success"].(bool)
 	if !ok {
 		return false
 	}
 	return val
-}
-
-// Execute executes a script with the default options.
-func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error) {
-	p, err := WrapScriptNCompile(code, false)
-	if err != nil {
-		return nil, err
-	}
-	return c.ExecuteWithOptions(p, args, &ExecuteOptions{Context: context.Background()})
 }
 
 // ExecuteWithOptions executes a script with the provided options.
@@ -106,29 +118,34 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	// merge all args into templatectx
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 
-	if opts.Timeout <= 0 || opts.Timeout > 180 {
-		// some js scripts can take longer time so allow configuring timeout
-		// from template but keep it within sane limits (180s)
-		opts.Timeout = JsProtocolTimeout
-	}
-
 	// execute with context and timeout
-	ctx, cancel := context.WithTimeoutCause(opts.Context, time.Duration(opts.Timeout)*time.Second, ErrJSExecDeadline)
+
+	ctx, cancel := context.WithTimeoutCause(opts.Context, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
+		// TODO(dwisiswant0): remove this once we get the RCA.
 		defer func() {
+			if ci.IsCI() {
+				return
+			}
+
 			if r := recover(); r != nil {
 				err = fmt.Errorf("panic: %v", r)
 			}
 		}()
+
 		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
 		if val, ok := err.(*goja.Exception); ok {
-			err = val.Unwrap()
+			if x := val.Unwrap(); x != nil {
+				err = x
+			}
 		}
-		return nil, err
+		e := NewExecuteResult()
+		e["error"] = err.Error()
+		return e, err
 	}
 	var res ExecuteResult
 	if opts.exports != nil {
@@ -142,9 +159,27 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	return res, nil
 }
 
-// Wraps a script in a function and compiles it.
-func WrapScriptNCompile(script string, strict bool) (*goja.Program, error) {
-	if !stringsutil.ContainsAny(script, exportAsToken, exportToken) {
+// if the script uses export/ExportAS tokens then we can run it in IIFE mode
+// but if not we can't run it
+func CanRunAsIIFE(script string) bool {
+	return stringsutil.ContainsAny(script, exportAsToken, exportToken)
+}
+
+// SourceIIFEMode is a mode where the script is wrapped in a function and compiled.
+// This is used when the script is not exported or exported as a function.
+func SourceIIFEMode(script string, strict bool) (*goja.Program, error) {
+	val := fmt.Sprintf(`
+		(function() {
+			%s
+		})()
+	`, script)
+	return goja.Compile("", val, strict)
+}
+
+// SourceAutoMode is a mode where the script is wrapped in a function and compiled.
+// This is used when the script is exported or exported as a function.
+func SourceAutoMode(script string, strict bool) (*goja.Program, error) {
+	if !CanRunAsIIFE(script) {
 		// this will not be run in a pooled runtime
 		return goja.Compile("", script, strict)
 	}

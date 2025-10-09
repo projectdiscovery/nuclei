@@ -36,11 +36,11 @@ func Test_expandCIDR(t *testing.T) {
 		input := &ListInputProvider{hostMap: hm}
 
 		ips := expand.CIDR(tt.cidr)
-		input.addTargets(ips)
+		input.addTargets("", ips)
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, _ []byte) error {
-			var metainput contextargs.MetaInput
+			metainput := contextargs.NewMetaInput()
 			if err := metainput.Unmarshal(string(k)); err != nil {
 				return err
 			}
@@ -137,11 +137,11 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 			},
 		}
 
-		input.Set(tt.hostname)
+		input.Set("", tt.hostname)
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {
-			var metainput contextargs.MetaInput
+			metainput := contextargs.NewMetaInput()
 			if err := metainput.Unmarshal(string(k)); err != nil {
 				return err
 			}
@@ -180,11 +180,11 @@ func Test_expandASNInputValue(t *testing.T) {
 		input := &ListInputProvider{hostMap: hm}
 		// get the IP addresses for ASN number
 		ips := expand.ASN(tt.asn)
-		input.addTargets(ips)
+		input.addTargets("", ips)
 		// scan the hmap
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {
-			var metainput contextargs.MetaInput
+			metainput := contextargs.NewMetaInput()
 			if err := metainput.Unmarshal(string(k)); err != nil {
 				return err
 			}

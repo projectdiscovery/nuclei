@@ -24,12 +24,18 @@ import (
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 // Init initializes the protocols and their configurations
 func Init(options *types.Options) {
 	_ = protocolstate.Init(options)
 	_ = protocolinit.Init(options)
+}
+
+// Cleanup cleans up the protocols and their configurations
+func Cleanup(options *types.Options) {
+	protocolstate.Close(options.ExecutionId)
 }
 
 // DefaultOptions is the default options structure for nuclei during mocking.
@@ -75,7 +81,6 @@ var DefaultOptions = &types.Options{
 	InteractionsPollDuration:   5,
 	GitHubTemplateRepo:         []string{},
 	GitHubToken:                "",
-	ResponseReadTimeout:        time.Second * 5,
 }
 
 // TemplateInfo contains info for a mock executed template.
@@ -133,6 +138,10 @@ func (m *MockOutputWriter) Colorizer() aurora.Aurora {
 	return m.aurora
 }
 
+func (m *MockOutputWriter) ResultCount() int {
+	return 0
+}
+
 // Write writes the event to file and/or screen.
 func (m *MockOutputWriter) Write(result *output.ResultEvent) error {
 	if m.WriteCallback != nil {
@@ -167,7 +176,7 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 
 	// create event
 	event := wrappedEvent.InternalEvent
-	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]), types.ToString(event["template-verifier"]))
 	var templateInfo model.Info
 	if ti, ok := event["template-info"].(model.Info); ok {
 		templateInfo = ti
@@ -203,7 +212,9 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 	return m.Write(data)
 }
 
-var maxTemplateFileSizeForEncoding = 1024 * 1024
+func (m *MockOutputWriter) RequestStatsLog(statusCode, response string) {}
+
+var maxTemplateFileSizeForEncoding = unitutils.Mega
 
 func (w *MockOutputWriter) encodeTemplate(templatePath string) string {
 	data, err := os.ReadFile(templatePath)

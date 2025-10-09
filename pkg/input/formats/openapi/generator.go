@@ -2,7 +2,6 @@ package openapi
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -20,14 +19,16 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/projectdiscovery/utils/generic"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/valyala/fasttemplate"
 )
 
 const (
-	globalAuth = "globalAuth"
+	globalAuth                 = "globalAuth"
+	DEFAULT_HTTP_SCHEME_HEADER = "Authorization"
 )
 
 // GenerateRequestsFromSchema generates http requests from an OpenAPI 3.0 document object
@@ -75,16 +76,26 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 
 	for _, serverURL := range schema.Servers {
 		pathURL := serverURL.URL
+		// Split the server URL into baseURL and serverPath
+		u, err := url.Parse(pathURL)
+		if err != nil {
+			return errors.Wrap(err, "could not parse server url")
+		}
+		baseURL := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+		serverPath := u.Path
 
 		for path, v := range schema.Paths.Map() {
 			// a path item can have parameters
 			ops := v.Operations()
 			requestPath := path
+			if serverPath != "" {
+				requestPath = serverPath + path
+			}
 			for method, ov := range ops {
 				if err := generateRequestsFromOp(&generateReqOptions{
 					requiredOnly:              opts.RequiredOnly,
 					method:                    method,
-					pathURL:                   pathURL,
+					pathURL:                   baseURL,
 					requestPath:               requestPath,
 					op:                        ov,
 					schema:                    schema,
@@ -193,7 +204,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			paramValue = value.Schema.Value.Default
 		} else if value.Schema.Value.Example != nil {
 			paramValue = value.Schema.Value.Example
-		} else if value.Schema.Value.Enum != nil && len(value.Schema.Value.Enum) > 0 {
+		} else if len(value.Schema.Value.Enum) > 0 {
 			paramValue = value.Schema.Value.Enum[0]
 		} else {
 			if !opts.opts.SkipFormatValidation {
@@ -206,7 +217,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					return nil
 				} else {
 					// if it is in path then remove it from path
-					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
 						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
@@ -222,9 +233,9 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					return nil
 				} else {
 					// if it is in path then remove it from path
-					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
-						gologger.Verbose().Msgf("openapi: skipping optinal param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
 					continue
 				}
@@ -233,7 +244,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		}
 		if opts.requiredOnly && !value.Required {
 			// remove them from path if any
-			opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+			opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 			continue // Skip this parameter if it is not required and we want only required ones
 		}
 
@@ -257,24 +268,32 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		for content, value := range opts.op.RequestBody.Value.Content {
 			cloned := req.Clone(req.Context())
 
-			example, err := generateExampleFromSchema(value.Schema.Value)
-			if err != nil {
-				continue
+			var val interface{}
+
+			if value.Schema == nil || value.Schema.Value == nil {
+				val = generateEmptySchemaValue(content)
+			} else {
+				var err error
+
+				val, err = generateExampleFromSchema(value.Schema.Value)
+				if err != nil {
+					continue
+				}
 			}
 
 			// var body string
 			switch content {
 			case "application/json":
-				if marshalled, err := json.Marshal(example); err == nil {
+				if marshalled, err := json.Marshal(val); err == nil {
 					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))
 					cloned.Header.Set("Content-Type", "application/json")
 				}
 			case "application/xml":
-				exampleVal := mxj.Map(example.(map[string]interface{}))
+				values := mxj.Map(val.(map[string]interface{}))
 
-				if marshalled, err := exampleVal.Xml(); err == nil {
+				if marshalled, err := values.Xml(); err == nil {
 					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))
@@ -283,7 +302,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					gologger.Warning().Msgf("openapi: could not encode xml")
 				}
 			case "application/x-www-form-urlencoded":
-				if values, ok := example.(map[string]interface{}); ok {
+				if values, ok := val.(map[string]interface{}); ok {
 					cloned.Form = url.Values{}
 					for k, v := range values {
 						cloned.Form.Set(k, types.ToString(v))
@@ -295,7 +314,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 				}
 			case "multipart/form-data":
-				if values, ok := example.(map[string]interface{}); ok {
+				if values, ok := val.(map[string]interface{}); ok {
 					buffer := &bytes.Buffer{}
 					multipartWriter := multipart.NewWriter(buffer)
 					for k, v := range values {
@@ -308,20 +327,20 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 							_ = multipartWriter.WriteField(k, types.ToString(v))
 						}
 					}
-					multipartWriter.Close()
+					_ = multipartWriter.Close()
 					// body = buffer.String()
 					cloned.Body = io.NopCloser(buffer)
 					cloned.ContentLength = int64(len(buffer.Bytes()))
 					cloned.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 				}
 			case "text/plain":
-				str := types.ToString(example)
+				str := types.ToString(val)
 				// body = str
 				cloned.Body = io.NopCloser(strings.NewReader(str))
 				cloned.ContentLength = int64(len(str))
 				cloned.Header.Set("Content-Type", "text/plain")
 			case "application/octet-stream":
-				str := types.ToString(example)
+				str := types.ToString(val)
 				if str == "" {
 					// use two strings
 					str = "string1\nstring2"
@@ -376,7 +395,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 func GetGlobalParamsForSecurityRequirement(schema *openapi3.T, requirement *openapi3.SecurityRequirements) ([]*openapi3.ParameterRef, error) {
 	globalParams := openapi3.NewParameters()
 	if len(schema.Components.SecuritySchemes) == 0 {
-		return nil, errorutil.NewWithTag("openapi", "security requirements (%+v) without any security schemes found in openapi file", schema.Security)
+		return nil, errkit.Newf("security requirements (%+v) without any security schemes found in openapi file", schema.Security)
 	}
 	found := false
 	// this api is protected for each security scheme pull its corresponding scheme
@@ -396,38 +415,40 @@ schemaLabel:
 		}
 		if !found && len(security) > 1 {
 			// if this is case then both security schemes are required
-			return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", security)
+			return nil, errkit.Newf("security requirement (%+v) not found in openapi file", security)
 		}
 	}
 	if !found {
-		return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", requirement)
+		return nil, errkit.Newf("security requirement (%+v) not found in openapi file", requirement)
 	}
 
 	return globalParams, nil
 }
 
-// generateExampleFromSchema generates an example from a schema object
+// GenerateParameterFromSecurityScheme generates an example from a schema object
 func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*openapi3.Parameter, error) {
 	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey") {
-		return nil, errorutil.NewWithTag("openapi", "unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
+		return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
 	}
 	if scheme.Value.Type == "http" {
 		// check scheme
 		if !generic.EqualsAny(scheme.Value.Scheme, "basic", "bearer") {
-			return nil, errorutil.NewWithTag("openapi", "unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)
+			return nil, errkit.Newf("unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)
 		}
-		if scheme.Value.Name == "" {
-			return nil, errorutil.NewWithTag("openapi", "security scheme (%s) name is empty", scheme.Value.Scheme)
+		// HTTP authentication schemes basic or bearer use the Authorization header
+		headerName := scheme.Value.Name
+		if headerName == "" {
+			headerName = DEFAULT_HTTP_SCHEME_HEADER
 		}
 		// create parameters using the scheme
 		switch scheme.Value.Scheme {
 		case "basic":
-			h := openapi3.NewHeaderParameter(scheme.Value.Name)
+			h := openapi3.NewHeaderParameter(headerName)
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
 		case "bearer":
-			h := openapi3.NewHeaderParameter(scheme.Value.Name)
+			h := openapi3.NewHeaderParameter(headerName)
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
@@ -437,10 +458,10 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 	if scheme.Value.Type == "apiKey" {
 		// validate name and in
 		if scheme.Value.Name == "" {
-			return nil, errorutil.NewWithTag("openapi", "security scheme (%s) name is empty", scheme.Value.Type)
+			return nil, errkit.Newf("security scheme (%s) name is empty", scheme.Value.Type)
 		}
 		if !generic.EqualsAny(scheme.Value.In, "query", "header", "cookie") {
-			return nil, errorutil.NewWithTag("openapi", "unsupported security scheme (%s) in (%s) found in openapi file", scheme.Value.Type, scheme.Value.In)
+			return nil, errkit.Newf("unsupported security scheme (%s) in (%s) found in openapi file", scheme.Value.Type, scheme.Value.In)
 		}
 		// create parameters using the scheme
 		switch scheme.Value.In {
@@ -461,5 +482,5 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 			return c, nil
 		}
 	}
-	return nil, errorutil.NewWithTag("openapi", "unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
+	return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
 }

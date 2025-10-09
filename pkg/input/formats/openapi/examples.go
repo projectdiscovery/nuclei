@@ -2,6 +2,8 @@ package openapi
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
@@ -18,7 +20,7 @@ func getSchemaExample(schema *openapi3.Schema) (interface{}, bool) {
 		return schema.Default, true
 	}
 
-	if schema.Enum != nil && len(schema.Enum) > 0 {
+	if len(schema.Enum) > 0 {
 		return schema.Enum[0], true
 	}
 	return nil, false
@@ -84,13 +86,7 @@ func excludeFromMode(schema *openapi3.Schema) bool {
 
 // isRequired checks whether a key is actually required.
 func isRequired(schema *openapi3.Schema, key string) bool {
-	for _, req := range schema.Required {
-		if req == key {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(schema.Required, key)
 }
 
 type cachedSchema struct {
@@ -167,17 +163,15 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 				return nil, ErrNoExample
 			}
 
-			for k, v := range value {
-				example[k] = v
-			}
+			maps.Copy(example, value)
 		}
 		return example, nil
 	}
 
 	switch {
-	case schema.Type == "boolean":
+	case schema.Type.Is("boolean"):
 		return true, nil
-	case schema.Type == "number", schema.Type == "integer":
+	case schema.Type.Is("number"), schema.Type.Is("integer"):
 		value := 0.0
 
 		if schema.Min != nil && *schema.Min > value {
@@ -208,11 +202,11 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 			value += float64(int(*schema.MultipleOf) - (int(value) % int(*schema.MultipleOf)))
 		}
 
-		if schema.Type == "integer" {
+		if schema.Type.Is("integer") {
 			return int(value), nil
 		}
 		return value, nil
-	case schema.Type == "string":
+	case schema.Type.Is("string"):
 		if ex := stringFormatExample(schema.Format); ex != "" {
 			return ex, nil
 		}
@@ -226,7 +220,7 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 			example = example[:*schema.MaxLength]
 		}
 		return example, nil
-	case schema.Type == "array", schema.Items != nil:
+	case schema.Type.Is("array"), schema.Items != nil:
 		example := []interface{}{}
 
 		if schema.Items != nil && schema.Items.Value != nil {
@@ -242,7 +236,7 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 			}
 		}
 		return example, nil
-	case schema.Type == "object", len(schema.Properties) > 0:
+	case schema.Type.Is("object"), len(schema.Properties) > 0:
 		example := map[string]interface{}{}
 
 		for k, v := range schema.Properties {
@@ -287,4 +281,34 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 // https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.1.md#schemaObject
 func generateExampleFromSchema(schema *openapi3.Schema) (interface{}, error) {
 	return openAPIExample(schema, make(map[*openapi3.Schema]*cachedSchema)) // TODO: Use caching
+}
+
+func generateEmptySchemaValue(contentType string) *openapi3.Schema {
+	schema := &openapi3.Schema{}
+	objectType := &openapi3.Types{"object"}
+	stringType := &openapi3.Types{"string"}
+
+	switch contentType {
+	case "application/json":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "application/xml":
+		schema.Type = stringType
+		schema.Format = "xml"
+		schema.Example = "<?xml version=\"1.0\"?><root/>"
+	case "text/plain":
+		schema.Type = stringType
+	case "application/x-www-form-urlencoded":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "multipart/form-data":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "application/octet-stream":
+	default:
+		schema.Type = stringType
+		schema.Format = "binary"
+	}
+
+	return schema
 }

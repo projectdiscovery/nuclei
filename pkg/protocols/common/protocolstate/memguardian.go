@@ -16,21 +16,29 @@ var (
 	MaxBytesBufferAllocOnLowMemory = env.GetEnvOrDefault("MEMGUARDIAN_ALLOC", 0)
 	memTimer                       *time.Ticker
 	cancelFunc                     context.CancelFunc
+	muGlobalChange                 sync.Mutex
 )
 
 func StartActiveMemGuardian(ctx context.Context) {
-	if memguardian.DefaultMemGuardian == nil {
+	muGlobalChange.Lock()
+	defer muGlobalChange.Unlock()
+	if memguardian.DefaultMemGuardian == nil || memTimer != nil {
 		return
 	}
 
 	memTimer = time.NewTicker(memguardian.DefaultInterval)
 	ctx, cancelFunc = context.WithCancel(ctx)
-	go func() {
+
+	ticker := memTimer
+	go func(t *time.Ticker) {
+		if t == nil {
+			return
+		}
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-memTimer.C:
+			case <-t.C:
 				if IsLowOnMemory() {
 					_ = GlobalGuardBytesBufferAlloc()
 				} else {
@@ -38,17 +46,24 @@ func StartActiveMemGuardian(ctx context.Context) {
 				}
 			}
 		}
-	}()
+	}(ticker)
 }
 
 func StopActiveMemGuardian() {
+	muGlobalChange.Lock()
+	defer muGlobalChange.Unlock()
+
 	if memguardian.DefaultMemGuardian == nil {
 		return
 	}
 
+	if cancelFunc != nil {
+		cancelFunc()
+		cancelFunc = nil
+	}
 	if memTimer != nil {
 		memTimer.Stop()
-		cancelFunc()
+		memTimer = nil
 	}
 }
 
@@ -73,13 +88,10 @@ func GuardThreadsOrDefault(current int) int {
 	return 1
 }
 
-var muGlobalChange sync.Mutex
-
 // Global setting
 func GlobalGuardBytesBufferAlloc() error {
-	if muGlobalChange.TryLock() {
+	if !muGlobalChange.TryLock() {
 		return nil
-
 	}
 	defer muGlobalChange.Unlock()
 
@@ -95,9 +107,8 @@ func GlobalGuardBytesBufferAlloc() error {
 
 // Global setting
 func GlobalRestoreBytesBufferAlloc() {
-	if muGlobalChange.TryLock() {
+	if !muGlobalChange.TryLock() {
 		return
-
 	}
 	defer muGlobalChange.Unlock()
 

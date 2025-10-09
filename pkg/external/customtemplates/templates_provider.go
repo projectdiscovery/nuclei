@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 type Provider interface {
@@ -38,7 +38,9 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 	// Add GitHub providers
 	githubProviders, err := NewGitHubProviders(options)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not create github providers for custom templates")
+		errx := errkit.FromError(err)
+		errx.Msgf("could not create github providers for custom templates")
+		return nil, errx
 	}
 	for _, v := range githubProviders {
 		ctm.providers = append(ctm.providers, v)
@@ -47,7 +49,9 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 	// Add AWS S3 providers
 	s3Providers, err := NewS3Providers(options)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not create s3 providers for custom templates")
+		errx := errkit.FromError(err)
+		errx.Msgf("could not create s3 providers for custom templates")
+		return nil, errx
 	}
 	for _, v := range s3Providers {
 		ctm.providers = append(ctm.providers, v)
@@ -56,7 +60,9 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 	// Add Azure providers
 	azureProviders, err := NewAzureProviders(options)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not create azure providers for custom templates")
+		errx := errkit.FromError(err)
+		errx.Msgf("could not create azure providers for custom templates")
+		return nil, errx
 	}
 	for _, v := range azureProviders {
 		ctm.providers = append(ctm.providers, v)
@@ -65,7 +71,9 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 	// Add GitLab providers
 	gitlabProviders, err := NewGitLabProviders(options)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not create gitlab providers for custom templates")
+		errx := errkit.FromError(err)
+		errx.Msgf("could not create gitlab providers for custom templates")
+		return nil, errx
 	}
 	for _, v := range gitlabProviders {
 		ctm.providers = append(ctm.providers, v)

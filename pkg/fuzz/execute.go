@@ -9,17 +9,22 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
+	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
+	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var (
-	ErrRuleNotApplicable = errorutil.NewWithFmt("rule not applicable : %v")
+	ErrRuleNotApplicable = errkit.New("rule not applicable")
 )
 
 // IsErrRuleNotApplicable checks if an error is due to rule not applicable
@@ -45,6 +50,13 @@ type ExecuteRuleInput struct {
 	Values map[string]interface{}
 	// BaseRequest is the base http request for fuzzing rule
 	BaseRequest *retryablehttp.Request
+	// DisplayFuzzPoints is a flag to display fuzz points
+	DisplayFuzzPoints bool
+
+	// ApplyPayloadInitialTransformation is an optional function
+	// to transform the payload initially based on analyzer rules
+	ApplyPayloadInitialTransformation func(string, map[string]interface{}) string
+	AnalyzerParams                    map[string]interface{}
 }
 
 // GeneratedRequest is a single generated request for rule
@@ -59,6 +71,15 @@ type GeneratedRequest struct {
 	Component component.Component
 	// Parameter being fuzzed
 	Parameter string
+
+	// Key is the key for the request
+	Key string
+	// Value is the value for the request
+	Value string
+	// OriginalValue is the original value for the request
+	OriginalValue string
+	// OriginalPayload is the original payload for the request
+	OriginalPayload string
 }
 
 // Execute executes a fuzzing rule accepting a callback on which
@@ -68,16 +89,17 @@ type GeneratedRequest struct {
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	if !rule.isInputURLValid(input.Input) {
-		return ErrRuleNotApplicable.Msgf("invalid input url: %v", input.Input.MetaInput.Input)
+		return errkit.Newf("rule not applicable: invalid input url: %v", input.Input.MetaInput.Input)
 	}
 	if input.BaseRequest == nil && input.Input.MetaInput.ReqResp == nil {
-		return ErrRuleNotApplicable.Msgf("both base request and reqresp are nil for %v", input.Input.MetaInput.Input)
+		return errkit.Newf("rule not applicable: both base request and reqresp are nil for %v", input.Input.MetaInput.Input)
 	}
 
 	var finalComponentList []component.Component
 	// match rule part with component name
+	displayDebugFuzzPoints := make(map[string]map[string]string)
 	for _, componentName := range component.Components {
-		if rule.partType != requestPartType && rule.Part != componentName {
+		if rule.Part != componentName && !sliceutil.Contains(rule.Parts, componentName) && rule.partType != requestPartType {
 			continue
 		}
 		component := component.New(componentName)
@@ -89,15 +111,40 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		if !discovered {
 			continue
 		}
+
 		// check rule applicable on this component
 		if !rule.checkRuleApplicableOnComponent(component) {
 			continue
 		}
+		// Debugging display for fuzz points
+		if input.DisplayFuzzPoints {
+			displayDebugFuzzPoints[componentName] = make(map[string]string)
+			_ = component.Iterate(func(key string, value interface{}) error {
+				displayDebugFuzzPoints[componentName][key] = fmt.Sprintf("%v", value)
+				return nil
+			})
+		}
+
+		if rule.options.FuzzStatsDB != nil {
+			_ = component.Iterate(func(key string, value interface{}) error {
+				rule.options.FuzzStatsDB.RecordComponentEvent(fuzzStats.ComponentEvent{
+					URL:           input.Input.MetaInput.Target(),
+					ComponentType: componentName,
+					ComponentName: fmt.Sprintf("%v", value),
+				})
+				return nil
+			})
+		}
+
 		finalComponentList = append(finalComponentList, component)
+	}
+	if len(displayDebugFuzzPoints) > 0 {
+		marshalled, _ := json.MarshalIndent(displayDebugFuzzPoints, "", "  ")
+		gologger.Info().Msgf("[%s] Fuzz points for %s [%s]\n%s\n", rule.options.TemplateID, input.Input.MetaInput.Input, input.BaseRequest.Method, string(marshalled))
 	}
 
 	if len(finalComponentList) == 0 {
-		return ErrRuleNotApplicable.Msgf("no component matched on this rule")
+		return errkit.Newf("rule not applicable: no component matched on this rule")
 	}
 
 	baseValues := input.Values
@@ -143,18 +190,58 @@ mainLoop:
 	return nil
 }
 
+// evaluateVars evaluates variables in a string using available executor options
+func (rule *Rule) evaluateVars(input string) (string, error) {
+	if rule.options == nil {
+		return input, nil
+	}
+
+	data := generators.MergeMaps(
+		rule.options.Variables.GetAll(),
+		rule.options.Constants,
+		rule.options.Options.Vars.AsMap(),
+	)
+
+	exprs := expressions.FindExpressions(input, marker.ParenthesisOpen, marker.ParenthesisClose, data)
+
+	err := expressions.ContainsUnresolvedVariables(exprs...)
+	if err != nil {
+		return input, err
+	}
+
+	eval, err := expressions.Evaluate(input, data)
+	if err != nil {
+		return input, err
+	}
+
+	return eval, nil
+}
+
 // evaluateVarsWithInteractsh evaluates the variables with Interactsh URLs and updates them accordingly.
 func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string) (map[string]interface{}, []string) {
 	// Check if Interactsh options are configured
 	if rule.options.Interactsh != nil {
+		interactshUrlsMap := make(map[string]struct{})
+		for _, url := range interactshUrls {
+			interactshUrlsMap[url] = struct{}{}
+		}
+		interactshUrls = mapsutil.GetKeys(interactshUrlsMap)
 		// Iterate through the data to replace and evaluate variables with Interactsh URLs
 		for k, v := range data {
+			value := fmt.Sprint(v)
 			// Replace variables with Interactsh URLs and collect new URLs
-			got, oastUrls := rule.options.Interactsh.Replace(fmt.Sprint(v), interactshUrls)
-
+			got, oastUrls := rule.options.Interactsh.Replace(value, interactshUrls)
+			if got != value {
+				data[k] = got
+			}
 			// Append new OAST URLs if any
 			if len(oastUrls) > 0 {
-				interactshUrls = append(interactshUrls, oastUrls...)
+				for _, url := range oastUrls {
+					if _, ok := interactshUrlsMap[url]; !ok {
+						interactshUrlsMap[url] = struct{}{}
+						interactshUrls = append(interactshUrls, url)
+					}
+				}
 			}
 			// Evaluate the replaced data
 			evaluatedData, err := expressions.Evaluate(got, data)
@@ -184,7 +271,9 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 	// if we are only fuzzing values
 	if len(rule.Fuzz.Value) > 0 {
 		for _, value := range rule.Fuzz.Value {
-			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value}, ruleComponent); err != nil {
+			originalPayload := value
+
+			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value, OriginalPayload: originalPayload}, ruleComponent); err != nil {
 				if component.IsErrSetValue(err) {
 					// this are errors due to format restrictions
 					// ex: fuzzing string value in a json int field
@@ -225,7 +314,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 			if err != nil {
 				return err
 			}
-			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); gotErr != nil {
+			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", ""); gotErr != nil {
 				return gotErr
 			}
 		}
@@ -261,8 +350,9 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 		} else {
 			rule.partType = valueType
 		}
-	} else {
-		rule.partType = queryPartType
+	}
+	if rule.Part == "" && len(rule.Parts) == 0 {
+		return errors.Errorf("no part specified for rule")
 	}
 
 	if rule.Type != "" {
@@ -279,23 +369,47 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	if len(rule.Keys) > 0 {
 		rule.keysMap = make(map[string]struct{})
 	}
+
+	// eval vars in "keys"
 	for _, key := range rule.Keys {
-		rule.keysMap[strings.ToLower(key)] = struct{}{}
+		evaluatedKey, err := rule.evaluateVars(key)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate key")
+		}
+
+		rule.keysMap[strings.ToLower(evaluatedKey)] = struct{}{}
 	}
+
+	// eval vars in "values"
 	for _, value := range rule.ValuesRegex {
-		compiled, err := regexp.Compile(value)
+		evaluatedValue, err := rule.evaluateVars(value)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate value regex")
+		}
+
+		compiled, err := regexp.Compile(evaluatedValue)
 		if err != nil {
 			return errors.Wrap(err, "could not compile value regex")
 		}
+
 		rule.valuesRegex = append(rule.valuesRegex, compiled)
 	}
+
+	// eval vars in "keys-regex"
 	for _, value := range rule.KeysRegex {
-		compiled, err := regexp.Compile(value)
+		evaluatedValue, err := rule.evaluateVars(value)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate key regex")
+		}
+
+		compiled, err := regexp.Compile(evaluatedValue)
 		if err != nil {
 			return errors.Wrap(err, "could not compile key regex")
 		}
+
 		rule.keysRegex = append(rule.keysRegex, compiled)
 	}
+
 	if rule.ruleType != replaceRegexRuleType {
 		if rule.ReplaceRegex != "" {
 			return errors.Errorf("replace-regex is only applicable for replace and replace-regex rule types")
@@ -304,11 +418,19 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 		if rule.ReplaceRegex == "" {
 			return errors.Errorf("replace-regex is required for replace-regex rule type")
 		}
-		compiled, err := regexp.Compile(rule.ReplaceRegex)
+
+		evalReplaceRegex, err := rule.evaluateVars(rule.ReplaceRegex)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate replace regex")
+		}
+
+		compiled, err := regexp.Compile(evalReplaceRegex)
 		if err != nil {
 			return errors.Wrap(err, "could not compile replace regex")
 		}
+
 		rule.replaceRegex = compiled
 	}
+
 	return nil
 }

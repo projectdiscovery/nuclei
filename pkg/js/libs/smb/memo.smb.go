@@ -10,11 +10,11 @@ import (
 	"github.com/zmap/zgrab2/lib/smb/smb"
 )
 
-func memoizedconnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
+func memoizedconnectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog, error) {
 	hash := "connectSMBInfoMode" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connectSMBInfoMode(host, port)
+		return connectSMBInfoMode(executionId, host, port)
 	})
 	if err != nil {
 		return nil, err
@@ -26,11 +26,11 @@ func memoizedconnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 	return nil, errors.New("could not convert cached result")
 }
 
-func memoizedlistShares(host string, port int, user string, password string) ([]string, error) {
+func memoizedlistShares(executionId string, host string, port int, user string, password string) ([]string, error) {
 	hash := "listShares" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(user) + ":" + fmt.Sprint(password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return listShares(host, port, user, password)
+		return listShares(executionId, host, port, user, password)
 	})
 	if err != nil {
 		return []string{}, err

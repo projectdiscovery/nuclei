@@ -22,7 +22,7 @@ var flowTestcases = []TestCaseInfo{
 type conditionalFlow struct{}
 
 func (t *conditionalFlow) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "blog.projectdiscovery.io", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "cloud.projectdiscovery.io", debug)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (t *iterateValuesFlow) Execute(filePath string) error {
 	}
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(fmt.Sprint(testemails)))
+		_, _ = fmt.Fprint(w, testemails)
 	})
 	router.GET("/user/"+getBase64(testemails[0]), func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusOK)

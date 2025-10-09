@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"sync"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -18,7 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -26,7 +28,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
+	"github.com/rs/xid"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -34,13 +37,13 @@ type NucleiSDKOptions func(e *NucleiEngine) error
 
 var (
 	// ErrNotImplemented is returned when a feature is not implemented
-	ErrNotImplemented = errorutil.New("Not implemented")
+	ErrNotImplemented = errkit.New("Not implemented")
 	// ErrNoTemplatesAvailable is returned when no templates are available to execute
-	ErrNoTemplatesAvailable = errorutil.New("No templates available")
+	ErrNoTemplatesAvailable = errkit.New("No templates available")
 	// ErrNoTargetsAvailable is returned when no targets are available to scan
-	ErrNoTargetsAvailable = errorutil.New("No targets available")
+	ErrNoTargetsAvailable = errkit.New("No targets available")
 	// ErrOptionsNotSupported is returned when an option is not supported in thread safe mode
-	ErrOptionsNotSupported = errorutil.NewWithFmt("Option %v not supported in thread safe mode")
+	ErrOptionsNotSupported = errkit.New("Option not supported in thread safe mode")
 )
 
 type engineMode uint
@@ -64,6 +67,7 @@ type NucleiEngine struct {
 	templatesLoaded bool
 
 	// unexported core fields
+	ctx              context.Context
 	interactshClient *interactsh.Client
 	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
@@ -84,22 +88,26 @@ type NucleiEngine struct {
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client
-	executerOpts   protocols.ExecutorOptions
+	executerOpts   *protocols.ExecutorOptions
+
+	// Logger instance for the engine
+	Logger *gologger.Logger
 }
 
 // LoadAllTemplates loads all nuclei template based on given options
 func (e *NucleiEngine) LoadAllTemplates() error {
-	workflowLoader, err := workflow.NewLoader(&e.executerOpts)
+	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
-		return errorutil.New("Could not create workflow loader: %s\n", err)
+		return errkit.Wrapf(err, "Could not create workflow loader: %s", err)
 	}
 	e.executerOpts.WorkflowLoader = workflowLoader
 
 	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, e.executerOpts))
 	if err != nil {
-		return errorutil.New("Could not create loader client: %s\n", err)
+		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	e.store.Load()
+	e.templatesLoaded = true
 	return nil
 }
 
@@ -111,13 +119,21 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 	return e.store.Templates()
 }
 
+// GetWorkflows returns all nuclei workflows that are loaded
+func (e *NucleiEngine) GetWorkflows() []*templates.Template {
+	if !e.templatesLoaded {
+		_ = e.LoadAllTemplates()
+	}
+	return e.store.Workflows()
+}
+
 // LoadTargets(urls/domains/ips only) adds targets to the nuclei engine
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(target, e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, target, e.httpxClient)
 		} else {
-			e.inputProvider.Set(target)
+			e.inputProvider.Set(e.opts.ExecutionId, target)
 		}
 	}
 }
@@ -127,9 +143,9 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, buff.Text(), e.httpxClient)
 		} else {
-			e.inputProvider.Set(buff.Text())
+			e.inputProvider.Set(e.opts.ExecutionId, buff.Text())
 		}
 	}
 }
@@ -152,7 +168,7 @@ func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string)
 
 // GetExecuterOptions returns the nuclei executor options
 func (e *NucleiEngine) GetExecuterOptions() *protocols.ExecutorOptions {
-	return &e.executerOpts
+	return e.executerOpts
 }
 
 // ParseTemplate parses a template from given data
@@ -178,13 +194,13 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	if err != nil {
 		return data, err
 	}
-	buff := bytes.NewBuffer(signer.RemoveSignatureFromData(data))
+	_, content := signer.ExtractSignatureAndContent(data)
+	buff := bytes.NewBuffer(content)
 	buff.WriteString("\n" + signatureData)
 	return buff.Bytes(), err
 }
 
-// Close all resources used by nuclei engine
-func (e *NucleiEngine) Close() {
+func (e *NucleiEngine) closeInternal() {
 	if e.interactshClient != nil {
 		e.interactshClient.Close()
 	}
@@ -206,8 +222,6 @@ func (e *NucleiEngine) Close() {
 	if e.rateLimiter != nil {
 		e.rateLimiter.Stop()
 	}
-	// close global shared resources
-	protocolstate.Close()
 	if e.inputProvider != nil {
 		e.inputProvider.Close()
 	}
@@ -217,6 +231,12 @@ func (e *NucleiEngine) Close() {
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
 	}
+}
+
+// Close all resources used by nuclei engine
+func (e *NucleiEngine) Close() {
+	e.closeInternal()
+	protocolinit.Close(e.opts.ExecutionId)
 }
 
 // ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
@@ -233,22 +253,44 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	}
 
 	filtered := []func(event *output.ResultEvent){}
-	for _, callback := range callback {
-		if callback != nil {
-			filtered = append(filtered, callback)
+	for _, cb := range callback {
+		if cb != nil {
+			filtered = append(filtered, cb)
 		}
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(context.Background(), e.store.Templates(), e.inputProvider, false)
-	defer e.engine.WorkPool().Wait()
+	templatesAndWorkflows := append(e.store.Templates(), e.store.Workflows()...)
+	if len(templatesAndWorkflows) == 0 {
+		return ErrNoTemplatesAvailable
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
+	}()
+
+	// wait for context to be cancelled
+	select {
+	case <-ctx.Done():
+		<-wait(&wg) // wait for scan to finish
+		return ctx.Err()
+	case <-wait(&wg):
+		// scan finished
+	}
 	return nil
 }
 
 // ExecuteWithCallback is same as ExecuteCallbackWithCtx but with default context
 // Note this is deprecated and will be removed in future major release
 func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
-	return e.ExecuteCallbackWithCtx(context.Background(), callback...)
+	ctx := context.Background()
+	if e.ctx != nil {
+		ctx = e.ctx
+	}
+	return e.ExecuteCallbackWithCtx(ctx, callback...)
 }
 
 // Options return nuclei Type Options
@@ -261,20 +303,48 @@ func (e *NucleiEngine) Engine() *core.Engine {
 	return e.engine
 }
 
-// NewNucleiEngine creates a new nuclei engine instance
-func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+// Store returns store of nuclei
+func (e *NucleiEngine) Store() *loader.Store {
+	return e.store
+}
+
+// NewNucleiEngineCtx creates a new nuclei engine instance with given context
+func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
+	defaultOptions := types.DefaultOptions()
+	defaultOptions.ExecutionId = xid.New().String()
 	e := &NucleiEngine{
-		opts: types.DefaultOptions(),
+		opts: defaultOptions,
 		mode: singleInstance,
+		ctx:  ctx,
 	}
 	for _, option := range options {
 		if err := option(e); err != nil {
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
+	if err := e.init(ctx); err != nil {
 		return nil, err
 	}
 	return e, nil
+}
+
+// Deprecated: use NewNucleiEngineCtx instead
+func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+	return NewNucleiEngineCtx(context.Background(), options...)
+}
+
+// GetParser returns the template parser with cache
+func (e *NucleiEngine) GetParser() *templates.Parser {
+	return e.parser
+}
+
+// wait for a waitgroup to finish
+func wait(wg *sync.WaitGroup) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		defer close(ch)
+		wg.Wait()
+	}()
+	return ch
 }

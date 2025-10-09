@@ -3,6 +3,7 @@ package aws
 import (
 	"io"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -250,13 +251,7 @@ func (m mocks3svc) getAllKeys() ([]string, error) {
 }
 
 func (m mocks3svc) downloadKey(name string) (io.ReadCloser, error) {
-	found := false
-	for _, key := range m.keys {
-		if key == name {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(m.keys, name)
 	if !found {
 		return nil, errors.New("key not found")
 	}

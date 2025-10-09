@@ -4,9 +4,10 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -27,7 +28,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 			var match bool
 			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
 			if e.Callback != nil {
-				if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
+				if results, err := template.Executer.ExecuteWithResults(ctx); err == nil {
 					for _, result := range results {
 						e.Callback(result)
 					}
@@ -38,17 +39,24 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 				match, err = template.Executer.Execute(ctx)
 			}
 			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+				e.options.Logger.Warning().Msgf("[%s] Could not execute step (self-contained): %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
 			results.CompareAndSwap(false, match)
 		}(v)
 	}
 }
 
-// executeTemplateWithTarget executes a given template on x targets (with a internal targetpool(i.e concurrency))
+// executeTemplateWithTargets executes a given template on x targets (with a internal targetpool(i.e concurrency))
 func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
-	// this is target pool i.e max target to execute
-	wg := e.workPool.InputPool(template.Type())
+	if e.workPool == nil {
+		e.workPool = e.GetWorkPool()
+	}
+	// Bounded worker pool using input concurrency
+	pool := e.workPool.InputPool(template.Type())
+	workerCount := 1
+	if pool != nil && pool.Size > 0 {
+		workerCount = pool.Size
+	}
 
 	var (
 		index uint32
@@ -77,6 +85,41 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		currentInfo.Unlock()
 	}
 
+	// task represents a single target execution unit
+	type task struct {
+		index uint32
+		skip  bool
+		value *contextargs.MetaInput
+	}
+
+	tasks := make(chan task)
+	var workersWg sync.WaitGroup
+	workersWg.Add(workerCount)
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			defer workersWg.Done()
+			for t := range tasks {
+				func() {
+					defer cleanupInFlight(t.index)
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+					if t.skip {
+						return
+					}
+
+					match, err := e.executeTemplateOnInput(ctx, template, t.value)
+					if err != nil {
+						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), t.value.Input, err)
+					}
+					results.CompareAndSwap(false, match)
+				}()
+			}
+		}()
+	}
+
 	target.Iterate(func(scannedValue *contextargs.MetaInput) bool {
 		select {
 		case <-ctx.Done():
@@ -88,13 +131,13 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
 		if resumeFromInfo.Completed { // the template was completed
-			gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Template already completed\n", template.ID, scannedValue.Input)
+			e.options.Logger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Template already completed", template.ID, scannedValue.Input)
 			skip = true
 		} else if index < resumeFromInfo.SkipUnder { // index lower than the sliding window (bulk-size)
-			gologger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Target already processed\n", template.ID, scannedValue.Input)
+			e.options.Logger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Target already processed", template.ID, scannedValue.Input)
 			skip = true
 		} else if _, isInFlight := resumeFromInfo.InFlight[index]; isInFlight { // the target wasn't completed successfully
-			gologger.Debug().Msgf("[%s] Repeating \"%s\": Resume - Target wasn't completed\n", template.ID, scannedValue.Input)
+			e.options.Logger.Debug().Msgf("[%s] Repeating \"%s\": Resume - Target wasn't completed", template.ID, scannedValue.Input)
 			// skip is already false, but leaving it here for clarity
 			skip = false
 		} else if index > resumeFromInfo.DoAbove { // index above the sliding window (bulk-size)
@@ -107,47 +150,33 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(contextargs.NewWithMetaInput(ctx, scannedValue)) {
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
+			skipEvent := &output.ResultEvent{
+				TemplateID:    template.ID,
+				TemplatePath:  template.Path,
+				Info:          template.Info,
+				Type:          e.executerOpts.ProtocolType.String(),
+				Host:          scannedValue.Input,
+				MatcherStatus: false,
+				Error:         "host was skipped as it was found unresponsive",
+				Timestamp:     time.Now(),
+			}
+
+			if e.Callback != nil {
+				e.Callback(skipEvent)
+			} else if e.executerOpts.Output != nil {
+				_ = e.executerOpts.Output.Write(skipEvent)
+			}
 			return true
 		}
 
-		wg.Add()
-		go func(index uint32, skip bool, value *contextargs.MetaInput) {
-			defer wg.Done()
-			defer cleanupInFlight(index)
-			if skip {
-				return
-			}
-
-			var match bool
-			var err error
-			ctxArgs := contextargs.New(ctx)
-			ctxArgs.MetaInput = value
-			ctx := scan.NewScanContext(ctx, ctxArgs)
-			switch template.Type() {
-			case types.WorkflowProtocol:
-				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
-			default:
-				if e.Callback != nil {
-					if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
-						for _, result := range results {
-							e.Callback(result)
-						}
-					}
-					match = true
-				} else {
-					match, err = template.Executer.Execute(ctx)
-				}
-			}
-			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
-			}
-			results.CompareAndSwap(false, match)
-		}(index, skip, scannedValue)
+		tasks <- task{index: index, skip: skip, value: scannedValue}
 		index++
 		return true
 	})
-	wg.Wait()
+
+	close(tasks)
+	workersWg.Wait()
 
 	// on completion marks the template as completed
 	currentInfo.Lock()
@@ -163,6 +192,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	// headless and non-headless templates
 	// global waitgroup should not be used here
 	wp := e.GetWorkPool()
+	defer wp.Wait()
 
 	for _, tpl := range alltemplates {
 		select {
@@ -184,31 +214,35 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
 			defer wg.Done()
 
-			var match bool
-			var err error
-			ctxArgs := contextargs.New(ctx)
-			ctxArgs.MetaInput = value
-			ctx := scan.NewScanContext(ctx, ctxArgs)
-			switch template.Type() {
-			case types.WorkflowProtocol:
-				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
-			default:
-				if e.Callback != nil {
-					if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
-						for _, result := range results {
-							e.Callback(result)
-						}
-					}
-					match = true
-				} else {
-					match, err = template.Executer.Execute(ctx)
-				}
-			}
+			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)
 	}
-	wp.Wait()
+}
+
+// executeTemplateOnInput performs template execution for a single input and returns match status and error
+func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
+	ctxArgs := contextargs.New(ctx)
+	ctxArgs.MetaInput = value
+	scanCtx := scan.NewScanContext(ctx, ctxArgs)
+
+	switch template.Type() {
+	case types.WorkflowProtocol:
+		return e.executeWorkflow(scanCtx, template.CompiledWorkflow), nil
+	default:
+		if e.Callback != nil {
+			results, err := template.Executer.ExecuteWithResults(scanCtx)
+			if err != nil {
+				return false, err
+			}
+			for _, result := range results {
+				e.Callback(result)
+			}
+			return len(results) > 0, nil
+		}
+		return template.Executer.Execute(scanCtx)
+	}
 }

@@ -2,6 +2,7 @@ package formats
 
 import (
 	"errors"
+	"io"
 	"os"
 	"strings"
 
@@ -27,6 +28,12 @@ type InputFormatOptions struct {
 	// RequiredOnly only uses required fields when generating requests
 	// instead of all fields
 	RequiredOnly bool
+	// VarsTextTemplating uses Variables and inject it into the input
+	// this is used for text templating of variables based on carvel ytt
+	// Only available for Yaml formats
+	VarsTextTemplating bool
+	// VarsFilePaths is the path to the file containing variables
+	VarsFilePaths []string
 }
 
 // Format is an interface implemented by all input formats
@@ -35,7 +42,7 @@ type Format interface {
 	Name() string
 	// Parse parses the input and calls the provided callback
 	// function for each RawRequest it discovers.
-	Parse(input string, resultsCb ParseReqRespCallback) error
+	Parse(input io.Reader, resultsCb ParseReqRespCallback, filePath string) error
 	// SetOptions sets the options for the input format
 	SetOptions(options InputFormatOptions)
 }
@@ -87,7 +94,9 @@ func WriteOpenAPIVarDumpFile(vars *OpenAPIParamsCfgFile) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	bin, err := yaml.Marshal(vars)
 	if err != nil {
 		return err

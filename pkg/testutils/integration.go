@@ -14,6 +14,7 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/utils/conversion"
 )
 
 // ExtraArgs
@@ -70,24 +71,30 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 	} else {
 		cmd.Args = append(cmd.Args, "-silent")
 	}
-	data, err := cmd.Output()
-	if debug {
-		fmt.Println(string(data))
+	output, err := cmd.Output()
+	var data string
+	if len(output) > 0 {
+		data = strings.TrimSpace(conversion.String(output))
 	}
-	if len(data) < 1 && err != nil {
-		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
+	if debug {
+		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(string(data), "\n")
+	items := strings.Split(data, "\n")
 	for _, i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}
 	}
+
+	if (data == "" || len(parts) == 0) && err != nil {
+		return nil, fmt.Errorf("%v: %v", err.Error(), data)
+	}
+
 	return parts, nil
 }
 
-// RunNucleiArgsAndGetResults returns result,and runtime errors
+// RunNucleiWithArgsAndGetResults returns result,and runtime errors
 func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei", args...)
 	cmd.Env = append(cmd.Env, ExtraEnvVars...)
@@ -98,19 +105,24 @@ func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error
 	} else {
 		cmd.Args = append(cmd.Args, "-silent")
 	}
-	data, err := cmd.Output()
-	if debug {
-		fmt.Println(string(data))
+	output, err := cmd.Output()
+	var data string
+	if len(output) > 0 {
+		data = strings.TrimSpace(conversion.String(output))
 	}
-	if len(data) < 1 && err != nil {
-		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
+	if debug {
+		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(string(data), "\n")
+	items := strings.Split(data, "\n")
 	for _, i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}
+	}
+
+	if (data == "" || len(parts) == 0) && err != nil {
+		return nil, fmt.Errorf("%v: %v", err.Error(), data)
 	}
 	return parts, nil
 }
@@ -127,12 +139,16 @@ func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]str
 	cmd.Args = append(cmd.Args, "-allow-local-file-access")
 	cmd.Args = append(cmd.Args, "-nc") // disable color
 	cmd.Env = append(cmd.Env, ExtraEnvVars...)
-	data, err := cmd.CombinedOutput()
+	dataOutput, err := cmd.CombinedOutput()
 	if debug {
-		fmt.Println(string(data))
+		fmt.Println(string(dataOutput))
+	}
+	var data string
+	if len(dataOutput) > 0 {
+		data = strings.TrimSpace(conversion.String(dataOutput))
 	}
 	results := []string{}
-	for _, v := range strings.Split(string(data), "\n") {
+	for _, v := range strings.Split(data, "\n") {
 		line := strings.TrimSpace(v)
 		switch {
 		case strings.HasPrefix(line, "[ERR]"):
@@ -146,7 +162,7 @@ func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]str
 	return results, err
 }
 
-// RunNucleiArgsWithEnvAndGetErrors returns a list of errors in nuclei output (ERR,WRN,FTL)
+// RunNucleiArgsWithEnvAndGetResults returns a list of results in nuclei output (ERR,WRN,FTL)
 func RunNucleiArgsWithEnvAndGetResults(debug bool, env []string, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
 	extra = append(extra, ExtraDebugArgs...)
@@ -164,19 +180,23 @@ func RunNucleiArgsWithEnvAndGetResults(debug bool, env []string, extra ...string
 	} else {
 		cmd.Args = append(cmd.Args, "-silent")
 	}
-	data, err := cmd.Output()
-	if debug {
-		fmt.Println(string(data))
+	dataOutput, err := cmd.Output()
+	var data string
+	if len(dataOutput) > 0 {
+		data = strings.TrimSpace(conversion.String(dataOutput))
 	}
-	if len(data) < 1 && err != nil {
-		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
+	if debug {
+		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(string(data), "\n")
+	items := strings.Split(data, "\n")
 	for _, i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}
+	}
+	if (data == "" || len(parts) == 0) && err != nil {
+		return nil, fmt.Errorf("%v: %v", err.Error(), data)
 	}
 	return parts, nil
 }
@@ -303,7 +323,7 @@ func NewTCPServer(tlsConfig *tls.Config, port int, handler func(conn net.Conn)) 
 
 // Close closes the TCP server
 func (s *TCPServer) Close() {
-	s.listener.Close()
+	_ = s.listener.Close()
 }
 
 // NewWebsocketServer creates a new websocket server from a handler
@@ -318,7 +338,9 @@ func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate
 			return
 		}
 		go func() {
-			defer conn.Close()
+			defer func() {
+				_ = conn.Close()
+			}()
 
 			handler(conn)
 		}()

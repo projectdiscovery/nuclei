@@ -1,0 +1,79 @@
+name: Bug Report
+description: Create a report to help us to improve the Nuclei.
+title: "[BUG] ..."
+labels: ["Type: Bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+        For support requests, FAQs or "How to" questions, please use the [GitHub Discussions](https://github.com/projectdiscovery/nuclei/discussions) section instead or join our [Discord server](https://discord.gg/projectdiscovery) to discuss the idea on the **#nuclei** channel.
+
+        :warning: **Issues missing important information may be closed without further investigation.**
+  - type: checkboxes
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the bug you encountered.
+      options:
+      - label: I have searched the existing issues.
+        required: true
+  - type: textarea
+    attributes:
+      label: Current Behavior
+      description: A concise description of what you're experiencing.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: A concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps To Reproduce
+      description: |
+        Steps to reproduce the behavior, for example, commands to run Nuclei.
+
+        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.
+
+        :warning: **Please redact any literal target hosts/URLs or other sensitive information.**
+      placeholder: |
+        1. Run `nuclei -t ...`
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Relevant log output
+      description: |
+        Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+
+        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.
+
+        :warning: **Please redact any literal target hosts/URLs or other sensitive information.**
+      render: shell
+  - type: textarea
+    attributes:
+      label: Environment
+      description: |
+        Examples:
+          - **OS**: Ubuntu 20.04
+          - **Nuclei** (`nuclei -version`): v3.3.1
+          - **Go** (`go version`): go1.22.0 _(only if you've installed it via the `go install` command)_
+      value: |
+          - OS: 
+          - Nuclei: 
+          - Go: 
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Anything else?
+      description: |
+        Links? References? Templates? Anything that will give us more context about the issue you are encountering!
+
+        Tip: You can attach images or log files by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false

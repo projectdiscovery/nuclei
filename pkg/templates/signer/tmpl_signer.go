@@ -11,28 +11,31 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 var (
-	ReDigest            = regexp.MustCompile(`(?m)^#\sdigest:\s.+$`)
 	ErrUnknownAlgorithm = errors.New("unknown algorithm")
 	SignaturePattern    = "# digest: "
 	SignatureFmt        = SignaturePattern + "%x" + ":%v" // `#digest: <signature>:<fragment>`
 )
 
-func RemoveSignatureFromData(data []byte) []byte {
-	return bytes.Trim(ReDigest.ReplaceAll(data, []byte("")), "\n")
-}
-
-func GetSignatureFromData(data []byte) []byte {
-	return ReDigest.Find(data)
+// ExtractSignatureAndContent extracts the signature (if present) and returns the content without the signature
+func ExtractSignatureAndContent(data []byte) (signature, content []byte) {
+	dataStr := string(data)
+	if idx := strings.LastIndex(dataStr, SignaturePattern); idx != -1 {
+		signature = []byte(strings.TrimSpace(dataStr[idx:]))
+		content = bytes.TrimSpace(data[:idx])
+	} else {
+		content = data
+	}
+	content = bytes.TrimSpace(content)
+	return signature, content
 }
 
 // SignableTemplate is a template that can be signed
@@ -69,26 +72,29 @@ func (t *TemplateSigner) GetUserFragment() string {
 
 // Sign signs the given template with the template signer and returns the signature
 func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error) {
+	existingSignature, content := ExtractSignatureAndContent(data)
+
 	// while re-signing template check if it has a code protocol
 	// if it does then verify that it is signed by current signer
 	// if not then return error
 	if tmpl.HasCodeProtocol() {
-		sig := GetSignatureFromData(data)
-		arr := strings.SplitN(string(sig), ":", 3)
-		if len(arr) == 2 {
-			// signature has no fragment
-			return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
-		}
-		if len(arr) == 3 {
-			// signature has fragment verify if it is equal to current fragment
-			fragment := t.GetUserFragment()
-			if fragment != arr[2] {
-				return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
+		if len(existingSignature) > 0 {
+			arr := strings.SplitN(string(existingSignature), ":", 3)
+			if len(arr) == 2 {
+				// signature has no fragment
+				return "", errkit.New("re-signing code templates are not allowed for security reasons.")
+			}
+			if len(arr) == 3 {
+				// signature has fragment verify if it is equal to current fragment
+				fragment := t.GetUserFragment()
+				if fragment != arr[2] {
+					return "", errkit.New("re-signing code templates are not allowed for security reasons.")
+				}
 			}
 		}
 	}
 
-	buff := bytes.NewBuffer(RemoveSignatureFromData(data))
+	buff := bytes.NewBuffer(content)
 	// if file has any imports process them
 	for _, file := range tmpl.GetFileImports() {
 		bin, err := os.ReadFile(file)
@@ -123,12 +129,16 @@ func (t *TemplateSigner) sign(data []byte) (string, error) {
 
 // Verify verifies the given template with the template signer
 func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error) {
-	digestData := ReDigest.Find(data)
-	if len(digestData) == 0 {
-		return false, errors.New("digest not found")
+	signature, content := ExtractSignatureAndContent(data)
+	if len(signature) == 0 {
+		return false, errors.New("no signature found")
 	}
 
-	digestData = bytes.TrimSpace(bytes.TrimPrefix(digestData, []byte(SignaturePattern)))
+	if !bytes.HasPrefix(signature, []byte(SignaturePattern)) {
+		return false, errors.New("signature must be at the end of the template")
+	}
+
+	digestData := bytes.TrimSpace(bytes.TrimPrefix(signature, []byte(SignaturePattern)))
 	// remove fragment from digest as it is used for re-signing purposes only
 	digestString := strings.TrimSuffix(string(digestData), ":"+t.GetUserFragment())
 	digest, err := hex.DecodeString(digestString)
@@ -136,7 +146,11 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 		return false, err
 	}
 
-	buff := bytes.NewBuffer(RemoveSignatureFromData(data))
+	// normalize content by removing \r\n everywhere since this only done for verification
+	// it does not affect the actual template
+	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+
+	buff := bytes.NewBuffer(content)
 	// if file has any imports process them
 	for _, file := range tmpl.GetFileImports() {
 		bin, err := os.ReadFile(file)

@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -20,7 +21,7 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(variableMap) // merge all variables into template context
 
 		// to avoid polling update template variables everytime we execute a protocol
-		var m map[string]interface{} = f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
+		m := f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
 		_ = runtime.Set("template", m)
 	}()
 	matcherStatus := &atomic.Bool{} // due to interactsh matcher polling logic this needs to be atomic bool
@@ -29,7 +30,15 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		// execution logic for http()/dns() etc
 		for index := range f.allProtocols[opts.protoName] {
 			req := f.allProtocols[opts.protoName][index]
-			err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.protocolResultCallback(req, matcherStatus, opts))
+			// transform input if required
+			inputItem := f.ctx.Input.Clone()
+			if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" {
+				if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+					f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
+					return false
+				}
+			}
+			err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
 			if err != nil {
 				// save all errors in a map with id as key
 				// its less likely that there will be race condition but just in case
@@ -53,12 +62,22 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		if !ok {
 			f.ctx.LogError(fmt.Errorf("[%v] invalid request id '%s' provided", f.options.TemplateID, id))
 			// compile error
-			if err := f.allErrs.Set(opts.protoName+":"+id, ErrInvalidRequestID.Msgf(f.options.TemplateID, id)); err != nil {
+			if err := f.allErrs.Set(opts.protoName+":"+id, errkit.Newf("[%s] invalid request id '%s' provided", f.options.TemplateID, id)); err != nil {
 				f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
 			}
 			return matcherStatus.Load()
 		}
-		err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.protocolResultCallback(req, matcherStatus, opts))
+		// transform input if required
+		inputItem := f.ctx.Input.Clone()
+		if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" {
+			if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+				f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
+				return false
+			}
+		}
+		err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
+		// Mark the request as seen
+		_ = f.executed.Set(requestKey(opts.protoName, req, id), struct{}{})
 		if err != nil {
 			index := id
 			err = f.allErrs.Set(opts.protoName+":"+index, err)
@@ -70,9 +89,16 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 	return matcherStatus.Load()
 }
 
+func requestKey(proto string, req protocols.Request, id string) string {
+	if id == "" {
+		id = req.GetID()
+	}
+	return proto + ":" + id
+}
+
 // protocolResultCallback returns a callback that is executed
 // after execution of each protocol request
-func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool, opts *ProtoOptions) func(result *output.InternalWrappedEvent) {
+func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool, _ *ProtoOptions) func(result *output.InternalWrappedEvent) {
 	return func(result *output.InternalWrappedEvent) {
 		if result != nil {
 			// Note: flow specific implicit behaviours should be handled here

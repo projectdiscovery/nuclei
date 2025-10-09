@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	"golang.org/x/oauth2"
@@ -46,17 +47,43 @@ func (customTemplate *customTemplateGitHubRepo) Update(ctx context.Context) {
 	downloadPath := config.DefaultConfig.CustomGitHubTemplatesDirectory
 	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
-	// If folder does not exits then clone/download the repo
+	// If folder does not exist then clone/download the repo
 	if !fileutil.FolderExists(clonePath) {
 		customTemplate.Download(ctx)
 		return
 	}
+
+	// Attempt to pull changes and handle the result
+	customTemplate.handlePullChanges(clonePath)
+}
+
+// handlePullChanges attempts to pull changes and logs the appropriate message
+func (customTemplate *customTemplateGitHubRepo) handlePullChanges(clonePath string) {
 	err := customTemplate.pullChanges(clonePath, customTemplate.githubToken)
-	if err != nil {
-		gologger.Error().Msgf("%s", err)
-	} else {
-		gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
+
+	switch {
+	case err == nil:
+		customTemplate.logPullSuccess()
+	case errors.Is(err, git.NoErrAlreadyUpToDate):
+		customTemplate.logAlreadyUpToDate(err)
+	default:
+		customTemplate.logPullError(err)
 	}
+}
+
+// logPullSuccess logs a success message when changes are pulled
+func (customTemplate *customTemplateGitHubRepo) logPullSuccess() {
+	gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
+}
+
+// logAlreadyUpToDate logs an info message when repo is already up to date
+func (customTemplate *customTemplateGitHubRepo) logAlreadyUpToDate(err error) {
+	gologger.Info().Msgf("%s", err)
+}
+
+// logPullError logs an error message when pull fails
+func (customTemplate *customTemplateGitHubRepo) logPullError(err error) {
+	gologger.Error().Msgf("%s", err)
 }
 
 // NewGitHubProviders returns new instance of GitHub providers for downloading custom templates
@@ -137,33 +164,59 @@ getRepo:
 
 // download the git repo to a given path
 func (ctr *customTemplateGitHubRepo) cloneRepo(clonePath, githubToken string) error {
-	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
-		URL:  ctr.gitCloneURL,
-		Auth: getAuth(ctr.owner, githubToken),
-	})
+	cloneOpts := &git.CloneOptions{
+		URL:          ctr.gitCloneURL,
+		Auth:         getAuth(ctr.owner, githubToken),
+		SingleBranch: true,
+		Depth:        1,
+	}
+
+	err := cloneOpts.Validate()
+	if err != nil {
+		return err
+	}
+
+	r, err := git.PlainClone(clonePath, false, cloneOpts)
 	if err != nil {
 		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
 	}
+
 	// Add the user as well in the config. By default, user is not set
 	config, _ := r.Storer.Config()
 	config.User.Name = ctr.owner
+
 	return r.SetConfig(config)
 }
 
 // performs the git pull on given repo
 func (ctr *customTemplateGitHubRepo) pullChanges(repoPath, githubToken string) error {
+	pullOpts := &git.PullOptions{
+		RemoteName:   "origin",
+		Auth:         getAuth(ctr.owner, githubToken),
+		SingleBranch: true,
+		Depth:        1,
+	}
+
+	err := pullOpts.Validate()
+	if err != nil {
+		return err
+	}
+
 	r, err := git.PlainOpen(repoPath)
 	if err != nil {
 		return err
 	}
+
 	w, err := r.Worktree()
 	if err != nil {
 		return err
 	}
-	err = w.Pull(&git.PullOptions{RemoteName: "origin", Auth: getAuth(ctr.owner, githubToken)})
+
+	err = w.Pull(pullOpts)
 	if err != nil {
-		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
+		return errkit.Wrapf(err, "%s/%s", ctr.owner, ctr.reponame)
 	}
+
 	return nil
 }
 

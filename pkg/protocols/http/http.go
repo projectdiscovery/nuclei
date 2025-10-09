@@ -3,13 +3,19 @@ package http
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strings"
+	"time"
 
 	"github.com/invopop/jsonschema"
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -17,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
@@ -126,6 +133,9 @@ type Request struct {
 
 	// Fuzzing describes schema to fuzz http requests
 	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz http requests"`
+	// description: |
+	//   Analyzer is an analyzer to use for matching the response.
+	Analyzer *analyzers.AnalyzerTemplate `yaml:"analyzer,omitempty" json:"analyzer,omitempty" jsonschema:"title=analyzer for http request,description=Analyzer for HTTP Request"`
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
@@ -136,6 +146,7 @@ type Request struct {
 	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient        *retryablehttp.Client
 	rawhttpClient     *rawhttp.Client
+	dialer            *fastdialer.Dialer
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -146,6 +157,10 @@ type Request struct {
 	// values:
 	//   - "AWS"
 	Signature SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+
+	// description: |
+	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
+	SkipSecretFile bool `yaml:"skip-secret-file,omitempty" json:"skip-secret-file,omitempty" jsonschema:"title=bypass secret file,description=Skips the authentication or authorization configured in the secret file"`
 
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
@@ -219,6 +234,9 @@ type Request struct {
 	//  FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR
 	FuzzPreConditionOperator string                 `yaml:"pre-condition-operator,omitempty" json:"pre-condition-operator,omitempty" jsonschema:"title=condition between the filters,description=Operator to use between multiple per-conditions,enum=and,enum=or"`
 	fuzzPreConditionOperator matchers.ConditionType `yaml:"-" json:"-"`
+	// description: |
+	//   GlobalMatchers marks matchers as static and applies globally to all result events from other templates
+	GlobalMatchers bool `yaml:"global-matchers,omitempty" json:"global-matchers,omitempty" jsonschema:"title=global matchers,description=marks matchers as static and applies globally to all result events from other templates"`
 }
 
 func (e Request) JSONSchemaExtend(schema *jsonschema.Schema) {
@@ -296,6 +314,21 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		},
 		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
+	var customTimeout int
+	if request.Analyzer != nil && request.Analyzer.Name == "time_delay" {
+		var timeoutVal int
+		if timeout, ok := request.Analyzer.Parameters["sleep_duration"]; ok {
+			timeoutVal, _ = timeout.(int)
+		} else {
+			timeoutVal = 5
+		}
+
+		// Add 5x buffer to the timeout
+		customTimeout = int(math.Ceil(float64(timeoutVal) * 5))
+	}
+	if customTimeout > 0 {
+		connectionConfiguration.Connection.CustomMaxTimeout = time.Duration(customTimeout) * time.Second
+	}
 
 	if request.Redirects || options.Options.FollowRedirects {
 		connectionConfiguration.RedirectFlow = httpclientpool.FollowAllRedirect
@@ -318,6 +351,15 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	request.customHeaders = make(map[string]string)
 	request.httpClient = client
+
+	dialer, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
+		CustomDialer: options.CustomFastdialer,
+	})
+	if err != nil {
+		return errors.Wrap(err, "could not get dialer")
+	}
+	request.dialer = dialer
+
 	request.options = options
 	for _, option := range request.options.Options.CustomHeaders {
 		parts := strings.SplitN(option, ":", 2)
@@ -336,7 +378,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				request.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
 			}
 		}
-		request.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
+		request.rawhttpClient = httpclientpool.GetRawHTTP(options)
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -359,6 +401,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	for _, filter := range request.FuzzPreCondition {
 		if err := filter.CompileMatchers(); err != nil {
 			return errors.Wrap(err, "could not compile matcher")
+		}
+	}
+
+	if request.Analyzer != nil {
+		if analyzer := analyzers.GetAnalyzer(request.Analyzer.Name); analyzer == nil {
+			return errors.Errorf("analyzer %s not found", request.Analyzer.Name)
 		}
 	}
 
@@ -465,30 +513,23 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
 	}
+	return nil
+}
 
+// RebuildGenerator rebuilds the generator for the request
+func (request *Request) RebuildGenerator() error {
+	generator, err := generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType, request.options.Options)
+	if err != nil {
+		return errors.Wrap(err, "could not parse payloads")
+	}
+	request.generator = generator
 	return nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
-	if request.generator != nil {
-		payloadRequests := request.generator.NewIterator().Total()
-		if len(request.Raw) > 0 {
-			payloadRequests = payloadRequests * len(request.Raw)
-		}
-		if len(request.Path) > 0 {
-			payloadRequests = payloadRequests * len(request.Path)
-		}
-		return payloadRequests
-	}
-	if len(request.Raw) > 0 {
-		requests := len(request.Raw)
-		if requests == 1 && request.RaceNumberRequests != 0 {
-			requests *= request.RaceNumberRequests
-		}
-		return requests
-	}
-	return len(request.Path)
+	generator := request.newGenerator(false)
+	return generator.Total()
 }
 
 const (
@@ -497,4 +538,9 @@ const (
 
 func init() {
 	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

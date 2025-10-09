@@ -21,7 +21,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -87,7 +88,7 @@ func (c *Client) poll() error {
 		KeepAliveInterval:   time.Minute,
 	})
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not create client")
+		return errkit.Wrap(err, "could not create client")
 	}
 
 	c.interactsh = interactsh
@@ -108,7 +109,7 @@ func (c *Client) poll() error {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
 			items, err := c.interactions.Get(interaction.UniqueID)
-			if errorutil.IsAny(err, gcache.KeyNotFoundError) || items == nil {
+			if errkit.Is(err, gcache.KeyNotFoundError) || items == nil {
 				_ = c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
 			} else {
 				items = append(items, interaction)
@@ -127,7 +128,7 @@ func (c *Client) poll() error {
 	})
 
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not perform interactsh polling")
+		return errkit.Wrap(err, "could not perform interactsh polling")
 	}
 	return nil
 }
@@ -180,6 +181,14 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		gologger.DefaultLogger.Print().Msgf("[Interactsh]: got result %v and status %v after processing interaction", result, matched)
 	}
 
+	if c.options.FuzzParamsFrequency != nil {
+		if !matched {
+			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
+		} else {
+			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
+		}
+	}
+
 	// if we don't match, return
 	if !matched || result == nil {
 		return false
@@ -230,7 +239,7 @@ func (c *Client) URL() (string, error) {
 		err = c.poll()
 	})
 	if err != nil {
-		return "", errorutil.NewWithErr(err).Wrap(ErrInteractshClientNotInitialized)
+		return "", errkit.Wrap(ErrInteractshClientNotInitialized, err.Error())
 	}
 
 	if c.interactsh == nil {
@@ -248,7 +257,7 @@ func (c *Client) Close() bool {
 	}
 	if c.interactsh != nil {
 		_ = c.interactsh.StopPolling()
-		c.interactsh.Close()
+		_ = c.interactsh.Close()
 	}
 
 	c.requests.Purge()
@@ -320,6 +329,9 @@ type RequestData struct {
 	Operators      *operators.Operators
 	MatchFunc      operators.MatchFunc
 	ExtractFunc    operators.ExtractFunc
+
+	Parameter string
+	Request   *retryablehttp.Request
 }
 
 // RequestEvent is the event for a network request sent by nuclei.
@@ -412,7 +424,7 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *o
 			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest, event, c.options.NoColor))
 		}
 	}
-	fmt.Fprint(os.Stderr, builder.String())
+	_, _ = fmt.Fprint(os.Stderr, builder.String())
 }
 
 func formatInteractionHeader(protocol, ID, address string, at time.Time) string {

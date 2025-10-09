@@ -3,7 +3,9 @@ package interactsh
 import (
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
@@ -45,9 +47,12 @@ type Options struct {
 	NoInteractsh bool
 	// NoColor disables printing colors for matches
 	NoColor bool
+	// Logger is the shared logging instance
+	Logger *gologger.Logger
 
-	StopAtFirstMatch bool
-	HTTPClient       *retryablehttp.Client
+	FuzzParamsFrequency *frequency.Tracker
+	StopAtFirstMatch    bool
+	HTTPClient          *retryablehttp.Client
 }
 
 // DefaultOptions returns the default options for interactsh client

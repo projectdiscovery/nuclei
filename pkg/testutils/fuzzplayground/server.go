@@ -27,6 +27,7 @@ func GetPlaygroundServer() *echo.Echo {
 	e.GET("/request", requestHandler)
 	e.GET("/email", emailHandler)
 	e.GET("/permissions", permissionsHandler)
+
 	e.GET("/blog/post", numIdorHandler) // for num based idors like ?id=44
 	e.POST("/reset-password", resetPasswordHandler)
 	e.GET("/host-header-lab", hostHeaderLabHandler)
@@ -47,13 +48,20 @@ var bodyTemplate = `<html>
 
 func indexHandler(ctx echo.Context) error {
 	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, `<h1>Fuzzing Playground</h1><hr>
-<ul>
-<li><a href="/info?name=test&another=value&random=data">Info Page XSS</a></li>
-<li><a href="/redirect?redirect_url=/info?name=redirected_from_url">Redirect Page OpenRedirect</a></li>
-<li><a href="/request?url=https://example.com">Request Page SSRF</a></li>
-<li><a href="/email?text=important_user">Email Page SSTI</a></li>
-<li><a href="/permissions?cmd=whoami">Permissions Page CMDI</a></li>
-</ul>
+	<ul>
+		
+	<li><a href="/info?name=test&another=value&random=data">Info Page XSS</a></li>
+	<li><a href="/redirect?redirect_url=/info?name=redirected_from_url">Redirect Page OpenRedirect</a></li>
+	<li><a href="/request?url=https://example.com">Request Page SSRF</a></li>
+	<li><a href="/email?text=important_user">Email Page SSTI</a></li>
+	<li><a href="/permissions?cmd=whoami">Permissions Page CMDI</a></li>
+	
+	<li><a href="/host-header-lab">Host Header Lab (X-Forwarded-Host Trusted)</a></li>
+	<li><a href="/user/75/profile">User Profile Page SQLI (path parameter)</a></li>
+	<li><a href="/user">POST on /user SQLI (body parameter)</a></li>
+	<li><a href="/blog/posts">SQLI in cookie lang parameter value (eg. lang=en)</a></li>
+	
+	</ul>
 `))
 }
 
@@ -72,7 +80,9 @@ func requestHandler(ctx echo.Context) error {
 	if err != nil {
 		return ctx.HTML(500, err.Error())
 	}
-	defer data.Body.Close()
+	defer func() {
+		_ = data.Body.Close()
+	}()
 
 	body, _ := io.ReadAll(data.Body)
 	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(body)))
@@ -164,7 +174,9 @@ func resetPasswordHandler(c echo.Context) error {
 	if err != nil {
 		return c.JSON(500, "Something went wrong")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	return c.JSON(200, "Password reset successfully")
 }
 
@@ -176,7 +188,9 @@ func hostHeaderLabHandler(c echo.Context) error {
 		if err != nil {
 			return c.JSON(500, "Something went wrong")
 		}
-		defer resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		c.Response().Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 		c.Response().WriteHeader(resp.StatusCode)
 		_, err = io.Copy(c.Response().Writer, resp.Body)

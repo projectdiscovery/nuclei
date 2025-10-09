@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 )
 
 // temporary on demand runtime to throw errors when vm is not available
@@ -42,6 +42,14 @@ func (j *NucleiJS) runtime() *goja.Runtime {
 	return j.vm
 }
 
+func (j *NucleiJS) ExecutionId() string {
+	executionId, ok := j.vm.GetContextValue("executionId")
+	if !ok {
+		return ""
+	}
+	return executionId.(string)
+}
+
 // see: https://arc.net/l/quote/wpenftpc for throwing docs
 
 // ThrowError throws an error in goja runtime if is not nil
@@ -60,12 +68,16 @@ func (j *NucleiJS) HandleError(err error, msg ...string) {
 	if len(msg) == 0 {
 		j.ThrowError(err)
 	}
-	j.Throw(fmt.Sprintf("%s: %s", strings.Join(msg, ":"), err.Error()))
+	j.Throw("%s: %s", strings.Join(msg, ":"), err.Error())
 }
 
 // Throw throws an error in goja runtime
 func (j *NucleiJS) Throw(format string, args ...interface{}) {
-	panic(j.runtime().ToValue(fmt.Sprintf(format, args...)))
+	if len(args) > 0 {
+		panic(j.runtime().ToValue(fmt.Sprintf(format, args...)))
+	}
+
+	panic(j.runtime().ToValue(format))
 }
 
 // GetArg returns argument at index from goja runtime if not found throws error
@@ -95,7 +107,7 @@ func (j *NucleiJS) GetArgSafe(args []goja.Value, index int, defaultValue any) an
 // Require throws an error if expression is false
 func (j *NucleiJS) Require(expr bool, msg string) {
 	if !expr {
-		j.Throw(msg)
+		j.Throw("%s", msg)
 	}
 }
 

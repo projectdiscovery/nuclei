@@ -143,3 +143,33 @@
 #  username: test
 #  # Password is the password for elasticsearch instance
 #  password: test
+#linear:
+#  # api-key is the API key for the linear account
+#  api-key: ""
+#  # allow-list sets a tracker level filter to only create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: critical
+#  # deny-list sets a tracker level filter to never create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: low
+#  # team-id is the ID of the team in Linear
+#  team-id: ""
+#  # project-id is the ID of the project in Linear
+#  project-id: ""
+#  # duplicate-issue-check flag to enable duplicate tracking issue check
+#  duplicate-issue-check: false
+#  # open-state-id is the ID of the open state in Linear
+#  open-state-id: ""
+#mongodb:
+#  # the connection string to the MongoDB database
+#  # (e.g., mongodb://root:example@localhost:27017/nuclei?ssl=false&authSource=admin)
+#  connection-string: ""
+#  # the name of the collection to store the issues
+#  collection-name: ""
+#  # excludes the Request and Response from the results (helps with filesize)
+#  omit-raw: false
+#  # determines the number of results to be kept in memory before writing it to the database or 0 to
+#  # persist all in memory and write all results at the end (default)
+#  batch-size: 0
