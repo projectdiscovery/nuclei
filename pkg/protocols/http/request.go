@@ -910,7 +910,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 		return err
 	}
-	var curlCommand string
+	var curlCommand, ncatCommand string
 	if resp != nil && !request.Race {
 		if !request.Unsafe && generatedRequest.request != nil && resp.Request != nil {
 			bodyBytes, _ := generatedRequest.request.BodyBytes()
@@ -941,7 +941,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				ncat_cmd = append(ncat_cmd, rawurl.Port())
 			}
 			ncat += strings.Join(ncat_cmd, " ")
-			curlCommand = ncat
+			ncatCommand = ncat
 		}
 	}
 
@@ -1035,6 +1035,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			hostname = hostname[:i]
 		}
 		outputEvent["curl-command"] = curlCommand
+		if ncatCommand != "" {
+			outputEvent["ncat-command"] = ncatCommand
+		}
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
