@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/zmap/zgrab2/lib/ssh"
@@ -235,8 +236,10 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.Password(opts.Password))
 
 		cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+			gologger.Debug().Msgf("SSH keyboard-interactive: user=%s, instruction=%s", opts.User, instruction)
 			answers = make([]string, len(questions))
 			for i, question := range questions {
+				gologger.Debug().Msgf("SSH keyboard-interactive question[%d]: %s", i, question)
 				if !echos[i] && strings.Contains(strings.ToLower(question), "password") {
 					answers[i] = opts.Password
 				}
