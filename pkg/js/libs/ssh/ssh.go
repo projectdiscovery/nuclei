@@ -235,10 +235,13 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.Password(opts.Password))
 
 		cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-			if len(questions) == 1 {
-				return []string{opts.Password}, nil
+			answers = make([]string, len(questions))
+			for i, question := range questions {
+				if !echos[i] && strings.Contains(strings.ToLower(question), "password") {
+					answers[i] = opts.Password
+				}
 			}
-			return []string{}, nil
+			return answers, nil
 		}
 		conf.Auth = append(conf.Auth, ssh.KeyboardInteractiveChallenge(cb))
 	}
