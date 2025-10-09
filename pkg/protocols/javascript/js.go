@@ -811,8 +811,11 @@ func beautifyJavascript(code string) string {
 }
 
 func prettyPrint(templateId string, buff string) {
+	if buff == "" {
+		return
+	}
 	lines := strings.Split(buff, "\n")
-	final := []string{}
+	final := make([]string, 0, len(lines))
 	for _, v := range lines {
 		if v != "" {
 			final = append(final, "\t"+v)

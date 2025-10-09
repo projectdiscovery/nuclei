@@ -192,11 +192,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 	}
 
-	storage, err := dedupe.New(db)
-	if err != nil {
-		return nil, err
+	if db != "" || len(client.trackers) > 0 || len(client.exporters) > 0 {
+		storage, err := dedupe.New(db)
+		if err != nil {
+			return nil, err
+		}
+		client.dedupe = storage
 	}
-	client.dedupe = storage
 	return client, nil
 }
 
@@ -285,6 +287,10 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 		return nil
 	}
 	if c.options.DenyList != nil && c.options.DenyList.GetMatch(event) {
+		return nil
+	}
+
+	if c.options.ValidatorCallback != nil && !c.options.ValidatorCallback(event) {
 		return nil
 	}
 

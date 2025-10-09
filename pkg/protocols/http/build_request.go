@@ -92,9 +92,8 @@ type generatedRequest struct {
 
 // setReqURLPattern sets the url request pattern for the generated request
 func (gr *generatedRequest) setReqURLPattern(reqURLPattern string) {
-	data := strings.Split(reqURLPattern, "\n")
-	if len(data) > 1 {
-		reqURLPattern = strings.TrimSpace(data[0])
+	if idx := strings.IndexByte(reqURLPattern, '\n'); idx >= 0 {
+		reqURLPattern = strings.TrimSpace(reqURLPattern[:idx])
 		// this is raw request (if it has 3 parts after strings.Fields then its valid only use 2nd part)
 		parts := strings.Fields(reqURLPattern)
 		if len(parts) >= 3 {

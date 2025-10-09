@@ -286,6 +286,7 @@ RATE-LIMIT:
    -jsc, -js-concurrency int          maximum number of javascript runtimes to be executed in parallel (default 120)
    -pc, -payload-concurrency int      max payload concurrency for each template (default 25)
    -prc, -probe-concurrency int       http probe concurrency with httpx (default 50)
+   -tlc, -template-loading-concurrency int  maximum number of concurrent template loading operations (default 50)
 
 OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
@@ -356,6 +357,7 @@ CLOUD:
 AUTHENTICATION:
    -sf, -secret-file string[]  path to config file containing secrets for nuclei authenticated scan
    -ps, -prefetch-secrets      prefetch secrets from the secrets file
+   # NOTE: Headers in secrets files preserve exact casing (useful for case-sensitive APIs)
 
 
 EXAMPLES:
