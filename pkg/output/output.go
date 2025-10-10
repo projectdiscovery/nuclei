@@ -439,7 +439,7 @@ func getJSONLogRequestFromError(templatePath, input, requestType string, request
 			request.Attrs = slog.GroupValue(errX.Attrs()...)
 		}
 	}
-	// check if address slog attr is avaiable in error if set use it
+	// check if address slog attr is available in error if set use it
 	if val := errkit.GetAttrValue(requestErr, "address"); val.Any() != nil {
 		request.Address = val.String()
 	}
