@@ -59,7 +59,7 @@ type Request struct {
 	//   Inputs contains inputs for the network socket
 	Inputs []*Input `yaml:"inputs,omitempty" json:"inputs,omitempty" jsonschema:"title=inputs for the network request,description=Inputs contains any input/output for the current request"`
 	// description: |
-	//   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
+	//   Port is the port to send network requests to. this acts as default port but is overridden if target/input contains
 	// non-http(s) ports like 80,8080,8081 etc
 	Port string `yaml:"port,omitempty" json:"port,omitempty" jsonschema:"title=port to send requests to,description=Port to send network requests to,oneof_type=string;integer"`
 

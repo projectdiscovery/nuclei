@@ -12,7 +12,7 @@ import (
 // and not arrays
 //
 // TODO: Support arrays + other JSON oddities by
-// adding more attirbutes to the map[string]interface{}
+// adding more attributes to the map[string]interface{}
 type JSON struct{}
 
 var (

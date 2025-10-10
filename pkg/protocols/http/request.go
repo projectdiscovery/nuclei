@@ -59,9 +59,9 @@ const (
 
 var (
 	MaxBodyRead = 10 * unitutils.Mega
-	// ErrMissingVars is error occured when variables are missing
+	// ErrMissingVars is error occurred when variables are missing
 	ErrMissingVars = errkit.New("stop execution due to unresolved variables").SetKind(nucleierr.ErrTemplateLogic).Build()
-	// ErrHttpEngineRequestDeadline is error occured when request deadline set by http request engine is exceeded
+	// ErrHttpEngineRequestDeadline is error occurred when request deadline set by http request engine is exceeded
 	ErrHttpEngineRequestDeadline = errkit.New("http request engine deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
@@ -150,7 +150,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks thsi host as unresponsive if applicable
+		// marks this host as unresponsive if applicable
 		request.markHostError(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
@@ -203,7 +203,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	}
 
 	// Stop-at-first-match logic while executing requests
-	// parallely using threads
+	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -232,7 +232,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks thsi host as unresponsive if applicable
+		// marks this host as unresponsive if applicable
 		request.markHostError(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
@@ -390,7 +390,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	maxWorkers := max(pipeOptions.MaxPendingRequests, defaultMaxWorkers)
 
 	// Stop-at-first-match logic while executing requests
-	// parallely using threads
+	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -419,7 +419,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks thsi host as unresponsive if applicable
+		// marks this host as unresponsive if applicable
 		request.markHostError(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
@@ -953,7 +953,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	})
 
-	// evaluate responses continiously until first redirect request in reverse order
+	// evaluate responses continuously until first redirect request in reverse order
 	for respChain.Has() {
 		// fill buffers, read response body and reuse connection
 		if err := respChain.Fill(); err != nil {

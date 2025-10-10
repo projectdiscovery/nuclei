@@ -645,7 +645,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	t.Helper()
 
 	lfa := envutil.GetEnvOrDefault("LOCAL_FILE_ACCESS", true)
-	rna := envutil.GetEnvOrDefault("RESTRICED_LOCAL_NETWORK_ACCESS", false)
+	rna := envutil.GetEnvOrDefault("RESTRICTED_LOCAL_NETWORK_ACCESS", false)
 
 	opts := &types.Options{AllowLocalFileAccess: lfa, RestrictLocalNetworkAccess: rna}
 
@@ -736,9 +736,9 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 		"fTP://example.com:21\r\n",
 		"ftp://example.com:21",
 		"chrome://settings",
-		"	chROme://version",
+		"	chRSome://version",
 		"chrome-extension://version\r",
-		"	chrOme-EXTension://settings",
+		"	chrSome-EXTension://settings",
 		"view-source:file:/etc/hosts",
 	}
 
