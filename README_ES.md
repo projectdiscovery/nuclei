@@ -244,6 +244,7 @@ RATE-LIMIT:
    -headc, -headless-concurrency int  número máximo de plantillas headless a ejecutar en paralelo (por defecto 10)
    -jsc, -js-concurrency int          número máximo de entornos de ejecución de JavaScript a ejecutar en paralelo (por defecto 120)
    -pc, -payload-concurrency int      concurrencia máxima de carga útil para cada plantilla (por defecto 25)
+   -tlc, -template-loading-concurrency int  número máximo de operaciones de carga de plantillas concurrentes (por defecto 50)
 
 OPTIMIZATIONS:
    -timeout int                     tiempo de espera en segundos (por defecto 10)

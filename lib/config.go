@@ -7,7 +7,7 @@ import (
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
@@ -181,7 +181,7 @@ func WithGlobalRateLimitCtx(ctx context.Context, maxTokens int, duration time.Du
 	return func(e *NucleiEngine) error {
 		e.opts.RateLimit = maxTokens
 		e.opts.RateLimitDuration = duration
-		e.rateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		e.rateLimiter = utils.GetRateLimiter(ctx, e.opts.RateLimit, e.opts.RateLimitDuration)
 		return nil
 	}
 }
