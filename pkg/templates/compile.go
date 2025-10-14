@@ -293,6 +293,9 @@ func (template *Template) parseSelfContainedRequests() {
 	for _, request := range template.RequestsHeadless {
 		request.SelfContained = true
 	}
+	for _, request := range template.RequestsCode {
+		request.SelfContained = true
+	}
 }
 
 // Requests returns the total request count for the template
@@ -324,11 +327,12 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 
 	var requests []protocols.Request
 
-	if template.hasMultipleRequests() {
-		// when multiple requests are present preserve the order of requests and protocols
-		// which is already done during unmarshalling
+	// when multiple requests or protocols are present, preserve the
+	// order of requests and protocols which already done during the
+	// unmarshalling process or else.
+	if template.hasMultipleRequests() || template.hasMultipleProtocols() {
 		requests = template.RequestsQueue
-		if options.Flow == "" {
+		if template.hasMultipleProtocols() && options.Flow == "" {
 			options.IsMultiProtocol = true
 		}
 	} else {
@@ -579,6 +583,8 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 		return nil, err
 	}
 
+	template.parseSelfContainedRequests()
+
 	if template.Executer != nil {
 		if err := template.Executer.Compile(); err != nil {
 			return nil, errors.Wrap(err, "could not compile request")
@@ -588,7 +594,6 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	if template.Executer == nil && template.CompiledWorkflow == nil {
 		return nil, ErrCreateTemplateExecutor
 	}
-	template.parseSelfContainedRequests()
 
 	// check if the template is verified
 	// only valid templates can be verified or signed

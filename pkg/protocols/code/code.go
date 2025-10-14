@@ -45,7 +45,7 @@ var (
 	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
-// Request is a request for the SSL protocol
+// Request is a request for the code protocol
 type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
@@ -68,6 +68,9 @@ type Request struct {
 	// description: |
 	//   Source File/Snippet
 	Source string `yaml:"source,omitempty" json:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
+	// description: |
+	//   SelfContained specifies if the request is self-contained.
+	SelfContained bool `yaml:"-" json:"-"`
 
 	options              *protocols.ExecutorOptions `yaml:"-" json:"-"`
 	preConditionCompiled *goja.Program              `yaml:"-" json:"-"`
@@ -156,6 +159,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.preConditionCompiled = preConditionCompiled
 	}
+
+	if !request.options.IsMultiProtocol && !request.SelfContained {
+		return errorutil.NewWithTag(request.TemplateID, "could not compile single %q protocol without enabling self-contained", request.Type())
+	}
+
 	return nil
 }
 
