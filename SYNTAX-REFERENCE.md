@@ -3218,7 +3218,7 @@ Inputs contains inputs for the network socket
 <div class="dt">
 
 description: |
-   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
+   Port is the port to send network requests to. this acts as default port but is overridden if target/input contains
  non-http(s) ports like 80,8080,8081 etc
 
 </div>
