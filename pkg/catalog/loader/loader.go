@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -88,6 +89,9 @@ type Store struct {
 
 	logger *gologger.Logger
 
+	// parserCacheOnce is used to cache the parser cache result
+	parserCacheOnce func() *templates.Cache
+
 	// NotFoundCallback is called for each not found template
 	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
@@ -154,6 +158,18 @@ func New(cfg *Config) (*Store, error) {
 		finalWorkflows: cfg.Workflows,
 		logger:         cfg.Logger,
 	}
+
+	store.parserCacheOnce = sync.OnceValue(func() *templates.Cache {
+		if cfg.ExecutorOptions == nil || cfg.ExecutorOptions.Parser == nil {
+			return nil
+		}
+
+		if parser, ok := cfg.ExecutorOptions.Parser.(*templates.Parser); ok {
+			return parser.Cache()
+		}
+
+		return nil
+	})
 
 	// Do a check to see if we have URLs in templates flag, if so
 	// we need to processs them separately and remove them from the initial list
@@ -310,11 +326,11 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 			store.logger.Warning().Msg(err.Error())
 		}
 	}
-	parserItem, ok := store.config.ExecutorOptions.Parser.(*templates.Parser)
-	if !ok {
+
+	templatesCache := store.parserCacheOnce()
+	if templatesCache == nil {
 		return errors.New("invalid parser")
 	}
-	templatesCache := parserItem.Cache()
 
 	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
 
@@ -386,6 +402,7 @@ func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{})
 
 func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *templates.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
+	parsedCache := store.parserCacheOnce()
 
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
@@ -395,13 +412,26 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 			}
 		}
 
-		template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
-		if err != nil {
-			if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
-				areTemplatesValid = false
-				continue
+		var template *templates.Template
+		var err error
+
+		if parsedCache != nil {
+			if cachedTemplate, _, cacheErr := parsedCache.Has(templatePath); cacheErr == nil && cachedTemplate != nil {
+				template = cachedTemplate
 			}
-		} else if template == nil {
+		}
+
+		if template == nil {
+			template, err = templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+			if err != nil {
+				if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
+					areTemplatesValid = false
+					continue
+				}
+			}
+		}
+
+		if template == nil {
 			// NOTE(dwisiswant0): possibly global matchers template.
 			// This could definitely be handled better, for example by returning an
 			// `ErrGlobalMatchersTemplate` during `templates.Parse` and checking it
