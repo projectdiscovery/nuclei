@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	// ErrJSExecDeadline is the error returned when alloted time for script execution exceeds
+	// ErrJSExecDeadline is the error returned when allotted time for script execution exceeds
 	ErrJSExecDeadline = errkit.New("js engine execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
