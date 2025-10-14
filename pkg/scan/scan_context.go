@@ -65,7 +65,7 @@ func (s *ScanContext) GenerateResult() []*output.ResultEvent {
 	return s.results
 }
 
-// LogEvent logs events to all events and triggeres any callbacks
+// LogEvent logs events to all events and triggers any callbacks
 func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -88,7 +88,7 @@ func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 	s.results = append(s.results, e.Results...)
 }
 
-// LogError logs error to all events and triggeres any callbacks
+// LogError logs error to all events and triggers any callbacks
 func (s *ScanContext) LogError(err error) {
 	s.m.Lock()
 	defer s.m.Unlock()

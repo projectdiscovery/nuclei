@@ -66,7 +66,7 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// template context: contains values extracted using `internal` extractor from previous protocols
 	// these values are extracted from each protocol in queue and are passed to next protocol in queue
-	// instead of adding seperator field to handle such cases these values are appended to `dynamicValues` (which are meant to be used in workflows)
+	// instead of adding separator field to handle such cases these values are appended to `dynamicValues` (which are meant to be used in workflows)
 	// this makes it possible to use multi protocol templates in workflows
 	// Note: internal extractor values take precedence over dynamicValues from workflows (i.e other templates in workflow)
 
