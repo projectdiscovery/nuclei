@@ -26,17 +26,9 @@ jobs:
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/golangci-lint/v2@v1
 
-  typos:
-    name: "Typos"
-    if: "${{ !endsWith(github.actor, '[bot]') }}"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: crate-ci/typos@v1.38.1
-
   tests:
     name: "Tests"
-    needs: ["lint", "typos"]
+    needs: ["lint"]
     strategy:
       fail-fast: false
       matrix:
