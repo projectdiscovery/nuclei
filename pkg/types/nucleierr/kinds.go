@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	// ErrTemplateLogic are errors that occured due to missing variable or something similar in template logic
+	// ErrTemplateLogic are errors that occurred due to missing variable or something similar in template logic
 	// so this is more of a virtual error that is expected due to template logic
 	ErrTemplateLogic = errkit.NewPrimitiveErrKind("TemplateLogic", "Error expected due to template logic", isTemplateLogicKind)
 )

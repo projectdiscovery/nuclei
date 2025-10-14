@@ -214,7 +214,7 @@ func createNewRuntime() *goja.Runtime {
 	// by default import below modules every time
 	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
-	// Register embedded javacript helpers
+	// Register embedded javascript helpers
 	if err := global.RegisterNativeScripts(runtime); err != nil {
 		gologger.Error().Msgf("Could not register scripts: %s\n", err)
 	}
