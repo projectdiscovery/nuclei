@@ -45,11 +45,12 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		config.DefaultConfig.TemplatesDirectory,
 	)
 	// order templates alphabetically by path
-	sort.Slice(store.Templates(), func(i, j int) bool {
-		return store.Templates()[i].Path < store.Templates()[j].Path
+	templates := store.Templates()
+	sort.Slice(templates, func(i, j int) bool {
+		return templates[i].Path < templates[j].Path
 	})
 
-	for _, tpl := range store.Templates() {
+	for _, tpl := range templates {
 		if hasExtraFlags(r.options) {
 			if r.options.TemplateDisplay {
 				colorize := !r.options.NoColor
