@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -26,9 +27,13 @@ var httpFirstSchemes = []string{
 
 // determineSchemeOrder for the input
 func determineSchemeOrder(input string) []string {
-	// if input has port that is commonly used for HTTP, return http then https
 	if _, port, err := net.SplitHostPort(input); err == nil {
+		// if input has port that is commonly used for HTTP, return http then https
 		if sliceutil.Contains(commonHttpPorts, port) {
+			return httpFirstSchemes
+		}
+		// if input has port>1024, return http then https
+		if port, err := strconv.Atoi(port); err == nil && port > 1024 {
 			return httpFirstSchemes
 		}
 	}
