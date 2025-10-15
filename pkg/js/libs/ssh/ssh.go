@@ -3,11 +3,13 @@ package ssh
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
@@ -24,6 +26,12 @@ type (
 		connection *ssh.Client
 		timeout    time.Duration
 	}
+)
+
+// precompiled regex patterns
+var (
+	passwordQuestionPattern = regexp.MustCompile(`(?i)(pass(word|phrase|code)?|pin)`)
+	usernameQuestionPattern = regexp.MustCompile(`(?i)(user(name)?|login)`)
 )
 
 // SetTimeout sets the timeout for the SSH connection in seconds
@@ -236,14 +244,20 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.Password(opts.Password))
 
 		cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-			gologger.Debug().Msgf("SSH keyboard-interactive: user=%s, instruction=%s", opts.User, instruction)
 			answers = make([]string, len(questions))
+			filledCount := 0
 			for i, question := range questions {
-				gologger.Debug().Msgf("SSH keyboard-interactive question[%d]: %s", i, question)
-				if !echos[i] && strings.Contains(strings.ToLower(question), "password") {
+				challenge := map[string]any{"user": user, "instruction": instruction, "question": question, "echo": echos[i]}
+				gologger.Debug().Msgf("SSH keyboard-interactive question %d/%d: %s", i+1, len(questions), vardump.DumpVariables(challenge))
+				if !echos[i] && passwordQuestionPattern.MatchString(question) {
 					answers[i] = opts.Password
+					filledCount++
+				} else if echos[i] && usernameQuestionPattern.MatchString(question) {
+					answers[i] = opts.User
+					filledCount++
 				}
 			}
+			gologger.Debug().Msgf("SSH keyboard-interactive: %d/%d questions filled", filledCount, len(questions))
 			return answers, nil
 		}
 		conf.Auth = append(conf.Auth, ssh.KeyboardInteractiveChallenge(cb))
