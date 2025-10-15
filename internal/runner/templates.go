@@ -44,6 +44,11 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		config.DefaultConfig.TemplateVersion,
 		config.DefaultConfig.TemplatesDirectory,
 	)
+	// order templates alphabetically by path
+	sort.Slice(store.Templates(), func(i, j int) bool {
+		return store.Templates()[i].Path < store.Templates()[j].Path
+	})
+
 	for _, tpl := range store.Templates() {
 		if hasExtraFlags(r.options) {
 			if r.options.TemplateDisplay {
