@@ -29,7 +29,9 @@ func TestCache(t *testing.T) {
 func TestCacheFileBased(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "cache_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	cache := NewCache()
 	template := &Template{}
@@ -63,7 +65,9 @@ func TestCacheFileBased(t *testing.T) {
 func TestCacheFileDeletion(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "cache_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	cache := NewCache()
 	template := &Template{}
@@ -170,7 +174,9 @@ func TestCacheFileBasedStoreWithoutRaw(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir, err := os.MkdirTemp("", "cache_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	cache := NewCache()
 	template := &Template{}
