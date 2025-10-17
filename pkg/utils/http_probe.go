@@ -32,7 +32,10 @@ func determineSchemeOrder(input string) []string {
 		if sliceutil.Contains(commonHttpPorts, port) {
 			return httpFirstSchemes
 		}
-		// if input has port>1024, return http then https
+
+		// As of 10/2025 shodan shows that ports > 1024 are more likely to expose HTTP
+		// hence we test first http then https on higher ports
+		// if input has port > 1024, return http then https
 		if port, err := strconv.Atoi(port); err == nil && port > 1024 {
 			return httpFirstSchemes
 		}
