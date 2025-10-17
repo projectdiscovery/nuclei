@@ -605,14 +605,6 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						if config.DefaultConfig.LogAllEvents {
 							store.logger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
-					} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 && store.config.ExecutorOptions.Options.DisableUnsignedTemplates {
-						// donot include unverified 'Code' protocol custom template in final list
-						stats.Increment(templates.SkippedCodeTmplTamperedStats)
-						// these will be skipped so increment skip counter
-						stats.Increment(templates.SkippedUnsignedStats)
-						if config.DefaultConfig.LogAllEvents {
-							store.logger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
-						}
 					} else if parsed.IsFuzzing() && !store.config.ExecutorOptions.Options.DAST {
 						stats.Increment(templates.ExludedDastTmplStats)
 						if config.DefaultConfig.LogAllEvents {
