@@ -13,7 +13,25 @@ spec:
           - name: {{ .Chart.Name }}-nuclei-cron
             image: "{{ .Values.nuclei.image.repository }}:{{ .Values.nuclei.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: {{ .Values.nuclei.image.pullPolicy }}
-            spec.container.security_context.allow_privilege_escalation: false
+            # --- START OF SNYK SECURITY FIX AND BEST PRACTICES ---
+            securityContext:
+              # THIS IS THE FIX: Setting this to false prevents privilege escalation
+              allowPrivilegeEscalation: false
+              runAsNonRoot: true
+              runAsUser: 1000 # Recommended non-root user ID
+              capabilities:
+                drop:
+                  - ALL # Drop all Linux capabilities
+              seccompProfile:
+                type: RuntimeDefault
+            resources:
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+              requests:
+                memory: "256Mi"
+                cpu: "250m"
+            # --- END OF SECURITY FIX ---
             command: [ "nuclei", "-config", "/config/nuclei.conf" ]
             volumeMounts:
               - name: nuclei-conf
