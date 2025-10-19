@@ -254,8 +254,12 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
+	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
+		runner.tmpDir = tmpDir
+	}
+
 	// create the input provider and load the inputs
-	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options})
+	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options, TempDir: runner.tmpDir})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
@@ -385,10 +389,6 @@ func New(options *types.Options) (*Runner, error) {
 		options.RateLimitDuration = time.Second
 	}
 	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
-
-	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
-		runner.tmpDir = tmpDir
-	}
 
 	return runner, nil
 }
