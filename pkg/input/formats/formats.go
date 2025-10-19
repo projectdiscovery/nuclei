@@ -47,6 +47,15 @@ type Format interface {
 	SetOptions(options InputFormatOptions)
 }
 
+// SpecDownloader is an interface for downloading API specifications from URLs
+type SpecDownloader interface {
+	// Download downloads the spec from the given URL and saves it to tmpDir
+	// Returns the path to the downloaded file
+	Download(url, tmpDir string) (string, error)
+	// SupportedExtensions returns the list of supported file extensions
+	SupportedExtensions() []string
+}
+
 var (
 	DefaultVarDumpFileName = "required_openapi_params.yaml"
 	ErrNoVarsDumpFile      = errors.New("no required params file found")
