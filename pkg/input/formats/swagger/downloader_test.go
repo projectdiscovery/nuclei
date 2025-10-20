@@ -48,7 +48,9 @@ func TestSwaggerDownloader_Download_JSON_Success(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockSpec)
+		if err := json.NewEncoder(w).Encode(mockSpec); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -57,7 +59,12 @@ func TestSwaggerDownloader_Download_JSON_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Test download
 	downloader := &SwaggerDownloader{}
@@ -107,6 +114,7 @@ paths:
 		w.Header().Set("Content-Type", "application/yaml")
 		w.Write([]byte(mockSpecYAML))
 	}))
+
 	defer server.Close()
 
 	// Create temp directory
@@ -114,7 +122,12 @@ paths:
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Test download
 	downloader := &SwaggerDownloader{}
@@ -151,7 +164,12 @@ func TestSwaggerDownloader_Download_UnsupportedExtension(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &SwaggerDownloader{}
 	_, err = downloader.Download("http://example.com/spec.xml", tmpDir)
@@ -175,7 +193,12 @@ func TestSwaggerDownloader_Download_HTTPError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &SwaggerDownloader{}
 	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir)
@@ -188,7 +211,9 @@ func TestSwaggerDownloader_Download_InvalidJSON(t *testing.T) {
 	// Create mock server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("invalid json"))
+		if _, err := w.Write([]byte("invalid json")); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -196,7 +221,12 @@ func TestSwaggerDownloader_Download_InvalidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &SwaggerDownloader{}
 	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir)
@@ -217,7 +247,12 @@ func TestSwaggerDownloader_Download_InvalidYAML(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &SwaggerDownloader{}
 	_, err = downloader.Download(server.URL+"/swagger.yaml", tmpDir)
@@ -230,7 +265,9 @@ func TestSwaggerDownloader_Download_Timeout(t *testing.T) {
 	// Create mock server with delay
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(35 * time.Second) // Longer than 30 second timeout
-		json.NewEncoder(w).Encode(map[string]interface{}{"test": "data"})
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{"test": "data"}); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -238,7 +275,12 @@ func TestSwaggerDownloader_Download_Timeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &SwaggerDownloader{}
 	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir)
@@ -270,7 +312,12 @@ func TestSwaggerDownloader_Download_WithExistingHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &SwaggerDownloader{}
 	filePath, err := downloader.Download(server.URL+"/swagger.json", tmpDir)

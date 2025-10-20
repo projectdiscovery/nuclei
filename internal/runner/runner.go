@@ -254,9 +254,20 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
-		runner.tmpDir = tmpDir
+	tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
+	runner.tmpDir = tmpDir
+
+	// Cleanup tmpDir only if initialization fails
+	// On successful initialization, Close() method will handle cleanup
+	cleanupOnError := true
+	defer func() {
+		if cleanupOnError && runner.tmpDir != "" {
+			_ = os.RemoveAll(runner.tmpDir)
+		}
+	}()
 
 	// create the input provider and load the inputs
 	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options, TempDir: runner.tmpDir})
@@ -390,6 +401,8 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 
+	// Initialization successful, disable cleanup on error
+	cleanupOnError = false
 	return runner, nil
 }
 
