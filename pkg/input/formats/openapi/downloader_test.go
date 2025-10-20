@@ -46,7 +46,9 @@ func TestOpenAPIDownloader_Download_Success(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockSpec)
+		if err := json.NewEncoder(w).Encode(mockSpec); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -55,7 +57,12 @@ func TestOpenAPIDownloader_Download_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Test download
 	downloader := &OpenAPIDownloader{}
@@ -100,7 +107,12 @@ func TestOpenAPIDownloader_Download_NonJSONURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &OpenAPIDownloader{}
 	_, err = downloader.Download("http://example.com/spec.yaml", tmpDir)
@@ -124,7 +136,12 @@ func TestOpenAPIDownloader_Download_HTTPError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &OpenAPIDownloader{}
 	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir)
@@ -137,7 +154,9 @@ func TestOpenAPIDownloader_Download_InvalidJSON(t *testing.T) {
 	// Create mock server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("invalid json"))
+		if _, err := w.Write([]byte("invalid json")); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -145,7 +164,12 @@ func TestOpenAPIDownloader_Download_InvalidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &OpenAPIDownloader{}
 	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir)
@@ -158,7 +182,9 @@ func TestOpenAPIDownloader_Download_Timeout(t *testing.T) {
 	// Create mock server with delay
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(35 * time.Second) // Longer than 30 second timeout
-		json.NewEncoder(w).Encode(map[string]interface{}{"test": "data"})
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{"test": "data"}); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -166,7 +192,12 @@ func TestOpenAPIDownloader_Download_Timeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &OpenAPIDownloader{}
 	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir)
@@ -194,7 +225,9 @@ func TestOpenAPIDownloader_Download_WithExistingServers(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockSpec)
+		if err := json.NewEncoder(w).Encode(mockSpec); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -202,7 +235,12 @@ func TestOpenAPIDownloader_Download_WithExistingServers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	downloader := &OpenAPIDownloader{}
 	filePath, err := downloader.Download(server.URL+"/openapi.json", tmpDir)

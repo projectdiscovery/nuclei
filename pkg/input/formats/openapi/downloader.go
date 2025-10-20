@@ -30,19 +30,26 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 		return "", fmt.Errorf("URL does not appear to be an OpenAPI JSON spec")
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	var httpTimeout = 30 * time.Second
+	const maxSpecSizeBytes = 10 * 1024 * 1024 // 10MB
+	client := &http.Client{Timeout: httpTimeout}
 
 	resp, err := client.Get(urlStr)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to download OpenAPI spec")
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			errors.Wrap(err, "failed to close response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP %d when downloading OpenAPI spec", resp.StatusCode)
 	}
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxSpecSizeBytes))
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read response body")
 	}
@@ -70,17 +77,17 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 		return "", errors.Wrap(err, "failed to parse URL")
 	}
 	host := parsedURL.Host
+	scheme := parsedURL.Scheme
+	if scheme == "" {
+		scheme = "https"
+	}
 
 	// Add servers section if missing or empty
 	servers, exists := spec["servers"]
 	if !exists || servers == nil {
-		spec["servers"] = []map[string]interface{}{
-			{"url": "https://" + host},
-		}
-	} else if serversList, ok := servers.([]interface{}); ok && len(serversList) == 0 {
-		spec["servers"] = []map[string]interface{}{
-			{"url": "https://" + host},
-		}
+		spec["servers"] = []map[string]interface{}{{"url": scheme + "://" + host}}
+	} else if serverList, ok := servers.([]interface{}); ok && len(serverList) == 0 {
+		spec["servers"] = []map[string]interface{}{{"url": scheme + "://" + host}}
 	}
 
 	// Marshal back to JSON
@@ -92,6 +99,7 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 	// Create output directory
 	openapiDir := filepath.Join(tmpDir, "openapi")
 	if err := os.MkdirAll(openapiDir, 0755); err != nil {
+
 		return "", errors.Wrap(err, "failed to create openapi directory")
 	}
 
@@ -104,10 +112,16 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			errors.Wrap(err, "failed to close file")
+		}
+	}()
 
 	if _, err := file.Write(modifiedJSON); err != nil {
-		os.Remove(filePath)
+		_ = os.Remove(filePath)
+
 		return "", errors.Wrap(err, "failed to write OpenAPI spec to file")
 	}
 
