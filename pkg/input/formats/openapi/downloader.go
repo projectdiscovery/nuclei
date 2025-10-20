@@ -119,10 +119,9 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 		}
 	}()
 
-	if _, err := file.Write(modifiedJSON); err != nil {
+	if _, writeErr := file.Write(modifiedJSON); writeErr != nil {
 		_ = os.Remove(filePath)
-
-		return "", errors.Wrap(err, "failed to write OpenAPI spec to file")
+		return "", errors.Wrap(writeErr, "failed to write OpenAPI spec to file")
 	}
 
 	return filePath, nil

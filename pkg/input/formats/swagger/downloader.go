@@ -146,13 +146,9 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 		}
 	}()
 
-	if _, err := file.Write(content); err != nil {
-		err := os.Remove(filePath)
-		if err != nil {
-			errors.Wrap(err, "failed to remove incomplete file")
-		}
-
-		return "", errors.Wrap(err, "failed to write file")
+	if _, writeErr := file.Write(content); writeErr != nil {
+		_ = os.Remove(filePath)
+		return "", errors.Wrap(writeErr, "failed to write file")
 	}
 
 	return filePath, nil
