@@ -40,9 +40,7 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 	}
 
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			errors.Wrap(err, "failed to close response body")
-		}
+		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode != http.StatusOK {
@@ -99,7 +97,6 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 	// Create output directory
 	openapiDir := filepath.Join(tmpDir, "openapi")
 	if err := os.MkdirAll(openapiDir, 0755); err != nil {
-
 		return "", errors.Wrap(err, "failed to create openapi directory")
 	}
 
@@ -114,9 +111,7 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 	}
 
 	defer func() {
-		if err := file.Close(); err != nil {
-			errors.Wrap(err, "failed to close file")
-		}
+		_ = file.Close()
 	}()
 
 	if _, writeErr := file.Write(modifiedJSON); writeErr != nil {

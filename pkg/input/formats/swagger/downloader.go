@@ -49,9 +49,7 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 	}
 
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			errors.Wrap(err, "failed to close response body")
-		}
+		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode != http.StatusOK {
@@ -141,9 +139,7 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 	}
 
 	defer func() {
-		if err := file.Close(); err != nil {
-			errors.Wrap(err, "failed to close file")
-		}
+		_ = file.Close()
 	}()
 
 	if _, writeErr := file.Write(content); writeErr != nil {
