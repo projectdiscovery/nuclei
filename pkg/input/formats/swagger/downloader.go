@@ -39,19 +39,26 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 		return "", fmt.Errorf("URL does not appear to be a Swagger spec (supported: %v)", supportedExts)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	var httpTimeout = 30 * time.Second
+	const maxSpecSizeBytes = 10 * 1024 * 1024 // 10MB
+	client := &http.Client{Timeout: httpTimeout}
 
 	resp, err := client.Get(urlStr)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to download Swagger spec")
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			errors.Wrap(err, "failed to close response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP %d when downloading Swagger spec", resp.StatusCode)
 	}
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxSpecSizeBytes))
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read response body")
 	}
@@ -132,10 +139,19 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create file")
 	}
-	defer file.Close()
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			errors.Wrap(err, "failed to close file")
+		}
+	}()
 
 	if _, err := file.Write(content); err != nil {
-		os.Remove(filePath)
+		err := os.Remove(filePath)
+		if err != nil {
+			errors.Wrap(err, "failed to remove incomplete file")
+		}
+
 		return "", errors.Wrap(err, "failed to write file")
 	}
 
