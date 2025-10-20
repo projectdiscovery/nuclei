@@ -105,6 +105,7 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string, httpClient *retryabl
 	// Create output directory
 	openapiDir := filepath.Join(tmpDir, "openapi")
 	if err := os.MkdirAll(openapiDir, 0755); err != nil {
+
 		return "", errors.Wrap(err, "failed to create openapi directory")
 	}
 
