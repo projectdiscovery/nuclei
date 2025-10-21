@@ -27,7 +27,7 @@ func NewDownloader() formats.SpecDownloader {
 // This function downloads a Swagger 2.0 spec from the given URL and saves it to tmpDir
 func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 	// Swagger can be JSON or YAML
-	supportedExts := []string{".json", ".yaml", ".yml"}
+	supportedExts := d.SupportedExtensions()
 	isSupported := false
 	for _, ext := range supportedExts {
 		if strings.HasSuffix(urlStr, ext) {
