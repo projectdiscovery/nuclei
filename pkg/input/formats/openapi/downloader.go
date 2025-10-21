@@ -26,7 +26,7 @@ func NewDownloader() formats.SpecDownloader {
 // This function downloads an OpenAPI 3.0 spec from the given URL and saves it to tmpDir
 func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
 	// Validate URL format, OpenAPI 3.0 specs are typically JSON
-	if !strings.HasSuffix(urlStr, ".json") && !strings.Contains(urlStr, "openapi") {
+	if !strings.HasSuffix(urlStr, ".json") {
 		return "", fmt.Errorf("URL does not appear to be an OpenAPI JSON spec")
 	}
 

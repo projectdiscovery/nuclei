@@ -112,7 +112,9 @@ paths:
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/yaml")
-		w.Write([]byte(mockSpecYAML))
+		if _, err := w.Write([]byte(mockSpecYAML)); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	}))
 
 	defer server.Close()
@@ -239,7 +241,9 @@ func TestSwaggerDownloader_Download_InvalidYAML(t *testing.T) {
 	// Create mock server that returns invalid YAML
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/yaml")
-		w.Write([]byte("invalid: yaml: content: ["))
+		if _, err := w.Write([]byte("invalid: yaml: content: [")); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -304,7 +308,9 @@ func TestSwaggerDownloader_Download_WithExistingHost(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockSpec)
+		if err := json.NewEncoder(w).Encode(mockSpec); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 

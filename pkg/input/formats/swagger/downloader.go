@@ -35,7 +35,7 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 			break
 		}
 	}
-	if !isSupported && !strings.Contains(urlStr, "swagger") {
+	if !isSupported {
 		return "", fmt.Errorf("URL does not appear to be a Swagger spec (supported: %v)", supportedExts)
 	}
 
@@ -90,7 +90,12 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed to parse URL")
 	}
+
 	host := parsedURL.Host
+	scheme := parsedURL.Scheme
+	if scheme == "" {
+		scheme = "https"
+	}
 
 	// Add host if missing
 	if _, exists := spec["host"]; !exists {
@@ -99,10 +104,6 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 
 	// Add schemes if missing
 	if _, exists := spec["schemes"]; !exists {
-		scheme := parsedURL.Scheme
-		if scheme == "" {
-			scheme = "https"
-		}
 		spec["schemes"] = []string{scheme}
 	}
 
