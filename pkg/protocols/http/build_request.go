@@ -210,7 +210,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
-	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(defaultReqVars, optionVars, dynamicValues), r.options.Interactsh)
+	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(defaultReqVars, optionVars), r.options.Interactsh)
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
