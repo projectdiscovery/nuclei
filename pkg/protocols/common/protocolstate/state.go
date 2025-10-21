@@ -175,7 +175,7 @@ func initDialers(options *types.Options) error {
 
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
-	httpClientPool := mapsutil.NewSyncLockMap[string, *retryablehttp.Client](
+	httpClientPool := mapsutil.NewSyncLockMap(
 		// evicts inactive httpclientpool entries after 24 hours
 		// of inactivity (long running instances)
 		mapsutil.WithEviction[string, *retryablehttp.Client](24 * time.Hour),
