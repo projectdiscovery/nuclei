@@ -1192,6 +1192,7 @@ github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRW
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nwaples/rardecode/v2 v2.1.0 h1:JQl9ZoBPDy+nIZGb1mx8+anfHp/LV3NE2MjMiv0ct/U=
 github.com/nwaples/rardecode/v2 v2.1.0/go.mod h1:7uz379lSxPe6j9nvzxUZ+n7mnJNgjsRNb6IbvGVHRmw=
+github.com/nwaples/rardecode/v2 v2.2.0/go.mod h1:7uz379lSxPe6j9nvzxUZ+n7mnJNgjsRNb6IbvGVHRmw=
 github.com/nxadm/tail v1.4.11 h1:8feyoE3OzPrcshW5/MJ4sGESc5cqmGkGCWlco4l0bqY=
 github.com/nxadm/tail v1.4.11/go.mod h1:OTaG3NK980DZzxbRq6lEuzgU+mug70nY11sMd4JXXHc=
 github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 h1:G7ERwszslrBzRxj//JalHPu/3yz+De2J+4aLtSRlHiY=
@@ -1317,6 +1318,8 @@ github.com/projectdiscovery/useragent v0.0.102 h1:Xfr8a7LQhIu0zeSz5gBxGCdyuqZbhk
 github.com/projectdiscovery/useragent v0.0.102/go.mod h1:DIfLRBKZ6dLhHRnMYkxdg6Jpu0kpE3pJlMG94dsIchY=
 github.com/projectdiscovery/utils v0.6.0 h1:rH4Haei7uHgqEq6pFGe8U+iD4PoBWUDB8LhoNxPawkk=
 github.com/projectdiscovery/utils v0.6.0/go.mod h1:NT7ExqILrDukgBFPPLBKQzSKYMBfecNcab7jT1bakRE=
+github.com/projectdiscovery/utils v0.6.1-0.20251021123500-27dede511f26 h1:Y1vMwVupV5l/wqZeF13jKaG2wjaiFnYt4GppN9cYHH0=
+github.com/projectdiscovery/utils v0.6.1-0.20251021123500-27dede511f26/go.mod h1:XYxnXaEAKruLdmJ0r18hmDPm0ddzkxqxUOSLt9YeTW4=
 github.com/projectdiscovery/wappalyzergo v0.2.51 h1:HWPSSwrptaODJjTTHs68m4w/4Y5cthuEglq5di/cwrg=
 github.com/projectdiscovery/wappalyzergo v0.2.51/go.mod h1:lwuDLdAqWDZ1IL8OQnoNQ0t17UP9AQSvVuFcDAm4FpQ=
 github.com/projectdiscovery/yamldoc-go v1.0.6 h1:GCEdIRlQjDux28xTXKszM7n3jlMf152d5nqVpVoetas=
