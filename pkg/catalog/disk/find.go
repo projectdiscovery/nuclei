@@ -134,7 +134,12 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 	// trim templateDir if any
 	relPath := strings.TrimPrefix(absPath, c.templatesDirectory)
 	// trim leading slash if any
-	relPath = strings.TrimPrefix(relPath, string(os.PathSeparator))
+	if c.templatesFS != nil {
+		// fs.FS always uses forward slashes
+		relPath = strings.TrimPrefix(relPath, "/")
+	} else {
+		relPath = strings.TrimPrefix(relPath, string(os.PathSeparator))
+	}
 
 	var err error
 	var matches []string
@@ -164,7 +169,7 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 // is a file, it returns true otherwise false with no errors.
 func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struct{}) (match string, matched bool, err error) {
 	if c.templatesFS != nil {
-		absPath = strings.Trim(absPath, string(filepath.Separator))
+		absPath = strings.Trim(absPath, "/")
 	}
 	var info fs.File
 	if c.templatesFS == nil {
@@ -220,7 +225,7 @@ func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]
 		if absPath == "" {
 			absPath = "."
 		}
-		absPath = strings.TrimSuffix(absPath, string(filepath.Separator))
+		absPath = strings.TrimSuffix(absPath, "/")
 
 		err = fs.WalkDir(
 			c.templatesFS,
