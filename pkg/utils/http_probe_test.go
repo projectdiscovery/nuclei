@@ -35,3 +35,25 @@ func TestDetermineSchemeOrder(t *testing.T) {
 		})
 	}
 }
+
+func TestDetermineSchemeOrderWithHighPorts(t *testing.T) {
+	type testCase struct {
+		input    string
+		expected []string
+	}
+
+	tests := []testCase{
+		// Ports > 1024 should return http first
+		{"example.com:2048", []string{"http", "https"}},
+		{"example.com:8081", []string{"http", "https"}},
+		{"[fe80::1]:2048", []string{"http", "https"}},
+		{"[fe80::1]:12345", []string{"http", "https"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			actual := determineSchemeOrder(tc.input)
+			require.Equal(t, tc.expected, actual)
+		})
+	}
+}
