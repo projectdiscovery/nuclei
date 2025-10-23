@@ -1043,6 +1043,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
 		interimEvent := generators.MergeMaps(generatedRequest.dynamicValues, finalEvent)
+		// add the request URL pattern to the event BEFORE operators execute
+		// so that interactsh events etc can also access it
+		if request.options.ExportReqURLPattern {
+			interimEvent[ReqURLPatternKey] = generatedRequest.requestURLPattern
+		}
 		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
@@ -1056,14 +1061,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
 				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
 			})
-		}
-
-		// if requrlpattern is enabled, only then it is reflected in result event else it is empty string
-		// consult @Ice3man543 before changing this logic (context: vuln_hash)
-		if request.options.ExportReqURLPattern {
-			for _, v := range event.Results {
-				v.ReqURLPattern = generatedRequest.requestURLPattern
-			}
 		}
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
