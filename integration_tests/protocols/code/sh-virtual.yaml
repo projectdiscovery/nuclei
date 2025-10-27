@@ -1,12 +1,12 @@
-id: unsigned-code-snippet
+id: signed-code-in-virtual-env
 
 info:
-  name: unsigned-code-snippet
+  name: signed-code-in-virtual-env
   author: pdteam
   severity: info
   tags: code
   description: |
-    unsigned-code-snippet
+    signed code in virtual environment
 
 code:
   - engine:
