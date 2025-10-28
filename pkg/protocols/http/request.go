@@ -59,9 +59,9 @@ const (
 
 var (
 	MaxBodyRead = 10 * unitutils.Mega
-	// ErrMissingVars is error occured when variables are missing
+	// ErrMissingVars is error occurred when variables are missing
 	ErrMissingVars = errkit.New("stop execution due to unresolved variables").SetKind(nucleierr.ErrTemplateLogic).Build()
-	// ErrHttpEngineRequestDeadline is error occured when request deadline set by http request engine is exceeded
+	// ErrHttpEngineRequestDeadline is error occurred when request deadline set by http request engine is exceeded
 	ErrHttpEngineRequestDeadline = errkit.New("http request engine deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
@@ -150,7 +150,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks thsi host as unresponsive if applicable
+		// marks this host as unresponsive if applicable
 		request.markHostError(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
@@ -203,7 +203,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	}
 
 	// Stop-at-first-match logic while executing requests
-	// parallely using threads
+	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -232,7 +232,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks thsi host as unresponsive if applicable
+		// marks this host as unresponsive if applicable
 		request.markHostError(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
@@ -390,7 +390,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	maxWorkers := max(pipeOptions.MaxPendingRequests, defaultMaxWorkers)
 
 	// Stop-at-first-match logic while executing requests
-	// parallely using threads
+	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -419,7 +419,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks thsi host as unresponsive if applicable
+		// marks this host as unresponsive if applicable
 		request.markHostError(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
@@ -953,7 +953,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	})
 
-	// evaluate responses continiously until first redirect request in reverse order
+	// evaluate responses continuously until first redirect request in reverse order
 	for respChain.Has() {
 		// fill buffers, read response body and reuse connection
 		if err := respChain.Fill(); err != nil {
@@ -1043,6 +1043,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
 		interimEvent := generators.MergeMaps(generatedRequest.dynamicValues, finalEvent)
+		// add the request URL pattern to the event BEFORE operators execute
+		// so that interactsh events etc can also access it
+		if request.options.ExportReqURLPattern {
+			interimEvent[ReqURLPatternKey] = generatedRequest.requestURLPattern
+		}
 		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
@@ -1056,14 +1061,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
 				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
 			})
-		}
-
-		// if requrlpattern is enabled, only then it is reflected in result event else it is empty string
-		// consult @Ice3man543 before changing this logic (context: vuln_hash)
-		if request.options.ExportReqURLPattern {
-			for _, v := range event.Results {
-				v.ReqURLPattern = generatedRequest.requestURLPattern
-			}
 		}
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")

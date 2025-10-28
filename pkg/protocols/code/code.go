@@ -41,7 +41,7 @@ const (
 var (
 	// pythonEnvRegexCompiled is the compiled regex for python environment variables
 	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
-	// ErrCodeExecutionDeadline is the error returned when alloted time for script execution exceeds
+	// ErrCodeExecutionDeadline is the error returned when allotted time for script execution exceeds
 	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
@@ -279,7 +279,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Output:", dashes)
 			sb.WriteString(gOutput.DebugData.String())
 			sb.WriteString("\n")
-			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are seperate (use -v -svd flags for more details)")
+			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are separate (use -v -svd flags for more details)")
 			return sb.String()
 		})
 	}

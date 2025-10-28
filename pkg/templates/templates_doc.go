@@ -1402,7 +1402,7 @@ func init() {
 	NETWORKRequestDoc.Fields[6].Name = "port"
 	NETWORKRequestDoc.Fields[6].Type = "string"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
+	NETWORKRequestDoc.Fields[6].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overridden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
 	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = " description: |"
 	NETWORKRequestDoc.Fields[7].Name = "exclude-ports"
 	NETWORKRequestDoc.Fields[7].Type = "string"
@@ -2107,8 +2107,8 @@ func init() {
 	JAVASCRIPTRequestDoc.Fields[7].Name = "threads"
 	JAVASCRIPTRequestDoc.Fields[7].Type = "int"
 	JAVASCRIPTRequestDoc.Fields[7].Note = ""
-	JAVASCRIPTRequestDoc.Fields[7].Description = "Payload concurreny i.e threads for sending requests."
-	JAVASCRIPTRequestDoc.Fields[7].Comments[encoder.LineComment] = "Payload concurreny i.e threads for sending requests."
+	JAVASCRIPTRequestDoc.Fields[7].Description = "Payload concurrency i.e threads for sending requests."
+	JAVASCRIPTRequestDoc.Fields[7].Comments[encoder.LineComment] = "Payload concurrency i.e threads for sending requests."
 
 	JAVASCRIPTRequestDoc.Fields[7].AddExample("Send requests using 10 concurrent threads", 10)
 	JAVASCRIPTRequestDoc.Fields[8].Name = "payloads"
