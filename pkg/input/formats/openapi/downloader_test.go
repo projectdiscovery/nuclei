@@ -66,7 +66,7 @@ func TestOpenAPIDownloader_Download_Success(t *testing.T) {
 
 	// Test download
 	downloader := &OpenAPIDownloader{}
-	filePath, err := downloader.Download(server.URL+"/openapi.json", tmpDir)
+	filePath, err := downloader.Download(server.URL+"/openapi.json", tmpDir, nil)
 	if err != nil {
 		t.Fatalf("Download failed: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestOpenAPIDownloader_Download_NonJSONURL(t *testing.T) {
 	}()
 
 	downloader := &OpenAPIDownloader{}
-	_, err = downloader.Download("http://example.com/spec.yaml", tmpDir)
+	_, err = downloader.Download("http://example.com/spec.yaml", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected error for non-JSON URL, but got none")
 	}
@@ -144,7 +144,7 @@ func TestOpenAPIDownloader_Download_HTTPError(t *testing.T) {
 	}()
 
 	downloader := &OpenAPIDownloader{}
-	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir)
+	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected error for HTTP 404, but got none")
 	}
@@ -172,7 +172,7 @@ func TestOpenAPIDownloader_Download_InvalidJSON(t *testing.T) {
 	}()
 
 	downloader := &OpenAPIDownloader{}
-	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir)
+	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected error for invalid JSON, but got none")
 	}
@@ -200,7 +200,7 @@ func TestOpenAPIDownloader_Download_Timeout(t *testing.T) {
 	}()
 
 	downloader := &OpenAPIDownloader{}
-	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir)
+	_, err = downloader.Download(server.URL+"/openapi.json", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected timeout error, but got none")
 	}
@@ -243,7 +243,7 @@ func TestOpenAPIDownloader_Download_WithExistingServers(t *testing.T) {
 	}()
 
 	downloader := &OpenAPIDownloader{}
-	filePath, err := downloader.Download(server.URL+"/openapi.json", tmpDir)
+	filePath, err := downloader.Download(server.URL+"/openapi.json", tmpDir, nil)
 	if err != nil {
 		t.Fatalf("Download failed: %v", err)
 	}

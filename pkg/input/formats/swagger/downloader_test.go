@@ -68,7 +68,7 @@ func TestSwaggerDownloader_Download_JSON_Success(t *testing.T) {
 
 	// Test download
 	downloader := &SwaggerDownloader{}
-	filePath, err := downloader.Download(server.URL+"/swagger.json", tmpDir)
+	filePath, err := downloader.Download(server.URL+"/swagger.json", tmpDir, nil)
 	if err != nil {
 		t.Fatalf("Download failed: %v", err)
 	}
@@ -133,7 +133,7 @@ paths:
 
 	// Test download
 	downloader := &SwaggerDownloader{}
-	filePath, err := downloader.Download(server.URL+"/swagger.yaml", tmpDir)
+	filePath, err := downloader.Download(server.URL+"/swagger.yaml", tmpDir, nil)
 	if err != nil {
 		t.Fatalf("Download failed: %v", err)
 	}
@@ -174,7 +174,7 @@ func TestSwaggerDownloader_Download_UnsupportedExtension(t *testing.T) {
 	}()
 
 	downloader := &SwaggerDownloader{}
-	_, err = downloader.Download("http://example.com/spec.xml", tmpDir)
+	_, err = downloader.Download("http://example.com/spec.xml", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected error for unsupported extension, but got none")
 	}
@@ -203,7 +203,7 @@ func TestSwaggerDownloader_Download_HTTPError(t *testing.T) {
 	}()
 
 	downloader := &SwaggerDownloader{}
-	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir)
+	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected error for HTTP 404, but got none")
 	}
@@ -231,7 +231,7 @@ func TestSwaggerDownloader_Download_InvalidJSON(t *testing.T) {
 	}()
 
 	downloader := &SwaggerDownloader{}
-	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir)
+	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected error for invalid JSON, but got none")
 	}
@@ -259,7 +259,7 @@ func TestSwaggerDownloader_Download_InvalidYAML(t *testing.T) {
 	}()
 
 	downloader := &SwaggerDownloader{}
-	_, err = downloader.Download(server.URL+"/swagger.yaml", tmpDir)
+	_, err = downloader.Download(server.URL+"/swagger.yaml", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected error for invalid YAML, but got none")
 	}
@@ -287,7 +287,7 @@ func TestSwaggerDownloader_Download_Timeout(t *testing.T) {
 	}()
 
 	downloader := &SwaggerDownloader{}
-	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir)
+	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir, nil)
 	if err == nil {
 		t.Error("Expected timeout error, but got none")
 	}
@@ -326,7 +326,7 @@ func TestSwaggerDownloader_Download_WithExistingHost(t *testing.T) {
 	}()
 
 	downloader := &SwaggerDownloader{}
-	filePath, err := downloader.Download(server.URL+"/swagger.json", tmpDir)
+	filePath, err := downloader.Download(server.URL+"/swagger.json", tmpDir, nil)
 	if err != nil {
 		t.Fatalf("Download failed: %v", err)
 	}
