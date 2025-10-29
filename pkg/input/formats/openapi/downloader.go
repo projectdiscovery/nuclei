@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,7 +39,6 @@ func (d *OpenAPIDownloader) Download(urlStr, tmpDir string, httpClient *retryabl
 		client = httpClient.HTTPClient
 	} else {
 		// Fallback to simple client if no httpClient provided
-		log.Fatal("no httpClient provided")
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
 
