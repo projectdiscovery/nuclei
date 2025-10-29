@@ -17,10 +17,10 @@ func tryToResolveHost(domain string, resolver *retryabledns.Client) (string, err
 	}
 	// It returns first A or AAAA record found in DNS chain
 	// This means that domains with multiple A records will return the first one only, also ipv4 is preferred over ipv6
-	if ips.A != nil && len(ips.A) > 0 {
+	if len(ips.A) > 0 {
 		return ips.A[0], nil
 	}
-	if ips.AAAA != nil && len(ips.AAAA) > 0 {
+	if len(ips.AAAA) > 0 {
 		return ips.AAAA[0], nil
 	}
 	return "", IPNotFoundError
