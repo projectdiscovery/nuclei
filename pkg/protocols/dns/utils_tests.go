@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/retryabledns"
+	"github.com/stretchr/testify/require"
 )
 
 // helper to create a test resolver
@@ -26,7 +27,8 @@ func TestTryToResolveHost_SuccessARecord(t *testing.T) {
 	if ip == "" {
 		t.Fatal("expected non-empty IP for example.com")
 	}
-	t.Logf("resolved example.com -> %s", ip)
+	require.NotEmpty(t, ip)
+	require.Contains(t, ip, ".")
 }
 
 func TestTryToResolveHost_SuccessAAAARecord(t *testing.T) {
@@ -39,7 +41,8 @@ func TestTryToResolveHost_SuccessAAAARecord(t *testing.T) {
 	if ip == "" {
 		t.Fatal("expected non-empty IPv6 address for ipv6.google.com")
 	}
-	t.Logf("resolved ipv6.google.com -> %s", ip)
+	require.NotEmpty(t, ip)
+	require.Contains(t, ip, ":")
 }
 
 func TestTryToResolveHost_IPNotFound(t *testing.T) {
@@ -58,6 +61,7 @@ func TestTryToResolveHost_InvalidDomain(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid domain name, got nil")
 	}
+	require.Error(t, err)
 }
 
 func TestTryToResolveHost_NilResolver(t *testing.T) {
@@ -67,4 +71,5 @@ func TestTryToResolveHost_NilResolver(t *testing.T) {
 		}
 	}()
 	_, _ = tryToResolveHost("example.com", nil)
+	require.Fail(t, "expected panic due to nil resolver")
 }
