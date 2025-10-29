@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"gopkg.in/yaml.v3"
 )
@@ -51,7 +52,8 @@ type Format interface {
 type SpecDownloader interface {
 	// Download downloads the spec from the given URL and saves it to tmpDir
 	// Returns the path to the downloaded file
-	Download(url, tmpDir string) (string, error)
+	// httpClient is a retryablehttp.Client instance (can be nil for fallback)
+	Download(url, tmpDir string, httpClient *retryablehttp.Client) (string, error)
 	// SupportedExtensions returns the list of supported file extensions
 	SupportedExtensions() []string
 }

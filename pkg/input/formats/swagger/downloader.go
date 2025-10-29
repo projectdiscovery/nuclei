@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,7 +27,7 @@ func NewDownloader() formats.SpecDownloader {
 }
 
 // This function downloads a Swagger 2.0 spec from the given URL and saves it to tmpDir
-func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
+func (d *SwaggerDownloader) Download(urlStr, tmpDir string, httpClient *retryablehttp.Client) (string, error) {
 	// Swagger can be JSON or YAML
 	supportedExts := d.SupportedExtensions()
 	isSupported := false
@@ -39,9 +41,17 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string) (string, error) {
 		return "", fmt.Errorf("URL does not appear to be a Swagger spec (supported: %v)", supportedExts)
 	}
 
-	var httpTimeout = 30 * time.Second
 	const maxSpecSizeBytes = 10 * 1024 * 1024 // 10MB
-	client := &http.Client{Timeout: httpTimeout}
+
+	// Use provided httpClient or create a fallback
+	var client *http.Client
+	if httpClient != nil {
+		client = httpClient.HTTPClient
+	} else {
+		// Fallback to simple client if no httpClient provided
+		log.Fatal("no httpClient provided")
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
 
 	resp, err := client.Get(urlStr)
 	if err != nil {

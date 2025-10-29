@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // OpenAPIDownloader implements the SpecDownloader interface for OpenAPI 3.0 specs
@@ -24,15 +26,23 @@ func NewDownloader() formats.SpecDownloader {
 }
 
 // This function downloads an OpenAPI 3.0 spec from the given URL and saves it to tmpDir
-func (d *OpenAPIDownloader) Download(urlStr, tmpDir string) (string, error) {
+func (d *OpenAPIDownloader) Download(urlStr, tmpDir string, httpClient *retryablehttp.Client) (string, error) {
 	// Validate URL format, OpenAPI 3.0 specs are typically JSON
 	if !strings.HasSuffix(urlStr, ".json") {
 		return "", fmt.Errorf("URL does not appear to be an OpenAPI JSON spec")
 	}
 
-	var httpTimeout = 30 * time.Second
 	const maxSpecSizeBytes = 10 * 1024 * 1024 // 10MB
-	client := &http.Client{Timeout: httpTimeout}
+
+	// Use provided httpClient or create a fallback
+	var client *http.Client
+	if httpClient != nil {
+		client = httpClient.HTTPClient
+	} else {
+		// Fallback to simple client if no httpClient provided
+		log.Fatal("no httpClient provided")
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
 
 	resp, err := client.Get(urlStr)
 	if err != nil {

@@ -14,7 +14,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -124,13 +126,22 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 			var tempFile string
 			var err error
 
+			// Get HttpClient from protocolstate if available
+			var httpClient *retryablehttp.Client
+			if opts.Options.ExecutionId != "" {
+				dialers := protocolstate.GetDialersWithId(opts.Options.ExecutionId)
+				if dialers != nil {
+					httpClient = dialers.DefaultHTTPClient
+				}
+			}
+
 			switch strings.ToLower(opts.Options.InputFileMode) {
 			case "openapi":
 				downloader = openapi.NewDownloader()
-				tempFile, err = downloader.Download(target, opts.TempDir)
+				tempFile, err = downloader.Download(target, opts.TempDir, httpClient)
 			case "swagger":
 				downloader = swagger.NewDownloader()
-				tempFile, err = downloader.Download(target, opts.TempDir)
+				tempFile, err = downloader.Download(target, opts.TempDir, httpClient)
 			default:
 				return nil, fmt.Errorf("unsupported input mode: %s", opts.Options.InputFileMode)
 			}
