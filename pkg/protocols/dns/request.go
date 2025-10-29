@@ -56,12 +56,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// if request threads matches global payload concurrency we follow it
 	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
 
-		var ip string
+	var ip string
 
 	if iputil.IsIP(input.MetaInput.Input) {
 		ip = input.MetaInput.Input
-	} else {
-		resolvedIP, err := tryToResolveHost(domain, request.dnsClient)
+	} else if request.dnsClient != nil {
+		// normalize to no trailing dot for resolver compatibility
+		resolvedIP, err := tryToResolveHost(strings.TrimSuffix(domain, "."), request.dnsClient)
 		if err == nil && resolvedIP != "" {
 			ip = resolvedIP
 		}
