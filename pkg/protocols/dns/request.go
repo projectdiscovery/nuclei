@@ -38,12 +38,9 @@ func (request *Request) Type() templateTypes.ProtocolType {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var err error
-
 	domain, err := request.parseDNSInput(input.MetaInput.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not build request")
-	} else if domain == "" {
-		return nil
 	}
 
 	vars := protocolutils.GenerateDNSVariables(domain)
