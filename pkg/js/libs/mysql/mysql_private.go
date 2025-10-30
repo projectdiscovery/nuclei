@@ -46,6 +46,12 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	if opts.Protocol == "" {
 		opts.Protocol = "tcp"
 	}
+	// We're going to use a custom dialer when creating MySQL connections, so if we've been
+	// given "tcp" as the protocol, then quietly switch it to "nucleitcp", which we have
+	// already registered.
+	if opts.Protocol == "tcp" {
+		opts.Protocol = "nucleitcp"
+	}
 	if opts.DbName == "" {
 		opts.DbName = "/"
 	} else {
@@ -71,7 +77,9 @@ func connectWithDSN(dsn string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 

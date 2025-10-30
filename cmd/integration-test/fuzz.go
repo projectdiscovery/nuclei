@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 const (
@@ -55,7 +55,7 @@ func (h *httpFuzzQuery) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header().Set("Content-Type", "text/html")
 		value := r.URL.Query().Get("id")
-		fmt.Fprintf(w, "This is test matcher text: %v", value)
+		_, _ = fmt.Fprintf(w, "This is test matcher text: %v", value)
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -75,7 +75,7 @@ func (h *fuzzModeOverride) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header().Set("Content-Type", "text/html")
 		value := r.URL.Query().Get("id")
-		fmt.Fprintf(w, "This is test matcher text: %v", value)
+		_, _ = fmt.Fprintf(w, "This is test matcher text: %v", value)
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -120,7 +120,7 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header().Set("Content-Type", "text/html")
 		value := r.URL.Query().Get("id")
-		fmt.Fprintf(w, "This is test matcher text: %v", value)
+		_, _ = fmt.Fprintf(w, "This is test matcher text: %v", value)
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -164,7 +164,7 @@ func (h *HeadlessFuzzingQuery) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		resp := fmt.Sprintf("<html><body>%s</body></html>", r.URL.Query().Get("url"))
-		fmt.Fprint(w, resp)
+		_, _ = fmt.Fprint(w, resp)
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -190,7 +190,7 @@ func (h *fuzzMultipleMode) Execute(filePath string) error {
 		}
 		w.Header().Set("Content-Type", "text/html")
 		resp := fmt.Sprintf("<html><body><h1>This is multi-mode fuzzing test: %v <h1></body></html>", xClientId)
-		fmt.Fprint(w, resp)
+		_, _ = fmt.Fprint(w, resp)
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()

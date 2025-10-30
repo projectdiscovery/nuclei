@@ -44,7 +44,7 @@ const (
 
 // Options contains configuration options for automatic scan service
 type Options struct {
-	ExecuterOpts protocols.ExecutorOptions
+	ExecuterOpts *protocols.ExecutorOptions
 	Store        *loader.Store
 	Engine       *core.Engine
 	Target       provider.InputProvider
@@ -52,7 +52,7 @@ type Options struct {
 
 // Service is a service for automatic scan execution
 type Service struct {
-	opts               protocols.ExecutorOptions
+	opts               *protocols.ExecutorOptions
 	store              *loader.Store
 	engine             *core.Engine
 	target             provider.InputProvider
@@ -77,7 +77,7 @@ func New(opts Options) (*Service, error) {
 	mappingFile := filepath.Join(config.DefaultConfig.GetTemplateDir(), mappingFilename)
 	if file, err := os.Open(mappingFile); err == nil {
 		_ = yaml.NewDecoder(file).Decode(&mappingData)
-		file.Close()
+		_ = file.Close()
 	}
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
@@ -188,7 +188,7 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
 	eng.SetExecuterOptions(execOptions)
 
-	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(input.Input), true)
+	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
 	s.hasResults.Store(tmp.Load())
 }
 
@@ -206,7 +206,9 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 	if err != nil {
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDefaultBody))
 	if err != nil {
 		return nil

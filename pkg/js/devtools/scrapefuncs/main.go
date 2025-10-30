@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 
-	mapsutil "github.com/projectdiscovery/utils/maps"
 	"golang.org/x/exp/maps"
 )
 
@@ -44,6 +43,10 @@ func main() {
 	dirList := []string{}
 
 	if err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if d.IsDir() {
 			dirList = append(dirList, path)
 		}
@@ -51,23 +54,33 @@ func main() {
 	}); err != nil {
 		panic(err)
 	}
-	pkgs := map[string]*ast.Package{}
 
+	dslHelpers := map[string][]DSLHelperFunc{}
+
+	//for _, pkg := range pkgs {
 	for _, dir := range dirList {
 		fset := token.NewFileSet()
-		pkgss, err := parser.ParseDir(fset, dir, nil, 0)
+		list, err := os.ReadDir(dir)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		pkgs = mapsutil.Merge(pkgs, pkgss)
-	}
 
-	dslHelpers := map[string][]DSLHelperFunc{}
+		for _, f := range list {
+			if f.IsDir() {
+				continue
+			}
+			if !strings.HasSuffix(f.Name(), ".go") {
+				continue
+			}
 
-	for _, pkg := range pkgs {
-		for fname, file := range pkg.Files {
-			ast.Inspect(file, func(n ast.Node) bool {
+			astFile, err := parser.ParseFile(fset, filepath.Join(dir, f.Name()), nil, parser.AllErrors|parser.SkipObjectResolution)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			ast.Inspect(astFile, func(n ast.Node) bool {
 				switch x := n.(type) {
 				case *ast.CallExpr:
 					if sel, ok := x.Fun.(*ast.SelectorExpr); ok {
@@ -95,9 +108,9 @@ func main() {
 								}
 							}
 							if hf.Name != "" {
-								identifier := pkg2NameMapping[pkg.Name]
+								identifier := pkg2NameMapping[astFile.Name.Name]
 								if identifier == "" {
-									identifier = pkg.Name + "  (" + filepath.Dir(fname) + ")"
+									identifier = astFile.Name.Name + "  (" + dir + ")"
 								}
 
 								if dslHelpers[identifier] == nil {

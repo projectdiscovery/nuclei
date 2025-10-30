@@ -3,7 +3,7 @@ package global
 import (
 	"encoding/base64"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 
@@ -41,7 +41,7 @@ func registerAdditionalHelpers(runtime *goja.Runtime) {
 
 func init() {
 	// these are dummy functions we use trigger documentation generation
-	// actual definations are in exports.js
+	// actual definitions are in exports.js
 	_ = gojs.RegisterFuncWithSignature(nil, gojs.FuncOpts{
 		Name: "to_json",
 		Signatures: []string{

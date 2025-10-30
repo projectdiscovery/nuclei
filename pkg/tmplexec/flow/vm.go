@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
@@ -35,7 +35,7 @@ func GetJSRuntime(opts *types.Options) *goja.Runtime {
 		if opts.JsConcurrency < 100 {
 			opts.JsConcurrency = 100
 		}
-		sizedgojapool, _ = sizedpool.New[*goja.Runtime](
+		sizedgojapool, _ = sizedpool.New(
 			sizedpool.WithPool[*goja.Runtime](gojapool),
 			sizedpool.WithSize[*goja.Runtime](int64(opts.JsConcurrency)),
 		)
@@ -45,8 +45,12 @@ func GetJSRuntime(opts *types.Options) *goja.Runtime {
 }
 
 // PutJSRuntime returns a JS runtime to pool
-func PutJSRuntime(runtime *goja.Runtime) {
-	sizedgojapool.Put(runtime)
+func PutJSRuntime(runtime *goja.Runtime, reuse bool) {
+	if reuse {
+		sizedgojapool.Put(runtime)
+	} else {
+		sizedgojapool.Put(gojapool.Get().(*goja.Runtime))
+	}
 }
 
 func registerBuiltins(runtime *goja.Runtime) {

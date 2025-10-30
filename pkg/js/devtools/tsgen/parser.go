@@ -72,7 +72,7 @@ func (p *EntityParser) Parse() error {
 	for _, file := range p.syntax {
 		// Traverse the AST and find all relevant declarations
 		ast.Inspect(file, func(n ast.Node) bool {
-			// look for funtions and methods
+			// look for functions and methods
 			// and generate entities for them
 			fn, ok := n.(*ast.FuncDecl)
 			if ok {

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 )
 
@@ -42,12 +42,17 @@ func (matcher *Matcher) CompileMatchers() error {
 		matcher.Part = "body"
 	}
 
-	// Compile the regexes
+	// Compile the regexes (with shared cache)
 	for _, regex := range matcher.Regex {
+		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
+			matcher.regexCompiled = append(matcher.regexCompiled, cached)
+			continue
+		}
 		compiled, err := regexp.Compile(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
+		_ = cache.Regex().Set(regex, compiled)
 		matcher.regexCompiled = append(matcher.regexCompiled, compiled)
 	}
 
@@ -60,12 +65,17 @@ func (matcher *Matcher) CompileMatchers() error {
 		}
 	}
 
-	// Compile the dsl expressions
+	// Compile the dsl expressions (with shared cache)
 	for _, dslExpression := range matcher.DSL {
+		if cached, err := cache.DSL().GetIFPresent(dslExpression); err == nil && cached != nil {
+			matcher.dslCompiled = append(matcher.dslCompiled, cached)
+			continue
+		}
 		compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, dsl.HelperFunctions)
 		if err != nil {
 			return &dsl.CompilationError{DslSignature: dslExpression, WrappedError: err}
 		}
+		_ = cache.DSL().Set(dslExpression, compiledExpression)
 		matcher.dslCompiled = append(matcher.dslCompiled, compiledExpression)
 	}
 

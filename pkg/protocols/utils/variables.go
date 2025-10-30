@@ -56,7 +56,7 @@ const (
 	Sd
 )
 
-// GenerateVariables will create default variables with context args
+// GenerateVariablesWithContextArgs will create default variables with context args
 func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash bool) map[string]interface{} {
 	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
@@ -120,9 +120,10 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 	parsed.Params = urlutil.NewOrderedParams()
 	port := parsed.Port()
 	if port == "" {
-		if parsed.Scheme == "https" {
+		switch parsed.Scheme {
+		case "https":
 			port = "443"
-		} else if parsed.Scheme == "http" {
+		case "http":
 			port = "80"
 		}
 	}

@@ -8,7 +8,7 @@
 .gitignore
 .idea
 .vscode
-
+.claude/settings.local.json
 # Binaries
 /bin/*
 /bindgen
@@ -28,6 +28,8 @@
 /scrapefunc
 /scrapefuncs
 /tsgen
+/integration_tests/integration-test
+/integration_tests/nuclei
 
 # Templates
 /*.yaml
@@ -49,3 +51,5 @@ vendor
 *.prof
 *.pprof
 *.trace
+*.mem
+*.cpu

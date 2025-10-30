@@ -24,16 +24,22 @@ type DynamicAuthStrategy struct {
 
 // Apply applies the strategy to the request
 func (d *DynamicAuthStrategy) Apply(req *http.Request) {
-	strategy := d.Dynamic.GetStrategy()
-	if strategy != nil {
-		strategy.Apply(req)
+	strategies := d.Dynamic.GetStrategies()
+	if strategies == nil {
+		return
+	}
+	for _, s := range strategies {
+		if s == nil {
+			continue
+		}
+		s.Apply(req)
 	}
 }
 
 // ApplyOnRR applies the strategy to the retryable request
 func (d *DynamicAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	strategy := d.Dynamic.GetStrategy()
-	if strategy != nil {
-		strategy.ApplyOnRR(req)
+	strategy := d.Dynamic.GetStrategies()
+	for _, s := range strategy {
+		s.ApplyOnRR(req)
 	}
 }

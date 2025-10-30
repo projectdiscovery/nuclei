@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/gologger"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
@@ -56,10 +57,12 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		// turns expressions (either helper functions+base values or base values)
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
 		if err != nil {
+			gologger.Warning().Msgf("Failed to compile expression '%s': %v", expression, err)
 			continue
 		}
 		result, err := compiled.Evaluate(base)
 		if err != nil {
+			gologger.Warning().Msgf("Failed to evaluate expression '%s': %v", expression, err)
 			continue
 		}
 		// replace incrementally
@@ -76,11 +79,9 @@ func FindExpressions(data, OpenMarker, CloseMarker string, base map[string]inter
 		iterations int
 		exps       []string
 	)
-	for {
+	for iterations <= maxIterations {
 		// check if we reached the maximum number of iterations
-		if iterations > maxIterations {
-			break
-		}
+
 		iterations++
 		// attempt to find open markers
 		indexOpenMarker := strings.Index(data, OpenMarker)

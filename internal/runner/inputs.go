@@ -2,11 +2,11 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -28,12 +28,23 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		// currently http probing for input mode types is not supported
 		return hm, nil
 	}
-	gologger.Info().Msgf("Running httpx on input host")
+	r.Logger.Info().Msgf("Running httpx on input host")
 
 	httpxOptions := httpx.DefaultOptions
+	if r.options.AliveHttpProxy != "" {
+		httpxOptions.Proxy = r.options.AliveHttpProxy
+	} else if r.options.AliveSocksProxy != "" {
+		httpxOptions.Proxy = r.options.AliveSocksProxy
+	}
 	httpxOptions.RetryMax = r.options.Retries
 	httpxOptions.Timeout = time.Duration(r.options.Timeout) * time.Second
-	httpxOptions.NetworkPolicy = protocolstate.NetworkPolicy
+
+	dialers := protocolstate.GetDialersWithId(r.options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", r.options.ExecutionId)
+	}
+
+	httpxOptions.NetworkPolicy = dialers.NetworkPolicy
 	httpxClient, err := httpx.New(&httpxOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create httpx client")
@@ -52,7 +63,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 
 		if r.options.ProbeConcurrency > 0 && swg.Size != r.options.ProbeConcurrency {
 			if err := swg.Resize(context.Background(), r.options.ProbeConcurrency); err != nil {
-				gologger.Error().Msgf("Could not resize workpool: %s\n", err)
+				r.Logger.Error().Msgf("Could not resize workpool: %s\n", err)
 			}
 		}
 
@@ -69,6 +80,6 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 	swg.Wait()
 
-	gologger.Info().Msgf("Found %d URL from httpx", count.Load())
+	r.Logger.Info().Msgf("Found %d URL from httpx", count.Load())
 	return hm, nil
 }

@@ -2,14 +2,17 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
+	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/docker/go-units"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archives"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
@@ -58,19 +61,35 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		wg.Add()
 		func(filePath string) {
 			defer wg.Done()
-			archiveReader, _ := archiver.ByExtension(filePath)
+			fi, err := os.Open(filePath)
+			if err != nil {
+				gologger.Error().Msgf("%s\n", err)
+				return
+			}
+			defer func() {
+				_ = fi.Close()
+			}()
+			format, stream, _ := archives.Identify(input.Context(), filePath, fi)
 			switch {
-			case archiveReader != nil:
-				switch archiveInstance := archiveReader.(type) {
-				case archiver.Walker:
-					err := archiveInstance.Walk(filePath, func(file archiver.File) error {
+			case format != nil:
+				switch archiveInstance := format.(type) {
+				case archives.Extractor:
+					err := archiveInstance.Extract(input.Context(), stream, func(ctx context.Context, file archives.FileInfo) error {
 						if !request.validatePath("/", file.Name(), true) {
 							return nil
 						}
 						// every new file in the compressed multi-file archive counts 1
 						request.options.Progress.AddToTotal(1)
 						archiveFileName := filepath.Join(filePath, file.Name())
-						event, fileMatches, err := request.processReader(file.ReadCloser, archiveFileName, input, file.Size(), previous)
+						reader, err := file.Open()
+						if err != nil {
+							gologger.Error().Msgf("%s\n", err)
+							return err
+						}
+						defer func() {
+							_ = reader.Close()
+						}()
+						event, fileMatches, err := request.processReader(reader, archiveFileName, input, file.Size(), previous)
 						if err != nil {
 							if errors.Is(err, errEmptyResult) {
 								// no matches but one file elaborated
@@ -82,7 +101,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 							request.options.Progress.IncrementFailedRequestsBy(1)
 							return err
 						}
-						defer file.Close()
 						dumpResponse(event, request.options, fileMatches, filePath)
 						callback(event)
 						// file elaborated and matched
@@ -93,18 +111,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						gologger.Error().Msgf("%s\n", err)
 						return
 					}
-				case archiver.Decompressor:
+				case archives.Decompressor:
 					// compressed archive - contains only one file => increments the counter by 1
 					request.options.Progress.AddToTotal(1)
-					file, err := os.Open(filePath)
+					reader, err := archiveInstance.OpenReader(stream)
 					if err != nil {
 						gologger.Error().Msgf("%s\n", err)
 						// error while elaborating the file
 						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
 					}
-					defer file.Close()
-					fileStat, _ := file.Stat()
+					fileStat, _ := fi.Stat()
 					tmpFileOut, err := os.CreateTemp("", "")
 					if err != nil {
 						gologger.Error().Msgf("%s\n", err)
@@ -112,9 +129,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
 					}
-					defer tmpFileOut.Close()
-					defer os.RemoveAll(tmpFileOut.Name())
-					if err := archiveInstance.Decompress(file, tmpFileOut); err != nil {
+					defer func() {
+						if err := tmpFileOut.Close(); err != nil {
+							panic(fmt.Errorf("could not close: %+v", err))
+						}
+
+						if err := os.Remove(tmpFileOut.Name()); err != nil {
+							panic(fmt.Errorf("could not remove: %+v", err))
+						}
+					}()
+					_, err = io.Copy(tmpFileOut, reader)
+					if err != nil {
 						gologger.Error().Msgf("%s\n", err)
 						// error while elaborating the file
 						request.options.Progress.IncrementFailedRequestsBy(1)
@@ -177,7 +202,9 @@ func (request *Request) processFile(filePath string, input *contextargs.Context,
 	if err != nil {
 		return nil, nil, errors.Errorf("Could not open file path %s: %s\n", filePath, err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	stat, err := file.Stat()
 	if err != nil {
@@ -250,9 +277,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 
 		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
 		dslMap := request.responseToDSLMap(lineContent, input.MetaInput.Input, filePath)
-		for k, v := range previous {
-			dslMap[k] = v
-		}
+		maps.Copy(dslMap, previous)
 		// add vars to template context
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, dslMap)
 		// add template context variables to DSL map
@@ -321,9 +346,7 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 	exprLines := make(map[string][]int)
 	exprBytes := make(map[string][]int)
 	internalEvent := request.responseToDSLMap("", input, filePath)
-	for k, v := range previous {
-		internalEvent[k] = v
-	}
+	maps.Copy(internalEvent, previous)
 	for _, fileMatch := range fileMatches {
 		exprLines[fileMatch.Expr] = append(exprLines[fileMatch.Expr], fileMatch.Line)
 		exprBytes[fileMatch.Expr] = append(exprBytes[fileMatch.Expr], fileMatch.ByteIndex)

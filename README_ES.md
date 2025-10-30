@@ -31,7 +31,8 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">Portuguese</a>
 </p>
 
 ---
@@ -55,7 +56,7 @@ Tenemos un [repositorio dedicado](https://github.com/projectdiscovery/nuclei-tem
 
 # Instalación de Nuclei
 
-Nuclei requiere **go1.21** para instalarse correctamente. Ejecute el siguiente comando para instalar la última versión -
+Nuclei requiere **go1.22** para instalarse correctamente. Ejecute el siguiente comando para instalar la última versión -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -243,6 +244,7 @@ RATE-LIMIT:
    -headc, -headless-concurrency int  número máximo de plantillas headless a ejecutar en paralelo (por defecto 10)
    -jsc, -js-concurrency int          número máximo de entornos de ejecución de JavaScript a ejecutar en paralelo (por defecto 120)
    -pc, -payload-concurrency int      concurrencia máxima de carga útil para cada plantilla (por defecto 25)
+   -tlc, -template-loading-concurrency int  número máximo de operaciones de carga de plantillas concurrentes (por defecto 50)
 
 OPTIMIZATIONS:
    -timeout int                     tiempo de espera en segundos (por defecto 10)
