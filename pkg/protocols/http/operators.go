@@ -1,6 +1,7 @@
 package http
 
 import (
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -108,9 +109,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 // responseToDSLMap converts an HTTP response to a map for use in DSL matching
 func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) output.InternalEvent {
 	data := make(output.InternalEvent, 12+len(extra)+len(resp.Header)+len(resp.Cookies()))
-	for k, v := range extra {
-		data[k] = v
-	}
+	maps.Copy(data, extra)
 	for _, cookie := range resp.Cookies() {
 		request.setHashOrDefault(data, strings.ToLower(cookie.Name), cookie.Value)
 	}
@@ -174,6 +173,12 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if value, ok := wrapped.InternalEvent["analyzer_details"]; ok {
 		analyzerDetails = value.(string)
 	}
+	var reqURLPattern string
+	if request.options.ExportReqURLPattern {
+		if value, ok := wrapped.InternalEvent[ReqURLPatternKey]; ok {
+			reqURLPattern = types.ToString(value)
+		}
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
@@ -198,6 +203,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 		AnalyzerDetails:  analyzerDetails,
+		ReqURLPattern:    reqURLPattern,
 	}
 	return data
 }

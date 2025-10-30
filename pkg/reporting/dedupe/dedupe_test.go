@@ -12,7 +12,9 @@ import (
 func TestDedupeDuplicates(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "nuclei")
 	require.Nil(t, err, "could not create temporary storage")
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	storage, err := New(tempDir)
 	require.Nil(t, err, "could not create duplicate storage")

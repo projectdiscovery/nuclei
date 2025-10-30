@@ -6,6 +6,10 @@
 // Advantages of this approach are many compared to the old approach of
 // heuristics of sleep time.
 //
+// NOTE: This algorithm has been heavily modified after being introduced
+// in nuclei. Now the logic has sever bug fixes and improvements and
+// has been evolving to be more stable.
+//
 // As we are building a statistical model, we can predict if the delay
 // is random or not very quickly. Also, the payloads are alternated to send
 // a very high sleep and a very low sleep. This way the comparison is
@@ -24,9 +28,17 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 )
 
 type timeDelayRequestSender func(delay int) (float64, error)
+
+// requestsSentMetadata is used to store the delay requested
+// and delay received for each request
+type requestsSentMetadata struct {
+	delay         int
+	delayReceived float64
+}
 
 // checkTimingDependency checks the timing dependency for a given request
 //
@@ -37,6 +49,7 @@ func checkTimingDependency(
 	highSleepTimeSeconds int,
 	correlationErrorRange float64,
 	slopeErrorRange float64,
+	baselineDelay float64,
 	requestSender timeDelayRequestSender,
 ) (bool, string, error) {
 	if requestsLimit < 2 {
@@ -46,38 +59,56 @@ func checkTimingDependency(
 	regression := newSimpleLinearRegression()
 	requestsLeft := requestsLimit
 
-	for {
-		if requestsLeft <= 0 {
-			break
-		}
-
-		isCorrelationPossible, err := sendRequestAndTestConfidence(regression, highSleepTimeSeconds, requestSender)
+	var requestsSent []requestsSentMetadata
+	for requestsLeft > 0 {
+		isCorrelationPossible, delayReceived, err := sendRequestAndTestConfidence(regression, highSleepTimeSeconds, requestSender, baselineDelay)
 		if err != nil {
 			return false, "", err
 		}
 		if !isCorrelationPossible {
 			return false, "", nil
 		}
+		// Check the delay is greater than baseline by seconds requested
+		if delayReceived < baselineDelay+float64(highSleepTimeSeconds)*0.8 {
+			return false, "", nil
+		}
+		requestsSent = append(requestsSent, requestsSentMetadata{
+			delay:         highSleepTimeSeconds,
+			delayReceived: delayReceived,
+		})
 
-		isCorrelationPossible, err = sendRequestAndTestConfidence(regression, 1, requestSender)
+		isCorrelationPossibleSecond, delayReceivedSecond, err := sendRequestAndTestConfidence(regression, int(DefaultLowSleepTimeSeconds), requestSender, baselineDelay)
 		if err != nil {
 			return false, "", err
 		}
-		if !isCorrelationPossible {
+		if !isCorrelationPossibleSecond {
+			return false, "", nil
+		}
+		if delayReceivedSecond < baselineDelay+float64(DefaultLowSleepTimeSeconds)*0.8 {
 			return false, "", nil
 		}
 		requestsLeft = requestsLeft - 2
+
+		requestsSent = append(requestsSent, requestsSentMetadata{
+			delay:         int(DefaultLowSleepTimeSeconds),
+			delayReceived: delayReceivedSecond,
+		})
 	}
 
 	result := regression.IsWithinConfidence(correlationErrorRange, 1.0, slopeErrorRange)
 	if result {
-		resultReason := fmt.Sprintf(
-			"[time_delay] made %d requests successfully, with a regression slope of %.2f and correlation %.2f",
+		var resultReason strings.Builder
+		resultReason.WriteString(fmt.Sprintf(
+			"[time_delay] made %d requests (baseline: %.2fs) successfully, with a regression slope of %.2f and correlation %.2f",
 			requestsLimit,
+			baselineDelay,
 			regression.slope,
 			regression.correlation,
-		)
-		return result, resultReason, nil
+		))
+		for _, request := range requestsSent {
+			resultReason.WriteString(fmt.Sprintf("\n - delay: %ds, delayReceived: %fs", request.delay, request.delayReceived))
+		}
+		return result, resultReason.String(), nil
 	}
 	return result, "", nil
 }
@@ -87,35 +118,33 @@ func sendRequestAndTestConfidence(
 	regression *simpleLinearRegression,
 	delay int,
 	requestSender timeDelayRequestSender,
-) (bool, error) {
+	baselineDelay float64,
+) (bool, float64, error) {
 	delayReceived, err := requestSender(delay)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	if delayReceived < float64(delay) {
-		return false, nil
+		return false, 0, nil
 	}
 
-	regression.AddPoint(float64(delay), delayReceived)
+	regression.AddPoint(float64(delay), delayReceived-baselineDelay)
 
 	if !regression.IsWithinConfidence(0.3, 1.0, 0.5) {
-		return false, nil
+		return false, delayReceived, nil
 	}
-	return true, nil
+	return true, delayReceived, nil
 }
 
-// simpleLinearRegression is a simple linear regression model that can be updated at runtime.
-// It is based on the same algorithm in ZAP for doing timing checks.
 type simpleLinearRegression struct {
-	count          float64
-	independentSum float64
-	dependentSum   float64
+	count float64
 
-	// Variances
-	independentVarianceN float64
-	dependentVarianceN   float64
-	sampleCovarianceN    float64
+	sumX  float64
+	sumY  float64
+	sumXX float64
+	sumYY float64
+	sumXY float64
 
 	slope       float64
 	intercept   float64
@@ -124,39 +153,52 @@ type simpleLinearRegression struct {
 
 func newSimpleLinearRegression() *simpleLinearRegression {
 	return &simpleLinearRegression{
-		slope:       1,
-		correlation: 1,
+		// Start everything at zero until we have data
+		slope:       0.0,
+		intercept:   0.0,
+		correlation: 0.0,
 	}
 }
 
 func (o *simpleLinearRegression) AddPoint(x, y float64) {
-	independentResidualAdjustment := x - o.independentSum/o.count
-	dependentResidualAdjustment := y - o.dependentSum/o.count
-
 	o.count += 1
-	o.independentSum += x
-	o.dependentSum += y
+	o.sumX += x
+	o.sumY += y
+	o.sumXX += x * x
+	o.sumYY += y * y
+	o.sumXY += x * y
 
-	if math.IsNaN(independentResidualAdjustment) {
+	// Need at least two points for meaningful calculation
+	if o.count < 2 {
 		return
 	}
 
-	independentResidual := x - o.independentSum/o.count
-	dependentResidual := y - o.dependentSum/o.count
+	n := o.count
+	meanX := o.sumX / n
+	meanY := o.sumY / n
 
-	o.independentVarianceN += independentResidual * independentResidualAdjustment
-	o.dependentVarianceN += dependentResidual * dependentResidualAdjustment
-	o.sampleCovarianceN += independentResidual * dependentResidualAdjustment
+	// Compute sample variances and covariance
+	varX := (o.sumXX - n*meanX*meanX) / (n - 1)
+	varY := (o.sumYY - n*meanY*meanY) / (n - 1)
+	covXY := (o.sumXY - n*meanX*meanY) / (n - 1)
 
-	o.slope = o.sampleCovarianceN / o.independentVarianceN
-	o.correlation = o.slope * math.Sqrt(o.independentVarianceN/o.dependentVarianceN)
-	o.correlation *= o.correlation
+	// If varX is zero, slope cannot be computed meaningfully.
+	// This would mean all X are the same, so handle that edge case.
+	if varX == 0 {
+		o.slope = 0.0
+		o.intercept = meanY // Just the mean
+		o.correlation = 0.0 // No correlation since all X are identical
+		return
+	}
 
-	// NOTE: zap had the reverse formula, changed it to the correct one
-	// for intercept. Verify if this is correct.
-	o.intercept = o.dependentSum/o.count - o.slope*(o.independentSum/o.count)
-	if math.IsNaN(o.correlation) {
-		o.correlation = 1
+	o.slope = covXY / varX
+	o.intercept = meanY - o.slope*meanX
+
+	// If varX or varY are zero, we cannot compute correlation properly.
+	if varX > 0 && varY > 0 {
+		o.correlation = covXY / (math.Sqrt(varX) * math.Sqrt(varY))
+	} else {
+		o.correlation = 0.0
 	}
 }
 
@@ -164,8 +206,17 @@ func (o *simpleLinearRegression) Predict(x float64) float64 {
 	return o.slope*x + o.intercept
 }
 
-func (o *simpleLinearRegression) IsWithinConfidence(correlationErrorRange float64, expectedSlope float64, slopeErrorRange float64,
-) bool {
-	return o.correlation > 1.0-correlationErrorRange &&
-		math.Abs(expectedSlope-o.slope) < slopeErrorRange
+func (o *simpleLinearRegression) IsWithinConfidence(correlationErrorRange float64, expectedSlope float64, slopeErrorRange float64) bool {
+	if o.count < 2 {
+		return true
+	}
+	// Check if slope is within error range of expected slope
+	// Also consider cases where slope is approximately 2x of expected slope
+	// as this can happen with time-based responses
+	slopeDiff := math.Abs(expectedSlope - o.slope)
+	slope2xDiff := math.Abs(expectedSlope*2 - o.slope)
+	if slopeDiff > slopeErrorRange && slope2xDiff > slopeErrorRange {
+		return false
+	}
+	return o.correlation > 1.0-correlationErrorRange
 }

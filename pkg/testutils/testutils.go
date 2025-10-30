@@ -33,6 +33,11 @@ func Init(options *types.Options) {
 	_ = protocolinit.Init(options)
 }
 
+// Cleanup cleans up the protocols and their configurations
+func Cleanup(options *types.Options) {
+	protocolstate.Close(options.ExecutionId)
+}
+
 // DefaultOptions is the default options structure for nuclei during mocking.
 var DefaultOptions = &types.Options{
 	Metrics:                    false,
@@ -89,19 +94,24 @@ type TemplateInfo struct {
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	executerOpts := &protocols.ExecutorOptions{
-		TemplateID:      info.ID,
-		TemplateInfo:    info.Info,
-		TemplatePath:    info.Path,
-		Output:          NewMockOutputWriter(options.OmitTemplate),
-		Options:         options,
-		Progress:        progressImpl,
-		ProjectFile:     nil,
-		IssuesClient:    nil,
-		Browser:         nil,
-		Catalog:         disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:     ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Output:       NewMockOutputWriter(options.OmitTemplate),
+		Options:      options,
+		Progress:     progressImpl,
+		ProjectFile:  nil,
+		IssuesClient: nil,
+		Browser:      nil,
+		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
+
+	if info != nil {
+		executerOpts.TemplateInfo = info.Info
+		executerOpts.TemplateID = info.ID
+		executerOpts.TemplatePath = info.Path
+	}
+
 	executerOpts.CreateTemplateCtxStore()
+
 	return executerOpts
 }
 
@@ -131,6 +141,10 @@ func (m *MockOutputWriter) Close() {}
 // Colorizer returns the colorizer instance for writer
 func (m *MockOutputWriter) Colorizer() aurora.Aurora {
 	return m.aurora
+}
+
+func (m *MockOutputWriter) ResultCount() int {
+	return 0
 }
 
 // Write writes the event to file and/or screen.
@@ -202,6 +216,8 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 	}
 	return m.Write(data)
 }
+
+func (m *MockOutputWriter) RequestStatsLog(statusCode, response string) {}
 
 var maxTemplateFileSizeForEncoding = unitutils.Mega
 

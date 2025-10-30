@@ -1,12 +1,12 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type Concurrency struct {

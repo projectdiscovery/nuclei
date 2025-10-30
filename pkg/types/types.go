@@ -5,18 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	unitutils "github.com/projectdiscovery/utils/unit"
 )
+
+const DefaultTemplateLoadingConcurrency = 50
 
 var (
 	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
@@ -42,6 +46,8 @@ type Options struct {
 	Templates goflags.StringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
 	TemplateURLs goflags.StringSlice
+	// AITemplatePrompt specifies prompt to generate template using AI
+	AITemplatePrompt string
 	// RemoteTemplates specifies list of allowed URLs to load remote templates from
 	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
@@ -94,6 +100,10 @@ type Options struct {
 	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
+	// AliveProxy is the alive proxy to use
+	AliveHttpProxy string
+	// AliveSocksProxy is the alive socks proxy to use
+	AliveSocksProxy string
 	// TemplatesDirectory is the directory to use for storing templates
 	NewTemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
@@ -219,6 +229,8 @@ type Options struct {
 	JSONRequests bool
 	// OmitRawRequests omits requests/responses for matches in JSON output
 	OmitRawRequests bool
+	// HTTPStats enables http statistics tracking and display.
+	HTTPStats bool
 	// OmitTemplate omits encoded template from JSON output
 	OmitTemplate bool
 	// JSONExport is the file to export JSON output format to
@@ -337,6 +349,8 @@ type Options struct {
 	GitLabTemplateRepositoryIDs []int
 	// GitLabTemplateDisableDownload disables downloading templates from custom GitLab repositories
 	GitLabTemplateDisableDownload bool
+	// AWS access profile from ~/.aws/credentials file for downloading templates from S3 bucket
+	AwsProfile string
 	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
 	// AWS secret key for downloading templates from S3 bucket
@@ -409,12 +423,30 @@ type Options struct {
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
 	SkipFormatValidation bool
+	// VarsTextTemplating is used to inject variables into yaml input files
+	VarsTextTemplating bool
+	// VarsFilePaths is  used to inject variables into yaml input files from a file
+	VarsFilePaths goflags.StringSlice
 	// PayloadConcurrency is the number of concurrent payloads to run per template
 	PayloadConcurrency int
 	// ProbeConcurrency is the number of concurrent http probes to run with httpx
 	ProbeConcurrency int
+	// TemplateLoadingConcurrency is the number of concurrent template loading operations
+	TemplateLoadingConcurrency int
 	// Dast only runs DAST templates
 	DAST bool
+	// DASTServer is the flag to start nuclei as a DAST server
+	DASTServer bool
+	// DASTServerToken is the token optional for the dast server
+	DASTServerToken string
+	// DASTServerAddress is the address for the dast server
+	DASTServerAddress string
+	// DASTReport enables dast report server & final report generation
+	DASTReport bool
+	// Scope contains a list of regexes for in-scope URLS
+	Scope goflags.StringSlice
+	// OutOfScope contains a list of regexes for out-scope URLS
+	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
 	// ListTemplateProfiles lists all available template profiles
@@ -422,11 +454,236 @@ type Options struct {
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
 	LoadHelperFileFunction LoadHelperFileFunction
+	// Logger is the gologger instance for this optionset
+	Logger *gologger.Logger
+	// NoCacheTemplates disables caching of templates
+	DoNotCacheTemplates bool
+	// Unique identifier of the execution session
+	ExecutionId string
+	// Parser is a cached parser for the template store
+	Parser any
 	// timeouts contains various types of timeouts used in nuclei
 	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
 	// This is internally managed and does not need to be set by user by explicitly setting
 	// this overrides the default/derived one
 	timeouts *Timeouts
+	// m is a mutex to protect timeouts from concurrent access
+	m sync.Mutex
+}
+
+func (options *Options) Copy() *Options {
+	optCopy := &Options{
+		Tags:                           options.Tags,
+		ExcludeTags:                    options.ExcludeTags,
+		Workflows:                      options.Workflows,
+		WorkflowURLs:                   options.WorkflowURLs,
+		Templates:                      options.Templates,
+		TemplateURLs:                   options.TemplateURLs,
+		AITemplatePrompt:               options.AITemplatePrompt,
+		RemoteTemplateDomainList:       options.RemoteTemplateDomainList,
+		ExcludedTemplates:              options.ExcludedTemplates,
+		ExcludeMatchers:                options.ExcludeMatchers,
+		CustomHeaders:                  options.CustomHeaders,
+		Vars:                           options.Vars,
+		Severities:                     options.Severities,
+		ExcludeSeverities:              options.ExcludeSeverities,
+		Authors:                        options.Authors,
+		Protocols:                      options.Protocols,
+		ExcludeProtocols:               options.ExcludeProtocols,
+		IncludeTags:                    options.IncludeTags,
+		IncludeTemplates:               options.IncludeTemplates,
+		IncludeIds:                     options.IncludeIds,
+		ExcludeIds:                     options.ExcludeIds,
+		InternalResolversList:          options.InternalResolversList,
+		ProjectPath:                    options.ProjectPath,
+		InteractshURL:                  options.InteractshURL,
+		InteractshToken:                options.InteractshToken,
+		Targets:                        options.Targets,
+		ExcludeTargets:                 options.ExcludeTargets,
+		TargetsFilePath:                options.TargetsFilePath,
+		Resume:                         options.Resume,
+		Output:                         options.Output,
+		ProxyInternal:                  options.ProxyInternal,
+		ListDslSignatures:              options.ListDslSignatures,
+		Proxy:                          options.Proxy,
+		AliveHttpProxy:                 options.AliveHttpProxy,
+		AliveSocksProxy:                options.AliveSocksProxy,
+		NewTemplatesDirectory:          options.NewTemplatesDirectory,
+		TraceLogFile:                   options.TraceLogFile,
+		ErrorLogFile:                   options.ErrorLogFile,
+		ReportingDB:                    options.ReportingDB,
+		ReportingConfig:                options.ReportingConfig,
+		MarkdownExportDirectory:        options.MarkdownExportDirectory,
+		MarkdownExportSortMode:         options.MarkdownExportSortMode,
+		SarifExport:                    options.SarifExport,
+		ResolversFile:                  options.ResolversFile,
+		StatsInterval:                  options.StatsInterval,
+		MetricsPort:                    options.MetricsPort,
+		MaxHostError:                   options.MaxHostError,
+		TrackError:                     options.TrackError,
+		NoHostErrors:                   options.NoHostErrors,
+		BulkSize:                       options.BulkSize,
+		TemplateThreads:                options.TemplateThreads,
+		HeadlessBulkSize:               options.HeadlessBulkSize,
+		HeadlessTemplateThreads:        options.HeadlessTemplateThreads,
+		Timeout:                        options.Timeout,
+		Retries:                        options.Retries,
+		RateLimit:                      options.RateLimit,
+		RateLimitDuration:              options.RateLimitDuration,
+		RateLimitMinute:                options.RateLimitMinute,
+		PageTimeout:                    options.PageTimeout,
+		InteractionsCacheSize:          options.InteractionsCacheSize,
+		InteractionsPollDuration:       options.InteractionsPollDuration,
+		InteractionsEviction:           options.InteractionsEviction,
+		InteractionsCoolDownPeriod:     options.InteractionsCoolDownPeriod,
+		MaxRedirects:                   options.MaxRedirects,
+		FollowRedirects:                options.FollowRedirects,
+		FollowHostRedirects:            options.FollowHostRedirects,
+		OfflineHTTP:                    options.OfflineHTTP,
+		ForceAttemptHTTP2:              options.ForceAttemptHTTP2,
+		StatsJSON:                      options.StatsJSON,
+		Headless:                       options.Headless,
+		ShowBrowser:                    options.ShowBrowser,
+		HeadlessOptionalArguments:      options.HeadlessOptionalArguments,
+		DisableClustering:              options.DisableClustering,
+		UseInstalledChrome:             options.UseInstalledChrome,
+		SystemResolvers:                options.SystemResolvers,
+		ShowActions:                    options.ShowActions,
+		Metrics:                        options.Metrics,
+		Debug:                          options.Debug,
+		DebugRequests:                  options.DebugRequests,
+		DebugResponse:                  options.DebugResponse,
+		DisableHTTPProbe:               options.DisableHTTPProbe,
+		LeaveDefaultPorts:              options.LeaveDefaultPorts,
+		AutomaticScan:                  options.AutomaticScan,
+		Silent:                         options.Silent,
+		Validate:                       options.Validate,
+		NoStrictSyntax:                 options.NoStrictSyntax,
+		Verbose:                        options.Verbose,
+		VerboseVerbose:                 options.VerboseVerbose,
+		ShowVarDump:                    options.ShowVarDump,
+		VarDumpLimit:                   options.VarDumpLimit,
+		NoColor:                        options.NoColor,
+		UpdateTemplates:                options.UpdateTemplates,
+		JSONL:                          options.JSONL,
+		JSONRequests:                   options.JSONRequests,
+		OmitRawRequests:                options.OmitRawRequests,
+		HTTPStats:                      options.HTTPStats,
+		OmitTemplate:                   options.OmitTemplate,
+		JSONExport:                     options.JSONExport,
+		JSONLExport:                    options.JSONLExport,
+		Redact:                         options.Redact,
+		EnableProgressBar:              options.EnableProgressBar,
+		TemplateDisplay:                options.TemplateDisplay,
+		TemplateList:                   options.TemplateList,
+		TagList:                        options.TagList,
+		HangMonitor:                    options.HangMonitor,
+		Stdin:                          options.Stdin,
+		StopAtFirstMatch:               options.StopAtFirstMatch,
+		Stream:                         options.Stream,
+		NoMeta:                         options.NoMeta,
+		Timestamp:                      options.Timestamp,
+		Project:                        options.Project,
+		NewTemplates:                   options.NewTemplates,
+		NewTemplatesWithVersion:        options.NewTemplatesWithVersion,
+		NoInteractsh:                   options.NoInteractsh,
+		EnvironmentVariables:           options.EnvironmentVariables,
+		MatcherStatus:                  options.MatcherStatus,
+		ClientCertFile:                 options.ClientCertFile,
+		ClientKeyFile:                  options.ClientKeyFile,
+		ClientCAFile:                   options.ClientCAFile,
+		ZTLS:                           options.ZTLS,
+		AllowLocalFileAccess:           options.AllowLocalFileAccess,
+		RestrictLocalNetworkAccess:     options.RestrictLocalNetworkAccess,
+		ShowMatchLine:                  options.ShowMatchLine,
+		EnablePprof:                    options.EnablePprof,
+		StoreResponse:                  options.StoreResponse,
+		StoreResponseDir:               options.StoreResponseDir,
+		DisableRedirects:               options.DisableRedirects,
+		SNI:                            options.SNI,
+		InputFileMode:                  options.InputFileMode,
+		DialerKeepAlive:                options.DialerKeepAlive,
+		Interface:                      options.Interface,
+		SourceIP:                       options.SourceIP,
+		AttackType:                     options.AttackType,
+		ResponseReadSize:               options.ResponseReadSize,
+		ResponseSaveSize:               options.ResponseSaveSize,
+		HealthCheck:                    options.HealthCheck,
+		InputReadTimeout:               options.InputReadTimeout,
+		DisableStdin:                   options.DisableStdin,
+		IncludeConditions:              options.IncludeConditions,
+		Uncover:                        options.Uncover,
+		UncoverQuery:                   options.UncoverQuery,
+		UncoverEngine:                  options.UncoverEngine,
+		UncoverField:                   options.UncoverField,
+		UncoverLimit:                   options.UncoverLimit,
+		UncoverRateLimit:               options.UncoverRateLimit,
+		ScanAllIPs:                     options.ScanAllIPs,
+		IPVersion:                      options.IPVersion,
+		PublicTemplateDisableDownload:  options.PublicTemplateDisableDownload,
+		GitHubToken:                    options.GitHubToken,
+		GitHubTemplateRepo:             options.GitHubTemplateRepo,
+		GitHubTemplateDisableDownload:  options.GitHubTemplateDisableDownload,
+		GitLabServerURL:                options.GitLabServerURL,
+		GitLabToken:                    options.GitLabToken,
+		GitLabTemplateRepositoryIDs:    options.GitLabTemplateRepositoryIDs,
+		GitLabTemplateDisableDownload:  options.GitLabTemplateDisableDownload,
+		AwsProfile:                     options.AwsProfile,
+		AwsAccessKey:                   options.AwsAccessKey,
+		AwsSecretKey:                   options.AwsSecretKey,
+		AwsBucketName:                  options.AwsBucketName,
+		AwsRegion:                      options.AwsRegion,
+		AwsTemplateDisableDownload:     options.AwsTemplateDisableDownload,
+		AzureContainerName:             options.AzureContainerName,
+		AzureTenantID:                  options.AzureTenantID,
+		AzureClientID:                  options.AzureClientID,
+		AzureClientSecret:              options.AzureClientSecret,
+		AzureServiceURL:                options.AzureServiceURL,
+		AzureTemplateDisableDownload:   options.AzureTemplateDisableDownload,
+		ScanStrategy:                   options.ScanStrategy,
+		FuzzingType:                    options.FuzzingType,
+		FuzzingMode:                    options.FuzzingMode,
+		TlsImpersonate:                 options.TlsImpersonate,
+		DisplayFuzzPoints:              options.DisplayFuzzPoints,
+		FuzzAggressionLevel:            options.FuzzAggressionLevel,
+		FuzzParamFrequency:             options.FuzzParamFrequency,
+		CodeTemplateSignaturePublicKey: options.CodeTemplateSignaturePublicKey,
+		CodeTemplateSignatureAlgorithm: options.CodeTemplateSignatureAlgorithm,
+		SignTemplates:                  options.SignTemplates,
+		EnableCodeTemplates:            options.EnableCodeTemplates,
+		DisableUnsignedTemplates:       options.DisableUnsignedTemplates,
+		EnableSelfContainedTemplates:   options.EnableSelfContainedTemplates,
+		EnableGlobalMatchersTemplates:  options.EnableGlobalMatchersTemplates,
+		EnableFileTemplates:            options.EnableFileTemplates,
+		EnableCloudUpload:              options.EnableCloudUpload,
+		ScanID:                         options.ScanID,
+		ScanName:                       options.ScanName,
+		ScanUploadFile:                 options.ScanUploadFile,
+		TeamID:                         options.TeamID,
+		JsConcurrency:                  options.JsConcurrency,
+		SecretsFile:                    options.SecretsFile,
+		PreFetchSecrets:                options.PreFetchSecrets,
+		FormatUseRequiredOnly:          options.FormatUseRequiredOnly,
+		SkipFormatValidation:           options.SkipFormatValidation,
+		PayloadConcurrency:             options.PayloadConcurrency,
+		ProbeConcurrency:               options.ProbeConcurrency,
+		DAST:                           options.DAST,
+		DASTServer:                     options.DASTServer,
+		DASTServerToken:                options.DASTServerToken,
+		DASTServerAddress:              options.DASTServerAddress,
+		DASTReport:                     options.DASTReport,
+		Scope:                          options.Scope,
+		OutOfScope:                     options.OutOfScope,
+		HttpApiEndpoint:                options.HttpApiEndpoint,
+		ListTemplateProfiles:           options.ListTemplateProfiles,
+		LoadHelperFileFunction:         options.LoadHelperFileFunction,
+		Logger:                         options.Logger,
+		DoNotCacheTemplates:            options.DoNotCacheTemplates,
+		ExecutionId:                    options.ExecutionId,
+		Parser:                         options.Parser,
+	}
+	optCopy.SetTimeouts(options.timeouts)
+	return optCopy
 }
 
 // SetTimeouts sets the timeout variants to use for the executor
@@ -436,6 +693,8 @@ func (opts *Options) SetTimeouts(t *Timeouts) {
 
 // GetTimeouts returns the timeout variants to use for the executor
 func (eo *Options) GetTimeouts() *Timeouts {
+	eo.m.Lock()
+	defer eo.m.Unlock()
 	if eo.timeouts != nil {
 		// redundant but apply to avoid any potential issues
 		eo.timeouts.ApplyDefaults()
@@ -520,19 +779,20 @@ func (options *Options) HasClientCertificates() bool {
 // DefaultOptions returns default options for nuclei
 func DefaultOptions() *Options {
 	return &Options{
-		RateLimit:               150,
-		RateLimitDuration:       time.Second,
-		BulkSize:                25,
-		TemplateThreads:         25,
-		HeadlessBulkSize:        10,
-		PayloadConcurrency:      25,
-		HeadlessTemplateThreads: 10,
-		ProbeConcurrency:        50,
-		Timeout:                 5,
-		Retries:                 1,
-		MaxHostError:            30,
-		ResponseReadSize:        10 * unitutils.Mega,
-		ResponseSaveSize:        unitutils.Mega,
+		RateLimit:                  150,
+		RateLimitDuration:          time.Second,
+		BulkSize:                   25,
+		TemplateThreads:            25,
+		HeadlessBulkSize:           10,
+		PayloadConcurrency:         25,
+		HeadlessTemplateThreads:    10,
+		ProbeConcurrency:           50,
+		TemplateLoadingConcurrency: DefaultTemplateLoadingConcurrency,
+		Timeout:                    5,
+		Retries:                    1,
+		MaxHostError:               30,
+		ResponseReadSize:           10 * unitutils.Mega,
+		ResponseSaveSize:           unitutils.Mega,
 	}
 }
 
@@ -579,7 +839,7 @@ func (options *Options) defaultLoadHelperFile(helperFile, templatePath string, c
 	}
 	f, err := os.Open(helperFile)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not open file %v", helperFile)
+		return nil, errkit.Wrapf(err, "could not open file %v", helperFile)
 	}
 	return f, nil
 }
@@ -604,12 +864,12 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	// CleanPath resolves using CWD and cleans the path
 	helperFilePath, err = fileutil.CleanPath(helperFilePath)
 	if err != nil {
-		return "", errorutil.NewWithErr(err).Msgf("could not clean helper file path %v", helperFilePath)
+		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
 	}
 
 	templatePath, err = fileutil.CleanPath(templatePath)
 	if err != nil {
-		return "", errorutil.NewWithErr(err).Msgf("could not clean template path %v", templatePath)
+		return "", errkit.Wrapf(err, "could not clean template path %v", templatePath)
 	}
 
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
@@ -620,7 +880,21 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	}
 
 	// all other cases are denied
-	return "", errorutil.New("access to helper file %v denied", helperFilePath)
+	return "", errkit.Newf("access to helper file %v denied", helperFilePath)
+}
+
+// SetExecutionID sets the execution ID for the options
+func (options *Options) SetExecutionID(id string) {
+	options.m.Lock()
+	defer options.m.Unlock()
+	options.ExecutionId = id
+}
+
+// GetExecutionID gets the execution ID for the options
+func (options *Options) GetExecutionID() string {
+	options.m.Lock()
+	defer options.m.Unlock()
+	return options.ExecutionId
 }
 
 // isHomeDir checks if given is home directory

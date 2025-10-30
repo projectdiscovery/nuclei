@@ -1,43 +1,64 @@
 package protocolstate
 
 import (
+	"context"
 	"net"
 	"strings"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/networkpolicy"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"go.uber.org/multierr"
 )
 
-// initalize state of headless protocol
+// initialize state of headless protocol
 
 var (
-	ErrURLDenied         = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
-	ErrHostDenied        = errorutil.NewWithFmt("host %v dropped by network policy")
-	NetworkPolicy        *networkpolicy.NetworkPolicy
-	allowLocalFileAccess bool
+	ErrURLDenied  = errkit.New("headless: url dropped by rule")
+	ErrHostDenied = errorTemplate{format: "host %v dropped by network policy"}
 )
+
+// errorTemplate provides a way to create formatted errors like the old errorutil.NewWithFmt
+type errorTemplate struct {
+	format string
+}
+
+func (e errorTemplate) Msgf(args ...interface{}) error {
+	return errkit.Newf(e.format, args...)
+}
+
+func GetNetworkPolicy(ctx context.Context) *networkpolicy.NetworkPolicy {
+	execCtx := GetExecutionContext(ctx)
+	if execCtx == nil {
+		return nil
+	}
+	dialers, ok := dialers.Get(execCtx.ExecutionID)
+	if !ok || dialers == nil {
+		return nil
+	}
+	return dialers.NetworkPolicy
+}
 
 // ValidateNFailRequest validates and fails request
 // if the request does not respect the rules, it will be canceled with reason
-func ValidateNFailRequest(page *rod.Page, e *proto.FetchRequestPaused) error {
+func ValidateNFailRequest(options *types.Options, page *rod.Page, e *proto.FetchRequestPaused) error {
 	reqURL := e.Request.URL
 	normalized := strings.ToLower(reqURL)      // normalize url to lowercase
 	normalized = strings.TrimSpace(normalized) // trim leading & trailing whitespaces
-	if !allowLocalFileAccess && stringsutil.HasPrefixI(normalized, "file:") {
-		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
+	if !IsLfaAllowed(options) && stringsutil.HasPrefixI(normalized, "file:") {
+		return multierr.Combine(FailWithReason(page, e), errkit.Newf("headless: url %v dropped by rule: %v", reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
 	}
 	// validate potential invalid schemes
 	// javascript protocol is allowed for xss fuzzing
 	if stringsutil.HasPrefixAnyI(normalized, "ftp:", "externalfile:", "chrome:", "chrome-extension:") {
-		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "protocol blocked by network policy"))
+		return multierr.Combine(FailWithReason(page, e), errkit.Newf("headless: url %v dropped by rule: %v", reqURL, "protocol blocked by network policy"))
 	}
-	if !isValidHost(reqURL) {
-		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "address blocked by network policy"))
+	if !isValidHost(options, reqURL) {
+		return multierr.Combine(FailWithReason(page, e), errkit.Newf("headless: url %v dropped by rule: %v", reqURL, "address blocked by network policy"))
 	}
 	return nil
 }
@@ -52,54 +73,78 @@ func FailWithReason(page *rod.Page, e *proto.FetchRequestPaused) error {
 }
 
 // InitHeadless initializes headless protocol state
-func InitHeadless(localFileAccess bool, np *networkpolicy.NetworkPolicy) {
-	allowLocalFileAccess = localFileAccess
-	if np != nil {
-		NetworkPolicy = np
+func InitHeadless(options *types.Options) {
+	dialers, ok := dialers.Get(options.ExecutionId)
+	if ok && dialers != nil {
+		dialers.Lock()
+		dialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
+		dialers.RestrictLocalNetworkAccess = options.RestrictLocalNetworkAccess
+		dialers.Unlock()
 	}
 }
 
+func IsRestrictLocalNetworkAccess(options *types.Options) bool {
+	dialers, ok := dialers.Get(options.ExecutionId)
+	if ok && dialers != nil {
+		dialers.Lock()
+		defer dialers.Unlock()
+
+		return dialers.RestrictLocalNetworkAccess
+	}
+	return false
+}
+
 // isValidHost checks if the host is valid (only limited to http/https protocols)
-func isValidHost(targetUrl string) bool {
+func isValidHost(options *types.Options, targetUrl string) bool {
 	if !stringsutil.HasPrefixAny(targetUrl, "http:", "https:") {
 		return true
 	}
-	if NetworkPolicy == nil {
+
+	dialers, ok := dialers.Get(options.ExecutionId)
+	if !ok {
 		return true
 	}
+
+	np := dialers.NetworkPolicy
+	if !ok || np == nil {
+		return true
+	}
+
 	urlx, err := urlutil.Parse(targetUrl)
 	if err != nil {
 		// not a valid url
 		return false
 	}
 	targetUrl = urlx.Hostname()
-	_, ok := NetworkPolicy.ValidateHost(targetUrl)
+	_, ok = np.ValidateHost(targetUrl)
 	return ok
 }
 
 // IsHostAllowed checks if the host is allowed by network policy
-func IsHostAllowed(targetUrl string) bool {
-	if NetworkPolicy == nil {
+func IsHostAllowed(executionId string, targetUrl string) bool {
+	dialers, ok := dialers.Get(executionId)
+	if !ok {
 		return true
 	}
+
+	np := dialers.NetworkPolicy
+	if !ok || np == nil {
+		return true
+	}
+
 	sepCount := strings.Count(targetUrl, ":")
 	if sepCount > 1 {
 		// most likely a ipv6 address (parse url and validate host)
-		return NetworkPolicy.Validate(targetUrl)
+		return np.Validate(targetUrl)
 	}
 	if sepCount == 1 {
 		host, _, _ := net.SplitHostPort(targetUrl)
-		if _, ok := NetworkPolicy.ValidateHost(host); !ok {
+		if _, ok := np.ValidateHost(host); !ok {
 			return false
 		}
 		return true
-		// portInt, _ := strconv.Atoi(port)
-		// fixme:  broken port validation logic in networkpolicy
-		// if !NetworkPolicy.ValidatePort(portInt) {
-		// 	return false
-		// }
 	}
 	// just a hostname or ip without port
-	_, ok := NetworkPolicy.ValidateHost(targetUrl)
+	_, ok = np.ValidateHost(targetUrl)
 	return ok
 }

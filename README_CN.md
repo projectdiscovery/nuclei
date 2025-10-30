@@ -33,7 +33,8 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">Portuguese</a>
 </p>
 
 ---
@@ -58,7 +59,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
 
 # 安装Nuclei
 
-Nuclei需要 **go1.21** 才能安装成功。执行下列命令安装最新版本的Nuclei
+Nuclei需要 **go1.22** 才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -237,6 +238,7 @@ UNCOVER引擎:
    -c, -concurrency int                  并行执行的最大模板数量（默认：25）
    -hbs, -headless-bulk-size int         每个模板并行运行的无头主机最大数量（默认：10）
    -headc, -headless-concurrency int     并行指定无头主机最大数量（默认：10）
+   -tlc, -template-loading-concurrency int  最大并发模板加载操作数（默认：50）
 
 
 优化：

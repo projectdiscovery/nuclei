@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"encoding/json"
 	"io"
 	"net/url"
 	"os"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	updateutils "github.com/projectdiscovery/utils/update"
 )
@@ -83,7 +83,7 @@ func UpdateIgnoreFile() error {
 }
 
 func doVersionCheck(isSDK bool) error {
-	// we use global retryablehttp client so its not immeditely gc'd if any references are held
+	// we use global retryablehttp client so its not immediately gc'd if any references are held
 	// and according our config we have idle connections which are shown as leaked by goleak in tests
 	// i.e we close all idle connections after our use and it doesn't affect any other part of the code
 	defer retryableHttpClient.HTTPClient.CloseIdleConnections()
@@ -92,7 +92,9 @@ func doVersionCheck(isSDK bool) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	bin, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err

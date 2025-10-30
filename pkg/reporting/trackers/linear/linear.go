@@ -3,7 +3,6 @@ package linear
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear/jsonutil"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -54,9 +54,14 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
+	var transport = http.DefaultTransport
+	if options.HttpClient != nil && options.HttpClient.HTTPClient.Transport != nil {
+		transport = options.HttpClient.HTTPClient.Transport
+	}
+
 	httpClient := &http.Client{
 		Transport: &addHeaderTransport{
-			T:   http.DefaultTransport,
+			T:   transport,
 			Key: options.APIKey,
 		},
 	}
@@ -381,13 +386,15 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
 	var out struct {
-		Data   *json.RawMessage
+		Data   *json.Message
 		Errors errorsGraphql
 		//Extensions any // Unused.
 	}

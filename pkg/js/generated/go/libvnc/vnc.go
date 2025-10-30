@@ -3,7 +3,7 @@ package vnc
 import (
 	lib_vnc "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/vnc"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 
@@ -21,6 +21,7 @@ func init() {
 
 			// Objects / Classes
 			"IsVNCResponse": gojs.GetClassConstructor[lib_vnc.IsVNCResponse](&lib_vnc.IsVNCResponse{}),
+			"VNCClient":     gojs.GetClassConstructor[lib_vnc.VNCClient](&lib_vnc.VNCClient{}),
 		},
 	).Register()
 }

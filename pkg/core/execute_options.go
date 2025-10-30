@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -50,7 +49,7 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	totalReqAfterClustering := getRequestCount(finalTemplates) * int(target.Count())
 
 	if !noCluster && totalReqAfterClustering < totalReqBeforeCluster {
-		gologger.Info().Msgf("Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
+		e.Logger.Info().Msgf("Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
 	}
 
 	// 0 matches means no templates were found in the directory
@@ -107,8 +106,11 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 	// wp is workpool that contains different waitgroups for
 	// headless and non-headless templates
 	wp := e.GetWorkPool()
+	defer wp.Wait()
 
 	for _, template := range templatesList {
+		template := template
+
 		select {
 		case <-ctx.Done():
 			return results
@@ -135,7 +137,6 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 			e.executeTemplateWithTargets(ctx, tpl, target, results)
 		}(template)
 	}
-	wp.Wait()
 	return results
 }
 
@@ -143,6 +144,7 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
 	wp, _ := syncutil.New(syncutil.WithSize(e.options.BulkSize + e.options.HeadlessBulkSize))
+	defer wp.Wait()
 
 	target.Iterate(func(value *contextargs.MetaInput) bool {
 		select {
@@ -158,7 +160,6 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 		}(value)
 		return true
 	})
-	wp.Wait()
 	return results
 }
 

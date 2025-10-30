@@ -62,7 +62,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if err != nil {
 			return errors.Wrap(err, "fuzz: could not build request obtained from target file")
 		}
-		input.MetaInput.Input = baseRequest.URL.String()
+		request.addHeadersToRequest(baseRequest)
+		input.MetaInput.Input = baseRequest.String()
 		// execute with one value first to checks its applicability
 		err = request.executeAllFuzzingRules(input, previous, baseRequest, callback)
 		if err != nil {
@@ -75,7 +76,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			if errors.Is(err, ErrMissingVars) {
 				return err
 			}
-			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
 		}
 		return nil
 	}
@@ -94,6 +95,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 	}
 	userAgent := useragent.PickRandom()
 	baseRequest.Header.Set("User-Agent", userAgent.Raw)
+	request.addHeadersToRequest(baseRequest)
 
 	// execute with one value first to checks its applicability
 	err = request.executeAllFuzzingRules(inputx, previous, baseRequest, callback)
@@ -101,15 +103,21 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		// in case of any error, return it
 		if fuzz.IsErrRuleNotApplicable(err) {
 			// log and fail silently
-			gologger.Verbose().Msgf("[%s] fuzz: rule not applicable : %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 			return nil
 		}
 		if errors.Is(err, ErrMissingVars) {
 			return err
 		}
-		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
+		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
 	}
 	return nil
+}
+
+func (request *Request) addHeadersToRequest(baseRequest *retryablehttp.Request) {
+	for k, v := range request.Headers {
+		baseRequest.Header.Set(k, v)
+	}
 }
 
 // executeAllFuzzingRules executes all fuzzing rules defined in template for a given base request
@@ -150,7 +158,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 			continue
 		}
 		if fuzz.IsErrRuleNotApplicable(err) {
-			gologger.Verbose().Msgf("[%s] fuzz: rule not applicable : %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 			continue
 		}
 		if err == types.ErrNoMoreRequests {
@@ -160,8 +168,9 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 	}
 
 	if !applicable {
-		return fuzz.ErrRuleNotApplicable.Msgf(fmt.Sprintf("no rule was applicable for this request: %v", input.MetaInput.Input))
+		return fmt.Errorf("no rule was applicable for this request: %v", input.MetaInput.Input)
 	}
+
 	return nil
 }
 
@@ -212,9 +221,9 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		}
 		if request.options.FuzzParamsFrequency != nil && !setInteractshCallback {
 			if !gotMatches {
-				request.options.FuzzParamsFrequency.MarkParameter(gr.Parameter, gr.Request.URL.String(), request.options.TemplateID)
+				request.options.FuzzParamsFrequency.MarkParameter(gr.Parameter, gr.Request.String(), request.options.TemplateID)
 			} else {
-				request.options.FuzzParamsFrequency.UnmarkParameter(gr.Parameter, gr.Request.URL.String(), request.options.TemplateID)
+				request.options.FuzzParamsFrequency.UnmarkParameter(gr.Parameter, gr.Request.String(), request.options.TemplateID)
 			}
 		}
 	}, 0)
@@ -223,10 +232,10 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		return false
 	}
 	if requestErr != nil {
-		if request.options.HostErrorsCache != nil {
-			request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, requestErr)
-		}
 		gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
+	}
+	if request.options.HostErrorsCache != nil {
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, requestErr)
 	}
 	request.options.Progress.IncrementRequests()
 
@@ -303,7 +312,7 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 			if strings.EqualFold(k, "content_type") {
 				m["content_type"] = v
 			}
-			sb.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+			_, _ = fmt.Fprintf(sb, "%s: %s\n", k, v)
 			return true
 		})
 		m["header"] = sb.String()

@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/hex"
 	"fmt"
+	maps0 "maps"
 	"net"
 	"net/url"
 	"os"
@@ -25,12 +26,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -64,7 +65,11 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			errs = append(errs, err)
 			continue
 		}
-		conn, err := protocolstate.Dialer.Dial(target.Context(), "tcp", addr)
+		if request.dialer == nil {
+			request.dialer, _ = networkclientpool.Get(request.options.Options, &networkclientpool.Configuration{})
+		}
+
+		conn, err := request.dialer.Dial(target.Context(), "tcp", addr)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -291,14 +296,16 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	} else {
 		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
+	// adds it to unresponsive address list if applicable
+	request.markHostError(updatedTarget, err)
 	if err != nil {
-		// adds it to unresponsive address list if applicable
-		request.markUnresponsiveAddress(updatedTarget, err)
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	_ = conn.SetDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
 	var interactshURLs []string
@@ -355,7 +362,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
+				return errkit.Wrap(err, "could not read response from connection")
 			}
 
 			responseBuilder.Write(buffer)
@@ -369,9 +376,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
 				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{input.Name: bufferStr}, request.Extract)
-				for k, v := range values {
-					payloads[k] = v
-				}
+				maps0.Copy(payloads, values)
 			}
 		}
 	}
@@ -421,15 +426,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
 	}
-	for k, v := range previous {
-		outputEvent[k] = v
-	}
-	for k, v := range interimValues {
-		outputEvent[k] = v
-	}
-	for k, v := range inputEvents {
-		outputEvent[k] = v
-	}
+	maps0.Copy(outputEvent, previous)
+	maps0.Copy(outputEvent, interimValues)
+	maps0.Copy(outputEvent, inputEvents)
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
 	}
@@ -504,10 +503,11 @@ func getAddress(toTest string) (string, error) {
 }
 
 func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
-	if n == -1 {
+	switch n {
+	case -1:
 		// if n is -1 then read all available data from connection
 		return reader.ConnReadNWithTimeout(conn, -1, timeout)
-	} else if n == 0 {
+	case 0:
 		n = 4096 // default buffer size
 	}
 	b := make([]byte, n)
@@ -524,13 +524,10 @@ func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte
 	return b[:count], nil
 }
 
-// markUnresponsiveAddress checks if the error is a unreponsive host error and marks it
-func (request *Request) markUnresponsiveAddress(input *contextargs.Context, err error) {
-	if err == nil {
-		return
-	}
+// markHostError checks if the error is a unreponsive host error and marks it
+func (request *Request) markHostError(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, err)
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
 	}
 }
 

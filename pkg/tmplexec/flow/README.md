@@ -114,7 +114,7 @@ To better understand orchestration we can try to build a template for vhost enum
 
 **for basic vhost enumeration a template should** 
 - do a PTR lookup for given ip
-- get SSL ceritificate for given ip (i.e tls-grab)
+- get SSL certificate for given ip (i.e tls-grab)
   - extract subject_cn from certificate
   - extract subject_alt_names(SAN) from certificate
   - filter out wildcard prefix from above values
@@ -316,4 +316,4 @@ This section contains a brief description of all nuclei JS bindings and their us
   And that's it , this automatically converts any slice/array to map and removes duplicates from it and returns a slice/array of unique values
 
 ------
-> Similar to DSL helper functions . we can either use built in functions available with `Javscript (ECMAScript 5.1)` or use DSL helper functions and its upto user to decide which one to uses
+> Similar to DSL helper functions . we can either use built in functions available with `Javascript (ECMAScript 5.1)` or use DSL helper functions and its upto user to decide which one to uses

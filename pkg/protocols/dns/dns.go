@@ -185,6 +185,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
+		Proxy:   options.Options.AliveSocksProxy,
 	}
 	if len(request.Resolvers) > 0 {
 		if len(request.Resolvers) > 0 {
@@ -295,4 +296,9 @@ func classToInt(class string) uint16 {
 		result = dns.ClassANY
 	}
 	return uint16(result)
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }
