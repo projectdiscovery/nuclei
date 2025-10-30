@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"sync"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
@@ -16,32 +16,54 @@ import (
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
+	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
-// Dialer is a shared fastdialer instance for host DNS resolution
 var (
-	muDialer sync.RWMutex
-	Dialer   *fastdialer.Dialer
+	dialers *mapsutil.SyncLockMap[string, *Dialers]
 )
 
-func GetDialer() *fastdialer.Dialer {
-	muDialer.RLock()
-	defer muDialer.RUnlock()
-
-	return Dialer
+func init() {
+	dialers = mapsutil.NewSyncLockMap[string, *Dialers]()
 }
 
-func ShouldInit() bool {
-	return Dialer == nil
+func GetDialers(ctx context.Context) *Dialers {
+	executionContext := GetExecutionContext(ctx)
+	dialers, ok := dialers.Get(executionContext.ExecutionID)
+	if !ok {
+		return nil
+	}
+	return dialers
 }
 
-// Init creates the Dialer instance based on user configuration
+func GetDialersWithId(id string) *Dialers {
+	dialers, ok := dialers.Get(id)
+	if !ok {
+		return nil
+	}
+	return dialers
+}
+
+func ShouldInit(id string) bool {
+	dialer, ok := dialers.Get(id)
+	if !ok {
+		return true
+	}
+	return dialer == nil
+}
+
+// Init creates the Dialers instance based on user configuration
 func Init(options *types.Options) error {
-	if Dialer != nil {
+	if GetDialersWithId(options.ExecutionId) != nil {
 		return nil
 	}
 
-	lfaAllowed = options.AllowLocalFileAccess
+	return initDialers(options)
+}
+
+// initDialers is the internal implementation of Init
+func initDialers(options *types.Options) error {
 	opts := fastdialer.DefaultOptions
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
 	if options.DialerKeepAlive > 0 {
@@ -66,8 +88,6 @@ func Init(options *types.Options) error {
 		DenyList: expandedDenyList,
 	}
 	opts.WithNetworkPolicyOptions = npOptions
-	NetworkPolicy, _ = networkpolicy.New(*npOptions)
-	InitHeadless(options.AllowLocalFileAccess, NetworkPolicy)
 
 	switch {
 	case options.SourceIP != "" && options.Interface != "":
@@ -109,8 +129,8 @@ func Init(options *types.Options) error {
 			},
 		}
 	}
-	if types.ProxySocksURL != "" {
-		proxyURL, err := url.Parse(types.ProxySocksURL)
+	if options.AliveSocksProxy != "" {
+		proxyURL, err := url.Parse(options.AliveSocksProxy)
 		if err != nil {
 			return err
 		}
@@ -152,14 +172,42 @@ func Init(options *types.Options) error {
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")
 	}
-	Dialer = dialer
 
-	// override dialer in mysql
-	mysql.RegisterDialContext("tcp", func(ctx context.Context, addr string) (net.Conn, error) {
-		return Dialer.Dial(ctx, "tcp", addr)
+	networkPolicy, _ := networkpolicy.New(*npOptions)
+
+	httpClientPool := mapsutil.NewSyncLockMap(
+		// evicts inactive httpclientpool entries after 24 hours
+		// of inactivity (long running instances)
+		mapsutil.WithEviction[string, *retryablehttp.Client](24*time.Hour, 12*time.Hour),
+	)
+
+	dialersInstance := &Dialers{
+		Fastdialer:             dialer,
+		NetworkPolicy:          networkPolicy,
+		HTTPClientPool:         httpClientPool,
+		LocalFileAccessAllowed: options.AllowLocalFileAccess,
+	}
+
+	_ = dialers.Set(options.ExecutionId, dialersInstance)
+
+	// Set a custom dialer for the "nucleitcp" protocol.  This is just plain TCP, but it's registered
+	// with a different name so that we do not clobber the "tcp" dialer in the event that nuclei is
+	// being included as a package in another application.
+	mysql.RegisterDialContext("nucleitcp", func(ctx context.Context, addr string) (net.Conn, error) {
+		// Because we're not using the default TCP workflow, quietly add the default port
+		// number if no port number was specified.
+		if _, _, err := net.SplitHostPort(addr); err != nil {
+			addr += ":3306"
+		}
+
+		executionId := ctx.Value("executionId").(string)
+		dialer := GetDialersWithId(executionId)
+		return dialer.Fastdialer.Dial(ctx, "tcp", addr)
 	})
 
 	StartActiveMemGuardian(context.Background())
+
+	SetLfaAllowed(options)
 
 	return nil
 }
@@ -218,13 +266,19 @@ func interfaceAddresses(interfaceName string) ([]net.Addr, error) {
 }
 
 // Close closes the global shared fastdialer
-func Close() {
-	muDialer.Lock()
-	defer muDialer.Unlock()
-
-	if Dialer != nil {
-		Dialer.Close()
-		Dialer = nil
+func Close(executionId string) {
+	dialersInstance, ok := dialers.Get(executionId)
+	if !ok {
+		return
 	}
-	StopActiveMemGuardian()
+
+	if dialersInstance != nil {
+		dialersInstance.Fastdialer.Close()
+	}
+
+	dialers.Delete(executionId)
+
+	if dialers.IsEmpty() {
+		StopActiveMemGuardian()
+	}
 }

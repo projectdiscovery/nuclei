@@ -7,11 +7,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	proxyutils "github.com/projectdiscovery/utils/proxy"
+)
+
+const (
+	HTTP_PROXY_ENV = "HTTP_PROXY"
 )
 
 // loadProxyServers load list of proxy servers from file or comma separated
@@ -26,7 +29,9 @@ func loadProxyServers(options *types.Options) error {
 			if err != nil {
 				return fmt.Errorf("could not open proxy file: %w", err)
 			}
-			defer file.Close()
+			defer func() {
+				_ = file.Close()
+			}()
 			scanner := bufio.NewScanner(file)
 			for scanner.Scan() {
 				proxy := scanner.Text()
@@ -45,19 +50,18 @@ func loadProxyServers(options *types.Options) error {
 	}
 	proxyURL, err := url.Parse(aliveProxy)
 	if err != nil {
-		return errorutil.WrapfWithNil(err, "failed to parse proxy got %v", err)
+		return errkit.Wrapf(err, "failed to parse proxy got %v", err)
 	}
 	if options.ProxyInternal {
-		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+		_ = os.Setenv(HTTP_PROXY_ENV, proxyURL.String())
 	}
-	if proxyURL.Scheme == proxyutils.HTTP || proxyURL.Scheme == proxyutils.HTTPS {
-		types.ProxyURL = proxyURL.String()
-		types.ProxySocksURL = ""
-		gologger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
-	} else if proxyURL.Scheme == proxyutils.SOCKS5 {
-		types.ProxyURL = ""
-		types.ProxySocksURL = proxyURL.String()
-		gologger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
+	switch proxyURL.Scheme {
+	case proxyutils.HTTP, proxyutils.HTTPS:
+		options.Logger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
+		options.AliveHttpProxy = proxyURL.String()
+	case proxyutils.SOCKS5:
+		options.AliveSocksProxy = proxyURL.String()
+		options.Logger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
 	}
 	return nil
 }

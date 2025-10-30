@@ -1,19 +1,18 @@
 package swagger
 
 import (
-	"encoding/json"
 	"io"
-	"os"
 	"path"
 
 	"github.com/getkin/kin-openapi/openapi2"
+	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/invopop/yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
-	"github.com/invopop/yaml"
 
-	"github.com/getkin/kin-openapi/openapi2conv"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // SwaggerFormat is a Swagger Schema File parser
@@ -39,24 +38,19 @@ func (j *SwaggerFormat) SetOptions(options formats.InputFormatOptions) {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *SwaggerFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
-	file, err := os.Open(input)
-	if err != nil {
-		return errors.Wrap(err, "could not open data file")
-	}
-	defer file.Close()
-
+func (j *SwaggerFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
 	schemav2 := &openapi2.T{}
-	ext := path.Ext(input)
-
+	ext := path.Ext(filePath)
+	var err error
 	if ext == ".yaml" || ext == ".yml" {
-		data, err_data := io.ReadAll(file)
-		if err_data != nil {
+		var data []byte
+		data, err = io.ReadAll(input)
+		if err != nil {
 			return errors.Wrap(err, "could not read data file")
 		}
 		err = yaml.Unmarshal(data, schemav2)
 	} else {
-		err = json.NewDecoder(file).Decode(schemav2)
+		err = json.NewDecoder(input).Decode(schemav2)
 	}
 	if err != nil {
 		return errors.Wrap(err, "could not decode openapi 2.0 schema")

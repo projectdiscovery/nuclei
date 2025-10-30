@@ -133,10 +133,10 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 			}
 
 			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value, "", "", "", ""); qerr != nil {
-				return err
+				return qerr
 			}
 
-			// after building change back to original value to avoid repeating it in furthur requests
+			// after building change back to original value to avoid repeating it in further requests
 			if origKey != "" {
 				err = ruleComponent.SetValue(origKey, types.ToString(origValue)) // change back to previous value for temp
 				if err != nil {
@@ -163,7 +163,7 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 	if rule.options.FuzzParamsFrequency != nil {
 		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
 			parameter,
-			httpReq.URL.String(),
+			httpReq.String(),
 			rule.options.TemplateID,
 		) {
 			return nil

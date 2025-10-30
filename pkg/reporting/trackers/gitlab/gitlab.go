@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/xanzy/go-gitlab"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
@@ -101,13 +101,12 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 			}
 			if issue.State == "closed" {
 				reopen := "reopen"
-				_, resp, err := i.client.Issues.UpdateIssue(i.options.ProjectName, issue.IID, &gitlab.UpdateIssueOptions{
+				_, _, err := i.client.Issues.UpdateIssue(i.options.ProjectName, issue.IID, &gitlab.UpdateIssueOptions{
 					StateEvent: &reopen,
 				})
-				fmt.Sprintln(resp, err)
-			}
-			if err != nil {
-				return nil, err
+				if err != nil {
+					return nil, err
+				}
 			}
 			return &filters.CreateIssueResponse{
 				IssueID:  strconv.FormatInt(int64(issue.ID), 10),

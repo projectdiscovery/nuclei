@@ -1,7 +1,6 @@
 package variables
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/invopop/jsonschema"
@@ -11,6 +10,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 

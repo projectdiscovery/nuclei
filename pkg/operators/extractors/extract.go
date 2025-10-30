@@ -1,7 +1,6 @@
 package extractors
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/antchfx/xmlquery"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // ExtractRegex extracts text from a corpus and returns it
@@ -17,9 +17,19 @@ func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 
 	groupPlusOne := e.RegexGroup + 1
 	for _, regex := range e.regexCompiled {
-		matches := regex.FindAllStringSubmatch(corpus, -1)
+		// skip prefix short-circuit for case-insensitive patterns
+		rstr := regex.String()
+		if !strings.Contains(rstr, "(?i") {
+			if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
+				if !strings.Contains(corpus, prefix) {
+					continue
+				}
+			}
+		}
 
-		for _, match := range matches {
+		submatches := regex.FindAllStringSubmatch(corpus, -1)
+
+		for _, match := range submatches {
 			if len(match) < groupPlusOne {
 				continue
 			}

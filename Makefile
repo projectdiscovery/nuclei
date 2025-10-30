@@ -11,12 +11,12 @@ GOFLAGS := -v
 LDFLAGS := -s -w
 
 ifneq ($(shell go env GOOS),darwin)
-	LDFLAGS = -extldflags "-static"
+	LDFLAGS += -extldflags "-static"
 endif
     
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs
-.PHONY: devtools-tsgen docs docgen dsl-docs functional fuzzplayground go-build syntax-docs
-.PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test 
+.PHONY: devtools-tsgen docs docgen dsl-docs functional fuzzplayground go-build lint lint-strict syntax-docs
+.PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
 .PHONY: tidy ts verify download vet template-validate
 
 all: build
@@ -26,12 +26,21 @@ clean:
 
 go-build: clean
 go-build:
-	$(GOBUILD) $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+	CGO_ENABLED=0 $(GOBUILD) -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
 		 -o '${GOBUILD_OUTPUT}' $(GOBUILD_PACKAGES)
 
+build: GOFLAGS = -v -pgo=auto
 build: GOBUILD_OUTPUT = ./bin/nuclei
 build: GOBUILD_PACKAGES = cmd/nuclei/main.go
 build: go-build
+
+build-test: GOFLAGS = -v -pgo=auto
+build-test: GOBUILD_OUTPUT = ./bin/nuclei.test
+build-test: GOBUILD_PACKAGES = ./cmd/nuclei/
+build-test: clean
+build-test:
+	CGO_ENABLED=0 $(GOCMD) test -c -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+		 -o '${GOBUILD_OUTPUT}' ${GOBUILD_PACKAGES}
 
 build-stats: GOBUILD_OUTPUT = ./bin/nuclei-stats
 build-stats: GOBUILD_PACKAGES = cmd/nuclei/main.go
@@ -137,5 +146,14 @@ dsl-docs:
 template-validate: build
 template-validate:
 	./bin/nuclei -ut
-	./bin/nuclei -validate
-	./bin/nuclei -validate -w workflows
+	./bin/nuclei -validate \
+		-et http/technologies \
+		-t dns \
+		-t ssl \
+		-t network \
+		-t http/exposures \
+		-ept code
+	./bin/nuclei -validate \
+		-w workflows \
+		-et http/technologies \
+		-ept code

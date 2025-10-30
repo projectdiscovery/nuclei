@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -19,12 +20,17 @@ import (
 
 // Browser is a browser structure for nuclei headless module
 type Browser struct {
-	customAgent  string
-	tempDir      string
-	previousPIDs map[int32]struct{} // track already running PIDs
-	engine       *rod.Browser
-	httpclient   *http.Client
-	options      *types.Options
+	customAgent    string
+	defaultHeaders map[string]string
+	tempDir        string
+	previousPIDs   map[int32]struct{} // track already running PIDs
+	engine         *rod.Browser
+	options        *types.Options
+	launcher       *launcher.Launcher
+
+	// use getHTTPClient to get the http client
+	httpClient     *http.Client
+	httpClientOnce *sync.Once
 }
 
 // New creates a new nuclei headless browser module
@@ -73,8 +79,8 @@ func New(options *types.Options) (*Browser, error) {
 	} else {
 		chromeLauncher = chromeLauncher.Headless(true)
 	}
-	if types.ProxyURL != "" {
-		chromeLauncher = chromeLauncher.Proxy(types.ProxyURL)
+	if options.AliveHttpProxy != "" {
+		chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
 	}
 
 	for k, v := range options.ParseHeadlessOptionalArguments() {
@@ -90,6 +96,7 @@ func New(options *types.Options) (*Browser, error) {
 	if browserErr := browser.Connect(); browserErr != nil {
 		return nil, browserErr
 	}
+	defaultHeaders := make(map[string]string)
 	customAgent := ""
 	for _, option := range options.CustomHeaders {
 		parts := strings.SplitN(option, ":", 2)
@@ -98,20 +105,24 @@ func New(options *types.Options) (*Browser, error) {
 		}
 		if strings.EqualFold(parts[0], "User-Agent") {
 			customAgent = parts[1]
+		} else {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			if k == "" || v == "" {
+				continue
+			}
+			defaultHeaders[k] = v
 		}
 	}
 
-	httpclient, err := newHttpClient(options)
-	if err != nil {
-		return nil, err
-	}
-
 	engine := &Browser{
-		tempDir:     dataStore,
-		customAgent: customAgent,
-		engine:      browser,
-		httpclient:  httpclient,
-		options:     options,
+		tempDir:        dataStore,
+		customAgent:    customAgent,
+		defaultHeaders: defaultHeaders,
+		engine:         browser,
+		options:        options,
+		httpClientOnce: &sync.Once{},
+		launcher:       chromeLauncher,
 	}
 	engine.previousPIDs = previousPIDs
 	return engine, nil
@@ -121,7 +132,7 @@ func New(options *types.Options) (*Browser, error) {
 func MustDisableSandbox() bool {
 	// linux with root user needs "--no-sandbox" option
 	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
-	return osutils.IsLinux() && os.Geteuid() == 0
+	return osutils.IsLinux()
 }
 
 // SetUserAgent sets custom user agent to the browser
@@ -134,9 +145,42 @@ func (b *Browser) UserAgent() string {
 	return b.customAgent
 }
 
+// applyDefaultHeaders setsheaders passed via cli -H flag
+func (b *Browser) applyDefaultHeaders(p *rod.Page) error {
+	pairs := make([]string, 0, len(b.defaultHeaders)*2+2)
+
+	hasAcceptLanguage := false
+	for k := range b.defaultHeaders {
+		if strings.EqualFold(k, "Accept-Language") {
+			hasAcceptLanguage = true
+			break
+		}
+	}
+	if !hasAcceptLanguage {
+		pairs = append(pairs, "Accept-Language", "en, en-GB, en-us;")
+	}
+	for k, v := range b.defaultHeaders {
+		pairs = append(pairs, k, v)
+	}
+	if len(pairs) == 0 {
+		return nil
+	}
+	_, err := p.SetExtraHeaders(pairs)
+	return err
+}
+
+func (b *Browser) getHTTPClient() (*http.Client, error) {
+	var err error
+	b.httpClientOnce.Do(func() {
+		b.httpClient, err = newHttpClient(b.options)
+	})
+	return b.httpClient, err
+}
+
 // Close closes the browser engine
 func (b *Browser) Close() {
-	b.engine.Close()
-	os.RemoveAll(b.tempDir)
+	_ = b.engine.Close()
+	b.launcher.Kill()
+	_ = os.RemoveAll(b.tempDir)
 	processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
 }

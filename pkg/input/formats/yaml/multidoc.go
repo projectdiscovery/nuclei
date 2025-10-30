@@ -1,9 +1,8 @@
 package yaml
 
 import (
+	"bytes"
 	"io"
-	"os"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -46,30 +45,42 @@ func (j *YamlMultiDocFormat) SetOptions(options formats.InputFormatOptions) {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *YamlMultiDocFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
-	file, err := os.Open(input)
-	if err != nil {
-		return errors.Wrap(err, "could not open json file")
-	}
-	defer file.Close()
+func (j *YamlMultiDocFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
+	finalInput := input
 
-	decoder := YamlUtil.NewDecoder(file)
+	// Apply text templating if enabled
+	if j.opts.VarsTextTemplating {
+		data, err := io.ReadAll(input)
+		if err != nil {
+			return errors.Wrap(err, "could not read input")
+		}
+		tpl := []string{string(data)}
+		dvs := mapToKeyValueSlice(j.opts.Variables)
+		finalData, err := ytt(tpl, dvs, j.opts.VarsFilePaths)
+		if err != nil {
+			return errors.Wrap(err, "could not apply ytt templating")
+		}
+		finalInput = bytes.NewReader(finalData)
+	}
+
+	decoder := YamlUtil.NewDecoder(finalInput)
 	for {
 		var request proxifyRequest
-		err := decoder.Decode(&request)
-		if err == io.EOF {
-			break
+		if err := decoder.Decode(&request); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrap(err, "could not decode yaml file")
 		}
-		if err != nil {
-			return errors.Wrap(err, "could not decode json file")
-		}
-		if strings.TrimSpace(request.Request.Raw) == "" {
+
+		raw := request.Request.Raw
+		if raw == "" {
 			continue
 		}
 
-		rawRequest, err := types.ParseRawRequestWithURL(request.Request.Raw, request.URL)
+		rawRequest, err := types.ParseRawRequestWithURL(raw, request.URL)
 		if err != nil {
-			gologger.Warning().Msgf("multidoc-yaml: Could not parse raw request %s: %s\n", request.URL, err)
+			gologger.Warning().Msgf("multidoc-yaml: Could not parse raw request %s: %s", request.URL, err)
 			continue
 		}
 		resultsCb(rawRequest)

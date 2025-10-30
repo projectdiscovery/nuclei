@@ -36,6 +36,8 @@ body:
       description: |
         Steps to reproduce the behavior, for example, commands to run Nuclei.
 
+        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.
+
         :warning: **Please redact any literal target hosts/URLs or other sensitive information.**
       placeholder: |
         1. Run `nuclei -t ...`
@@ -44,7 +46,12 @@ body:
   - type: textarea
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: |
+        Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+
+        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.
+
+        :warning: **Please redact any literal target hosts/URLs or other sensitive information.**
       render: shell
   - type: textarea
     attributes:

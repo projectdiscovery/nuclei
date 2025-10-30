@@ -7,7 +7,8 @@ import (
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/utils/errkit"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -19,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	pkgtypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // TemplateSources contains template sources
@@ -102,7 +104,7 @@ func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		// WithInteractshOptions can be used when creating ThreadSafeNucleiEngine but not after it's initialized
 		if e.mode == threadSafe && e.interactshOpts != nil {
-			return ErrOptionsNotSupported.Msgf("WithInteractshOptions")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithInteractshOptions")
 		}
 		optsPtr := &opts
 		e.interactshOpts = (*interactsh.Options)(optsPtr)
@@ -127,39 +129,44 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 		// minimum required is 1
 		if opts.TemplateConcurrency <= 0 {
 			return errors.New("template threads must be at least 1")
-		} else {
-			e.opts.TemplateThreads = opts.TemplateConcurrency
 		}
 		if opts.HostConcurrency <= 0 {
 			return errors.New("host concurrency must be at least 1")
-		} else {
-			e.opts.BulkSize = opts.HostConcurrency
 		}
 		if opts.HeadlessHostConcurrency <= 0 {
 			return errors.New("headless host concurrency must be at least 1")
-		} else {
-			e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
 		}
 		if opts.HeadlessTemplateConcurrency <= 0 {
 			return errors.New("headless template threads must be at least 1")
-		} else {
-			e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
 		}
 		if opts.JavascriptTemplateConcurrency <= 0 {
 			return errors.New("js must be at least 1")
-		} else {
-			e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
 		}
 		if opts.TemplatePayloadConcurrency <= 0 {
 			return errors.New("payload concurrency must be at least 1")
-		} else {
-			e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
 		}
 		if opts.ProbeConcurrency <= 0 {
 			return errors.New("probe concurrency must be at least 1")
-		} else {
-			e.opts.ProbeConcurrency = opts.ProbeConcurrency
 		}
+		e.opts.TemplateThreads = opts.TemplateConcurrency
+		e.opts.BulkSize = opts.HostConcurrency
+		e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
+		e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
+		e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
+		e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
+		e.opts.ProbeConcurrency = opts.ProbeConcurrency
+		return nil
+	}
+}
+
+// WithResponseReadSize sets the maximum size of response to read in bytes.
+// A value of 0 means no limit. Recommended values: 1MB (1048576) to 10MB (10485760).
+func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if responseReadSize < 0 {
+			return errors.New("response read size must be non-negative")
+		}
+		e.opts.ResponseReadSize = responseReadSize
 		return nil
 	}
 }
@@ -175,7 +182,7 @@ func WithGlobalRateLimitCtx(ctx context.Context, maxTokens int, duration time.Du
 	return func(e *NucleiEngine) error {
 		e.opts.RateLimit = maxTokens
 		e.opts.RateLimitDuration = duration
-		e.rateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		e.rateLimiter = utils.GetRateLimiter(ctx, e.opts.RateLimit, e.opts.RateLimitDuration)
 		return nil
 	}
 }
@@ -201,7 +208,7 @@ func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 			e.opts.UseInstalledChrome = hopts.UseChrome
 		}
 		if engine.MustDisableSandbox() {
-			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
+			e.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
 		}
 		browser, err := engine.New(e.opts)
 		if err != nil {
@@ -224,7 +231,7 @@ type StatsOptions struct {
 func EnableStatsWithOpts(opts StatsOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("EnableStatsWithOpts")
+			return errkit.Wrap(ErrOptionsNotSupported, "EnableStatsWithOpts")
 		}
 		if opts.Interval == 0 {
 			opts.Interval = 5 //sec
@@ -252,7 +259,7 @@ type VerbosityOptions struct {
 func WithVerbosity(opts VerbosityOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithVerbosity")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithVerbosity")
 		}
 		e.opts.Verbose = opts.Verbose
 		e.opts.Silent = opts.Silent
@@ -286,12 +293,25 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		// WithNetworkConfig can be used when creating ThreadSafeNucleiEngine but not after it's initialized
 		if e.mode == threadSafe && e.hostErrCache != nil {
-			return ErrOptionsNotSupported.Msgf("WithNetworkConfig")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithNetworkConfig")
+		}
+		e.opts.NoHostErrors = opts.DisableMaxHostErr
+		e.opts.MaxHostError = opts.MaxHostError
+		if e.opts.ShouldUseHostError() {
+			maxHostError := opts.MaxHostError
+			if e.opts.TemplateThreads > maxHostError {
+				e.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
+				e.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", e.opts.TemplateThreads)
+				maxHostError = e.opts.TemplateThreads
+				e.opts.MaxHostError = maxHostError
+			}
+			cache := hosterrorscache.New(maxHostError, hosterrorscache.DefaultMaxHostsCount, e.opts.TrackError)
+			cache.SetVerbose(e.opts.Verbose)
+			e.hostErrCache = cache
 		}
 		e.opts.Timeout = opts.Timeout
 		e.opts.Retries = opts.Retries
 		e.opts.LeaveDefaultPorts = opts.LeaveDefaultPorts
-		e.hostErrCache = hosterrorscache.New(opts.MaxHostError, hosterrorscache.DefaultMaxHostsCount, opts.TrackError)
 		e.opts.Interface = opts.Interface
 		e.opts.SourceIP = opts.SourceIP
 		e.opts.SystemResolvers = opts.SystemResolvers
@@ -304,7 +324,7 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 func WithProxy(proxy []string, proxyInternalRequests bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithProxy")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithProxy")
 		}
 		e.opts.Proxy = proxy
 		e.opts.ProxyInternal = proxyInternalRequests
@@ -329,7 +349,7 @@ type OutputWriter output.Writer
 func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("UseOutputWriter")
+			return errkit.Wrap(ErrOptionsNotSupported, "UseOutputWriter")
 		}
 		e.customWriter = writer
 		return nil
@@ -344,7 +364,7 @@ type StatsWriter progress.Progress
 func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("UseStatsWriter")
+			return errkit.Wrap(ErrOptionsNotSupported, "UseStatsWriter")
 		}
 		e.customProgress = writer
 		return nil
@@ -358,7 +378,7 @@ func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(newVersion string)) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithTemplateUpdateCallback")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithTemplateUpdateCallback")
 		}
 		e.disableTemplatesAutoUpgrade = disableTemplatesAutoUpgrade
 		e.onUpdateAvailableCallback = callback
@@ -370,7 +390,7 @@ func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(
 func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithSandboxOptions")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithSandboxOptions")
 		}
 		e.opts.AllowLocalFileAccess = allowLocalFileAccess
 		e.opts.RestrictLocalNetworkAccess = restrictLocalNetworkAccess
@@ -399,6 +419,14 @@ func EnableSelfContainedTemplates() NucleiSDKOptions {
 func EnableGlobalMatchersTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.EnableGlobalMatchersTemplates = true
+		return nil
+	}
+}
+
+// DisableTemplateCache disables template caching
+func DisableTemplateCache() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.DoNotCacheTemplates = true
 		return nil
 	}
 }
@@ -447,11 +475,19 @@ func EnablePassiveMode() NucleiSDKOptions {
 	}
 }
 
+// EnableMatcherStatus allows enabling matcher status
+func EnableMatcherStatus() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.MatcherStatus = true
+		return nil
+	}
+}
+
 // WithAuthProvider allows setting a custom authprovider implementation
 func WithAuthProvider(provider authprovider.AuthProvider) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.authprovider = provider
-		return nil
+		return nilhttps://hypixel.net/bounty
 	}
 }
 
@@ -492,6 +528,36 @@ func WithCatalog(cat catalog.Catalog) NucleiSDKOptions {
 func DisableUpdateCheck() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		DefaultConfig.DisableUpdateCheck()
+		return nil
+	}
+}
+
+// WithResumeFile allows setting a resume file
+func WithResumeFile(file string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.Resume = file
+		return nil
+	}
+}
+
+// WithLogger allows setting a shared gologger instance
+func WithLogger(logger *gologger.Logger) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.Logger = logger
+		if e.opts != nil {
+			e.opts.Logger = logger
+		}
+		if e.executerOpts != nil {
+			e.executerOpts.Logger = logger
+		}
+		return nil
+	}
+}
+
+// WithOptions sets all options at once
+func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts = opts
 		return nil
 	}
 }

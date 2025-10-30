@@ -21,7 +21,7 @@ type dslVersionWarning struct{}
 func (d *dslVersionWarning) Execute(templatePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "DSL version parsing warning test")
+		_, _ = fmt.Fprintf(w, "DSL version parsing warning test")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -37,7 +37,7 @@ type dslShowVersionWarning struct{}
 func (d *dslShowVersionWarning) Execute(templatePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "DSL version parsing warning test")
+		_, _ = fmt.Fprintf(w, "DSL version parsing warning test")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()

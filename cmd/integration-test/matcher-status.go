@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 var matcherStatusTestcases = []TestCaseInfo{

@@ -21,7 +21,7 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 	})
 
 	compiler := New()
-	p, err := WrapScriptNCompile("console.log('hello world');", false)
+	p, err := SourceAutoMode("console.log('hello world');", false)
 	if err != nil {
 		t.Fatal(err)
 	}

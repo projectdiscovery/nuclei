@@ -94,7 +94,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 	return parts, nil
 }
 
-// RunNucleiArgsAndGetResults returns result,and runtime errors
+// RunNucleiWithArgsAndGetResults returns result,and runtime errors
 func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei", args...)
 	cmd.Env = append(cmd.Env, ExtraEnvVars...)
@@ -323,7 +323,7 @@ func NewTCPServer(tlsConfig *tls.Config, port int, handler func(conn net.Conn)) 
 
 // Close closes the TCP server
 func (s *TCPServer) Close() {
-	s.listener.Close()
+	_ = s.listener.Close()
 }
 
 // NewWebsocketServer creates a new websocket server from a handler
@@ -338,7 +338,9 @@ func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate
 			return
 		}
 		go func() {
-			defer conn.Close()
+			defer func() {
+				_ = conn.Close()
+			}()
 
 			handler(conn)
 		}()

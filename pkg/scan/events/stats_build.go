@@ -1,15 +1,15 @@
 //go:build stats
-// +build stats
 
 package events
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 var _ ScanEventWorker = &ScanStatsWorker{}
@@ -24,7 +24,7 @@ type ScanStatsWorker struct {
 	m         *sync.Mutex
 	directory string
 	file      *os.File
-	enc       *json.Encoder
+	enc       json.Encoder
 }
 
 // Init initializes the scan stats worker

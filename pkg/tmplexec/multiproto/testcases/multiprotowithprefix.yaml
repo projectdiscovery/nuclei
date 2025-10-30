@@ -20,7 +20,7 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - contains(http_body, 'ProjectDiscovery Cloud Platform') # check for http string
+          - contains(http_body, 'ProjectDiscovery') # check for http string
           - dns_cname == 'cname.vercel-dns.com' # check for cname (extracted information from dns response)
           - ssl_subject_cn == 'cloud.projectdiscovery.io'
         condition: and
