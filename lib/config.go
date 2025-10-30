@@ -487,7 +487,7 @@ func EnableMatcherStatus() NucleiSDKOptions {
 func WithAuthProvider(provider authprovider.AuthProvider) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.authprovider = provider
-		return nilhttps://hypixel.net/bounty
+		return nil
 	}
 }
 
