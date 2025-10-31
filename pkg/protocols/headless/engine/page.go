@@ -103,9 +103,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		inputURL:  input,
 	}
 
-	sucessfulPageCreation := false
+	successfulPageCreation := false
 	defer func() {
-		if !sucessfulPageCreation {
+		if !successfulPageCreation {
+			// to avoid leaking pages in case of errors
 			createdPage.Close()
 		}
 	}()
@@ -217,7 +218,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
-	sucessfulPageCreation = true // avoid closing the page in case of success in defered function
+	successfulPageCreation = true // avoid closing the page in case of success in defered function
 	return data, createdPage, nil
 }
 
