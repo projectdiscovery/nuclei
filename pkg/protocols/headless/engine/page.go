@@ -218,7 +218,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
-	successfulPageCreation = true // avoid closing the page in case of success in defered function
+	successfulPageCreation = true // avoid closing the page in case of success in deferred function
 	return data, createdPage, nil
 }
 
