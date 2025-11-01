@@ -62,11 +62,13 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	page = page.Timeout(options.Timeout)
 
 	if err = i.browser.applyDefaultHeaders(page); err != nil {
+		_ = page.Close()
 		return nil, nil, err
 	}
 
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
+			_ = page.Close()
 			return nil, nil, userAgentErr
 		}
 	}
@@ -78,6 +80,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	target := ctx.MetaInput.Input
 	input, err := urlutil.Parse(target)
 	if err != nil {
+		_ = page.Close()
 		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
 	}
 
@@ -99,6 +102,14 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		variables: variables,
 		inputURL:  input,
 	}
+
+	successfulPageCreation := false
+	defer func() {
+		if !successfulPageCreation {
+			// to avoid leaking pages in case of errors
+			createdPage.Close()
+		}
+	}()
 
 	httpclient, err := i.browser.getHTTPClient()
 	if err != nil {
@@ -207,6 +218,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
+	successfulPageCreation = true // avoid closing the page in case of success in deferred function
 	return data, createdPage, nil
 }
 
