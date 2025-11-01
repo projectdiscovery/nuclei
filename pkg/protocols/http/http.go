@@ -541,9 +541,8 @@ const (
 
 var (
 	// VerboseTargetThreshold is the threshold for marking a target as verbose
-	// Targets with Content-Length or actual response size > this threshold will be marked as verbose
-	// Set to half of MaxBodyRead (5MB = half of 10MB) - initialized in init()
-	VerboseTargetThreshold int64
+	VerboseTargetThreshold = 2 * unitutils.Mega
+	VerboseTargetMaxSize   = 4 * unitutils.Kilo
 )
 
 var (
@@ -574,7 +573,7 @@ func CheckAndMarkVerbose(resp *http.Response, url string) {
 	}
 
 	// Check Content-Length header first (most reliable if present)
-	if cl := resp.ContentLength; cl > 0 && cl > VerboseTargetThreshold {
+	if cl := resp.ContentLength; cl > 0 && cl > int64(VerboseTargetThreshold) {
 		MarkVerboseTarget(url)
 		return
 	}
@@ -585,8 +584,6 @@ func CheckAndMarkVerbose(resp *http.Response, url string) {
 
 func init() {
 	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
-	// Initialize VerboseTargetThreshold to half of MaxBodyRead - Hardcoding 2Mb for tests
-	VerboseTargetThreshold = 2 * unitutils.Mega
 }
 
 // UpdateOptions replaces this request's options with a new copy

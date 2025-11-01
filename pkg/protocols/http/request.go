@@ -936,7 +936,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	maxBodylimit := MaxBodyRead // 10MB default
 	// Apply half of max body read limit for verbose targets to prevent memory exhaustion
 	if IsVerboseTarget(formedURL) {
-		maxBodylimit = int(VerboseTargetThreshold) // Half of MaxBodyRead (5MB) for verbose targets
+		maxBodylimit = VerboseTargetMaxSize // cap to 4KB
 	}
 	// Template-specific MaxSize override takes precedence
 	if request.MaxSize > 0 {
@@ -975,7 +975,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// This handles cases where Content-Length header was absent but body is large
 		if !IsVerboseTarget(formedURL) {
 			bodySize := int64(respChain.Body().Len())
-			if bodySize > VerboseTargetThreshold {
+			if bodySize > int64(VerboseTargetThreshold) {
 				MarkVerboseTarget(formedURL)
 				// Note: This marking is for future requests to this target
 				// Current request already has maxBodylimit set, but this will help subsequent templates
