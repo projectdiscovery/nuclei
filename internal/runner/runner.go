@@ -572,7 +572,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
-		authTmplStore, err := GetAuthTmplStore(r.options, r.catalog, executorOpts)
+		// Clone options so GetAuthTmplStore can modify them without affecting the original
+		authOptions := r.options.Copy()
+		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
