@@ -537,9 +537,13 @@ func (request *Request) Requests() int {
 
 const (
 	SetThreadToCountZero = "set-thread-count-to-zero"
+)
+
+var (
 	// VerboseTargetThreshold is the threshold for marking a target as verbose
 	// Targets with Content-Length or actual response size > this threshold will be marked as verbose
-	VerboseTargetThreshold = 4 * unitutils.Kilo // 4KB
+	// Set to half of MaxBodyRead (5MB = half of 10MB) - initialized in init()
+	VerboseTargetThreshold int64
 )
 
 var (
@@ -581,6 +585,8 @@ func CheckAndMarkVerbose(resp *http.Response, url string) {
 
 func init() {
 	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
+	// Initialize VerboseTargetThreshold to half of MaxBodyRead - Hardcoding 2Mb for tests
+	VerboseTargetThreshold = 2 * unitutils.Mega
 }
 
 // UpdateOptions replaces this request's options with a new copy
