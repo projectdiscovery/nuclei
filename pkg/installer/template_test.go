@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 	fileutil "github.com/projectdiscovery/utils/file"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,11 +110,15 @@ func TestCleanupOrphanedTemplates(t *testing.T) {
 		// Create temporary directories
 		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgdir)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
 
 		config.DefaultConfig.SetConfigDir(cfgdir)
 		config.DefaultConfig.SetTemplatesDir(tmpDir)
@@ -171,11 +175,15 @@ info:
 		// Create temporary directories
 		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-custom-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgdir)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
 
 		config.DefaultConfig.SetConfigDir(cfgdir)
 		config.DefaultConfig.SetTemplatesDir(tmpDir)
@@ -208,11 +216,15 @@ info:
 		// Create temporary directories
 		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-nontemplate-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgdir)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
 
 		config.DefaultConfig.SetConfigDir(cfgdir)
 		config.DefaultConfig.SetTemplatesDir(tmpDir)
@@ -243,11 +255,15 @@ info:
 		// Create temporary directories
 		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-empty-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgdir)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
 
 		config.DefaultConfig.SetConfigDir(cfgdir)
 		config.DefaultConfig.SetTemplatesDir(tmpDir)
@@ -276,11 +292,15 @@ info:
 		// Create temporary directories
 		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-path-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgdir)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
 
 		config.DefaultConfig.SetConfigDir(cfgdir)
 		config.DefaultConfig.SetTemplatesDir(tmpDir)
@@ -310,11 +330,15 @@ info:
 		// Create temporary directories
 		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-empty-dir-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
 
 		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(cfgdir)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
 
 		config.DefaultConfig.SetConfigDir(cfgdir)
 		config.DefaultConfig.SetTemplatesDir(tmpDir)
