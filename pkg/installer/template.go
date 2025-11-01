@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	updateutils "github.com/projectdiscovery/utils/update"
 )
@@ -134,7 +135,8 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 	}
 
 	// write templates to disk
-	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
+	_, err = t.writeTemplatesToDisk(ghrd, dir)
+	if err != nil {
 		return errkit.Wrapf(err, "failed to write templates to disk at %s", dir)
 	}
 	gologger.Info().Msgf("Successfully installed nuclei-templates at %s", dir)
@@ -169,8 +171,15 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	}
 
 	// write templates to disk
-	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
+	writtenPaths, err := t.writeTemplatesToDisk(ghrd, dir)
+	if err != nil {
 		return err
+	}
+
+	// cleanup orphaned templates that exist locally but weren't in the new release
+	if err := t.cleanupOrphanedTemplates(dir, writtenPaths); err != nil {
+		// log warning but don't fail the update
+		gologger.Warning().Msgf("failed to cleanup orphaned templates: %s", err)
 	}
 
 	// get checksums from new templates
@@ -279,8 +288,9 @@ func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.File
 	return newPath
 }
 
-// writeChecksumFileInDir is actual method responsible for writing all templates to directory
-func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownloader, dir string) error {
+// writeTemplatesToDisk writes all templates to disk and returns a map of written file paths
+// The returned map contains absolute paths of all template files that were successfully written
+func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownloader, dir string) (*mapsutil.SyncLockMap[string, struct{}], error) {
 	localTemplatesIndex, err := config.GetNucleiTemplatesIndex()
 	if err != nil {
 		gologger.Warning().Msgf("failed to get local nuclei-templates index: %s", err)
@@ -288,6 +298,9 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 			localTemplatesIndex = map[string]string{} // no-op
 		}
 	}
+
+	// Track all paths that are successfully written during this update
+	writtenPaths := mapsutil.NewSyncLockMap[string, struct{}]()
 
 	callbackFunc := func(uri string, f fs.FileInfo, r io.Reader) error {
 		writePath := t.getAbsoluteFilePath(dir, uri, f)
@@ -312,6 +325,8 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 					if err := os.WriteFile(writePath, bin, f.Mode()); err != nil {
 						return errkit.Wrapf(err, "failed to write file %s", uri)
 					}
+					// Track the new path as written
+					_ = writtenPaths.Set(writePath, struct{}{})
 					// after successful write, remove old template
 					if err := os.Remove(oldPath); err != nil {
 						gologger.Warning().Msgf("failed to remove old template %s: %s", oldPath, err)
@@ -321,24 +336,29 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 			}
 		}
 		// no change in template Path of official templates
-		return os.WriteFile(writePath, bin, f.Mode())
+		if err := os.WriteFile(writePath, bin, f.Mode()); err != nil {
+			return errkit.Wrapf(err, "failed to write file %s", uri)
+		}
+		// Track successfully written paths
+		_ = writtenPaths.Set(writePath, struct{}{})
+		return nil
 	}
 	err = ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
 	if err != nil {
-		return errkit.Wrap(err, "failed to download templates")
+		return nil, errkit.Wrap(err, "failed to download templates")
 	}
 
 	if err := config.DefaultConfig.WriteTemplatesConfig(); err != nil {
-		return errkit.Wrap(err, "failed to write templates config")
+		return nil, errkit.Wrap(err, "failed to write templates config")
 	}
 	// update ignore hash after writing new templates
 	if err := config.DefaultConfig.UpdateNucleiIgnoreHash(); err != nil {
-		return errkit.Wrap(err, "failed to update nuclei ignore hash")
+		return nil, errkit.Wrap(err, "failed to update nuclei ignore hash")
 	}
 
 	// update templates version in config file
 	if err := config.DefaultConfig.SetTemplatesVersion(ghrd.Latest.GetTagName()); err != nil {
-		return errkit.Wrap(err, "failed to update templates version")
+		return nil, errkit.Wrap(err, "failed to update templates version")
 	}
 
 	PurgeEmptyDirectories(dir)
@@ -348,11 +368,11 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 
 	index, err := config.GetNucleiTemplatesIndex()
 	if err != nil {
-		return errkit.Wrap(err, "failed to get nuclei templates index")
+		return nil, errkit.Wrap(err, "failed to get nuclei templates index")
 	}
 
 	if err = config.DefaultConfig.WriteTemplatesIndex(index); err != nil {
-		return errkit.Wrap(err, "failed to write nuclei templates index")
+		return nil, errkit.Wrap(err, "failed to write nuclei templates index")
 	}
 
 	if !HideReleaseNotes {
@@ -371,7 +391,107 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 	}
 
 	// after installation, create and write checksums to .checksum file
-	return t.writeChecksumFileInDir(dir)
+	if err := t.writeChecksumFileInDir(dir); err != nil {
+		return nil, err
+	}
+
+	return writtenPaths, nil
+}
+
+// cleanupOrphanedTemplates removes template files that exist locally but were not part of the new release
+// It scans the templates directory for template files and deletes those that are not in the writtenPaths set
+// This function handles empty directories gracefully - if the directory is empty, no orphaned files will be found
+func (t *TemplateManager) cleanupOrphanedTemplates(dir string, writtenPaths *mapsutil.SyncLockMap[string, struct{}]) error {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return errkit.Wrapf(err, "failed to get absolute path of templates directory")
+	}
+
+	// If directory doesn't exist, there's nothing to clean up
+	if !fileutil.FolderExists(absDir) {
+		return nil
+	}
+
+	// Normalize all written paths to absolute paths for comparison
+	normalizedWrittenPaths := mapsutil.NewSyncLockMap[string, struct{}]()
+	for path := range writtenPaths.GetAll() {
+		absPath, err := filepath.Abs(path)
+		if err == nil {
+			_ = normalizedWrittenPaths.Set(absPath, struct{}{})
+		}
+	}
+
+	// Get custom template directories to exclude
+	customDirs := config.DefaultConfig.GetAllCustomTemplateDirs()
+	customDirAbs := make([]string, 0, len(customDirs))
+	for _, customDir := range customDirs {
+		if absCustomDir, err := filepath.Abs(customDir); err == nil {
+			customDirAbs = append(customDirAbs, absCustomDir)
+		}
+	}
+
+	var orphanedFiles []string
+
+	// Walk the templates directory to find all template files
+	err = filepath.WalkDir(absDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// Log but continue walking
+			gologger.Debug().Msgf("error accessing path %s during orphan cleanup: %s", path, err)
+			return nil
+		}
+
+		// Skip directories
+		if d.IsDir() {
+			return nil
+		}
+
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return nil
+		}
+
+		// Skip custom template directories
+		for _, customDir := range customDirAbs {
+			if strings.HasPrefix(absPath, customDir) {
+				return nil
+			}
+		}
+
+		// Only process template files
+		if !config.IsTemplate(absPath) {
+			return nil
+		}
+
+		// Skip if this file was written in the new release
+		if normalizedWrittenPaths.Has(absPath) {
+			return nil
+		}
+
+		// This is an orphaned template file
+		orphanedFiles = append(orphanedFiles, absPath)
+		return nil
+	})
+
+	if err != nil {
+		return errkit.Wrapf(err, "failed to walk templates directory for orphan cleanup")
+	}
+
+	// Delete orphaned files
+	for _, orphanPath := range orphanedFiles {
+		if err := os.Remove(orphanPath); err != nil {
+			if !os.IsNotExist(err) {
+				gologger.Warning().Msgf("failed to remove orphaned template %s: %s", orphanPath, err)
+			}
+		} else {
+			gologger.Debug().Msgf("removed orphaned template: %s", orphanPath)
+		}
+	}
+
+	if len(orphanedFiles) > 0 {
+		gologger.Info().Msgf("cleaned up %d orphaned template file(s)", len(orphanedFiles))
+	}
+
+	return nil
 }
 
 // getChecksumFromDir returns a map containing checksums (md5 hash) of all yaml files (with .yaml extension)
