@@ -927,11 +927,22 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	duration := time.Since(timeStart)
 
+	// Check if target is verbose and mark it if needed (before creating ResponseChain)
+	if resp != nil {
+		CheckAndMarkVerbose(resp, formedURL)
+	}
+
 	// define max body read limit
-	maxBodylimit := MaxBodyRead // 10MB
+	maxBodylimit := MaxBodyRead // 10MB default
+	// Apply 4KB limit for verbose targets to prevent memory exhaustion
+	if IsVerboseTarget(formedURL) {
+		maxBodylimit = VerboseTargetThreshold // 4KB for verbose targets
+	}
+	// Template-specific MaxSize override takes precedence
 	if request.MaxSize > 0 {
 		maxBodylimit = request.MaxSize
 	}
+	// User-configured ResponseReadSize override takes highest precedence
 	if request.options.Options.ResponseReadSize != 0 {
 		maxBodylimit = request.options.Options.ResponseReadSize
 	}
@@ -958,6 +969,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// fill buffers, read response body and reuse connection
 		if err := respChain.Fill(); err != nil {
 			return errors.Wrap(err, "could not generate response chain")
+		}
+
+		// Check actual body size and mark target as verbose if Content-Length was missing
+		// This handles cases where Content-Length header was absent but body is large
+		if !IsVerboseTarget(formedURL) {
+			bodySize := respChain.Body().Len()
+			if bodySize > VerboseTargetThreshold {
+				MarkVerboseTarget(formedURL)
+				// Note: This marking is for future requests to this target
+				// Current request already has maxBodylimit set, but this will help subsequent templates
+			}
 		}
 
 		// log request stats
@@ -1002,7 +1024,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponse().String(), respChain.Body().String(), respChain.Headers().String(), duration, generatedRequest.meta)
+		// Pass hashes when cached to save memory in DSL map
+		var bodyVal, fullRespVal interface{}
+		if respChain.IsCached() {
+			// Store hash marker - we'll resolve it at runtime during DSL evaluation
+			bodyHash := respChain.BodyHash()
+			fullHash := respChain.FullHash()
+			bodyVal = "hash:" + bodyHash
+			fullRespVal = "hash:" + fullHash
+		} else {
+			// Not cached, use actual values
+			bodyVal = respChain.Body().String()
+			fullRespVal = respChain.FullResponse().String()
+		}
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullRespVal, bodyVal, respChain.Headers().String(), duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -29,6 +30,8 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
+	mapsutil "github.com/projectdiscovery/utils/maps"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 // Request contains a http request to be made from a template
@@ -534,7 +537,47 @@ func (request *Request) Requests() int {
 
 const (
 	SetThreadToCountZero = "set-thread-count-to-zero"
+	// VerboseTargetThreshold is the threshold for marking a target as verbose
+	// Targets with Content-Length or actual response size > this threshold will be marked as verbose
+	VerboseTargetThreshold = 4 * unitutils.Kilo // 4KB
 )
+
+var (
+	// verboseTargetRegistry stores targets that have been identified as verbose
+	// This allows us to apply lower response size limits to verbose targets
+	verboseTargetRegistry = mapsutil.NewSyncLockMap[string, bool]()
+)
+
+// MarkVerboseTarget marks a target URL as verbose
+func MarkVerboseTarget(url string) {
+	_ = verboseTargetRegistry.Set(url, true)
+}
+
+// IsVerboseTarget checks if a target URL is marked as verbose
+func IsVerboseTarget(url string) bool {
+	value, ok := verboseTargetRegistry.Get(url)
+	if !ok {
+		return false
+	}
+	return value
+}
+
+// CheckAndMarkVerbose checks the response headers/content-length and marks the target as verbose if needed
+// This should be called when a response is received to detect verbose targets early
+func CheckAndMarkVerbose(resp *http.Response, url string) {
+	if resp == nil {
+		return
+	}
+
+	// Check Content-Length header first (most reliable if present)
+	if cl := resp.ContentLength; cl > 0 && cl > VerboseTargetThreshold {
+		MarkVerboseTarget(url)
+		return
+	}
+
+	// If Content-Length is missing or 0, we'll check actual body size
+	// after first read (handled in request.go)
+}
 
 func init() {
 	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")

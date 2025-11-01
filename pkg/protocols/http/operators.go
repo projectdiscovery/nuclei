@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	httpUtils "github.com/projectdiscovery/utils/http"
 )
 
 // Match matches a generic data response again a given matcher
@@ -31,7 +32,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		if !ok {
 			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(data["response"].(string), statusCode)}
+		responseStr := resolveHash(data["response"])
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(responseStr, statusCode)}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
@@ -81,6 +83,24 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	return nil
 }
 
+// resolveHash resolves a hash value from cache if it's a hash marker
+func resolveHash(value interface{}) string {
+	valStr := types.ToString(value)
+	if strings.HasPrefix(valStr, "hash:") {
+		hash := valStr[5:] // Remove "hash:" prefix
+		// Try to resolve from cache
+		if cached, ok := httpUtils.GetCachedFullResponse(hash); ok {
+			return string(cached)
+		}
+		if cached, ok := httpUtils.GetCachedBody(hash); ok {
+			return string(cached)
+		}
+		// Hash not found in cache, return original value
+		return valStr
+	}
+	return valStr
+}
+
 // getMatchPart returns the match part honoring "all" matchers + others.
 func (request *Request) getMatchPart(part string, data output.InternalEvent) (string, bool) {
 	if part == "" {
@@ -93,21 +113,24 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 
 	if part == "all" {
 		builder := &strings.Builder{}
-		builder.WriteString(types.ToString(data["body"]))
-		builder.WriteString(types.ToString(data["all_headers"]))
+		bodyVal := data["body"]
+		headersVal := data["all_headers"]
+		builder.WriteString(resolveHash(bodyVal))
+		builder.WriteString(resolveHash(headersVal))
 		itemStr = builder.String()
 	} else {
 		item, ok := data[part]
 		if !ok {
 			return "", false
 		}
-		itemStr = types.ToString(item)
+		itemStr = resolveHash(item)
 	}
 	return itemStr, true
 }
 
 // responseToDSLMap converts an HTTP response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) output.InternalEvent {
+// body and rawResp can be strings or hash markers (string starting with "hash:")
+func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq string, rawResp interface{}, body interface{}, headers string, duration time.Duration, extra map[string]interface{}) output.InternalEvent {
 	data := make(output.InternalEvent, 12+len(extra)+len(resp.Header)+len(resp.Cookies()))
 	maps.Copy(data, extra)
 	for _, cookie := range resp.Cookies() {
@@ -120,10 +143,12 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["host"] = host
 	data["type"] = request.Type().String()
 	data["matched"] = matched
-	request.setHashOrDefault(data, "request", rawReq)
-	request.setHashOrDefault(data, "response", rawResp)
+	request.setHashOrDefault(data, "request", types.ToString(rawReq))
+	// Store rawResp (can be hash marker or actual string)
+	data["response"] = rawResp
 	data["status_code"] = resp.StatusCode
-	request.setHashOrDefault(data, "body", body)
+	// Store body (can be hash marker or actual string)
+	data["body"] = body
 	request.setHashOrDefault(data, "all_headers", headers)
 	request.setHashOrDefault(data, "header", headers)
 	data["duration"] = duration.Seconds()
@@ -131,7 +156,9 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["template-info"] = request.options.TemplateInfo
 	data["template-path"] = request.options.TemplatePath
 
-	data["content_length"] = utils.CalculateContentLength(resp.ContentLength, int64(len(body)))
+	// Calculate content length - resolve hash if needed
+	bodyStr := resolveHash(body)
+	data["content_length"] = utils.CalculateContentLength(resp.ContentLength, int64(len(bodyStr)))
 
 	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
 		data["stop-at-first-match"] = true
@@ -198,7 +225,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
+		Response:         request.truncateResponse(resolveHash(wrapped.InternalEvent["response"])),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
