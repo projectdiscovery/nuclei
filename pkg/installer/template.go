@@ -180,6 +180,15 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	if err := t.cleanupOrphanedTemplates(dir, writtenPaths); err != nil {
 		// log warning but don't fail the update
 		gologger.Warning().Msgf("failed to cleanup orphaned templates: %s", err)
+	} else {
+		// Regenerate metadata (index and checksum) after successful cleanup to ensure
+		// metadata accurately reflects the cleaned template tree. This prevents stale
+		// index entries and checksum entries for deleted templates.
+		if err := t.regenerateTemplateMetadata(dir); err != nil {
+			// Log warning but don't fail the update - metadata will be out of sync
+			// but templates are cleaned up correctly
+			gologger.Warning().Msgf("failed to regenerate template metadata after cleanup: %s", err)
+		}
 	}
 
 	// get checksums from new templates
@@ -489,6 +498,39 @@ func (t *TemplateManager) cleanupOrphanedTemplates(dir string, writtenPaths *map
 
 	if len(orphanedFiles) > 0 {
 		gologger.Info().Msgf("cleaned up %d orphaned template file(s)", len(orphanedFiles))
+	}
+
+	return nil
+}
+
+// regenerateTemplateMetadata regenerates template index and checksum files after cleanup operations.
+// This ensures the metadata accurately reflects the current state of template files on disk.
+func (t *TemplateManager) regenerateTemplateMetadata(dir string) error {
+	// Purge empty directories that may have been left after cleanup
+	PurgeEmptyDirectories(dir)
+
+	// Ensure templates directory exists (it may have been purged if empty)
+	if !fileutil.FolderExists(dir) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return errkit.Wrapf(err, "failed to recreate templates directory %s after purge", dir)
+		}
+	}
+
+	// Remove old index file and regenerate it from current templates on disk
+	_ = os.Remove(config.DefaultConfig.GetTemplateIndexFilePath())
+
+	index, err := config.GetNucleiTemplatesIndex()
+	if err != nil {
+		return errkit.Wrap(err, "failed to regenerate nuclei templates index after cleanup")
+	}
+
+	if err = config.DefaultConfig.WriteTemplatesIndex(index); err != nil {
+		return errkit.Wrap(err, "failed to write nuclei templates index after cleanup")
+	}
+
+	// Regenerate checksum file to reflect current templates on disk
+	if err := t.writeChecksumFileInDir(dir); err != nil {
+		return errkit.Wrap(err, "failed to regenerate checksum file after cleanup")
 	}
 
 	return nil
