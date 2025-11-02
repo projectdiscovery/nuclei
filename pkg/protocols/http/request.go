@@ -55,6 +55,9 @@ const (
 	// max unique errors to store & combine
 	// when executing requests in parallel
 	maxErrorsWhenParallel = 3
+	// HashThreshold is the minimum response body size (in bytes) before using hash markers instead of actual values
+	// This prevents small responses from being stored as hashes, which breaks template matching
+	HashThreshold = 5 * unitutils.Mega // 5MB
 )
 
 var (
@@ -1025,15 +1028,19 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		// Pass hashes when cached to save memory in DSL map
+		// Only use hashes if response body is larger than threshold to avoid breaking templates
 		var bodyVal, fullRespVal interface{}
-		if respChain.IsCached() {
+		bodySize := int64(respChain.Body().Len())
+		useHash := respChain.IsCached() && bodySize > int64(HashThreshold)
+		if useHash {
 			// Store hash marker - we'll resolve it at runtime during DSL evaluation
+			// Only do this for large responses to avoid breaking template matching
 			bodyHash := respChain.BodyHash()
 			fullHash := respChain.FullHash()
 			bodyVal = "hash:" + bodyHash
 			fullRespVal = "hash:" + fullHash
 		} else {
-			// Not cached, use actual values
+			// Not cached or body is small, use actual values
 			bodyVal = respChain.Body().String()
 			fullRespVal = respChain.FullResponse().String()
 		}

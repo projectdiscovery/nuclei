@@ -43,6 +43,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
+		// Resolve hash markers before DSL evaluation to ensure expressions work on actual values
+		resolveHashInData(data)
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
@@ -78,6 +80,8 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.JSONExtractor:
 		return extractor.ExtractJSON(item)
 	case extractors.DSLExtractor:
+		// Resolve hash markers before DSL evaluation to ensure expressions work on actual values
+		resolveHashInData(data)
 		return extractor.ExtractDSL(data)
 	}
 	return nil
@@ -99,6 +103,21 @@ func resolveHash(value interface{}) string {
 		return valStr
 	}
 	return valStr
+}
+
+// resolveHashInData resolves all hash markers in the data map for DSL evaluation
+// This ensures that DSL expressions evaluate on actual values, not hash markers
+func resolveHashInData(data output.InternalEvent) {
+	// Keys that commonly contain hash markers based on responseToDSLMap
+	hashKeys := []string{"body", "response", "request", "all_headers", "header"}
+	for _, key := range hashKeys {
+		if val, ok := data[key]; ok {
+			if valStr, ok := val.(string); ok && strings.HasPrefix(valStr, "hash:") {
+				// Resolve the hash marker to actual value
+				data[key] = resolveHash(val)
+			}
+		}
+	}
 }
 
 // getMatchPart returns the match part honoring "all" matchers + others.
