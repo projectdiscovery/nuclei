@@ -137,7 +137,7 @@ type unsignedCode struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *unsignedCode) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-dut", "-t", filePath, "-u", "input", "-code")
 
 	// should error out
 	if err != nil {
@@ -152,7 +152,7 @@ type codePyNoSig struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codePyNoSig) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-dut", "-t", filePath, "-u", "input", "-code")
 
 	// should error out
 	if err != nil {
