@@ -12,12 +12,6 @@ import (
 // Workflow is a workflow to execute with chained requests, etc.
 type Workflow struct {
 	// description: |
-	//   Mode to execute workflow (default: "concurrent").
-	// values:
-	//   - empty|concurrent (default)
-	//   - sequential
-	Mode string `yaml:"mode,omitempty" json:"mode,omitempty" jsonschema:"title=mode to execute workflow,description=Mode to execute workflow,enum=concurrent,enum=sequential"`
-	// description: |
 	//   Workflows is a list of workflows to execute for a template.
 	Workflows []*WorkflowTemplate `yaml:"workflows,omitempty" json:"workflows,omitempty" jsonschema:"title=list of workflows to execute,description=List of workflows to execute for template"`
 
