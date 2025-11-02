@@ -2,9 +2,7 @@ package core
 
 import (
 	"context"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -175,47 +173,6 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
 	require.Equal(t, "", secondInput, "could not get correct second input")
-}
-
-// timedMockExecuter extends mockExecuter with timing capabilities for concurrency testing
-type timedMockExecuter struct {
-	result         bool
-	executeHook    func(input *contextargs.MetaInput)
-	outputs        []*output.InternalWrappedEvent
-	processingTime time.Duration
-	executionTimes []time.Time
-	timesMutex     *sync.Mutex
-}
-
-func (m *timedMockExecuter) Compile() error { return nil }
-func (m *timedMockExecuter) Requests() int  { return 1 }
-
-func (m *timedMockExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
-	// Track execution start time
-	if m.timesMutex != nil {
-		m.timesMutex.Lock()
-		m.executionTimes = append(m.executionTimes, time.Now())
-		m.timesMutex.Unlock()
-	}
-
-	if m.executeHook != nil {
-		m.executeHook(ctx.Input.MetaInput)
-	}
-
-	// Simulate processing time
-	if m.processingTime > 0 {
-		time.Sleep(m.processingTime)
-	}
-
-	return m.result, nil
-}
-
-func (m *timedMockExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
-	_, err := m.Execute(ctx)
-	for _, output := range m.outputs {
-		ctx.LogEvent(output)
-	}
-	return ctx.GenerateResult(), err
 }
 
 type mockExecuter struct {
