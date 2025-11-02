@@ -41,6 +41,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	}
 
 	swg.Wait()
+
 	return results.Load()
 }
 
