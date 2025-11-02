@@ -27,18 +27,10 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 	// we can know the nesting level only at runtime, so the best we can do here is increase template threads by one unit in case it's equal to 1 to allow
 	// at least one subtemplate to go through, which it's idempotent to one in-flight template as the parent one is in an idle state
-
 	templateThreads := w.Options.Options.TemplateThreads
 	if templateThreads == 1 {
 		templateThreads++
 	}
-
-	runWorkflowStep := func(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, w *workflows.Workflow) {
-		if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
-			gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
-		}
-	}
-
 	swg, _ := syncutil.New(syncutil.WithSize(templateThreads))
 
 	for _, template := range w.Workflows {
@@ -49,7 +41,6 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	}
 
 	swg.Wait()
-
 	return results.Load()
 }
 
