@@ -415,6 +415,8 @@ func (t *TemplateManager) cleanupOrphanedTemplates(dir string, writtenPaths *map
 	if err != nil {
 		return errkit.Wrapf(err, "failed to get absolute path of templates directory")
 	}
+	// Use Clean to normalize the path consistently (handles Windows paths better)
+	absDir = filepath.Clean(absDir)
 
 	// If directory doesn't exist, there's nothing to clean up
 	if !fileutil.FolderExists(absDir) {
@@ -426,6 +428,8 @@ func (t *TemplateManager) cleanupOrphanedTemplates(dir string, writtenPaths *map
 	for path := range writtenPaths.GetAll() {
 		absPath, err := filepath.Abs(path)
 		if err == nil {
+			// Use Clean to normalize the path consistently (handles Windows paths better)
+			absPath = filepath.Clean(absPath)
 			_ = normalizedWrittenPaths.Set(absPath, struct{}{})
 		}
 	}
@@ -435,6 +439,8 @@ func (t *TemplateManager) cleanupOrphanedTemplates(dir string, writtenPaths *map
 	customDirAbs := make([]string, 0, len(customDirs))
 	for _, customDir := range customDirs {
 		if absCustomDir, err := filepath.Abs(customDir); err == nil {
+			// Use Clean to normalize the path consistently (handles Windows paths better)
+			absCustomDir = filepath.Clean(absCustomDir)
 			customDirAbs = append(customDirAbs, absCustomDir)
 		}
 	}
@@ -458,6 +464,8 @@ func (t *TemplateManager) cleanupOrphanedTemplates(dir string, writtenPaths *map
 		if err != nil {
 			return nil
 		}
+		// Use Clean to normalize the path consistently (handles Windows paths better)
+		absPath = filepath.Clean(absPath)
 
 		// Skip custom template directories
 		for _, customDir := range customDirAbs {

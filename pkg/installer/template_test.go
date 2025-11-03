@@ -153,6 +153,10 @@ info:
 		absTemplate1, _ := filepath.Abs(template1)
 		absTemplate2, _ := filepath.Abs(template2)
 		absTemplate3, _ := filepath.Abs(template3)
+		// Normalize paths consistently (same as cleanupOrphanedTemplates does)
+		absTemplate1 = filepath.Clean(absTemplate1)
+		absTemplate2 = filepath.Clean(absTemplate2)
+		absTemplate3 = filepath.Clean(absTemplate3)
 		_ = writtenPaths.Set(absTemplate1, struct{}{})
 		_ = writtenPaths.Set(absTemplate2, struct{}{})
 		_ = writtenPaths.Set(absTemplate3, struct{}{})
@@ -495,11 +499,14 @@ info:
 		// Simulate cleanup: remove orphaned template
 		writtenPaths := mapsutil.NewSyncLockMap[string, struct{}]()
 		absTemplate1, _ := filepath.Abs(template1)
+		// Normalize path consistently (same as cleanupOrphanedTemplates does)
+		absTemplate1 = filepath.Clean(absTemplate1)
 		_ = writtenPaths.Set(absTemplate1, struct{}{})
 
 		err = tm.cleanupOrphanedTemplates(tmpDir, writtenPaths)
 		require.NoError(t, err)
 		require.NoFileExists(t, orphanedTemplate, "orphaned template should be deleted")
+		require.NoFileExists(t, template2, "template2 should be deleted since it's not in writtenPaths")
 
 		// Regenerate metadata after cleanup
 		err = tm.regenerateTemplateMetadata(tmpDir)
@@ -554,6 +561,8 @@ info:
 		// Simulate cleanup: remove orphaned template
 		writtenPaths := mapsutil.NewSyncLockMap[string, struct{}]()
 		absKept, _ := filepath.Abs(keptTemplate)
+		// Normalize path consistently (same as cleanupOrphanedTemplates does)
+		absKept = filepath.Clean(absKept)
 		_ = writtenPaths.Set(absKept, struct{}{})
 
 		err = tm.cleanupOrphanedTemplates(tmpDir, writtenPaths)
@@ -627,6 +636,9 @@ info:
 		writtenPaths := mapsutil.NewSyncLockMap[string, struct{}]()
 		absTemplate1, _ := filepath.Abs(template1)
 		absTemplate2, _ := filepath.Abs(template2)
+		// Normalize paths consistently (same as cleanupOrphanedTemplates does)
+		absTemplate1 = filepath.Clean(absTemplate1)
+		absTemplate2 = filepath.Clean(absTemplate2)
 		_ = writtenPaths.Set(absTemplate1, struct{}{})
 		_ = writtenPaths.Set(absTemplate2, struct{}{})
 
