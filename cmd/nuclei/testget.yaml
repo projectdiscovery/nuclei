@@ -1,0 +1,22 @@
+id: http_httpGetGet
+
+info:
+  name: http_httpGetGet
+  author: jason3e7
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "ok"
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "ok"
