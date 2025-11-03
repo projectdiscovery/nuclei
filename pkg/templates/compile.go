@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -103,20 +102,9 @@ func updateRequestOptions(template *Template) {
 
 // parseFromSource parses a template from source with caching support
 func parseFromSource(filePath string, preprocessor Preprocessor, options *protocols.ExecutorOptions, parser *Parser) (*Template, error) {
-	var reader io.ReadCloser
-	if !options.DoNotCache {
-		_, raw, err := parser.parsedTemplatesCache.Has(filePath)
-		if err == nil && raw != nil {
-			reader = io.NopCloser(bytes.NewReader(raw))
-		}
-	}
-
-	var err error
-	if reader == nil {
-		reader, err = utils.ReaderFromPathOrURL(filePath, options.Catalog)
-		if err != nil {
-			return nil, err
-		}
+	reader, err := utils.ReaderFromPathOrURL(filePath, options.Catalog)
+	if err != nil {
+		return nil, err
 	}
 
 	defer func() {
@@ -158,7 +146,7 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 
 	template.Path = filePath
 	if !options.DoNotCache {
-		parser.compiledTemplatesCache.Store(filePath, template, nil, err)
+		parser.compiledTemplatesCache.StoreWithoutRaw(filePath, template, err)
 	}
 
 	return template, nil
