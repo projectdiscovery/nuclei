@@ -15,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	httpUtils "github.com/projectdiscovery/utils/http"
 )
 
 // Match matches a generic data response again a given matcher
@@ -32,7 +31,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		if !ok {
 			return false, []string{}
 		}
-		responseStr := resolveHash(data["response"])
+		responseStr := types.ToString(data["response"])
 		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(responseStr, statusCode)}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
@@ -43,8 +42,6 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		// Resolve hash markers before DSL evaluation to ensure expressions work on actual values
-		resolveHashInData(data)
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
@@ -80,44 +77,9 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.JSONExtractor:
 		return extractor.ExtractJSON(item)
 	case extractors.DSLExtractor:
-		// Resolve hash markers before DSL evaluation to ensure expressions work on actual values
-		resolveHashInData(data)
 		return extractor.ExtractDSL(data)
 	}
 	return nil
-}
-
-// resolveHash resolves a hash value from cache if it's a hash marker
-func resolveHash(value interface{}) string {
-	valStr := types.ToString(value)
-	if strings.HasPrefix(valStr, "hash:") {
-		hash := valStr[5:] // Remove "hash:" prefix
-		// Try to resolve from cache
-		if cached, ok := httpUtils.GetCachedFullResponse(hash); ok {
-			return string(cached)
-		}
-		if cached, ok := httpUtils.GetCachedBody(hash); ok {
-			return string(cached)
-		}
-		// Hash not found in cache, return original value
-		return valStr
-	}
-	return valStr
-}
-
-// resolveHashInData resolves all hash markers in the data map for DSL evaluation
-// This ensures that DSL expressions evaluate on actual values, not hash markers
-func resolveHashInData(data output.InternalEvent) {
-	// Keys that commonly contain hash markers based on responseToDSLMap
-	hashKeys := []string{"body", "response", "request", "all_headers", "header"}
-	for _, key := range hashKeys {
-		if val, ok := data[key]; ok {
-			if valStr, ok := val.(string); ok && strings.HasPrefix(valStr, "hash:") {
-				// Resolve the hash marker to actual value
-				data[key] = resolveHash(val)
-			}
-		}
-	}
 }
 
 // getMatchPart returns the match part honoring "all" matchers + others.
@@ -134,15 +96,15 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 		builder := &strings.Builder{}
 		bodyVal := data["body"]
 		headersVal := data["all_headers"]
-		builder.WriteString(resolveHash(bodyVal))
-		builder.WriteString(resolveHash(headersVal))
+		builder.WriteString(types.ToString(bodyVal))
+		builder.WriteString(types.ToString(headersVal))
 		itemStr = builder.String()
 	} else {
 		item, ok := data[part]
 		if !ok {
 			return "", false
 		}
-		itemStr = resolveHash(item)
+		itemStr = types.ToString(item)
 	}
 	return itemStr, true
 }
@@ -176,7 +138,7 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["template-path"] = request.options.TemplatePath
 
 	// Calculate content length - resolve hash if needed
-	bodyStr := resolveHash(body)
+	bodyStr := types.ToString(body)
 	data["content_length"] = utils.CalculateContentLength(resp.ContentLength, int64(len(bodyStr)))
 
 	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
@@ -244,7 +206,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(resolveHash(wrapped.InternalEvent["response"])),
+		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),

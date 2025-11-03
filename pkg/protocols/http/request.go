@@ -1030,20 +1030,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// Pass hashes when cached to save memory in DSL map
 		// Only use hashes if response body is larger than threshold to avoid breaking templates
 		var bodyVal, fullRespVal interface{}
-		bodySize := int64(respChain.Body().Len())
-		useHash := respChain.IsCached() && bodySize > int64(HashThreshold)
-		if useHash {
-			// Store hash marker - we'll resolve it at runtime during DSL evaluation
-			// Only do this for large responses to avoid breaking template matching
-			bodyHash := respChain.BodyHash()
-			fullHash := respChain.FullHash()
-			bodyVal = "hash:" + bodyHash
-			fullRespVal = "hash:" + fullHash
-		} else {
-			// Not cached or body is small, use actual values
-			bodyVal = respChain.Body().String()
-			fullRespVal = respChain.FullResponse().String()
-		}
+		bodyVal = respChain.Body().String()
+		fullRespVal = respChain.FullResponse().String()
 		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullRespVal, bodyVal, respChain.Headers().String(), duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
