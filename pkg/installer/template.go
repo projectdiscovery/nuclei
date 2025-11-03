@@ -525,14 +525,27 @@ func (t *TemplateManager) regenerateTemplateMetadata(dir string) error {
 	}
 
 	// Remove old index file and regenerate it from current templates on disk
-	_ = os.Remove(config.DefaultConfig.GetTemplateIndexFilePath())
+	indexFilePath := config.DefaultConfig.GetTemplateIndexFilePath()
+	if err := os.Remove(indexFilePath); err != nil && !os.IsNotExist(err) {
+		return errkit.Wrapf(err, "failed to remove old index file %s", indexFilePath)
+	}
 
+	// Force regeneration by ensuring the file doesn't exist (handles Windows file handle issues)
+	// GetNucleiTemplatesIndex will scan the directory if the file doesn't exist
 	index, err := config.GetNucleiTemplatesIndex()
 	if err != nil {
 		return errkit.Wrap(err, "failed to regenerate nuclei templates index after cleanup")
 	}
 
-	if err = config.DefaultConfig.WriteTemplatesIndex(index); err != nil {
+	// Filter out any entries that don't actually exist on disk (Windows file deletion timing issues)
+	filteredIndex := make(map[string]string)
+	for id, path := range index {
+		if fileutil.FileExists(path) {
+			filteredIndex[id] = path
+		}
+	}
+
+	if err = config.DefaultConfig.WriteTemplatesIndex(filteredIndex); err != nil {
 		return errkit.Wrap(err, "failed to write nuclei templates index after cleanup")
 	}
 
