@@ -825,6 +825,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 					connConfiguration := request.connConfiguration.Clone()
 					modifiedConfig = connConfiguration
 				}
+
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
