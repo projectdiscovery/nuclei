@@ -29,7 +29,9 @@ var (
 	reTimeoutAnnotation = regexp.MustCompile(`(?m)^@timeout:\s*(.+)\s*$`)
 	// @once sets the request to be executed only once for a specific URL
 	reOnceAnnotation = regexp.MustCompile(`(?m)^@once\s*$`)
-
+	// maxAnnotationTimeout is the maximum timeout allowed for @timeout
+	// annotations to prevent DoS attacks via extremely large timeout values.
+	maxAnnotationTimeout = 5 * time.Minute
 	// ErrTimeoutAnnotationDeadline is the error returned when a specific amount of time was exceeded for a request
 	// which was allotted using @timeout annotation this usually means that vulnerability was not found
 	// in rare case it could also happen due to network congestion
@@ -129,16 +131,17 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 
 		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
-			if parsed, err := time.ParseDuration(value); err == nil {
-				// to avoid dos via timeout request annotation in http template we set it to maximum of 2 minutes
-				if parsed > 2*time.Minute {
-					parsed = 2 * time.Minute
+			if parsedTimeout, err := time.ParseDuration(value); err == nil {
+				// Cap at maximum allowed timeout to prevent DoS via extremely large timeout values
+				if parsedTimeout > maxAnnotationTimeout {
+					parsedTimeout = maxAnnotationTimeout
 				}
+
 				//nolint:govet // cancelled automatically by withTimeout
 				// global timeout is overridden by annotation by replacing context
-				ctx, overrides.cancelFunc = context.WithTimeoutCause(context.TODO(), parsed, ErrTimeoutAnnotationDeadline)
+				ctx, overrides.cancelFunc = context.WithTimeoutCause(context.TODO(), parsedTimeout, ErrTimeoutAnnotationDeadline)
 				// add timeout value to context
-				ctx = context.WithValue(ctx, httpclientpool.WithCustomTimeout{}, httpclientpool.WithCustomTimeout{Timeout: parsed})
+				ctx = context.WithValue(ctx, httpclientpool.WithCustomTimeout{}, httpclientpool.WithCustomTimeout{Timeout: parsedTimeout})
 				request = request.Clone(ctx)
 			}
 		} else {
