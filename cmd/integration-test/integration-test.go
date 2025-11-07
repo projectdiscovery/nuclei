@@ -46,6 +46,7 @@ var (
 		"library":         libraryTestcases,
 		"templatesPath":   templatesPathTestCases,
 		"templatesDir":    templatesDirTestCases,
+		"env_vars":        templatesDirEnvTestCases,
 		"file":            fileTestcases,
 		"offlineHttp":     offlineHttpTestcases,
 		"customConfigDir": customConfigDirTestCases,
