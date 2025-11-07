@@ -94,7 +94,7 @@ type NucleiEngine struct {
 	// Logger instance for the engine
 	Logger *gologger.Logger
 
-	// General purpose temporary directory
+	// Temporary directory for SDK-managed template files
 	tmpDir string
 }
 
