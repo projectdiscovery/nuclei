@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
@@ -92,6 +93,9 @@ type NucleiEngine struct {
 
 	// Logger instance for the engine
 	Logger *gologger.Logger
+
+	// General purpose temporary directory
+	tmpDir string
 }
 
 // LoadAllTemplates loads all nuclei template based on given options
@@ -230,6 +234,9 @@ func (e *NucleiEngine) closeInternal() {
 	}
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
+	}
+	if e.tmpDir != "" {
+		_ = os.RemoveAll(e.tmpDir)
 	}
 }
 
