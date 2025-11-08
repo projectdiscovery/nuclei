@@ -40,6 +40,7 @@ const (
 	BinaryName                   = "nuclei"
 	FallbackConfigFolderName     = ".nuclei-config"
 	NucleiConfigDirEnv           = "NUCLEI_CONFIG_DIR"
+	NucleiTemplatesDirEnv        = "NUCLEI_TEMPLATES_DIR"
 )
 
 // IsOutdatedVersion compares two versions and returns true
