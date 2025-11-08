@@ -620,8 +620,13 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 		}
 	}
-	if options.NewTemplatesDirectory != "" {
-		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+
+	templatesDir := options.NewTemplatesDirectory
+	if templatesDir == "" {
+		templatesDir = os.Getenv(config.NucleiTemplatesDirEnv)
+	}
+	if templatesDir != "" {
+		config.DefaultConfig.SetTemplatesDir(templatesDir)
 	}
 
 	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
