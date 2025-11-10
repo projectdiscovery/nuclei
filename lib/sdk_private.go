@@ -171,8 +171,12 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 	}
 
-	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
-		e.tmpDir = tmpDir
+	if e.tmpDir == "" {
+		if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err != nil {
+			return err
+		} else {
+			e.tmpDir = tmpDir
+		}
 	}
 
 	e.executerOpts = &protocols.ExecutorOptions{
