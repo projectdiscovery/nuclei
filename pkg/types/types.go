@@ -18,6 +18,7 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	unitutils "github.com/projectdiscovery/utils/unit"
+	"github.com/rs/xid"
 )
 
 const DefaultTemplateLoadingConcurrency = 50
@@ -793,6 +794,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		ExecutionId:                xid.New().String(),
 	}
 }
 
