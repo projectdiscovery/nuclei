@@ -3,6 +3,7 @@ package nuclei
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -566,7 +567,14 @@ func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
 // The parent directory will be created if it doesn't exist.
 func WithTemporaryDirectory(parentDir string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.tmpDir = parentDir
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return err
+		}
+		tmpDir, err := os.MkdirTemp(parentDir, "nuclei-tmp-*")
+		if err != nil {
+			return err
+		}
+		e.tmpDir = tmpDir
 		return nil
 	}
 }
