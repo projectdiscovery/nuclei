@@ -172,11 +172,11 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	if e.tmpDir == "" {
-		if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err != nil {
+		tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+		if err != nil {
 			return err
-		} else {
-			e.tmpDir = tmpDir
 		}
+		e.tmpDir = tmpDir
 	}
 
 	e.executerOpts = &protocols.ExecutorOptions{
