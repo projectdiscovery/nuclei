@@ -793,12 +793,18 @@ func (r *Runner) isInputNonHTTP() bool {
 func (r *Runner) executeSmartWorkflowInput(executorOpts *protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	r.progress.Init(r.inputProvider.Count(), 0, 0)
 
-	service, err := automaticscan.New(automaticscan.Options{
+	ctx := context.Background()
+	ctx, cancel, _ := types.ApplyMaxTimeContext(ctx, r.options, r.Logger)
+	if cancel != nil {
+		defer cancel()
+	}
+
+	service, err := automaticscan.NewWithContext(automaticscan.Options{
 		ExecuterOpts: executorOpts,
 		Store:        store,
 		Engine:       engine,
 		Target:       r.inputProvider,
-	})
+	}, ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
@@ -833,7 +839,14 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	if r.inputProvider == nil {
 		return nil, errors.New("no input provider found")
 	}
-	results := engine.ExecuteScanWithOpts(context.Background(), finalTemplates, r.inputProvider, r.options.DisableClustering)
+
+	ctx := context.Background()
+	ctx, cancel, _ := types.ApplyMaxTimeContext(ctx, r.options, r.Logger)
+	if cancel != nil {
+		defer cancel()
+	}
+
+	results := engine.ExecuteScanWithOpts(ctx, finalTemplates, r.inputProvider, r.options.DisableClustering)
 	return results, nil
 }
 

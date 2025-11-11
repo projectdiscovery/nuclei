@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -63,10 +64,25 @@ type Service struct {
 	techTemplates      []*templates.Template
 	ServiceOpts        Options
 	hasResults         *atomic.Bool
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 // New takes options and returns a new automatic scan service
+// If ctx is nil, context.Background() will be used
 func New(opts Options) (*Service, error) {
+	return NewWithContext(opts, nil)
+}
+
+// NewWithContext takes options and a context, and returns a new automatic scan service
+func NewWithContext(opts Options, ctx context.Context) (*Service, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	var cancel context.CancelFunc
+	if opts.ExecuterOpts != nil && opts.ExecuterOpts.Options != nil {
+		ctx, cancel, _ = types.ApplyMaxTimeContext(ctx, opts.ExecuterOpts.Options, opts.ExecuterOpts.Logger)
+	}
 	wappalyzer, err := wappalyzer.New()
 	if err != nil {
 		return nil, err
@@ -115,11 +131,16 @@ func New(opts Options) (*Service, error) {
 		techTemplates:      techDetectTemplates,
 		ServiceOpts:        opts,
 		hasResults:         &atomic.Bool{},
+		ctx:                ctx,
+		cancel:             cancel,
 	}, nil
 }
 
 // Close closes the service
 func (s *Service) Close() bool {
+	if s.cancel != nil {
+		s.cancel()
+	}
 	return s.hasResults.Load()
 }
 
@@ -132,6 +153,11 @@ func (s *Service) Execute() error {
 		return err
 	}
 	s.target.Iterate(func(value *contextargs.MetaInput) bool {
+		select {
+		case <-s.ctx.Done():
+			return false
+		default:
+		}
 		sg.Add()
 		go func(input *contextargs.MetaInput) {
 			defer sg.Done()
@@ -188,7 +214,7 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
 	eng.SetExecuterOptions(execOptions)
 
-	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
+	tmp := eng.ExecuteScanWithOpts(s.ctx, finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
 	s.hasResults.Store(tmp.Load())
 }
 

@@ -265,18 +265,23 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 		return ErrNoTemplatesAvailable
 	}
 
+	execCtx, cancel, _ := types.ApplyMaxTimeContext(ctx, e.opts, e.Logger)
+	if cancel != nil {
+		defer cancel()
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
+		_ = e.engine.ExecuteScanWithOpts(execCtx, templatesAndWorkflows, e.inputProvider, false)
 	}()
 
 	// wait for context to be cancelled
 	select {
-	case <-ctx.Done():
+	case <-execCtx.Done():
 		<-wait(&wg) // wait for scan to finish
-		return ctx.Err()
+		return execCtx.Err()
 	case <-wait(&wg):
 		// scan finished
 	}

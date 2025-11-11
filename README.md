@@ -299,6 +299,7 @@ OPTIMIZATIONS:
    -stream                          stream mode - start elaborating without sorting the input
    -ss, -scan-strategy value        strategy to use while scanning(auto/host-spray/template-spray) (default auto)
    -irt, -input-read-timeout value  timeout on input read (default 3m0s)
+   -mt, -max-time value             maximum time to run the entire execution before gracefully stopping (example: -mt 1h30m)
    -nh, -no-httpx                   disable httpx probing for non-url input
    -no-stdin                        disable stdin processing
 
