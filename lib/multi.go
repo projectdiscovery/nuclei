@@ -87,10 +87,12 @@ type ThreadSafeNucleiEngine struct {
 func NewThreadSafeNucleiEngineCtx(ctx context.Context, opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
 	defaultOptions := types.DefaultOptions()
 	defaultOptions.ExecutionId = xid.New().String()
-	// default options
+
 	e := &NucleiEngine{
-		opts: defaultOptions,
-		mode: threadSafe,
+		opts:   defaultOptions,
+		mode:   threadSafe,
+		ctx:    ctx,
+		Logger: defaultOptions.Logger,
 	}
 	for _, option := range opts {
 		if err := option(e); err != nil {

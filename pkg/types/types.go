@@ -793,6 +793,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		Logger:                     &gologger.Logger{},
 	}
 }
 
