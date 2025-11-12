@@ -13,6 +13,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
@@ -29,7 +30,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -97,11 +97,13 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 
 // init
 func (e *NucleiEngine) init(ctx context.Context) error {
-	// Update logger ref (if it was changed by [WithLogger])
-	// (Logger is already initialized)
-	if e.opts.Logger != e.Logger {
+	// Set a default logger if one isn't provided in the options
+	if e.opts.Logger != nil {
 		e.Logger = e.opts.Logger
+	} else {
+		e.opts.Logger = &gologger.Logger{}
 	}
+	e.Logger = e.opts.Logger
 
 	if e.opts.Verbose {
 		e.Logger.SetMaxLevel(levels.LevelVerbose)
@@ -163,17 +165,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 	if e.interactshClient, err = interactsh.New(e.interactshOpts); err != nil {
 		return err
-	}
-
-	if e.opts.Headless {
-		if engine.MustDisableSandbox() {
-			e.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
-		}
-		browser, err := engine.New(e.opts)
-		if err != nil {
-			return err
-		}
-		e.browserInstance = browser
 	}
 
 	if e.catalog == nil {

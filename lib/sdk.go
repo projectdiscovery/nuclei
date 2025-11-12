@@ -320,12 +320,10 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 	// default options
 	defaultOptions := types.DefaultOptions()
 	defaultOptions.ExecutionId = xid.New().String()
-
 	e := &NucleiEngine{
-		opts:   defaultOptions,
-		mode:   singleInstance,
-		ctx:    ctx,
-		Logger: defaultOptions.Logger,
+		opts: defaultOptions,
+		mode: singleInstance,
+		ctx:  ctx,
 	}
 	for _, option := range options {
 		if err := option(e); err != nil {
