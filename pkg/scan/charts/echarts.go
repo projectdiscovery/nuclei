@@ -172,16 +172,22 @@ func (s *ScanEventsCharts) topSlowTemplates(c echo.Context) *charts.Kline {
 		return data[i].end-data[i].start > data[j].end-data[j].start
 	})
 
+	// Ensure we don't try to access more elements than available
+	limit := TopK
+	if len(data) < TopK {
+		limit = len(data)
+	}
+
 	x := make([]string, 0)
 	y := make([]opts.KlineData, 0)
-	for _, event := range data[:TopK] {
+	for _, event := range data[:limit] {
 		x = append(x, event.ID)
 		y = append(y, event.KlineData)
 	}
 
 	kline.SetXAxis(x).AddSeries("templates", y)
 	kline.SetGlobalOptions(
-		charts.WithTitleOpts(opts.Title{Title: fmt.Sprintf("Nuclei: Top %v Slow Templates", TopK)}),
+		charts.WithTitleOpts(opts.Title{Title: fmt.Sprintf("Nuclei: Top %v Slow Templates", limit)}),
 		charts.WithXAxisOpts(opts.XAxis{
 			Type:      "category",
 			Show:      opts.Bool(true),
