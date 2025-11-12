@@ -1,9 +1,13 @@
 package main_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
+	"runtime/pprof"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,6 +50,31 @@ func TestMain(m *testing.M) {
 	_ = os.Unsetenv("DISABLE_STDOUT")
 
 	os.Exit(exitCode)
+}
+
+// getUniqFilename generates a unique filename by appending .N if file exists
+// Similar to wget's behavior: file.cpu.prof, file.cpu.1.prof, file.cpu.2.prof, etc.
+func getUniqFilename(basePath string) string {
+	if _, err := os.Stat(basePath); os.IsNotExist(err) {
+		return basePath
+	}
+
+	lastDot := strings.LastIndex(basePath, ".")
+	var name, ext string
+	if lastDot != -1 {
+		name = basePath[:lastDot]
+		ext = basePath[lastDot:]
+	} else {
+		name = basePath
+		ext = ""
+	}
+
+	for i := 1; ; i++ {
+		newPath := fmt.Sprintf("%s.%d%s", name, i, ext)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newPath
+		}
+	}
 }
 
 func getDefaultOptions() *types.Options {
@@ -106,12 +135,44 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 	}
 	defer nucleiRunner.Close()
 
+	benchNameSlug := strings.ReplaceAll(b.Name(), "/", "-")
+
+	// Start CPU profiling
+	cpuProfileBase := fmt.Sprintf("%s.cpu.prof", benchNameSlug)
+	cpuProfilePath := getUniqFilename(cpuProfileBase)
+	cpuProfile, err := os.Create(cpuProfilePath)
+	if err != nil {
+		b.Fatalf("failed to create CPU profile: %s", err)
+	}
+	defer cpuProfile.Close()
+
+	if err := pprof.StartCPUProfile(cpuProfile); err != nil {
+		b.Fatalf("failed to start CPU profile: %s", err)
+	}
+	defer pprof.StopCPUProfile()
+
 	b.ReportAllocs()
 
 	for b.Loop() {
 		if err := nucleiRunner.RunEnumeration(); err != nil {
 			b.Fatalf("%s failed: %s", b.Name(), err)
 		}
+	}
+
+	b.StopTimer()
+
+	// Write heap profile
+	heapProfileBase := fmt.Sprintf("%s.heap.prof", benchNameSlug)
+	heapProfilePath := getUniqFilename(heapProfileBase)
+	heapProfile, err := os.Create(heapProfilePath)
+	if err != nil {
+		b.Fatalf("failed to create heap profile: %s", err)
+	}
+	defer heapProfile.Close()
+
+	runtime.GC() // Force GC before heap profile
+	if err := pprof.WriteHeapProfile(heapProfile); err != nil {
+		b.Fatalf("failed to write heap profile: %s", err)
 	}
 }
 
