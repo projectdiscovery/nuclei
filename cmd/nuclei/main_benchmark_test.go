@@ -106,10 +106,9 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 	}
 	defer nucleiRunner.Close()
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := nucleiRunner.RunEnumeration(); err != nil {
 			b.Fatalf("%s failed: %s", b.Name(), err)
 		}
@@ -118,12 +117,12 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 
 func BenchmarkRunEnumeration(b *testing.B) {
 	// Default case: run enumeration with default options == all nuclei-templates
-	// b.Run("Default", func(b *testing.B) {
-	// 	options := getDefaultOptions()
-	// 	options.Targets = []string{targetURL}
+	b.Run("Default", func(b *testing.B) {
+		options := getDefaultOptions()
+		options.Targets = []string{targetURL}
 
-	// 	runEnumBenchmark(b, options)
-	// })
+		runEnumBenchmark(b, options)
+	})
 
 	// Case: https://github.com/projectdiscovery/nuclei/pull/6258
 	b.Run("Multiproto", func(b *testing.B) {
