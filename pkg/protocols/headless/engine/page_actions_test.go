@@ -649,7 +649,8 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	opts := &types.Options{AllowLocalFileAccess: lfa, RestrictLocalNetworkAccess: rna}
 
-	_ = protocolstate.Init(opts)
+	err := protocolstate.Init(opts)
+	require.Nil(t, err, "could not init protocol state")
 
 	browser, err := New(&types.Options{
 		ShowBrowser:        false,
