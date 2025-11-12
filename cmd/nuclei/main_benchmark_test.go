@@ -144,7 +144,7 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 	if err != nil {
 		b.Fatalf("failed to create CPU profile: %s", err)
 	}
-	defer cpuProfile.Close()
+	defer func() { _ = cpuProfile.Close() }()
 
 	if err := pprof.StartCPUProfile(cpuProfile); err != nil {
 		b.Fatalf("failed to start CPU profile: %s", err)
@@ -168,7 +168,7 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 	if err != nil {
 		b.Fatalf("failed to create heap profile: %s", err)
 	}
-	defer heapProfile.Close()
+	defer func() { _ = heapProfile.Close() }()
 
 	runtime.GC() // Force GC before heap profile
 	if err := pprof.WriteHeapProfile(heapProfile); err != nil {
