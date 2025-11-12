@@ -59,7 +59,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	err = request.getInputPaths(input.MetaInput.Input, func(filePath string) {
 		wg.Add()
-		func(filePath string) {
+		go func(filePath string) {
 			defer wg.Done()
 			fi, err := os.Open(filePath)
 			if err != nil {
