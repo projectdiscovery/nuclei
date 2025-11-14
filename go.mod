@@ -422,10 +422,3 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
-
-// Fix genproto version conflicts
-replace (
-	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20240814211410-ddb44dafa142
-	google.golang.org/genproto/googleapis/api => google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142
-	google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1
-)
