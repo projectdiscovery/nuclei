@@ -2,7 +2,6 @@
 package templates
 
 import (
-	"fmt"
 	"io"
 	"path/filepath"
 	"strconv"
@@ -326,14 +325,14 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	*template = Template(*alias)
 
 	if !ReTemplateID.MatchString(template.ID) {
-		return errkit.New(fmt.Sprintf("invalid template: template id must match expression %v", ReTemplateID)).Build()
+		return errkit.New("template id must match expression %v", ReTemplateID, "tag", "invalid_template")
 	}
 	info := template.Info
 	if utils.IsBlank(info.Name) {
-		return errkit.New("invalid template: no template name field provided").Build()
+		return errkit.New("no template name field provided", "tag", "invalid_template")
 	}
 	if info.Authors.IsEmpty() {
-		return errkit.New("invalid template: no template author field provided").Build()
+		return errkit.New("no template author field provided", "tag", "invalid_template")
 	}
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
@@ -341,10 +340,10 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 
 	if len(alias.RequestsHTTP) > 0 && len(alias.RequestsWithHTTP) > 0 {
-		return errkit.New("invalid template: use http or requests, both are not supported").Build()
+		return errkit.New("use http or requests, both are not supported", "tag", "invalid_template")
 	}
 	if len(alias.RequestsNetwork) > 0 && len(alias.RequestsWithTCP) > 0 {
-		return errkit.New("invalid template: use tcp or network, both are not supported").Build()
+		return errkit.New("use tcp or network, both are not supported", "tag", "invalid_template")
 	}
 	if len(alias.RequestsWithHTTP) > 0 {
 		template.RequestsHTTP = alias.RequestsWithHTTP
@@ -362,7 +361,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 		var tempmap yaml.MapSlice
 		err = unmarshal(&tempmap)
 		if err != nil {
-			return errkit.Append(errkit.New(fmt.Sprintf("failed to unmarshal multi protocol template %s", template.ID)), err)
+			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
 		arr := []string{}
 		for _, v := range tempmap {
@@ -405,7 +404,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	// for code protocol requests
 	for _, request := range template.RequestsCode {
 		// simple test to check if source is a file or a snippet
-		if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+		if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 			if val, ok := loadFile(request.Source); ok {
 				template.ImportedFiles = append(template.ImportedFiles, request.Source)
 				request.Source = val
@@ -416,7 +415,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	// for javascript protocol code references
 	for _, request := range template.RequestsJavascript {
 		// simple test to check if source is a file or a snippet
-		if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+		if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 			if val, ok := loadFile(request.Code); ok {
 				template.ImportedFiles = append(template.ImportedFiles, request.Code)
 				request.Code = val
@@ -443,7 +442,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 			if req.Type() == types.CodeProtocol {
 				request := req.(*code.Request)
 				// simple test to check if source is a file or a snippet
-				if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+				if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 					if val, ok := loadFile(request.Source); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Source)
 						request.Source = val
@@ -457,7 +456,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 			if req.Type() == types.JavascriptProtocol {
 				request := req.(*javascript.Request)
 				// simple test to check if source is a file or a snippet
-				if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+				if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 					if val, ok := loadFile(request.Code); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Code)
 						request.Code = val
@@ -546,7 +545,7 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 		var tempMap map[string]interface{}
 		err = json.Unmarshal(data, &tempMap)
 		if err != nil {
-			return errkit.Append(errkit.New(fmt.Sprintf("failed to unmarshal multi protocol template %s", template.ID)), err)
+			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
 		arr := []string{}
 		for k := range tempMap {

@@ -173,6 +173,12 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if value, ok := wrapped.InternalEvent["analyzer_details"]; ok {
 		analyzerDetails = value.(string)
 	}
+	var reqURLPattern string
+	if request.options.ExportReqURLPattern {
+		if value, ok := wrapped.InternalEvent[ReqURLPatternKey]; ok {
+			reqURLPattern = types.ToString(value)
+		}
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
@@ -197,6 +203,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 		AnalyzerDetails:  analyzerDetails,
+		ReqURLPattern:    reqURLPattern,
 	}
 	return data
 }

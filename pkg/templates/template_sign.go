@@ -28,7 +28,7 @@ var (
 		_ = protocolstate.Init(defaultOpts)
 		_ = protocolinit.Init(defaultOpts)
 	})
-	ErrNotATemplate = errkit.New("signer: given filePath is not a template").Build()
+	ErrNotATemplate = errkit.New("given filePath is not a template", "tag", "signer")
 )
 
 // UseOptionsForSigner sets the options to use for signing templates
@@ -40,7 +40,7 @@ func UseOptionsForSigner(opts *types.Options) {
 // New Signer/Verification logic requires it to load content of file references
 // and this is done respecting sandbox restrictions to avoid any security issues
 // AllowLocalFileAccess is a function that allows local file access by disabling sandbox restrictions
-// and **MUST** be called before signing / verifying any templates for intialization
+// and **MUST** be called before signing / verifying any templates for initialization
 func TemplateSignerLFA() {
 	defaultOpts.AllowLocalFileAccess = true
 }
@@ -68,7 +68,7 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 
 	template, bin, err := getTemplate(templatePath)
 	if err != nil {
-		return errkit.Append(errkit.New("failed to get template from disk"), err)
+		return errkit.Wrap(err, "failed to get template from disk")
 	}
 	if len(template.Workflows) > 0 {
 		// signing workflows is not supported at least yet
@@ -100,7 +100,7 @@ func getTemplate(templatePath string) (*Template, []byte, error) {
 	}
 	template, err := ParseTemplateFromReader(bytes.NewReader(bin), nil, executerOpts)
 	if err != nil {
-		return nil, bin, errkit.Append(errkit.New("failed to parse template"), err)
+		return nil, bin, errkit.Wrap(err, "failed to parse template")
 	}
 	return template, bin, nil
 }

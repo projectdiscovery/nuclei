@@ -9,7 +9,7 @@ The Very First before making any type of contribution to javascript runtime in n
 
 ## Documentation/Typo Contribution
 
-Most of Javascript API Reference documentation is auto-generated with help of code-generation and [jsdocgen](./devtools/jsdocgen/README.md) and hence any type of documentation contribution are always welcome and can be done by editing [javscript jsdoc](./generated/js/) files
+Most of Javascript API Reference documentation is auto-generated with help of code-generation and [jsdocgen](./devtools/jsdocgen/README.md) and hence any type of documentation contribution are always welcome and can be done by editing [javascript jsdoc](./generated/js/) files
 
 
 ## Improving Existing Libraries(aka node_modules)
@@ -33,7 +33,7 @@ Libraries/node_modules represent adding new protocol or something similar and sh
 
 ## Adding Helper Objects/Types/Functions
 
-Helper objects/types/functions can simply be understood as javascript utils to simplify writing javscript and reduce code duplication in javascript templates. Helper functions/objects are divided into two categories
+Helper objects/types/functions can simply be understood as javascript utils to simplify writing javascript and reduce code duplication in javascript templates. Helper functions/objects are divided into two categories
 
 ### javascript based helpers
 
@@ -47,7 +47,7 @@ go based helpers are written in go and can import any go library if required. Mi
 
 ### Updating / Publishing Docs
 
-Javscript Protocol Documentation is auto-generated using [jsdoc] and is hosted at [js-proto-docs](https://projectdiscovery.github.io/js-proto-docs/). To update documentation, please follow steps mentioned at [projectdiscovery/js-proto-docs](https://github.com/projectdiscovery/js-proto-docs)
+Javascript Protocol Documentation is auto-generated using [jsdoc] and is hosted at [js-proto-docs](https://projectdiscovery.github.io/js-proto-docs/). To update documentation, please follow steps mentioned at [projectdiscovery/js-proto-docs](https://github.com/projectdiscovery/js-proto-docs)
 
 
 ### Go Code Guidelines
@@ -60,7 +60,7 @@ Javscript Protocol Documentation is auto-generated using [jsdoc] and is hosted a
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 ```
-3. Keep exported package clean. Do not keep unncessary global exports which the consumer of the API doesn't need to know about. Keep only user-exposed API public.
+3. Keep exported package clean. Do not keep unnecessary global exports which the consumer of the API doesn't need to know about. Keep only user-exposed API public.
 4. Use timeouts and context cancellation when calling Network related stuff. Also make sure to close your connections or provide a mechanism to the user of the API to do so.
 5. Always try to return single types from inside javascript with an error like `(IsRDP, error)` instead of returning multiple values `(name, version string, err error)`. The second one will get converted to an array is much harder for consumers to deal with. Instead, try to return `Structures` which will be accessible natively.
 

@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 
 	"gopkg.in/yaml.v2"
@@ -20,11 +21,19 @@ import (
 type Parser struct {
 	ShouldValidate bool
 	NoStrictSyntax bool
-	// this cache can be copied safely between ephemeral instances
+
+	// parsedTemplatesCache stores lightweight parsed template structures
+	// (without raw bytes).
+	// Used for validation and filtering. This cache can be copied safely
+	// between ephemeral instances.
 	parsedTemplatesCache *Cache
-	// this cache might potentially contain references to heap objects
-	// it's recommended to always empty it at the end of execution
+
+	// compiledTemplatesCache stores fully compiled templates with all protocol
+	// requests.
+	// This cache contains references to heap objects and should be purged when
+	// no longer needed.
 	compiledTemplatesCache *Cache
+
 	sync.Mutex
 }
 
@@ -82,7 +91,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	t, templateParseError := p.ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
 		checkOpenFileError(templateParseError)
-		return false, ErrCouldNotLoadTemplate(templatePath, templateParseError.Error())
+		return false, errkit.Newf("Could not load template %s: %s", templatePath, templateParseError)
 	}
 	template, ok := t.(*Template)
 	if !ok {
@@ -96,13 +105,13 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
 		stats.Increment(SyntaxErrorStats)
-		return false, ErrCouldNotLoadTemplate(templatePath, validationError.Error())
+		return false, errkit.Newf("Could not load template %s: %s", templatePath, validationError)
 	}
 
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
 		checkOpenFileError(err)
-		return ret, ErrCouldNotLoadTemplate(templatePath, err.Error())
+		return ret, errkit.Newf("Could not load template %s: %s", templatePath, err)
 	}
 	// if template loaded then check the template for optional fields to add warnings
 	if ret {
@@ -110,7 +119,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 		if validationWarning != nil {
 			stats.Increment(SyntaxWarningStats)
 			checkOpenFileError(validationWarning)
-			return ret, ErrCouldNotLoadTemplate(templatePath, validationWarning.Error())
+			return ret, errkit.Newf("Could not load template %s: %s", templatePath, validationWarning)
 		}
 	}
 	return ret, nil
@@ -178,7 +187,8 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 
-	p.parsedTemplatesCache.Store(templatePath, template, nil, nil) // don't keep raw bytes to save memory
+	p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+
 	return template, nil
 }
 

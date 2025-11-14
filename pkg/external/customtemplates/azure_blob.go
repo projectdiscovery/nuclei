@@ -3,7 +3,6 @@ package customtemplates
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +29,9 @@ func NewAzureProviders(options *types.Options) ([]*customTemplateAzureBlob, erro
 		// Establish a connection to Azure and build a client object with which to download templates from Azure Blob Storage
 		azClient, err := getAzureBlobClient(options.AzureTenantID, options.AzureClientID, options.AzureClientSecret, options.AzureServiceURL)
 		if err != nil {
-			return nil, errkit.Append(errkit.New(fmt.Sprintf("Error establishing Azure Blob client for %s", options.AzureContainerName)), err)
+			errx := errkit.FromError(err)
+			errx.Msgf("Error establishing Azure Blob client for %s", options.AzureContainerName)
+			return nil, errx
 		}
 
 		// Create a new Azure Blob Storage container object

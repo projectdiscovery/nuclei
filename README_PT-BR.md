@@ -244,6 +244,7 @@ RATE-LIMIT:
    -headc, -headless-concurrency int  número máximo de templates headless a serem executados em paralelo (padrão 10)
    -jsc, -js-concurrency int          número máximo de ambientes de execução de JavaScript a serem executados em paralelo (padrão 120)
    -pc, -payload-concurrency int      concorrência máxima de payload para cada template (padrão 25)
+   -tlc, -template-loading-concurrency int  número máximo de operações de carregamento de templates concorrentes (padrão 50)
 
 OPTIMIZATIONS:
    -timeout int                     tempo limite em segundos (padrão 10)

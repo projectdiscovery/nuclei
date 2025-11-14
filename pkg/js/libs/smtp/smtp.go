@@ -68,7 +68,7 @@ func NewSMTPClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Objec
 	executionId := c.nj.ExecutionId()
 
 	// check if this is allowed address
-	c.nj.Require(protocolstate.IsHostAllowed(executionId, host+":"+port), protocolstate.ErrHostDenied(host+":"+port).Error())
+	c.nj.Require(protocolstate.IsHostAllowed(executionId, host+":"+port), protocolstate.ErrHostDenied.Msgf(host+":"+port).Error())
 
 	// Link Constructor to Client and return
 	return utils.LinkConstructor(call, runtime, c)

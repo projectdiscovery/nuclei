@@ -45,7 +45,7 @@ func (c *MySQLClient) IsMySQL(ctx context.Context, host string, port int) (bool,
 func isMySQL(executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied(host)
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
@@ -85,7 +85,7 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied(host)
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	// executing queries implies the remote mysql service
@@ -127,7 +127,7 @@ type (
 	}
 )
 
-// returns MySQLInfo when fingerpint is successful
+// returns MySQLInfo when fingerprint is successful
 // @example
 // ```javascript
 // const mysql = require('nuclei/mysql');
@@ -144,7 +144,7 @@ func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, err
 	info := MySQLInfo{}
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return info, protocolstate.ErrHostDenied(host)
+		return info, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
@@ -209,7 +209,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied(opts.Host)
+		return nil, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
 	// executing queries implies the remote mysql service

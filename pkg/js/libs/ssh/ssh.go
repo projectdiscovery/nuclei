@@ -3,10 +3,13 @@ package ssh
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
@@ -23,6 +26,12 @@ type (
 		connection *ssh.Client
 		timeout    time.Duration
 	}
+)
+
+// precompiled regex patterns
+var (
+	passwordQuestionPattern = regexp.MustCompile(`(?i)(pass(word|phrase|code)?|pin)`)
+	usernameQuestionPattern = regexp.MustCompile(`(?i)(user(name)?|login)`)
 )
 
 // SetTimeout sets the timeout for the SSH connection in seconds
@@ -129,7 +138,7 @@ func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port in
 // ```
 func (c *SSHClient) Run(cmd string) (string, error) {
 	if c.connection == nil {
-		return "", errkit.New("no connection").Build()
+		return "", errkit.New("no connection")
 	}
 	session, err := c.connection.NewSession()
 	if err != nil {
@@ -177,14 +186,14 @@ type connectOptions struct {
 
 func (c *connectOptions) validate() error {
 	if c.Host == "" {
-		return errkit.New("host is required").Build()
+		return errkit.New("host is required")
 	}
 	if c.Port <= 0 {
-		return errkit.New("port is required").Build()
+		return errkit.New("port is required")
 	}
 	if !protocolstate.IsHostAllowed(c.ExecutionId, c.Host) {
 		// host is not valid according to network policy
-		return protocolstate.ErrHostDenied(c.Host)
+		return protocolstate.ErrHostDenied.Msgf(c.Host)
 	}
 	if c.Timeout == 0 {
 		c.Timeout = 10 * time.Second
@@ -230,9 +239,30 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		Auth:    []ssh.AuthMethod{},
 		Timeout: opts.Timeout,
 	}
+
 	if len(opts.Password) > 0 {
 		conf.Auth = append(conf.Auth, ssh.Password(opts.Password))
+
+		cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+			answers = make([]string, len(questions))
+			filledCount := 0
+			for i, question := range questions {
+				challenge := map[string]any{"user": user, "instruction": instruction, "question": question, "echo": echos[i]}
+				gologger.Debug().Msgf("SSH keyboard-interactive question %d/%d: %s", i+1, len(questions), vardump.DumpVariables(challenge))
+				if !echos[i] && passwordQuestionPattern.MatchString(question) {
+					answers[i] = opts.Password
+					filledCount++
+				} else if echos[i] && usernameQuestionPattern.MatchString(question) {
+					answers[i] = opts.User
+					filledCount++
+				}
+			}
+			gologger.Debug().Msgf("SSH keyboard-interactive: %d/%d questions filled", filledCount, len(questions))
+			return answers, nil
+		}
+		conf.Auth = append(conf.Auth, ssh.KeyboardInteractiveChallenge(cb))
 	}
+
 	if len(opts.PrivateKey) > 0 {
 		signer, err := ssh.ParsePrivateKey([]byte(opts.PrivateKey))
 		if err != nil {

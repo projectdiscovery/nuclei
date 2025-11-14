@@ -3,7 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -30,8 +30,8 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	m             *sync.Mutex            `json:"-" yaml:"-"` // mutex for lazy fetch
-	fetched       bool                   `json:"-" yaml:"-"` // flag to check if the secret has been fetched
+	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
+	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -53,7 +53,7 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
 	if d == nil {
-		return errkit.New("cannot unmarshal into nil Dynamic struct").Build()
+		return errkit.New("cannot unmarshal into nil Dynamic struct")
 	}
 
 	// Use an alias type (auxiliary) to avoid a recursive call in this method.
@@ -70,12 +70,13 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.m = &sync.Mutex{}
+	d.fetched = &atomic.Bool{}
+	d.fetching = &atomic.Bool{}
 	if d.TemplatePath == "" {
-		return errkit.New(" template-path is required for dynamic secret").Build()
+		return errkit.New(" template-path is required for dynamic secret")
 	}
 	if len(d.Variables) == 0 {
-		return errkit.New("variables are required for dynamic secret").Build()
+		return errkit.New("variables are required for dynamic secret")
 	}
 
 	if d.Secret != nil {
@@ -97,9 +98,7 @@ func (d *Dynamic) Validate() error {
 func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 	d.fetchCallback = func(d *Dynamic) error {
 		err := callback(d)
-		d.fetched = true
 		if err != nil {
-			d.error = err
 			return err
 		}
 		if len(d.Extracted) == 0 {
@@ -184,9 +183,15 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // GetStrategy returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
-	if !d.fetched {
+	if d.fetched.Load() {
+		if d.error != nil {
+			return nil
+		}
+	} else {
+		// Try to fetch if not already fetched
 		_ = d.Fetch(true)
 	}
+
 	if d.error != nil {
 		return nil
 	}
@@ -203,12 +208,23 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
 func (d *Dynamic) Fetch(isFatal bool) error {
-	d.m.Lock()
-	defer d.m.Unlock()
-	if d.fetched {
-		return nil
+	if d.fetched.Load() {
+		return d.error
 	}
+
+	// Try to set fetching flag atomically
+	if !d.fetching.CompareAndSwap(false, true) {
+		// Already fetching, return current error
+		return d.error
+	}
+
+	// We're the only one fetching, call the callback
 	d.error = d.fetchCallback(d)
+
+	// Mark as fetched and clear fetching flag
+	d.fetched.Store(true)
+	d.fetching.Store(false)
+
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
 	}

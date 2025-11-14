@@ -147,13 +147,13 @@ template-validate: build
 template-validate:
 	./bin/nuclei -ut
 	./bin/nuclei -validate \
-		-et .github/ \
-		-et helpers/payloads/ \
 		-et http/technologies \
+		-t dns \
+		-t ssl \
+		-t network \
+		-t http/exposures \
 		-ept code
 	./bin/nuclei -validate \
 		-w workflows \
-		-et .github/ \
-		-et helpers/payloads/ \
 		-et http/technologies \
 		-ept code

@@ -6,7 +6,7 @@
 // implementation.
 //
 // This package acts as a wrapper around the underlying JSON APIs, offering
-// standard operations such as marshaling, unmarshaling, and working with JSON
+// standard operations such as marshaling, unmarshalling, and working with JSON
 // encoders/decoders. It maintains compatibility with the standard encoding/json
 // interfaces while delivering improved performance when possible.
 //

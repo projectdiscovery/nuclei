@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
@@ -38,17 +37,14 @@ type NucleiSDKOptions func(e *NucleiEngine) error
 
 var (
 	// ErrNotImplemented is returned when a feature is not implemented
-	ErrNotImplemented = errkit.New("Not implemented").Build()
+	ErrNotImplemented = errkit.New("Not implemented")
 	// ErrNoTemplatesAvailable is returned when no templates are available to execute
-	ErrNoTemplatesAvailable = errkit.New("No templates available").Build()
+	ErrNoTemplatesAvailable = errkit.New("No templates available")
 	// ErrNoTargetsAvailable is returned when no targets are available to scan
-	ErrNoTargetsAvailable = errkit.New("No targets available").Build()
+	ErrNoTargetsAvailable = errkit.New("No targets available")
+	// ErrOptionsNotSupported is returned when an option is not supported in thread safe mode
+	ErrOptionsNotSupported = errkit.New("Option not supported in thread safe mode")
 )
-
-// ErrOptionsNotSupported returns an error when an option is not supported in thread safe mode
-func ErrOptionsNotSupported(option string) error {
-	return errkit.New(fmt.Sprintf("Option %v not supported in thread safe mode", option)).Build()
-}
 
 type engineMode uint
 
@@ -102,13 +98,13 @@ type NucleiEngine struct {
 func (e *NucleiEngine) LoadAllTemplates() error {
 	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
-		return errkit.Append(errkit.New("Could not create workflow loader"), err)
+		return errkit.Wrapf(err, "Could not create workflow loader: %s", err)
 	}
 	e.executerOpts.WorkflowLoader = workflowLoader
 
 	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, e.executerOpts))
 	if err != nil {
-		return errkit.Append(errkit.New("Could not create loader client"), err)
+		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	e.store.Load()
 	e.templatesLoaded = true

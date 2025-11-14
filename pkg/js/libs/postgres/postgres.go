@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
@@ -122,7 +122,7 @@ func (c *PGClient) ExecuteQuery(ctx context.Context, host string, port int, user
 func executeQuery(executionId string, host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied(host)
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
@@ -179,7 +179,7 @@ func connect(executionId string, host string, port int, username string, passwor
 
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied(host)
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
@@ -197,16 +197,17 @@ func connect(executionId string, host string, port int, username string, passwor
 		User:     username,
 		Password: password,
 		Database: dbName,
-		Dialer: func(network, addr string) (net.Conn, error) {
-			return dialer.Fastdialer.Dial(context.Background(), network, addr)
+		Dialer: func(dialCtx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Fastdialer.Dial(dialCtx, network, addr)
 		},
 		IdleCheckFrequency: -1,
-	}).WithContext(ctx).WithTimeout(10 * time.Second)
+	}).WithTimeout(10 * time.Second)
+
 	defer func() {
 		_ = db.Close()
 	}()
 
-	_, err := db.Exec("select 1")
+	_, err := db.Exec(ctx, "select 1")
 	if err != nil {
 		switch true {
 		case strings.Contains(err.Error(), "connect: connection refused"):
