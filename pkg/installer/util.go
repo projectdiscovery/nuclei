@@ -52,7 +52,7 @@ func getNewAdditionsFileFromGitHub(version string) ([]string, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errkit.New("version not found").Build()
+		return nil, errkit.New("version not found")
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {

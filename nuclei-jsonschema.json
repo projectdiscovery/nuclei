@@ -59,6 +59,11 @@
           "title": "engine",
           "description": "Engine"
         },
+        "sandbox": {
+          "$ref": "#/$defs/code.Sandbox",
+          "title": "sandbox",
+          "description": "Sandbox"
+        },
         "pre-condition": {
           "type": "string",
           "title": "pre-condition for the request",
@@ -81,6 +86,22 @@
           "type": "string",
           "title": "source file/snippet",
           "description": "Source snippet"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "code.Sandbox": {
+      "properties": {
+        "working-dir": {
+          "type": "string",
+          "title": "working-dir",
+          "description": "Working directory"
+        },
+        "image": {
+          "type": "string",
+          "title": "image",
+          "description": "Image"
         }
       },
       "additionalProperties": false,

@@ -60,7 +60,7 @@ func (a *AWSSigner) SignHTTP(ctx context.Context, request *http.Request) error {
 	// contentHash is sha256 hash of response body
 	contentHash := a.getPayloadHash(request)
 	if err := a.signer.SignHTTP(ctx, *a.creds, request, contentHash, a.options.Service, a.options.Region, time.Now()); err != nil {
-		return errkit.Append(errkit.New("failed to sign http request using aws v4 signer"), err)
+		return errkit.Wrap(err, "failed to sign http request using aws v4 signer")
 	}
 	// add x-amz-content-sha256 header to request
 	request.Header.Set("x-amz-content-sha256", contentHash)

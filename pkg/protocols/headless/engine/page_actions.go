@@ -31,10 +31,10 @@ import (
 )
 
 var (
-	errinvalidArguments = errkit.New("invalid arguments provided").Build()
-	ErrLFAccessDenied   = errkit.New("Use -allow-local-file-access flag to enable local file access").Build()
-	// ErrActionExecDealine is the error returned when alloted time for action execution exceeds
-	ErrActionExecDealine = errkit.New("headless action execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
+	errinvalidArguments = errkit.New("invalid arguments provided")
+	ErrLFAccessDenied   = errkit.New("Use -allow-local-file-access flag to enable local file access")
+	// ErrActionExecDeadline is the error returned when allotted time for action execution exceeds
+	ErrActionExecDeadline = errkit.New("headless action execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 const (
@@ -59,7 +59,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 		}
 
 		if r := recover(); r != nil {
-			err = errkit.New(fmt.Sprintf("panic on headless action: %v", r)).Build()
+			err = errkit.Newf("panic on headless action: %v", r)
 		}
 	}()
 
@@ -72,7 +72,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 				for _, waitFunc := range waitFuncs {
 					if waitFunc != nil {
 						if err := waitFunc(); err != nil {
-							return nil, errkit.Append(errkit.New("error occurred while executing waitFunc"), err)
+							return nil, errkit.Wrap(err, "error occurred while executing waitFunc")
 						}
 					}
 				}
@@ -400,7 +400,7 @@ func (p *Page) NavigateURL(action *Action, out ActionData) error {
 
 	parsedURL, err := urlutil.ParseURL(url, true)
 	if err != nil {
-		return errkit.New(fmt.Sprintf("headless: failed to parse url %v while creating http request", url)).Build()
+		return errkit.Newf("failed to parse url %v while creating http request", url)
 	}
 
 	// ===== parameter automerge =====
@@ -410,7 +410,7 @@ func (p *Page) NavigateURL(action *Action, out ActionData) error {
 	parsedURL.Params = finalparams
 
 	if err := p.page.Navigate(parsedURL.String()); err != nil {
-		return errkit.Append(errkit.New(fmt.Sprintf("could not navigate to url %s", parsedURL.String())), err)
+		return errkit.Wrapf(err, "could not navigate to url %s", parsedURL.String())
 	}
 
 	p.updateLastNavigatedURL()
@@ -524,14 +524,14 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 
 	to, err = fileutil.CleanPath(to)
 	if err != nil {
-		return errkit.New(fmt.Sprintf("could not clean output screenshot path %s", to)).Build()
+		return errkit.Newf("could not clean output screenshot path %s", to)
 	}
 
 	// allow if targetPath is child of current working directory
 	if !protocolstate.IsLfaAllowed(p.options.Options) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return errkit.Append(errkit.New("could not get current working directory"), err)
+			return errkit.Wrap(err, "could not get current working directory")
 		}
 
 		if !strings.HasPrefix(to, cwd) {
@@ -550,7 +550,7 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		// creates new directory if needed based on path `to`
 		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
 		if err := os.MkdirAll(filepath.Dir(to), 0700); err != nil {
-			return errkit.Append(errkit.New("failed to create directory while writing screenshot"), err)
+			return errkit.Wrap(err, "failed to create directory while writing screenshot")
 		}
 	}
 
@@ -562,7 +562,7 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 
 	if fileutil.FileExists(filePath) {
 		// return custom error as overwriting files is not supported
-		return errkit.New(fmt.Sprintf("screenshot: failed to write screenshot, file %v already exists", filePath)).Build()
+		return errkit.Newf("failed to write screenshot, file %v already exists", filePath)
 	}
 	err = os.WriteFile(filePath, data, 0540)
 	if err != nil {
@@ -805,12 +805,12 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 
 	gotType := proto.GetType(event)
 	if gotType == nil {
-		return nil, errkit.New(fmt.Sprintf("event %q does not exist", event)).Build()
+		return nil, errkit.Newf("event %q does not exist", event)
 	}
 
 	tmp, ok := reflect.New(gotType).Interface().(proto.Event)
 	if !ok {
-		return nil, errkit.New(fmt.Sprintf("event %q is not a page event", event)).Build()
+		return nil, errkit.Newf("event %q is not a page event", event)
 	}
 
 	waitEvent = tmp
@@ -824,7 +824,7 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 	// Just wait the event to happen
 	waitFunc := func() (err error) {
 		// execute actual wait event
-		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDealine)
+		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDeadline)
 		defer cancel()
 
 		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
@@ -947,7 +947,7 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 
 	err = expressions.ContainsUnresolvedVariables(exprs...)
 	if err != nil {
-		return "", errkit.Append(errkit.New(fmt.Sprintf("argument %q, value: %q", arg, argValue)), err)
+		return "", errkit.Wrapf(err, "argument %q, value: %q", arg, argValue)
 	}
 
 	argValue, err = expressions.Evaluate(argValue, p.variables)

@@ -20,6 +20,7 @@ import (
 	_ "github.com/projectdiscovery/utils/pprof"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/rs/xid"
+	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger/levels"
@@ -187,7 +188,7 @@ func main() {
 			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if err != nil {
-				return errkit.Append(errkit.New("couldn't create crash resume file"), err)
+				return errkit.Wrap(err, "couldn't create crash resume file")
 			}
 			return nil
 		})
@@ -263,6 +264,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "list", fmt.Sprintf("mode of input file (%v)", provider.SupportedInputFormats())),
 		flagSet.BoolVarP(&options.FormatUseRequiredOnly, "required-only", "ro", false, "use only required fields in input format when generating requests"),
 		flagSet.BoolVarP(&options.SkipFormatValidation, "skip-format-validation", "sfv", false, "skip format validation (like missing vars) when parsing input file"),
+		flagSet.BoolVarP(&options.VarsTextTemplating, "vars-text-templating", "vtt", false, "enable text templating for vars in input file (only for yaml input mode)"),
+		flagSet.StringSliceVarP(&options.VarsFilePaths, "var-file-paths", "vfp", nil, "list of yaml file contained vars to inject into yaml input", goflags.CommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",
@@ -277,7 +280,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
 		flagSet.BoolVarP(&options.NoStrictSyntax, "no-strict-syntax", "nss", false, "disable strict syntax check on templates"),
 		flagSet.BoolVarP(&options.TemplateDisplay, "template-display", "td", false, "displays the templates content"),
-		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
+		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all templates matching current filters"),
 		flagSet.BoolVar(&options.TagList, "tgl", false, "list all available tags"),
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"cloud.projectdiscovery.io"}, "allowed domain list to load remote templates from"),
 		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
@@ -408,6 +411,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.JsConcurrency, "js-concurrency", "jsc", 120, "maximum number of javascript runtimes to be executed in parallel"),
 		flagSet.IntVarP(&options.PayloadConcurrency, "payload-concurrency", "pc", 25, "max payload concurrency for each template"),
 		flagSet.IntVarP(&options.ProbeConcurrency, "probe-concurrency", "prc", 50, "http probe concurrency with httpx"),
+		flagSet.IntVarP(&options.TemplateLoadingConcurrency, "template-loading-concurrency", "tlc", types.DefaultTemplateLoadingConcurrency, "maximum number of concurrent template loading operations"),
 	)
 	flagSet.CreateGroup("optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
@@ -571,6 +575,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		config.DefaultConfig.SetConfigDir(customConfigDir)
 		readFlagsConfig(flagSet)
 	}
+
 	if cfgFile != "" {
 		if !fileutil.FileExists(cfgFile) {
 			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
@@ -579,9 +584,49 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
+
+		if !options.Vars.IsEmpty() {
+			// Maybe we should add vars to the config file as well even if they are set via flags?
+			file, err := os.Open(cfgFile)
+			if err != nil {
+				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
+			}
+			defer func() {
+				_ = file.Close()
+			}()
+			data := make(map[string]interface{})
+			err = yaml.NewDecoder(file).Decode(&data)
+			if err != nil {
+				gologger.Fatal().Msgf("Could not decode config file: %s\n", err)
+			}
+
+			variables := data["var"]
+			if variables != nil {
+				if varSlice, ok := variables.([]interface{}); ok {
+					for _, value := range varSlice {
+						if strVal, ok := value.(string); ok {
+							err = options.Vars.Set(strVal)
+							if err != nil {
+								gologger.Warning().Msgf("Could not set variable from config file: %s\n", err)
+							}
+						} else {
+							gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
+						}
+					}
+				} else {
+					gologger.Warning().Msgf("No 'var' section found in config file: %s", cfgFile)
+				}
+			}
+
+		}
 	}
-	if options.NewTemplatesDirectory != "" {
-		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+
+	templatesDir := options.NewTemplatesDirectory
+	if templatesDir == "" {
+		templatesDir = os.Getenv(config.NucleiTemplatesDirEnv)
+	}
+	if templatesDir != "" {
+		config.DefaultConfig.SetTemplatesDir(templatesDir)
 	}
 
 	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")

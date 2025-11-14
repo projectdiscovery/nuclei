@@ -40,6 +40,8 @@ Nuclei was built with some environment variables in mind to help with debugging.
 | `SHOW_DSL_ERRORS=true`           | Enables Printing DSL Errors (that are hidden by default) |
 | `HIDE_TEMPLATE_SIG_WARNING=true` | Hides Template Signature Verification Warnings           |
 | `NUCLEI_LOG_ALL=true`            | Log All Events that were skipped in verbose mode         |
+| `NUCLEI_CONFIG_DIR`              | Sets custom configuration directory path                 |
+| `NUCLEI_TEMPLATES_DIR`           | Sets custom nuclei templates directory path              |
 
 
 

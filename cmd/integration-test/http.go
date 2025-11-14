@@ -196,7 +196,7 @@ func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
 		return err
 	}
 	if routerErr != nil {
-		return errkit.Append(errkit.New("failed to send http request to interactsh server"), routerErr)
+		return errkit.Wrap(routerErr, "failed to send http request to interactsh server")
 	}
 	if err := expectResultsCount(results, 1); err != nil {
 		return err
@@ -628,10 +628,10 @@ func (h *httpRawWithParams) Execute(filePath string) error {
 		// we intentionally use params["test"] instead of params.Get("test") to test the case where
 		// there are multiple parameters with the same name
 		if !reflect.DeepEqual(params["key1"], []string{"value1"}) {
-			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"value1"}, params["key1"])), errx)
+			errx = errkit.Append(errx, errkit.New("key1 not found in params", "expected", []string{"value1"}, "got", params["key1"]))
 		}
 		if !reflect.DeepEqual(params["key2"], []string{"value2"}) {
-			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"value2"}, params["key2"])), errx)
+			errx = errkit.Append(errx, errkit.New("key2 not found in params", "expected", []string{"value2"}, "got", params["key2"]))
 		}
 		_, _ = fmt.Fprintf(w, "Test is test raw-params-matcher text")
 	})
@@ -971,10 +971,10 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 		// we intentionally use params["test"] instead of params.Get("test") to test the case where
 		// there are multiple parameters with the same name
 		if !reflect.DeepEqual(params["something"], []string{"here"}) {
-			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"here"}, params["something"])), errx)
+			errx = errkit.Append(errx, errkit.New("something not found in params", "expected", []string{"here"}, "got", params["something"]))
 		}
 		if !reflect.DeepEqual(params["key"], []string{"value"}) {
-			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"value"}, params["key"])), errx)
+			errx = errkit.Append(errx, errkit.New("key not found in params", "expected", []string{"value"}, "got", params["key"]))
 		}
 		_, _ = w.Write([]byte("This is self-contained response"))
 	})
@@ -1027,10 +1027,10 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	// create temp file
 	FileLoc, err := os.CreateTemp("", "self-contained-payload-*.txt")
 	if err != nil {
-		return errkit.Append(errkit.New("failed to create temp file"), err)
+		return errkit.Wrap(err, "failed to create temp file")
 	}
 	if _, err := FileLoc.Write([]byte("one\ntwo\n")); err != nil {
-		return errkit.Append(errkit.New("failed to write payload to temp file"), err)
+		return errkit.Wrap(err, "failed to write payload to temp file")
 	}
 	defer func() {
 		_ = FileLoc.Close()
@@ -1046,7 +1046,7 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	}
 
 	if !sliceutil.ElementsMatch(gotReqToEndpoints, []string{"/one", "/two", "/one", "/two"}) {
-		return errkit.New(fmt.Sprintf("%s: expected requests to be sent to `/one` and `/two` endpoints but were sent to `%v`", filePath, gotReqToEndpoints)).Build()
+		return errkit.New("expected requests to be sent to `/one` and `/two` endpoints but were sent to `%v`", gotReqToEndpoints, "filePath", filePath)
 	}
 	return nil
 }

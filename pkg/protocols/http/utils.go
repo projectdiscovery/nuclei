@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -16,14 +15,14 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		// Use a clone to avoid a race condition with the http transport
 		bin, err := req.request.Clone(req.request.Context()).Dump()
 		if err != nil {
-			return nil, errkit.New(fmt.Sprintf("http: could not dump request: %v: %s", req.request.String(), err)).Build()
+			return nil, errkit.Wrapf(err, "could not dump request: %v", req.request.String())
 		}
 		return bin, nil
 	}
 	rawHttpOptions := &rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes}
 	bin, err := rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), io.NopCloser(strings.NewReader(req.rawRequest.Data)), rawHttpOptions)
 	if err != nil {
-		return nil, errkit.New(fmt.Sprintf("http: could not dump request: %v: %s", reqURL, err)).Build()
+		return nil, errkit.Wrapf(err, "could not dump request: %v", reqURL)
 	}
 	return bin, nil
 }
