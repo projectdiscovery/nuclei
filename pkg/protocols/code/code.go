@@ -11,10 +11,10 @@ import (
 	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
+	"github.com/projectdiscovery/gozero/sandbox"
 	gozerotypes "github.com/projectdiscovery/gozero/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -42,9 +42,14 @@ const (
 var (
 	// pythonEnvRegexCompiled is the compiled regex for python environment variables
 	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
-	// ErrCodeExecutionDeadline is the error returned when alloted time for script execution exceeds
+	// ErrCodeExecutionDeadline is the error returned when allotted time for script execution exceeds
 	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
+
+type Sandbox struct {
+	WorkingDir string `yaml:"working-dir,omitempty" json:"working-dir,omitempty" jsonschema:"title=working-dir,description=Working directory"`
+	Image      string `yaml:"image,omitempty" json:"image,omitempty" jsonschema:"title=image,description=Image"`
+}
 
 // Request is a request for the SSL protocol
 type Request struct {
@@ -56,7 +61,8 @@ type Request struct {
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
 	// description: |
 	//   Engine type
-	Engine []string `yaml:"engine,omitempty" json:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	Engine  []string `yaml:"engine,omitempty" json:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	Sandbox *Sandbox `yaml:"sandbox,omitempty" json:"sandbox,omitempty" jsonschema:"title=sandbox,description=Sandbox"`
 	// description: |
 	//   PreCondition is a condition which is evaluated before sending the request.
 	PreCondition string `yaml:"pre-condition,omitempty" json:"pre-condition,omitempty" jsonschema:"title=pre-condition for the request,description=PreCondition is a condition which is evaluated before sending the request"`
@@ -113,7 +119,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if options.Options.Validate {
 			options.Logger.Error().Msgf("%s <- %s", errMsg, err)
 		} else {
-			return errkit.Append(errkit.New(errMsg), err)
+			return errkit.Wrap(err, errMsg)
 		}
 	} else {
 		request.gozero = engine
@@ -132,7 +138,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.ExcludeMatchers = options.ExcludeMatchers
 		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
-			return errors.Wrap(err, "could not compile operators")
+			return errkit.Wrap(err, "could not compile operators")
 		}
 		for _, matcher := range compiled.Matchers {
 			// default matcher part for code protocol is response
@@ -153,7 +159,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if request.PreCondition != "" {
 		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
-			return errkit.New(fmt.Sprintf("%s: could not compile pre-condition: %s", request.TemplateID, err)).Build()
+			return errkit.Newf("could not compile pre-condition: %s", err)
 		}
 		request.preConditionCompiled = preConditionCompiled
 	}
@@ -230,7 +236,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				Context:         input.Context(),
 			})
 		if err != nil {
-			return errkit.New(fmt.Sprintf("%s: could not execute pre-condition: %s", request.TemplateID, err)).Build()
+			return errkit.Newf("could not execute pre-condition: %s", err)
 		}
 		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
@@ -246,6 +252,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
+		if request.useSandbox() {
+			return request.gozero.EvalWithVirtualEnv(
+				ctx, gozero.VirtualEnvDocker,
+				request.src,
+				metaSrc,
+				&sandbox.DockerConfiguration{
+					WorkingDir: request.Sandbox.WorkingDir,
+					Image:      request.Sandbox.Image,
+				},
+			)
+		}
 		return request.gozero.Eval(ctx, request.src, metaSrc)
 	})
 	if gOutput == nil {
@@ -280,7 +297,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Output:", dashes)
 			sb.WriteString(gOutput.DebugData.String())
 			sb.WriteString("\n")
-			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are seperate (use -v -svd flags for more details)")
+			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are separate (use -v -svd flags for more details)")
 			return sb.String()
 		})
 	}
@@ -457,4 +474,8 @@ func prettyPrint(templateId string, buff string) {
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
+}
+
+func (r *Request) useSandbox() bool {
+	return r.Sandbox != nil && r.Sandbox.Image != ""
 }

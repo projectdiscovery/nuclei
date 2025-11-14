@@ -41,7 +41,7 @@ func UnmarshalGraphQL(data []byte, v any) error {
 	}
 }
 
-// decoder is a JSON decoder that performs custom unmarshaling behavior
+// decoder is a JSON decoder that performs custom unmarshalling behavior
 // for GraphQL query data structures. It's implemented on top of a JSON tokenizer.
 type decoder struct {
 	tokenizer interface {
@@ -54,7 +54,7 @@ type decoder struct {
 	// Stacks of values where to unmarshal.
 	// The top of each stack is the reflect.Value where to unmarshal next JSON value.
 	//
-	// The reason there's more than one stack is because we might be unmarshaling
+	// The reason there's more than one stack is because we might be unmarshalling
 	// a single JSON value into multiple GraphQL fragments or embedded structs, so
 	// we keep track of them all.
 	vs [][]reflect.Value

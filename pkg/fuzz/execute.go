@@ -23,10 +23,9 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-// ErrRuleNotApplicable returns a rule not applicable error
-func ErrRuleNotApplicable(reason interface{}) error {
-	return errkit.New(fmt.Sprintf("rule not applicable: %v", reason)).Build()
-}
+var (
+	ErrRuleNotApplicable = errkit.New("rule not applicable")
+)
 
 // IsErrRuleNotApplicable checks if an error is due to rule not applicable
 func IsErrRuleNotApplicable(err error) bool {
@@ -90,10 +89,10 @@ type GeneratedRequest struct {
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	if !rule.isInputURLValid(input.Input) {
-		return ErrRuleNotApplicable(fmt.Sprintf("invalid input url: %v", input.Input.MetaInput.Input))
+		return errkit.Newf("rule not applicable: invalid input url: %v", input.Input.MetaInput.Input)
 	}
 	if input.BaseRequest == nil && input.Input.MetaInput.ReqResp == nil {
-		return ErrRuleNotApplicable(fmt.Sprintf("both base request and reqresp are nil for %v", input.Input.MetaInput.Input))
+		return errkit.Newf("rule not applicable: both base request and reqresp are nil for %v", input.Input.MetaInput.Input)
 	}
 
 	var finalComponentList []component.Component
@@ -145,7 +144,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	}
 
 	if len(finalComponentList) == 0 {
-		return ErrRuleNotApplicable("no component matched on this rule")
+		return errkit.Newf("rule not applicable: no component matched on this rule")
 	}
 
 	baseValues := input.Values

@@ -43,7 +43,7 @@ func (c *SMBClient) ConnectSMBInfoMode(ctx context.Context, host string, port in
 func connectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied(host)
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
@@ -90,7 +90,7 @@ func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied(host)
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	return memoizedcollectSMBv2Metadata(executionId, host, port, 5*time.Second)
 }
@@ -119,7 +119,7 @@ func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user,
 func listShares(executionId string, host string, port int, user string, password string) ([]string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied(host)
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {

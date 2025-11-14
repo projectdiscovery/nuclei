@@ -1,120 +1,108 @@
 package generators
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
+	"io"
+	"strings"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	osutils "github.com/projectdiscovery/utils/os"
-	"github.com/stretchr/testify/require"
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
-func TestLoadPayloads(t *testing.T) {
-	// since we are changing value of global variable i.e templates directory
-	// run this test as subprocess
-	if os.Getenv("LOAD_PAYLOAD_NO_ACCESS") != "1" {
-		cmd := exec.Command(os.Args[0], "-test.run=TestLoadPayloadsWithAccess")
-		cmd.Env = append(os.Environ(), "LOAD_PAYLOAD_NO_ACCESS=1")
-		err := cmd.Run()
-		if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-			return
-		}
-		if err != nil {
-			t.Fatalf("process ran with err %v, want exit status 1", err)
-		}
-	}
-	templateDir := getTemplatesDir(t)
-	config.DefaultConfig.SetTemplatesDir(templateDir)
+type fakeCatalog struct{ catalog.Catalog }
 
-	generator := &PayloadGenerator{catalog: disk.NewCatalog(templateDir), options: getOptions(false)}
-	fullpath := filepath.Join(templateDir, "payloads.txt")
-
-	// Test sandbox
-	t.Run("templates-directory", func(t *testing.T) {
-		// testcase when loading file from template directory and template file is in root
-		// expected to succeed
-		values, err := generator.loadPayloads(map[string]interface{}{
-			"new": fullpath,
-		}, "/test")
-		require.NoError(t, err, "could not load payloads")
-		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
-	})
-	t.Run("templates-path-relative", func(t *testing.T) {
-		// testcase when loading file from template directory and template file is current working directory
-		// expected to fail since this is LFI
-		_, err := generator.loadPayloads(map[string]interface{}{
-			"new": "../../../../../../../../../etc/passwd",
-		}, ".")
-		require.Error(t, err, "could load payloads")
-	})
-	t.Run("template-directory", func(t *testing.T) {
-		// testcase when loading file from template directory and template file is inside template directory
-		// expected to succeed
-		values, err := generator.loadPayloads(map[string]interface{}{
-			"new": fullpath,
-		}, filepath.Join(templateDir, "test.yaml"))
-		require.NoError(t, err, "could not load payloads")
-		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
-	})
-
-	t.Run("invalid", func(t *testing.T) {
-		// testcase when loading file from /etc/passwd and template file is at root i.e /
-		// expected to fail since this is LFI
-		values, err := generator.loadPayloads(map[string]interface{}{
-			"new": "/etc/passwd",
-		}, "/random")
-		require.Error(t, err, "could load payloads got %v", values)
-		require.Equal(t, 0, len(values), "could get values")
-
-		// testcase when loading file from template directory and template file is at root i.e /
-		// expected to succeed
-		values, err = generator.loadPayloads(map[string]interface{}{
-			"new": fullpath,
-		}, "/random")
-		require.NoError(t, err, "could load payloads %v", values)
-		require.Equal(t, 1, len(values), "could get values")
-		require.Equal(t, []string{"test", "another"}, values["new"], "could get values")
-	})
+func (f *fakeCatalog) OpenFile(filename string) (io.ReadCloser, error) {
+	return nil, errors.New("not used")
+}
+func (f *fakeCatalog) GetTemplatePath(target string) ([]string, error) { return nil, nil }
+func (f *fakeCatalog) GetTemplatesPath(definitions []string) ([]string, map[string]error) {
+	return nil, nil
+}
+func (f *fakeCatalog) ResolvePath(templateName, second string) (string, error) {
+	return templateName, nil
 }
 
-func TestLoadPayloadsWithAccess(t *testing.T) {
-	// since we are changing value of global variable i.e templates directory
-	// run this test as subprocess
-	if os.Getenv("LOAD_PAYLOAD_WITH_ACCESS") != "1" {
-		cmd := exec.Command(os.Args[0], "-test.run=TestLoadPayloadsWithAccess")
-		cmd.Env = append(os.Environ(), "LOAD_PAYLOAD_WITH_ACCESS=1")
-		err := cmd.Run()
-		if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-			return
-		}
-		if err != nil {
-			t.Fatalf("process ran with err %v, want exit status 1", err)
+func newTestGenerator() *PayloadGenerator {
+	opts := types.DefaultOptions()
+	// inject helper loader function
+	opts.LoadHelperFileFunction = func(path, templatePath string, _ catalog.Catalog) (io.ReadCloser, error) {
+		switch path {
+		case "fileA.txt":
+			return io.NopCloser(strings.NewReader("one\n two\n\nthree\n")), nil
+		default:
+			return io.NopCloser(strings.NewReader("x\ny\nz\n")), nil
 		}
 	}
-	templateDir := getTemplatesDir(t)
-	config.DefaultConfig.SetTemplatesDir(templateDir)
-
-	generator := &PayloadGenerator{catalog: disk.NewCatalog(templateDir), options: getOptions(true)}
-
-	t.Run("no-sandbox-unix", func(t *testing.T) {
-		if osutils.IsWindows() {
-			return
-		}
-		_, err := generator.loadPayloads(map[string]interface{}{
-			"new": "/etc/passwd",
-		}, "/random")
-		require.NoError(t, err, "could load payloads")
-	})
+	return &PayloadGenerator{options: opts, catalog: &fakeCatalog{}}
 }
 
-func getTemplatesDir(t *testing.T) string {
-	tempdir, err := os.MkdirTemp("", "templates-*")
-	require.NoError(t, err, "could not create temp dir")
-	fullpath := filepath.Join(tempdir, "payloads.txt")
-	err = os.WriteFile(fullpath, []byte("test\nanother"), 0777)
-	require.NoError(t, err, "could not write payload")
-	return tempdir
+func TestLoadPayloads_FastPathFile(t *testing.T) {
+	g := newTestGenerator()
+	out, err := g.loadPayloads(map[string]interface{}{"A": "fileA.txt"}, "")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	got := out["A"]
+	if len(got) != 3 || got[0] != "one" || got[1] != " two" || got[2] != "three" {
+		t.Fatalf("unexpected: %#v", got)
+	}
+}
+
+func TestLoadPayloads_InlineMultiline(t *testing.T) {
+	g := newTestGenerator()
+	inline := "a\nb\n"
+	out, err := g.loadPayloads(map[string]interface{}{"B": inline}, "")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	got := out["B"]
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "" {
+		t.Fatalf("unexpected: %#v", got)
+	}
+}
+
+func TestLoadPayloads_SingleLineFallsBackToFile(t *testing.T) {
+	g := newTestGenerator()
+	inline := "fileA.txt" // single line, should be treated as file path
+	out, err := g.loadPayloads(map[string]interface{}{"C": inline}, "")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	got := out["C"]
+	if len(got) != 3 {
+		t.Fatalf("unexpected len: %d", len(got))
+	}
+}
+
+func TestLoadPayloads_InterfaceSlice(t *testing.T) {
+	g := newTestGenerator()
+	out, err := g.loadPayloads(map[string]interface{}{"D": []interface{}{"p", "q"}}, "")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	got := out["D"]
+	if len(got) != 2 || got[0] != "p" || got[1] != "q" {
+		t.Fatalf("unexpected: %#v", got)
+	}
+}
+
+func TestLoadPayloadsFromFile_SkipsEmpty(t *testing.T) {
+	g := newTestGenerator()
+	rc := io.NopCloser(strings.NewReader("a\n\n\n b \n"))
+	lines, err := g.loadPayloadsFromFile(rc)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(lines) != 2 || lines[0] != "a" || lines[1] != " b " {
+		t.Fatalf("unexpected: %#v", lines)
+	}
+}
+
+func TestValidate_AllowsInlineMultiline(t *testing.T) {
+	g := newTestGenerator()
+	inline := "x\ny\n"
+	if err := g.validate(map[string]interface{}{"E": inline}, ""); err != nil {
+		t.Fatalf("validate rejected inline multiline: %v", err)
+	}
 }

@@ -64,7 +64,7 @@ export class MySQLClient {
     
 
     /**
-    * returns MySQLInfo when fingerpint is successful
+    * returns MySQLInfo when fingerprint is successful
     * @example
     * ```javascript
     * const mysql = require('nuclei/mysql');
