@@ -268,6 +268,7 @@ HEADLESS:
    -sb, -show-browser               muestra el navegador en la pantalla al ejecutar plantillas con modo sin interfaz
    -ho, -headless-options string[]  inicia Chrome en modo sin interfaz con opciones adicionales
    -sc, -system-chrome              utiliza el navegador Chrome instalado localmente en lugar del instalado por nuclei
+   -cdpe, -cdp-endpoint string      usar navegador remoto a través del endpoint del Protocolo de Herramientas de Desarrollador de Chrome (CDP)
    -lha, -list-headless-action      lista de acciones sin interfaz disponibles
 
 DEBUG:

@@ -35,61 +35,72 @@ type Browser struct {
 
 // New creates a new nuclei headless browser module
 func New(options *types.Options) (*Browser, error) {
-	dataStore, err := os.MkdirTemp("", "nuclei-*")
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create temporary directory")
-	}
-	previousPIDs := processutil.FindProcesses(processutil.IsChromeProcess)
+	var launcherURL, dataStore string
+	var previousPIDs map[int32]struct{}
+	var err error
 
-	chromeLauncher := launcher.New().
-		Leakless(false).
-		Set("disable-gpu", "true").
-		Set("ignore-certificate-errors", "true").
-		Set("ignore-certificate-errors", "1").
-		Set("disable-crash-reporter", "true").
-		Set("disable-notifications", "true").
-		Set("hide-scrollbars", "true").
-		Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-		Set("mute-audio", "true").
-		Set("incognito", "true").
-		Delete("use-mock-keychain").
-		UserDataDir(dataStore)
+	chromeLauncher := launcher.New()
 
-	if MustDisableSandbox() {
-		chromeLauncher = chromeLauncher.NoSandbox(true)
-	}
+	if options.CDPEndpoint == "" {
+		previousPIDs = processutil.FindProcesses(processutil.IsChromeProcess)
 
-	executablePath, err := os.Executable()
-	if err != nil {
-		return nil, err
-	}
-
-	// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
-	useMusl, _ := fileutil.UseMusl(executablePath)
-	if options.UseInstalledChrome || useMusl {
-		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
-			chromeLauncher.Bin(chromePath)
-		} else {
-			return nil, errors.New("the chrome browser is not installed")
+		dataStore, err = os.MkdirTemp("", "nuclei-*")
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create temporary directory")
 		}
-	}
 
-	if options.ShowBrowser {
-		chromeLauncher = chromeLauncher.Headless(false)
+		chromeLauncher = chromeLauncher.
+			Leakless(false).
+			Set("disable-crash-reporter").
+			Set("disable-gpu").
+			Set("disable-notifications").
+			Set("hide-scrollbars").
+			Set("ignore-certificate-errors").
+			Set("ignore-ssl-errors").
+			Set("incognito").
+			Set("mute-audio").
+			Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
+			Delete("use-mock-keychain").
+			UserDataDir(dataStore)
+
+		if MustDisableSandbox() {
+			chromeLauncher = chromeLauncher.NoSandbox(true)
+		}
+
+		executablePath, err := os.Executable()
+		if err != nil {
+			return nil, err
+		}
+
+		// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
+		useMusl, _ := fileutil.UseMusl(executablePath)
+		if options.UseInstalledChrome || useMusl {
+			if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+				chromeLauncher.Bin(chromePath)
+			} else {
+				return nil, errors.New("the chrome browser is not installed")
+			}
+		}
+
+		if options.ShowBrowser {
+			chromeLauncher = chromeLauncher.Headless(false)
+		} else {
+			chromeLauncher = chromeLauncher.Headless(true)
+		}
+		if options.AliveHttpProxy != "" {
+			chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
+		}
+
+		for k, v := range options.ParseHeadlessOptionalArguments() {
+			chromeLauncher.Set(flags.Flag(k), v)
+		}
+
+		launcherURL, err = chromeLauncher.Launch()
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		chromeLauncher = chromeLauncher.Headless(true)
-	}
-	if options.AliveHttpProxy != "" {
-		chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
-	}
-
-	for k, v := range options.ParseHeadlessOptionalArguments() {
-		chromeLauncher.Set(flags.Flag(k), v)
-	}
-
-	launcherURL, err := chromeLauncher.Launch()
-	if err != nil {
-		return nil, err
+		launcherURL = options.CDPEndpoint
 	}
 
 	browser := rod.New().ControlURL(launcherURL)
@@ -178,7 +189,13 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 }
 
 // Close closes the browser engine
+//
+// When connected over CDP, it does NOT close the browsers.
 func (b *Browser) Close() {
+	if b.options.CDPEndpoint != "" {
+		return
+	}
+
 	_ = b.engine.Close()
 	b.launcher.Kill()
 	_ = os.RemoveAll(b.tempDir)
