@@ -1137,6 +1137,13 @@ func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[str
 		return
 	}
 
+	if request.options.Interactsh != nil {
+		interactshDomain := request.options.Interactsh.GetHostname()
+		if interactshDomain != "" && strings.HasSuffix(hostname, interactshDomain) {
+			return
+		}
+	}
+
 	data, err := request.dialer.GetDNSData(hostname)
 	if err == nil {
 		switch len(data.CNAME) {
