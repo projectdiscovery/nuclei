@@ -455,3 +455,8 @@ func (c *Client) setHostname(hostname string) {
 
 	c.hostname = hostname
 }
+
+// GetHostname returns the configured interactsh server hostname.
+func (c *Client) GetHostname() string {
+	return c.getHostname()
+}
