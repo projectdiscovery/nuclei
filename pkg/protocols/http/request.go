@@ -1139,8 +1139,10 @@ func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[str
 
 	if request.options.Interactsh != nil {
 		interactshDomain := request.options.Interactsh.GetHostname()
-		if interactshDomain != "" && strings.HasSuffix(hostname, interactshDomain) {
-			return
+		if interactshDomain != "" {
+			if strings.EqualFold(hostname, interactshDomain) || strings.HasSuffix(hostname, "."+interactshDomain) {
+				return
+			}
 		}
 	}
 
