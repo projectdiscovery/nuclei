@@ -564,12 +564,9 @@ func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
 // WithTemporaryDirectory allows setting a parent directory for SDK-managed temporary files.
 // A temporary directory will be created inside the provided directory and cleaned up on engine close.
 // If not set, a temporary directory will be automatically created in the system temp location.
-// The parent directory will be created if it doesn't exist.
+// The parent directory is assumed to exist.
 func WithTemporaryDirectory(parentDir string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if err := os.MkdirAll(parentDir, 0755); err != nil {
-			return err
-		}
 		tmpDir, err := os.MkdirTemp(parentDir, "nuclei-tmp-*")
 		if err != nil {
 			return err
