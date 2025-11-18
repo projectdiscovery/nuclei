@@ -21,12 +21,13 @@ var jsTestcases = []TestCaseInfo{
 }
 
 var (
-	redisResource  *dockertest.Resource
-	sshResource    *dockertest.Resource
-	oracleResource *dockertest.Resource
-	vncResource    *dockertest.Resource
-	pool           *dockertest.Pool
-	defaultRetry   = 3
+	redisResource         *dockertest.Resource
+	sshResource           *dockertest.Resource
+	oracleResource        *dockertest.Resource
+	vncResource           *dockertest.Resource
+	multiPortsSShResource *dockertest.Resource
+	pool                  *dockertest.Pool
+	defaultRetry          = 3
 )
 
 type javascriptNetHttps struct{}
