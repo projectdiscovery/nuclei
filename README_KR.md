@@ -96,7 +96,7 @@ Nuclei는 빠르고, 템플릿 기반의 취약점 스캐너로
 TARGET:
    -u, -target string[]       스캔할 대상 URL/호스트
    -l, -list string           스캔할 대상 URL/호스트 목록이 있는 파일 경로 (한 줄에 하나씩)
-   -resume string             resume.cfg를 사용하여 스캔 재개 (클러스터링은 비활성화됨)
+   -resume string             지정된 파일에서 스캔을 재개하고 지정된 파일에 저장 (클러스터링은 비활성화됨)
    -sa, -scan-all-ips         dns 레코드와 관련된 모든 IP 스캔
    -iv, -ip-version string[]  스캔할 호스트의 IP 버전 (4,6) - (기본값 4)
 
