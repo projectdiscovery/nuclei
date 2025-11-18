@@ -1,5 +1,4 @@
 //go:build stats
-// +build stats
 
 package events
 
