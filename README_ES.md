@@ -118,7 +118,7 @@ TARGET:
    -u, -target string[]          URLs/hosts a escanear
    -l, -list string              ruta al archivo que contiene la lista de URLs/hosts a escanear (uno por línea)
    -eh, -exclude-hosts string[]  hosts a excluir para escanear de la lista de entrada (ip, cidr, hostname)
-   -resume string                reanudar el escaneo usando resume.cfg (la clusterización quedará inhabilitada)
+   -resume string                reanudar el escaneo desde y guardar en el archivo especificado (la clusterización quedará inhabilitada)
    -sa, -scan-all-ips            escanear todas las IP asociadas al registro dns
    -iv, -ip-version string[]     versión IP a escanear del nombre de host (4,6) - (por defecto 4)
 
@@ -244,6 +244,7 @@ RATE-LIMIT:
    -headc, -headless-concurrency int  número máximo de plantillas headless a ejecutar en paralelo (por defecto 10)
    -jsc, -js-concurrency int          número máximo de entornos de ejecución de JavaScript a ejecutar en paralelo (por defecto 120)
    -pc, -payload-concurrency int      concurrencia máxima de carga útil para cada plantilla (por defecto 25)
+   -tlc, -template-loading-concurrency int  número máximo de operaciones de carga de plantillas concurrentes (por defecto 50)
 
 OPTIMIZATIONS:
    -timeout int                     tiempo de espera en segundos (por defecto 10)

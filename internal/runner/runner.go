@@ -572,7 +572,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
-		authTmplStore, err := GetAuthTmplStore(r.options, r.catalog, executorOpts)
+		// Clone options so GetAuthTmplStore can modify them without affecting the original
+		authOptions := r.options.Copy()
+		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
@@ -655,7 +657,6 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 	// TODO: remove below functions after v3 or update warning messages
-	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
 	// add the hosts from the metadata queries of loaded templates into input provider

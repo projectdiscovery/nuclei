@@ -97,7 +97,7 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, contentType
 		_ = response.Body.Close()
 	}()
 	if response.StatusCode < 200 || response.StatusCode > 299 {
-		return RemoteContent{Error: fmt.Errorf("get \"%s\": unexpect status %d", URL, response.StatusCode)}
+		return RemoteContent{Error: fmt.Errorf("get \"%s\": unexpected status %d", URL, response.StatusCode)}
 	}
 
 	scanner := bufio.NewScanner(response.Body)

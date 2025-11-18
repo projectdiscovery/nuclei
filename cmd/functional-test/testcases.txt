@@ -36,24 +36,24 @@
 {{binary}} -tags cve,dos,fuzz
 {{binary}} -tags cve -include-tags dos,fuzz
 {{binary}} -tags cve -exclude-tags cve2020
-{{binary}} -tags cve -exclude-templates cves/2020/
-{{binary}} -tags cve -exclude-templates cves/2020/CVE-2020-9757.yaml
-{{binary}} -tags cve -exclude-templates cves/2020/CVE-2020-9757.yaml -exclude-templates cves/2021/
-{{binary}} -t cves/
-{{binary}} -t cves/ -t exposures/
-{{binary}} -t cves/ -t exposures/ -tags config
-{{binary}} -t cves/ -t exposures/ -tags config,ssrf
-{{binary}} -t cves/ -t exposures/ -tags config -severity high,critical
-{{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam
-{{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli
-{{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -exclude-templates cves/2021/
-{{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -exclude-templates cves/2017/CVE-2017-7269.yaml
-{{binary}} -t cves/ -t exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -include-templates cves/2017/CVE-2017-7269.yaml
+{{binary}} -tags cve -exclude-templates http/cves/2020/
+{{binary}} -tags cve -exclude-templates http/cves/2020/CVE-2020-9757.yaml
+{{binary}} -tags cve -exclude-templates http/cves/2020/CVE-2020-9757.yaml -exclude-templates http/cves/2021/
+{{binary}} -t http/cves/
+{{binary}} -t http/cves/ -t http/exposures/
+{{binary}} -t http/cves/ -t http/exposures/ -tags config
+{{binary}} -t http/cves/ -t http/exposures/ -tags config,ssrf
+{{binary}} -t http/cves/ -t http/exposures/ -tags config -severity high,critical
+{{binary}} -t http/cves/ -t http/exposures/ -tags config -severity high,critical -author geeknik,pdteam
+{{binary}} -t http/cves/ -t http/exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli
+{{binary}} -t http/cves/ -t http/exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -exclude-templates http/cves/2021/
+{{binary}} -t http/cves/ -t http/exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -exclude-templates http/cves/2017/CVE-2017-7269.yaml
+{{binary}} -t http/cves/ -t http/exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -include-templates http/cves/2017/CVE-2017-7269.yaml
 
 # Advanced Filtering
 {{binary}} -tags cve -author geeknik,pdteam  -tc severity=='high'
 {{binary}} -tc contains(authors,'pdteam')
-{{binary}} -t cves/ -t exposures/ -tc contains(tags,'cve') -exclude-templates cves/2020/CVE-2020-9757.yaml
+{{binary}} -t http/cves/ -t http/exposures/ -tc contains(tags,'cve') -exclude-templates http/cves/2020/CVE-2020-9757.yaml
 {{binary}} -tc protocol=='dns'
 {{binary}} -tc contains(http_method,'GET')
 {{binary}} -tc len(body)>0
@@ -65,7 +65,7 @@
 {{binary}} -w workflows
 {{binary}} -w workflows -author geeknik,pdteam
 {{binary}} -w workflows -severity high,critical
-{{binary}} -w workflows -author geeknik,pdteam  -severity high,critical
+{{binary}} -w workflows -author geeknik,pdteam -severity high,critical
 
 # Input Types
 # http protocol
