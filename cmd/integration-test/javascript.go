@@ -171,10 +171,6 @@ func (j *javascriptVncPassBrute) Execute(filePath string) error {
 type javascriptMultiPortsSSH struct{}
 
 func (j *javascriptMultiPortsSSH) Execute(filePath string) error {
-	if sshResource == nil || pool == nil {
-		// skip test as redis is not running
-		return nil
-	}
 	finalURL := "scanme.sh"
 	errs := []error{}
 	for i := 0; i < defaultRetry; i++ {
