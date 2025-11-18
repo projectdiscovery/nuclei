@@ -17,15 +17,17 @@ var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
 	{Path: "protocols/javascript/oracle-auth-test.yaml", TestCase: &javascriptOracleAuthTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}},
+	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 }
 
 var (
-	redisResource  *dockertest.Resource
-	sshResource    *dockertest.Resource
-	oracleResource *dockertest.Resource
-	vncResource    *dockertest.Resource
-	pool           *dockertest.Pool
-	defaultRetry   = 3
+	redisResource         *dockertest.Resource
+	sshResource           *dockertest.Resource
+	oracleResource        *dockertest.Resource
+	vncResource           *dockertest.Resource
+	multiPortsSShResource *dockertest.Resource
+	pool                  *dockertest.Pool
+	defaultRetry          = 3
 )
 
 type javascriptNetHttps struct{}
@@ -145,6 +147,36 @@ func (j *javascriptVncPassBrute) Execute(filePath string) error {
 	tempPort := vncResource.GetPort("5900/tcp")
 	finalURL := "localhost:" + tempPort
 	defer purge(vncResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let ssh server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
+}
+
+type javascriptMultiPortsSSH struct{}
+
+func (j *javascriptMultiPortsSSH) Execute(filePath string) error {
+	if sshResource == nil || pool == nil {
+		// skip test as redis is not running
+		return nil
+	}
+	finalURL := "scanme.sh"
 	errs := []error{}
 	for i := 0; i < defaultRetry; i++ {
 		results := []string{}

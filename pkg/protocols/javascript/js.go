@@ -778,7 +778,14 @@ func (request *Request) Type() templateTypes.ProtocolType {
 func (request *Request) getPorts() []string {
 	for k, v := range request.Args {
 		if strings.EqualFold(k, "Port") {
-			ports := types.ToStringSlice(strings.Split(types.ToString(v), ","))
+			portStr := types.ToString(v)
+			ports := []string{}
+			for _, p := range strings.Split(portStr, ",") {
+				trimmed := strings.TrimSpace(p)
+				if trimmed != "" {
+					ports = append(ports, trimmed)
+				}
+			}
 			return sliceutil.Dedupe(ports)
 		}
 	}
