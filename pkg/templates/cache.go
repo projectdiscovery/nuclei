@@ -1,6 +1,9 @@
 package templates
 
 import (
+	"os"
+	"time"
+
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -21,6 +24,30 @@ type parsedTemplate struct {
 	template *Template
 	raw      string
 	err      error
+	filePath string
+	modTime  time.Time
+}
+
+// setModTime sets the modification time of the file if it exists.
+func (p *parsedTemplate) setModTime(id string) {
+	if stat, err := os.Stat(id); err == nil {
+		p.modTime = stat.ModTime()
+	}
+}
+
+// isValid checks if the cached template is still valid based on the file's
+// modification time.
+func (p *parsedTemplate) isValid(templatePath string) bool {
+	if p.modTime.IsZero() {
+		return true
+	}
+
+	stat, err := os.Stat(templatePath)
+	if err != nil {
+		return false
+	}
+
+	return stat.ModTime().Equal(p.modTime)
 }
 
 // Has returns true if the cache has a template. The template
@@ -30,6 +57,13 @@ func (t *Cache) Has(template string) (*Template, []byte, error) {
 	if !ok {
 		return nil, nil, nil
 	}
+
+	if !value.isValid(template) {
+		t.items.Delete(template)
+
+		return nil, nil, nil
+	}
+
 	return value.template, conversion.Bytes(value.raw), value.err
 }
 
@@ -39,7 +73,10 @@ func (t *Cache) Store(id string, tpl *Template, raw []byte, err error) {
 		template: tpl,
 		err:      err,
 		raw:      conversion.String(raw),
+		filePath: id,
 	}
+
+	entry.setModTime(id)
 	_ = t.items.Set(id, entry)
 }
 
@@ -49,7 +86,10 @@ func (t *Cache) StoreWithoutRaw(id string, tpl *Template, err error) {
 		template: tpl,
 		err:      err,
 		raw:      "",
+		filePath: id,
 	}
+
+	entry.setModTime(id)
 	_ = t.items.Set(id, entry)
 }
 
