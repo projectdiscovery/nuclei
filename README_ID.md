@@ -98,7 +98,7 @@ Flags:
 TARGET:
    -u, -target string[]       target URLs/hosts to scan
    -l, -list string           path to file containing a list of target URLs/hosts to scan (one per line)
-   -resume string             resume scan using resume.cfg (clustering will be disabled)
+   -resume string             resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips         scan all the IP's associated with dns record
    -iv, -ip-version string[]  IP version to scan of hostname (4,6) - (default 4)
 
@@ -211,6 +211,7 @@ RATE-LIMIT:
    -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
    -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)
    -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
+   -tlc, -template-loading-concurrency int  maximum number of concurrent template loading operations (default 50)
 
 OPTIMIZATIONS:
    -timeout int                        time to wait in seconds before timeout (default 10)

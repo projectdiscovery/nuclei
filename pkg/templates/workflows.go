@@ -104,7 +104,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 				}
 				continue
 			} else if !template.Verified {
-				// unverfied code templates are not allowed in workflows
+				// unverified code templates are not allowed in workflows
 				gologger.Warning().Msgf("skipping unverified code template from workflow: %v\n", path)
 				continue
 			}

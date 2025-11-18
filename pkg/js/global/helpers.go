@@ -41,7 +41,7 @@ func registerAdditionalHelpers(runtime *goja.Runtime) {
 
 func init() {
 	// these are dummy functions we use trigger documentation generation
-	// actual definations are in exports.js
+	// actual definitions are in exports.js
 	_ = gojs.RegisterFuncWithSignature(nil, gojs.FuncOpts{
 		Name: "to_json",
 		Signatures: []string{
