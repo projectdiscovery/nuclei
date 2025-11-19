@@ -183,7 +183,7 @@ func hasUndefinedParams(value string, variables *Variable) bool {
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions)
 		if err != nil {
 			// NOTE(dwisiswant0): here, it might need runtime context.
-			continue
+			return true
 		}
 
 		vars := compiled.Vars()
