@@ -171,27 +171,12 @@ func (j *javascriptVncPassBrute) Execute(filePath string) error {
 type javascriptMultiPortsSSH struct{}
 
 func (j *javascriptMultiPortsSSH) Execute(filePath string) error {
-	finalURL := "scanme.sh"
-	errs := []error{}
-	for i := 0; i < defaultRetry; i++ {
-		results := []string{}
-		var err error
-		_ = pool.Retry(func() error {
-			//let ssh server start
-			time.Sleep(3 * time.Second)
-			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		if err := expectResultsCount(results, 1); err == nil {
-			return nil
-		} else {
-			errs = append(errs, err)
-		}
+	// use scanme.sh as target to ensure we match on the 2nd default port 22
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
 	}
-	return multierr.Combine(errs...)
+	return expectResultsCount(results, 1)
 }
 
 // purge any given resource if it is not nil
