@@ -35,3 +35,23 @@ func TestContextCancelNucleiEngine(t *testing.T) {
 	}
 	defer ne.Close()
 }
+
+func TestHeadlessOptionInitialization(t *testing.T) {
+	ne, err := nuclei.NewNucleiEngineCtx(
+		context.Background(),
+		nuclei.EnableHeadlessWithOpts(&nuclei.HeadlessOpts{
+			PageTimeout:     20,
+			ShowBrowser:     false,
+			UseChrome:       false,
+			HeadlessOptions: []string{},
+		}),
+	)
+
+	require.NoError(t, err, "could not create nuclei engine with headless options")
+	require.NotNil(t, ne, "nuclei engine should not be nil")
+
+	// Verify logger is initialized
+	require.NotNil(t, ne.Logger, "logger should be initialized")
+
+	defer ne.Close()
+}
