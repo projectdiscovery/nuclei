@@ -34,17 +34,14 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	swg, _ := syncutil.New(syncutil.WithSize(templateThreads))
 
 	for _, template := range w.Workflows {
-		swg.Add()
-
-		func(template *workflows.WorkflowTemplate) {
-			defer swg.Done()
-
-			if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
-				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
-			}
-		}(template)
+		newCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
+		if err := e.runWorkflowStep(template, newCtx, results, swg, w); err != nil {
+			gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
+		}
 	}
+
 	swg.Wait()
+
 	return results.Load()
 }
 
