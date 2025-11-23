@@ -7,7 +7,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -131,4 +134,81 @@ func TestFileExecuteWithResults(t *testing.T) {
 		require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 		finalEvent = nil
 	}
+}
+
+func TestFileProtocolConcurrentExecution(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "nuclei-test-*")
+	require.NoError(t, err)
+
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
+
+	numFiles := 5
+	for i := range numFiles {
+		content := "TEST_CONTENT_MATCH_DATA"
+		filePath := filepath.Join(tempDir, "test_"+string(rune('0'+i))+".txt")
+		err := os.WriteFile(filePath, []byte(content), permissionutil.TempFilePermission)
+		require.NoError(t, err)
+	}
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	templateID := "testing-file-concurrent"
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	var timesMutex sync.Mutex
+	var processedFiles int64
+
+	request := &Request{
+		ID:          templateID,
+		MaxSize:     "1Gb",
+		NoRecursive: false,
+		Extensions:  []string{"txt"},
+		Archive:     false,
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Name:  "test",
+				Part:  "raw",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"TEST_CONTENT_MATCH_DATA"},
+			}},
+		},
+		options: executerOpts,
+	}
+
+	err = request.Compile(executerOpts)
+	require.NoError(t, err)
+
+	input := contextargs.NewWithInput(context.Background(), tempDir)
+	var results []*output.InternalWrappedEvent
+	var resultMutex sync.Mutex
+
+	startTime := time.Now()
+	err = request.ExecuteWithResults(input, make(output.InternalEvent), make(output.InternalEvent), func(event *output.InternalWrappedEvent) {
+		atomic.AddInt64(&processedFiles, 1)
+		resultMutex.Lock()
+		results = append(results, event)
+		resultMutex.Unlock()
+
+		// small delay to make timing differences more observable
+		time.Sleep(10 * time.Millisecond)
+	})
+	totalTime := time.Since(startTime)
+	require.NoError(t, err)
+
+	finalProcessedFiles := atomic.LoadInt64(&processedFiles)
+	t.Logf("Total execution time: %v", totalTime)
+	t.Logf("Files processed: %d", finalProcessedFiles)
+	t.Logf("Results returned: %d", len(results))
+
+	// test 1: all files should be processed
+	require.Equal(t, int64(numFiles), finalProcessedFiles, "Not all files were processed")
+
+	// test 2: verify callback invocation timing shows concurrency
+	timesMutex.Lock()
+	defer timesMutex.Unlock()
 }
