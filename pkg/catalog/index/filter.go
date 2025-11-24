@@ -12,12 +12,11 @@ import (
 // Filter represents filtering criteria for template metadata.
 //
 // Inclusion fields (e.g., Authors, Tags, IDs, Severities, ProtocolTypes) use
-// OR logic, meaning a template only needs to match one of the specified values
-// in each field to be included. Meanwhile, exclusion fields (e.g., ExcludeTags,
-// ExcludeIDs, ExcludeSeverities, ExcludeProtocolTypes) take precedence over
-// inclusion fields; if a template matches any exclusion criteria, it is
-// excluded. Additionally, IncludeTemplates and IncludeTags can force inclusion
-// of templates even if they match exclusion criteria.
+// AND logic across different filter types and OR logic within each type.
+// Exclusion fields (e.g., ExcludeTags, ExcludeIDs, ExcludeSeverities,
+// ExcludeProtocolTypes) take precedence over inclusion fields. Additionally,
+// IncludeTemplates and IncludeTags can force inclusion of templates even if
+// they match exclusion criteria.
 type Filter struct {
 	// Authors to include.
 	Authors []string
@@ -133,78 +132,55 @@ func (f *Filter) isExcluded(m *Metadata) bool {
 
 // matchesIncludes checks if metadata matches include filters.
 //
-// Returns true if no include filters are specified, or if at least one matches.
+// Returns true if no include filters are specified, or if all specified filter
+// types match.
 func (f *Filter) matchesIncludes(m *Metadata) bool {
-	hasIncludeFilters := false
-	matched := false
-
 	if len(f.Authors) > 0 {
-		hasIncludeFilters = true
-		if slices.ContainsFunc(f.Authors, m.HasAuthor) {
-			matched = true
+		if !slices.ContainsFunc(f.Authors, m.HasAuthor) {
+			return false
 		}
 	}
 
 	if len(f.Tags) > 0 {
-		if !hasIncludeFilters {
-			hasIncludeFilters = true
-		}
-
-		if !matched {
-			if slices.ContainsFunc(f.Tags, m.HasTag) {
-				matched = true
-			}
+		if !slices.ContainsFunc(f.Tags, m.HasTag) {
+			return false
 		}
 	}
 
 	if len(f.IDs) > 0 {
-		if !hasIncludeFilters {
-			hasIncludeFilters = true
-		}
-
-		if !matched {
-			for _, id := range f.IDs {
-				if matchesID(m.ID, id) {
-					matched = true
-					break
-				}
+		matched := false
+		for _, id := range f.IDs {
+			if matchesID(m.ID, id) {
+				matched = true
+				break
 			}
+		}
+		if !matched {
+			return false
 		}
 	}
 
 	if len(f.Severities) > 0 {
-		if !hasIncludeFilters {
-			hasIncludeFilters = true
-		}
-
-		if !matched {
-			if slices.ContainsFunc(f.Severities, m.MatchesSeverity) {
-				matched = true
-			}
+		if !slices.ContainsFunc(f.Severities, m.MatchesSeverity) {
+			return false
 		}
 	}
 
 	if len(f.ProtocolTypes) > 0 {
-		if !hasIncludeFilters {
-			hasIncludeFilters = true
-		}
-
-		if !matched {
-			if slices.ContainsFunc(f.ProtocolTypes, m.MatchesProtocol) {
-				matched = true
-			}
+		if !slices.ContainsFunc(f.ProtocolTypes, m.MatchesProtocol) {
+			return false
 		}
 	}
 
-	if !hasIncludeFilters {
-		return true
-	}
-
-	return matched
+	return true
 }
 
 // matchesID checks if template ID matches pattern (supports wildcards).
 func matchesID(templateID, pattern string) bool {
+	// Convert to lowercase for case-insensitive matching
+	templateID = strings.ToLower(templateID)
+	pattern = strings.ToLower(pattern)
+
 	if templateID == pattern {
 		return true
 	}

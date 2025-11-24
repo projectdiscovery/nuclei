@@ -145,14 +145,15 @@ func TestFilterMatches(t *testing.T) {
 		require.True(t, filter.Matches(metadata))
 	})
 
-	t.Run("Complex filter - OR logic across types", func(t *testing.T) {
+	t.Run("Complex filter - AND logic across types", func(t *testing.T) {
 		filter := &Filter{
 			Authors:    []string{"pdteam"},                     // matches
 			Tags:       []string{"xss"},                        // doesn't match
 			Severities: []severity.Severity{severity.Critical}, // matches
 		}
-		// With OR logic, matches because author AND severity match
-		require.True(t, filter.Matches(metadata))
+		// With AND logic across filter types, doesn't match because tags don't match
+		// even though author and severity match
+		require.False(t, filter.Matches(metadata))
 	})
 
 	t.Run("Complex filter - no match at all", func(t *testing.T) {
@@ -200,6 +201,8 @@ func TestMatchesID(t *testing.T) {
 		{"wildcard middle", "CVE-2021-1234", "CVE-*-1234", true},
 		{"no match", "CVE-2021-1234", "CVE-2022-*", false},
 		{"partial no match", "CVE-2021-1234", "CVE-2021-12", false},
+		{"case insensitive exact", "cve-2021-1234", "CVE-2021-1234", true},
+		{"case insensitive wildcard", "CVE-2021-1234", "cve-*", true},
 	}
 
 	for _, tt := range tests {
