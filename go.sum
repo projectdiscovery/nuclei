@@ -140,12 +140,13 @@ github.com/andygrunwald/go-jira v1.16.1 h1:WoQEar5XoDRAibOgKzTFELlPNlKAtnfWr296R
 github.com/andygrunwald/go-jira v1.16.1/go.mod h1:UQH4IBVxIYWbgagc0LF/k9FRs9xjIiQ8hIcC6HfLwFU=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
-github.com/antchfx/htmlquery v1.3.4 h1:Isd0srPkni2iNTWCwVj/72t7uCphFeor5Q8nCzj1jdQ=
-github.com/antchfx/htmlquery v1.3.4/go.mod h1:K9os0BwIEmLAvTqaNSua8tXLWRWZpocZIH73OzWQbwM=
+github.com/antchfx/htmlquery v1.3.5 h1:aYthDDClnG2a2xePf6tys/UyyM/kRcsFRm+ifhFKoU0=
+github.com/antchfx/htmlquery v1.3.5/go.mod h1:5oyIPIa3ovYGtLqMPNjBF2Uf25NPCKsMjCnQ8lvjaoA=
 github.com/antchfx/xmlquery v1.4.4 h1:mxMEkdYP3pjKSftxss4nUHfjBhnMk4imGoR96FRY2dg=
 github.com/antchfx/xmlquery v1.4.4/go.mod h1:AEPEEPYE9GnA2mj5Ur2L5Q5/2PycJ0N9Fusrx9b12fc=
-github.com/antchfx/xpath v1.3.3 h1:tmuPQa1Uye0Ym1Zn65vxPgfltWb/Lxu2jeqIGteJSRs=
 github.com/antchfx/xpath v1.3.3/go.mod h1:i54GszH55fYfBmoZXapTHN8T8tkcHfRgLyVwwqzXNcs=
+github.com/antchfx/xpath v1.3.5 h1:PqbXLC3TkfeZyakF5eeh3NTWEbYl4VHNVeufANzDbKQ=
+github.com/antchfx/xpath v1.3.5/go.mod h1:i54GszH55fYfBmoZXapTHN8T8tkcHfRgLyVwwqzXNcs=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
@@ -678,8 +679,9 @@ github.com/logrusorgru/aurora v2.0.3+incompatible h1:tOpm7WcpBTn4fjmVfgpQq0EfczG
 github.com/logrusorgru/aurora v2.0.3+incompatible/go.mod h1:7rIyQOR62GCctdiQpZ/zOJlFyk6y+94wXzv6RNZgaR4=
 github.com/logrusorgru/aurora/v4 v4.0.0 h1:sRjfPpun/63iADiSvGGjgA1cAYegEWMPCJdUpJYn9JA=
 github.com/logrusorgru/aurora/v4 v4.0.0/go.mod h1:lP0iIa2nrnT/qoFXcOZSrZQpJ1o6n2CUf/hyHi2Q4ZQ=
-github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 h1:wIONC+HMNRqmWBjuMxhatuSzHaljStc4gjDeKycxy0A=
 github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3/go.mod h1:37YR9jabpiIxsb8X9VCIx8qFOjTDIIrIHHODa8C4gz0=
+github.com/lor00x/goldap v0.0.0-20240304151906-8d785c64d1c8 h1:z9RDOBcFcf3f2hSfKuoM3/FmJpt8M+w0fOy4wKneBmc=
+github.com/lor00x/goldap v0.0.0-20240304151906-8d785c64d1c8/go.mod h1:37YR9jabpiIxsb8X9VCIx8qFOjTDIIrIHHODa8C4gz0=
 github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/lufia/plan9stats v0.0.0-20250821153705-5981dea3221d h1:vFzYZc8yji+9DmNRhpEbs8VBK4CgV/DPfGzeVJSSp/8=
@@ -821,8 +823,8 @@ github.com/projectdiscovery/cdncheck v1.2.10 h1:Ox86LS8RFjq6pYNTP3Eqdawlor/h+bnb
 github.com/projectdiscovery/cdncheck v1.2.10/go.mod h1:ibL9HoZs2JYTEUBOZo4f+W+XEzQifFLOf4bpgFStgj4=
 github.com/projectdiscovery/clistats v0.1.1 h1:8mwbdbwTU4aT88TJvwIzTpiNeow3XnAB72JIg66c8wE=
 github.com/projectdiscovery/clistats v0.1.1/go.mod h1:4LtTC9Oy//RiuT1+76MfTg8Hqs7FQp1JIGBM3nHK6a0=
-github.com/projectdiscovery/dsl v0.8.4 h1:p3rvzJae9BecOMufdYex3DX9zZeQNaXwVQe4kCEAOtE=
-github.com/projectdiscovery/dsl v0.8.4/go.mod h1:msE7dGAuHYRrKddEwB1yoQ5dHrzzyimQUjsGDsMDis8=
+github.com/projectdiscovery/dsl v0.8.5 h1:f3opg8Jzikwx6VXC+CbgseUmSUqdfCnfGT08Syhp0sw=
+github.com/projectdiscovery/dsl v0.8.5/go.mod h1:AuUq18cpLJJ0uAjJZKaLrdyAgDHrnQAjLMZtPEyMoJw=
 github.com/projectdiscovery/fastdialer v0.4.16 h1:rmCNr5N/9KTm0nSYjSuQ5j3aXmNIPf6HhJlAhN/7NRI=
 github.com/projectdiscovery/fastdialer v0.4.16/go.mod h1:X0l4+KqOE/aIL00pyTnBj4pWQDPYnCGL7cwZsJu6SCQ=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -1051,6 +1053,8 @@ github.com/vmihailenco/tagparser v0.1.2 h1:gnjoVuB/kljJ5wICEEOpx98oXMWPLj22G67Vb
 github.com/vmihailenco/tagparser v0.1.2/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
 github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=
 github.com/vmihailenco/tagparser/v2 v2.0.0/go.mod h1:Wri+At7QHww0WTrCBeu4J6bNtoV6mEfg5OIWRZA9qds=
+github.com/vulncheck-oss/go-exploit v1.51.0 h1:HTmJ4Q94tbEDPb35mQZn6qMg4rT+Sw9n+L7g3Pjr+3o=
+github.com/vulncheck-oss/go-exploit v1.51.0/go.mod h1:J28w0dLnA6DnCrnBm9Sbt6smX8lvztnnN2wCXy7No6c=
 github.com/weppos/publicsuffix-go v0.12.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln16JPQ02lHAdn5k=
 github.com/weppos/publicsuffix-go v0.13.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln16JPQ02lHAdn5k=
 github.com/weppos/publicsuffix-go v0.30.0/go.mod h1:kBi8zwYnR0zrbm8RcuN1o9Fzgpnnn+btVN8uWPMyXAY=
