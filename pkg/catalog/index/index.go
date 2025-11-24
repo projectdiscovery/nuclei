@@ -217,17 +217,17 @@ func (i *Index) Save() error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	encoder := gob.NewEncoder(file)
 	if err := encoder.Encode(snapshot); err != nil {
-		os.Remove(tmpFile)
+		_ = os.Remove(tmpFile)
 
 		return err
 	}
 
 	if err := os.Rename(tmpFile, i.cacheFile); err != nil {
-		os.Remove(tmpFile)
+		_ = os.Remove(tmpFile)
 
 		return err
 	}
@@ -245,19 +245,19 @@ func (i *Index) Load() error {
 
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var snapshot cacheSnapshot
 
 	decoder := gob.NewDecoder(file)
 	if err := decoder.Decode(&snapshot); err != nil {
-		os.Remove(i.cacheFile)
+		_ = os.Remove(i.cacheFile)
 
 		return nil
 	}
 
 	if snapshot.Version != i.version {
-		os.Remove(i.cacheFile)
+		_ = os.Remove(i.cacheFile)
 
 		return nil
 	}
