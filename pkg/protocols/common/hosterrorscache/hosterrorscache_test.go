@@ -177,7 +177,6 @@ func TestCacheCheckConcurrent(t *testing.T) {
 	wg := sync.WaitGroup{}
 	for i := 1; i <= 100; i++ {
 		wg.Add(1)
-		i := i
 		go func() {
 			defer wg.Done()
 			cache.MarkFailed(protoType, ctx, errors.New("no address found for host"))
