@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -240,6 +241,15 @@ func TestMetadataValidation(t *testing.T) {
 	})
 
 	t.Run("Invalid metadata after file modification", func(t *testing.T) {
+		// Create the test file first to ensure it exists in this subtest
+		err := os.WriteFile(tmpFile, []byte("id: test\ninfo:\n  name: Test"), 0644)
+		require.NoError(t, err)
+
+		// Set file ModTime to past to ensure modification is detectable
+		oldTime := time.Now().Add(-2 * time.Second)
+		err = os.Chtimes(tmpFile, oldTime, oldTime)
+		require.NoError(t, err)
+
 		info, err := os.Stat(tmpFile)
 		require.NoError(t, err)
 
@@ -258,13 +268,21 @@ func TestMetadataValidation(t *testing.T) {
 	})
 
 	t.Run("Invalid metadata for deleted file", func(t *testing.T) {
+		// Create the test file first to ensure it exists in this subtest
+		err := os.WriteFile(tmpFile, []byte("id: test\ninfo:\n  name: Test"), 0644)
+		require.NoError(t, err)
+
+		info, err := os.Stat(tmpFile)
+		require.NoError(t, err)
+
 		metadata := &Metadata{
 			ID:       "test",
 			FilePath: tmpFile,
+			ModTime:  info.ModTime(),
 		}
 
 		// Delete file
-		err := os.Remove(tmpFile)
+		err = os.Remove(tmpFile)
 		require.NoError(t, err)
 
 		// Should be invalid
