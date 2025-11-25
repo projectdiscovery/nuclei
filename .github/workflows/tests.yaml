@@ -24,6 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - uses: projectdiscovery/actions/golangci-lint/v2@v1
 
   tests:
@@ -37,6 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: make vet
       - run: make build
       - run: make test
@@ -54,6 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - name: "Simple"
         run: go run .
         working-directory: examples/simple/
@@ -77,6 +80,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/python@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh "${{ matrix.os }}"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -96,6 +100,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/python@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -108,6 +113,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: make template-validate
 
   codeql:
