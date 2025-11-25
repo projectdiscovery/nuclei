@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/kitabisa/go-ci"
@@ -24,7 +25,7 @@ type TestCaseInfo struct {
 }
 
 var (
-	debug       = os.Getenv("DEBUG") == "true"
+	debug       = isDebugMode()
 	customTests = os.Getenv("TESTS")
 	protocol    = os.Getenv("PROTO")
 
@@ -60,6 +61,7 @@ var (
 		"matcher-status":  matcherStatusTestcases,
 		"exporters":       exportersTestCases,
 	}
+
 	// flakyTests are run with a retry count of 3
 	flakyTests = map[string]bool{
 		"protocols/http/self-contained-file-input.yaml": true,
@@ -90,11 +92,12 @@ func main() {
 	}
 
 	// start fuzz playground server
-	defer fuzzplayground.Cleanup()
 	server := fuzzplayground.GetPlaygroundServer()
 	defer func() {
+		fuzzplayground.Cleanup()
 		_ = server.Close()
 	}()
+
 	go func() {
 		if err := server.Start("localhost:8082"); err != nil {
 			if !strings.Contains(err.Error(), "Server closed") {
@@ -104,7 +107,6 @@ func main() {
 	}()
 
 	customTestsList := normalizeSplit(customTests)
-
 	failedTestTemplatePaths := runTests(customTestsList)
 
 	if len(failedTestTemplatePaths) > 0 {
@@ -129,6 +131,27 @@ func main() {
 
 		os.Exit(1)
 	}
+}
+
+// isDebugMode checks if debug mode is enabled via any of the supported debug
+// environment variables.
+func isDebugMode() bool {
+	debugEnvVars := []string{
+		"DEBUG",
+		"ACTIONS_RUNNER_DEBUG", // GitHub Actions runner debug
+		// Add more debug environment variables here as needed
+	}
+
+	truthyValues := []string{"true", "1", "yes", "on", "enabled"}
+
+	for _, envVar := range debugEnvVars {
+		envValue := strings.ToLower(strings.TrimSpace(os.Getenv(envVar)))
+		if slices.Contains(truthyValues, envValue) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // execute a testcase with retry and consider best of N
