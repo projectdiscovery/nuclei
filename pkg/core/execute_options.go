@@ -109,7 +109,6 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 	defer wp.Wait()
 
 	for _, template := range templatesList {
-		template := template
 
 		select {
 		case <-ctx.Done():
