@@ -16,7 +16,7 @@ jobs:
     env:
       OUTPUT: "/tmp/results.sarif"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
       - run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - run: govulncheck -scan package -format sarif ./... > $OUTPUT
