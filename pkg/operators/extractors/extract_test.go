@@ -11,10 +11,10 @@ func TestExtractor_ExtractRegex(t *testing.T) {
 	err := e.CompileExtractors()
 	require.Nil(t, err)
 
-	got := e.ExtractRegex("RegEx")
+	got := e.ExtractRegex("RegEx", map[string]interface{}{})
 	require.Equal(t, map[string]struct{}{"RegEx": {}}, got)
 
-	got = e.ExtractRegex("regex")
+	got = e.ExtractRegex("regex", map[string]interface{}{})
 	require.Equal(t, map[string]struct{}{}, got)
 }
 
@@ -70,10 +70,10 @@ func TestExtractor_ExtractJSON(t *testing.T) {
 	err := e.CompileExtractors()
 	require.Nil(t, err)
 
-	got := e.ExtractJSON(`[{"id": 1}]`)
+	got := e.ExtractJSON(`[{"id": 1}]`, map[string]interface{}{})
 	require.Equal(t, map[string]struct{}{"1": {}}, got)
 
-	got = e.ExtractJSON(`{"id": 1}`)
+	got = e.ExtractJSON(`{"id": 1}`, map[string]interface{}{})
 	require.Equal(t, map[string]struct{}{}, got)
 }
 

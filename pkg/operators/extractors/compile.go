@@ -9,6 +9,7 @@ import (
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 )
 
 // CompileExtractors performs the initial setup operation on an extractor
@@ -21,6 +22,11 @@ func (e *Extractor) CompileExtractors() error {
 	e.extractorType = computedType
 	// Compile the regexes
 	for _, regex := range e.Regex {
+		if varErr := expressions.ContainsUnresolvedVariables(regex); varErr != nil {
+			e.regexCompiled = append(e.regexCompiled, nil)
+			continue
+		}
+
 		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
 			e.regexCompiled = append(e.regexCompiled, cached)
 			continue
@@ -37,6 +43,10 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	for _, query := range e.JSON {
+		if varErr := expressions.ContainsUnresolvedVariables(query); varErr != nil {
+			e.jsonCompiled = append(e.jsonCompiled, nil)
+			continue
+		}
 		query, err := gojq.Parse(query)
 		if err != nil {
 			return fmt.Errorf("could not parse json: %s", query)
