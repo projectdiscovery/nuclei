@@ -209,12 +209,9 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 		case []string:
 			keysSlice = v
 		case []interface{}:
-			// Convert []interface{} to []string (from JavaScript arrays)
 			keysSlice = make([]string, 0, len(v))
 			for _, item := range v {
-				if s, ok := item.(string); ok {
-					keysSlice = append(keysSlice, s)
-				}
+				keysSlice = append(keysSlice, fmt.Sprintf("%v", item))
 			}
 		}
 	}
