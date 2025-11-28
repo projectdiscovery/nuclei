@@ -55,7 +55,7 @@ func (j *javascriptRedisPassBrute) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let redis server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -87,7 +87,7 @@ func (j *javascriptRedisLuaScript) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let redis server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -119,7 +119,7 @@ func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let ssh server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -152,7 +152,7 @@ func (j *javascriptOracleAuthTest) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let oracle server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -184,7 +184,7 @@ func (j *javascriptVncPassBrute) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let vnc server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
