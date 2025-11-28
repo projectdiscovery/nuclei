@@ -825,6 +825,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 					connConfiguration := request.connConfiguration.Clone()
 					modifiedConfig = connConfiguration
 				}
+
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
@@ -1134,6 +1135,15 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
 	if request.dialer == nil {
 		return
+	}
+
+	if request.options.Interactsh != nil {
+		interactshDomain := request.options.Interactsh.GetHostname()
+		if interactshDomain != "" {
+			if strings.EqualFold(hostname, interactshDomain) || strings.HasSuffix(hostname, "."+interactshDomain) {
+				return
+			}
+		}
 	}
 
 	data, err := request.dialer.GetDNSData(hostname)

@@ -22,8 +22,9 @@ jobs:
     if: "${{ !endsWith(github.actor, '[bot]') }}"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - uses: projectdiscovery/actions/golangci-lint/v2@v1
 
   tests:
@@ -35,8 +36,18 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: "${{ matrix.os }}"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
+      - uses: projectdiscovery/actions/free-disk-space@v1
+        with:
+          llvm: 'false'
+          php: 'false'
+          mongodb: 'false'
+          mysql: 'false'
+          misc-packages: 'false'
+          docker-images: 'false'
+          tools-cache: 'false'
       - run: make vet
       - run: make build
       - run: make test
@@ -52,8 +63,9 @@ jobs:
     needs: ["tests"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - name: "Simple"
         run: go run .
         working-directory: examples/simple/
@@ -74,9 +86,10 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/python@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh "${{ matrix.os }}"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -93,9 +106,10 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/python@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -106,8 +120,9 @@ jobs:
     needs: ["tests"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: make template-validate
 
   codeql:
@@ -119,7 +134,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: github/codeql-action/init@v4
         with:
           languages: 'go'
@@ -131,7 +146,7 @@ jobs:
     needs: ["tests"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/goreleaser@v1
 
@@ -143,7 +158,7 @@ jobs:
       TARGET_URL: "http://scanme.sh/a/?b=c"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: make build
       - name: "Setup environment (push)"
         if: ${{ github.event_name == 'push' }}

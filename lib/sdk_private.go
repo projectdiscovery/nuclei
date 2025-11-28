@@ -3,6 +3,7 @@ package nuclei
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -170,20 +171,29 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 	}
 
+	if e.tmpDir == "" {
+		tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+		if err != nil {
+			return err
+		}
+		e.tmpDir = tmpDir
+	}
+
 	e.executerOpts = &protocols.ExecutorOptions{
-		Output:       e.customWriter,
-		Options:      e.opts,
-		Progress:     e.customProgress,
-		Catalog:      e.catalog,
-		IssuesClient: e.rc,
-		RateLimiter:  e.rateLimiter,
-		Interactsh:   e.interactshClient,
-		Colorizer:    aurora.NewAurora(true),
-		ResumeCfg:    types.NewResumeCfg(),
-		Browser:      e.browserInstance,
-		Parser:       e.parser,
-		InputHelper:  input.NewHelper(),
-		Logger:       e.opts.Logger,
+		Output:             e.customWriter,
+		Options:            e.opts,
+		Progress:           e.customProgress,
+		Catalog:            e.catalog,
+		IssuesClient:       e.rc,
+		RateLimiter:        e.rateLimiter,
+		Interactsh:         e.interactshClient,
+		Colorizer:          aurora.NewAurora(true),
+		ResumeCfg:          types.NewResumeCfg(),
+		Browser:            e.browserInstance,
+		Parser:             e.parser,
+		InputHelper:        input.NewHelper(),
+		TemporaryDirectory: e.tmpDir,
+		Logger:             e.opts.Logger,
 	}
 	if e.opts.ShouldUseHostError() && e.hostErrCache != nil {
 		e.executerOpts.HostErrorsCache = e.hostErrCache

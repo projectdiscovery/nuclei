@@ -31,7 +31,7 @@ const (
 	CLIConfigFileName               = "config.yaml"
 	ReportingConfigFilename         = "reporting-config.yaml"
 	// Version is the current version of nuclei
-	Version = `v3.4.10`
+	Version = `v3.5.1`
 	// Directory Names of custom templates
 	CustomS3TemplatesDirName     = "s3"
 	CustomGitHubTemplatesDirName = "github"
@@ -40,6 +40,7 @@ const (
 	BinaryName                   = "nuclei"
 	FallbackConfigFolderName     = ".nuclei-config"
 	NucleiConfigDirEnv           = "NUCLEI_CONFIG_DIR"
+	NucleiTemplatesDirEnv        = "NUCLEI_TEMPLATES_DIR"
 )
 
 // IsOutdatedVersion compares two versions and returns true

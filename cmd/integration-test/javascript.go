@@ -18,6 +18,7 @@ var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
 	{Path: "protocols/javascript/oracle-auth-test.yaml", TestCase: &javascriptOracleAuthTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}},
+	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 }
 
 var (
@@ -198,6 +199,17 @@ func (j *javascriptVncPassBrute) Execute(filePath string) error {
 		}
 	}
 	return multierr.Combine(errs...)
+}
+
+type javascriptMultiPortsSSH struct{}
+
+func (j *javascriptMultiPortsSSH) Execute(filePath string) error {
+	// use scanme.sh as target to ensure we match on the 2nd default port 22
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }
 
 // purge any given resource if it is not nil

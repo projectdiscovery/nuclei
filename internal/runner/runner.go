@@ -254,8 +254,23 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
+	tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create temporary directory")
+	}
+	runner.tmpDir = tmpDir
+
+	// Cleanup tmpDir only if initialization fails
+	// On successful initialization, Close() method will handle cleanup
+	cleanupOnError := true
+	defer func() {
+		if cleanupOnError && runner.tmpDir != "" {
+			_ = os.RemoveAll(runner.tmpDir)
+		}
+	}()
+
 	// create the input provider and load the inputs
-	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options})
+	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options, TempDir: runner.tmpDir})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
@@ -386,10 +401,8 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 
-	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
-		runner.tmpDir = tmpDir
-	}
-
+	// Initialization successful, disable cleanup on error
+	cleanupOnError = false
 	return runner, nil
 }
 
@@ -572,7 +585,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
-		authTmplStore, err := GetAuthTmplStore(r.options, r.catalog, executorOpts)
+		// Clone options so GetAuthTmplStore can modify them without affecting the original
+		authOptions := r.options.Copy()
+		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}

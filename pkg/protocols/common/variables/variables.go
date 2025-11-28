@@ -3,10 +3,13 @@ package variables
 import (
 	"strings"
 
+	"github.com/Knetic/govaluate"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -17,7 +20,9 @@ import (
 // Variable is a key-value pair of strings that can be used
 // throughout template.
 type Variable struct {
-	LazyEval                        bool `yaml:"-" json:"-"` // LazyEval is used to evaluate variables lazily if it using any expression or global variables
+	// LazyEval is used to evaluate variables lazily if it using any expression
+	// or global variables.
+	LazyEval                        bool `yaml:"-" json:"-"`
 	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
@@ -128,19 +133,67 @@ func evaluateVariableValue(expression string, values, processing map[string]inte
 // checkForLazyEval checks if the variables have any lazy evaluation i.e any dsl function
 // and sets the flag accordingly.
 func (variables *Variable) checkForLazyEval() bool {
+	var needsLazy bool
+
 	variables.ForEach(func(key string, value interface{}) {
+		if needsLazy {
+			return
+		}
+
 		for _, v := range protocolutils.KnownVariables {
 			if stringsutil.ContainsAny(types.ToString(value), v) {
-				variables.LazyEval = true
+				needsLazy = true
 				return
 			}
 		}
+
 		// this is a hotfix and not the best way to do it
 		// will be refactored once we move scan state to scanContext (see: https://github.com/projectdiscovery/nuclei/issues/4631)
 		if strings.Contains(types.ToString(value), "interactsh-url") {
-			variables.LazyEval = true
+			needsLazy = true
+			return
+		}
+
+		if hasUndefinedParams(types.ToString(value), variables) {
+			needsLazy = true
 			return
 		}
 	})
+
+	variables.LazyEval = needsLazy
+
 	return variables.LazyEval
+}
+
+// hasUndefinedParams checks if a variable value contains expressions that ref
+// parameters not defined in the current variable scope, indicating it needs
+// runtime context.
+func hasUndefinedParams(value string, variables *Variable) bool {
+	exprs := expressions.FindExpressions(value, marker.ParenthesisOpen, marker.ParenthesisClose, map[string]interface{}{})
+	if len(exprs) == 0 {
+		return false
+	}
+
+	definedVars := make(map[string]struct{})
+	variables.ForEach(func(key string, _ interface{}) {
+		definedVars[key] = struct{}{}
+	})
+
+	for _, expr := range exprs {
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expr, dsl.HelperFunctions)
+		if err != nil {
+			// NOTE(dwisiswant0): here, it might need runtime context.
+			return true
+		}
+
+		vars := compiled.Vars()
+		for _, paramName := range vars {
+			// NOTE(dwisiswant0): also here, if it's not in our defined vars.
+			if _, exists := definedVars[paramName]; !exists {
+				return true
+			}
+		}
+	}
+
+	return false
 }
