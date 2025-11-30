@@ -217,10 +217,16 @@ func (i *Index) Save() error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = file.Close() }()
 
 	encoder := gob.NewEncoder(file)
 	if err := encoder.Encode(snapshot); err != nil {
+		_ = file.Close()
+		_ = os.Remove(tmpFile)
+
+		return err
+	}
+
+	if err := file.Close(); err != nil {
 		_ = os.Remove(tmpFile)
 
 		return err
@@ -251,12 +257,14 @@ func (i *Index) Load() error {
 
 	decoder := gob.NewDecoder(file)
 	if err := decoder.Decode(&snapshot); err != nil {
+		_ = file.Close()
 		_ = os.Remove(i.cacheFile)
 
 		return nil
 	}
 
 	if snapshot.Version != i.version {
+		_ = file.Close()
 		_ = os.Remove(i.cacheFile)
 
 		return nil
