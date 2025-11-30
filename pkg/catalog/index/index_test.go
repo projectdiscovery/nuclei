@@ -493,8 +493,8 @@ func TestCacheSize(t *testing.T) {
 	require.Equal(t, 5, cache.Size(), "Cache should have size 5 after adding 5 entries")
 
 	// Delete entries
-	cache.Delete("/tmp/a.yaml")
-	cache.Delete("/tmp/b.yaml")
+	cache.Delete(filepath.Join("/tmp", "a.yaml"))
+	cache.Delete(filepath.Join("/tmp", "b.yaml"))
 
 	require.Equal(t, 3, cache.Size(), "Cache should have size 3 after deleting 2 entries")
 
@@ -538,17 +538,18 @@ func TestCacheSaveErrorHandling(t *testing.T) {
 
 	metadata := &Metadata{
 		ID:       "test",
-		FilePath: "/tmp/test.yaml",
+		FilePath: filepath.Join("/tmp", "test.yaml"),
 	}
 	cache.Set(metadata.FilePath, metadata)
 
-	// Make cache directory read-only to force save error
-	err = os.Chmod(tmpDir, 0444)
+	// Create a directory where the temp file would be created to force an error
+	// The Save method creates a file at cacheFile + ".tmp"
+	conflictPath := filepath.Join(tmpDir, IndexFileName+".tmp")
+	err = os.Mkdir(conflictPath, 0755)
 	require.NoError(t, err)
-	defer func() { _ = os.Chmod(tmpDir, 0755) }() // Restore permissions
 
 	err = cache.Save()
-	require.Error(t, err, "Save should fail with read-only directory")
+	require.Error(t, err, "Save should fail when temp file cannot be created")
 }
 
 func TestNewCacheWithInvalidDirectory(t *testing.T) {
@@ -646,7 +647,7 @@ func TestCachePersistenceWithLargeDataset(t *testing.T) {
 	require.Equal(t, 100, cache2.Size(), "Loaded cache should contain 100 entries")
 
 	// Verify a sample entry
-	found := cache2.Has("/tmp/template-50.yaml")
+	found := cache2.Has(filepath.Join("/tmp", "template-50.yaml"))
 	require.True(t, found, "Should find sample entry")
 }
 
