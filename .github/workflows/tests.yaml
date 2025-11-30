@@ -67,6 +67,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/cache/go-rod-browser@v1
+      - uses: projectdiscovery/actions/cache/nuclei@v1
       - name: "Simple"
         run: go run .
         working-directory: examples/simple/
@@ -89,12 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/nuclei
-          key: nuclei_${{ runner.os }}
-          restore-keys: nuclei_
+      - uses: projectdiscovery/actions/cache/nuclei@v1
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh "${{ matrix.os }}"
@@ -115,12 +111,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/nuclei
-          key: nuclei_${{ runner.os }}
-          restore-keys: nuclei_
+      - uses: projectdiscovery/actions/cache/nuclei@v1
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh
