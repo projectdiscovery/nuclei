@@ -96,7 +96,7 @@ func GlobalGuardBytesBufferAlloc() error {
 	defer muGlobalChange.Unlock()
 
 	// if current capacity was not reduced decrease it
-	if MaxBytesBufferAllocOnLowMemory > 0 && httputil.DefaultBytesBufferAlloc == httputil.GetPoolSize() {
+	if MaxBytesBufferAllocOnLowMemory > 0 && httputil.DefaultBufferSize == httputil.GetPoolSize() {
 		gologger.Debug().Msgf("reducing bytes.buffer pool size to: %d", MaxBytesBufferAllocOnLowMemory)
 		delta := httputil.GetPoolSize() - int64(MaxBytesBufferAllocOnLowMemory)
 		return httputil.ChangePoolSize(-delta)
@@ -112,9 +112,9 @@ func GlobalRestoreBytesBufferAlloc() {
 	}
 	defer muGlobalChange.Unlock()
 
-	if httputil.DefaultBytesBufferAlloc != httputil.GetPoolSize() {
-		delta := httputil.DefaultBytesBufferAlloc - httputil.GetPoolSize()
-		gologger.Debug().Msgf("restoring bytes.buffer pool size to: %d", httputil.DefaultBytesBufferAlloc)
+	if httputil.DefaultBufferSize != httputil.GetPoolSize() {
+		delta := httputil.DefaultBufferSize - httputil.GetPoolSize()
+		gologger.Debug().Msgf("restoring bytes.buffer pool size to: %d", httputil.DefaultBufferSize)
 		_ = httputil.ChangePoolSize(delta)
 	}
 }
