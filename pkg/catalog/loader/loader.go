@@ -392,19 +392,22 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 
 		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 		if loaded {
-			if store.metadataIndex != nil {
-				templatesCache := store.parserCacheOnce()
-				if templatesCache != nil {
-					if template, _, _ := templatesCache.Has(templatePath); template != nil {
-						if metadata, _ := store.metadataIndex.SetFromTemplate(templatePath, template); metadata != nil {
-							if !indexFilter.Matches(metadata) {
-								continue
-							}
-
-							validPaths[templatePath] = struct{}{}
-							continue
-						}
+			templatesCache := store.parserCacheOnce()
+			if templatesCache != nil {
+				if template, _, _ := templatesCache.Has(templatePath); template != nil {
+					var metadata *index.Metadata
+					if store.metadataIndex != nil {
+						metadata, _ = store.metadataIndex.SetFromTemplate(templatePath, template)
+					} else {
+						metadata = index.NewMetadataFromTemplate(templatePath, template)
 					}
+
+					if !indexFilter.Matches(metadata) {
+						continue
+					}
+
+					validPaths[templatePath] = struct{}{}
+					continue
 				}
 			}
 
@@ -683,9 +686,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		go func(templatePath string) {
 			defer wgLoadTemplates.Done()
 
-			var metadataCached bool
+			var (
+				metadata       *index.Metadata
+				metadataCached bool
+			)
+
 			if store.metadataIndex != nil {
-				if metadata, found := store.metadataIndex.Get(templatePath); found {
+				if cachedMetadata, found := store.metadataIndex.Get(templatePath); found {
+					metadata = cachedMetadata
 					if !indexFilter.Matches(metadata) {
 						return
 					}
@@ -701,8 +709,13 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			if loaded {
 				parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 
-				if store.metadataIndex != nil && parsed != nil && !metadataCached {
-					metadata, _ := store.metadataIndex.SetFromTemplate(templatePath, parsed)
+				if parsed != nil && !metadataCached {
+					if store.metadataIndex != nil {
+						metadata, _ = store.metadataIndex.SetFromTemplate(templatePath, parsed)
+					} else {
+						metadata = index.NewMetadataFromTemplate(templatePath, parsed)
+					}
+
 					if metadata != nil && !indexFilter.Matches(metadata) {
 						return
 					}
