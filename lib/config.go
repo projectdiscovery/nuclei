@@ -103,7 +103,8 @@ type InteractshOpts interactsh.Options
 // WithInteractshOptions sets interactsh options
 func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafe {
+		// WithInteractshOptions can be used when creating ThreadSafeNucleiEngine but not after it's initialized
+		if e.mode == threadSafe && e.interactshOpts != nil {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithInteractshOptions")
 		}
 		optsPtr := &opts
@@ -291,7 +292,8 @@ type NetworkConfig struct {
 // WithNetworkConfig allows setting network config options
 func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafe {
+		// WithNetworkConfig can be used when creating ThreadSafeNucleiEngine but not after it's initialized
+		if e.mode == threadSafe && e.hostErrCache != nil {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithNetworkConfig")
 		}
 		e.opts.NoHostErrors = opts.DisableMaxHostErr
