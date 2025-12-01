@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 )
 
@@ -51,6 +52,24 @@ type Metadata struct {
 	// calculation, because it affects cache eviction behavior. Also, consider
 	// the impact on existing cached data and whether a [IndexVersion] bump is
 	// needed.
+}
+
+// NewMetadataFromTemplate creates a new metadata object from a template.
+func NewMetadataFromTemplate(path string, tpl *templates.Template) *Metadata {
+	return &Metadata{
+		ID:       tpl.ID,
+		FilePath: path,
+
+		Name:     tpl.Info.Name,
+		Authors:  tpl.Info.Authors.ToSlice(),
+		Tags:     tpl.Info.Tags.ToSlice(),
+		Severity: tpl.Info.SeverityHolder.Severity.String(),
+
+		ProtocolType: tpl.Type().String(),
+
+		Verified:         tpl.Verified,
+		TemplateVerifier: tpl.TemplateVerifier,
+	}
 }
 
 // IsValid checks if the cached metadata is still valid by comparing the file

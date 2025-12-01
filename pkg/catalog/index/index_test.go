@@ -706,3 +706,32 @@ func TestMultipleProtocolsDetection(t *testing.T) {
 	require.NotNil(t, metadata)
 	require.Equal(t, "http", metadata.ProtocolType, "Primary protocol should be http")
 }
+
+func TestNewMetadataFromTemplate(t *testing.T) {
+	tmpl := &templates.Template{
+		ID: "test-template",
+		Info: model.Info{
+			Name:    "Test Template",
+			Authors: stringslice.StringSlice{Value: []string{"author"}},
+			Tags:    stringslice.StringSlice{Value: []string{"tag"}},
+			SeverityHolder: severity.Holder{
+				Severity: severity.Low,
+			},
+		},
+		Verified:         true,
+		TemplateVerifier: "verifier",
+	}
+
+	path := "/tmp/test.yaml"
+	metadata := NewMetadataFromTemplate(path, tmpl)
+
+	require.Equal(t, tmpl.ID, metadata.ID)
+	require.Equal(t, path, metadata.FilePath)
+	require.Equal(t, tmpl.Info.Name, metadata.Name)
+	require.Equal(t, tmpl.Info.Authors.ToSlice(), metadata.Authors)
+	require.Equal(t, tmpl.Info.Tags.ToSlice(), metadata.Tags)
+	require.Equal(t, tmpl.Info.SeverityHolder.Severity.String(), metadata.Severity)
+	require.Equal(t, tmpl.Type().String(), metadata.ProtocolType)
+	require.Equal(t, tmpl.Verified, metadata.Verified)
+	require.Equal(t, tmpl.TemplateVerifier, metadata.TemplateVerifier)
+}
