@@ -139,28 +139,19 @@ func (i *Index) Set(path string, metadata *Metadata) (*Metadata, bool) {
 //
 // Returns the metadata and whether it was successfully cached. The metadata is
 // always returned (even on checksum failure) for immediate filtering use.
-// Returns false if checksum computation fails or cache eviction occurs.
+// Returns false if the metadata was not cached (e.g., set, evicted).
 func (i *Index) SetFromTemplate(path string, tpl *templates.Template) (*Metadata, bool) {
-	metadata := &Metadata{
-		ID:       tpl.ID,
-		FilePath: path,
-
-		Name:     tpl.Info.Name,
-		Authors:  tpl.Info.Authors.ToSlice(),
-		Tags:     tpl.Info.Tags.ToSlice(),
-		Severity: tpl.Info.SeverityHolder.Severity.String(),
-
-		ProtocolType: tpl.Type().String(),
-
-		Verified:         tpl.Verified,
-		TemplateVerifier: tpl.TemplateVerifier,
-	}
+	metadata := NewMetadataFromTemplate(path, tpl)
 
 	info, err := os.Stat(path)
 	if err != nil {
 		return metadata, false
 	}
 	metadata.ModTime = info.ModTime()
+
+	if i.cache == nil {
+		return metadata, false
+	}
 
 	return i.Set(path, metadata)
 }
