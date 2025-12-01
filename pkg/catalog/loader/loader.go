@@ -320,6 +320,9 @@ func init() {
 // IDs, protocols). Advanced IncludeConditions filtering is handled separately
 // by tagFilter.
 func (store *Store) buildIndexFilter() *index.Filter {
+	includeTemplates, _ := store.config.Catalog.GetTemplatesPath(store.config.IncludeTemplates)
+	excludeTemplates, _ := store.config.Catalog.GetTemplatesPath(store.config.ExcludeTemplates)
+
 	return &index.Filter{
 		Authors:              store.config.Authors,
 		Tags:                 store.config.Tags,
@@ -327,8 +330,8 @@ func (store *Store) buildIndexFilter() *index.Filter {
 		IncludeTags:          store.config.IncludeTags,
 		IDs:                  store.config.IncludeIds,
 		ExcludeIDs:           store.config.ExcludeIds,
-		IncludeTemplates:     store.config.IncludeTemplates,
-		ExcludeTemplates:     store.config.ExcludeTemplates,
+		IncludeTemplates:     includeTemplates,
+		ExcludeTemplates:     excludeTemplates,
 		Severities:           []severity.Severity(store.config.Severities),
 		ExcludeSeverities:    []severity.Severity(store.config.ExcludeSeverities),
 		ProtocolTypes:        []templateTypes.ProtocolType(store.config.Protocols),
