@@ -71,7 +71,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(itemStr)
+		return extractor.ExtractRegex(itemStr, data)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.DSLExtractor:
@@ -79,7 +79,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.XPathExtractor:
 		return extractor.ExtractXPath(itemStr)
 	case extractors.JSONExtractor:
-		return extractor.ExtractJSON(itemStr)
+		return extractor.ExtractJSON(itemStr, data)
 	}
 	return nil
 }
