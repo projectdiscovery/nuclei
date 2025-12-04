@@ -948,7 +948,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.Body().Bytes()); err != nil {
+			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
@@ -962,7 +962,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), respChain.FullResponse().String())
+		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), respChain.FullResponseString())
 
 		// save response to projectfile
 		onceFunc()
@@ -1003,7 +1003,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponse().String(), respChain.Body().String(), respChain.Headers().String(), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponseString(), respChain.BodyString(), respChain.HeadersString(), duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
@@ -1066,7 +1066,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
-		dumpResponse(event, request, respChain.FullResponse().Bytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
+		dumpResponse(event, request, respChain.FullResponseBytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
 
@@ -1080,7 +1080,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
 				RawRequest:    string(dumpedRequest),
-				RawResponse:   respChain.FullResponse().String(),
+				RawResponse:   respChain.FullResponseString(),
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
 		}
@@ -1135,6 +1135,15 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
 	if request.dialer == nil {
 		return
+	}
+
+	if request.options.Interactsh != nil {
+		interactshDomain := request.options.Interactsh.GetHostname()
+		if interactshDomain != "" {
+			if strings.EqualFold(hostname, interactshDomain) || strings.HasSuffix(hostname, "."+interactshDomain) {
+				return
+			}
+		}
 	}
 
 	data, err := request.dialer.GetDNSData(hostname)

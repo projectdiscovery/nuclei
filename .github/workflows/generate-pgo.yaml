@@ -28,9 +28,10 @@ jobs:
       LIST_FILE: "/tmp/targets-${{ matrix.targets }}.txt"
       PROFILE_MEM: "/tmp/nuclei-profile-${{ matrix.targets }}-targets"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/git@v1
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/nuclei@v1
       - name: Generate list
         run: for i in {1..${{ matrix.targets }}}; do echo "https://honey.scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
       # NOTE(dwisiswant0): use `-no-mhe` flag to get better samples.
