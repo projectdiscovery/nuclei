@@ -3,6 +3,7 @@ package nuclei
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -556,6 +557,21 @@ func WithLogger(logger *gologger.Logger) NucleiSDKOptions {
 func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts = opts
+		return nil
+	}
+}
+
+// WithTemporaryDirectory allows setting a parent directory for SDK-managed temporary files.
+// A temporary directory will be created inside the provided directory and cleaned up on engine close.
+// If not set, a temporary directory will be automatically created in the system temp location.
+// The parent directory is assumed to exist.
+func WithTemporaryDirectory(parentDir string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		tmpDir, err := os.MkdirTemp(parentDir, "nuclei-tmp-*")
+		if err != nil {
+			return err
+		}
+		e.tmpDir = tmpDir
 		return nil
 	}
 }

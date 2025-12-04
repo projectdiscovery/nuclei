@@ -11,8 +11,10 @@ jobs:
     env:
       BENCH_OUT: "/tmp/bench.out"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
+      - uses: projectdiscovery/actions/cache/nuclei@v1
       - run: make build-test
       - run: ./bin/nuclei.test -test.run - -test.bench=. -test.benchmem ./cmd/nuclei/ | tee $BENCH_OUT
         env:
