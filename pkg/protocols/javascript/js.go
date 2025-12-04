@@ -36,6 +36,7 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	iputil "github.com/projectdiscovery/utils/ip"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -133,8 +134,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	// "Port" is a special variable and it should not contains any dsl expressions
-	if strings.Contains(request.getPort(), "{{") {
-		return errkit.New("'Port' variable cannot contain any dsl expressions")
+	ports := request.getPorts()
+	for _, port := range ports {
+		if strings.Contains(port, "{{") {
+			return errkit.New("'Port' variable cannot contain any dsl expressions")
+		}
 	}
 
 	if request.Init != "" {
@@ -281,12 +285,28 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// Get default port(s) if specified in template
+	ports := request.getPorts()
 
+	var errs []error
+
+	for _, port := range ports {
+		err := request.executeWithResults(port, target, dynamicValues, previous, callback)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errkit.Join(errs...)
+}
+
+// executeWithResults executes the request
+func (request *Request) executeWithResults(port string, target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	input := target.Clone()
 	// use network port updates input with new port requested in template file
 	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
 	// idea is to reduce redundant dials to http ports
-	if err := input.UseNetworkPort(request.getPort(), request.getExcludePorts()); err != nil {
+	if err := input.UseNetworkPort(port, request.getExcludePorts()); err != nil {
 		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 	}
 
@@ -755,13 +775,21 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.JavascriptProtocol
 }
 
-func (request *Request) getPort() string {
+func (request *Request) getPorts() []string {
 	for k, v := range request.Args {
 		if strings.EqualFold(k, "Port") {
-			return types.ToString(v)
+			portStr := types.ToString(v)
+			ports := []string{}
+			for _, p := range strings.Split(portStr, ",") {
+				trimmed := strings.TrimSpace(p)
+				if trimmed != "" {
+					ports = append(ports, trimmed)
+				}
+			}
+			return sliceutil.Dedupe(ports)
 		}
 	}
-	return ""
+	return []string{}
 }
 
 func (request *Request) getExcludePorts() string {
