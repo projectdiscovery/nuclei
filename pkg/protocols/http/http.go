@@ -506,7 +506,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			stats.Increment(SetThreadToCountZero)
 			request.Threads = 0
 		} else {
-			// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
+			// specifically for http requests high concurrency and threads will lead to memory exhaustion, hence reduce the maximum parallelism
 			if protocolstate.IsLowOnMemory() {
 				request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
 			}

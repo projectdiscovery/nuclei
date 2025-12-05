@@ -961,7 +961,7 @@ cpe: cpe:/a:vendor:product:version
 
 
 ## http.Request
-Request contains a http request to be made from a template
+Request contains an http request to be made from a template
 
 Appears in:
 
