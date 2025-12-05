@@ -313,6 +313,8 @@ type Options struct {
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
 	InputReadTimeout time.Duration
+	// MaxTime is the maximum time to run the entire execution before gracefully stopping
+	MaxTime time.Duration
 	// Disable stdin for input processing
 	DisableStdin bool
 	// IncludeConditions is the list of conditions templates should match
@@ -610,6 +612,7 @@ func (options *Options) Copy() *Options {
 		ResponseSaveSize:               options.ResponseSaveSize,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
+		MaxTime:                        options.MaxTime,
 		DisableStdin:                   options.DisableStdin,
 		IncludeConditions:              options.IncludeConditions,
 		Uncover:                        options.Uncover,

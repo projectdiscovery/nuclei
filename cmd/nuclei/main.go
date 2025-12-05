@@ -433,6 +433,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 			scanstrategy.TemplateSpray.String(): goflags.EnumVariable(2),
 		}),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
+		flagSet.DurationVarP(&options.MaxTime, "max-time", "mt", 0, "maximum time to run the entire execution before gracefully stopping (example: -mt 1h30m)"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 	)
