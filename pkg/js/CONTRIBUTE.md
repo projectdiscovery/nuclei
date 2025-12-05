@@ -67,7 +67,7 @@ Javascript Protocol Documentation is auto-generated using [jsdoc] and is hosted 
 
 ### Javascript Code Guidelines
 
-1. Catch exceptions using `try/catch` blocks and handle errors gracefully, showing useful information. By default, the implementation returns a Go error on a unhandled exception along with stack trace in debug mode.
+1. Catch exceptions using `try/catch` blocks and handle errors gracefully, showing useful information. By default, the implementation returns a Go error on an unhandled exception along with stack trace in debug mode.
 2. Use `let`/`cost` instead of `var` to declare variables.
 3. Keep the global scope clean. The VMs are not shared so do not rely on VM state.
 4. Use functions to divide the code and keep the implementation clean. 

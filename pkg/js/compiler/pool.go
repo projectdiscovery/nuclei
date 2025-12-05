@@ -242,7 +242,7 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 				return result.String()
 			}
 		}
-		// unlikely but if to_json throwed some error use native json.Marshal
+		// unlikely but if to_json threw some error use native json.Marshal
 		val := value
 		if kind == reflect.Ptr {
 			val = reflect.ValueOf(value).Elem().Interface()
