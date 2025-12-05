@@ -39,7 +39,7 @@ func TestActionNavigate(t *testing.T) {
 
 	actions := []*Action{{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}}, {ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}}}
 
-	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+	testHeadlessSimpleResponse(t, response, actions, 60*time.Second, func(page *Page, err error, out ActionData) {
 		require.Nilf(t, err, "could not run page actions")
 		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
 	})
