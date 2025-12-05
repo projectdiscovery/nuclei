@@ -75,7 +75,7 @@ syntax-docs: docgen
 syntax-docs:
 	./bin/docgen SYNTAX-REFERENCE.md nuclei-jsonschema.json
 
-test: GOFLAGS = -race -v
+test: GOFLAGS = -race -v -timeout 30m -count 1
 test:
 	$(GOTEST) $(GOFLAGS) ./...
 
