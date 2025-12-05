@@ -233,6 +233,7 @@ HEADLESS:
    -sb, -show-browser               headless 모드로 실행하는 템플릿에서 브라우저 화면 표시
    -ho, -headless-options string[]  추가 옵션으로 headless chrome 시작
    -sc, -system-chrome              nuclei가 설치한 Chrome 대신 로컬에 설치된 Chrome 브라우저 사용
+   -cdpe, -cdp-endpoint string      Chrome DevTools Protocol (CDP) 엔드포인트를 통한 원격 브라우저 사용
    -lha, -list-headless-action      사용 가능한 headless 액션 목록 표시
 
 DEBUG:
