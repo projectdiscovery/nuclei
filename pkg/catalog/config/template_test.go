@@ -1,10 +1,20 @@
 package config
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func toAbs(p string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.FromSlash("C:" + p)
+	}
+
+	return filepath.FromSlash(p)
+}
 
 func TestIsTemplate(t *testing.T) {
 	tests := []struct {
@@ -33,19 +43,19 @@ func TestIsTemplate(t *testing.T) {
 		},
 		{
 			name:    "absolute path with excluded parent dir (bug fix)",
-			fpath:   "/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates/dns/cname.yaml",
-			rootDir: "/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates",
+			fpath:   toAbs("/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates/dns/cname.yaml"),
+			rootDir: toAbs("/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates"),
 			want:    true,
 		},
 		{
 			name:    "absolute path with excluded dir inside root",
-			fpath:   "/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates/helpers/data.txt",
-			rootDir: "/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates",
+			fpath:   toAbs("/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates/helpers/data.txt"),
+			rootDir: toAbs("/path/to/somewhere/that/has/helpers/dir/nuclei/nuclei-templates"),
 			want:    false,
 		},
 		{
 			name:    "absolute path without root (skip check)",
-			fpath:   "/opt/helpers/foo.yaml",
+			fpath:   toAbs("/opt/helpers/foo.yaml"),
 			rootDir: "",
 			want:    true,
 		},
