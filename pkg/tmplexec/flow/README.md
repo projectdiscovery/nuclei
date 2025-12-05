@@ -108,13 +108,13 @@ The update template now seems straight forward and easy to understand. we are fi
 - update variables at runtime (ex: when jwt expires update it by using refresh token and then continue execution)
 - and a lot more (this is just a tip of iceberg)
 
-simply put request execution orchestration can be understood as nuclei logic bindings for javascript (i.e. two way interaction between javascript and nuclei for a specific template)
+simply put request execution orchestration can be understood as nuclei logic bindings for javascript (i.e. two-way interaction between javascript and nuclei for a specific template)
 
 To better understand orchestration we can try to build a template for vhost enumeration using flow. which usually requires writing / using a new tool
 
 **for basic vhost enumeration a template should** 
 - do a PTR lookup for given ip
-- get SSL certificate for given ip (i.e tls-grab)
+- get SSL certificate for given ip (i.e. tls-grab)
   - extract subject_cn from certificate
   - extract subject_alt_names(SAN) from certificate
   - filter out wildcard prefix from above values
@@ -164,7 +164,7 @@ http:
         dsl:
           - '"VHOST: " + vhost + ", SC: " + status_code + ", CL: " + content_length'                                                                                tarun@macbook:~/Codebase/nuclei/integration_tes
 ```
-**But this template is not yet ready as it is missing core logic i.e how we use all these obtained data and do bruteforce**
+**But this template is not yet ready as it is missing core logic i.e. how we use all these obtained data and do bruteforce**
 and this is where flow comes into picture. flow is javascript code with two way bindings to nuclei. if we write javascript code to orchestrate vhost enumeration it is as simple as
 ```javascript
   ssl();

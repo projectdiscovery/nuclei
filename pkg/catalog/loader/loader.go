@@ -185,7 +185,7 @@ func New(cfg *Config) (*Store, error) {
 	})
 
 	// Do a check to see if we have URLs in templates flag, if so
-	// we need to processs them separately and remove them from the initial list
+	// we need to process them separately and remove them from the initial list
 	var templatesFinal []string
 	for _, template := range cfg.Templates {
 		// TODO: Add and replace this with urlutil.IsURL() helper
