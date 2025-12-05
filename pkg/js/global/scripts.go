@@ -150,7 +150,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 				defer cancel()
 			}
 			if host == "" || port == "" {
-				return false, errkit.New("isPortOpen: host or port is empty")
+				return false, errkit.New("isUDPPortOpen: host or port is empty")
 			}
 
 			executionId := ctx.Value("executionId").(string)
@@ -163,7 +163,24 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			if err != nil {
 				return false, err
 			}
-			_ = conn.Close()
+			defer conn.Close()
+			
+			probe := []byte("ping")
+			if _, err := conn.Write(probe); err != nil {
+				return false, err
+			}
+		
+			if dl, ok := ctx.Deadline(); ok {
+				_ = conn.SetReadDeadline(dl)
+			} else {
+				_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			}
+
+			buf := make([]byte, 1024)
+			_, err = conn.Read(buf)
+			if err != nil {
+				return false, nil
+			}
 			return true, nil
 		},
 	})
