@@ -50,7 +50,7 @@ func TestFlowTemplateWithIndex(t *testing.T) {
 	Template, err := templates.Parse("testcases/nuclei-flow-dns.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
-	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
+	require.True(t, Template.Flow != "", "not a flow template") // this is classifier if template is flow or not
 
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
