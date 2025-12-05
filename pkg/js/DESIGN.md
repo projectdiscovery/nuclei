@@ -12,7 +12,7 @@ compiler contains abstracted logic for compiling and executing javascript code. 
 
 ## [devtools](./devtools/README.md)
 
-devtools contains development related tools to automate booring tasks like generating bindings, adding jsdoc comments, generating api reference etc.
+devtools contains development related tools to automate boring tasks like generating bindings, adding jsdoc comments, generating api reference etc.
 
 ## [generated](./generated/README.md)
 
@@ -28,7 +28,7 @@ generated/js contains a visual representation of all exposed functions and types
 
 ## [global](./global/)
 
-global (or builtin) contains all builtin types and functions that are by default available in javascript runtime without needing to import any module using 'require' keyword. Its split into 2 sections
+global (or builtin) contains all builtin types and functions that are by default available in javascript runtime without needing to import any module using 'require' keyword. It's split into 2 sections
 
 ### [- global/js](./global/js/)
 
