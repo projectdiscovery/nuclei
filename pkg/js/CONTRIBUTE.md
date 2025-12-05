@@ -14,7 +14,7 @@ Most of Javascript API Reference documentation is auto-generated with help of co
 
 ## Improving Existing Libraries(aka node_modules)
 
-Improving existing libraries includes adding new functions, types, fixing bugs etc to any of the existing libraries in [libs](./libs/) directory. This is very easy to achieve and can be done by following steps below
+Improving existing libraries includes adding new functions, types, fixing bugs etc. to any of the existing libraries in [libs](./libs/) directory. This is very easy to achieve and can be done by following steps below
 
 1. Do suggested changes in targeted package in [libs](./libs/) directory
 2. Refer [devtools](./devtools/README.md) to autogenerate bindings and documentation
@@ -53,7 +53,7 @@ Javascript Protocol Documentation is auto-generated using [jsdoc] and is hosted 
 ### Go Code Guidelines
 
 1. Always use 'protocolstate.Dialer' (i.e fastdialer) to dial connections instead of net.Dial this has many benefits along with proxy support , **network policy** usage (i.e local network access can be disabled from cli)
-2. When usage of 'protocolstate.Dialer' is not possible due to some reason ex: imported library does not accept dialer etc then validate host using 'protocolstate.IsHostAllowed' before dialing connection.
+2. When usage of 'protocolstate.Dialer' is not possible due to some reason ex: imported library does not accept dialer etc. then validate host using 'protocolstate.IsHostAllowed' before dialing connection.
 ```go
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
