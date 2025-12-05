@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	"github.com/Azure/go-ntlmssp"
 )
 
 // SMB constants for packet crafting
@@ -230,31 +232,31 @@ func createSessionSetupData(username, password, domain string, sessionKey uint64
 	buf.WriteByte(0x00)
 
 	// AndXOffset
-	binary.LittleEndian.PutUint16(buf.Next(2), 0)
+	binary.Write(&buf, binary.LittleEndian, uint16(0))
 
 	// MaxBufferSize
-	binary.LittleEndian.PutUint16(buf.Next(2), 0xFFFF)
+	binary.Write(&buf, binary.LittleEndian, uint16(0xFFFF))
 
 	// MaxMpxCount
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x01)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x01))
 
 	// VcNumber
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x00)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x00))
 
 	// SessionKey
-	binary.LittleEndian.PutUint32(buf.Next(4), uint32(sessionKey))
+	binary.Write(&buf, binary.LittleEndian, uint32(sessionKey))
 
 	// CaseInsensitivePasswordLength
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(password)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(password)))
 
 	// CaseSensitivePasswordLength
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(password)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(password)))
 
 	// Reserved
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00))
 
 	// Capabilities
-	binary.LittleEndian.PutUint32(buf.Next(4), SMB_CAP_EXTENDED_SECURITY|SMB_CAP_NT_SMBS)
+	binary.Write(&buf, binary.LittleEndian, uint32(SMB_CAP_EXTENDED_SECURITY|SMB_CAP_NT_SMBS))
 
 	// Byte count
 	buf.WriteByte(0x00)
@@ -320,10 +322,10 @@ func createTreeConnectData(shareName, password string) []byte {
 	buf.WriteByte(0x00)
 
 	// AndXOffset
-	binary.LittleEndian.PutUint16(buf.Next(2), 0)
+	binary.Write(&buf, binary.LittleEndian, uint16(0))
 
 	// Flags
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x00)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x00))
 
 	// Password length
 	buf.WriteByte(byte(len(password)))
@@ -382,40 +384,40 @@ func createNTCreateData(fileName string) []byte {
 	buf.WriteByte(0x00)
 
 	// AndXOffset
-	binary.LittleEndian.PutUint16(buf.Next(2), 0)
+	binary.Write(&buf, binary.LittleEndian, uint16(0))
 
 	// Reserved
 	buf.WriteByte(0x00)
 
 	// NameLength
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(fileName)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(fileName)))
 
 	// Flags
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// RootDirectoryFID
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// DesiredAccess
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// AllocationSize
-	binary.LittleEndian.PutUint64(buf.Next(8), 0x0000000000000000)
+	binary.Write(&buf, binary.LittleEndian, uint64(0x0000000000000000))
 
 	// FileAttributes
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// ShareAccess
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// CreateDisposition
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000001) // FILE_OPEN
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000001)) // FILE_OPEN
 
 	// CreateOptions
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// ImpersonationLevel
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000002) // SecurityImpersonation
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000002)) // SecurityImpersonation
 
 	// SecurityFlags
 	buf.WriteByte(0x00)
@@ -455,7 +457,7 @@ func CreateNTLMNegotiatePacket() []byte {
 	buf.WriteByte(0x00)
 
 	// Message type (1 = Negotiate)
-	binary.LittleEndian.PutUint32(buf.Next(4), 1)
+	binary.Write(&buf, binary.LittleEndian, uint32(1))
 
 	// Negotiate flags
 	flags := uint32(NTLMSSP_NEGOTIATE_56 |
@@ -467,20 +469,24 @@ func CreateNTLMNegotiatePacket() []byte {
 		NTLMSSP_NEGOTIATE_ALWAYS_SIGN |
 		NTLMSSP_NEGOTIATE_NTLM |
 		NTLMSSP_NEGOTIATE_UNICODE)
-	binary.LittleEndian.PutUint32(buf.Next(4), flags)
+	binary.Write(&buf, binary.LittleEndian, flags)
 
 	// Domain name fields (empty for negotiate)
-	binary.LittleEndian.PutUint16(buf.Next(2), 0) // DomainNameLen
-	binary.LittleEndian.PutUint16(buf.Next(2), 0) // DomainNameMaxLen
-	binary.LittleEndian.PutUint32(buf.Next(4), 0) // DomainNameBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(0)) // DomainNameLen
+	binary.Write(&buf, binary.LittleEndian, uint16(0)) // DomainNameMaxLen
+	binary.Write(&buf, binary.LittleEndian, uint32(0)) // DomainNameBufferOffset
 
 	// Workstation name fields (empty for negotiate)
-	binary.LittleEndian.PutUint16(buf.Next(2), 0) // WorkstationNameLen
-	binary.LittleEndian.PutUint16(buf.Next(2), 0) // WorkstationNameMaxLen
-	binary.LittleEndian.PutUint32(buf.Next(4), 0) // WorkstationNameBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(0)) // WorkstationNameLen
+	binary.Write(&buf, binary.LittleEndian, uint16(0)) // WorkstationNameMaxLen
+	binary.Write(&buf, binary.LittleEndian, uint32(0)) // WorkstationNameBufferOffset
 
-	// Version (empty for negotiate)
-	buf.Write(make([]byte, 8))
+	// Version
+	buf.WriteByte(0x05)                                     // Major version
+	buf.WriteByte(0x02)                                     // Minor version
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0A28)) // Build number
+	buf.Write(make([]byte, 3))                              // Reserved
+	buf.WriteByte(0x0F)                                     // NTLM revision
 
 	return buf.Bytes()
 }
@@ -494,12 +500,12 @@ func CreateNTLMChallengePacket(challenge []byte, targetInfo []byte) []byte {
 	buf.WriteByte(0x00)
 
 	// Message type (2 = Challenge)
-	binary.LittleEndian.PutUint32(buf.Next(4), 2)
+	binary.Write(&buf, binary.LittleEndian, uint32(2))
 
 	// Target name fields
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(targetInfo)))
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(targetInfo)))
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x20) // TargetNameBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(0))
+	binary.Write(&buf, binary.LittleEndian, uint16(0))
+	binary.Write(&buf, binary.LittleEndian, uint32(56)) // TargetNameBufferOffset
 
 	// Negotiate flags
 	flags := uint32(NTLMSSP_NEGOTIATE_56 |
@@ -511,7 +517,7 @@ func CreateNTLMChallengePacket(challenge []byte, targetInfo []byte) []byte {
 		NTLMSSP_NEGOTIATE_ALWAYS_SIGN |
 		NTLMSSP_NEGOTIATE_NTLM |
 		NTLMSSP_NEGOTIATE_UNICODE)
-	binary.LittleEndian.PutUint32(buf.Next(4), flags)
+	binary.Write(&buf, binary.LittleEndian, flags)
 
 	// Challenge
 	buf.Write(challenge)
@@ -520,16 +526,16 @@ func CreateNTLMChallengePacket(challenge []byte, targetInfo []byte) []byte {
 	buf.Write(make([]byte, 8))
 
 	// Target info fields
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(targetInfo)))
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(targetInfo)))
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x30) // TargetInfoBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(len(targetInfo)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(targetInfo)))
+	binary.Write(&buf, binary.LittleEndian, uint32(56)) // TargetInfoBufferOffset
 
 	// Version
-	buf.WriteByte(0x05)                                // Major version
-	buf.WriteByte(0x02)                                // Minor version
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0A28) // Build number
-	buf.Write(make([]byte, 3))                         // Reserved
-	buf.WriteByte(0x0F)                                // NTLM revision
+	buf.WriteByte(0x05)                                     // Major version
+	buf.WriteByte(0x02)                                     // Minor version
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0A28)) // Build number
+	buf.Write(make([]byte, 3))                              // Reserved
+	buf.WriteByte(0x0F)                                     // NTLM revision
 
 	// Target info
 	buf.Write(targetInfo)
@@ -546,37 +552,47 @@ func CreateNTLMAuthPacket(username, password, domain, workstation string, challe
 	buf.WriteByte(0x00)
 
 	// Message type (3 = Authenticate)
-	binary.LittleEndian.PutUint32(buf.Next(4), 3)
+	binary.Write(&buf, binary.LittleEndian, uint32(3))
+
+	// Calculate offsets
+	baseOffset := uint32(72) // Header size (assuming Version is present)
+
+	lmOffset := baseOffset
+	ntOffset := lmOffset + uint32(len(lmResponse))
+	domainOffset := ntOffset + uint32(len(ntResponse))
+	userOffset := domainOffset + uint32(len(domain))
+	workOffset := userOffset + uint32(len(username))
+	sessionKeyOffset := workOffset + uint32(len(workstation))
 
 	// LM response fields
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(lmResponse)))
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(lmResponse)))
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x20) // LMResponseBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(len(lmResponse)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(lmResponse)))
+	binary.Write(&buf, binary.LittleEndian, uint32(lmOffset))
 
 	// NT response fields
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(ntResponse)))
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(ntResponse)))
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x20+uint32(len(lmResponse))) // NTResponseBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(len(ntResponse)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(ntResponse)))
+	binary.Write(&buf, binary.LittleEndian, uint32(ntOffset))
 
 	// Domain name fields
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(domain)))
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(domain)))
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x20+uint32(len(lmResponse)+len(ntResponse))) // DomainNameBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(len(domain)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(domain)))
+	binary.Write(&buf, binary.LittleEndian, uint32(domainOffset))
 
 	// Username fields
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(username)))
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(username)))
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x20+uint32(len(lmResponse)+len(ntResponse)+len(domain))) // UserNameBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(len(username)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(username)))
+	binary.Write(&buf, binary.LittleEndian, uint32(userOffset))
 
 	// Workstation name fields
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(workstation)))
-	binary.LittleEndian.PutUint16(buf.Next(2), uint16(len(workstation)))
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x20+uint32(len(lmResponse)+len(ntResponse)+len(domain)+len(username))) // WorkstationNameBufferOffset
+	binary.Write(&buf, binary.LittleEndian, uint16(len(workstation)))
+	binary.Write(&buf, binary.LittleEndian, uint16(len(workstation)))
+	binary.Write(&buf, binary.LittleEndian, uint32(workOffset))
 
 	// Encrypted random session key fields
-	binary.LittleEndian.PutUint16(buf.Next(2), 0)
-	binary.LittleEndian.PutUint16(buf.Next(2), 0)
-	binary.LittleEndian.PutUint32(buf.Next(4), 0)
+	binary.Write(&buf, binary.LittleEndian, uint16(0))
+	binary.Write(&buf, binary.LittleEndian, uint16(0))
+	binary.Write(&buf, binary.LittleEndian, uint32(sessionKeyOffset))
 
 	// Negotiate flags
 	flags := uint32(NTLMSSP_NEGOTIATE_56 |
@@ -588,14 +604,14 @@ func CreateNTLMAuthPacket(username, password, domain, workstation string, challe
 		NTLMSSP_NEGOTIATE_ALWAYS_SIGN |
 		NTLMSSP_NEGOTIATE_NTLM |
 		NTLMSSP_NEGOTIATE_UNICODE)
-	binary.LittleEndian.PutUint32(buf.Next(4), flags)
+	binary.Write(&buf, binary.LittleEndian, flags)
 
 	// Version
-	buf.WriteByte(0x05)                                // Major version
-	buf.WriteByte(0x02)                                // Minor version
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0A28) // Build number
-	buf.Write(make([]byte, 3))                         // Reserved
-	buf.WriteByte(0x0F)                                // NTLM revision
+	buf.WriteByte(0x05)                                     // Major version
+	buf.WriteByte(0x02)                                     // Minor version
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0A28)) // Build number
+	buf.Write(make([]byte, 3))                              // Reserved
+	buf.WriteByte(0x0F)                                     // NTLM revision
 
 	// LM response
 	buf.Write(lmResponse)
@@ -617,18 +633,59 @@ func CreateNTLMAuthPacket(username, password, domain, workstation string, challe
 
 // Helper function to create LM hash response
 func CreateLMResponse(challenge []byte, password string) []byte {
-	// This is a simplified implementation
-	// In practice, you'd need to implement the full LM hash algorithm
-	// For now, return a dummy response
-	return make([]byte, 24)
+	// Create a minimal Type 2 challenge packet to satisfy ntlmssp
+	type2 := CreateNTLMChallengePacket(challenge, []byte{})
+
+	// Generate Type 3 authenticate packet
+	// We use empty username/domain as we only need the hash response
+	authMsg, err := ntlmssp.NewAuthenticateMessage(type2, "", password, nil)
+	if err != nil {
+		return nil
+	}
+
+	// Parse the response to extract LM response
+	// LM Response Len is at offset 12 (2 bytes)
+	// LM Response Offset is at offset 16 (4 bytes)
+	if len(authMsg) < 20 {
+		return nil
+	}
+
+	lmLen := binary.LittleEndian.Uint16(authMsg[12:14])
+	lmOffset := binary.LittleEndian.Uint32(authMsg[16:20])
+
+	if int(lmOffset)+int(lmLen) > len(authMsg) {
+		return nil
+	}
+
+	return authMsg[lmOffset : lmOffset+uint32(lmLen)]
 }
 
 // Helper function to create NT hash response
 func CreateNTResponse(challenge []byte, password string) []byte {
-	// This is a simplified implementation
-	// In practice, you'd need to implement the full NT hash algorithm
-	// For now, return a dummy response
-	return make([]byte, 24)
+	// Create a minimal Type 2 challenge packet to satisfy ntlmssp
+	type2 := CreateNTLMChallengePacket(challenge, []byte{})
+
+	// Generate Type 3 authenticate packet
+	authMsg, err := ntlmssp.NewAuthenticateMessage(type2, "", password, nil)
+	if err != nil {
+		return nil
+	}
+
+	// Parse the response to extract NT response
+	// NT Response Len is at offset 20 (2 bytes)
+	// NT Response Offset is at offset 24 (4 bytes)
+	if len(authMsg) < 28 {
+		return nil
+	}
+
+	ntLen := binary.LittleEndian.Uint16(authMsg[20:22])
+	ntOffset := binary.LittleEndian.Uint32(authMsg[24:28])
+
+	if int(ntOffset)+int(ntLen) > len(authMsg) {
+		return nil
+	}
+
+	return authMsg[ntOffset : ntOffset+uint32(ntLen)]
 }
 
 // CreateSMBv2NegotiatePacket creates an SMBv2 negotiate protocol packet
@@ -641,55 +698,55 @@ func CreateSMBv2NegotiatePacket() []byte {
 	buf.WriteByte(0x00) // Protocol ID
 
 	// Command (Negotiate Protocol)
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0000)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0000))
 
 	// Status
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// Flags
 	buf.WriteByte(0x00)
 
 	// Next command
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0000)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0000))
 
 	// Message ID
-	binary.LittleEndian.PutUint64(buf.Next(8), 0x0000000000000001)
+	binary.Write(&buf, binary.LittleEndian, uint64(0x0000000000000001))
 
 	// Reserved
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// Tree ID
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000000)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000000))
 
 	// Session ID
-	binary.LittleEndian.PutUint64(buf.Next(8), 0x0000000000000000)
+	binary.Write(&buf, binary.LittleEndian, uint64(0x0000000000000000))
 
 	// Signature
 	buf.Write(make([]byte, 16))
 
 	// Structure size
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x24)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x24))
 
 	// Dialect count
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0001)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0001))
 
 	// Security mode
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0001)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0001))
 
 	// Reserved
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0000)
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0000))
 
 	// Capabilities
-	binary.LittleEndian.PutUint32(buf.Next(4), 0x00000001)
+	binary.Write(&buf, binary.LittleEndian, uint32(0x00000001))
 
 	// Client GUID
 	buf.Write(make([]byte, 16))
 
 	// Client start time
-	binary.LittleEndian.PutUint64(buf.Next(8), 0x0000000000000000)
+	binary.Write(&buf, binary.LittleEndian, uint64(0x0000000000000000))
 
 	// Dialects
-	binary.LittleEndian.PutUint16(buf.Next(2), 0x0311) // SMB 3.1.1
+	binary.Write(&buf, binary.LittleEndian, uint16(0x0311)) // SMB 3.1.1
 
 	return buf.Bytes()
 }
