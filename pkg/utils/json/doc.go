@@ -10,7 +10,7 @@
 // encoders/decoders. It maintains compatibility with the standard encoding/json
 // interfaces while delivering improved performance when possible.
 //
-// Additionally, it defines the customary [Marshaler] and [Unmarshaller]
+// Additionally, it defines the customary [Marshaler] and [Unmarshaler]
 // interfaces to facilitate custom JSON encoding and decoding implementations.
 //
 // TODO(dwisiswant0): This package should be moved to the
