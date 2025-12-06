@@ -123,8 +123,6 @@ func New(options *types.Options) (*Runner, error) {
 		options.EnableFileTemplates = true
 		options.EnableSelfContainedTemplates = true
 		options.EnableGlobalMatchersTemplates = true
-		options.Headless = true
-		options.DAST = true
 	}
 
 	//  Version check by default
