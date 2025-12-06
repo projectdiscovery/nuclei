@@ -645,6 +645,8 @@ github.com/kitabisa/go-ci v1.0.3/go.mod h1:e3wBSzaJbcifXrr/Gw2ZBLn44MmeqP5WySwXy
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
 github.com/klauspost/compress v1.18.1 h1:bcSGx7UbpBqMChDtsF28Lw6v/G94LPrrbMbdC3JH2co=
 github.com/klauspost/compress v1.18.1/go.mod h1:ZQFFVG+MdnR0P+l6wpXgIL4NTtwiKIdBnrBd8Nrxr+0=
+github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=
+github.com/klauspost/compress v1.18.2/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/klauspost/cpuid v1.2.0/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
 github.com/klauspost/cpuid/v2 v2.0.9/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
 github.com/klauspost/cpuid/v2 v2.0.12/go.mod h1:g2LTdtYhdyuGPqyWyv7qRAmj1WBqxuObKfj5c0PQa7c=
@@ -875,6 +877,8 @@ github.com/projectdiscovery/retryabledns v1.0.110 h1:24p1PzWBdfsRnGsBf6ZxXPzvK0s
 github.com/projectdiscovery/retryabledns v1.0.110/go.mod h1:GFj5HjxfaGrZeoYf79zI/R99XljBNjmOqNvwOqPepRU=
 github.com/projectdiscovery/retryablehttp-go v1.0.133 h1:uAIGwsRelrS1Ulelyp9qLtZRDTFHixw4O0cUQWLhTJQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.133/go.mod h1:9DU57ezv5cfZSWw/m5XFDTMjy1yKeMyn1kj35lPlcfM=
+github.com/projectdiscovery/retryablehttp-go v1.1.0 h1:uYp3EnuhhamTwvG41X6q6TAc/SHEO9pw9CBWbRASIQk=
+github.com/projectdiscovery/retryablehttp-go v1.1.0/go.mod h1:9DU57ezv5cfZSWw/m5XFDTMjy1yKeMyn1kj35lPlcfM=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
