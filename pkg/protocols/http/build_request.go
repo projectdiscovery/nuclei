@@ -28,7 +28,6 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
-	readerutil "github.com/projectdiscovery/utils/reader"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -466,11 +465,9 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		if err != nil {
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
-		bodyReader, err := readerutil.NewReusableReadCloser([]byte(body))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create reusable reader for request body")
+		if err := req.SetBodyString(body); err != nil {
+			return nil, errors.Wrap(err, "failed to set request body")
 		}
-		req.Body = bodyReader
 	}
 	if !r.request.Unsafe {
 		userAgent := useragent.PickRandom()
