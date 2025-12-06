@@ -117,20 +117,20 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
+	// if template list or template display is enabled, enable all templates
+	if options.TemplateList || options.TemplateDisplay {
+		options.EnableCodeTemplates = true
+		options.EnableFileTemplates = true
+		options.EnableSelfContainedTemplates = true
+		options.EnableGlobalMatchersTemplates = true
+	}
+
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
 		if err := installer.NucleiVersionCheck(); err != nil {
 			if options.Verbose || options.Debug {
 				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", err)
 			}
-		}
-
-		// if template list or template display is enabled, enable all templates
-		if options.TemplateList || options.TemplateDisplay {
-			options.EnableCodeTemplates = true
-			options.EnableFileTemplates = true
-			options.EnableSelfContainedTemplates = true
-			options.EnableGlobalMatchersTemplates = true
 		}
 
 		// check for custom template updates and update if available

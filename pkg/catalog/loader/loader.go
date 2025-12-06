@@ -435,7 +435,7 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
 
-		if len(template.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+		if len(template.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless && !store.config.ExecutorOptions.Options.TemplateList && !store.config.ExecutorOptions.Options.TemplateDisplay {
 			continue
 		}
 
@@ -443,7 +443,7 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 			continue
 		}
 
-		if template.IsFuzzing() && !store.config.ExecutorOptions.Options.DAST {
+		if template.IsFuzzing() && !store.config.ExecutorOptions.Options.DAST && !store.config.ExecutorOptions.Options.TemplateList && !store.config.ExecutorOptions.Options.TemplateDisplay {
 			continue
 		}
 
