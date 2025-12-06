@@ -4,10 +4,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
+	osutils "github.com/projectdiscovery/utils/os"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,8 +42,8 @@ func (t *tempFileInfo) Sys() any {
 }
 
 func TestZipSlip(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping Unix Zip LFI Check")
+	if osutils.IsWindows() {
+		t.Skip("Skipping Zip LFI Check on Windows")
 	}
 
 	configuredTemplateDirectory := filepath.Join(os.TempDir(), "templates")

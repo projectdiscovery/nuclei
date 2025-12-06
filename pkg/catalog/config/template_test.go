@@ -1,18 +1,30 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
+	osutils "github.com/projectdiscovery/utils/os"
 	"github.com/stretchr/testify/require"
 )
 
 func toAbs(p string) string {
-	if runtime.GOOS == "windows" {
-		return filepath.FromSlash("C:" + p)
+	if osutils.IsWindows() {
+		// Infer the drive letter from the Windows system path
+		// SystemRoot or WINDIR typically points to something like "C:\Windows"
+		systemRoot := os.Getenv("SystemRoot")
+		if systemRoot == "" {
+			systemRoot = os.Getenv("WINDIR")
+		}
+		// Extract volume name (e.g., "C:") from the system path
+		volumeName := filepath.VolumeName(systemRoot)
+		if volumeName == "" {
+			// Fallback to C: if we can't determine the volume
+			volumeName = "C:"
+		}
+		return filepath.FromSlash(volumeName + p)
 	}
-
 	return filepath.FromSlash(p)
 }
 
