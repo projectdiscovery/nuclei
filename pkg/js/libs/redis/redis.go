@@ -175,9 +175,12 @@ func isAuthenticated(executionId string, host string, port int) (bool, error) {
 // @example
 // ```javascript
 // const redis = require('nuclei/redis');
-// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])');
+// // Old signature (backwards compatible) - keys and args are optional
+// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("ping")');
+// // New signature with keys and args
+// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])', ['mykey'], []);
 // ```
-func RunLuaScript(ctx context.Context, host string, port int, password string, script string) (interface{}, error) {
+func RunLuaScript(ctx context.Context, host string, port int, password string, script string, keys interface{}, args interface{}) (interface{}, error) {
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
@@ -199,8 +202,45 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 		return "", err
 	}
 
-	// Get Redis server info
-	infoCmd := client.Eval(context.Background(), script, []string{})
+	// Convert interface{} to []string for keys (handle backwards compatibility)
+	keysSlice := []string{}
+	if keys != nil {
+		switch v := keys.(type) {
+		case []string:
+			keysSlice = v
+		case []interface{}:
+			keysSlice = make([]string, 0, len(v))
+			for _, item := range v {
+				keysSlice = append(keysSlice, fmt.Sprintf("%v", item))
+			}
+		}
+	}
+
+	// Convert interface{} to []string for args (handle backwards compatibility)
+	argsSlice := []string{}
+	if args != nil {
+		switch v := args.(type) {
+		case []string:
+			argsSlice = v
+		case []interface{}:
+			// Convert []interface{} to []string (from JavaScript arrays)
+			argsSlice = make([]string, 0, len(v))
+			for _, item := range v {
+				if s, ok := item.(string); ok {
+					argsSlice = append(argsSlice, s)
+				}
+			}
+		}
+	}
+
+	// Convert []string args to []interface{} for Eval
+	argsInterface := make([]interface{}, len(argsSlice))
+	for i, arg := range argsSlice {
+		argsInterface[i] = arg
+	}
+
+	// Execute the Lua script with keys and args
+	infoCmd := client.Eval(context.Background(), script, keysSlice, argsInterface...)
 
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
