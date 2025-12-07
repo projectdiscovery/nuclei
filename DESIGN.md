@@ -145,7 +145,7 @@ type Exporter interface {
 }
 ```
 
-Exporters include `Elasticsearch`, `markdown`, `sarif` . Trackers include `GitHub`,`GitLab` and `Jira`.
+Exporters include `Elasticsearch`, `markdown`, `sarif` . Trackers include `GitHub`, `GitLab` and `Jira`.
 
 Each exporter and trackers implement their own configuration in YAML format and are very modular in nature, so adding new ones is easy.
 
