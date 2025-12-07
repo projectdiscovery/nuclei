@@ -56,6 +56,18 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// if request threads matches global payload concurrency we follow it
 	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
 
+	var ip string
+
+	if iputil.IsIP(input.MetaInput.Input) {
+		ip = input.MetaInput.Input
+	} else if request.dnsClient != nil {
+		// normalize to no trailing dot for resolver compatibility
+		resolvedIP, err := tryToResolveHost(strings.TrimSuffix(domain, "."), request.dnsClient)
+		if err == nil && resolvedIP != "" {
+			ip = resolvedIP
+		}
+	}
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
@@ -88,7 +100,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			swg.Add()
 			go func(newVars map[string]interface{}) {
 				defer swg.Done()
-				if err := request.execute(input, domain, metadata, previous, newVars, callback); err != nil {
+				if err := request.execute(input, domain, ip, metadata, previous, newVars, callback); err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
 					m.Unlock()
@@ -101,12 +113,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		}
 	} else {
 		value := maps.Clone(vars)
-		return request.execute(input, domain, metadata, previous, value, callback)
+		return request.execute(input, domain, ip, metadata, previous, value, callback)
 	}
 	return nil
 }
 
-func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
+func (request *Request) execute(input *contextargs.Context, domain string, ip string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
 	var err error
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("DNS Protocol request variables: %s\n", vardump.DumpVariables(vars))
@@ -178,7 +190,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	}
 
 	// Create the output event
-	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, ip, question, traceData)
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
