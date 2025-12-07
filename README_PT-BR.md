@@ -56,7 +56,7 @@ Temos um [repositório dedicado](https://github.com/projectdiscovery/nuclei-temp
 
 # Instalação do Nuclei
 
-O Nuclei requer **go1.22** para ser instalado corretamente. Execute o seguinte comando para instalar a versão mais recente:
+O Nuclei requer **go1.24.2** para ser instalado corretamente. Execute o seguinte comando para instalar a versão mais recente:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
