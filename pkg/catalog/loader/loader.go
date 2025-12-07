@@ -431,41 +431,36 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	}
 
 	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
+	caps := templates.Capabilities{
+		Headless:      store.config.ExecutorOptions.Options.Headless,
+		Code:          store.config.ExecutorOptions.Options.EnableCodeTemplates,
+		DAST:          store.config.ExecutorOptions.Options.DAST,
+		SelfContained: store.config.ExecutorOptions.Options.EnableSelfContainedTemplates,
+		File:          store.config.ExecutorOptions.Options.EnableFileTemplates,
+	}
+	isListOrDisplay := store.config.ExecutorOptions.Options.TemplateList ||
+		store.config.ExecutorOptions.Options.TemplateDisplay
 
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
-
-		if len(template.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+		if template == nil {
 			continue
 		}
 
-		if len(template.RequestsCode) > 0 && !store.config.ExecutorOptions.Options.EnableCodeTemplates {
+		if !isListOrDisplay && !template.IsEnabledFor(caps) {
 			continue
 		}
 
-		if template.IsFuzzing() && !store.config.ExecutorOptions.Options.DAST {
+		if loadedTemplateIDs.Has(template.ID) {
+			store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", template.ID, templatePath)
 			continue
 		}
 
-		if template.SelfContained && !store.config.ExecutorOptions.Options.EnableSelfContainedTemplates {
-			continue
-		}
-
-		if template.HasFileProtocol() && !store.config.ExecutorOptions.Options.EnableFileTemplates {
-			continue
-		}
-
-		if template != nil {
-			if loadedTemplateIDs.Has(template.ID) {
-				store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", template.ID, templatePath)
-				continue
-			}
-
-			_ = loadedTemplateIDs.Set(template.ID, struct{}{})
-			template.Path = templatePath
-			store.templates = append(store.templates, template)
-		}
+		_ = loadedTemplateIDs.Set(template.ID, struct{}{})
+		template.Path = templatePath
+		store.templates = append(store.templates, template)
 	}
+
 	return nil
 }
 

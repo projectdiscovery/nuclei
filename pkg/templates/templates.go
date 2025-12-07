@@ -556,7 +556,70 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// HasFileProtocol returns true if the template has a file protocol section
+// HasHeadlessProtocol returns true if the template has a headless protocol
+// section.
+func (template *Template) HasHeadlessProtocol() bool {
+	return len(template.RequestsHeadless) > 0
+}
+
+// HasFileProtocol returns true if the template has a file protocol section.
 func (template *Template) HasFileProtocol() bool {
 	return len(template.RequestsFile) > 0
+}
+
+// Requirements holds the required options for a template to be enabled.
+type Requirements struct {
+	Headless      bool
+	Code          bool
+	DAST          bool
+	SelfContained bool
+	File          bool
+}
+
+// Requirements returns what options must be enabled for the template to run.
+func (template *Template) Requirements() Requirements {
+	return Requirements{
+		Headless:      template.HasHeadlessProtocol(),
+		Code:          template.HasCodeProtocol(),
+		DAST:          template.IsFuzzing(),
+		SelfContained: template.SelfContained,
+		File:          template.HasFileProtocol(),
+	}
+}
+
+// Capabilities represents the enabled options/capabilities.
+type Capabilities struct {
+	Headless      bool
+	Code          bool
+	DAST          bool
+	SelfContained bool
+	File          bool
+}
+
+// IsEnabledFor checks if all template requirements are satisfied by the given
+// capabilities.
+func (template *Template) IsEnabledFor(caps Capabilities) bool {
+	reqs := template.Requirements()
+
+	if reqs.Headless && !caps.Headless {
+		return false
+	}
+
+	if reqs.Code && !caps.Code {
+		return false
+	}
+
+	if reqs.DAST && !caps.DAST {
+		return false
+	}
+
+	if reqs.SelfContained && !caps.SelfContained {
+		return false
+	}
+
+	if reqs.File && !caps.File {
+		return false
+	}
+
+	return true
 }
