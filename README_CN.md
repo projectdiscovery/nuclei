@@ -371,7 +371,7 @@ Nuclei允许您定制自己的测试方法，可以轻松的运行您的程序�
 - 可以在几分钟处理上千台主机
 - 使用YAML语法定制自动化测试
 
-欢迎查看我们其他的开源项目，可能有适合您的赏金猎人工作流：[github.com/projectdiscovery](http://github.com/projectdiscovery)，我们还使用[Chaos绘制了每日的DNS数据](http://chaos.projectdiscovery.io)。
+欢迎查看我们其他的开源项目，可能有适合您的赏金猎人工作流：[github.com/projectdiscovery](https://github.com/projectdiscovery)，我们还使用[Chaos绘制了每日的DNS数据](https://chaos.projectdiscovery.io)。
 
 </td>
 </tr>

@@ -342,7 +342,7 @@ Nuclei memungkinkan Anda untuk menyesuaikan pendekatan pengujian Anda dengan ran
 - Dapat memproses ribuan host hanya dalam beberapa menit.
 - Mudah mengotomatiskan pendekatan pengujian khusus Anda dengan sintaks DSL berbasis YAML sederhana kami.
 
-Silakan periksa proyek sumber terbuka kami yang lain yang mungkin cocok dengan alur kerja celah berhadiah Anda: [github.com/projectdiscovery](http://github.com/projectdiscovery), kami juga menyediakan [penyegaran data DNS di Chaos setiap hari](http://chaos.projectdiscovery.io).
+Silakan periksa proyek sumber terbuka kami yang lain yang mungkin cocok dengan alur kerja celah berhadiah Anda: [github.com/projectdiscovery](https://github.com/projectdiscovery), kami juga menyediakan [penyegaran data DNS di Chaos setiap hari](https://chaos.projectdiscovery.io).
 
 </td>
 </tr>
