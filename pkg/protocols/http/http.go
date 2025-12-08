@@ -544,3 +544,8 @@ func init() {
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
 }
+
+// HasFuzzing indicates whether the request has fuzzing rules defined.
+func (request *Request) HasFuzzing() bool {
+	return len(request.Fuzzing) > 0
+}
