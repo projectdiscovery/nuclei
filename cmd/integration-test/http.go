@@ -62,6 +62,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/dsl-functions.yaml", TestCase: &httpDSLFunctions{}},
 	{Path: "protocols/http/race-simple.yaml", TestCase: &httpRaceSimple{}},
 	{Path: "protocols/http/race-multiple.yaml", TestCase: &httpRaceMultiple{}},
+	{Path: "protocols/http/race-with-variables.yaml", TestCase: &httpRaceWithVariables{}},
 	{Path: "protocols/http/stop-at-first-match.yaml", TestCase: &httpStopAtFirstMatch{}},
 	{Path: "protocols/http/stop-at-first-match-with-extractors.yaml", TestCase: &httpStopAtFirstMatchWithExtractors{}},
 	{Path: "protocols/http/variables.yaml", TestCase: &httpVariables{}},
@@ -1153,6 +1154,26 @@ func (h *httpRaceMultiple) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 5)
+}
+
+type httpRaceWithVariables struct{}
+
+// Execute tests that variables and constants are properly resolved in race mode.
+func (h *httpRaceWithVariables) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/race", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		// Echo back the API key header so we can match on it
+		_, _ = fmt.Fprint(w, r.Header.Get("X-API-Key"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 3)
 }
 
 type httpStopAtFirstMatch struct{}
