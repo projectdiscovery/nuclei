@@ -65,6 +65,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/stop-at-first-match.yaml", TestCase: &httpStopAtFirstMatch{}},
 	{Path: "protocols/http/stop-at-first-match-with-extractors.yaml", TestCase: &httpStopAtFirstMatchWithExtractors{}},
 	{Path: "protocols/http/variables.yaml", TestCase: &httpVariables{}},
+	{Path: "protocols/http/variables-threads-previous.yaml", TestCase: &httpVariablesThreadsPrevious{}},
 	{Path: "protocols/http/variable-dsl-function.yaml", TestCase: &httpVariableDSLFunction{}},
 	{Path: "protocols/http/get-override-sni.yaml", TestCase: &httpSniAnnotation{}},
 	{Path: "protocols/http/get-sni.yaml", TestCase: &customCLISNI{}},
@@ -1218,6 +1219,30 @@ func (h *httpVariables) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 0)
+}
+
+type httpVariablesThreadsPrevious struct{}
+
+// Execute tests that variables can reference data extracted from previous requests
+// when using threads mode (parallel execution).
+func (h *httpVariablesThreadsPrevious) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/login", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = fmt.Fprint(w, "token=secret123")
+	})
+	router.GET("/api", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		// Echo back the Authorization header so we can match on it
+		_, _ = fmt.Fprint(w, r.Header.Get("Authorization"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
 }
 
 type httpVariableDSLFunction struct{}
