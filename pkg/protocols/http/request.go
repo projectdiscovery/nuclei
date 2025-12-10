@@ -961,8 +961,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			return errors.Wrap(err, "could not generate response chain")
 		}
 
+		// Cache response strings once per Fill() to avoid repeated allocs.
+		// NOTE(dwisiswant0): These are valid until Previous() (which reloads
+		// the buffer).
+		fullResponseStr := respChain.FullResponseString()
+		bodyStr := respChain.BodyString()
+		headersStr := respChain.HeadersString()
+
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), respChain.FullResponseString())
+		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), fullResponseStr)
 
 		// save response to projectfile
 		onceFunc()
@@ -1003,7 +1010,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponseString(), respChain.BodyString(), respChain.HeadersString(), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
@@ -1066,7 +1073,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
-		dumpResponse(event, request, respChain.FullResponseBytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
+		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
 
@@ -1080,7 +1087,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
 				RawRequest:    string(dumpedRequest),
-				RawResponse:   respChain.FullResponseString(),
+				RawResponse:   fullResponseStr,
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
 		}
@@ -1207,10 +1214,10 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 
 const CRLF = "\r\n"
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse []byte, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse string, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
-		response := string(redirectedResponse)
+		response := redirectedResponse
 
 		var highlightedResult string
 		if (responseContentType == "application/octet-stream" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response) {
