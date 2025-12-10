@@ -78,6 +78,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/cl-body-without-header.yaml", TestCase: &httpCLBodyWithoutHeader{}},
 	{Path: "protocols/http/cl-body-with-header.yaml", TestCase: &httpCLBodyWithHeader{}},
 	{Path: "protocols/http/cli-with-constants.yaml", TestCase: &ConstantWithCliVar{}},
+	{Path: "protocols/http/constants-with-threads.yaml", TestCase: &constantsWithThreads{}},
 	{Path: "protocols/http/matcher-status.yaml", TestCase: &matcherStatusTest{}},
 	{Path: "protocols/http/disable-path-automerge.yaml", TestCase: &httpDisablePathAutomerge{}},
 	{Path: "protocols/http/http-preprocessor.yaml", TestCase: &httpPreprocessor{}},
@@ -1489,6 +1490,26 @@ func (h *ConstantWithCliVar) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
+}
+
+type constantsWithThreads struct{}
+
+// Execute tests that constants are properly resolved when using threads mode.
+func (h *constantsWithThreads) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/api/:version", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		// Echo back the API key header and version so we can match on them
+		_, _ = fmt.Fprintf(w, "%s %s", r.Header.Get("X-API-Key"), p.ByName("version"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
 }
 
 type matcherStatusTest struct{}
