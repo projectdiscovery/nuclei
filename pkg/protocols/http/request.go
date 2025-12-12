@@ -486,10 +486,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
-		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
-		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
-	}
 	// verify if pipeline was requested
 	if request.Pipeline {
 		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
