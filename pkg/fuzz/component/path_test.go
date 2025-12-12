@@ -99,7 +99,7 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's see what path segments are available for fuzzing
 	err = path.Iterate(func(key string, value interface{}) error {
 		t.Logf("Key: %s, Value: %s", key, value.(string))
-		
+
 		// Try fuzzing the "55" segment specifically (which should be key "2")
 		if value.(string) == "55" {
 			if setErr := path.SetValue(key, "55 OR True"); setErr != nil {
@@ -116,14 +116,14 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	t.Logf("Modified path: %s", newReq.Path)
-	
+
 	// Now with PathEncode, spaces are preserved correctly for SQL injection
 	if newReq.Path != "/user/55 OR True/profile" {
 		t.Fatalf("expected path to be '/user/55 OR True/profile', got '%s'", newReq.Path)
 	}
-	
+
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
