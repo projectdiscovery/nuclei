@@ -691,7 +691,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			if err == nil {
 				// update the request body with the reusable reader
-				generatedRequest.request.Body = newReqBody
+				generatedRequest.request.SetBodyReader(newReqBody)
 				// get content length
 				length, _ := io.Copy(io.Discard, newReqBody)
 				generatedRequest.request.ContentLength = length
