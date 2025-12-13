@@ -37,7 +37,7 @@ import nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 
 ## Advanced Example of using Nuclei Library/SDK
 
-For Various use cases like batching etc you might want to run nuclei in goroutines this can be done by using `nuclei.NewThreadSafeNucleiEngine`
+For Various use cases like batching etc. you might want to run nuclei in goroutines this can be done by using `nuclei.NewThreadSafeNucleiEngine`
 
 ```go
 // create nuclei engine with options

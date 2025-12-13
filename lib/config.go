@@ -19,7 +19,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	pkgtypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -196,8 +195,10 @@ type HeadlessOpts struct {
 }
 
 // EnableHeadless allows execution of headless templates
-// *Use With Caution*: Enabling headless mode may open up attack surface due to browser usage
-// and can be prone to exploitation by custom unverified templates if not properly configured
+//
+// Warning: enabling headless mode may open up attack surface due to browser
+// usage and can be prone to exploitation by custom unverified templates if not
+// properly configured.
 func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.Headless = true
@@ -207,14 +208,6 @@ func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 			e.opts.ShowBrowser = hopts.ShowBrowser
 			e.opts.UseInstalledChrome = hopts.UseChrome
 		}
-		if engine.MustDisableSandbox() {
-			e.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
-		}
-		browser, err := engine.New(e.opts)
-		if err != nil {
-			return err
-		}
-		e.browserInstance = browser
 		return nil
 	}
 }

@@ -1,0 +1,38 @@
+id: variables-threads-previous
+
+info:
+  name: Variables with Threads and Previous Request Data
+  author: pdteam
+  severity: info
+  description: |
+    Test that variables can reference data extracted from previous requests
+    when using threads mode (parallel execution).
+
+variables:
+  auth_header: "Bearer {{extracted_token}}"
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/login"
+
+    extractors:
+      - type: regex
+        name: extracted_token
+        part: body
+        regex:
+          - 'token=([a-z0-9]+)'
+        group: 1
+        internal: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/api"
+    threads: 5
+    headers:
+      Authorization: "{{auth_header}}"
+
+    matchers:
+      - type: word
+        words:
+          - "Bearer secret123"

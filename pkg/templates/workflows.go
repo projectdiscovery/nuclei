@@ -92,7 +92,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			continue
 		}
 
-		if len(template.RequestsCode) > 0 {
+		if template.HasCodeRequest() {
 			if !options.Options.EnableCodeTemplates {
 				// NOTE(dwisiswant0): It is safe to continue here during
 				// validation mode, because the template has already been parsed

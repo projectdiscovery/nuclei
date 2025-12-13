@@ -1,6 +1,6 @@
 # THANKS
 
-- https://github.com/dop251/goja - Pure Go Javascript VM used by nuclei JS layer.
+- https://github.com/dop251/goja - Pure Go JavaScript VM used by nuclei JS layer.
 - https://github.com/gogap/gojs-tool - Inspiration for code generation used in JS Libraries addition.
 - https://github.com/ropnop/kerbrute - Kerberos Module of JS layer
 - https://github.com/praetorian-inc/fingerprintx - A lot of Network Protocol fingerprinting functionality is used from `fingerprintx` package. 

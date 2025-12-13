@@ -1,0 +1,27 @@
+id: constants-with-threads
+
+info:
+  name: Constants with Threads
+  author: pdteam
+  severity: info
+  description: |
+    Test that constants are properly resolved when using threads mode.
+
+constants:
+  api_key: "supersecretkey123"
+  api_version: "v2"
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/{{api_version}}"
+    threads: 5
+    headers:
+      X-API-Key: "{{api_key}}"
+
+    matchers:
+      - type: word
+        words:
+          - "supersecretkey123"
+          - "v2"
+        condition: and

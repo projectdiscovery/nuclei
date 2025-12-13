@@ -66,6 +66,13 @@ func GetSupportTemplateFileExtensions() []string {
 // IsTemplate returns true if the file is a template based on its path.
 // It used by goflags and other places to filter out non-template files.
 func IsTemplate(fpath string) bool {
+	return IsTemplateWithRoot(fpath, "")
+}
+
+// IsTemplateWithRoot returns true if the file is a template based on its path
+// and root directory. If rootDir is provided, it checks for excluded
+// directories relative to the root.
+func IsTemplateWithRoot(fpath, rootDir string) bool {
 	fpath = filepath.FromSlash(fpath)
 	fname := filepath.Base(fpath)
 	fext := strings.ToLower(filepath.Ext(fpath))
@@ -74,8 +81,33 @@ func IsTemplate(fpath string) bool {
 		return false
 	}
 
-	if stringsutil.ContainsAny(fpath, GetKnownMiscDirectories()...) {
-		return false
+	var pathToCheck string
+	if rootDir != "" {
+		if filepath.IsAbs(fpath) {
+			rel, err := filepath.Rel(rootDir, fpath)
+			if err == nil && !strings.HasPrefix(rel, "..") {
+				pathToCheck = rel
+			} else {
+				pathToCheck = fpath
+			}
+		} else {
+			pathToCheck = fpath
+		}
+	} else {
+		pathToCheck = fpath
+	}
+
+	// Only check components if pathToCheck is NOT absolute
+	// This avoids false positives on parent directories for absolute paths
+	if !filepath.IsAbs(pathToCheck) {
+		parts := strings.Split(pathToCheck, string(os.PathSeparator))
+		for _, p := range parts {
+			for _, excluded := range knownMiscDirectories {
+				if strings.EqualFold(p, excluded) {
+					return false
+				}
+			}
+		}
 	}
 
 	return stringsutil.EqualFoldAny(fext, GetSupportTemplateFileExtensions()...)
@@ -142,7 +174,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 			DefaultConfig.Logger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
 			return nil
 		}
-		if d.IsDir() || !IsTemplate(path) || stringsutil.ContainsAny(path, ignoreDirs...) {
+		if d.IsDir() || !IsTemplateWithRoot(path, DefaultConfig.TemplatesDirectory) || stringsutil.ContainsAny(path, ignoreDirs...) {
 			return nil
 		}
 		// get template id from file

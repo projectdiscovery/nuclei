@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
-	readerutil "github.com/projectdiscovery/utils/reader"
 )
 
 // Body is a component for a request body
@@ -132,12 +131,10 @@ func (b *Body) Rebuild() (*retryablehttp.Request, error) {
 		return nil, errors.Wrap(err, "could not encode body")
 	}
 	cloned := b.req.Clone(context.Background())
-	reusableReader, err := readerutil.NewReusableReadCloser(encoded)
+	err = cloned.SetBodyString(encoded)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create reusable reader")
+		return nil, errors.Wrap(err, "could not set body")
 	}
-	cloned.Body = reusableReader
-	cloned.ContentLength = int64(len(encoded))
 	cloned.Header.Set("Content-Length", strconv.Itoa(len(encoded)))
 	return cloned, nil
 }

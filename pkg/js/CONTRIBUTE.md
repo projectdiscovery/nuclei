@@ -9,12 +9,12 @@ The Very First before making any type of contribution to javascript runtime in n
 
 ## Documentation/Typo Contribution
 
-Most of Javascript API Reference documentation is auto-generated with help of code-generation and [jsdocgen](./devtools/jsdocgen/README.md) and hence any type of documentation contribution are always welcome and can be done by editing [javascript jsdoc](./generated/js/) files
+Most of JavaScript API Reference documentation is auto-generated with help of code-generation and [jsdocgen](./devtools/jsdocgen/README.md) and hence any type of documentation contribution are always welcome and can be done by editing [JavaScript jsdoc](./generated/js/) files
 
 
 ## Improving Existing Libraries(aka node_modules)
 
-Improving existing libraries includes adding new functions, types, fixing bugs etc to any of the existing libraries in [libs](./libs/) directory. This is very easy to achieve and can be done by following steps below
+Improving existing libraries includes adding new functions, types, fixing bugs etc. to any of the existing libraries in [libs](./libs/) directory. This is very easy to achieve and can be done by following steps below
 
 1. Do suggested changes in targeted package in [libs](./libs/) directory
 2. Refer [devtools](./devtools/README.md) to autogenerate bindings and documentation
@@ -47,13 +47,13 @@ go based helpers are written in go and can import any go library if required. Mi
 
 ### Updating / Publishing Docs
 
-Javascript Protocol Documentation is auto-generated using [jsdoc] and is hosted at [js-proto-docs](https://projectdiscovery.github.io/js-proto-docs/). To update documentation, please follow steps mentioned at [projectdiscovery/js-proto-docs](https://github.com/projectdiscovery/js-proto-docs)
+JavaScript Protocol Documentation is auto-generated using [jsdoc] and is hosted at [js-proto-docs](https://projectdiscovery.github.io/js-proto-docs/). To update documentation, please follow steps mentioned at [projectdiscovery/js-proto-docs](https://github.com/projectdiscovery/js-proto-docs)
 
 
 ### Go Code Guidelines
 
 1. Always use 'protocolstate.Dialer' (i.e fastdialer) to dial connections instead of net.Dial this has many benefits along with proxy support , **network policy** usage (i.e local network access can be disabled from cli)
-2. When usage of 'protocolstate.Dialer' is not possible due to some reason ex: imported library does not accept dialer etc then validate host using 'protocolstate.IsHostAllowed' before dialing connection.
+2. When usage of 'protocolstate.Dialer' is not possible due to some reason ex: imported library does not accept dialer etc. then validate host using 'protocolstate.IsHostAllowed' before dialing connection.
 ```go
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
@@ -65,9 +65,9 @@ Javascript Protocol Documentation is auto-generated using [jsdoc] and is hosted 
 5. Always try to return single types from inside javascript with an error like `(IsRDP, error)` instead of returning multiple values `(name, version string, err error)`. The second one will get converted to an array is much harder for consumers to deal with. Instead, try to return `Structures` which will be accessible natively.
 
 
-### Javascript Code Guidelines
+### JavaScript Code Guidelines
 
-1. Catch exceptions using `try/catch` blocks and handle errors gracefully, showing useful information. By default, the implementation returns a Go error on a unhandled exception along with stack trace in debug mode.
-2. Use `let`/`cost` instead of `var` to declare variables.
+1. Catch exceptions using `try/catch` blocks and handle errors gracefully, showing useful information. By default, the implementation returns a Go error on an unhandled exception along with stack trace in debug mode.
+2. Use `let`/`const` instead of `var` to declare variables.
 3. Keep the global scope clean. The VMs are not shared so do not rely on VM state.
 4. Use functions to divide the code and keep the implementation clean. 

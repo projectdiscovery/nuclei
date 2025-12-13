@@ -175,3 +175,8 @@ func (request *Request) Requests() int {
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
 }
+
+// HasFuzzing checks if the request has fuzzing rules defined.
+func (request *Request) HasFuzzing() bool {
+	return len(request.Fuzzing) > 0
+}
