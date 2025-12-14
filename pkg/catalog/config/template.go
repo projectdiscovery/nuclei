@@ -154,11 +154,21 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 			if err == nil {
 				for _, v := range records {
 					if len(v) >= 2 {
-						index[v[0]] = v[1]
+						templateID := v[0]
+						templatePath := v[1]
+						// Normalize path for consistent comparison (handles Windows path issues)
+						normalizedPath := filepath.Clean(templatePath)
+						// Validate that the file actually exists (prevents stale entries from deleted files on Windows)
+						if fileutil.FileExists(normalizedPath) {
+							index[templateID] = normalizedPath
+						}
 					}
 				}
+				// Close file handle before returning
+				_ = f.Close()
 				return index, nil
 			}
+			_ = f.Close()
 		}
 		DefaultConfig.Logger.Error().Msgf("failed to read index file creating new one: %v", err)
 	}
@@ -177,13 +187,15 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 		if d.IsDir() || !IsTemplateWithRoot(path, DefaultConfig.TemplatesDirectory) || stringsutil.ContainsAny(path, ignoreDirs...) {
 			return nil
 		}
+		// Normalize path for consistent comparison (handles Windows path issues)
+		normalizedPath := filepath.Clean(path)
 		// get template id from file
-		id, err := getTemplateID(path)
+		id, err := getTemplateID(normalizedPath)
 		if err != nil || id == "" {
-			DefaultConfig.Logger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", path, id, err)
+			DefaultConfig.Logger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", normalizedPath, id, err)
 			return nil
 		}
-		index[id] = path
+		index[id] = normalizedPath
 		return nil
 	})
 	return index, err
