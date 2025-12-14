@@ -56,7 +56,7 @@ Tenemos un [repositorio dedicado](https://github.com/projectdiscovery/nuclei-tem
 
 # Instalación de Nuclei
 
-Nuclei requiere **go1.22** para instalarse correctamente. Ejecute el siguiente comando para instalar la última versión -
+Nuclei requiere **go1.24.2** para instalarse correctamente. Ejecute el siguiente comando para instalar la última versión -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -118,7 +118,7 @@ TARGET:
    -u, -target string[]          URLs/hosts a escanear
    -l, -list string              ruta al archivo que contiene la lista de URLs/hosts a escanear (uno por línea)
    -eh, -exclude-hosts string[]  hosts a excluir para escanear de la lista de entrada (ip, cidr, hostname)
-   -resume string                reanudar el escaneo usando resume.cfg (la clusterización quedará inhabilitada)
+   -resume string                reanudar el escaneo desde y guardar en el archivo especificado (la clusterización quedará inhabilitada)
    -sa, -scan-all-ips            escanear todas las IP asociadas al registro dns
    -iv, -ip-version string[]     versión IP a escanear del nombre de host (4,6) - (por defecto 4)
 

@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -103,20 +102,9 @@ func updateRequestOptions(template *Template) {
 
 // parseFromSource parses a template from source with caching support
 func parseFromSource(filePath string, preprocessor Preprocessor, options *protocols.ExecutorOptions, parser *Parser) (*Template, error) {
-	var reader io.ReadCloser
-	if !options.DoNotCache {
-		_, raw, err := parser.parsedTemplatesCache.Has(filePath)
-		if err == nil && raw != nil {
-			reader = io.NopCloser(bytes.NewReader(raw))
-		}
-	}
-
-	var err error
-	if reader == nil {
-		reader, err = utils.ReaderFromPathOrURL(filePath, options.Catalog)
-		if err != nil {
-			return nil, err
-		}
+	reader, err := utils.ReaderFromPathOrURL(filePath, options.Catalog)
+	if err != nil {
+		return nil, err
 	}
 
 	defer func() {
@@ -158,7 +146,7 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 
 	template.Path = filePath
 	if !options.DoNotCache {
-		parser.compiledTemplatesCache.Store(filePath, template, nil, err)
+		parser.compiledTemplatesCache.StoreWithoutRaw(filePath, template, err)
 	}
 
 	return template, nil
@@ -332,34 +320,34 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 			options.IsMultiProtocol = true
 		}
 	} else {
-		if len(template.RequestsDNS) > 0 {
+		if template.HasDNSRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
 		}
-		if len(template.RequestsFile) > 0 {
+		if template.HasFileRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
 		}
-		if len(template.RequestsNetwork) > 0 {
+		if template.HasNetworkRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
 		}
-		if len(template.RequestsHTTP) > 0 {
+		if template.HasHTTPRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
 		}
-		if len(template.RequestsHeadless) > 0 && options.Options.Headless {
+		if template.HasHeadlessRequest() && options.Options.Headless {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
 		}
-		if len(template.RequestsSSL) > 0 {
+		if template.HasSSLRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
 		}
-		if len(template.RequestsWebsocket) > 0 {
+		if template.HasWebsocketRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
 		}
-		if len(template.RequestsWHOIS) > 0 {
+		if template.HasWHOISRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 		}
-		if len(template.RequestsCode) > 0 && options.Options.EnableCodeTemplates {
+		if template.HasCodeRequest() && options.Options.EnableCodeTemplates {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 		}
-		if len(template.RequestsJavascript) > 0 {
+		if template.HasJavascriptRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
 		}
 	}

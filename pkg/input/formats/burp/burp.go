@@ -43,7 +43,6 @@ func (j *BurpFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallba
 
 	// Print the parsed data for verification
 	for _, item := range items.Items {
-		item := item
 		binx, err := base64.StdEncoding.DecodeString(item.Request.Raw)
 		if err != nil {
 			return errors.Wrap(err, "could not decode base64")

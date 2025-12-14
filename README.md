@@ -33,7 +33,7 @@
 - Reduce false positives by simulating real-world steps to verify a vulnerability.
 - Ultra-fast parallel scan processing and request clustering.
 - Integrate into CI/CD pipelines for vulnerability detection and regression testing.
-- Supports multiple protocols like TCP, DNS, HTTP, SSL, WHOIS JavaScript, Code and more.
+- Supports multiple protocols like TCP, DNS, HTTP, SSL, WHOIS, JavaScript, Code and more.
 - Integrate with Jira, Splunk, GitHub, Elastic, GitLab.
 
 <br>
@@ -83,7 +83,7 @@ _For security teams and enterprises, we provide a cloud-hosted service built on 
 
 - 50x faster scans
 - Large scale scanning with high accuracy
-- Integrations with cloud services (AWS, GCP, Azure, CloudFlare, Fastly, Terraform, Kubernetes)
+- Integrations with cloud services (AWS, GCP, Azure, Cloudflare, Fastly, Terraform, Kubernetes)
 - Jira, Slack, Linear, APIs and Webhooks
 - Executive and compliance reporting
 - Plus: Real-time scanning, SAML SSO, SOC 2 compliant platform (with EU and US hosting options), shared team workspaces, and more
@@ -97,7 +97,7 @@ _For security teams and enterprises, we provide a cloud-hosted service built on 
 
 ## Documentation
 
-Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.io/tools/nuclei/running). If you’re new to Nuclei, check out our [**`foundational Youtube series`**](https://www.youtube.com/playlist?list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl).
+Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.io/tools/nuclei/running). If you’re new to Nuclei, check out our [**`foundational YouTube series`**](https://www.youtube.com/playlist?list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl).
 
 <div align="center">
 
@@ -109,7 +109,7 @@ Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.
 
 ### Installation
 
-`nuclei` requires **go >= 1.24.1** to install successfully. Run the following command to get the repo:
+`nuclei` requires **go >= 1.24.2** to install successfully. Run the following command to get the repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -140,7 +140,7 @@ TARGET:
    -u, -target string[]          target URLs/hosts to scan
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
-   -resume string                resume scan using resume.cfg (clustering will be disabled)
+   -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
 

@@ -486,10 +486,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
-		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
-		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
-	}
 	// verify if pipeline was requested
 	if request.Pipeline {
 		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
@@ -695,7 +691,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			if err == nil {
 				// update the request body with the reusable reader
-				generatedRequest.request.Body = newReqBody
+				generatedRequest.request.SetBodyReader(newReqBody)
 				// get content length
 				length, _ := io.Copy(io.Discard, newReqBody)
 				generatedRequest.request.ContentLength = length
@@ -825,6 +821,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 					connConfiguration := request.connConfiguration.Clone()
 					modifiedConfig = connConfiguration
 				}
+
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
@@ -947,7 +944,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.Body().Bytes()); err != nil {
+			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
@@ -960,8 +957,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			return errors.Wrap(err, "could not generate response chain")
 		}
 
+		// Cache response strings once per Fill() to avoid repeated allocs.
+		// NOTE(dwisiswant0): These are valid until Previous() (which reloads
+		// the buffer).
+		fullResponseStr := respChain.FullResponseString()
+		bodyStr := respChain.BodyString()
+		headersStr := respChain.HeadersString()
+
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), respChain.FullResponse().String())
+		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), fullResponseStr)
 
 		// save response to projectfile
 		onceFunc()
@@ -1002,7 +1006,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponse().String(), respChain.Body().String(), respChain.Headers().String(), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
@@ -1065,7 +1069,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
-		dumpResponse(event, request, respChain.FullResponse().Bytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
+		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
 
@@ -1079,7 +1083,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
 				RawRequest:    string(dumpedRequest),
-				RawResponse:   respChain.FullResponse().String(),
+				RawResponse:   fullResponseStr,
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
 		}
@@ -1134,6 +1138,15 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
 	if request.dialer == nil {
 		return
+	}
+
+	if request.options.Interactsh != nil {
+		interactshDomain := request.options.Interactsh.GetHostname()
+		if interactshDomain != "" {
+			if strings.EqualFold(hostname, interactshDomain) || strings.HasSuffix(hostname, "."+interactshDomain) {
+				return
+			}
+		}
 	}
 
 	data, err := request.dialer.GetDNSData(hostname)
@@ -1197,10 +1210,10 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 
 const CRLF = "\r\n"
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse []byte, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse string, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
-		response := string(redirectedResponse)
+		response := redirectedResponse
 
 		var highlightedResult string
 		if (responseContentType == "application/octet-stream" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response) {

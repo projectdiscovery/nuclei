@@ -1,0 +1,30 @@
+id: race-with-variables
+
+info:
+  name: Race Condition with Variables
+  author: pdteam
+  severity: info
+  description: |
+    Test that variables and constants are properly resolved in race mode.
+
+variables:
+  random_id: "{{rand_base(8)}}"
+
+constants:
+  api_key: "racekey123"
+
+http:
+  - raw:
+      - |
+        GET /race HTTP/1.1
+        Host: {{Hostname}}
+        X-Request-Id: {{random_id}}
+        X-API-Key: {{api_key}}
+
+    race: true
+    race_count: 3
+
+    matchers:
+      - type: word
+        words:
+          - "racekey123"

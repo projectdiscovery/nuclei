@@ -200,8 +200,8 @@ func (c *Config) GetNewAdditions() []string {
 	if err != nil {
 		return arr
 	}
-	for _, v := range strings.Fields(string(bin)) {
-		if IsTemplate(v) {
+	for v := range strings.FieldsSeq(string(bin)) {
+		if IsTemplateWithRoot(v, c.TemplatesDirectory) {
 			arr = append(arr, v)
 		}
 	}

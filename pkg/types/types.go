@@ -742,11 +742,11 @@ func (tv *Timeouts) ApplyDefaults() {
 	if tv.TcpReadTimeout == 0 {
 		tv.TcpReadTimeout = 5 * time.Second
 	}
-	if tv.HttpResponseHeaderTimeout == 0 {
-		tv.HttpResponseHeaderTimeout = 10 * time.Second
-	}
 	if tv.HttpTimeout == 0 {
 		tv.HttpTimeout = 3 * tv.DialTimeout
+	}
+	if tv.HttpResponseHeaderTimeout < tv.HttpTimeout {
+		tv.HttpResponseHeaderTimeout = tv.HttpTimeout
 	}
 	if tv.JsCompilerExecutionTimeout == 0 {
 		tv.JsCompilerExecutionTimeout = 2 * tv.DialTimeout
@@ -793,6 +793,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		Logger:                     &gologger.Logger{},
 	}
 }
 

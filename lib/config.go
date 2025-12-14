@@ -3,6 +3,7 @@ package nuclei
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -18,7 +19,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	pkgtypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -195,8 +195,10 @@ type HeadlessOpts struct {
 }
 
 // EnableHeadless allows execution of headless templates
-// *Use With Caution*: Enabling headless mode may open up attack surface due to browser usage
-// and can be prone to exploitation by custom unverified templates if not properly configured
+//
+// Warning: enabling headless mode may open up attack surface due to browser
+// usage and can be prone to exploitation by custom unverified templates if not
+// properly configured.
 func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.Headless = true
@@ -206,14 +208,6 @@ func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 			e.opts.ShowBrowser = hopts.ShowBrowser
 			e.opts.UseInstalledChrome = hopts.UseChrome
 		}
-		if engine.MustDisableSandbox() {
-			e.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
-		}
-		browser, err := engine.New(e.opts)
-		if err != nil {
-			return err
-		}
-		e.browserInstance = browser
 		return nil
 	}
 }
@@ -556,6 +550,21 @@ func WithLogger(logger *gologger.Logger) NucleiSDKOptions {
 func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts = opts
+		return nil
+	}
+}
+
+// WithTemporaryDirectory allows setting a parent directory for SDK-managed temporary files.
+// A temporary directory will be created inside the provided directory and cleaned up on engine close.
+// If not set, a temporary directory will be automatically created in the system temp location.
+// The parent directory is assumed to exist.
+func WithTemporaryDirectory(parentDir string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		tmpDir, err := os.MkdirTemp(parentDir, "nuclei-tmp-*")
+		if err != nil {
+			return err
+		}
+		e.tmpDir = tmpDir
 		return nil
 	}
 }

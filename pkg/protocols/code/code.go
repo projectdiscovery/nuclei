@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
+	"github.com/projectdiscovery/gozero/sandbox"
 	gozerotypes "github.com/projectdiscovery/gozero/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -45,6 +46,11 @@ var (
 	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
+type Sandbox struct {
+	WorkingDir string `yaml:"working-dir,omitempty" json:"working-dir,omitempty" jsonschema:"title=working-dir,description=Working directory"`
+	Image      string `yaml:"image,omitempty" json:"image,omitempty" jsonschema:"title=image,description=Image"`
+}
+
 // Request is a request for the SSL protocol
 type Request struct {
 	// Operators for the current request go here.
@@ -55,7 +61,8 @@ type Request struct {
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
 	// description: |
 	//   Engine type
-	Engine []string `yaml:"engine,omitempty" json:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	Engine  []string `yaml:"engine,omitempty" json:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	Sandbox *Sandbox `yaml:"sandbox,omitempty" json:"sandbox,omitempty" jsonschema:"title=sandbox,description=Sandbox"`
 	// description: |
 	//   PreCondition is a condition which is evaluated before sending the request.
 	PreCondition string `yaml:"pre-condition,omitempty" json:"pre-condition,omitempty" jsonschema:"title=pre-condition for the request,description=PreCondition is a condition which is evaluated before sending the request"`
@@ -245,6 +252,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
+		if request.useSandbox() {
+			return request.gozero.EvalWithVirtualEnv(
+				ctx, gozero.VirtualEnvDocker,
+				request.src,
+				metaSrc,
+				&sandbox.DockerConfiguration{
+					WorkingDir: request.Sandbox.WorkingDir,
+					Image:      request.Sandbox.Image,
+				},
+			)
+		}
 		return request.gozero.Eval(ctx, request.src, metaSrc)
 	})
 	if gOutput == nil {
@@ -456,4 +474,8 @@ func prettyPrint(templateId string, buff string) {
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
+}
+
+func (r *Request) useSandbox() bool {
+	return r.Sandbox != nil && r.Sandbox.Image != ""
 }

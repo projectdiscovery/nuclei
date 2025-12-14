@@ -194,8 +194,11 @@ func main() {
 		})
 	}
 
-	// Setup graceful exits
+	// Setup filename for graceful exits
 	resumeFileName := types.DefaultResumeFilePath()
+	if options.Resume == "" {
+		resumeFileName = options.Resume
+	}
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
@@ -255,7 +258,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileCommaSeparatedStringSliceOptions),
-		flagSet.StringVar(&options.Resume, "resume", "", "resume scan using resume.cfg (clustering will be disabled)"),
+		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
 	)
@@ -620,8 +623,13 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 		}
 	}
-	if options.NewTemplatesDirectory != "" {
-		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+
+	templatesDir := options.NewTemplatesDirectory
+	if templatesDir == "" {
+		templatesDir = os.Getenv(config.NucleiTemplatesDirEnv)
+	}
+	if templatesDir != "" {
+		config.DefaultConfig.SetTemplatesDir(templatesDir)
 	}
 
 	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")

@@ -104,7 +104,7 @@ func NewUploadWriter(ctx context.Context, logger *gologger.Logger, creds *pdcpau
 // SetScanID sets the scan id for the upload writer
 func (u *UploadWriter) SetScanID(id string) error {
 	if !xidRegex.MatchString(id) {
-		return fmt.Errorf("invalid scan id provided")
+		gologger.Warning().Msgf("invalid asset id provided (unknown xid format): %s", id)
 	}
 	u.scanID = id
 	return nil
