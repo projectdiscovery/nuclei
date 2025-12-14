@@ -5,7 +5,6 @@ package list
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -39,6 +38,7 @@ const DefaultMaxDedupeItemsCount = 10000
 // it supports list type of input ex: urls,file,stdin,uncover,etc. (i.e just url not complete request/response)
 type ListInputProvider struct {
 	ipOptions         *ipOptions
+	options           *types.Options
 	inputCount        int64
 	excludedCount     int64
 	dupeCount         int64
@@ -71,6 +71,7 @@ func New(opts *Options) (*ListInputProvider, error) {
 
 	input := &ListInputProvider{
 		hostMap: hm,
+		options: options,
 		ipOptions: &ipOptions{
 			ScanAllIPs: options.ScanAllIPs,
 			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
@@ -147,16 +148,22 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	// parse hostname if url is given
 	urlx, err := urlutil.Parse(URL)
 	if err != nil || (urlx != nil && urlx.Host == "") {
-		gologger.Debug().Label("url").MsgFunc(func() string {
-			if err != nil {
-				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)
-			}
-			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
-		})
-		metaInput := contextargs.NewMetaInput()
-		metaInput.Input = URL
-		i.setItem(metaInput)
-		return
+		if err != nil {
+			gologger.Error().Msgf("Failed to parse URL %v: %v", URL, err)
+		} else {
+			gologger.Error().Msgf("Invalid hostname for URL %v", URL)
+		}
+		
+		// Check if this is single target mode (-u) or batch mode (-l)
+		if i.options.TargetsFilePath == "" && len(i.options.Targets) <= 1 {
+			// Single target mode: exit immediately
+			gologger.Info().Msg("Stopping scan due to invalid target")
+			os.Exit(1)
+		} else {
+			// Batch mode: log error and skip this target
+			gologger.Warning().Msgf("Skipping invalid target: %v", URL)
+			return
+		}
 	}
 
 	// Check if input is ip or hostname
@@ -391,16 +398,22 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	// parse hostname if url is given
 	urlx, err := urlutil.Parse(URL)
 	if err != nil || (urlx != nil && urlx.Host == "") {
-		gologger.Debug().Label("url").MsgFunc(func() string {
-			if err != nil {
-				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)
-			}
-			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
-		})
-		metaInput := contextargs.NewMetaInput()
-		metaInput.Input = URL
-		i.delItem(metaInput)
-		return
+		if err != nil {
+			gologger.Error().Msgf("Failed to parse URL %v: %v", URL, err)
+		} else {
+			gologger.Error().Msgf("Invalid hostname for URL %v", URL)
+		}
+		
+		// Check if this is single target mode (-u) or batch mode (-l)
+		if i.options.TargetsFilePath == "" && len(i.options.Targets) <= 1 {
+			// Single target mode: exit immediately
+			gologger.Info().Msg("Stopping scan due to invalid target")
+			os.Exit(1)
+		} else {
+			// Batch mode: log error and skip this target
+			gologger.Warning().Msgf("Skipping invalid target: %v", URL)
+			return
+		}
 	}
 
 	// Check if input is ip or hostname
