@@ -27,6 +27,7 @@ type CacheInterface interface {
 	Remove(ctx *contextargs.Context)                                          // remove a host from the cache
 	MarkFailed(protoType string, ctx *contextargs.Context, err error)         // record a failure (and cause) for the host
 	MarkFailedOrRemove(protoType string, ctx *contextargs.Context, err error) // record a failure (and cause) for the host or remove it
+	IsPermanentErr(ctx *contextargs.Context, err error) bool                  // return true if the error is permanent for the host
 }
 
 var (
@@ -137,8 +138,9 @@ func (c *Cache) Check(protoType string, ctx *contextargs.Context) bool {
 	defer cache.mu.Unlock()
 
 	if cache.isPermanentErr {
-		// skipping permanent errors is expected so verbose instead of info
-		gologger.Verbose().Msgf("Skipped %s from target list as found unresponsive permanently: %s", finalValue, cache.cause)
+		cache.Do(func() {
+			gologger.Info().Msgf("Skipped %s from target list as found unresponsive permanently: %s", finalValue, cache.cause)
+		})
 		return true
 	}
 
@@ -230,6 +232,28 @@ func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, e
 	cache.errors.Add(1)
 
 	_ = c.failedTargets.Set(cacheKey, cache)
+}
+
+// IsPermanentErr returns true if the error is permanent for the host.
+func (c *Cache) IsPermanentErr(ctx *contextargs.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errkit.IsKind(err, errkit.ErrKindNetworkPermanent) {
+		return true
+	}
+
+	cacheKey := c.GetKeyFromContext(ctx, err)
+	cache, cacheErr := c.failedTargets.GetIFPresent(cacheKey)
+	if cacheErr != nil {
+		return false
+	}
+
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
+	return cache.isPermanentErr
 }
 
 // GetKeyFromContext returns the key for the cache from the context
