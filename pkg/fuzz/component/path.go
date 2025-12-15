@@ -89,15 +89,15 @@ func (q *Path) Delete(key string) error {
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Get the original path segments
 	originalSplitted := strings.Split(q.req.Path, "/")
-	
+
 	// Create a new slice to hold the rebuilt segments
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
-	
+
 	// Add the first empty segment (from leading "/")
 	if len(originalSplitted) > 0 && originalSplitted[0] == "" {
 		rebuiltSegments = append(rebuiltSegments, "")
 	}
-	
+
 	// Process each segment
 	segmentIndex := 1 // 1-based indexing for our stored values
 	for i := 1; i < len(originalSplitted); i++ {
@@ -106,7 +106,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 			// Skip empty segments
 			continue
 		}
-		
+
 		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
 		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
@@ -116,10 +116,10 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		}
 		segmentIndex++
 	}
-	
+
 	// Join the segments back into a path
 	rebuiltPath := strings.Join(rebuiltSegments, "/")
-	
+
 	if unescaped, err := urlutil.PathDecode(rebuiltPath); err == nil {
 		// this is handle the case where anyportion of path has url encoded data
 		// by default the http/request official library will escape/encode special characters in path
