@@ -3,8 +3,9 @@
 package generators
 
 import (
-	"github.com/pkg/errors"
 	"maps"
+
+	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"

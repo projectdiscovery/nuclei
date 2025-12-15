@@ -148,7 +148,7 @@ func (s *Secret) Validate() error {
 }
 
 type KV struct {
-	Key   string `json:"key" yaml:"key"`   // Header key (preserves exact casing)
+	Key   string `json:"key" yaml:"key"` // Header key (preserves exact casing)
 	Value string `json:"value" yaml:"value"`
 }
 
