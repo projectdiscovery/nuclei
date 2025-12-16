@@ -4512,7 +4512,7 @@ permutations and combinations for all payloads.
 </div>
 <div class="dt">
 
-Payload concurreny i.e threads for sending requests.
+Payload concurrency i.e threads for sending requests.
 
 
 
