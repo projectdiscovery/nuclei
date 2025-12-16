@@ -50,7 +50,7 @@ jobs:
           files: "${PGO_FILE}"
           message: "build: update PGO profile :robot:"
       - run: git push origin $GITHUB_REF
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: "pgo"
           path: "${{ env.PGO_FILE }}"

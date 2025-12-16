@@ -76,7 +76,7 @@ type Request struct {
 	//   permutations and combinations for all payloads.
 	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
 	// description: |
-	//   Payload concurreny i.e threads for sending requests.
+	//   Payload concurrency i.e threads for sending requests.
 	// examples:
 	//   - name: Send requests using 10 concurrent threads
 	//     value: 10

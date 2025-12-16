@@ -211,7 +211,7 @@ func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]
 				if err != nil {
 					return nil
 				}
-				if !d.IsDir() && config.IsTemplate(path) {
+				if !d.IsDir() && config.IsTemplateWithRoot(path, absPath) {
 					if _, ok := processed[path]; !ok {
 						results = append(results, path)
 						processed[path] = struct{}{}
@@ -235,7 +235,7 @@ func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]
 				if err != nil {
 					return nil
 				}
-				if !d.IsDir() && config.IsTemplate(path) {
+				if !d.IsDir() && config.IsTemplateWithRoot(path, absPath) {
 					if _, ok := processed[path]; !ok {
 						results = append(results, path)
 						processed[path] = struct{}{}
