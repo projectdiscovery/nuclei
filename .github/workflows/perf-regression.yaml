@@ -19,7 +19,7 @@ jobs:
       - run: ./bin/nuclei.test -test.run - -test.bench=. -test.benchmem ./cmd/nuclei/ | tee $BENCH_OUT
         env:
           DISABLE_STDOUT: "1"
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
@@ -33,7 +33,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           summary-always: true
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: github.event_name == 'push'
         with:
           path: ./cache

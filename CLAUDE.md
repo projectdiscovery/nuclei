@@ -51,7 +51,7 @@ Each protocol (HTTP, DNS, Network, etc.) implements:
 ### Template System
 - Templates are YAML files defining vulnerability detection logic
 - Compiled into executable requests with operators (matchers/extractors)
-- Support for workflows (multi-step template execution)
+- Support for workflows (multistep template execution)
 - Template clustering optimizes identical requests across multiple templates
 
 ### Key Execution Flow

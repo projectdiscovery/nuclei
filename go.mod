@@ -22,12 +22,12 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
-	github.com/projectdiscovery/fastdialer v0.4.18
-	github.com/projectdiscovery/hmap v0.0.97
+	github.com/projectdiscovery/fastdialer v0.4.20
+	github.com/projectdiscovery/hmap v0.0.98
 	github.com/projectdiscovery/interactsh v1.2.4
 	github.com/projectdiscovery/rawhttp v0.1.90
-	github.com/projectdiscovery/retryabledns v1.0.110
-	github.com/projectdiscovery/retryablehttp-go v1.0.133
+	github.com/projectdiscovery/retryabledns v1.0.111
+	github.com/projectdiscovery/retryablehttp-go v1.1.1
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -37,7 +37,7 @@ require (
 	github.com/spf13/cast v1.9.2
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/valyala/fasttemplate v1.2.2
-	github.com/weppos/publicsuffix-go v0.50.0
+	github.com/weppos/publicsuffix-go v0.50.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.47.0
 	golang.org/x/oauth2 v0.30.0
@@ -92,26 +92,26 @@ require (
 	github.com/microsoft/go-mssqldb v1.9.2
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/dsl v0.8.6
+	github.com/projectdiscovery/dsl v0.8.8
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.74
-	github.com/projectdiscovery/gologger v1.1.62
+	github.com/projectdiscovery/gologger v1.1.64
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.1.1-0.20251027191944-a4ea43320b81
-	github.com/projectdiscovery/httpx v1.7.2
+	github.com/projectdiscovery/httpx v1.7.4
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.30
+	github.com/projectdiscovery/networkpolicy v0.1.32
 	github.com/projectdiscovery/ratelimit v0.0.82
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.2.2
 	github.com/projectdiscovery/uncover v1.2.0
-	github.com/projectdiscovery/useragent v0.0.104
+	github.com/projectdiscovery/useragent v0.0.105
 	github.com/projectdiscovery/utils v0.7.3
-	github.com/projectdiscovery/wappalyzergo v0.2.57
+	github.com/projectdiscovery/wappalyzergo v0.2.59
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -144,7 +144,7 @@ require (
 	github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
-	github.com/PuerkitoBio/goquery v1.10.3 // indirect
+	github.com/PuerkitoBio/goquery v1.11.0 // indirect
 	github.com/STARRY-S/zip v0.2.3 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/akrylysov/pogreb v0.10.2 // indirect
@@ -213,7 +213,7 @@ require (
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05 // indirect
+	github.com/ericlagergren/decimal v0.0.0-20240411145413-00de7ca16731 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -270,7 +270,7 @@ require (
 	github.com/k14s/starlark-go v0.0.0-20200720175618-3a5c849cc368 // indirect
 	github.com/kataras/jwt v0.1.10 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -279,7 +279,7 @@ require (
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/logrusorgru/aurora/v4 v4.0.0 // indirect
 	github.com/lor00x/goldap v0.0.0-20240304151906-8d785c64d1c8 // indirect
-	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250821153705-5981dea3221d // indirect
 	github.com/mackerelio/go-osstat v0.2.4 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
@@ -325,7 +325,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/cdncheck v1.2.12 // indirect
+	github.com/projectdiscovery/cdncheck v1.2.14 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
