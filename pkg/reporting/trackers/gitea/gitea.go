@@ -151,21 +151,34 @@ func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 }
 
 func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
-
-	issueList, _, err := i.client.ListRepoIssues(i.options.ProjectOwner, i.options.ProjectName, gitea.ListIssueOption{
+	// Fetch issues in pages to ensure older issues are also checked for duplicates.
+	opts := gitea.ListIssueOption{
 		State: "all",
-	})
-	if err != nil {
-		return nil, err
+		ListOptions: gitea.ListOptions{
+			Page:     1,
+			PageSize: 100,
+		},
 	}
 
-	for _, issue := range issueList {
-		if issue.Title == title {
-			return issue, nil
+	for {
+		issueList, _, err := i.client.ListRepoIssues(i.options.ProjectOwner, i.options.ProjectName, opts)
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	return nil, nil
+		for _, issue := range issueList {
+			if issue.Title == title {
+				return issue, nil
+			}
+		}
+
+		if len(issueList) < opts.PageSize {
+			// Last page reached.
+			return nil, nil
+		}
+
+		opts.Page++
+	}
 }
 
 func (i *Integration) getLabelIDsByNames(labels []string) ([]int64, error) {
