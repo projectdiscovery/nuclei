@@ -287,6 +287,9 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Get default port(s) if specified in template
 	ports := request.getPorts()
+	if len(ports) == 0 {
+		return request.executeWithResults("", target, dynamicValues, previous, callback)
+	}
 
 	var errs []error
 
