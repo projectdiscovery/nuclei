@@ -29,6 +29,7 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS10,
+		ClientSessionCache: tls.NewLRUClientSessionCache(1024),
 	}
 
 	if options.SNI != "" {
