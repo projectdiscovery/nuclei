@@ -42,6 +42,12 @@ type Options struct {
 	DenyList *filters.Filter `yaml:"deny-list"`
 	// DuplicateIssueCheck is a bool to enable duplicate tracking issue check and update the newest
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check" default:"false"`
+	// DuplicateIssuePageSize controls how many issues are fetched per page when searching for duplicates.
+	// If unset or <=0, a default of 100 is used.
+	DuplicateIssuePageSize int `yaml:"duplicate-issue-page-size" default:"100"`
+	// DuplicateIssueMaxPages limits how many pages are fetched when searching for duplicates.
+	// If unset or <=0, all pages are fetched until exhaustion.
+	DuplicateIssueMaxPages int `yaml:"duplicate-issue-max-pages" default:"0"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 	OmitRaw    bool                  `yaml:"-"`
@@ -152,15 +158,25 @@ func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 
 func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
 	// Fetch issues in pages to ensure older issues are also checked for duplicates.
+	pageSize := i.options.DuplicateIssuePageSize
+	if pageSize <= 0 {
+		pageSize = 100
+	}
+	maxPages := i.options.DuplicateIssueMaxPages
+
 	opts := gitea.ListIssueOption{
 		State: "all",
 		ListOptions: gitea.ListOptions{
 			Page:     1,
-			PageSize: 100,
+			PageSize: pageSize,
 		},
 	}
 
 	for {
+		if maxPages > 0 && opts.Page > maxPages {
+			return nil, nil
+		}
+
 		issueList, _, err := i.client.ListRepoIssues(i.options.ProjectOwner, i.options.ProjectName, opts)
 		if err != nil {
 			return nil, err
