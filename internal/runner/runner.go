@@ -678,6 +678,12 @@ func (r *Runner) RunEnumeration() error {
 			_ = r.inputProvider.SetWithExclusions(r.options.ExecutionId, host)
 		}
 	}
+
+	// Preflight: resolve hosts + portscan for ports required by loaded templates, then filter inputs.
+	// This reduces time spent on non-resolvable targets or targets with no relevant open ports.
+	if err := r.preflightResolveAndPortScan(store); err != nil {
+		return errors.Wrap(err, "preflight resolve/portscan failed")
+	}
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
