@@ -22,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -180,6 +179,18 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 	return wrappedGet(options, configuration)
 }
 
+func isMultiThreadWithJar(configuration *Configuration) bool {
+	return configuration.Threads > 0 && configuration.Connection != nil && configuration.Connection.HasCookieJar()
+}
+
+func hashWithCookieJar(hash string, configuration *Configuration) string {
+	if isMultiThreadWithJar(configuration) {
+		jar := configuration.Connection.GetCookieJar()
+		return hash + fmt.Sprintf("cookieptr%p", jar)
+	}
+	return hash
+}
+
 // wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var err error
@@ -189,7 +200,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
 	}
 
-	hash := configuration.Hash()
+	hash := hashWithCookieJar(configuration.Hash(), configuration)
 	if client, ok := dialers.HTTPClientPool.Get(hash); ok {
 		return client, nil
 	}
@@ -204,12 +215,13 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	// because this won't work on slow hosts
 	retryableHttpOptions.NoAdjustTimeout = true
 
-	if configuration.Threads > 0 || options.ScanStrategy == scanstrategy.HostSpray.String() {
-		// Single host
+	// with threading always allow connection reuse
+	if configuration.Threads > 0 {
 		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
 		disableKeepAlives = false
 		maxIdleConnsPerHost = 500
 		maxConnsPerHost = 500
+		maxIdleConns = 500
 	}
 
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
@@ -357,12 +369,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	// Only add to client pool if we don't have a cookie jar in place.
-	if jar == nil {
+	if jar == nil || isMultiThreadWithJar(configuration) {
 		if err := dialers.HTTPClientPool.Set(hash, client); err != nil {
 			return nil, err
 		}
 	}
+
 	return client, nil
 }
 

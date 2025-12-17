@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"maps"
 	"net/http"
+	"net/http/httptrace"
 	"strconv"
 	"strings"
 	"sync"
@@ -826,11 +828,31 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 
 			if modifiedConfig != nil {
+				modifiedConfig.Threads = request.Threads
 				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
+			}
+
+			// TESTING: Inject httptrace into retryablehttp.Request context to ensure connection reuse tracking
+			// This must be done at the request level, not just in the transport wrapper
+			if generatedRequest.request != nil {
+				reqCtx := generatedRequest.request.Context()
+				existingTrace := httptrace.ContextClientTrace(reqCtx)
+				if existingTrace == nil {
+					// Add httptrace if not already present
+					clientTrace := &httptrace.ClientTrace{
+						GotConn: func(info httptrace.GotConnInfo) {
+							if info.Reused {
+								log.Printf("CONNECTION REUSED at request level! Address: %s, IdleTime: %v", generatedRequest.request.URL.Host, info.IdleTime)
+							}
+						},
+					}
+					reqCtx = httptrace.WithClientTrace(reqCtx, clientTrace)
+					generatedRequest.request = generatedRequest.request.WithContext(reqCtx)
+				}
 			}
 
 			resp, err = httpclient.Do(generatedRequest.request)
