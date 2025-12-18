@@ -55,6 +55,12 @@
 #  # these severity labels or tags (does not affect exporters. set those globally)
 #  deny-list:
 #    severity: low
+#  # duplicate-issue-check (optional) flag to enable duplicate tracking issue check
+#  duplicate-issue-check: false
+#  # duplicate-issue-page-size (optional) controls how many issues to fetch per page when searching for duplicates
+#  duplicate-issue-page-size: 100
+#  # duplicate-issue-max-pages (optional) limits how many pages to fetch when searching for duplicates (0 = no limit)
+#  duplicate-issue-max-pages: 0
 #
 # Gitea contains configuration options for a gitea issue tracker
 #gitea:
