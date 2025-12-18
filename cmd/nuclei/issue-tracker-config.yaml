@@ -90,6 +90,9 @@
 #  update-existing: false
 #  # URL is the jira application url
 #  url: https://localhost/jira
+#  # site-url is the browsable URL for the Jira instance (optional)
+#  # If not provided, issue.Self will be used. Useful for OAuth where issue.Self contains api.atlassian.com
+#  site-url: https://your-company.atlassian.net
 #  # account-id is the account-id of the Jira user or username in case of on-prem Jira
 #  account-id: test-account-id
 #  # email is the email of the user for Jira instance
