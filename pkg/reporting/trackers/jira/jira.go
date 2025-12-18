@@ -184,6 +184,9 @@ type Options struct {
 	UpdateExisting bool `yaml:"update-existing" json:"update_existing"`
 	// URL is the URL of the jira server
 	URL string `yaml:"url" json:"url" validate:"required"`
+	// SiteURL is the browsable URL for the Jira instance (optional)
+	// If not provided, issue.Self will be used. Useful for OAuth where issue.Self contains api.atlassian.com
+	SiteURL string `yaml:"site-url" json:"site_url"`
 	// AccountID is the accountID of the jira user.
 	AccountID string `yaml:"account-id" json:"account_id" validate:"required"`
 	// Email is the email of the user for jira instance
@@ -346,16 +349,26 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 		}
 		return nil, fmt.Errorf("%w => %s", err, data)
 	}
-	return getIssueResponseFromJira(createdIssue)
+	return i.getIssueResponseFromJira(createdIssue)
 }
 
-func getIssueResponseFromJira(issue *jira.Issue) (*filters.CreateIssueResponse, error) {
-	parsed, err := url.Parse(issue.Self)
-	if err != nil {
-		return nil, err
+func (i *Integration) getIssueResponseFromJira(issue *jira.Issue) (*filters.CreateIssueResponse, error) {
+	var issueURL string
+
+	// Use SiteURL if provided, otherwise fall back to original issue.Self logic
+	if i.options.SiteURL != "" {
+		// Use the configured site URL for browsable links (useful for OAuth)
+		baseURL := strings.TrimRight(i.options.SiteURL, "/")
+		issueURL = fmt.Sprintf("%s/browse/%s", baseURL, issue.Key)
+	} else {
+		// Fall back to original logic using issue.Self
+		parsed, err := url.Parse(issue.Self)
+		if err != nil {
+			return nil, err
+		}
+		parsed.Path = fmt.Sprintf("/browse/%s", issue.Key)
+		issueURL = parsed.String()
 	}
-	parsed.Path = fmt.Sprintf("/browse/%s", issue.Key)
-	issueURL := parsed.String()
 
 	return &filters.CreateIssueResponse{
 		IssueID:  issue.ID,
@@ -376,7 +389,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 			if err != nil {
 				return nil, errors.Wrap(err, "could not add comment to existing issue")
 			}
-			return getIssueResponseFromJira(&issue)
+			return i.getIssueResponseFromJira(&issue)
 		}
 	}
 	resp, err := i.CreateNewIssue(event)
