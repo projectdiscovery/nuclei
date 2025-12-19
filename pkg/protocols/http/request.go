@@ -829,12 +829,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			if modifiedConfig != nil {
-				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
-				if err != nil {
-					return errors.Wrap(err, "could not get http client")
-				}
+			// always prefer per-host pooled client for better reuse
+			// choose config to use (modified if present else default)
+			configToUse := modifiedConfig
+			if configToUse == nil {
+				configToUse = request.connConfiguration
+			}
+			if client, err := httpclientpool.GetForTarget(request.options.Options, configToUse, formedURL); err == nil {
 				httpclient = client
+			} else {
+				return errors.Wrap(err, "could not get http client")
 			}
 
 			resp, err = httpclient.Do(generatedRequest.request)

@@ -15,6 +15,7 @@ type Dialers struct {
 	RawHTTPClient              *rawhttp.Client
 	DefaultHTTPClient          *retryablehttp.Client
 	HTTPClientPool             *mapsutil.SyncLockMap[string, *retryablehttp.Client]
+	PerHostHTTPPool            any
 	NetworkPolicy              *networkpolicy.NetworkPolicy
 	LocalFileAccessAllowed     bool
 	RestrictLocalNetworkAccess bool

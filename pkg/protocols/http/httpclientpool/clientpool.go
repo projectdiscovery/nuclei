@@ -212,6 +212,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		maxConnsPerHost = 500
 	}
 
+	retryableHttpOptions.ImpersonateChrome = true
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
 	retryableHttpOptions.RetryMax = options.Retries
 	retryableHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
@@ -289,6 +290,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		MaxIdleConns:          maxIdleConns,
 		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
 		MaxConnsPerHost:       maxConnsPerHost,
+		IdleConnTimeout:       90 * time.Second,
 		TLSClientConfig:       tlsConfig,
 		DisableKeepAlives:     disableKeepAlives,
 		ResponseHeaderTimeout: responseHeaderTimeout,
@@ -364,6 +366,55 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		}
 	}
 	return client, nil
+}
+
+// GetForTarget creates or gets a client for a specific target with per-host connection pooling
+func GetForTarget(options *types.Options, configuration *Configuration, targetURL string) (*retryablehttp.Client, error) {
+	if !shouldUsePerHostPooling(options, configuration) {
+		return Get(options, configuration)
+	}
+
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
+
+	dialers.Lock()
+	if dialers.PerHostHTTPPool == nil {
+		dialers.PerHostHTTPPool = NewPerHostClientPool(500, 5*time.Minute, 30*time.Minute)
+	}
+	dialers.Unlock()
+
+	pool, ok := dialers.PerHostHTTPPool.(*PerHostClientPool)
+	if !ok || pool == nil {
+		return Get(options, configuration)
+	}
+
+	return pool.GetOrCreate(targetURL, func() (*retryablehttp.Client, error) {
+		cfg := configuration.Clone()
+		if cfg.Connection == nil {
+			cfg.Connection = &ConnectionConfiguration{}
+		}
+		cfg.Connection.DisableKeepAlive = false
+
+		// Override Threads to force connection pool settings
+		// This ensures MaxIdleConnsPerHost and MaxConnsPerHost are set correctly
+		originalThreads := cfg.Threads
+		cfg.Threads = 1
+		client, err := wrappedGet(options, cfg)
+		cfg.Threads = originalThreads
+
+		return client, err
+	})
+}
+
+// shouldUsePerHostPooling determines if per-host pooling should be enabled
+func shouldUsePerHostPooling(options *types.Options, config *Configuration) bool {
+	// Enable per-host pooling for:
+	// 1. Templates with threads (parallel requests to same host)
+	// 2. TemplateSpray mode even without threads (sequential requests benefit from keep-alive)
+	// Disable only for HostSpray mode (already has keep-alive enabled globally)
+	return options.ScanStrategy != scanstrategy.HostSpray.String()
 }
 
 type RedirectFlow uint8

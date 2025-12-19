@@ -24,7 +24,6 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -451,10 +450,9 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		}
 	}
 
-	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && r.options.Options.ScanStrategy != scanstrategy.HostSpray.String() {
-		req.Close = true
-	}
+	// Connection handling is now managed by per-host HTTP client pool
+	// Only set Close=true if template explicitly requests it via Connection header
+	// Otherwise, let the per-host pool's keep-alive settings handle it
 
 	// Check if the user requested a request body
 	if r.request.Body != "" {

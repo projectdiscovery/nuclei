@@ -345,6 +345,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	request.connConfiguration = connectionConfiguration
 
+	// Don't create per-host client during Compile (no target yet)
 	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
