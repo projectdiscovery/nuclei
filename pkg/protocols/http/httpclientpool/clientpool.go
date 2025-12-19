@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -377,6 +378,97 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	return client, nil
+}
+
+// GetForTarget creates or gets a client for a specific target with per-host connection pooling
+func GetForTarget(options *types.Options, configuration *Configuration, targetURL string) (*retryablehttp.Client, error) {
+	if !shouldUsePerHostPooling(options, configuration) {
+		return Get(options, configuration)
+	}
+
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
+
+	dialers.Lock()
+	if dialers.PerHostHTTPPool == nil {
+		dialers.PerHostHTTPPool = NewPerHostClientPool(1024, 5*time.Minute, 30*time.Minute)
+	}
+	dialers.Unlock()
+
+	pool, ok := dialers.PerHostHTTPPool.(*PerHostClientPool)
+	if !ok || pool == nil {
+		return Get(options, configuration)
+	}
+
+	return pool.GetOrCreate(targetURL, func() (*retryablehttp.Client, error) {
+		cfg := configuration.Clone()
+		if cfg.Connection == nil {
+			cfg.Connection = &ConnectionConfiguration{}
+		}
+		cfg.Connection.DisableKeepAlive = false
+
+		// Override Threads to force connection pool settings
+		// This ensures MaxIdleConnsPerHost and MaxConnsPerHost are set correctly
+		originalThreads := cfg.Threads
+		cfg.Threads = 1
+		client, err := wrappedGet(options, cfg)
+		cfg.Threads = originalThreads
+
+		return client, err
+	})
+}
+
+// shouldUsePerHostPooling determines if per-host pooling should be enabled
+func shouldUsePerHostPooling(options *types.Options, config *Configuration) bool {
+	// Enable per-host pooling when the flag is set
+	return options.PerHostClientPool
+}
+
+// GetPerHostRateLimiter gets or creates a rate limiter for a specific host
+// Returns nil if per-host rate limiting is not enabled
+func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.Limiter, error) {
+	if !options.PerHostRateLimit {
+		return nil, nil
+	}
+
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
+
+	dialers.Lock()
+	if dialers.PerHostRateLimitPool == nil {
+		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(1024, 5*time.Minute, 30*time.Minute, options)
+	}
+	dialers.Unlock()
+
+	pool, ok := dialers.PerHostRateLimitPool.(*PerHostRateLimitPool)
+	if !ok || pool == nil {
+		return nil, nil
+	}
+
+	return pool.GetOrCreate(hostname)
+}
+
+// RecordPerHostRateLimitRequest records a request for pps stats calculation
+func RecordPerHostRateLimitRequest(options *types.Options, hostname string) {
+	if !options.PerHostRateLimit || hostname == "" {
+		return
+	}
+
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return
+	}
+
+	pool, ok := dialers.PerHostRateLimitPool.(*PerHostRateLimitPool)
+	if !ok || pool == nil {
+		return
+	}
+
+	pool.RecordRequest(hostname)
 }
 
 type RedirectFlow uint8
