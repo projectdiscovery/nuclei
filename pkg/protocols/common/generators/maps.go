@@ -44,13 +44,43 @@ func MergeMapsMany(maps ...interface{}) map[string][]string {
 	return m
 }
 
-// MergeMaps merges two maps into a new map
+// MergeMaps merges multiple maps into a new map.
+//
+// Use [CopyMap] if you need to copy a single map.
+// Use [MergeMapsInto] to merge into an existing map.
 func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
-	merged := make(map[string]interface{})
+	mapsLen := 0
+	for _, m := range maps {
+		mapsLen += len(m)
+	}
+
+	merged := make(map[string]interface{}, mapsLen)
 	for _, m := range maps {
 		maps0.Copy(merged, m)
 	}
+
 	return merged
+}
+
+// CopyMap creates a shallow copy of a single map.
+func CopyMap(m map[string]interface{}) map[string]interface{} {
+	if m == nil {
+		return nil
+	}
+
+	result := make(map[string]interface{}, len(m))
+	maps0.Copy(result, m)
+
+	return result
+}
+
+// MergeMapsInto copies all entries from src maps into dst (mutating dst).
+//
+// Use when dst is a fresh map the caller owns and wants to avoid allocation.
+func MergeMapsInto(dst map[string]interface{}, srcs ...map[string]interface{}) {
+	for _, src := range srcs {
+		maps0.Copy(dst, src)
+	}
 }
 
 // ExpandMapValues converts values from flat string to string slice
@@ -59,5 +89,6 @@ func ExpandMapValues(m map[string]string) map[string][]string {
 	for k, v := range m {
 		m1[k] = []string{v}
 	}
+
 	return m1
 }
