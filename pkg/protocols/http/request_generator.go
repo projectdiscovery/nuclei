@@ -84,10 +84,10 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 			r.applyMark(request, Once)
 		}
 		if hasPayloadIterator {
-			return request, generators.MergeMaps(r.currentPayloads), r.okCurrentPayload
+			return request, generators.CopyMap(r.currentPayloads), r.okCurrentPayload
 		}
 		// next should return a copy of payloads and not pointer to payload to avoid data race
-		return request, generators.MergeMaps(r.currentPayloads), true
+		return request, generators.CopyMap(r.currentPayloads), true
 	} else {
 		return "", nil, false
 	}

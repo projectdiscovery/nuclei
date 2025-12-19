@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -237,6 +238,9 @@ func (e *NucleiEngine) closeInternal() {
 	}
 	if e.tmpDir != "" {
 		_ = os.RemoveAll(e.tmpDir)
+	}
+	if e.opts != nil {
+		generators.ClearOptionsPayloadMap(e.opts)
 	}
 }
 
