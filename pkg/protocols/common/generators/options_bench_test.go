@@ -22,6 +22,8 @@ func BenchmarkBuildPayloadFromOptions(b *testing.B) {
 	}
 
 	b.Run("Sequential", func(b *testing.B) {
+		ClearOptionsPayloadMap(opts)
+
 		b.ReportAllocs()
 		for b.Loop() {
 			_ = BuildPayloadFromOptions(opts)
@@ -29,6 +31,8 @@ func BenchmarkBuildPayloadFromOptions(b *testing.B) {
 	})
 
 	b.Run("Parallel", func(b *testing.B) {
+		ClearOptionsPayloadMap(opts)
+
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
