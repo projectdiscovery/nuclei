@@ -778,6 +778,15 @@ func (r *Runner) RunEnumeration() error {
 			pool.PrintPerHostPPSStats()
 		}
 	}
+	// Print connection reuse stats if available
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil && dialers.ConnectionReuseTracker != nil {
+		if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintStats() }); ok {
+			tracker.PrintStats()
+		}
+		if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintPerHostStats() }); ok {
+			tracker.PrintPerHostStats()
+		}
+	}
 
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors

@@ -17,6 +17,7 @@ type Dialers struct {
 	HTTPClientPool             *mapsutil.SyncLockMap[string, *retryablehttp.Client]
 	PerHostHTTPPool            any
 	PerHostRateLimitPool       any
+	ConnectionReuseTracker     any
 	NetworkPolicy              *networkpolicy.NetworkPolicy
 	LocalFileAccessAllowed     bool
 	RestrictLocalNetworkAccess bool

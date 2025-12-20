@@ -885,22 +885,24 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				httpclient = client
 			}
 
-			// DEBUG: Add connection reuse tracking for parallelhttp (default behavior only)
-			// Only track when: parallelhttp mode (Threads > 0) AND NOT per-host pool
-			if request.Threads > 0 && !request.options.Options.PerHostClientPool && generatedRequest.request != nil {
-				var connLocalAddr string
+			// Track connection reuse for all HTTP requests
+			if generatedRequest.request != nil {
+				// Extract hostname for connection reuse tracking (use actual request URL, same as rate limiting)
+				hostnameForReuse := input.MetaInput.Input
+				if generatedRequest.request.URL != nil {
+					// Use the actual request URL - normalization will extract host:port correctly
+					hostnameForReuse = generatedRequest.request.String()
+				} else if generatedRequest.URL() != "" {
+					// Fallback to generated request URL method
+					hostnameForReuse = generatedRequest.URL()
+				} else if targetURL != "" {
+					hostnameForReuse = targetURL
+				}
+
 				trace := &httptrace.ClientTrace{
 					GotConn: func(info httptrace.GotConnInfo) {
-						if info.Conn != nil {
-							if localAddr := info.Conn.LocalAddr(); localAddr != nil {
-								connLocalAddr = localAddr.String()
-							}
-						}
-						if info.Reused {
-							// Connection reuse detected! Log and exit
-							gologger.Debug().Msgf("[DEBUG CONNECTION REUSE] Connection reused detected! LocalAddr=%s, Reused=%v, TargetURL=%s",
-								connLocalAddr, info.Reused, targetURL)
-						}
+						// Record connection reuse event
+						httpclientpool.RecordConnectionReuse(request.options.Options, hostnameForReuse, info.Reused)
 					},
 				}
 				ctx := httptrace.WithClientTrace(generatedRequest.request.Context(), trace)

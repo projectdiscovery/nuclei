@@ -471,6 +471,41 @@ func RecordPerHostRateLimitRequest(options *types.Options, hostname string) {
 	pool.RecordRequest(hostname)
 }
 
+// GetConnectionReuseTracker gets or creates the connection reuse tracker
+func GetConnectionReuseTracker(options *types.Options) *ConnectionReuseTracker {
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil
+	}
+
+	dialers.Lock()
+	if dialers.ConnectionReuseTracker == nil {
+		dialers.ConnectionReuseTracker = NewConnectionReuseTracker(1024, 5*time.Minute, 30*time.Minute)
+	}
+	dialers.Unlock()
+
+	tracker, ok := dialers.ConnectionReuseTracker.(*ConnectionReuseTracker)
+	if !ok || tracker == nil {
+		return nil
+	}
+
+	return tracker
+}
+
+// RecordConnectionReuse records a connection reuse event
+func RecordConnectionReuse(options *types.Options, hostname string, reused bool) {
+	if hostname == "" {
+		return
+	}
+
+	tracker := GetConnectionReuseTracker(options)
+	if tracker == nil {
+		return
+	}
+
+	tracker.RecordConnection(hostname, reused)
+}
+
 type RedirectFlow uint8
 
 const (
