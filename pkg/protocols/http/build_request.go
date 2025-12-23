@@ -452,20 +452,21 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 	// Respect connection reuse policy from smart analyzer
 	// If policy is ReuseUnsafe, ensure connection is closed
-	if r.request.connectionReusePolicy == ReuseUnsafe {
+	switch r.request.connectionReusePolicy {
+	case ReuseUnsafe:
 		// Explicitly set Connection: close header if not already present
 		if req.Header.Get("Connection") == "" {
 			req.Header.Set("Connection", "close")
 		}
 		req.Close = true
-	} else if r.request.connectionReusePolicy == ReuseSafe {
+	case ReuseSafe:
 		// For safe requests, ensure connection can be reused
 		// Don't set req.Close = true, allow connection pooling
 		// Remove any existing "Connection: close" header if present
 		if strings.EqualFold(req.Header.Get("Connection"), "close") {
 			req.Header.Del("Connection")
 		}
-	} else {
+	default:
 		// Legacy behavior: In case of multiple threads the underlying connection should remain open to allow reuse
 		if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && r.options.Options.ScanStrategy != scanstrategy.HostSpray.String() {
 			req.Close = true

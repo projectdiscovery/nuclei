@@ -315,15 +315,18 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// Determine if keep-alive should be disabled
 	// If policy is ReuseUnsafe, we must disable keep-alive to preserve existing behavior
 	// Otherwise, use the standard logic (which may enable keep-alive)
-	disableKeepAlive := httputil.ShouldDisableKeepAlive(options.Options)
-	if reusePolicy == ReuseUnsafe {
+	var disableKeepAlive bool
+	switch reusePolicy {
+	case ReuseUnsafe:
 		// Preserve existing behavior: disable keep-alive for unsafe requests
 		disableKeepAlive = true
-	} else if reusePolicy == ReuseSafe {
+	case ReuseSafe:
 		// Enable keep-alive for safe requests to allow connection pooling/sharding
 		disableKeepAlive = false
+	default:
+		// If ReuseUnknown, use the standard logic
+		disableKeepAlive = httputil.ShouldDisableKeepAlive(options.Options)
 	}
-	// If ReuseUnknown, use the standard logic
 
 	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:       request.Threads,

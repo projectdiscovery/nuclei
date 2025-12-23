@@ -461,12 +461,6 @@ func GetForTarget(options *types.Options, configuration *Configuration, targetUR
 	return Get(options, configuration)
 }
 
-// shouldUsePerHostPooling determines if per-host pooling should be enabled
-func shouldUsePerHostPooling(options *types.Options, config *Configuration) bool {
-	// Enable per-host pooling when the flag is set
-	return options.PerHostClientPool
-}
-
 // GetPerHostRateLimiter gets or creates a rate limiter for a specific host
 // Returns nil if per-host rate limiting is not enabled
 func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.Limiter, error) {

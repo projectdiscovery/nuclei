@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -40,7 +39,6 @@ const (
 type ShardedClientPool struct {
 	shards    []*ShardEntry
 	numShards int
-	mu        sync.RWMutex
 
 	// Statistics
 	totalRequests atomic.Uint64

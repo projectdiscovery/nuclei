@@ -889,11 +889,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
 				tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options)
 				if tracker != nil {
-					requestURL := generatedRequest.request.URL.String()
+					requestURL := generatedRequest.request.String()
 					if tracker.RequiresHTTPS(requestURL) {
 						// Modify request URL scheme from http to https
-						if generatedRequest.request.URL.Scheme == "http" {
-							generatedRequest.request.URL.Scheme = "https"
+						if generatedRequest.request.Scheme == "http" {
+							generatedRequest.request.Scheme = "https"
 							gologger.Debug().Msgf("[http-to-https-tracker] Corrected HTTP to HTTPS for %s", requestURL)
 						}
 					}
@@ -1061,7 +1061,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			// Extract host:port from the request URL
 			var requestURL string
 			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-				requestURL = generatedRequest.request.URL.String()
+				requestURL = generatedRequest.request.String()
 			} else if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
 				requestURL = generatedRequest.rawRequest.FullURL
 			} else if respChain.Request() != nil && respChain.Request().URL != nil {
