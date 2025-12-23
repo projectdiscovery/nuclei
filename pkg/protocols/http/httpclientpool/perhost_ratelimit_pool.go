@@ -44,11 +44,13 @@ func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, o
 	if size <= 0 {
 		size = 1024
 	}
+	// For global scan tracking, use very long TTL to keep entries for entire scan duration
+	// Default to 24 hours if not specified, which should cover even very long scans
 	if maxIdleTime == 0 {
-		maxIdleTime = 5 * time.Minute
+		maxIdleTime = 24 * time.Hour
 	}
 	if maxLifetime == 0 {
-		maxLifetime = 30 * time.Minute
+		maxLifetime = 24 * time.Hour
 	}
 
 	ttl := maxIdleTime
@@ -72,6 +74,8 @@ func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, o
 		options:     options,
 		maxLifetime: maxLifetime,
 	}
+
+	pool.cache.Purge()
 
 	return pool
 }

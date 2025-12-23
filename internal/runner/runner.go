@@ -714,13 +714,17 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
+	// Set input count in dialers for sharding calculation
+	inputCount := int(r.inputProvider.Count())
+	protocolstate.SetInputCount(r.options.ExecutionId, inputCount)
+
 	// initialize stats worker ( this is no-op unless nuclei is built with stats build tag)
 	// during execution a directory with 2 files will be created in the current directory
 	// config.json - containing below info
 	// events.jsonl - containing all start and end times of all templates
 	events.InitWithConfig(&events.ScanConfig{
 		Name:                "nuclei-stats", // make this configurable
-		TargetCount:         int(r.inputProvider.Count()),
+		TargetCount:         inputCount,
 		TemplatesCount:      len(store.Templates()) + len(store.Workflows()),
 		TemplateConcurrency: r.options.TemplateThreads,
 		PayloadConcurrency:  r.options.PayloadConcurrency,
@@ -778,13 +782,33 @@ func (r *Runner) RunEnumeration() error {
 			pool.PrintPerHostPPSStats()
 		}
 	}
-	// Print connection reuse stats if available
-	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil && dialers.ConnectionReuseTracker != nil {
-		if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintStats() }); ok {
-			tracker.PrintStats()
+	// Always print connection reuse stats (tracker is initialized early for all HTTP requests)
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
+		// Ensure tracker exists (it should already be initialized, but create if needed)
+		if dialers.ConnectionReuseTracker == nil {
+			_ = httpclientpool.GetConnectionReuseTracker(r.options)
 		}
-		if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintPerHostStats() }); ok {
-			tracker.PrintPerHostStats()
+		if dialers.ConnectionReuseTracker != nil {
+			if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintStats() }); ok {
+				tracker.PrintStats()
+			}
+			if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintPerHostStats() }); ok {
+				tracker.PrintPerHostStats()
+			}
+		}
+
+		// Print sharded pool stats if sharding is enabled
+		if r.options.HTTPClientShards && dialers.ShardedHTTPPool != nil {
+			if pool, ok := dialers.ShardedHTTPPool.(interface{ PrintStats() }); ok {
+				pool.PrintStats()
+			}
+		}
+
+		// Print HTTP-to-HTTPS port tracker stats
+		if dialers.HTTPToHTTPSPortTracker != nil {
+			if tracker, ok := dialers.HTTPToHTTPSPortTracker.(interface{ PrintStats() }); ok {
+				tracker.PrintStats()
+			}
 		}
 	}
 

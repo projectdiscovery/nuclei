@@ -864,13 +864,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			// always prefer per-host pooled client for better reuse when flag is enabled
+			// Prefer per-host pooled client or sharded client for better reuse when flags are enabled
 			// choose config to use (modified if present else default)
 			configToUse := modifiedConfig
 			if configToUse == nil {
 				configToUse = request.connConfiguration
 			}
-			if request.options.Options.PerHostClientPool {
+			if request.options.Options.PerHostClientPool || request.options.Options.HTTPClientShards {
 				if client, err := httpclientpool.GetForTarget(request.options.Options, configToUse, targetURL); err == nil {
 					httpclient = client
 				} else {
@@ -883,6 +883,21 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
+			}
+
+			// Check if HTTP-to-HTTPS port correction is needed before sending request
+			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+				tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options)
+				if tracker != nil {
+					requestURL := generatedRequest.request.URL.String()
+					if tracker.RequiresHTTPS(requestURL) {
+						// Modify request URL scheme from http to https
+						if generatedRequest.request.URL.Scheme == "http" {
+							generatedRequest.request.URL.Scheme = "https"
+							gologger.Debug().Msgf("[http-to-https-tracker] Corrected HTTP to HTTPS for %s", requestURL)
+						}
+					}
+				}
 			}
 
 			// Track connection reuse for all HTTP requests
@@ -1040,8 +1055,25 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
+		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message)
+		statusCode := respChain.Response().StatusCode
+		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
+			// Extract host:port from the request URL
+			var requestURL string
+			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+				requestURL = generatedRequest.request.URL.String()
+			} else if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
+				requestURL = generatedRequest.rawRequest.FullURL
+			} else if respChain.Request() != nil && respChain.Request().URL != nil {
+				requestURL = respChain.Request().URL.String()
+			}
+			if requestURL != "" {
+				httpclientpool.RecordHTTPToHTTPSPortMismatch(request.options.Options, requestURL)
+			}
+		}
+
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), fullResponseStr)
+		request.options.Output.RequestStatsLog(strconv.Itoa(statusCode), fullResponseStr)
 
 		// save response to projectfile
 		onceFunc()

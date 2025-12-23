@@ -18,6 +18,9 @@ type Dialers struct {
 	PerHostHTTPPool            any
 	PerHostRateLimitPool       any
 	ConnectionReuseTracker     any
+	HTTPToHTTPSPortTracker     any // *httpclientpool.HTTPToHTTPSPortTracker
+	ShardedHTTPPool            any // *httpclientpool.ShardedClientPool
+	InputCount                 int // Total number of input targets for sharding calculation
 	NetworkPolicy              *networkpolicy.NetworkPolicy
 	LocalFileAccessAllowed     bool
 	RestrictLocalNetworkAccess bool

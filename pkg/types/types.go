@@ -208,6 +208,11 @@ type Options struct {
 	// When enabled, each host gets its own client instance keyed by (host, configuration).
 	// Disabled by default.
 	PerHostClientPool bool
+	// HTTPClientShards enables HTTP client sharding for connection pooling.
+	// When enabled, hosts are distributed across a fixed number of HTTP client shards (auto-calculated, max 256).
+	// This provides a balance between connection reuse and memory efficiency.
+	// Disabled by default.
+	HTTPClientShards bool
 	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.

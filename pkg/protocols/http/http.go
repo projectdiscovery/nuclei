@@ -158,6 +158,10 @@ type Request struct {
 	//   - "AWS"
 	Signature SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
+	// connectionReusePolicy stores the analyzed connection reuse policy
+	// This is set during Compile() based on template analysis
+	connectionReusePolicy ConnectionReusePolicy `yaml:"-" json:"-"`
+
 	// description: |
 	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
 	SkipSecretFile bool `yaml:"skip-secret-file,omitempty" json:"skip-secret-file,omitempty" jsonschema:"title=bypass secret file,description=Skips the authentication or authorization configured in the secret file"`
@@ -304,13 +308,30 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		return errors.Wrap(err, "validation error")
 	}
 
+	// Analyze connection reuse policy to determine if we can safely reuse connections
+	reusePolicy := request.AnalyzeConnectionReuse()
+	request.connectionReusePolicy = reusePolicy
+
+	// Determine if keep-alive should be disabled
+	// If policy is ReuseUnsafe, we must disable keep-alive to preserve existing behavior
+	// Otherwise, use the standard logic (which may enable keep-alive)
+	disableKeepAlive := httputil.ShouldDisableKeepAlive(options.Options)
+	if reusePolicy == ReuseUnsafe {
+		// Preserve existing behavior: disable keep-alive for unsafe requests
+		disableKeepAlive = true
+	} else if reusePolicy == ReuseSafe {
+		// Enable keep-alive for safe requests to allow connection pooling/sharding
+		disableKeepAlive = false
+	}
+	// If ReuseUnknown, use the standard logic
+
 	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:       request.Threads,
 		MaxRedirects:  request.MaxRedirects,
 		NoTimeout:     false,
 		DisableCookie: request.DisableCookie,
 		Connection: &httpclientpool.ConnectionConfiguration{
-			DisableKeepAlive: httputil.ShouldDisableKeepAlive(options.Options),
+			DisableKeepAlive: disableKeepAlive,
 		},
 		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
@@ -537,6 +558,18 @@ const (
 	SetThreadToCountZero = "set-thread-count-to-zero"
 )
 
+// ConnectionReusePolicy determines whether a request can safely reuse connections
+type ConnectionReusePolicy int
+
+const (
+	// ReuseUnknown indicates the policy hasn't been analyzed yet
+	ReuseUnknown ConnectionReusePolicy = iota
+	// ReuseSafe indicates the request can safely reuse connections (enable pooling/sharding)
+	ReuseSafe
+	// ReuseUnsafe indicates the request must close connections (preserve existing behavior)
+	ReuseUnsafe
+)
+
 func init() {
 	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
 }
@@ -549,4 +582,89 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 // HasFuzzing indicates whether the request has fuzzing rules defined.
 func (request *Request) HasFuzzing() bool {
 	return len(request.Fuzzing) > 0
+}
+
+// AnalyzeConnectionReuse determines if a request can safely reuse connections.
+// Returns ReuseUnsafe if connection closure is required, ReuseSafe otherwise.
+// This analysis ensures backward compatibility by preserving connection-close behavior
+// when necessary while enabling pooling/sharding for other requests.
+func (r *Request) AnalyzeConnectionReuse() ConnectionReusePolicy {
+	// Priority 1: Check for explicit "Connection: close" header in raw requests
+	for _, raw := range r.Raw {
+		if hasConnectionCloseHeader(raw) {
+			return ReuseUnsafe
+		}
+	}
+
+	// Priority 2: Check for "Connection: close" in regular headers
+	for key, value := range r.Headers {
+		if strings.EqualFold(key, "Connection") && strings.Contains(strings.ToLower(value), "close") {
+			return ReuseUnsafe
+		}
+	}
+
+	// Priority 3: Check for time-based analyzers that require connection closure
+	// Time-based attacks need fresh connections to measure timing accurately
+	if r.Analyzer != nil && r.Analyzer.Name == "time_delay" {
+		return ReuseUnsafe
+	}
+
+	// Priority 4: Check for raw HTTP (unsafe) with explicit connection control
+	if r.Unsafe {
+		// Analyze raw request for connection directives
+		for _, raw := range r.Raw {
+			if hasConnectionCloseHeader(raw) {
+				return ReuseUnsafe
+			}
+		}
+	}
+
+	// Priority 5: Check for specific request patterns that require closure
+	// This can be extended based on template analysis
+	if requiresConnectionClosure(r) {
+		return ReuseUnsafe
+	}
+
+	// Default: Safe to reuse - enable connection pooling/sharding
+	return ReuseSafe
+}
+
+// hasConnectionCloseHeader checks if a raw HTTP request contains "Connection: close"
+// Case-insensitive check for both "Connection:" and "close"
+func hasConnectionCloseHeader(raw string) bool {
+	rawLower := strings.ToLower(raw)
+	// Check for "connection:" header
+	if !strings.Contains(rawLower, "connection:") {
+		return false
+	}
+	// Check for "close" value after "connection:"
+	// Handle various formats: "Connection: close", "Connection:Close", "Connection: close\r\n", etc.
+	connIdx := strings.Index(rawLower, "connection:")
+	if connIdx == -1 {
+		return false
+	}
+	// Extract the value after "connection:"
+	valueStart := connIdx + len("connection:")
+	// Skip whitespace
+	for valueStart < len(rawLower) && (rawLower[valueStart] == ' ' || rawLower[valueStart] == '\t') {
+		valueStart++
+	}
+	// Check if the value contains "close"
+	value := rawLower[valueStart:]
+	// Find end of line or end of string
+	if newlineIdx := strings.IndexAny(value, "\r\n"); newlineIdx != -1 {
+		value = value[:newlineIdx]
+	}
+	return strings.Contains(value, "close")
+}
+
+// requiresConnectionClosure checks for specific patterns that require connection closure
+// This can be extended based on template analysis
+func requiresConnectionClosure(r *Request) bool {
+	// Add specific patterns that require connection closure
+	// Example: If request has specific headers that indicate stateful protocol
+	// Example: If request uses specific authentication that requires fresh connections
+
+	// For now, no special requirements beyond what's already checked
+	return false
 }

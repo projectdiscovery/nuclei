@@ -437,6 +437,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.PreflightPortScan, "preflight-portscan", false, "run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)"),
 		flagSet.BoolVar(&options.PerHostClientPool, "per-host-client-pool", false, "enable per-host HTTP client pooling for better connection reuse"),
+		flagSet.BoolVar(&options.HTTPClientShards, "http-client-shards", false, "enable HTTP client sharding for connection pooling (auto-calculates optimal shard count, max 256)"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 	)
 
