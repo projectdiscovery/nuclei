@@ -19,7 +19,7 @@ concurrency:
 jobs:
   lint:
     name: "Lint"
-    if: "${{ !endsWith(github.actor, '[bot]') }}"
+    if: ${{ !endsWith(github.actor, '[bot]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -157,42 +157,9 @@ jobs:
   flamegraph:
     name: "Flamegraph"
     needs: ["tests"]
-    env:
-      PROFILE_MEM: "/tmp/nuclei"
-      TARGET_URL: "http://scanme.sh/a/?b=c"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: make build
-      - name: "Setup environment (push)"
-        if: ${{ github.event_name == 'push' }}
-        run: |
-          echo "PROFILE_MEM=${PROFILE_MEM}-${GITHUB_REF_NAME}-${GITHUB_SHA}" >> $GITHUB_ENV
-          echo "FLAMEGRAPH_NAME=nuclei-${GITHUB_REF_NAME} (${GITHUB_SHA})" >> $GITHUB_ENV
-      - name: "Setup environment (pull_request)"
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          echo "PROFILE_MEM=${PROFILE_MEM}-pr-${{ github.event.number }}" >> $GITHUB_ENV
-          echo "FLAMEGRAPH_NAME=nuclei (PR #${{ github.event.number }})" >> $GITHUB_ENV
-      - run: ./bin/nuclei -silent -update-templates
-      - run: ./bin/nuclei -silent -u "${TARGET_URL}" -profile-mem="${PROFILE_MEM}"
-      - uses: projectdiscovery/actions/flamegraph@v1
-        id: flamegraph-cpu
-        with:
-          profile: "${{ env.PROFILE_MEM }}.cpu"
-          name: "${{ env.FLAMEGRAPH_NAME }} CPU profiles"
-        continue-on-error: true
-      - uses: projectdiscovery/actions/flamegraph@v1
-        id: flamegraph-mem
-        with:
-          profile: "${{ env.PROFILE_MEM }}.mem"
-          name: "${{ env.FLAMEGRAPH_NAME }} memory profiles"
-        continue-on-error: true
-      - if: ${{ steps.flamegraph-mem.outputs.message == '' }}
-        run: |
-          echo "::notice::CPU flamegraph: ${{ steps.flamegraph-cpu.outputs.url }}"
-          echo "::notice::Memory (heap) flamegraph: ${{ steps.flamegraph-mem.outputs.url }}"
+    uses: ./.github/workflows/flamegraph.yaml
 
   perf-regression:
+    name: "Performance regression"
     needs: ["tests"]
     uses: ./.github/workflows/perf-regression.yaml
