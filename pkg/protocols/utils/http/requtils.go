@@ -48,5 +48,5 @@ func SetHeader(req *retryablehttp.Request, name, value string) {
 // ShouldDisableKeepAlive depending on scan strategy
 func ShouldDisableKeepAlive(options *types.Options) bool {
 	// with host-spray strategy keep-alive must be enabled
-	return options.ScanStrategy != scanstrategy.HostSpray.String()
+	return options.TemplateThreads == 0 && options.ScanStrategy != scanstrategy.HostSpray.String()
 }
