@@ -84,7 +84,7 @@ func connectWithDSN(executionId string, dsn string) (bool, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	ctx := context.WithValue(context.Background(), "executionId", executionId)
+	ctx := context.WithValue(context.Background(), "executionId", executionId) // nolint: staticcheck
 	err = db.PingContext(ctx)
 	if err != nil {
 		return false, err
