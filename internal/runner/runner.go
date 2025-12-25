@@ -125,14 +125,6 @@ func New(options *types.Options) (*Runner, error) {
 			}
 		}
 
-		// if template list or template display is enabled, enable all templates
-		if options.TemplateList || options.TemplateDisplay {
-			options.EnableCodeTemplates = true
-			options.EnableFileTemplates = true
-			options.EnableSelfContainedTemplates = true
-			options.EnableGlobalMatchersTemplates = true
-		}
-
 		// check for custom template updates and update if available
 		ctm, err := customtemplates.NewCustomTemplatesManager(options)
 		if err != nil {
@@ -254,8 +246,23 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
+	tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create temporary directory")
+	}
+	runner.tmpDir = tmpDir
+
+	// Cleanup tmpDir only if initialization fails
+	// On successful initialization, Close() method will handle cleanup
+	cleanupOnError := true
+	defer func() {
+		if cleanupOnError && runner.tmpDir != "" {
+			_ = os.RemoveAll(runner.tmpDir)
+		}
+	}()
+
 	// create the input provider and load the inputs
-	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options})
+	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options, TempDir: runner.tmpDir})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
@@ -384,16 +391,10 @@ func New(options *types.Options) (*Runner, error) {
 	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
 		options.RateLimitDuration = time.Second
 	}
-	if options.RateLimit == 0 && options.RateLimitDuration == 0 {
-		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
-	} else {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
-	}
+	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 
-	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
-		runner.tmpDir = tmpDir
-	}
-
+	// Initialization successful, disable cleanup on error
+	cleanupOnError = false
 	return runner, nil
 }
 
@@ -576,7 +577,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
-		authTmplStore, err := GetAuthTmplStore(r.options, r.catalog, executorOpts)
+		// Clone options so GetAuthTmplStore can modify them without affecting the original
+		authOptions := r.options.Copy()
+		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
@@ -659,7 +662,6 @@ func (r *Runner) RunEnumeration() error {
 	}
 	store.Load()
 	// TODO: remove below functions after v3 or update warning messages
-	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
 	// add the hosts from the metadata queries of loaded templates into input provider

@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	"golang.org/x/oauth2"
@@ -46,17 +47,43 @@ func (customTemplate *customTemplateGitHubRepo) Update(ctx context.Context) {
 	downloadPath := config.DefaultConfig.CustomGitHubTemplatesDirectory
 	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
-	// If folder does not exits then clone/download the repo
+	// If folder does not exist then clone/download the repo
 	if !fileutil.FolderExists(clonePath) {
 		customTemplate.Download(ctx)
 		return
 	}
+
+	// Attempt to pull changes and handle the result
+	customTemplate.handlePullChanges(clonePath)
+}
+
+// handlePullChanges attempts to pull changes and logs the appropriate message
+func (customTemplate *customTemplateGitHubRepo) handlePullChanges(clonePath string) {
 	err := customTemplate.pullChanges(clonePath, customTemplate.githubToken)
-	if err != nil {
-		gologger.Error().Msgf("%s", err)
-	} else {
-		gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
+
+	switch {
+	case err == nil:
+		customTemplate.logPullSuccess()
+	case errors.Is(err, git.NoErrAlreadyUpToDate):
+		customTemplate.logAlreadyUpToDate(err)
+	default:
+		customTemplate.logPullError(err)
 	}
+}
+
+// logPullSuccess logs a success message when changes are pulled
+func (customTemplate *customTemplateGitHubRepo) logPullSuccess() {
+	gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
+}
+
+// logAlreadyUpToDate logs an info message when repo is already up to date
+func (customTemplate *customTemplateGitHubRepo) logAlreadyUpToDate(err error) {
+	gologger.Info().Msgf("%s", err)
+}
+
+// logPullError logs an error message when pull fails
+func (customTemplate *customTemplateGitHubRepo) logPullError(err error) {
+	gologger.Error().Msgf("%s", err)
 }
 
 // NewGitHubProviders returns new instance of GitHub providers for downloading custom templates
@@ -187,7 +214,7 @@ func (ctr *customTemplateGitHubRepo) pullChanges(repoPath, githubToken string) e
 
 	err = w.Pull(pullOpts)
 	if err != nil {
-		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
+		return errkit.Wrapf(err, "%s/%s", ctr.owner, ctr.reponame)
 	}
 
 	return nil

@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/rs/xid"
 )
@@ -53,11 +53,7 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 	if opts.RateLimit > 0 && opts.RateLimitDuration == 0 {
 		opts.RateLimitDuration = time.Second
 	}
-	if opts.RateLimit == 0 && opts.RateLimitDuration == 0 {
-		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(ctx)
-	} else {
-		u.executerOpts.RateLimiter = ratelimit.New(ctx, uint(opts.RateLimit), opts.RateLimitDuration)
-	}
+	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)
 	return u, nil
@@ -91,10 +87,12 @@ type ThreadSafeNucleiEngine struct {
 func NewThreadSafeNucleiEngineCtx(ctx context.Context, opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
 	defaultOptions := types.DefaultOptions()
 	defaultOptions.ExecutionId = xid.New().String()
-	// default options
+
 	e := &NucleiEngine{
-		opts: defaultOptions,
-		mode: threadSafe,
+		opts:   defaultOptions,
+		mode:   threadSafe,
+		ctx:    ctx,
+		Logger: defaultOptions.Logger,
 	}
 	for _, option := range opts {
 		if err := option(e); err != nil {
@@ -124,7 +122,7 @@ func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *outpu
 }
 
 // ExecuteNucleiWithOptsCtx executes templates on targets and calls callback on each result(only if results are found)
-// This method can be called concurrently and it will use some global resources but can be runned parallelly
+// This method can be called concurrently and it will use some global resources but can be run parallelly
 // by invoking this method with different options and targets
 // Note: Not all options are thread-safe. this method will throw error if you try to use non-thread-safe options
 func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, targets []string, opts ...NucleiSDKOptions) error {

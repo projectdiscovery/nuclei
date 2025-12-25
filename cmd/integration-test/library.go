@@ -15,6 +15,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -70,6 +71,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 
 	defaultOpts := types.DefaultOptions()
 	defaultOpts.ExecutionId = "test"
+	defaultOpts.Logger = gologger.DefaultLogger
 
 	mockProgress := &testutils.MockProgressClient{}
 	reportingClient, err := reporting.New(&reporting.Options{ExecutionId: defaultOpts.ExecutionId}, "", false)

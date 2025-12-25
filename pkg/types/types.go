@@ -20,6 +20,8 @@ import (
 	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
+const DefaultTemplateLoadingConcurrency = 50
+
 var (
 	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
 	ErrNoMoreRequests = io.EOF
@@ -421,10 +423,16 @@ type Options struct {
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
 	SkipFormatValidation bool
+	// VarsTextTemplating is used to inject variables into yaml input files
+	VarsTextTemplating bool
+	// VarsFilePaths is  used to inject variables into yaml input files from a file
+	VarsFilePaths goflags.StringSlice
 	// PayloadConcurrency is the number of concurrent payloads to run per template
 	PayloadConcurrency int
 	// ProbeConcurrency is the number of concurrent http probes to run with httpx
 	ProbeConcurrency int
+	// TemplateLoadingConcurrency is the number of concurrent template loading operations
+	TemplateLoadingConcurrency int
 	// Dast only runs DAST templates
 	DAST bool
 	// DASTServer is the flag to start nuclei as a DAST server
@@ -734,11 +742,11 @@ func (tv *Timeouts) ApplyDefaults() {
 	if tv.TcpReadTimeout == 0 {
 		tv.TcpReadTimeout = 5 * time.Second
 	}
-	if tv.HttpResponseHeaderTimeout == 0 {
-		tv.HttpResponseHeaderTimeout = 10 * time.Second
-	}
 	if tv.HttpTimeout == 0 {
 		tv.HttpTimeout = 3 * tv.DialTimeout
+	}
+	if tv.HttpResponseHeaderTimeout < tv.HttpTimeout {
+		tv.HttpResponseHeaderTimeout = tv.HttpTimeout
 	}
 	if tv.JsCompilerExecutionTimeout == 0 {
 		tv.JsCompilerExecutionTimeout = 2 * tv.DialTimeout
@@ -771,19 +779,21 @@ func (options *Options) HasClientCertificates() bool {
 // DefaultOptions returns default options for nuclei
 func DefaultOptions() *Options {
 	return &Options{
-		RateLimit:               150,
-		RateLimitDuration:       time.Second,
-		BulkSize:                25,
-		TemplateThreads:         25,
-		HeadlessBulkSize:        10,
-		PayloadConcurrency:      25,
-		HeadlessTemplateThreads: 10,
-		ProbeConcurrency:        50,
-		Timeout:                 5,
-		Retries:                 1,
-		MaxHostError:            30,
-		ResponseReadSize:        10 * unitutils.Mega,
-		ResponseSaveSize:        unitutils.Mega,
+		RateLimit:                  150,
+		RateLimitDuration:          time.Second,
+		BulkSize:                   25,
+		TemplateThreads:            25,
+		HeadlessBulkSize:           10,
+		PayloadConcurrency:         25,
+		HeadlessTemplateThreads:    10,
+		ProbeConcurrency:           50,
+		TemplateLoadingConcurrency: DefaultTemplateLoadingConcurrency,
+		Timeout:                    5,
+		Retries:                    1,
+		MaxHostError:               30,
+		ResponseReadSize:           10 * unitutils.Mega,
+		ResponseSaveSize:           unitutils.Mega,
+		Logger:                     &gologger.Logger{},
 	}
 }
 

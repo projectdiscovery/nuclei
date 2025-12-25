@@ -163,30 +163,44 @@ type Template struct {
 	ImportedFiles []string `yaml:"-" json:"-"`
 }
 
+// HasCodeProtocol returns true if the template has a code protocol section
+//
+// Deprecated: Use [HasCodeRequest] instead.
+func (template *Template) HasCodeProtocol() bool {
+	return len(template.RequestsCode) > 0
+}
+
+// HasFileProtocol returns true if the template has a file protocol section.
+//
+// Deprecated: Use [HasFileRequest] instead.
+func (template *Template) HasFileProtocol() bool {
+	return len(template.RequestsFile) > 0
+}
+
 // Type returns the type of the template
 func (template *Template) Type() types.ProtocolType {
 	switch {
-	case len(template.RequestsDNS) > 0:
+	case template.HasDNSRequest():
 		return types.DNSProtocol
-	case len(template.RequestsFile) > 0:
+	case template.HasFileRequest():
 		return types.FileProtocol
-	case len(template.RequestsHTTP) > 0:
+	case template.HasHTTPRequest():
 		return types.HTTPProtocol
-	case len(template.RequestsHeadless) > 0:
+	case template.HasHeadlessRequest():
 		return types.HeadlessProtocol
-	case len(template.RequestsNetwork) > 0:
+	case template.HasNetworkRequest():
 		return types.NetworkProtocol
-	case len(template.RequestsSSL) > 0:
+	case template.HasSSLRequest():
 		return types.SSLProtocol
-	case len(template.RequestsWebsocket) > 0:
+	case template.HasWebsocketRequest():
 		return types.WebsocketProtocol
-	case len(template.RequestsWHOIS) > 0:
+	case template.HasWHOISRequest():
 		return types.WHOISProtocol
-	case len(template.RequestsCode) > 0:
+	case template.HasCodeRequest():
 		return types.CodeProtocol
-	case len(template.RequestsJavascript) > 0:
+	case template.HasJavascriptRequest():
 		return types.JavascriptProtocol
-	case len(template.Workflows) > 0:
+	case template.HasWorkflows():
 		return types.WorkflowProtocol
 	default:
 		return types.InvalidProtocol
@@ -194,6 +208,8 @@ func (template *Template) Type() types.ProtocolType {
 }
 
 // IsFuzzing returns true if the template is a fuzzing template
+//
+// Deprecated: Use [IsFuzzableRequest] instead.
 func (template *Template) IsFuzzing() bool {
 	if len(template.RequestsHTTP) == 0 && len(template.RequestsHeadless) == 0 {
 		// fuzzing is only supported for http and headless protocols
@@ -221,18 +237,13 @@ func (template *Template) UsesRequestSignature() bool {
 	return template.Signature.Value.String() != ""
 }
 
-// HasCodeProtocol returns true if the template has a code protocol section
-func (template *Template) HasCodeProtocol() bool {
-	return len(template.RequestsCode) > 0
-}
-
 // validateAllRequestIDs check if that protocol already has given id if not
 // then is is manually set to proto_index
 func (template *Template) validateAllRequestIDs() {
 	// this is required in multiprotocol and flow where we save response variables
 	// and all other data in template context if template as two requests in a protocol
 	// then it is overwritten to avoid this we use proto_index as request ID
-	if len(template.RequestsCode) > 1 {
+	if template.HasCodeRequest(1) {
 		for i, req := range template.RequestsCode {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
@@ -240,64 +251,71 @@ func (template *Template) validateAllRequestIDs() {
 		}
 	}
 
-	if len(template.RequestsDNS) > 1 {
+	if template.HasDNSRequest(1) {
 		for i, req := range template.RequestsDNS {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
-	if len(template.RequestsFile) > 1 {
+
+	if template.HasFileRequest(1) {
 		for i, req := range template.RequestsFile {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
-	if len(template.RequestsHTTP) > 1 {
+
+	if template.HasHTTPRequest(1) {
 		for i, req := range template.RequestsHTTP {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
-	if len(template.RequestsHeadless) > 1 {
+
+	if template.HasHeadlessRequest(1) {
 		for i, req := range template.RequestsHeadless {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
-
 	}
-	if len(template.RequestsNetwork) > 1 {
+
+	if template.HasNetworkRequest(1) {
 		for i, req := range template.RequestsNetwork {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
-	if len(template.RequestsSSL) > 1 {
+
+	if template.HasSSLRequest(1) {
 		for i, req := range template.RequestsSSL {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
-	if len(template.RequestsWebsocket) > 1 {
+
+	if template.HasWebsocketRequest(1) {
 		for i, req := range template.RequestsWebsocket {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
-	if len(template.RequestsWHOIS) > 1 {
+
+	if template.HasWHOISRequest(1) {
 		for i, req := range template.RequestsWHOIS {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
-	if len(template.RequestsJavascript) > 1 {
+
+	if template.HasJavascriptRequest(1) {
 		for i, req := range template.RequestsJavascript {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
@@ -327,53 +345,65 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	if !ReTemplateID.MatchString(template.ID) {
 		return errkit.New("template id must match expression %v", ReTemplateID, "tag", "invalid_template")
 	}
+
 	info := template.Info
 	if utils.IsBlank(info.Name) {
 		return errkit.New("no template name field provided", "tag", "invalid_template")
 	}
+
 	if info.Authors.IsEmpty() {
 		return errkit.New("no template author field provided", "tag", "invalid_template")
 	}
 
-	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
+	if template.HasHTTPRequest() || template.HasNetworkRequest() {
 		_ = deprecatedProtocolNameTemplates.Set(template.ID, true)
 	}
 
-	if len(alias.RequestsHTTP) > 0 && len(alias.RequestsWithHTTP) > 0 {
+	if HasRequest(alias.RequestsHTTP) && HasRequest(alias.RequestsWithHTTP) {
 		return errkit.New("use http or requests, both are not supported", "tag", "invalid_template")
 	}
-	if len(alias.RequestsNetwork) > 0 && len(alias.RequestsWithTCP) > 0 {
+
+	if HasRequest(alias.RequestsNetwork) && HasRequest(alias.RequestsWithTCP) {
 		return errkit.New("use tcp or network, both are not supported", "tag", "invalid_template")
 	}
-	if len(alias.RequestsWithHTTP) > 0 {
+
+	if HasRequest(alias.RequestsWithHTTP) {
 		template.RequestsHTTP = alias.RequestsWithHTTP
 	}
-	if len(alias.RequestsWithTCP) > 0 {
+
+	if HasRequest(alias.RequestsWithTCP) {
 		template.RequestsNetwork = alias.RequestsWithTCP
 	}
+
 	err = tplValidator.Struct(template)
 	if err != nil {
 		return err
 	}
+
 	// check if the template contains more than 1 protocol request
 	// if so  preserve the order of the protocols and requests
 	if template.hasMultipleRequests() {
 		var tempmap yaml.MapSlice
+
 		err = unmarshal(&tempmap)
 		if err != nil {
 			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
+
 		arr := []string{}
 		for _, v := range tempmap {
 			key, ok := v.Key.(string)
 			if !ok {
 				continue
 			}
+
 			arr = append(arr, key)
 		}
+
 		// add protocols to the protocol stack (the idea is to preserve the order of the protocols)
 		template.addRequestsToQueue(arr...)
 	}
+
 	return nil
 }
 
@@ -389,6 +419,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 			defer func() {
 				_ = data.Close()
 			}()
+
 			bin, err := io.ReadAll(data)
 			if err == nil {
 				return string(bin), true
@@ -398,13 +429,14 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		} else {
 			errs = append(errs, err)
 		}
+
 		return "", false
 	}
 
 	// for code protocol requests
 	for _, request := range template.RequestsCode {
 		// simple test to check if source is a file or a snippet
-		if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+		if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 			if val, ok := loadFile(request.Source); ok {
 				template.ImportedFiles = append(template.ImportedFiles, request.Source)
 				request.Source = val
@@ -415,7 +447,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	// for javascript protocol code references
 	for _, request := range template.RequestsJavascript {
 		// simple test to check if source is a file or a snippet
-		if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+		if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 			if val, ok := loadFile(request.Code); ok {
 				template.ImportedFiles = append(template.ImportedFiles, request.Code)
 				request.Code = val
@@ -424,25 +456,26 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	}
 
 	// flow code references
-	if template.Flow != "" {
-		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
+	if template.IsFlowTemplate() {
+		if filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
 			if val, ok := loadFile(template.Flow); ok {
 				template.ImportedFiles = append(template.ImportedFiles, template.Flow)
 				template.Flow = val
 			}
 		}
+
 		options.Flow = template.Flow
 	}
 
 	// for multiprotocol requests
 	// mutually exclusive with flow
-	if len(template.RequestsQueue) > 0 && template.Flow == "" {
+	if HasRequest(template.RequestsQueue) && template.Flow == "" {
 		// this is most likely a multiprotocol template
 		for _, req := range template.RequestsQueue {
 			if req.Type() == types.CodeProtocol {
 				request := req.(*code.Request)
 				// simple test to check if source is a file or a snippet
-				if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+				if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 					if val, ok := loadFile(request.Source); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Source)
 						request.Source = val
@@ -456,7 +489,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 			if req.Type() == types.JavascriptProtocol {
 				request := req.(*javascript.Request)
 				// simple test to check if source is a file or a snippet
-				if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+				if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 					if val, ok := loadFile(request.Code); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Code)
 						request.Code = val
@@ -556,7 +589,59 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// HasFileProtocol returns true if the template has a file protocol section
-func (template *Template) HasFileProtocol() bool {
-	return len(template.RequestsFile) > 0
+// Requirements holds the required options for a template to be enabled.
+type Requirements struct {
+	Headless      bool
+	Code          bool
+	DAST          bool
+	SelfContained bool
+	File          bool
+}
+
+// Requirements returns what options must be enabled for the template to run.
+func (template *Template) Requirements() Requirements {
+	return Requirements{
+		Headless:      template.HasHeadlessRequest(),
+		Code:          template.HasCodeRequest(),
+		DAST:          template.IsFuzzableRequest(),
+		SelfContained: template.SelfContained,
+		File:          template.HasFileRequest(),
+	}
+}
+
+// Capabilities represents the enabled options/capabilities.
+type Capabilities struct {
+	Headless      bool
+	Code          bool
+	DAST          bool
+	SelfContained bool
+	File          bool
+}
+
+// IsEnabledFor checks if all template requirements are satisfied by the given
+// capabilities.
+func (template *Template) IsEnabledFor(caps Capabilities) bool {
+	reqs := template.Requirements()
+
+	if reqs.Headless && !caps.Headless {
+		return false
+	}
+
+	if reqs.Code && !caps.Code {
+		return false
+	}
+
+	if reqs.DAST && !caps.DAST {
+		return false
+	}
+
+	if reqs.SelfContained && !caps.SelfContained {
+		return false
+	}
+
+	if reqs.File && !caps.File {
+		return false
+	}
+
+	return true
 }

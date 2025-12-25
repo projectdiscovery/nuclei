@@ -136,7 +136,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 				return qerr
 			}
 
-			// after building change back to original value to avoid repeating it in furthur requests
+			// after building change back to original value to avoid repeating it in further requests
 			if origKey != "" {
 				err = ruleComponent.SetValue(origKey, types.ToString(origValue)) // change back to previous value for temp
 				if err != nil {

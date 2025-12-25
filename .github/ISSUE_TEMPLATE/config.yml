@@ -2,14 +2,18 @@ blank_issues_enabled: false
 
 contact_links:
 
-  - name: Ask an question / advise on using nuclei
-    url: https://github.com/projectdiscovery/nuclei/discussions/categories/q-a
-    about: Ask a question or request support for using nuclei
+  - name: 💡 Request a Feature (Start with Discussion)
+    url: https://github.com/orgs/projectdiscovery/discussions/new?category=ideas
+    about: Share your feature idea in discussions first. This helps validate and refine the request before creating an issue.
 
-  - name: Share idea / feature to discuss for nuclei
-    url: https://github.com/projectdiscovery/nuclei/discussions/categories/ideas
-    about: Share idea / feature to discuss for nuclei
+  - name: ❓ Ask Questions / Get Help
+    url: https://github.com/orgs/projectdiscovery/discussions
+    about: Get help and ask questions about using Nuclei. Many questions don't require issues.
 
-  - name: Connect with PD Team (Discord)
+  - name: 🔍 Browse Existing Issues
+    url: https://github.com/projectdiscovery/nuclei/issues
+    about: Check existing issues to see if your problem has already been reported or is being worked on.
+
+  - name: 💬 Connect with PD Team (Discord)
     url: https://discord.gg/projectdiscovery
-    about: Connect with PD Team for direct communication
+    about: Join our Discord for real-time discussions and community support on the #nuclei channel.

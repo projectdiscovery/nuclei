@@ -3,6 +3,7 @@ package nuclei
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -96,13 +97,11 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 
 // init
 func (e *NucleiEngine) init(ctx context.Context) error {
-	// Set a default logger if one isn't provided in the options
-	if e.opts.Logger != nil {
+	// Update logger ref (if it was changed by [WithLogger])
+	// (Logger is already initialized)
+	if e.opts.Logger != e.Logger {
 		e.Logger = e.opts.Logger
-	} else {
-		e.opts.Logger = &gologger.Logger{}
 	}
-	e.Logger = e.opts.Logger
 
 	if e.opts.Verbose {
 		e.Logger.SetMaxLevel(levels.LevelVerbose)
@@ -166,24 +165,44 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
+	if e.opts.Headless {
+		if engine.MustDisableSandbox() {
+			e.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
+		}
+		browser, err := engine.New(e.opts)
+		if err != nil {
+			return err
+		}
+		e.browserInstance = browser
+	}
+
 	if e.catalog == nil {
 		e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 	}
 
+	if e.tmpDir == "" {
+		tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+		if err != nil {
+			return err
+		}
+		e.tmpDir = tmpDir
+	}
+
 	e.executerOpts = &protocols.ExecutorOptions{
-		Output:       e.customWriter,
-		Options:      e.opts,
-		Progress:     e.customProgress,
-		Catalog:      e.catalog,
-		IssuesClient: e.rc,
-		RateLimiter:  e.rateLimiter,
-		Interactsh:   e.interactshClient,
-		Colorizer:    aurora.NewAurora(true),
-		ResumeCfg:    types.NewResumeCfg(),
-		Browser:      e.browserInstance,
-		Parser:       e.parser,
-		InputHelper:  input.NewHelper(),
-		Logger:       e.opts.Logger,
+		Output:             e.customWriter,
+		Options:            e.opts,
+		Progress:           e.customProgress,
+		Catalog:            e.catalog,
+		IssuesClient:       e.rc,
+		RateLimiter:        e.rateLimiter,
+		Interactsh:         e.interactshClient,
+		Colorizer:          aurora.NewAurora(true),
+		ResumeCfg:          types.NewResumeCfg(),
+		Browser:            e.browserInstance,
+		Parser:             e.parser,
+		InputHelper:        input.NewHelper(),
+		TemporaryDirectory: e.tmpDir,
+		Logger:             e.opts.Logger,
 	}
 	if e.opts.ShouldUseHostError() && e.hostErrCache != nil {
 		e.executerOpts.HostErrorsCache = e.hostErrCache

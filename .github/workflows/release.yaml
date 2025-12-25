@@ -4,16 +4,28 @@ on:
   push:
     tags:
       - '*'
-  workflow_dispatch:
+  workflow_dispatch: {}
 
-jobs: 
-  release: 
+jobs:
+  pgo:
+    name: "Generate PGO"
+    uses: ./.github/workflows/generate-pgo.yaml
+
+  release:
+    name: "Release"
+    needs: ["pgo"]
     runs-on: ubuntu-latest-16-cores
     steps: 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: 
           fetch-depth: 0
+      - uses: actions/download-artifact@v6
+        with:
+          name: "pgo"
+          path: "cmd/nuclei/"
       - uses: projectdiscovery/actions/setup/go@v1
+        with:
+          go-version: "stable"
       - uses: docker/login-action@v3 
         with:
           username: ${{ secrets.DOCKER_USERNAME }}

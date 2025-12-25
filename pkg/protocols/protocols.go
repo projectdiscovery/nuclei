@@ -213,7 +213,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 // AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
 func (e *ExecutorOptions) AddTemplateVars(input *contextargs.MetaInput, reqType templateTypes.ProtocolType, reqID string, vars map[string]interface{}) {
-	// if we wan't to disable adding response variables and other variables to template context
+	// if we want to disable adding response variables and other variables to template context
 	// this is the statement that does it . template context is currently only enabled for
 	// multiprotocol and flow templates
 	if !e.IsMultiProtocol && e.Flow == "" {
@@ -336,7 +336,7 @@ type Request interface {
 type OutputEventCallback func(result *output.InternalWrappedEvent)
 
 func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	// Note: operator result is generated if something was succesfull match/extract/dynamic-extract
+	// Note: operator result is generated if something was successful match/extract/dynamic-extract
 	// but results should not be generated if
 	// 1. no match was found and some dynamic values were extracted
 	// 2. if something was extracted (matchers exist but no match was found)

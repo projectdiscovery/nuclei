@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
@@ -18,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -92,6 +94,9 @@ type NucleiEngine struct {
 
 	// Logger instance for the engine
 	Logger *gologger.Logger
+
+	// Temporary directory for SDK-managed template files
+	tmpDir string
 }
 
 // LoadAllTemplates loads all nuclei template based on given options
@@ -231,6 +236,12 @@ func (e *NucleiEngine) closeInternal() {
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
 	}
+	if e.tmpDir != "" {
+		_ = os.RemoveAll(e.tmpDir)
+	}
+	if e.opts != nil {
+		generators.ClearOptionsPayloadMap(e.opts)
+	}
 }
 
 // Close all resources used by nuclei engine
@@ -313,10 +324,12 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 	// default options
 	defaultOptions := types.DefaultOptions()
 	defaultOptions.ExecutionId = xid.New().String()
+
 	e := &NucleiEngine{
-		opts: defaultOptions,
-		mode: singleInstance,
-		ctx:  ctx,
+		opts:   defaultOptions,
+		mode:   singleInstance,
+		ctx:    ctx,
+		Logger: defaultOptions.Logger,
 	}
 	for _, option := range options {
 		if err := option(e); err != nil {

@@ -4,14 +4,14 @@ on:
   push:
     branches:
       - dev
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   publish-docs:
-    if: "${{ !endsWith(github.actor, '[bot]') }}"
+    if: ${{ !endsWith(github.actor, '[bot]') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/git@v1
       - run: make syntax-docs

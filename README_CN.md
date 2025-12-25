@@ -59,7 +59,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
 
 # 安装Nuclei
 
-Nuclei需要 **go1.22** 才能安装成功。执行下列命令安装最新版本的Nuclei
+Nuclei需要 **go1.24.2** 才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -119,7 +119,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
 目标：
    -u, -target string[]                  指定扫描的目标URL/主机（多个目标则指定多个-u参数）
    -l, -list string                      指定包含要扫描的目标URL/主机列表的文件路径（一行一个）
-   -resume string                        使用指定的resume.cfg文件恢复扫描（将禁用请求聚类）
+   -resume string                        从指定文件恢复扫描并保存到指定文件（将禁用请求聚类）
    -sa, -scan-all-ips                    扫描由目标解析出来的所有IP（针对域名对应多个IP的情况）
    -iv, -ip-version string[]             要扫描的主机名的IP版本（4,6）-（默认为4）
 
@@ -238,6 +238,7 @@ UNCOVER引擎:
    -c, -concurrency int                  并行执行的最大模板数量（默认：25）
    -hbs, -headless-bulk-size int         每个模板并行运行的无头主机最大数量（默认：10）
    -headc, -headless-concurrency int     并行指定无头主机最大数量（默认：10）
+   -tlc, -template-loading-concurrency int  最大并发模板加载操作数（默认：50）
 
 
 优化：
@@ -370,7 +371,7 @@ Nuclei允许您定制自己的测试方法，可以轻松的运行您的程序�
 - 可以在几分钟处理上千台主机
 - 使用YAML语法定制自动化测试
 
-欢迎查看我们其他的开源项目，可能有适合您的赏金猎人工作流：[github.com/projectdiscovery](http://github.com/projectdiscovery)，我们还使用[Chaos绘制了每日的DNS数据](http://chaos.projectdiscovery.io)。
+欢迎查看我们其他的开源项目，可能有适合您的赏金猎人工作流：[github.com/projectdiscovery](https://github.com/projectdiscovery)，我们还使用[Chaos绘制了每日的DNS数据](https://chaos.projectdiscovery.io)。
 
 </td>
 </tr>

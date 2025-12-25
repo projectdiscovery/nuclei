@@ -33,8 +33,8 @@ import (
 var (
 	errinvalidArguments = errkit.New("invalid arguments provided")
 	ErrLFAccessDenied   = errkit.New("Use -allow-local-file-access flag to enable local file access")
-	// ErrActionExecDealine is the error returned when alloted time for action execution exceeds
-	ErrActionExecDealine = errkit.New("headless action execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
+	// ErrActionExecDeadline is the error returned when allotted time for action execution exceeds
+	ErrActionExecDeadline = errkit.New("headless action execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 const (
@@ -824,7 +824,7 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 	// Just wait the event to happen
 	waitFunc := func() (err error) {
 		// execute actual wait event
-		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDealine)
+		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDeadline)
 		defer cancel()
 
 		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
