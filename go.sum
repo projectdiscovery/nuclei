@@ -87,6 +87,8 @@ github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057 h1:KFac3SiGbId8ub
 github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057/go.mod h1:iLB2pivrPICvLOuROKmlqURtFIEsoJZaMidQfCG1+D4=
 github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 h1:ZbFL+BDfBqegi+/Ssh7im5+aQfBRx6it+kHnC7jaDU8=
 github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809/go.mod h1:upgc3Zs45jBDnBT4tVRgRcgm26ABpaP7MoTSdgysca4=
+github.com/Mzack9999/go-rsync v0.0.0-20250821180103-81ffa574ef4d h1:DofPB5AcjTnOU538A/YD86/dfqSNTvQsAXgwagxmpu4=
+github.com/Mzack9999/go-rsync v0.0.0-20250821180103-81ffa574ef4d/go.mod h1:uzdh/m6XQJI7qRvufeBPDa+lj5SVCJO8B9eLxTbtI5U=
 github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697 h1:54I+OF5vS4a/rxnUrN5J3hi0VEYKcrTlpc8JosDyP+c=
 github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697/go.mod h1:yNqYRqxYkSROY1J+LX+A0tOSA/6soXQs5m8hZSqYBac=
 github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883 h1:+Is1AS20q3naP+qJophNpxuvx1daFOx9C0kLIuI0GVk=
@@ -634,6 +636,8 @@ github.com/k14s/difflib v0.0.0-20201117154628-0c031775bf57 h1:CwBRArr+BWBopnUJhD
 github.com/k14s/difflib v0.0.0-20201117154628-0c031775bf57/go.mod h1:B0xN2MiNBGWOWi9CcfAo9LBI8IU4J1utlbOIJCsmKr4=
 github.com/k14s/starlark-go v0.0.0-20200720175618-3a5c849cc368 h1:4bcRTTSx+LKSxMWibIwzHnDNmaN1x52oEpvnjCy+8vk=
 github.com/k14s/starlark-go v0.0.0-20200720175618-3a5c849cc368/go.mod h1:lKGj1op99m4GtQISxoD2t+K+WO/q2NzEPKvfXFQfbCA=
+github.com/kaiakz/ubuffer v0.0.0-20200803053910-dd1083087166 h1:IAukUBAVLUWBcexOYgkTD/EjMkfnNos7g7LFpyIdHJI=
+github.com/kaiakz/ubuffer v0.0.0-20200803053910-dd1083087166/go.mod h1:T4xUEny5PVedYIbkMAKYEBjMyDsOvvP0qK4s324AKA8=
 github.com/kataras/jwt v0.1.10 h1:GBXOF9RVInDPhCFBiDumRG9Tt27l7ugLeLo8HL5SeKQ=
 github.com/kataras/jwt v0.1.10/go.mod h1:xkimAtDhU/aGlQqjwvgtg+VyuPwMiyZHaY8LJRh0mYo=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=

@@ -1,0 +1,21 @@
+id: rsync-test
+
+info:
+  name: Rsync Test
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      const rsync = require('nuclei/rsync');
+      rsync.IsRsync(Host, Port);
+
+    args:
+      Host: "{{Host}}"
+      Port: "873"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+          
