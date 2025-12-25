@@ -181,9 +181,15 @@ func (n *nucleiExecutor) ExecuteScan(target PostRequestsHandlerRequest) error {
 		return errors.Wrap(err, "could not create input provider")
 	}
 
+	ctx := context.Background()
+	ctx, cancel, _ := types.ApplyMaxTimeContext(ctx, n.options.Options, n.options.Logger)
+	if cancel != nil {
+		defer cancel()
+	}
+
 	// We don't care about the result as its a boolean
 	// stating whether we got matches or not
-	_ = n.engine.ExecuteScanWithOpts(context.Background(), finalTemplates, inputProvider, true)
+	_ = n.engine.ExecuteScanWithOpts(ctx, finalTemplates, inputProvider, true)
 	return nil
 }
 
