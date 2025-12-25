@@ -2,21 +2,38 @@ package extractors
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
+	"github.com/itchyny/gojq"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // ExtractRegex extracts text from a corpus and returns it
-func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
+func (e *Extractor) ExtractRegex(corpus string, data map[string]interface{}) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	groupPlusOne := e.RegexGroup + 1
-	for _, regex := range e.regexCompiled {
+	for i, regex := range e.regexCompiled {
+		if varErr := expressions.ContainsUnresolvedVariables(e.Regex[i]); varErr != nil {
+			regexStr, err := expressions.Evaluate(e.Regex[i], data)
+			if err != nil {
+				gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", e.Regex[i], err.Error())
+				continue
+			}
+			regex, err = regexp.Compile(regexStr)
+			if err != nil {
+				gologger.Warning().Msgf("Could not compile regex: %s, error: %s", regexStr, err.Error())
+				continue
+			}
+		}
+
 		// skip prefix short-circuit for case-insensitive patterns
 		rstr := regex.String()
 		if !strings.Contains(rstr, "(?i") {
@@ -138,7 +155,7 @@ func (e *Extractor) ExtractXML(corpus string) map[string]struct{} {
 }
 
 // ExtractJSON extracts text from a corpus using JQ queries and returns it
-func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
+func (e *Extractor) ExtractJSON(corpus string, data map[string]interface{}) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	var jsonObj interface{}
@@ -147,7 +164,25 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 		return results
 	}
 
-	for _, k := range e.jsonCompiled {
+	for i, k := range e.jsonCompiled {
+		if varErr := expressions.ContainsUnresolvedVariables(e.JSON[i]); varErr != nil {
+			jsonStr, err := expressions.Evaluate(e.JSON[i], data)
+			if err != nil {
+				gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", e.JSON[i], err.Error())
+				continue
+			}
+			query, err := gojq.Parse(jsonStr)
+			if err != nil {
+				gologger.Warning().Msgf("Could not parse json: %s, error: %s", jsonStr, err.Error())
+				continue
+			}
+			k, err = gojq.Compile(query)
+			if err != nil {
+				gologger.Warning().Msgf("Could not compile json: %s, error: %s", jsonStr, err.Error())
+				continue
+			}
+		}
+
 		iter := k.Run(jsonObj)
 		for {
 			v, ok := iter.Next()
