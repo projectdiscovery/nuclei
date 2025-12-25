@@ -177,6 +177,8 @@ type Options struct {
 	ForceAttemptHTTP2 bool
 	// StatsJSON writes stats output in JSON format
 	StatsJSON bool
+	// CDPEndpoint specifies the endpoint for Chrome DevTools Protocol (CDP)
+	CDPEndpoint string
 	// Headless specifies whether to allow headless mode templates
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode

@@ -234,6 +234,7 @@ HEADLESS:
    -page-timeout int            seconds to wait for each page in headless mode (default 20)
    -sb, -show-browser           show the browser on the screen when running templates with headless mode
    -sc, -system-chrome          use local installed Chrome browser instead of nuclei installed
+   -cdpe, -cdp-endpoint string  use remote browser via Chrome DevTools Protocol (CDP) endpoint
    -lha, -list-headless-action  list available headless actions
 
 DEBUG:
