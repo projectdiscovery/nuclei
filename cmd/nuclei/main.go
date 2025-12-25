@@ -434,6 +434,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
+		flagSet.BoolVarP(&options.StrictProbe, "strict-probe", "sp", false, "stop scanning when httpx probe returns 0 URLs (no fallback to raw input)"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 	)
 

@@ -201,6 +201,8 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// StrictProbe stops scanning when httpx probe returns 0 URLs (no fallback to raw input)
+	StrictProbe bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution

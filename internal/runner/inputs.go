@@ -19,14 +19,15 @@ import (
 
 // initializeTemplatesHTTPInput initializes the http form of input
 // for any loaded http templates if input is in non-standard format.
-func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
+// Returns the hybrid map, the count of URLs found, and an error.
+func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, int32, error) {
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create temporary input file")
+		return nil, 0, errors.Wrap(err, "could not create temporary input file")
 	}
 	if r.inputProvider.InputType() == provider.MultiFormatInputProvider {
 		// currently http probing for input mode types is not supported
-		return hm, nil
+		return hm, 0, nil
 	}
 	r.Logger.Info().Msgf("Running httpx on input host")
 
@@ -41,19 +42,19 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 
 	dialers := protocolstate.GetDialersWithId(r.options.ExecutionId)
 	if dialers == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", r.options.ExecutionId)
+		return nil, 0, fmt.Errorf("dialers not initialized for %s", r.options.ExecutionId)
 	}
 
 	httpxOptions.NetworkPolicy = dialers.NetworkPolicy
 	httpxClient, err := httpx.New(&httpxOptions)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create httpx client")
+		return nil, 0, errors.Wrap(err, "could not create httpx client")
 	}
 
 	// Probe the non-standard URLs and store them in cache
 	swg, err := syncutil.New(syncutil.WithSize(r.options.BulkSize))
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create adaptive group")
+		return nil, 0, errors.Wrap(err, "could not create adaptive group")
 	}
 	var count atomic.Int32
 	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
@@ -80,6 +81,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 	swg.Wait()
 
-	r.Logger.Info().Msgf("Found %d URL from httpx", count.Load())
-	return hm, nil
+	urlCount := count.Load()
+	r.Logger.Info().Msgf("Found %d URL from httpx", urlCount)
+	return hm, urlCount, nil
 }
