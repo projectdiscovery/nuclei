@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -72,7 +73,7 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 }
 
 // @memo
-func connectWithDSN(dsn string) (bool, error) {
+func connectWithDSN(executionId string, dsn string) (bool, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return false, err
@@ -83,7 +84,8 @@ func connectWithDSN(dsn string) (bool, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	_, err = db.Exec("select 1")
+	ctx := context.WithValue(context.Background(), "executionId", executionId)
+	err = db.PingContext(ctx)
 	if err != nil {
 		return false, err
 	}
