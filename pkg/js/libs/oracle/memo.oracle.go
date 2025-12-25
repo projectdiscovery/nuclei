@@ -9,7 +9,7 @@ import (
 )
 
 func memoizedisOracle(executionId string, host string, port int) (IsOracleResponse, error) {
-	hash := "isOracle" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isOracle" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isOracle(executionId, host, port)
