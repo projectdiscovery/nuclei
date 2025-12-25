@@ -9,7 +9,7 @@ import (
 )
 
 func memoizedisTelnet(executionId string, host string, port int) (IsTelnetResponse, error) {
-	hash := "isTelnet" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isTelnet" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isTelnet(executionId, host, port)

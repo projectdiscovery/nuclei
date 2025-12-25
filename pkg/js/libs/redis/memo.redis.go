@@ -9,7 +9,7 @@ import (
 )
 
 func memoizedgetServerInfo(executionId string, host string, port int) (string, error) {
-	hash := "getServerInfo" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "getServerInfo" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return getServerInfo(executionId, host, port)
@@ -25,7 +25,7 @@ func memoizedgetServerInfo(executionId string, host string, port int) (string, e
 }
 
 func memoizedconnect(executionId string, host string, port int, password string) (bool, error) {
-	hash := "connect" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
+	hash := "connect" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return connect(executionId, host, port, password)
@@ -41,7 +41,7 @@ func memoizedconnect(executionId string, host string, port int, password string)
 }
 
 func memoizedgetServerInfoAuth(executionId string, host string, port int, password string) (string, error) {
-	hash := "getServerInfoAuth" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
+	hash := "getServerInfoAuth" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return getServerInfoAuth(executionId, host, port, password)
@@ -57,7 +57,7 @@ func memoizedgetServerInfoAuth(executionId string, host string, port int, passwo
 }
 
 func memoizedisAuthenticated(executionId string, host string, port int) (bool, error) {
-	hash := "isAuthenticated" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isAuthenticated" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isAuthenticated(executionId, host, port)
