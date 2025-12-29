@@ -152,6 +152,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
+        with:
+          go-version: "stable"
       - uses: projectdiscovery/actions/goreleaser@v1
 
   flamegraph:
