@@ -108,7 +108,7 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 	if err != nil {
 		return false, err
 	}
-	return connectWithDSN(dsn)
+	return connectWithDSN(executionId, dsn)
 }
 
 type (
@@ -190,8 +190,9 @@ func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, err
 // const client = new mysql.MySQLClient;
 // const connected = client.ConnectWithDSN('username:password@tcp(acme.com:3306)/');
 // ```
-func (c *MySQLClient) ConnectWithDSN(dsn string) (bool, error) {
-	return memoizedconnectWithDSN(dsn)
+func (c *MySQLClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedconnectWithDSN(executionId, dsn)
 }
 
 // ExecuteQueryWithOpts connects to Mysql database using given credentials

@@ -17,16 +17,21 @@ var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
 	{Path: "protocols/javascript/oracle-auth-test.yaml", TestCase: &javascriptOracleAuthTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}},
+	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/javascript/mysql-connect.yaml", TestCase: &javascriptMySQLConnect{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
+	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
 }
 
 var (
-	redisResource  *dockertest.Resource
-	sshResource    *dockertest.Resource
-	oracleResource *dockertest.Resource
-	vncResource    *dockertest.Resource
-	pool           *dockertest.Pool
-	defaultRetry   = 3
+	redisResource    *dockertest.Resource
+	sshResource      *dockertest.Resource
+	oracleResource   *dockertest.Resource
+	vncResource      *dockertest.Resource
+	postgresResource *dockertest.Resource
+	mysqlResource    *dockertest.Resource
+	pool             *dockertest.Pool
+	defaultRetry     = 3
 )
 
 type javascriptNetHttps struct{}
@@ -168,11 +173,85 @@ func (j *javascriptVncPassBrute) Execute(filePath string) error {
 	return multierr.Combine(errs...)
 }
 
+type javascriptPostgresPassBrute struct{}
+
+func (j *javascriptPostgresPassBrute) Execute(filePath string) error {
+	if postgresResource == nil || pool == nil {
+		// skip test as postgres is not running
+		return nil
+	}
+	tempPort := postgresResource.GetPort("5432/tcp")
+	finalURL := "localhost:" + tempPort
+	defer purge(postgresResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let postgres server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
+}
+
+type javascriptMySQLConnect struct{}
+
+func (j *javascriptMySQLConnect) Execute(filePath string) error {
+	if mysqlResource == nil || pool == nil {
+		// skip test as mysql is not running
+		return nil
+	}
+	tempPort := mysqlResource.GetPort("3306/tcp")
+	finalURL := "localhost:" + tempPort
+	defer purge(mysqlResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let mysql server start
+			time.Sleep(5 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
+}
+
 type javascriptMultiPortsSSH struct{}
 
 func (j *javascriptMultiPortsSSH) Execute(filePath string) error {
 	// use scanme.sh as target to ensure we match on the 2nd default port 22
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type javascriptNoPortArgs struct{}
+
+func (j *javascriptNoPortArgs) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "yo.dawg", debug)
 	if err != nil {
 		return err
 	}
@@ -280,5 +359,42 @@ func init() {
 	// by default expire after 30 sec
 	if err := vncResource.Expire(30); err != nil {
 		log.Printf("Could not expire resource: %s", err)
+	}
+
+	// setup a temporary postgres instance
+	postgresResource, err = pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "postgres",
+		Tag:        "latest",
+		Env: []string{
+			"POSTGRES_PASSWORD=postgres",
+			"POSTGRES_USER=postgres",
+		},
+		Platform: "linux/amd64",
+	})
+	if err != nil {
+		log.Printf("Could not start postgres resource: %s", err)
+		return
+	}
+	// by default expire after 30 sec
+	if err := postgresResource.Expire(30); err != nil {
+		log.Printf("Could not expire postgres resource: %s", err)
+	}
+
+	// setup a temporary mysql instance
+	mysqlResource, err = pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "mysql",
+		Tag:        "latest",
+		Env: []string{
+			"MYSQL_ROOT_PASSWORD=secret",
+		},
+		Platform: "linux/amd64",
+	})
+	if err != nil {
+		log.Printf("Could not start mysql resource: %s", err)
+		return
+	}
+	// by default expire after 30 sec
+	if err := mysqlResource.Expire(30); err != nil {
+		log.Printf("Could not expire mysql resource: %s", err)
 	}
 }
