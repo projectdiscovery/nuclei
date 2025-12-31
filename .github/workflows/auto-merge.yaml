@@ -1,28 +1,24 @@
-name: 🤖 Auto Merge
+name: 🔀 Auto merge PR
 
 on:
-  pull_request_review:
-    types: [submitted]
+  # pull_request:
+  #   types: [opened, synchronize, reopened, ready_for_review]
+  # pull_request_review:
+  #   types: [submitted]
   workflow_run:
-    workflows: ["♾️ Compatibility Check"]
-    types:
-      - completed
+    workflows: ["♾️ Compatibility Checks"]
+    types: [completed]
 
 permissions:
+  contents: write
   pull-requests: write
-  issues: write
-  repository-projects: write
 
 jobs:
-  auto-merge:
+  auto-merge-dependabot:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: projectdiscovery/actions/pr/approve@v1
+      - uses: projectdiscovery/actions/pr/merge@v1
         with:
-          token: ${{ secrets.DEPENDABOT_PAT }}
-
-      - uses: ahmadnassri/action-dependabot-auto-merge@v2
-        with:
-          github-token: ${{ secrets.DEPENDABOT_PAT }}
-          target: all
+          auto: "true"

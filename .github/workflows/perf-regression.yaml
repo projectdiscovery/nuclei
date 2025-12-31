@@ -1,8 +1,8 @@
 name: 🔨 Performance Regression
 
 on:
-  workflow_call:
-  workflow_dispatch:
+  workflow_call: {}
+  workflow_dispatch: {}
 
 jobs:
   perf-regression:

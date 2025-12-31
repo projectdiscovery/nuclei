@@ -42,6 +42,12 @@ type Options struct {
 	DenyList *filters.Filter `yaml:"deny-list"`
 	// DuplicateIssueCheck is a bool to enable duplicate tracking issue check and update the newest
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check" default:"false"`
+	// DuplicateIssuePageSize controls how many issues are fetched per page when searching for duplicates.
+	// If unset or <=0, a default of 100 is used.
+	DuplicateIssuePageSize int `yaml:"duplicate-issue-page-size" default:"100"`
+	// DuplicateIssueMaxPages limits how many pages are fetched when searching for duplicates.
+	// If unset or <=0, all pages are fetched until exhaustion.
+	DuplicateIssueMaxPages int `yaml:"duplicate-issue-max-pages" default:"0"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 	OmitRaw    bool                  `yaml:"-"`
@@ -151,21 +157,44 @@ func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 }
 
 func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
+	// Fetch issues in pages to ensure older issues are also checked for duplicates.
+	pageSize := i.options.DuplicateIssuePageSize
+	if pageSize <= 0 {
+		pageSize = 100
+	}
+	maxPages := i.options.DuplicateIssueMaxPages
 
-	issueList, _, err := i.client.ListRepoIssues(i.options.ProjectOwner, i.options.ProjectName, gitea.ListIssueOption{
+	opts := gitea.ListIssueOption{
 		State: "all",
-	})
-	if err != nil {
-		return nil, err
+		ListOptions: gitea.ListOptions{
+			Page:     1,
+			PageSize: pageSize,
+		},
 	}
 
-	for _, issue := range issueList {
-		if issue.Title == title {
-			return issue, nil
+	for {
+		if maxPages > 0 && opts.Page > maxPages {
+			return nil, nil
 		}
-	}
 
-	return nil, nil
+		issueList, _, err := i.client.ListRepoIssues(i.options.ProjectOwner, i.options.ProjectName, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, issue := range issueList {
+			if issue.Title == title {
+				return issue, nil
+			}
+		}
+
+		if len(issueList) < opts.PageSize {
+			// Last page reached.
+			return nil, nil
+		}
+
+		opts.Page++
+	}
 }
 
 func (i *Integration) getLabelIDsByNames(labels []string) ([]int64, error) {

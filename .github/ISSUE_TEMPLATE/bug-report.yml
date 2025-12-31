@@ -36,7 +36,10 @@ body:
       description: |
         Steps to reproduce the behavior, for example, commands to run Nuclei.
 
-        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.
+        💡 Prefer copying text output over using screenshots for easier troubleshooting.
+
+        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.<br>
+        📊 For performance or memory investigations, use **`-profile-mem`**, which generates `*.cpu`, `*.mem`, and `*.trace` files. Since GitHub doesn't support these formats directly, compress them (e.g., .zip or .tar.gz) and attach the archive under the "Anything else" section below.
 
         :warning: **Please redact any literal target hosts/URLs or other sensitive information.**
       placeholder: |
@@ -49,7 +52,10 @@ body:
       description: |
         Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
 
-        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.
+        💡 Prefer copying text output over using screenshots for easier troubleshooting.
+
+        📝 For a more detailed output that could help in troubleshooting, you may want to run Nuclei with the **`-verbose`** or **`-debug`** flags. This will provide additional insights into what's happening under the hood.<br>
+        📊 For performance or memory investigations, use **`-profile-mem`**, which generates `*.cpu`, `*.mem`, and `*.trace` files. Since GitHub doesn't support these formats directly, compress them (e.g., .zip or .tar.gz) and attach the archive under the "Anything else" section below.
 
         :warning: **Please redact any literal target hosts/URLs or other sensitive information.**
       render: shell
@@ -58,9 +64,9 @@ body:
       label: Environment
       description: |
         Examples:
-          - **OS**: Ubuntu 20.04
-          - **Nuclei** (`nuclei -version`): v3.3.1
-          - **Go** (`go version`): go1.22.0 _(only if you've installed it via the `go install` command)_
+          - **OS**: Ubuntu 24.04
+          - **Nuclei** (`nuclei -version`): v3.6.0
+          - **Go** (`go version`): go1.24.0 _(only if you've installed it via the `go install` command)_
       value: |
           - OS: 
           - Nuclei: 
@@ -72,7 +78,7 @@ body:
     attributes:
       label: Anything else?
       description: |
-        Links? References? Templates? Anything that will give us more context about the issue you are encountering!
+        Links? References? Templates? CPU, memory, and trace profiles? Anything that will give us more context about the issue you are encountering!
 
         Tip: You can attach images or log files by clicking this area to highlight it and then dragging files in.
     validations:

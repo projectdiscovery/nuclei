@@ -55,6 +55,12 @@
 #  # these severity labels or tags (does not affect exporters. set those globally)
 #  deny-list:
 #    severity: low
+#  # duplicate-issue-check (optional) flag to enable duplicate tracking issue check
+#  duplicate-issue-check: false
+#  # duplicate-issue-page-size (optional) controls how many issues to fetch per page when searching for duplicates
+#  duplicate-issue-page-size: 100
+#  # duplicate-issue-max-pages (optional) limits how many pages to fetch when searching for duplicates (0 = no limit)
+#  duplicate-issue-max-pages: 0
 #
 # Gitea contains configuration options for a gitea issue tracker
 #gitea:
@@ -81,6 +87,10 @@
 #    severity: low
 #  # duplicate-issue-check (optional) flag to enable duplicate tracking issue check
 #  duplicate-issue-check: false
+#  # duplicate-issue-page-size (optional) controls how many issues to fetch per page when searching for duplicates
+#  duplicate-issue-page-size: 100
+#  # duplicate-issue-max-pages (optional) limits how many pages to fetch when searching for duplicates (0 = no limit)
+#  duplicate-issue-max-pages: 0
 #
 # Jira contains configuration options for Jira issue tracker
 #jira:
@@ -90,6 +100,9 @@
 #  update-existing: false
 #  # URL is the jira application url
 #  url: https://localhost/jira
+#  # site-url is the browsable URL for the Jira instance (optional)
+#  # If not provided, issue.Self will be used. Useful for OAuth where issue.Self contains api.atlassian.com
+#  site-url: https://your-company.atlassian.net
 #  # account-id is the account-id of the Jira user or username in case of on-prem Jira
 #  account-id: test-account-id
 #  # email is the email of the user for Jira instance
@@ -118,10 +131,10 @@
 # status-not: Closed
 #  # Customfield supports name, id and freeform. name and id are to be used when the custom field is a dropdown.
 #  # freeform can be used if the custom field is just a text entry
-#  # Variables can be used to pull various pieces of data from the finding itself. 
+#  # Variables can be used to pull various pieces of data from the finding itself.
 #  # Supported variables: $CVSSMetrics, $CVEID, $CWEID, $Host, $Severity, $CVSSScore, $Name
 # custom-fields:
-#  customfield_00001: 
+#  customfield_00001:
 #    name: "Nuclei"
 #  customfield_00002:
 #    freeform: $CVSSMetrics
