@@ -1,0 +1,61 @@
+name: 📊 Flamegraph
+
+on:
+  workflow_call: {}
+
+jobs:
+  flamegraph:
+    name: "Flamegraph"
+    env:
+      PROFILE_MEM: "/tmp/nuclei-profile"
+      TARGET_URL: "http://honey.scanme.sh/-/?foo=bar"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
+      - uses: projectdiscovery/actions/cache/nuclei@v1
+      - run: make build
+
+      - name: "Setup environment (push)"
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          echo "PROFILE_MEM=${PROFILE_MEM}-${GITHUB_REF_NAME}-${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "FLAMEGRAPH_NAME=nuclei-${GITHUB_REF_NAME} (${GITHUB_SHA})" >> $GITHUB_ENV
+      - name: "Setup environment (pull_request)"
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          echo "PROFILE_MEM=${PROFILE_MEM}-pr-${{ github.event.number }}" >> $GITHUB_ENV
+          echo "FLAMEGRAPH_NAME=nuclei (PR #${{ github.event.number }})" >> $GITHUB_ENV
+
+      - run: ./bin/nuclei -update-templates
+      - run: |
+          ./bin/nuclei -silent -target="${TARGET_URL}" \
+            -disable-update-check \
+            -no-mhe -no-httpx \
+            -code -dast -file -headless \
+            -enable-self-contained -enable-global-matchers \
+            -rate-limit=0 \
+            -concurrency=250 \
+            -headless-concurrency=100 \
+            -payload-concurrency=250 \
+            -bulk-size=250 \
+            -headless-bulk-size=100 \
+            -profile-mem="${PROFILE_MEM}"
+
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-cpu
+        with:
+          profile: "${{ env.PROFILE_MEM }}.cpu"
+          name: "${{ env.FLAMEGRAPH_NAME }} CPU profiles"
+        continue-on-error: true
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-mem
+        with:
+          profile: "${{ env.PROFILE_MEM }}.mem"
+          name: "${{ env.FLAMEGRAPH_NAME }} memory profiles"
+        continue-on-error: true
+      - if: ${{ steps.flamegraph-mem.outputs.message == '' }}
+        run: |
+          echo "::notice::CPU flamegraph: ${{ steps.flamegraph-cpu.outputs.url }}"
+          echo "::notice::Memory (heap) flamegraph: ${{ steps.flamegraph-mem.outputs.url }}"

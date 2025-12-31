@@ -26,6 +26,7 @@ var codeTestCases = []TestCaseInfo{
 	{Path: "protocols/code/pre-condition.yaml", TestCase: &codePreCondition{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/sh-virtual.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsLinux() || isCodeDisabled() }},
 	{Path: "protocols/code/py-virtual.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsLinux() || isCodeDisabled() }},
+	{Path: "protocols/code/pwsh-echo.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return isCodeDisabled() }},
 }
 
 const (
