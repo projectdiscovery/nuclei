@@ -20,14 +20,14 @@ import (
 // This is used to reduce the number of requests made during fuzzing
 // for parameters that are less likely to give results for a rule.
 type Tracker struct {
-	frequencies             gcache.Cache
+	frequencies              gcache.Cache
 	paramOccurrenceThreshold int
 
 	isDebug bool
 }
 
 const (
-	DefaultMaxTrackCount           = 10000
+	DefaultMaxTrackCount            = 10000
 	DefaultParamOccurrenceThreshold = 10
 )
 
@@ -46,8 +46,8 @@ func New(maxTrackCount, paramOccurrenceThreshold int) *Tracker {
 		isDebug = true
 	}
 	return &Tracker{
-		isDebug:                 isDebug,
-		frequencies:             gc,
+		isDebug:                  isDebug,
+		frequencies:              gc,
 		paramOccurrenceThreshold: paramOccurrenceThreshold,
 	}
 }

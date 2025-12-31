@@ -200,8 +200,14 @@ func initDialers(options *types.Options) error {
 			addr += ":3306"
 		}
 
-		executionId := ctx.Value("executionId").(string)
+		var executionId string
+		if val := ctx.Value("executionId"); val != nil {
+			executionId = val.(string)
+		}
 		dialer := GetDialersWithId(executionId)
+		if dialer == nil {
+			return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+		}
 		return dialer.Fastdialer.Dial(ctx, "tcp", addr)
 	})
 

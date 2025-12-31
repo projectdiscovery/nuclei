@@ -207,9 +207,16 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 
 	// The first item of history data will contain the very first request from the browser
 	// we assume it's the one matching the initial URL
-	if len(createdPage.History) > 0 {
-		firstItem := createdPage.History[0]
-		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
+	createdPage.mutex.RLock()
+	var firstHistoryItem HistoryData
+	hasHistory := len(createdPage.History) > 0
+	if hasHistory {
+		firstHistoryItem = createdPage.History[0]
+	}
+	createdPage.mutex.RUnlock()
+
+	if hasHistory {
+		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
 			defer func() {

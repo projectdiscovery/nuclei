@@ -248,6 +248,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS10,
+		ClientSessionCache: tls.NewLRUClientSessionCache(1024),
 	}
 
 	if options.SNI != "" {
