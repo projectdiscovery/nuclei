@@ -53,6 +53,7 @@ require (
 	github.com/DataDog/gostackparse v0.7.0
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
+	github.com/Mzack9999/go-rsync v0.0.0-20250821180103-81ffa574ef4d
 	github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697
 	github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883
 	github.com/alexsnet/go-vnc v0.1.0
@@ -269,6 +270,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/k14s/starlark-go v0.0.0-20200720175618-3a5c849cc368 // indirect
+	github.com/kaiakz/ubuffer v0.0.0-20200803053910-dd1083087166 // indirect
 	github.com/kataras/jwt v0.1.10 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
