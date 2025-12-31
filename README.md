@@ -308,6 +308,7 @@ HEADLESS:
    -sb, -show-browser               show the browser on the screen when running templates with headless mode
    -ho, -headless-options string[]  start headless chrome with additional options
    -sc, -system-chrome              use local installed Chrome browser instead of nuclei installed
+   -cdpe, -cdp-endpoint string      use remote browser via Chrome DevTools Protocol (CDP) endpoint
    -lha, -list-headless-action      list available headless actions
 
 DEBUG:

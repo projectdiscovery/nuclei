@@ -268,6 +268,7 @@ HEADLESS:
    -sb, -show-browser               exibe o navegador na tela ao executar templates no modo headless
    -ho, -headless-options string[]  inicia o Chrome no modo headless com opções adicionais
    -sc, -system-chrome              utiliza o navegador Chrome instalado localmente em vez do instalado pelo nuclei
+   -cdpe, -cdp-endpoint string      usar navegador remoto via endpoint do Protocolo de Ferramentas de Desenvolvedor do Chrome (CDP)
    -lha, -list-headless-action      lista ações disponíveis para o modo headless
 
 DEBUG:
