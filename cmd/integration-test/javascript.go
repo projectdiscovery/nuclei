@@ -22,6 +22,7 @@ var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/mysql-connect.yaml", TestCase: &javascriptMySQLConnect{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
+	{Path: "protocols/javascript/telnet-auth-test.yaml", TestCase: &javascriptTelnetAuthTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 }
 
 var (
@@ -29,6 +30,7 @@ var (
 	sshResource      *dockertest.Resource
 	oracleResource   *dockertest.Resource
 	vncResource      *dockertest.Resource
+	telnetResource   *dockertest.Resource
 	postgresResource *dockertest.Resource
 	mysqlResource    *dockertest.Resource
 	rsyncResource    *dockertest.Resource
@@ -292,6 +294,38 @@ func (j *javascriptRsyncTest) Execute(filePath string) error {
 	return multierr.Combine(errs...)
 }
 
+type javascriptTelnetAuthTest struct{}
+
+func (j *javascriptTelnetAuthTest) Execute(filePath string) error {
+	if telnetResource == nil || pool == nil {
+		// skip test as telnet is not running
+		return nil
+	}
+	tempPort := telnetResource.GetPort("23/tcp")
+	finalURL := "localhost:" + tempPort
+	defer purge(telnetResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let telnet server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
+}
+
 // purge any given resource if it is not nil
 func purge(resource *dockertest.Resource) {
 	if resource != nil && pool != nil {
@@ -446,5 +480,23 @@ func init() {
 	// by default expire after 30 sec
 	if err := rsyncResource.Expire(30); err != nil {
 		log.Printf("Could not expire Rsync resource: %s", err)
+	}
+
+	// setup a temporary telnet server
+	// username: dev
+	// password: mysecret
+	telnetResource, err = pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "alpine",
+		Tag:        "latest",
+		Cmd:        []string{"sh", "-c", "apk add --no-cache busybox-extras shadow && useradd -m dev && echo 'dev:mysecret' | chpasswd && exec /usr/sbin/telnetd -F -p 23 -l /bin/login"},
+		Platform:   "linux/amd64",
+	})
+	if err != nil {
+		log.Printf("Could not start Telnet resource: %s", err)
+		return
+	}
+	// by default expire after 30 sec
+	if err := telnetResource.Expire(30); err != nil {
+		log.Printf("Could not expire Telnet resource: %s", err)
 	}
 }
