@@ -50,6 +50,7 @@ require (
 	code.gitea.io/sdk/gitea v0.17.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.1.0
+	github.com/Azure/go-ntlmssp v0.1.0
 	github.com/DataDog/gostackparse v0.7.0
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
@@ -138,7 +139,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.4.2 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
