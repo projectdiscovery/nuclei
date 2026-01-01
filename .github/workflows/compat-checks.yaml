@@ -7,8 +7,8 @@ on:
       - dev
 
 jobs:
-  check:
-    if: github.actor == 'dependabot[bot]'
+  compat-checks:
+    if: ${{ github.actor == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -16,4 +16,5 @@ jobs:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go/compat-checks@v1
         with:
+          go-version: "stable"
           release-test: true
