@@ -54,6 +54,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -391,7 +392,12 @@ func New(options *types.Options) (*Runner, error) {
 	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
 		options.RateLimitDuration = time.Second
 	}
-	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
+	// If per-host rate limiting is enabled, make global rate limiter unlimited
+	if options.PerHostRateLimit {
+		runner.rateLimiter = utils.GetRateLimiter(context.Background(), 0, 0)
+	} else {
+		runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
+	}
 
 	// Initialization successful, disable cleanup on error
 	cleanupOnError = false
@@ -678,6 +684,14 @@ func (r *Runner) RunEnumeration() error {
 			_ = r.inputProvider.SetWithExclusions(r.options.ExecutionId, host)
 		}
 	}
+
+	// Preflight: resolve hosts + portscan for ports required by loaded templates, then filter inputs.
+	// This reduces time spent on non-resolvable targets or targets with no relevant open ports.
+	if r.options.PreflightPortScan {
+		if err := r.preflightResolveAndPortScan(store); err != nil {
+			return errors.Wrap(err, "preflight resolve/portscan failed")
+		}
+	}
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
@@ -700,13 +714,17 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
+	// Set input count in dialers for sharding calculation
+	inputCount := int(r.inputProvider.Count())
+	protocolstate.SetInputCount(r.options.ExecutionId, inputCount)
+
 	// initialize stats worker ( this is no-op unless nuclei is built with stats build tag)
 	// during execution a directory with 2 files will be created in the current directory
 	// config.json - containing below info
 	// events.jsonl - containing all start and end times of all templates
 	events.InitWithConfig(&events.ScanConfig{
 		Name:                "nuclei-stats", // make this configurable
-		TargetCount:         int(r.inputProvider.Count()),
+		TargetCount:         inputCount,
 		TemplatesCount:      len(store.Templates()) + len(store.Workflows()),
 		TemplateConcurrency: r.options.TemplateThreads,
 		PayloadConcurrency:  r.options.PayloadConcurrency,
@@ -748,6 +766,52 @@ func (r *Runner) RunEnumeration() error {
 
 	r.progress.Stop()
 	timeTaken := time.Since(now)
+
+	// Print per-host pool stats if available
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil && dialers.PerHostHTTPPool != nil {
+		if pool, ok := dialers.PerHostHTTPPool.(interface{ PrintStats() }); ok {
+			pool.PrintStats()
+		}
+	}
+	// Print per-host rate limit pool stats if available
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil && dialers.PerHostRateLimitPool != nil {
+		if pool, ok := dialers.PerHostRateLimitPool.(interface{ PrintStats() }); ok {
+			pool.PrintStats()
+		}
+		if pool, ok := dialers.PerHostRateLimitPool.(interface{ PrintPerHostPPSStats() }); ok {
+			pool.PrintPerHostPPSStats()
+		}
+	}
+	// Always print connection reuse stats (tracker is initialized early for all HTTP requests)
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
+		// Ensure tracker exists (it should already be initialized, but create if needed)
+		if dialers.ConnectionReuseTracker == nil {
+			_ = httpclientpool.GetConnectionReuseTracker(r.options)
+		}
+		if dialers.ConnectionReuseTracker != nil {
+			if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintStats() }); ok {
+				tracker.PrintStats()
+			}
+			if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintPerHostStats() }); ok {
+				tracker.PrintPerHostStats()
+			}
+		}
+
+		// Print sharded pool stats if sharding is enabled
+		if r.options.HTTPClientShards && dialers.ShardedHTTPPool != nil {
+			if pool, ok := dialers.ShardedHTTPPool.(interface{ PrintStats() }); ok {
+				pool.PrintStats()
+			}
+		}
+
+		// Print HTTP-to-HTTPS port tracker stats
+		if dialers.HTTPToHTTPSPortTracker != nil {
+			if tracker, ok := dialers.HTTPToHTTPSPortTracker.(interface{ PrintStats() }); ok {
+				tracker.PrintStats()
+			}
+		}
+	}
+
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {

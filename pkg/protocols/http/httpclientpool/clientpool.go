@@ -22,7 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
+	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -37,6 +37,12 @@ func Init(options *types.Options) error {
 	if options.ShouldFollowHTTPRedirects() {
 		forceMaxRedirects = options.MaxRedirects
 	}
+
+	// Initialize connection reuse tracker early to ensure it's always available for tracking
+	_ = GetConnectionReuseTracker(options)
+
+	// Initialize HTTP-to-HTTPS port tracker early to ensure it's always available
+	_ = GetHTTPToHTTPSPortTracker(options)
 
 	return nil
 }
@@ -180,6 +186,18 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 	return wrappedGet(options, configuration)
 }
 
+func isMultiThreadWithJar(configuration *Configuration) bool {
+	return configuration.Threads > 0 && configuration.Connection != nil && configuration.Connection.HasCookieJar()
+}
+
+func hashWithCookieJar(hash string, configuration *Configuration) string {
+	if isMultiThreadWithJar(configuration) {
+		jar := configuration.Connection.GetCookieJar()
+		return hash + fmt.Sprintf("cookieptr%p", jar)
+	}
+	return hash
+}
+
 // wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var err error
@@ -189,7 +207,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
 	}
 
-	hash := configuration.Hash()
+	hash := hashWithCookieJar(configuration.Hash(), configuration)
 	if client, ok := dialers.HTTPClientPool.Get(hash); ok {
 		return client, nil
 	}
@@ -204,12 +222,13 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	// because this won't work on slow hosts
 	retryableHttpOptions.NoAdjustTimeout = true
 
-	if configuration.Threads > 0 || options.ScanStrategy == scanstrategy.HostSpray.String() {
-		// Single host
+	// with threading always allow connection reuse
+	if configuration.Threads > 0 {
 		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
 		disableKeepAlives = false
 		maxIdleConnsPerHost = 500
 		maxConnsPerHost = 500
+		maxIdleConns = 500
 	}
 
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
@@ -358,13 +377,211 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	// Only add to client pool if we don't have a cookie jar in place.
-	if jar == nil {
+	if jar == nil || isMultiThreadWithJar(configuration) {
 		if err := dialers.HTTPClientPool.Set(hash, client); err != nil {
 			return nil, err
 		}
 	}
+
 	return client, nil
+}
+
+// GetForTarget creates or gets a client for a specific target
+// Supports three modes:
+// 1. Per-host pooling (--per-host-client-pool flag)
+// 2. Sharded pooling (--http-client-shards flag)
+// 3. Standard pooling (default)
+// Respects connection reuse policy: if DisableKeepAlive is true, uses standard pool
+func GetForTarget(options *types.Options, configuration *Configuration, targetURL string) (*retryablehttp.Client, error) {
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
+
+	// Check connection reuse policy: if keep-alive is disabled, skip pooling/sharding
+	// This preserves existing behavior for templates requiring connection closure
+	if configuration.Connection != nil && configuration.Connection.DisableKeepAlive {
+		// Use standard client pool (no connection reuse)
+		return Get(options, configuration)
+	}
+
+	// Priority 1: Per-host pooling (if flag is set)
+	if options.PerHostClientPool {
+		dialers.Lock()
+		if dialers.PerHostHTTPPool == nil {
+			dialers.PerHostHTTPPool = NewPerHostClientPool(1024, 5*time.Minute, 30*time.Minute)
+		}
+		dialers.Unlock()
+
+		pool, ok := dialers.PerHostHTTPPool.(*PerHostClientPool)
+		if ok && pool != nil {
+			return pool.GetOrCreate(targetURL, func() (*retryablehttp.Client, error) {
+				cfg := configuration.Clone()
+				if cfg.Connection == nil {
+					cfg.Connection = &ConnectionConfiguration{}
+				}
+				cfg.Connection.DisableKeepAlive = false
+
+				// Override Threads to force connection pool settings
+				originalThreads := cfg.Threads
+				cfg.Threads = 1
+				client, err := wrappedGet(options, cfg)
+				cfg.Threads = originalThreads
+
+				return client, err
+			})
+		}
+	}
+
+	// Priority 2: Sharded pooling (if flag is set)
+	if options.HTTPClientShards {
+		dialers.Lock()
+		if dialers.ShardedHTTPPool == nil {
+			// Calculate optimal shard count based on input size
+			numShards := 0 // 0 triggers automatic calculation
+			inputSize := dialers.InputCount
+
+			pool, err := NewShardedClientPool(numShards, options, configuration, inputSize)
+			if err != nil {
+				dialers.Unlock()
+				return nil, fmt.Errorf("failed to create sharded client pool: %w", err)
+			}
+			dialers.ShardedHTTPPool = pool
+		}
+		dialers.Unlock()
+
+		pool, ok := dialers.ShardedHTTPPool.(*ShardedClientPool)
+		if ok && pool != nil {
+			client, _ := pool.GetClientForHost(targetURL)
+			return client, nil
+		}
+	}
+
+	// Priority 3: Standard client pool (default)
+	return Get(options, configuration)
+}
+
+// GetPerHostRateLimiter gets or creates a rate limiter for a specific host
+// Returns nil if per-host rate limiting is not enabled
+func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.Limiter, error) {
+	if !options.PerHostRateLimit {
+		return nil, nil
+	}
+
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
+
+	dialers.Lock()
+	if dialers.PerHostRateLimitPool == nil {
+		// Keep entries for the entire scan duration - no TTL-based eviction during scan
+		// maxIdleTime: 24 hours (entries only evicted after 24 hours of inactivity)
+		// maxLifetime: 24 hours (maximum lifetime of entries)
+		// This ensures all hosts are tracked throughout the entire scan, even for very long scans
+		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(1024, 24*time.Hour, 24*time.Hour, options)
+	}
+	dialers.Unlock()
+
+	pool, ok := dialers.PerHostRateLimitPool.(*PerHostRateLimitPool)
+	if !ok || pool == nil {
+		return nil, nil
+	}
+
+	return pool.GetOrCreate(hostname)
+}
+
+// RecordPerHostRateLimitRequest records a request for pps stats calculation
+func RecordPerHostRateLimitRequest(options *types.Options, hostname string) {
+	if !options.PerHostRateLimit || hostname == "" {
+		return
+	}
+
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return
+	}
+
+	pool, ok := dialers.PerHostRateLimitPool.(*PerHostRateLimitPool)
+	if !ok || pool == nil {
+		return
+	}
+
+	pool.RecordRequest(hostname)
+}
+
+// GetConnectionReuseTracker gets or creates the connection reuse tracker
+func GetConnectionReuseTracker(options *types.Options) *ConnectionReuseTracker {
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil
+	}
+
+	dialers.Lock()
+	if dialers.ConnectionReuseTracker == nil {
+		// Keep entries for the entire scan duration - no TTL-based eviction during scan
+		// maxIdleTime: 24 hours (entries only evicted after 24 hours of inactivity)
+		// maxLifetime: 24 hours (maximum lifetime of entries)
+		// This ensures all hosts are tracked throughout the entire scan, even for very long scans
+		dialers.ConnectionReuseTracker = NewConnectionReuseTracker(1024, 24*time.Hour, 24*time.Hour)
+	}
+	dialers.Unlock()
+
+	tracker, ok := dialers.ConnectionReuseTracker.(*ConnectionReuseTracker)
+	if !ok || tracker == nil {
+		return nil
+	}
+
+	return tracker
+}
+
+// GetHTTPToHTTPSPortTracker gets or creates the HTTP-to-HTTPS port tracker
+func GetHTTPToHTTPSPortTracker(options *types.Options) *HTTPToHTTPSPortTracker {
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil
+	}
+
+	dialers.Lock()
+	if dialers.HTTPToHTTPSPortTracker == nil {
+		dialers.HTTPToHTTPSPortTracker = NewHTTPToHTTPSPortTracker()
+	}
+	dialers.Unlock()
+
+	tracker, ok := dialers.HTTPToHTTPSPortTracker.(*HTTPToHTTPSPortTracker)
+	if !ok || tracker == nil {
+		return nil
+	}
+
+	return tracker
+}
+
+// RecordConnectionReuse records a connection reuse event
+func RecordConnectionReuse(options *types.Options, hostname string, reused bool) {
+	if hostname == "" {
+		return
+	}
+
+	tracker := GetConnectionReuseTracker(options)
+	if tracker == nil {
+		return
+	}
+
+	tracker.RecordConnection(hostname, reused)
+}
+
+// RecordHTTPToHTTPSPortMismatch records that a host:port requires HTTPS
+func RecordHTTPToHTTPSPortMismatch(options *types.Options, hostname string) {
+	if hostname == "" {
+		return
+	}
+
+	tracker := GetHTTPToHTTPSPortTracker(options)
+	if tracker == nil {
+		return
+	}
+
+	tracker.RecordHTTPToHTTPSPort(hostname)
 }
 
 type RedirectFlow uint8

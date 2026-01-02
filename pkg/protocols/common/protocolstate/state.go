@@ -215,7 +215,23 @@ func initDialers(options *types.Options) error {
 
 	SetLfaAllowed(options)
 
+	// Set input count for sharding calculation (will be updated later when input provider is ready)
+	dialersInstance.InputCount = 0
+
 	return nil
+}
+
+// SetInputCount sets the input count for sharding calculation
+func SetInputCount(executionId string, count int) {
+	dialers := GetDialersWithId(executionId)
+	if dialers == nil {
+		return
+	}
+
+	dialers.Lock()
+	defer dialers.Unlock()
+
+	dialers.InputCount = count
 }
 
 // isIpAssociatedWithInterface checks if the given IP is associated with the given interface.

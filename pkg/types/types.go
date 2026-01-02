@@ -201,6 +201,22 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
+	// before running templates. Disabled by default.
+	PreflightPortScan bool
+	// PerHostClientPool enables per-host HTTP client pooling for better connection reuse.
+	// When enabled, each host gets its own client instance keyed by (host, configuration).
+	// Disabled by default.
+	PerHostClientPool bool
+	// HTTPClientShards enables HTTP client sharding for connection pooling.
+	// When enabled, hosts are distributed across a fixed number of HTTP client shards (auto-calculated, max 256).
+	// This provides a balance between connection reuse and memory efficiency.
+	// Disabled by default.
+	HTTPClientShards bool
+	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
+	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
+	// Disabled by default.
+	PerHostRateLimit bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution

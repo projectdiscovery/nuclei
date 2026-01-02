@@ -8,6 +8,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"net/http/httptrace"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,6 +69,22 @@ var (
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
+}
+
+// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
+func (request *Request) rateLimitTake(hostname string) {
+	if request.options.Options.PerHostRateLimit && hostname != "" {
+		// Use per-host rate limiter
+		if limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname); err == nil && limiter != nil {
+			limiter.Take()
+			// Record request for pps stats
+			httpclientpool.RecordPerHostRateLimitRequest(request.options.Options, hostname)
+			return
+		}
+		// Fallback to global if per-host fails
+	}
+	// Use global rate limiter (or unlimited if per-host is enabled but hostname is empty)
+	request.options.RateLimitTake()
 }
 
 // executeRaceRequest executes race condition request for a URL
@@ -267,7 +284,15 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					spmHandler.Release()
 					continue
 				}
-				request.options.RateLimitTake()
+				// Extract hostname for per-host rate limiting (use full URL - normalization happens in rateLimitTake)
+				hostname := t.updatedInput.MetaInput.Input
+				if t.req != nil && t.req.URL() != "" {
+					hostname = t.req.URL()
+				} else if t.req != nil && t.req.request != nil && t.req.request.URL != nil {
+					// Extract from request URL if available
+					hostname = t.req.request.String()
+				}
+				request.rateLimitTake(hostname)
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
@@ -515,8 +540,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			request.options.RateLimitTake()
-
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
 			defer cancel()
@@ -534,6 +557,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// a copy and using it to check for host errors etc
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
+
+			// Extract hostname for per-host rate limiting (use generated request URL - normalization happens in rateLimitTake)
+			hostname := input.MetaInput.Input
+			if generatedHttpRequest.URL() != "" {
+				// Use the generated URL directly - the normalization function will extract host:port correctly
+				hostname = generatedHttpRequest.URL()
+			}
+			request.rateLimitTake(hostname)
 
 			if generatedHttpRequest.customCancelFunction != nil {
 				defer generatedHttpRequest.customCancelFunction()
@@ -805,6 +836,14 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			httpclient := request.httpClient
 
+			// Extract target URL for per-host pooling (use request URL or fallback to input)
+			targetURL := input.MetaInput.Input
+			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+				targetURL = generatedRequest.request.String()
+			} else if generatedRequest.request != nil {
+				targetURL = generatedRequest.request.String()
+			}
+
 			// this will be assigned/updated if this specific request has a custom configuration
 			var modifiedConfig *httpclientpool.Configuration
 
@@ -825,12 +864,64 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			if modifiedConfig != nil {
+			// Prefer per-host pooled client or sharded client for better reuse when flags are enabled
+			// choose config to use (modified if present else default)
+			configToUse := modifiedConfig
+			if configToUse == nil {
+				configToUse = request.connConfiguration
+			}
+			if request.options.Options.PerHostClientPool || request.options.Options.HTTPClientShards {
+				if client, err := httpclientpool.GetForTarget(request.options.Options, configToUse, targetURL); err == nil {
+					httpclient = client
+				} else {
+					return errors.Wrap(err, "could not get http client")
+				}
+			} else if modifiedConfig != nil {
+				modifiedConfig.Threads = request.Threads
 				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
+			}
+
+			// Check if HTTP-to-HTTPS port correction is needed before sending request
+			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+				tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options)
+				if tracker != nil {
+					requestURL := generatedRequest.request.String()
+					if tracker.RequiresHTTPS(requestURL) {
+						// Modify request URL scheme from http to https
+						if generatedRequest.request.Scheme == "http" {
+							generatedRequest.request.Scheme = "https"
+							gologger.Debug().Msgf("[http-to-https-tracker] Corrected HTTP to HTTPS for %s", requestURL)
+						}
+					}
+				}
+			}
+
+			// Track connection reuse for all HTTP requests
+			if generatedRequest.request != nil {
+				// Extract hostname for connection reuse tracking (use actual request URL, same as rate limiting)
+				hostnameForReuse := input.MetaInput.Input
+				if generatedRequest.request.URL != nil {
+					// Use the actual request URL - normalization will extract host:port correctly
+					hostnameForReuse = generatedRequest.request.String()
+				} else if generatedRequest.URL() != "" {
+					// Fallback to generated request URL method
+					hostnameForReuse = generatedRequest.URL()
+				} else if targetURL != "" {
+					hostnameForReuse = targetURL
+				}
+
+				trace := &httptrace.ClientTrace{
+					GotConn: func(info httptrace.GotConnInfo) {
+						// Record connection reuse event
+						httpclientpool.RecordConnectionReuse(request.options.Options, hostnameForReuse, info.Reused)
+					},
+				}
+				ctx := httptrace.WithClientTrace(generatedRequest.request.Context(), trace)
+				generatedRequest.request = generatedRequest.request.WithContext(ctx)
 			}
 
 			resp, err = httpclient.Do(generatedRequest.request)
@@ -964,8 +1055,25 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
+		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message)
+		statusCode := respChain.Response().StatusCode
+		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
+			// Extract host:port from the request URL
+			var requestURL string
+			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+				requestURL = generatedRequest.request.String()
+			} else if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
+				requestURL = generatedRequest.rawRequest.FullURL
+			} else if respChain.Request() != nil && respChain.Request().URL != nil {
+				requestURL = respChain.Request().URL.String()
+			}
+			if requestURL != "" {
+				httpclientpool.RecordHTTPToHTTPSPortMismatch(request.options.Options, requestURL)
+			}
+		}
+
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), fullResponseStr)
+		request.options.Output.RequestStatsLog(strconv.Itoa(statusCode), fullResponseStr)
 
 		// save response to projectfile
 		onceFunc()

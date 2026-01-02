@@ -181,7 +181,9 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input) {
 		return false
 	}
-	request.options.RateLimitTake()
+	// Extract hostname for per-host rate limiting
+	hostname := input.MetaInput.Input
+	request.rateLimitTake(hostname)
 	req := &generatedRequest{
 		request:              gr.Request,
 		dynamicValues:        gr.DynamicValues,
