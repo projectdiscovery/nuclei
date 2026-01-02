@@ -8,6 +8,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -906,16 +907,38 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 		return err
 	}
-
-	var curlCommand string
-	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
-		bodyBytes, _ := generatedRequest.request.BodyBytes()
-		// Use a clone to avoid a race condition with the http transport
-		req := resp.Request.Clone(resp.Request.Context())
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, err := http2curl.GetCurlCommand(req)
-		if err == nil && command != nil {
-			curlCommand = command.String()
+	var curlCommand, ncatCommand string
+	if resp != nil && !request.Race {
+		if !request.Unsafe && generatedRequest.request != nil && resp.Request != nil {
+			bodyBytes, _ := generatedRequest.request.BodyBytes()
+			resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			command, err := http2curl.GetCurlCommand(generatedRequest.request.Request)
+			if err == nil && command != nil {
+				curlCommand = command.String()
+			}
+		} else if generatedRequest.rawRequest != nil {
+			unsafeRawBytes := generatedRequest.rawRequest.UnsafeRawBytes
+			ncat := "printf "
+			new_line := []byte{'\r', '\n'}
+			for _, line := range bytes.Split(unsafeRawBytes, new_line) {
+				ncat += bashEscape(append(line[:], new_line[:]...))
+				ncat += "\\\r\n"
+			}
+			ncat += "|"
+			ncat_cmd := []string{"ncat"}
+			rawurl, err := url.Parse(formedURL)
+			if err != nil {
+				ncat_cmd = append(ncat_cmd, "127.0.0.1")
+				ncat_cmd = append(ncat_cmd, "80")
+			} else {
+				if rawurl.Scheme == "https" {
+					ncat_cmd = append(ncat_cmd, "--ssl")
+				}
+				ncat_cmd = append(ncat_cmd, rawurl.Hostname())
+				ncat_cmd = append(ncat_cmd, rawurl.Port())
+			}
+			ncat += strings.Join(ncat_cmd, " ")
+			ncatCommand = ncat
 		}
 	}
 
@@ -1016,6 +1039,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			hostname = hostname[:i]
 		}
 		outputEvent["curl-command"] = curlCommand
+		if ncatCommand != "" {
+			outputEvent["ncat-command"] = ncatCommand
+		}
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
@@ -1287,4 +1313,19 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
+}
+func bashEscape(b []byte) string {
+	str := ""
+	for i := 0; i < len(b); i++ {
+		if b[i] < 32 || b[i] > 126 {
+			s := strconv.QuoteToASCII(string(b[i]))
+			s = strings.TrimPrefix(s, "\"")
+			s = strings.TrimSuffix(s, "\"")
+			str += s
+		} else {
+			str += string(b[i])
+		}
+	}
+	str = "'" + strings.ReplaceAll(str, "\"", "\\\"") + "'"
+	return str
 }
