@@ -118,6 +118,7 @@ require (
 	github.com/projectdiscovery/wappalyzergo v0.2.95
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
+	github.com/sandrolain/httpcache v1.4.0
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
 	github.com/sijms/go-ora/v2 v2.9.0
 	github.com/stretchr/testify v1.12.1

@@ -212,6 +212,8 @@ type Options struct {
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.
 	PerHostRateLimit bool
+	// DisableHTTPCache disables HTTP caching (RFC 9111) for requests
+	DisableHTTPCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
