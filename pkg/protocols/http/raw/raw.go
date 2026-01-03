@@ -38,6 +38,25 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		return nil, err
 	}
 
+	// handle full URLs first (before checking unsafe flag) to extract relative path
+	if strings.HasPrefix(rawrequest.Path, "http://") || strings.HasPrefix(rawrequest.Path, "https://") {
+		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
+		}
+		prevPath := rawrequest.Path
+		relPath := urlx.GetRelativePath()
+
+		// NOTE(dwisiswant0): Use rel path instead if unsafe.
+		// See https://github.com/projectdiscovery/nuclei/issues/6558.
+		if unsafe {
+			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
+		}
+
+		// rotate full URL with rel path
+		rawrequest.Path = relPath
+	}
+
 	switch {
 	// If path is empty do not tamper input url (see doc)
 	// can be omitted but makes things clear
@@ -47,22 +66,6 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			rawrequest.Path = inputURL.GetRelativePath()
 		}
 
-	// full url provided instead of rel path
-	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
-		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
-		if err != nil {
-			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
-		}
-		cloned := inputURL.Clone()
-		cloned.Params.IncludeEquals = true
-		if disablePathAutomerge {
-			cloned.Path = ""
-		}
-		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
-		if parseErr != nil {
-			return nil, errkit.Wrapf(parseErr, "could not automergepath for template path %v", urlx.GetRelativePath())
-		}
-		rawrequest.Path = cloned.GetRelativePath()
 	// If unsafe changes must be made in raw request string itself
 	case unsafe:
 		prevPath := rawrequest.Path
