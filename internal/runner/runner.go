@@ -693,9 +693,13 @@ func (r *Runner) RunEnumeration() error {
 	// are used, and if inputs are non-http to pre-perform probing
 	// of urls and storing them for execution.
 	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
-		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		inputHelpers, urlCount, err := r.initializeTemplatesHTTPInput()
 		if err != nil {
 			return errors.Wrap(err, "could not probe http input")
+		}
+		if r.options.StrictProbe && urlCount == 0 {
+			r.Logger.Info().Msgf("Strict probe mode: No URLs found from httpx probe, skipping scan")
+			return nil
 		}
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
