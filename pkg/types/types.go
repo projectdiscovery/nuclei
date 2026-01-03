@@ -556,6 +556,7 @@ func (options *Options) Copy() *Options {
 		DebugRequests:                  options.DebugRequests,
 		DebugResponse:                  options.DebugResponse,
 		DisableHTTPProbe:               options.DisableHTTPProbe,
+		DisableHTTPCache:               options.DisableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
