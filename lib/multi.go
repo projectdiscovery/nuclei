@@ -167,7 +167,12 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	engine := core.New(tmpEngine.opts)
 	engine.SetExecuterOptions(unsafeOpts.executerOpts)
 
-	_ = engine.ExecuteScanWithOpts(ctx, store.Templates(), inputProvider, false)
+	execCtx, cancel, _ := types.ApplyMaxTimeContext(ctx, tmpEngine.opts, e.eng.Logger)
+	if cancel != nil {
+		defer cancel()
+	}
+
+	_ = engine.ExecuteScanWithOpts(execCtx, store.Templates(), inputProvider, false)
 
 	engine.WorkPool().Wait()
 	return nil
