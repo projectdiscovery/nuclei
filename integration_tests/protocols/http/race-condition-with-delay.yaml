@@ -1,0 +1,28 @@
+id: race-condition-with-delay
+
+info:
+  name: Race Condition Testing with Delay
+  author: pdteam
+  severity: info
+  description: |
+    Test race condition handling with induced server delay.
+  tags: test
+
+http:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+    threads: 2
+    race: true
+    matchers:
+      - type: status
+        status: 
+          - 200
