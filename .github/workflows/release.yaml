@@ -24,8 +24,6 @@ jobs:
           name: "pgo"
           path: "cmd/nuclei/"
       - uses: projectdiscovery/actions/setup/go@v1
-        with:
-          go-version: "stable"
       - uses: docker/login-action@v3 
         with:
           username: ${{ secrets.DOCKER_USERNAME }}

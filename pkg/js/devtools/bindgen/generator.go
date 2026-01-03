@@ -3,9 +3,6 @@ package generator
 import (
 	"fmt"
 	"go/ast"
-	"go/importer"
-	"go/parser"
-	"go/token"
 	"go/types"
 	"log"
 	"os"
@@ -15,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"golang.org/x/tools/go/packages"
 )
 
 var (
@@ -103,50 +101,33 @@ func GetLibraryModules(directory string) ([]string, error) {
 // of go source code.
 func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, error) {
 	fmt.Println(directory)
-	fset := token.NewFileSet()
 
-	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments)
+	cfg := &packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+		Dir:  directory,
+	}
+
+	pkgs, err := packages.Load(cfg, ".")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse directory")
 	}
+
 	if len(pkgs) != 1 {
 		return nil, fmt.Errorf("expected 1 package, got %d", len(pkgs))
 	}
 
-	config := &types.Config{
-		Importer: importer.ForCompiler(fset, "source", nil),
+	pkgMain := pkgs[0]
+	if len(pkgMain.Errors) > 0 {
+		return nil, errors.Wrap(pkgMain.Errors[0], "could not check package")
 	}
-	var packageName string
-	var files []*ast.File
-	for k, v := range pkgs {
-		packageName = k
-		for _, f := range v.Files {
-			files = append(files, f)
-		}
-		break
-	}
-
-	pkg, err := config.Check(packageName, fset, files, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not check package")
-	}
-
-	if len(pkgs) == 0 {
-		return nil, errors.New("no packages found")
-	}
-
-	var pkgName string
-	for k := range pkgs {
-		pkgName = k
-		break
-	}
-
-	pkgMain := pkgs[pkgName]
 
 	log.Printf("[create] [discover] Package: %s\n", pkgMain.Name)
 	data := newTemplateData(packagePrefix, pkgMain.Name)
-	data.typesPackage = pkg
-	data.gatherPackageData(pkgMain, data)
+	data.typesPackage = pkgMain.Types
+
+	for _, file := range pkgMain.Syntax {
+		data.gatherPackageData(file, data)
+	}
 
 	for item, v := range data.PackageFuncsExtra {
 		if len(v.Items) == 0 {

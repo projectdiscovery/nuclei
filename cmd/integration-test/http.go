@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -88,6 +89,8 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/multi-http-var-sharing.yaml", TestCase: &httpMultiVarSharing{}},
 	{Path: "protocols/http/raw-path-single-slash.yaml", TestCase: &httpRawPathSingleSlash{}},
 	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
+	{Path: "protocols/http/disable-http-cache.yaml", TestCase: &httpDisableCache{}},
+	{Path: "protocols/http/http-cache.yaml", TestCase: &httpCache{}},
 }
 
 type httpMultiVarSharing struct{}
@@ -1683,5 +1686,69 @@ func (h *httpRawUnsafePathSingleSlash) Execute(filepath string) error {
 	if actual != expectedPath {
 		return fmt.Errorf("expected: %v\n\nactual: %v", expectedPath, actual)
 	}
+	return nil
+}
+
+type httpCache struct{}
+
+func (h *httpCache) Execute(filePath string) error {
+	router := httprouter.New()
+	var requestCount int32
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		atomic.AddInt32(&requestCount, 1)
+		w.Header().Set("Cache-Control", "max-age=2")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, requestCount)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	// We expect 2 results because we made 2 requests and both should match
+	if err := expectResultsCount(results, 2); err != nil {
+		return err
+	}
+
+	// We expect only 1 actual request to the server because of caching
+	if count := atomic.LoadInt32(&requestCount); count != 1 {
+		return fmt.Errorf("expected 1 request to server, got %d", count)
+	}
+
+	return nil
+}
+
+type httpDisableCache struct{}
+
+func (h *httpDisableCache) Execute(filePath string) error {
+	var requestCount int32
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		atomic.AddInt32(&requestCount, 1)
+		w.Header().Set("Cache-Control", "max-age=2")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, requestCount)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	// We expect 2 results because we made 2 requests and both should match
+	if err := expectResultsCount(results, 2); err != nil {
+		return err
+	}
+
+	// We expect 2 actual requests to the server because cache is disabled
+	if count := atomic.LoadInt32(&requestCount); count != 2 {
+		return fmt.Errorf("expected 2 requests to server, got %d", count)
+	}
+
 	return nil
 }
