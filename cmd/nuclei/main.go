@@ -434,7 +434,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		}),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
-		flagSet.BoolVarP(&options.DisableHTTPCache, "no-http-cache", "nhc", false, "disable HTTP cache (RFC 9111) for HTTP requestss"),
+		flagSet.BoolVarP(&options.DisableHTTPCache, "no-http-cache", "nhc", false, "disable HTTP cache (RFC 9111) for HTTP requests"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 	)
 
