@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -62,6 +63,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/dsl-functions.yaml", TestCase: &httpDSLFunctions{}},
 	{Path: "protocols/http/race-simple.yaml", TestCase: &httpRaceSimple{}},
 	{Path: "protocols/http/race-multiple.yaml", TestCase: &httpRaceMultiple{}},
+	{Path: "protocols/http/race-condition-with-delay.yaml", TestCase: &httpRaceWithDelay{}},
 	{Path: "protocols/http/race-with-variables.yaml", TestCase: &httpRaceWithVariables{}},
 	{Path: "protocols/http/stop-at-first-match.yaml", TestCase: &httpStopAtFirstMatch{}},
 	{Path: "protocols/http/stop-at-first-match-with-extractors.yaml", TestCase: &httpStopAtFirstMatchWithExtractors{}},
@@ -1154,6 +1156,51 @@ func (h *httpRaceMultiple) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 5)
+}
+
+type httpRaceWithDelay struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRaceWithDelay) Execute(filePath string) error {
+	var requestTimes []time.Time
+	var mu sync.Mutex
+
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		mu.Lock()
+		requestTimes = append(requestTimes, time.Now())
+		mu.Unlock()
+		time.Sleep(2 * time.Second)
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(results, 3); err != nil {
+		return err
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(requestTimes) != 3 {
+		return fmt.Errorf("expected 3 requests, got %d", len(requestTimes))
+	}
+
+	// Check concurrency of first two requests (should be very close)
+	if diff := requestTimes[1].Sub(requestTimes[0]); diff > 500*time.Millisecond {
+		return fmt.Errorf("expected first 2 requests to be concurrent, diff: %v", diff)
+	}
+
+	// Check delay of third request (should be after ~2s)
+	if diff := requestTimes[2].Sub(requestTimes[0]); diff < 1500*time.Millisecond {
+		return fmt.Errorf("expected 3rd request to be delayed, diff: %v", diff)
+	}
+
+	return nil
 }
 
 type httpRaceWithVariables struct{}
