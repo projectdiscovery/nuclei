@@ -61,10 +61,13 @@ export function IsAuthenticated(host: string, port: number): boolean | null {
  * @example
  * ```javascript
  * const redis = require('nuclei/redis');
- * const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])');
+ * // Old signature (backwards compatible) - keys and args are optional
+ * const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("ping")');
+ * // New signature with keys and args
+ * const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])', ['mykey'], []);
  * ```
  */
-export function RunLuaScript(host: string, port: number, password: string, script: string): any | null {
+export function RunLuaScript(host: string, port: number, password: string, script: string, keys?: string[] | any, args?: string[] | any): any | null {
     return null;
 }
 

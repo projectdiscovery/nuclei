@@ -1,0 +1,27 @@
+id: redis-lua-script
+
+info:
+  name: Redis RunLuaScript - Detect
+  author: DhiyaneshDK
+  severity: info
+
+javascript:
+  - code: |
+      const redis = require('nuclei/redis');
+      // First call: Set a key-value pair using ARGV
+      const setResult = redis.RunLuaScript(Host, Port, Password, 'return redis.call("set", ARGV[1], ARGV[2])', [], ['testkey', 'testvalue']);
+      log(to_json(setResult));
+      
+      // Second call: Retrieve the value we just set
+      const getResult = redis.RunLuaScript(Host, Port, Password, 'return redis.call("get", ARGV[1])', [], ['testkey']);
+      log(to_json(getResult));
+
+    args:
+      Host: "{{Host}}"
+      Port: "6379"
+      Password: ""
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"

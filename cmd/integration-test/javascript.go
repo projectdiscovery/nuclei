@@ -12,6 +12,7 @@ import (
 
 var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/javascript/redis-lua-script.yaml", TestCase: &javascriptRedisLuaScript{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
@@ -63,7 +64,39 @@ func (j *javascriptRedisPassBrute) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let redis server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
+}
+
+type javascriptRedisLuaScript struct{}
+
+func (j *javascriptRedisLuaScript) Execute(filePath string) error {
+	if redisResource == nil || pool == nil {
+		// skip test as redis is not running
+		return nil
+	}
+	tempPort := redisResource.GetPort("6379/tcp")
+	finalURL := "localhost:" + tempPort
+	defer purge(redisResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			// let redis server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -95,7 +128,7 @@ func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let ssh server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -160,7 +193,7 @@ func (j *javascriptVncPassBrute) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let vnc server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
