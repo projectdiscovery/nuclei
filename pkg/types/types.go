@@ -580,6 +580,7 @@ func (options *Options) Copy() *Options {
 		DisableHTTPProbe:               options.DisableHTTPProbe,
 		PreflightPortScan:              options.PreflightPortScan,
 		PerHostRateLimit:               options.PerHostRateLimit,
+		DisableHTTPCache:               options.DisableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
