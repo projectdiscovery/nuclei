@@ -19,7 +19,9 @@ jobs:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
       - run: go install golang.org/x/vuln/cmd/govulncheck@latest
-      - run: govulncheck -scan package -format sarif ./... > $OUTPUT
+      - run: |
+          govulncheck -scan package -format sarif ./... | \
+            jq '(.runs[].tool.driver.rules[]?.properties.tags)? |= unique' > $OUTPUT
       - uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "${{ env.OUTPUT }}"
