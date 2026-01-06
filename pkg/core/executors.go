@@ -112,7 +112,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 
 					match, err := e.executeTemplateOnInput(ctx, template, t.value)
 					if err != nil {
-						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), t.value.Input, err)
+						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, t.value.Input, err)
 					}
 					results.CompareAndSwap(false, match)
 				}()
@@ -216,7 +216,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 
 			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
-				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
+				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)
