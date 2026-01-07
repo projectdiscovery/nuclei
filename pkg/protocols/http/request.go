@@ -190,7 +190,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	return multierr.Combine(spmHandler.CombinedResults()...)
 }
 
-// executeRaceRequest executes parallel requests for a template
+// executeParallelHTTP executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
