@@ -70,18 +70,23 @@ func (variables *Variable) UnmarshalJSON(data []byte) error {
 // Evaluate returns a finished map of variables based on set values
 func (variables *Variable) Evaluate(values map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{}, variables.Len())
+	combined := make(map[string]interface{}, len(values)+variables.Len())
+	generators.MergeMapsInto(combined, values)
+
 	variables.ForEach(func(key string, value interface{}) {
 		if sliceValue, ok := value.([]interface{}); ok {
 			// slices cannot be evaluated
 			result[key] = sliceValue
+			combined[key] = sliceValue
 			return
 		}
 		valueString := types.ToString(value)
-		combined := generators.MergeMaps(values, result)
-		if value, ok := combined[key]; ok {
-			valueString = types.ToString(value)
+		if existingValue, ok := combined[key]; ok {
+			valueString = types.ToString(existingValue)
 		}
-		result[key] = evaluateVariableValue(valueString, combined, result)
+		evaluated := evaluateVariableValueWithMap(valueString, combined)
+		result[key] = evaluated
+		combined[key] = evaluated
 	})
 	return result
 }
@@ -98,31 +103,48 @@ func (variables *Variable) GetAll() map[string]interface{} {
 // EvaluateWithInteractsh returns evaluation results of variables with interactsh
 func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{}, interact *interactsh.Client) (map[string]interface{}, []string) {
 	result := make(map[string]interface{}, variables.Len())
+	combined := make(map[string]interface{}, len(values)+variables.Len())
+	generators.MergeMapsInto(combined, values)
 
 	var interactURLs []string
 	variables.ForEach(func(key string, value interface{}) {
 		if sliceValue, ok := value.([]interface{}); ok {
 			// slices cannot be evaluated
 			result[key] = sliceValue
+			combined[key] = sliceValue
 			return
 		}
 		valueString := types.ToString(value)
+		if existingValue, ok := combined[key]; ok {
+			valueString = types.ToString(existingValue)
+		}
 		if strings.Contains(valueString, "interactsh-url") {
 			valueString, interactURLs = interact.Replace(valueString, interactURLs)
 		}
-		combined := generators.MergeMaps(values, result)
-		if value, ok := combined[key]; ok {
-			valueString = types.ToString(value)
-		}
-		result[key] = evaluateVariableValue(valueString, combined, result)
+		evaluated := evaluateVariableValueWithMap(valueString, combined)
+		result[key] = evaluated
+		combined[key] = evaluated
 	})
 	return result, interactURLs
 }
 
-// evaluateVariableValue expression and returns final value
-func evaluateVariableValue(expression string, values, processing map[string]interface{}) string {
+// evaluateVariableValue expression and returns final value.
+//
+// Deprecated: use evaluateVariableValueWithMap instead to avoid repeated map
+// merging overhead.
+func evaluateVariableValue(expression string, values, processing map[string]interface{}) string { // nolint
 	finalMap := generators.MergeMaps(values, processing)
 	result, err := expressions.Evaluate(expression, finalMap)
+	if err != nil {
+		return expression
+	}
+
+	return result
+}
+
+// evaluateVariableValueWithMap evaluates an expression with a pre-merged map.
+func evaluateVariableValueWithMap(expression string, combinedMap map[string]interface{}) string {
+	result, err := expressions.Evaluate(expression, combinedMap)
 	if err != nil {
 		return expression
 	}

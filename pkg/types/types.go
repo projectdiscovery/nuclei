@@ -795,6 +795,7 @@ func DefaultOptions() *Options {
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
 		ExecutionId:                xid.New().String(),
+		Logger:                     &gologger.Logger{},
 	}
 }
 

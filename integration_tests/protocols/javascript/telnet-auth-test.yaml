@@ -1,0 +1,28 @@
+id: telnet-auth-test
+
+info:
+  name: Telnet Authentication Test
+  author: pdteam
+  severity: info
+  metadata:
+    shodan-query: port:23
+  
+
+javascript:
+  - code: |
+      var m = require("nuclei/telnet");
+      var c = m.TelnetClient();
+      c.Connect(Host, Port, User, Password);
+
+    args:
+      Host: "{{Host}}"
+      Port: "23"
+      User: "dev"
+      Password: "mysecret"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "response == true"
+          - "success == true"
+        condition: and
