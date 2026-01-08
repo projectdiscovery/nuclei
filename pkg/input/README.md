@@ -25,5 +25,5 @@ Currently Nuclei Supports three input providers:
 func NewInputProvider(opts InputOptions) (InputProvider, error)
 ```
 
-This function returns a InputProvider based by appropriately selecting input provider based on the input format (i.e either list or http) and returns the provider that can handle that input format.
+This function returns a InputProvider based by appropriately selecting input provider based on the input format (i.e. either list or http) and returns the provider that can handle that input format.
 
