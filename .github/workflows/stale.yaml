@@ -13,7 +13,7 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/stale@v10
         with:
           days-before-stale: 90
           days-before-close: 7
@@ -37,5 +37,4 @@ jobs:
             it, please comment or feel free to reopen it.
           close-issue-label: "Status: Abandoned"
           close-pr-label: "Status: Abandoned"
-          exempt-issue-labels: "Status: Abandoned"
-          exempt-pr-labels: "Status: Abandoned"
+          exempt-issue-labels: "Type: Enhancement"

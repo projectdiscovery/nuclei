@@ -1,16 +1,20 @@
 package jira
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"text/template"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/pkg/errors"
 	"github.com/trivago/tgo/tcontainer"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -23,6 +27,120 @@ import (
 
 type Formatter struct {
 	util.MarkdownFormatter
+}
+
+// TemplateContext holds the data available for template evaluation
+type TemplateContext struct {
+	Severity    string
+	Name        string
+	Host        string
+	CVSSScore   string
+	CVEID       string
+	CWEID       string
+	CVSSMetrics string
+	Tags        []string
+}
+
+// buildTemplateContext creates a template context from a ResultEvent
+func buildTemplateContext(event *output.ResultEvent) *TemplateContext {
+	ctx := &TemplateContext{
+		Host: event.Host,
+		Name: event.Info.Name,
+		Tags: event.Info.Tags.ToSlice(),
+	}
+
+	// Set severity string
+	ctx.Severity = event.Info.SeverityHolder.Severity.String()
+
+	if event.Info.Classification != nil {
+		ctx.CVSSScore = fmt.Sprintf("%.2f", ptr.Safe(event.Info.Classification).CVSSScore)
+		ctx.CVEID = strings.Join(ptr.Safe(event.Info.Classification).CVEID.ToSlice(), ", ")
+		ctx.CWEID = strings.Join(ptr.Safe(event.Info.Classification).CWEID.ToSlice(), ", ")
+		ctx.CVSSMetrics = ptr.Safe(event.Info.Classification).CVSSMetrics
+	}
+
+	return ctx
+}
+
+// evaluateTemplate executes a template string with the given context
+func evaluateTemplate(templateStr string, ctx *TemplateContext) (string, error) {
+	// If no template markers found, return as-is for backward compatibility
+	if !strings.Contains(templateStr, "{{") {
+		return templateStr, nil
+	}
+
+	// Create template with useful functions for JIRA custom fields
+	funcMap := template.FuncMap{
+		"upper":     strings.ToUpper,
+		"lower":     strings.ToLower,
+		"title":     cases.Title(language.English).String,
+		"contains":  strings.Contains,
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
+		"trim":      strings.Trim,
+		"trimSpace": strings.TrimSpace,
+		"replace":   strings.ReplaceAll,
+		"split":     strings.Split,
+		"join":      strings.Join,
+	}
+
+	tmpl, err := template.New("field").Funcs(funcMap).Parse(templateStr)
+	if err != nil {
+		return templateStr, fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, ctx); err != nil {
+		return templateStr, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	return buf.String(), nil
+}
+
+// evaluateCustomFieldValue evaluates a custom field value, supporting both new template syntax and legacy $variable syntax
+func (i *Integration) evaluateCustomFieldValue(value string, templateCtx *TemplateContext, event *output.ResultEvent) (interface{}, error) {
+	// Try template evaluation first (supports {{...}} syntax)
+	if strings.Contains(value, "{{") {
+		return evaluateTemplate(value, templateCtx)
+	}
+
+	// Handle legacy $variable syntax for backward compatibility
+	if strings.HasPrefix(value, "$") {
+		variableName := strings.TrimPrefix(value, "$")
+		switch variableName {
+		case "CVSSMetrics":
+			if event.Info.Classification != nil {
+				return ptr.Safe(event.Info.Classification).CVSSMetrics, nil
+			}
+			return "", nil
+		case "CVEID":
+			if event.Info.Classification != nil {
+				return strings.Join(ptr.Safe(event.Info.Classification).CVEID.ToSlice(), ", "), nil
+			}
+			return "", nil
+		case "CWEID":
+			if event.Info.Classification != nil {
+				return strings.Join(ptr.Safe(event.Info.Classification).CWEID.ToSlice(), ", "), nil
+			}
+			return "", nil
+		case "CVSSScore":
+			if event.Info.Classification != nil {
+				return fmt.Sprintf("%.2f", ptr.Safe(event.Info.Classification).CVSSScore), nil
+			}
+			return "", nil
+		case "Host":
+			return event.Host, nil
+		case "Severity":
+			return event.Info.SeverityHolder.Severity.String(), nil
+		case "Name":
+			return event.Info.Name, nil
+		default:
+			return value, nil // return as-is if variable not found
+		}
+	}
+
+	// Return as-is if no template or variable syntax found
+	return value, nil
 }
 
 func (jiraFormatter *Formatter) MakeBold(text string) string {
@@ -66,6 +184,9 @@ type Options struct {
 	UpdateExisting bool `yaml:"update-existing" json:"update_existing"`
 	// URL is the URL of the jira server
 	URL string `yaml:"url" json:"url" validate:"required"`
+	// SiteURL is the browsable URL for the Jira instance (optional)
+	// If not provided, issue.Self will be used. Useful for OAuth where issue.Self contains api.atlassian.com
+	SiteURL string `yaml:"site-url" json:"site_url"`
 	// AccountID is the accountID of the jira user.
 	AccountID string `yaml:"account-id" json:"account_id" validate:"required"`
 	// Email is the email of the user for jira instance
@@ -155,12 +276,12 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 	if label := i.options.IssueType; label != "" {
 		labels = append(labels, label)
 	}
-	// for each custom value, take the name of the custom field and
-	// set the value of the custom field to the value specified in the
-	// configuration options
+	// Build template context for evaluating custom field templates
+	templateCtx := buildTemplateContext(event)
+
+	// Process custom fields with template evaluation support
 	customFields := tcontainer.NewMarshalMap()
 	for name, value := range i.options.CustomFields {
-		//customFields[name] = map[string]interface{}{"value": value}
 		if valueMap, ok := value.(map[interface{}]interface{}); ok {
 			// Iterate over nested map
 			for nestedName, nestedValue := range valueMap {
@@ -168,32 +289,21 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 				if !ok {
 					return nil, fmt.Errorf(`couldn't iterate on nested item "%s": %s`, nestedName, nestedValue)
 				}
-				if strings.HasPrefix(fmtNestedValue, "$") {
-					nestedValue = strings.TrimPrefix(fmtNestedValue, "$")
-					switch nestedValue {
-					case "CVSSMetrics":
-						nestedValue = ptr.Safe(event.Info.Classification).CVSSMetrics
-					case "CVEID":
-						nestedValue = ptr.Safe(event.Info.Classification).CVEID
-					case "CWEID":
-						nestedValue = ptr.Safe(event.Info.Classification).CWEID
-					case "CVSSScore":
-						nestedValue = ptr.Safe(event.Info.Classification).CVSSScore
-					case "Host":
-						nestedValue = event.Host
-					case "Severity":
-						nestedValue = event.Info.SeverityHolder
-					case "Name":
-						nestedValue = event.Info.Name
-					}
+
+				// Evaluate template or handle legacy $variable syntax
+				evaluatedValue, err := i.evaluateCustomFieldValue(fmtNestedValue, templateCtx, event)
+				if err != nil {
+					gologger.Warning().Msgf("Failed to evaluate template for field %s.%s: %v", name, nestedName, err)
+					evaluatedValue = fmtNestedValue // fallback to original value
 				}
+
 				switch nestedName {
 				case "id":
-					customFields[name] = map[string]interface{}{"id": nestedValue}
+					customFields[name] = map[string]interface{}{"id": evaluatedValue}
 				case "name":
-					customFields[name] = map[string]interface{}{"value": nestedValue}
+					customFields[name] = map[string]interface{}{"value": evaluatedValue}
 				case "freeform":
-					customFields[name] = nestedValue
+					customFields[name] = evaluatedValue
 				}
 			}
 		}
@@ -239,16 +349,26 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 		}
 		return nil, fmt.Errorf("%w => %s", err, data)
 	}
-	return getIssueResponseFromJira(createdIssue)
+	return i.getIssueResponseFromJira(createdIssue)
 }
 
-func getIssueResponseFromJira(issue *jira.Issue) (*filters.CreateIssueResponse, error) {
-	parsed, err := url.Parse(issue.Self)
-	if err != nil {
-		return nil, err
+func (i *Integration) getIssueResponseFromJira(issue *jira.Issue) (*filters.CreateIssueResponse, error) {
+	var issueURL string
+
+	// Use SiteURL if provided, otherwise fall back to original issue.Self logic
+	if i.options.SiteURL != "" {
+		// Use the configured site URL for browsable links (useful for OAuth)
+		baseURL := strings.TrimRight(i.options.SiteURL, "/")
+		issueURL = fmt.Sprintf("%s/browse/%s", baseURL, issue.Key)
+	} else {
+		// Fall back to original logic using issue.Self
+		parsed, err := url.Parse(issue.Self)
+		if err != nil {
+			return nil, err
+		}
+		parsed.Path = fmt.Sprintf("/browse/%s", issue.Key)
+		issueURL = parsed.String()
 	}
-	parsed.Path = fmt.Sprintf("/browse/%s", issue.Key)
-	issueURL := parsed.String()
 
 	return &filters.CreateIssueResponse{
 		IssueID:  issue.ID,
@@ -269,7 +389,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 			if err != nil {
 				return nil, errors.Wrap(err, "could not add comment to existing issue")
 			}
-			return getIssueResponseFromJira(&issue)
+			return i.getIssueResponseFromJira(&issue)
 		}
 	}
 	resp, err := i.CreateNewIssue(event)
@@ -330,11 +450,55 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		jql = fmt.Sprintf("%s AND status != \"%s\"", jql, i.options.StatusNot)
 	}
 
-	searchOptions := &jira.SearchOptions{
-		MaxResults: 1, // if any issue exists, then we won't create a new one
+	// Hotfix for Jira Cloud: use Enhanced Search API (v3) to avoid deprecated v2 path
+	if i.options.Cloud {
+		params := url.Values{}
+		params.Set("jql", jql)
+		params.Set("maxResults", "1")
+		params.Set("fields", "id,key")
+
+		req, err := i.jira.NewRequest("GET", "/rest/api/3/search/jql"+"?"+params.Encode(), nil)
+		if err != nil {
+			return jira.Issue{}, err
+		}
+
+		var searchResult struct {
+			Issues []struct {
+				ID  string `json:"id"`
+				Key string `json:"key"`
+			} `json:"issues"`
+			IsLast        bool   `json:"isLast"`
+			NextPageToken string `json:"nextPageToken"`
+		}
+
+		resp, err := i.jira.Do(req, &searchResult)
+		if err != nil {
+			var data string
+			if resp != nil && resp.Body != nil {
+				d, _ := io.ReadAll(resp.Body)
+				data = string(d)
+			}
+			return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
+		}
+
+		if len(searchResult.Issues) == 0 {
+			return jira.Issue{}, nil
+		}
+		first := searchResult.Issues[0]
+		base := strings.TrimRight(i.options.URL, "/")
+		return jira.Issue{
+			ID:   first.ID,
+			Key:  first.Key,
+			Self: fmt.Sprintf("%s/rest/api/3/issue/%s", base, first.ID),
+		}, nil
 	}
 
-	chunk, resp, err := i.jira.Issue.Search(jql, searchOptions)
+	searchOptions := &jira.SearchOptionsV2{
+		MaxResults: 1, // if any issue exists, then we won't create a new one
+		Fields:     []string{"summary", "description", "issuetype", "status", "priority", "project"},
+	}
+
+	issues, resp, err := i.jira.Issue.SearchV2JQL(jql, searchOptions)
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
@@ -348,10 +512,10 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 	case 0:
 		return jira.Issue{}, nil
 	case 1:
-		return chunk[0], nil
+		return issues[0], nil
 	default:
-		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, chunk[0].ID)
-		return chunk[0], nil
+		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, issues[0].ID)
+		return issues[0], nil
 	}
 }
 

@@ -21,11 +21,19 @@ import (
 type Parser struct {
 	ShouldValidate bool
 	NoStrictSyntax bool
-	// this cache can be copied safely between ephemeral instances
+
+	// parsedTemplatesCache stores lightweight parsed template structures
+	// (without raw bytes).
+	// Used for validation and filtering. This cache can be copied safely
+	// between ephemeral instances.
 	parsedTemplatesCache *Cache
-	// this cache might potentially contain references to heap objects
-	// it's recommended to always empty it at the end of execution
+
+	// compiledTemplatesCache stores fully compiled templates with all protocol
+	// requests.
+	// This cache contains references to heap objects and should be purged when
+	// no longer needed.
 	compiledTemplatesCache *Cache
+
 	sync.Mutex
 }
 
@@ -179,7 +187,8 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 
-	p.parsedTemplatesCache.Store(templatePath, template, nil, nil) // don't keep raw bytes to save memory
+	p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+
 	return template, nil
 }
 

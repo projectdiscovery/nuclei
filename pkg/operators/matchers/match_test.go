@@ -84,7 +84,7 @@ func TestMatcher_MatchDSL(t *testing.T) {
 
 	values := []string{"PING", "pong"}
 
-	for value := range values {
+	for _, value := range values {
 		isMatched := m.MatchDSL(map[string]interface{}{"body": value, "VARIABLE": value})
 		require.True(t, isMatched)
 	}
@@ -208,4 +208,67 @@ func TestMatcher_MatchXPath_XML(t *testing.T) {
 	// invalid xml
 	isMatched = m.MatchXPath("<h1> not right <q id=2/>notvalid")
 	require.False(t, isMatched, "Invalid xpath did not return false")
+}
+
+func TestMatchRegex_CaseInsensitivePrefixSkip(t *testing.T) {
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "or", Regex: []string{"(?i)abc"}}
+	err := m.CompileMatchers()
+	require.NoError(t, err)
+	ok, got := m.MatchRegex("zzz AbC yyy")
+	require.True(t, ok)
+	require.NotEmpty(t, got)
+}
+
+func TestMatchStatusCodeAndSize(t *testing.T) {
+	mStatus := &Matcher{Status: []int{200, 302}}
+	require.True(t, mStatus.MatchStatusCode(200))
+	require.True(t, mStatus.MatchStatusCode(302))
+	require.False(t, mStatus.MatchStatusCode(404))
+
+	mSize := &Matcher{Size: []int{5, 10}}
+	require.True(t, mSize.MatchSize(5))
+	require.False(t, mSize.MatchSize(7))
+}
+
+func TestMatchBinary_AND_OR(t *testing.T) {
+	// AND should fail if any binary not present
+	mAnd := &Matcher{Type: MatcherTypeHolder{MatcherType: BinaryMatcher}, Condition: "and", Binary: []string{"50494e47", "414141"}} // "PING", "AAA"
+	require.NoError(t, mAnd.CompileMatchers())
+	ok, _ := mAnd.MatchBinary("PING")
+	require.False(t, ok)
+	// OR should succeed if any present
+	mOr := &Matcher{Type: MatcherTypeHolder{MatcherType: BinaryMatcher}, Condition: "or", Binary: []string{"414141", "50494e47"}} // "AAA", "PING"
+	require.NoError(t, mOr.CompileMatchers())
+	ok, got := mOr.MatchBinary("xxPINGyy")
+	require.True(t, ok)
+	require.NotEmpty(t, got)
+}
+
+func TestMatchRegex_LiteralPrefixShortCircuit(t *testing.T) {
+	// AND: first regex has literal prefix "abc"; corpus lacks it => early false
+	mAnd := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "and", Regex: []string{"abc[0-9]*", "[0-9]{2}"}}
+	require.NoError(t, mAnd.CompileMatchers())
+	ok, matches := mAnd.MatchRegex("zzz 12 yyy")
+	require.False(t, ok)
+	require.Empty(t, matches)
+
+	// OR: first regex skipped due to missing prefix, second matches => true
+	mOr := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Condition: "or", Regex: []string{"abc[0-9]*", "[0-9]{2}"}}
+	require.NoError(t, mOr.CompileMatchers())
+	ok, matches = mOr.MatchRegex("zzz 12 yyy")
+	require.True(t, ok)
+	require.Equal(t, []string{"12"}, matches)
+}
+
+func TestMatcher_MatchDSL_ErrorHandling(t *testing.T) {
+	// First expression errors (division by zero), second is true
+	bad, err := govaluate.NewEvaluableExpression("1 / 0")
+	require.NoError(t, err)
+	good, err := govaluate.NewEvaluableExpression("1 == 1")
+	require.NoError(t, err)
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, Condition: "or", dslCompiled: []*govaluate.EvaluableExpression{bad, good}}
+	require.NoError(t, m.CompileMatchers())
+	ok := m.MatchDSL(map[string]interface{}{})
+	require.True(t, ok)
 }

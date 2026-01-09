@@ -214,6 +214,10 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
 	retryableHttpOptions.RetryMax = options.Retries
+	retryableHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
+	if configuration.ResponseHeaderTimeout > 0 && configuration.ResponseHeaderTimeout > retryableHttpOptions.Timeout {
+		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
+	}
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
 
@@ -244,6 +248,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS10,
+		ClientSessionCache: tls.NewLRUClientSessionCache(1024),
 	}
 
 	if options.SNI != "" {
@@ -261,6 +266,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	if configuration.ResponseHeaderTimeout != 0 {
 		responseHeaderTimeout = configuration.ResponseHeaderTimeout
 	}
+
+	if responseHeaderTimeout < retryableHttpOptions.Timeout {
+		responseHeaderTimeout = retryableHttpOptions.Timeout
+	}
+
 	if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
 		responseHeaderTimeout = configuration.Connection.CustomMaxTimeout
 	}

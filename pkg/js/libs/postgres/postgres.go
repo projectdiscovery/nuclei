@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
@@ -82,7 +82,7 @@ func isPostgres(executionId string, host string, port int) (bool, error) {
 // const client = new postgres.PGClient;
 // const connected = client.Connect('acme.com', 5432, 'username', 'password');
 // ```
-func (c *PGClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
+func (c *PGClient) Connect(ctx context.Context, host string, port int, username string, password string) (bool, error) {
 	ok, err := c.IsPostgres(ctx, host, port)
 	if err != nil {
 		return false, err
@@ -104,7 +104,7 @@ func (c *PGClient) Connect(ctx context.Context, host string, port int, username,
 // const result = client.ExecuteQuery('acme.com', 5432, 'username', 'password', 'dbname', 'select * from users');
 // log(to_json(result));
 // ```
-func (c *PGClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+func (c *PGClient) ExecuteQuery(ctx context.Context, host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
 	ok, err := c.IsPostgres(ctx, host, port)
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func executeQuery(executionId string, host string, port int, username string, pa
 // const client = new postgres.PGClient;
 // const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
 // ```
-func (c *PGClient) ConnectWithDB(ctx context.Context, host string, port int, username, password, dbName string) (bool, error) {
+func (c *PGClient) ConnectWithDB(ctx context.Context, host string, port int, username string, password string, dbName string) (bool, error) {
 	ok, err := c.IsPostgres(ctx, host, port)
 	if err != nil {
 		return false, err
@@ -197,16 +197,17 @@ func connect(executionId string, host string, port int, username string, passwor
 		User:     username,
 		Password: password,
 		Database: dbName,
-		Dialer: func(network, addr string) (net.Conn, error) {
-			return dialer.Fastdialer.Dial(context.Background(), network, addr)
+		Dialer: func(dialCtx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Fastdialer.Dial(dialCtx, network, addr)
 		},
 		IdleCheckFrequency: -1,
-	}).WithContext(ctx).WithTimeout(10 * time.Second)
+	}).WithTimeout(10 * time.Second)
+
 	defer func() {
 		_ = db.Close()
 	}()
 
-	_, err := db.Exec("select 1")
+	_, err := db.ExecContext(ctx, "select 1")
 	if err != nil {
 		switch true {
 		case strings.Contains(err.Error(), "connect: connection refused"):
