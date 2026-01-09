@@ -9,7 +9,7 @@ import (
 )
 
 func memoizedisRDP(executionId string, host string, port int) (IsRDPResponse, error) {
-	hash := "isRDP" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isRDP" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isRDP(executionId, host, port)
@@ -25,7 +25,7 @@ func memoizedisRDP(executionId string, host string, port int) (IsRDPResponse, er
 }
 
 func memoizedcheckRDPAuth(executionId string, host string, port int) (CheckRDPAuthResponse, error) {
-	hash := "checkRDPAuth" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "checkRDPAuth" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return checkRDPAuth(executionId, host, port)
@@ -38,4 +38,20 @@ func memoizedcheckRDPAuth(executionId string, host string, port int) (CheckRDPAu
 	}
 
 	return CheckRDPAuthResponse{}, errors.New("could not convert cached result")
+}
+
+func memoizedcheckRDPEncryption(executionId string, host string, port int) (RDPEncryptionResponse, error) {
+	hash := "checkRDPEncryption" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+
+	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
+		return checkRDPEncryption(executionId, host, port)
+	})
+	if err != nil {
+		return RDPEncryptionResponse{}, err
+	}
+	if value, ok := v.(RDPEncryptionResponse); ok {
+		return value, nil
+	}
+
+	return RDPEncryptionResponse{}, errors.New("could not convert cached result")
 }

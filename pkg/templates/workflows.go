@@ -92,12 +92,19 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			continue
 		}
 
-		if len(template.RequestsCode) > 0 {
+		if template.HasCodeRequest() {
 			if !options.Options.EnableCodeTemplates {
-				gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
+				// NOTE(dwisiswant0): It is safe to continue here during
+				// validation mode, because the template has already been parsed
+				// and syntax-validated by templates.Parse() above. It only
+				// prevents adding to workflow's executer list and suppresses
+				// warning messages.
+				if !options.Options.Validate {
+					gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
+				}
 				continue
 			} else if !template.Verified {
-				// unverfied code templates are not allowed in workflows
+				// unverified code templates are not allowed in workflows
 				gologger.Warning().Msgf("skipping unverified code template from workflow: %v\n", path)
 				continue
 			}

@@ -28,7 +28,6 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
-	readerutil "github.com/projectdiscovery/utils/reader"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -92,9 +91,8 @@ type generatedRequest struct {
 
 // setReqURLPattern sets the url request pattern for the generated request
 func (gr *generatedRequest) setReqURLPattern(reqURLPattern string) {
-	data := strings.Split(reqURLPattern, "\n")
-	if len(data) > 1 {
-		reqURLPattern = strings.TrimSpace(data[0])
+	if idx := strings.IndexByte(reqURLPattern, '\n'); idx >= 0 {
+		reqURLPattern = strings.TrimSpace(reqURLPattern[:idx])
 		// this is raw request (if it has 3 parts after strings.Fields then its valid only use 2nd part)
 		parts := strings.Fields(reqURLPattern)
 		if len(parts) >= 3 {
@@ -211,7 +209,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
-	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(defaultReqVars, optionVars), r.options.Interactsh)
+	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, defaultReqVars, optionVars), r.options.Interactsh)
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
@@ -467,11 +465,9 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		if err != nil {
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
-		bodyReader, err := readerutil.NewReusableReadCloser([]byte(body))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create reusable reader for request body")
+		if err := req.SetBodyString(body); err != nil {
+			return nil, errors.Wrap(err, "failed to set request body")
 		}
-		req.Body = bodyReader
 	}
 	if !r.request.Unsafe {
 		userAgent := useragent.PickRandom()

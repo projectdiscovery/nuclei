@@ -15,12 +15,12 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"IsOracle": lib_oracle.IsOracle,
 
 			// Var and consts
 
 			// Objects / Classes
 			"IsOracleResponse": gojs.GetClassConstructor[lib_oracle.IsOracleResponse](&lib_oracle.IsOracleResponse{}),
+			"OracleClient":     gojs.GetClassConstructor[lib_oracle.OracleClient](&lib_oracle.OracleClient{}),
 		},
 	).Register()
 }

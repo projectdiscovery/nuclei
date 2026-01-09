@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
@@ -174,10 +175,16 @@ func initDialers(options *types.Options) error {
 
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
+	httpClientPool := mapsutil.NewSyncLockMap(
+		// evicts inactive httpclientpool entries after 24 hours
+		// of inactivity (long running instances)
+		mapsutil.WithEviction[string, *retryablehttp.Client](24*time.Hour, 12*time.Hour),
+	)
+
 	dialersInstance := &Dialers{
 		Fastdialer:             dialer,
 		NetworkPolicy:          networkPolicy,
-		HTTPClientPool:         mapsutil.NewSyncLockMap[string, *retryablehttp.Client](),
+		HTTPClientPool:         httpClientPool,
 		LocalFileAccessAllowed: options.AllowLocalFileAccess,
 	}
 
@@ -193,8 +200,14 @@ func initDialers(options *types.Options) error {
 			addr += ":3306"
 		}
 
-		executionId := ctx.Value("executionId").(string)
+		var executionId string
+		if val := ctx.Value("executionId"); val != nil {
+			executionId = val.(string)
+		}
 		dialer := GetDialersWithId(executionId)
+		if dialer == nil {
+			return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+		}
 		return dialer.Fastdialer.Dial(ctx, "tcp", addr)
 	})
 

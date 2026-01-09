@@ -55,7 +55,7 @@ type Secret struct {
 	Type            string   `json:"type" yaml:"type"`
 	Domains         []string `json:"domains" yaml:"domains"`
 	DomainsRegex    []string `json:"domains-regex" yaml:"domains-regex"`
-	Headers         []KV     `json:"headers" yaml:"headers"`
+	Headers         []KV     `json:"headers" yaml:"headers"` // Headers preserve exact casing (useful for case-sensitive APIs)
 	Cookies         []Cookie `json:"cookies" yaml:"cookies"`
 	Params          []KV     `json:"params" yaml:"params"`
 	Username        string   `json:"username" yaml:"username"` // can be either email or username
@@ -148,7 +148,7 @@ func (s *Secret) Validate() error {
 }
 
 type KV struct {
-	Key   string `json:"key" yaml:"key"`
+	Key   string `json:"key" yaml:"key"` // Header key (preserves exact casing)
 	Value string `json:"value" yaml:"value"`
 }
 

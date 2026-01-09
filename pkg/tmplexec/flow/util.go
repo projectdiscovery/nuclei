@@ -5,7 +5,7 @@ import "github.com/projectdiscovery/nuclei/v3/pkg/operators"
 // Checks if template has matchers
 func hasMatchers(all []*operators.Operators) bool {
 	for _, operator := range all {
-		if len(operator.Matchers) > 0 {
+		if operator != nil && len(operator.Matchers) > 0 {
 			return true
 		}
 	}
