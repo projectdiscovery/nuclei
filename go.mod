@@ -37,7 +37,7 @@ require (
 	github.com/spf13/cast v1.9.2
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/valyala/fasttemplate v1.2.2
-	github.com/weppos/publicsuffix-go v0.50.1
+	github.com/weppos/publicsuffix-go v0.50.3-0.20260104170930-90713dec78f2
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.48.0
 	golang.org/x/oauth2 v0.30.0
@@ -110,10 +110,9 @@ require (
 	github.com/projectdiscovery/tlsx v1.2.2
 	github.com/projectdiscovery/uncover v1.2.0
 	github.com/projectdiscovery/useragent v0.0.106
-	github.com/projectdiscovery/utils v0.8.0
+	github.com/projectdiscovery/utils v0.8.1-0.20260112120846-c41994e3635c
 	github.com/projectdiscovery/wappalyzergo v0.2.61
 	github.com/redis/go-redis/v9 v9.11.0
-	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
 	github.com/sijms/go-ora/v2 v2.9.0
 	github.com/stretchr/testify v1.11.1
@@ -403,7 +402,7 @@ require (
 	github.com/ysmood/leakless v0.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
-	github.com/zmap/zcrypto v0.0.0-20240512203510-0fef58d9a9db // indirect
+	github.com/zmap/zcrypto v0.0.0-20240803002437-3a861682ac77 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
