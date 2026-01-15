@@ -214,7 +214,7 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 		if !HideUpdateChangesTable {
 			// print summary table
 			gologger.Print().Msgf("\nNuclei Templates %s Changelog\n", ghrd.Latest.GetTagName())
-			gologger.DefaultLogger.Print().Msg(results.String())
+			gologger.Print().Msg(results.String())
 		}
 	} else {
 		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
