@@ -20,7 +20,26 @@ When creating a PR, please follow these guidelines:
 
 ## Code Style
 
-Please adhere to the existing coding style for consistency. 
+Please adhere to the existing coding style for consistency.
+
+## Development
+
+To ensure your changes work as expected and strictly adhere to the project's standards, please run the following commands before submitting a PR:
+
+- **Run tests**:
+  ```sh
+  make test
+  ```
+
+- **Run linters/vet**:
+  ```sh
+  make vet
+  ```
+
+- **Build the project**:
+  ```sh
+  make build
+  ``` 
 
 ## Questions
 

@@ -18,6 +18,7 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	unitutils "github.com/projectdiscovery/utils/unit"
+	"github.com/rs/xid"
 )
 
 const DefaultTemplateLoadingConcurrency = 50
@@ -177,6 +178,8 @@ type Options struct {
 	ForceAttemptHTTP2 bool
 	// StatsJSON writes stats output in JSON format
 	StatsJSON bool
+	// CDPEndpoint specifies the endpoint for Chrome DevTools Protocol (CDP)
+	CDPEndpoint string
 	// Headless specifies whether to allow headless mode templates
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
@@ -793,6 +796,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
 	}
 }

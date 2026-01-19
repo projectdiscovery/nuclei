@@ -15,12 +15,14 @@ var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
+	{Path: "protocols/javascript/rsync-test.yaml", TestCase: &javascriptRsyncTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/oracle-auth-test.yaml", TestCase: &javascriptOracleAuthTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}},
 	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/mysql-connect.yaml", TestCase: &javascriptMySQLConnect{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
+	{Path: "protocols/javascript/telnet-auth-test.yaml", TestCase: &javascriptTelnetAuthTest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 }
 
 var (
@@ -28,8 +30,10 @@ var (
 	sshResource      *dockertest.Resource
 	oracleResource   *dockertest.Resource
 	vncResource      *dockertest.Resource
+	telnetResource   *dockertest.Resource
 	postgresResource *dockertest.Resource
 	mysqlResource    *dockertest.Resource
+	rsyncResource    *dockertest.Resource
 	pool             *dockertest.Pool
 	defaultRetry     = 3
 )
@@ -124,7 +128,7 @@ func (j *javascriptOracleAuthTest) Execute(filePath string) error {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			//let ssh server start
+			// let oracle server start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -256,6 +260,70 @@ func (j *javascriptNoPortArgs) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 1)
+}
+
+type javascriptRsyncTest struct{}
+
+func (j *javascriptRsyncTest) Execute(filePath string) error {
+	if rsyncResource == nil || pool == nil {
+		// skip test as rsync is not running
+		return nil
+	}
+	tempPort := rsyncResource.GetPort("873/tcp")
+	finalURL := "localhost:" + tempPort
+	defer purge(rsyncResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let rsync server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
+}
+
+type javascriptTelnetAuthTest struct{}
+
+func (j *javascriptTelnetAuthTest) Execute(filePath string) error {
+	if telnetResource == nil || pool == nil {
+		// skip test as telnet is not running
+		return nil
+	}
+	tempPort := telnetResource.GetPort("23/tcp")
+	finalURL := "localhost:" + tempPort
+	defer purge(telnetResource)
+	errs := []error{}
+	for i := 0; i < defaultRetry; i++ {
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let telnet server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if err := expectResultsCount(results, 1); err == nil {
+			return nil
+		} else {
+			errs = append(errs, err)
+		}
+	}
+	return multierr.Combine(errs...)
 }
 
 // purge any given resource if it is not nil
@@ -396,5 +464,39 @@ func init() {
 	// by default expire after 30 sec
 	if err := mysqlResource.Expire(30); err != nil {
 		log.Printf("Could not expire mysql resource: %s", err)
+	}
+
+	// setup a temporary rsync server
+	rsyncResource, err = pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "alpine",
+		Tag:        "latest",
+		Cmd:        []string{"sh", "-c", "apk add --no-cache rsync shadow && useradd -m rsyncuser && echo 'rsyncuser:mysecret' | chpasswd && echo 'rsyncuser:MySecret123' > /etc/rsyncd.secrets && chmod 600 /etc/rsyncd.secrets && echo -e '[data]\\n  path = /data\\n  comment = Local Rsync Share\\n  read only = false\\n  auth users = rsyncuser\\n  secrets file = /etc/rsyncd.secrets' > /etc/rsyncd.conf && mkdir -p /data && exec rsync --daemon --no-detach --config=/etc/rsyncd.conf"},
+		Platform:   "linux/amd64",
+	})
+	if err != nil {
+		log.Printf("Could not start Rsync resource: %s", err)
+		return
+	}
+	// by default expire after 30 sec
+	if err := rsyncResource.Expire(30); err != nil {
+		log.Printf("Could not expire Rsync resource: %s", err)
+	}
+
+	// setup a temporary telnet server
+	// username: dev
+	// password: mysecret
+	telnetResource, err = pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "alpine",
+		Tag:        "latest",
+		Cmd:        []string{"sh", "-c", "apk add --no-cache busybox-extras shadow && useradd -m dev && echo 'dev:mysecret' | chpasswd && exec /usr/sbin/telnetd -F -p 23 -l /bin/login"},
+		Platform:   "linux/amd64",
+	})
+	if err != nil {
+		log.Printf("Could not start Telnet resource: %s", err)
+		return
+	}
+	// by default expire after 30 sec
+	if err := telnetResource.Expire(30); err != nil {
+		log.Printf("Could not expire Telnet resource: %s", err)
 	}
 }

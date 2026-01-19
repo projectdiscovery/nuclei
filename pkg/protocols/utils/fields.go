@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"net"
+	"strings"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	iputil "github.com/projectdiscovery/utils/ip"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -28,17 +31,21 @@ func GetJsonFieldsFromURL(URL string) JsonFields {
 		URL:    parsed.String(),
 		Path:   parsed.Path,
 	}
+
+	host := parsed.Host
+	host, fields.Port = extractHostPort(host, fields.Port)
+
 	if fields.Port == "" {
 		fields.Port = "80"
 		if fields.Scheme == "https" {
 			fields.Port = "443"
 		}
 	}
-	if iputil.IsIP(parsed.Host) {
-		fields.Ip = parsed.Host
+	if iputil.IsIP(host) {
+		fields.Ip = host
 	}
 
-	fields.Host = parsed.Host
+	fields.Host = host
 	return fields
 }
 
@@ -56,16 +63,45 @@ func GetJsonFieldsFromMetaInput(ctx *contextargs.MetaInput) JsonFields {
 	fields.Scheme = parsed.Scheme
 	fields.URL = parsed.String()
 	fields.Path = parsed.Path
+
+	host := parsed.Host
+	host, fields.Port = extractHostPort(host, fields.Port)
+
 	if fields.Port == "" {
 		fields.Port = "80"
 		if fields.Scheme == "https" {
 			fields.Port = "443"
 		}
 	}
-	if iputil.IsIP(parsed.Host) {
-		fields.Ip = parsed.Host
+	if iputil.IsIP(host) {
+		fields.Ip = host
 	}
 
-	fields.Host = parsed.Host
+	fields.Host = host
 	return fields
+}
+
+func extractHostPort(host, port string) (string, string) {
+	if !strings.Contains(host, ":") {
+		return host, port
+	}
+	if strings.HasPrefix(host, "[") {
+		if idx := strings.Index(host, "]:"); idx != -1 {
+			if port == "" {
+				port = host[idx+2:]
+			}
+			return host[1:idx], port
+		}
+		if strings.HasSuffix(host, "]") {
+			return host[1 : len(host)-1], port
+		}
+		return host, port
+	}
+	if h, p, err := net.SplitHostPort(host); err == nil {
+		if port == "" {
+			port = p
+		}
+		return h, port
+	}
+	return host, port
 }
