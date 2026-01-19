@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -182,6 +183,26 @@ func Test_ParseWorkflow(t *testing.T) {
 	require.Equal(t, expectedTemplate.Path, got.Path)
 	require.Equal(t, expectedTemplate.Workflow.Workflows[0].Template, got.Workflow.Workflows[0].Template)
 	require.Equal(t, len(expectedTemplate.Workflows), len(got.Workflows))
+}
+
+func Test_ParseWorkflowWithGlobalMatchers(t *testing.T) {
+	setup()
+	previousGlobalMatchers := executerOpts.Options.EnableGlobalMatchersTemplates
+	executerOpts.Options.EnableGlobalMatchersTemplates = true
+	defer func() {
+		executerOpts.Options.EnableGlobalMatchersTemplates = previousGlobalMatchers
+		executerOpts.GlobalMatchers = nil
+	}()
+	executerOpts.GlobalMatchers = globalmatchers.New()
+
+	filePath := "tests/workflow-global-matchers.yaml"
+	got, err := templates.Parse(filePath, nil, executerOpts)
+	require.NoError(t, err, "could not parse workflow template")
+	require.NotNil(t, got, "workflow template should not be nil")
+	require.NotNil(t, got.CompiledWorkflow, "compiled workflow should not be nil")
+	require.Len(t, got.CompiledWorkflow.Workflows, 2)
+	require.Len(t, got.CompiledWorkflow.Workflows[0].Executers, 1)
+	require.Len(t, got.CompiledWorkflow.Workflows[1].Executers, 0)
 }
 
 func Test_WrongTemplate(t *testing.T) {
