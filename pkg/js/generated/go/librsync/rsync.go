@@ -21,6 +21,7 @@ func init() {
 
 			// Objects / Classes
 			"IsRsyncResponse": gojs.GetClassConstructor[lib_rsync.IsRsyncResponse](&lib_rsync.IsRsyncResponse{}),
+			"RsyncClient":     gojs.GetClassConstructor[lib_rsync.RsyncClient](&lib_rsync.RsyncClient{}),
 		},
 	).Register()
 }
