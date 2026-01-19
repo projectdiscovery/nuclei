@@ -77,6 +77,9 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
 			continue
 		}
+		if template == nil {
+			continue
+		}
 		if template.Executer == nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
