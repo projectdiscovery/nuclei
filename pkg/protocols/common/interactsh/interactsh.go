@@ -200,6 +200,14 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	} else {
 		data.Event.SetOperatorResult(result)
 	}
+	// ensure payload values are preserved for interactsh-only matches
+	data.Event.Lock()
+	if data.Event.OperatorsResult != nil && len(data.Event.OperatorsResult.PayloadValues) == 0 {
+		if payloads, ok := data.Event.InternalEvent["payloads"].(map[string]interface{}); ok {
+			data.Event.OperatorsResult.PayloadValues = payloads
+		}
+	}
+	data.Event.Unlock()
 
 	data.Event.Lock()
 	data.Event.Results = data.MakeResultFunc(data.Event)
