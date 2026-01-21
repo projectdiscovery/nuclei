@@ -580,6 +580,19 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 
 	// check if the template is verified
 	// only valid templates can be verified or signed
+	if options.TemplateVerificationCallback != nil && options.TemplatePath != "" {
+		if cached := options.TemplateVerificationCallback(options.TemplatePath); cached != nil {
+			template.Verified = cached.Verified
+			template.TemplateVerifier = cached.Verifier
+			options.TemplateVerifier = cached.Verifier
+			//nolint
+			if !(template.Verified && template.TemplateVerifier == "projectdiscovery/nuclei-templates") {
+				template.Options.RawTemplate = data
+			}
+			return template, nil
+		}
+	}
+
 	var verifier *signer.TemplateSigner
 	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
@@ -592,10 +605,12 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 		}
 	}
 	options.TemplateVerifier = template.TemplateVerifier
+
 	//nolint
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
 		template.Options.RawTemplate = data
 	}
+
 	return template, nil
 }
 
