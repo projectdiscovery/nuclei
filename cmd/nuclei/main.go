@@ -196,7 +196,7 @@ func main() {
 
 	// Setup filename for graceful exits
 	resumeFileName := types.DefaultResumeFilePath()
-	if options.Resume == "" {
+	if options.Resume != "" {
 		resumeFileName = options.Resume
 	}
 	c := make(chan os.Signal, 1)
