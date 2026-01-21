@@ -163,6 +163,30 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	return expectResultsCount(results, 1, 2)
 }
 
+type httpInteractshWithPayloadsRequest struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpInteractshWithPayloadsRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.Header.Get("url")
+		if value != "" {
+			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
+				_ = resp.Body.Close()
+			}
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1, 3)
+}
+
 type httpDefaultMatcherCondition struct{}
 
 // Execute executes a test case and returns an error if occurred
