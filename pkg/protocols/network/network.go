@@ -179,11 +179,20 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.addresses = append(request.addresses, addressKV{address: address, tls: shouldUseTLS})
 	}
 	// Pre-compile any input dsl functions before executing the request.
+	// Build a map with template variables and -var flag values for pre-compilation
+	preCompileVars := request.options.Variables.GetAll()
+	// Merge in -var flag values
+	if request.options.Options != nil {
+		generators.MergeMapsInto(preCompileVars, request.options.Options.Vars.AsMap())
+	}
+	// Also merge in constants
+	generators.MergeMapsInto(preCompileVars, request.options.Constants)
+
 	for _, input := range request.Inputs {
 		if input.Type.String() != "" {
 			continue
 		}
-		if compiled, evalErr := expressions.Evaluate(input.Data, map[string]interface{}{}); evalErr == nil {
+		if compiled, evalErr := expressions.Evaluate(input.Data, preCompileVars); evalErr == nil {
 			input.Data = compiled
 		}
 	}
