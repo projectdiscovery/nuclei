@@ -57,6 +57,12 @@ type Executer interface {
 	ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error)
 }
 
+// TemplateVerification holds cached verification information for a template.
+type TemplateVerification struct {
+	Verified bool
+	Verifier string
+}
+
 // ExecutorOptions contains the configuration options for executer clients
 type ExecutorOptions struct {
 	// TemplateID is the ID of the template for the request
@@ -67,6 +73,9 @@ type ExecutorOptions struct {
 	TemplateInfo model.Info
 	// TemplateVerifier is the verifier for the template
 	TemplateVerifier string
+	// TemplateVerificationCallback returns cached verification info for a template path.
+	// If it returns nil, verification should be computed normally.
+	TemplateVerificationCallback func(templatePath string) *TemplateVerification
 	// RawTemplate is the raw template for the request
 	RawTemplate []byte
 	// Output is a writer interface for writing output events from executer.
@@ -266,6 +275,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		TemplatePath:        e.TemplatePath,
 		TemplateInfo:        e.TemplateInfo,
 		TemplateVerifier:    e.TemplateVerifier,
+		TemplateVerificationCallback: e.TemplateVerificationCallback,
 		RawTemplate:         e.RawTemplate,
 		Output:              e.Output,
 		Options:             e.Options,
