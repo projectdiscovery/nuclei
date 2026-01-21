@@ -172,6 +172,9 @@ func New(cfg *Config) (*Store, error) {
 	// Initialize metadata index and filter (load from disk & cache for reuse)
 	store.metadataIndex = store.loadTemplatesIndex()
 	store.indexFilter = store.buildIndexFilter()
+	if cfg.ExecutorOptions != nil {
+		cfg.ExecutorOptions.TemplateVerificationCallback = store.getTemplateVerification
+	}
 	store.saveMetadataIndexOnce = sync.OnceFunc(func() {
 		if store.metadataIndex == nil {
 			return
@@ -244,6 +247,22 @@ func New(cfg *Config) (*Store, error) {
 	}
 
 	return store, nil
+}
+
+func (store *Store) getTemplateVerification(templatePath string) *protocols.TemplateVerification {
+	if store.metadataIndex == nil {
+		return nil
+	}
+
+	metadata, found := store.metadataIndex.Get(templatePath)
+	if !found {
+		return nil
+	}
+
+	return &protocols.TemplateVerification{
+		Verified: metadata.Verified,
+		Verifier: metadata.TemplateVerifier,
+	}
 }
 
 func handleTemplatesEditorURLs(input string) string {
