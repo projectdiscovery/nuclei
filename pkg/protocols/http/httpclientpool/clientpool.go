@@ -210,7 +210,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	if configuration.ResponseHeaderTimeout > 0 && configuration.ResponseHeaderTimeout > retryableHttpOptions.Timeout {
 		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
 	}
-	if !options.DisableHTTPCache && !configuration.DisableHTTPCache {
+	if options.EnableHTTPCache && !configuration.DisableHTTPCache {
 		retryableHttpOptions.WrapTransport = httpcache.NewTransportWrapper()
 	}
 
