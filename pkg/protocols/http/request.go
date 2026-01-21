@@ -242,8 +242,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// bounded worker-pool to avoid spawning one goroutine per payload
 	type task struct {
-		req          *generatedRequest
-		updatedInput *contextargs.Context
+		req                *generatedRequest
+		updatedInput       *contextargs.Context
+		hasInteractMarkers bool
 	}
 
 	var workersWg sync.WaitGroup
@@ -268,11 +269,27 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					continue
 				}
 				request.options.RateLimitTake()
+				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
 					continue
-				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), false, wrappedCallback, 0):
+				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
+						requestData := &interactsh.RequestData{
+							MakeResultFunc: request.MakeResultEvent,
+							Event:          event,
+							Operators:      request.CompiledOperators,
+							MatchFunc:      request.Match,
+							ExtractFunc:    request.Extract,
+						}
+						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
+						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
+						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+					}
+					wrappedCallback(event)
+				}, 0):
 					spmHandler.Release()
 				}
 			}
@@ -330,6 +347,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			workersWg.Wait()
 			return err
 		}
+		hasInteractMarkers := interactsh.HasMarkers(inputData) || len(generatedHttpRequest.interactshURLs) > 0
 		if input.MetaInput.Input == "" {
 			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
@@ -350,7 +368,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return nil
 			}
 			return multierr.Combine(spmHandler.CombinedResults()...)
-		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput}:
+		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
 		}
 		request.options.Progress.IncrementRequests()
 	}
@@ -1047,6 +1065,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
 		interimEvent := generators.MergeMaps(generatedRequest.dynamicValues, finalEvent)
+		interimEvent["payloads"] = generatedRequest.meta
 		// add the request URL pattern to the event BEFORE operators execute
 		// so that interactsh events etc can also access it
 		if request.options.ExportReqURLPattern {
