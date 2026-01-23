@@ -10,14 +10,20 @@ func NewClusterMappingsMap(m map[string][]string) *ClusterMappingsMap {
 	return &ClusterMappingsMap{Map: m}
 }
 
-// Get returns the template IDs for a given cluster ID
+// Get returns the template IDs for a given cluster ID, or nil, false if the receiver or Map is nil
 func (c *ClusterMappingsMap) Get(clusterID string) ([]string, bool) {
+	if c == nil || c.Map == nil {
+		return nil, false
+	}
 	v, ok := c.Map[clusterID]
 	return v, ok
 }
 
-// GetAll returns a copy of the entire map
+// GetAll returns a copy of the entire map, or an empty map if the receiver or Map is nil
 func (c *ClusterMappingsMap) GetAll() map[string][]string {
+	if c == nil || c.Map == nil {
+		return make(map[string][]string)
+	}
 	result := make(map[string][]string, len(c.Map))
 	for k, v := range c.Map {
 		result[k] = append([]string{}, v...)
