@@ -24,3 +24,11 @@ func (c *ClusterMappingsMap) GetAll() map[string][]string {
 	}
 	return result
 }
+
+// Copy returns a deep copy of the ClusterMappingsMap, or nil if the receiver is nil
+func (c *ClusterMappingsMap) Copy() *ClusterMappingsMap {
+	if c == nil {
+		return nil
+	}
+	return NewClusterMappingsMap(c.GetAll())
+}
