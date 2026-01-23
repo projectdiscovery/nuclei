@@ -358,3 +358,26 @@ func wait(wg *sync.WaitGroup) <-chan struct{} {
 	}()
 	return ch
 }
+
+// GetClusterTemplateIDs returns the template IDs for a given cluster ID
+// Returns nil if the cluster ID doesn't exist or engine hasn't executed yet
+func (e *NucleiEngine) GetClusterTemplateIDs(clusterID string) []string {
+	if e.executerOpts == nil || e.executerOpts.ClusterMappings == nil {
+		return nil
+	}
+	templateIDs, ok := e.executerOpts.ClusterMappings.Get(clusterID)
+	if !ok {
+		return nil
+	}
+	return templateIDs
+}
+
+// GetAllClusterMappings returns all cluster mappings
+// Returns nil if engine hasn't executed yet
+func (e *NucleiEngine) GetAllClusterMappings() map[string][]string {
+	if e.executerOpts == nil || e.executerOpts.ClusterMappings == nil {
+		return nil
+	}
+
+	return e.executerOpts.ClusterMappings.GetAll()
+}

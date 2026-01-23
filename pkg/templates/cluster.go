@@ -117,12 +117,17 @@ func ClusterID(templates []*Template) string {
 	return cryptoutil.SHA256Sum(ids)
 }
 
-func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOptions) ([]*Template, int) {
+// ClusterTemplates clusters templates and returns:
+// - the final list of templates (with clustered templates merged)
+// - the count of templates that were clustered
+// - a map of cluster ID to the original template IDs in each cluster
+func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOptions) ([]*Template, int, map[string][]string) {
 	if options.Options.OfflineHTTP || options.Options.DisableClustering {
-		return templatesList, 0
+		return templatesList, 0, nil
 	}
 
 	var clusterCount int
+	clusterMappings := make(map[string][]string)
 
 	finalTemplatesList := make([]*Template, 0, len(templatesList))
 	clusters := Cluster(templatesList)
@@ -130,6 +135,13 @@ func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOpti
 		if len(cluster) > 1 {
 			executerOpts := options
 			clusterID := fmt.Sprintf("cluster-%s", ClusterID(cluster))
+
+			// Collect all template IDs in this cluster
+			clusterTemplateIDs := make([]string, len(cluster))
+			for i, tpl := range cluster {
+				clusterTemplateIDs[i] = tpl.ID
+			}
+			clusterMappings[clusterID] = clusterTemplateIDs
 
 			for _, req := range cluster[0].RequestsDNS {
 				req.Options().TemplateID = clusterID
@@ -154,7 +166,7 @@ func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOpti
 			finalTemplatesList = append(finalTemplatesList, cluster...)
 		}
 	}
-	return finalTemplatesList, clusterCount
+	return finalTemplatesList, clusterCount, clusterMappings
 }
 
 // ClusterExecuter executes a group of requests for a protocol for a clustered

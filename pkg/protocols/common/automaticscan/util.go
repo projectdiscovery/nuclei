@@ -45,7 +45,7 @@ func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, l
 	if !opts.ExecuterOpts.Options.DisableClustering {
 		// cluster and reduce requests
 		totalReqBeforeCluster := getRequestCount(finalTemplates) * int(opts.Target.Count())
-		finalTemplates, clusterCount := templates.ClusterTemplates(finalTemplates, opts.ExecuterOpts)
+		finalTemplates, clusterCount, _ := templates.ClusterTemplates(finalTemplates, opts.ExecuterOpts)
 		totalReqAfterClustering := getRequestCount(finalTemplates) * int(opts.Target.Count())
 		if totalReqAfterClustering < totalReqBeforeCluster && logInfo {
 			opts.ExecuterOpts.Logger.Info().Msgf("Automatic scan tech-detect: Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)

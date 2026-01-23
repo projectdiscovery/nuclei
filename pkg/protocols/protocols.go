@@ -147,6 +147,8 @@ type ExecutorOptions struct {
 	Logger *gologger.Logger
 	// CustomFastdialer is a fastdialer dialer instance
 	CustomFastdialer *fastdialer.Dialer
+	// ClusterMappings stores cluster ID to template IDs mapping during execution
+	ClusterMappings *ClusterMappingsMap
 }
 
 // todo: centralizing components is not feasible with current clogged architecture

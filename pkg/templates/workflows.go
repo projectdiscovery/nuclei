@@ -126,7 +126,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 		workflowTemplates = append(workflowTemplates, template)
 	}
 
-	finalTemplates, _ := ClusterTemplates(workflowTemplates, options.Copy())
+	finalTemplates, _, _ := ClusterTemplates(workflowTemplates, options.Copy())
 	for _, template := range finalTemplates {
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{
 			Executer:     template.Executer,

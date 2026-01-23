@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -41,7 +42,12 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	var finalTemplates []*templates.Template
 	clusterCount := 0
 	if !noCluster {
-		finalTemplates, clusterCount = templates.ClusterTemplates(templatesList, e.executerOpts)
+		var clusterMappings map[string][]string
+		finalTemplates, clusterCount, clusterMappings = templates.ClusterTemplates(templatesList, e.executerOpts)
+		// Store cluster mappings in executerOpts for SDK access (thread-safe)
+		if clusterMappings != nil {
+			e.executerOpts.ClusterMappings = protocols.NewClusterMappingsMap(clusterMappings)
+		}
 	} else {
 		finalTemplates = templatesList
 	}
