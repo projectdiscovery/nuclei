@@ -9,7 +9,7 @@
  * log(toJSON(isPOP3));
  * ```
  */
-export function IsPOP3(host: string, port: number): IsPOP3Response | null {
+export function IsPOP3(ctx: any, host: string, port: number): IsPOP3Response | null {
     return null;
 }
 

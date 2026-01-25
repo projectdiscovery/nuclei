@@ -18,4 +18,5 @@ export * as smtp from './smtp';
 export * as ssh from './ssh';
 export * as structs from './structs';
 export * as telnet from './telnet';
+export * as utils from './utils';
 export * as vnc from './vnc';

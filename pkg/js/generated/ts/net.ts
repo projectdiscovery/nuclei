@@ -9,7 +9,7 @@
  * const conn = net.Open('tcp', 'acme.com:80');
  * ```
  */
-export function Open(protocol: string): NetConn | null {
+export function Open(ctx: any, protocol: string): NetConn | null {
     return null;
 }
 
@@ -24,7 +24,7 @@ export function Open(protocol: string): NetConn | null {
  * const conn = net.OpenTLS('tcp', 'acme.com:443');
  * ```
  */
-export function OpenTLS(protocol: string): NetConn | null {
+export function OpenTLS(ctx: any, protocol: string): NetConn | null {
     return null;
 }
 
@@ -211,6 +211,91 @@ export class NetConn {
     * ```
     */
     public RecvHex(N: number): string | null {
+        return null;
+    }
+    
+
+    /**
+    * SendBytes sends raw bytes to the connection (accepts []byte from JS)
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
+    * conn.SendBytes([0x48, 0x45, 0x4c, 0x4c, 0x4f]);
+    * ```
+    */
+    public SendBytes(data: Uint8Array): void {
+        return;
+    }
+    
+
+    /**
+    * SendLine sends data with a newline appended
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
+    * conn.SendLine('GET / HTTP/1.1');
+    * ```
+    */
+    public SendLine(data: string): void {
+        return;
+    }
+    
+
+    /**
+    * RecvUntil receives data until the delimiter is found
+    * Returns all data including the delimiter
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
+    * const data = conn.RecvUntil('\r\n\r\n');
+    * ```
+    */
+    public RecvUntil(delim: Uint8Array): Uint8Array | null {
+        return null;
+    }
+    
+
+    /**
+    * RecvUntilString receives data until the delimiter string is found
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
+    * const data = conn.RecvUntilString('\r\n\r\n');
+    * ```
+    */
+    public RecvUntilString(delim: string): string | null {
+        return null;
+    }
+    
+
+    /**
+    * RecvLine receives data until a newline is found
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
+    * const line = conn.RecvLine();
+    * ```
+    */
+    public RecvLine(): string | null {
+        return null;
+    }
+    
+
+    /**
+    * RecvN receives exactly N bytes (alias for RecvFull)
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
+    * const header = conn.RecvN(16);
+    * ```
+    */
+    public RecvN(n: number): Uint8Array | null {
         return null;
     }
     

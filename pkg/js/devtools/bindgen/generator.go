@@ -105,7 +105,11 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 	fmt.Println(directory)
 	fset := token.NewFileSet()
 
-	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments)
+	// Filter out test files (_test.go) which shouldn't be included in bindings
+	filter := func(fi os.FileInfo) bool {
+		return !strings.HasSuffix(fi.Name(), "_test.go")
+	}
+	pkgs, err := parser.ParseDir(fset, directory, filter, parser.ParseComments)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse directory")
 	}

@@ -23,7 +23,7 @@
  * const items = fs.ListDir('/tmp');
  * ```
  */
-export function ListDir(path: string, itemType: string): string[] | null {
+export function ListDir(ctx: any, path: string, itemType: string): string[] | null {
     return null;
 }
 
@@ -39,7 +39,7 @@ export function ListDir(path: string, itemType: string): string[] | null {
  * const content = fs.ReadFile('helpers/usernames.txt');
  * ```
  */
-export function ReadFile(path: string): Uint8Array | null {
+export function ReadFile(ctx: any, path: string): Uint8Array | null {
     return null;
 }
 
@@ -55,7 +55,7 @@ export function ReadFile(path: string): Uint8Array | null {
  * const content = fs.ReadFileAsString('helpers/usernames.txt');
  * ```
  */
-export function ReadFileAsString(path: string): string | null {
+export function ReadFileAsString(ctx: any, path: string): string | null {
     return null;
 }
 
@@ -72,7 +72,7 @@ export function ReadFileAsString(path: string): string | null {
  * log(contents);
  * ```
  */
-export function ReadFilesFromDir(dir: string): string[] | null {
+export function ReadFilesFromDir(ctx: any, dir: string): string[] | null {
     return null;
 }
 

@@ -24,7 +24,7 @@ export class PGClient {
     * const isPostgres = postgres.IsPostgres('acme.com', 5432);
     * ```
     */
-    public IsPostgres(host: string, port: number): boolean | null {
+    public IsPostgres(ctx: any, host: string, port: number): boolean | null {
         return null;
     }
     
@@ -41,7 +41,7 @@ export class PGClient {
     * const connected = client.Connect('acme.com', 5432, 'username', 'password');
     * ```
     */
-    public Connect(host: string, port: number, username: string): boolean | null {
+    public Connect(ctx: any, host: string, port: number, username: string, password: string): boolean | null {
         return null;
     }
     
@@ -58,7 +58,7 @@ export class PGClient {
     * log(to_json(result));
     * ```
     */
-    public ExecuteQuery(host: string, port: number, username: string): SQLResult | null | null {
+    public ExecuteQuery(ctx: any, host: string, port: number, username: string, password: string, dbName: string, query: string): SQLResult | null | null {
         return null;
     }
     
@@ -75,7 +75,7 @@ export class PGClient {
     * const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
     * ```
     */
-    public ConnectWithDB(host: string, port: number, username: string): boolean | null {
+    public ConnectWithDB(ctx: any, host: string, port: number, username: string, password: string, dbName: string): boolean | null {
         return null;
     }
     

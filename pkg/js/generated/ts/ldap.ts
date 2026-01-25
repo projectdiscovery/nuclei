@@ -399,8 +399,8 @@ export class Client {
     * client.Authenticate('user', 'password');
     * ```
     */
-    public Authenticate(username: string): void {
-        return;
+    public Authenticate(username: string): boolean {
+        return false;
     }
     
 
@@ -413,8 +413,8 @@ export class Client {
     * client.AuthenticateWithNTLMHash('pdtm', 'hash');
     * ```
     */
-    public AuthenticateWithNTLMHash(username: string): void {
-        return;
+    public AuthenticateWithNTLMHash(username: string): boolean {
+        return false;
     }
     
 
@@ -460,6 +460,21 @@ export class Client {
     */
     public CollectMetadata(): Metadata | null {
         return null;
+    }
+    
+
+    /**
+    * GetVersion returns the LDAP versions being used by the server
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const versions = client.GetVersion();
+    * log(versions);
+    * ```
+    */
+    public GetVersion(): string[] {
+        return [];
     }
     
 

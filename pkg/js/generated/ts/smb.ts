@@ -28,7 +28,7 @@ export class SMBClient {
     * log(to_json(info));
     * ```
     */
-    public ConnectSMBInfoMode(host: string, port: number): SMBLog | null | null {
+    public ConnectSMBInfoMode(ctx: any, host: string, port: number): SMBLog | null | null {
         return null;
     }
     
@@ -46,7 +46,7 @@ export class SMBClient {
     * log(to_json(metadata));
     * ```
     */
-    public ListSMBv2Metadata(host: string, port: number): ServiceSMB | null | null {
+    public ListSMBv2Metadata(ctx: any, host: string, port: number): ServiceSMB | null | null {
         return null;
     }
     
@@ -66,7 +66,7 @@ export class SMBClient {
     * 	}
     * ```
     */
-    public ListShares(host: string, port: number, user: string): string[] | null {
+    public ListShares(ctx: any, host: string, port: number, user: string): string[] | null {
         return null;
     }
     
@@ -81,7 +81,7 @@ export class SMBClient {
     * const isSMBGhost = smb.DetectSMBGhost('acme.com', 445);
     * ```
     */
-    public DetectSMBGhost(host: string, port: number): boolean | null {
+    public DetectSMBGhost(ctx: any, host: string, port: number): boolean | null {
         return null;
     }
     
@@ -113,12 +113,6 @@ export interface HeaderLog {
  */
 export interface NegotiationLog {
     
-    SecurityMode?: number,
-    
-    DialectRevision?: number,
-    
-    ServerGuid?: Uint8Array,
-    
     Capabilities?: number,
     
     SystemTime?: number,
@@ -126,6 +120,12 @@ export interface NegotiationLog {
     ServerStartTime?: number,
     
     AuthenticationTypes?: string[],
+    
+    SecurityMode?: number,
+    
+    DialectRevision?: number,
+    
+    ServerGuid?: Uint8Array,
     
     HeaderLog?: HeaderLog,
 }
@@ -159,15 +159,15 @@ export interface SMBCapabilities {
  */
 export interface SMBLog {
     
-    NTLM?: string,
-    
-    GroupName?: string,
-    
     HasNTLM?: boolean,
     
     SupportV1?: boolean,
     
     NativeOs?: string,
+    
+    NTLM?: string,
+    
+    GroupName?: string,
     
     Version?: SMBVersions,
     
@@ -185,13 +185,13 @@ export interface SMBLog {
  */
 export interface SMBVersions {
     
-    Major?: number,
-    
-    Minor?: number,
-    
     Revision?: number,
     
     VerString?: string,
+    
+    Major?: number,
+    
+    Minor?: number,
 }
 
 
@@ -200,8 +200,6 @@ export interface SMBVersions {
  * ServiceSMB Interface
  */
 export interface ServiceSMB {
-    
-    OSVersion?: string,
     
     NetBIOSComputerName?: string,
     
@@ -216,6 +214,8 @@ export interface ServiceSMB {
     SigningEnabled?: boolean,
     
     SigningRequired?: boolean,
+    
+    OSVersion?: string,
 }
 
 

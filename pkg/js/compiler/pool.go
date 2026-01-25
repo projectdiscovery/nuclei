@@ -31,6 +31,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libssh"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libstructs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtelnet"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libutils"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libvnc"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"

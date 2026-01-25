@@ -26,7 +26,7 @@ export class MSSQLClient {
     * const connected = client.Connect('acme.com', 1433, 'username', 'password');
     * ```
     */
-    public Connect(host: string, port: number, username: string): boolean | null {
+    public Connect(ctx: any, host: string, port: number, username: string): boolean | null {
         return null;
     }
     
@@ -43,7 +43,7 @@ export class MSSQLClient {
     * const connected = client.ConnectWithDB('acme.com', 1433, 'username', 'password', 'master');
     * ```
     */
-    public ConnectWithDB(host: string, port: number, username: string): boolean | null {
+    public ConnectWithDB(ctx: any, host: string, port: number, username: string): boolean | null {
         return null;
     }
     
@@ -58,7 +58,7 @@ export class MSSQLClient {
     * const isMssql = mssql.IsMssql('acme.com', 1433);
     * ```
     */
-    public IsMssql(host: string, port: number): boolean | null {
+    public IsMssql(ctx: any, host: string, port: number): boolean | null {
         return null;
     }
     
@@ -74,7 +74,7 @@ export class MSSQLClient {
     * log(to_json(result));
     * ```
     */
-    public ExecuteQuery(host: string, port: number, username: string): SQLResult | null | null {
+    public ExecuteQuery(ctx: any, host: string, port: number, username: string): SQLResult | null | null {
         return null;
     }
     

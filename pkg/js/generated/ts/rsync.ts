@@ -9,9 +9,11 @@
  * log(toJSON(isRsync));
  * ```
  */
-export function IsRsync(host: string, port: number): IsRsyncResponse | null {
+export function IsRsync(ctx: any, host: string, port: number): IsRsyncResponse | null {
     return null;
 }
+
+
 
 /**
  * RsyncClient is a client for RSYNC servers.
@@ -24,50 +26,42 @@ export function IsRsync(host: string, port: number): IsRsyncResponse | null {
  */
 export class RsyncClient {
     
+
     // Constructor of RsyncClient
     constructor() {}
-    
     /**
-     * Connect establishes a connection to the rsync server with authentication.
-     * @example
-     * ```javascript
-     * const rsync = require('nuclei/rsync');
-     * const client = new rsync.RsyncClient();
-     * const connected = client.Connect('acme.com', 873, 'username', 'password', 'backup');
-     * ```
-     */
-    public Connect(host: string, port: number, username: string, password: string, module: string): boolean | null {
+    * ListModules lists the modules of a Rsync server.
+    * @example
+    * ```javascript
+    * const rsync = require('nuclei/rsync');
+    * const client = new rsync.RsyncClient();
+    * const listModules = client.ListModules('acme.com', 873, 'username', 'password');
+    * log(toJSON(listModules));
+    * ```
+    */
+    public ListModules(ctx: any, host: string, port: number, username: string, password: string): RsyncListResponse | null {
         return null;
     }
     
+
     /**
-     * ListModules lists available modules on the rsync server.
-     * @example
-     * ```javascript
-     * const rsync = require('nuclei/rsync');
-     * const client = new rsync.RsyncClient();
-     * const modules = client.ListModules('acme.com', 873, 'username', 'password');
-     * log(toJSON(modules));
-     * ```
-     */
-    public ListModules(host: string, port: number, username: string, password: string): string[] | null {
+    * ListShares lists the shares of a Rsync server.
+    * @example
+    * ```javascript
+    * const rsync = require('nuclei/rsync');
+    * const client = new rsync.RsyncClient();
+    * const listShares = client.ListFilesInModule('acme.com', 873, 'username', 'password', '/');
+    * log(toJSON(listShares));
+    * ```
+    */
+    public ListFilesInModule(ctx: any, host: string, port: number, username: string, password: string, module: string): RsyncListResponse | null {
         return null;
     }
     
-    /**
-     * ListFilesInModule lists files in a specific module on the rsync server.
-     * @example
-     * ```javascript
-     * const rsync = require('nuclei/rsync');
-     * const client = new rsync.RsyncClient();
-     * const files = client.ListFilesInModule('acme.com', 873, 'username', 'password', 'backup');
-     * log(toJSON(files));
-     * ```
-     */
-    public ListFilesInModule(host: string, port: number, username: string, password: string, module: string): string[] | null {
-        return null;
-    }
+
 }
+
+
 
 /**
  * IsRsyncResponse is the response from the IsRsync function.
@@ -84,5 +78,26 @@ export interface IsRsyncResponse {
     IsRsync?: boolean,
     
     Banner?: string,
+}
+
+
+
+/**
+ * ListSharesResponse is the response from the ListShares function.
+ * this is returned by ListShares function.
+ * @example
+ * ```javascript
+ * const rsync = require('nuclei/rsync');
+ * const client = new rsync.RsyncClient();
+ * const listShares = client.ListShares('acme.com', 873);
+ * log(toJSON(listShares));
+ */
+export interface RsyncListResponse {
+    
+    Modules?: string[],
+    
+    Files?: string[],
+    
+    Output?: string,
 }
 

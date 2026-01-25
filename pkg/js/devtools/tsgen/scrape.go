@@ -34,9 +34,11 @@ func (p *EntityParser) scrapeAndCreate(typeName string) error {
 		return errkit.Newf("%v is not a type name", typeName)
 	}
 	// Ensure the type is a named struct type
+	// Skip interfaces (like net.Conn) - they can't be scraped for fields
 	namedStruct, ok := typeNameObj.Type().Underlying().(*types.Struct)
 	if !ok {
-		return fmt.Errorf("%s is not a named struct type", typeName)
+		// Not a struct (could be interface, etc.) - skip silently
+		return nil
 	}
 	// fmt.Printf("got named struct %v\n", namedStruct)
 	// Iterate over the struct fields

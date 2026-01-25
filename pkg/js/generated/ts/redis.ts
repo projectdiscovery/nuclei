@@ -8,7 +8,7 @@
  * const connected = redis.Connect('acme.com', 6379, 'password');
  * ```
  */
-export function Connect(host: string, port: number, password: string): boolean | null {
+export function Connect(ctx: any, host: string, port: number, password: string): boolean | null {
     return null;
 }
 
@@ -22,7 +22,7 @@ export function Connect(host: string, port: number, password: string): boolean |
  * const info = redis.GetServerInfo('acme.com', 6379);
  * ```
  */
-export function GetServerInfo(host: string, port: number): string | null {
+export function GetServerInfo(ctx: any, host: string, port: number): string | null {
     return null;
 }
 
@@ -36,7 +36,7 @@ export function GetServerInfo(host: string, port: number): string | null {
  * const info = redis.GetServerInfoAuth('acme.com', 6379, 'password');
  * ```
  */
-export function GetServerInfoAuth(host: string, port: number, password: string): string | null {
+export function GetServerInfoAuth(ctx: any, host: string, port: number, password: string): string | null {
     return null;
 }
 
@@ -50,7 +50,7 @@ export function GetServerInfoAuth(host: string, port: number, password: string):
  * const isAuthenticated = redis.IsAuthenticated('acme.com', 6379);
  * ```
  */
-export function IsAuthenticated(host: string, port: number): boolean | null {
+export function IsAuthenticated(ctx: any, host: string, port: number): boolean | null {
     return null;
 }
 
@@ -64,7 +64,7 @@ export function IsAuthenticated(host: string, port: number): boolean | null {
  * const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])');
  * ```
  */
-export function RunLuaScript(host: string, port: number, password: string, script: string): any | null {
+export function RunLuaScript(ctx: any, host: string, port: number, password: string, script: string): any | null {
     return null;
 }
 

@@ -301,3 +301,115 @@ func (c *NetConn) RecvHex(N int) (string, error) {
 	}
 	return hex.Dump(bin), nil
 }
+
+// SendBytes sends raw bytes to the connection (accepts []byte from JS)
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// conn.SendBytes([0x48, 0x45, 0x4c, 0x4c, 0x4f]);
+// ```
+func (c *NetConn) SendBytes(data []byte) error {
+	c.setDeadLine()
+	defer c.unsetDeadLine()
+	length, err := c.conn.Write(data)
+	if err != nil {
+		return err
+	}
+	if length < len(data) {
+		return fmt.Errorf("failed to write all bytes (%d bytes written, %d bytes expected)", length, len(data))
+	}
+	return nil
+}
+
+// SendLine sends data with a newline appended
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// conn.SendLine('GET / HTTP/1.1');
+// ```
+func (c *NetConn) SendLine(data string) error {
+	return c.Send(data + "\n")
+}
+
+// RecvUntil receives data until the delimiter is found
+// Returns all data including the delimiter
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// const data = conn.RecvUntil('\r\n\r\n');
+// ```
+func (c *NetConn) RecvUntil(delim []byte) ([]byte, error) {
+	c.setDeadLine()
+	defer c.unsetDeadLine()
+	var result []byte
+	buf := make([]byte, 1)
+	for {
+		n, err := c.conn.Read(buf)
+		if err != nil {
+			if len(result) > 0 {
+				return result, nil
+			}
+			return nil, err
+		}
+		if n > 0 {
+			result = append(result, buf[0])
+			if len(result) >= len(delim) {
+				if bytesEqual(result[len(result)-len(delim):], delim) {
+					return result, nil
+				}
+			}
+		}
+	}
+}
+
+// RecvUntilString receives data until the delimiter string is found
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// const data = conn.RecvUntilString('\r\n\r\n');
+// ```
+func (c *NetConn) RecvUntilString(delim string) (string, error) {
+	data, err := c.RecvUntil([]byte(delim))
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// RecvLine receives data until a newline is found
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// const line = conn.RecvLine();
+// ```
+func (c *NetConn) RecvLine() (string, error) {
+	return c.RecvUntilString("\n")
+}
+
+// RecvN receives exactly N bytes (alias for RecvFull)
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// const header = conn.RecvN(16);
+// ```
+func (c *NetConn) RecvN(n int) ([]byte, error) {
+	return c.RecvFull(n)
+}
+
+func bytesEqual(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

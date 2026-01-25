@@ -40,7 +40,7 @@ export class SSHClient {
     * const connected = client.Connect('acme.com', 22, 'username', 'password');
     * ```
     */
-    public Connect(host: string, port: number, username: string): boolean | null {
+    public Connect(ctx: any, host: string, port: number, username: string): boolean | null {
         return null;
     }
     
@@ -58,7 +58,7 @@ export class SSHClient {
     * const connected = client.ConnectWithKey('acme.com', 22, 'username', privateKey);
     * ```
     */
-    public ConnectWithKey(host: string, port: number, username: string): boolean | null {
+    public ConnectWithKey(ctx: any, host: string, port: number, username: string): boolean | null {
         return null;
     }
     
@@ -78,7 +78,7 @@ export class SSHClient {
     * log(to_json(info));
     * ```
     */
-    public ConnectSSHInfoMode(host: string, port: number): HandshakeLog | null | null {
+    public ConnectSSHInfoMode(ctx: any, host: string, port: number): HandshakeLog | null | null {
         return null;
     }
     
@@ -129,9 +129,9 @@ export class SSHClient {
  */
 export interface Algorithms {
     
-    Kex?: string,
-    
     HostKey?: string,
+    
+    Kex?: string,
     
     W?: DirectionAlgorithms,
     
@@ -159,13 +159,13 @@ export interface DirectionAlgorithms {
  */
 export interface EndpointId {
     
+    ProtoVersion?: string,
+    
     SoftwareVersion?: string,
     
     Comment?: string,
     
     Raw?: string,
-    
-    ProtoVersion?: string,
 }
 
 
@@ -179,15 +179,15 @@ export interface HandshakeLog {
     
     UserAuth?: string[],
     
-    ServerID?: EndpointId,
-    
-    ClientID?: EndpointId,
-    
     ServerKex?: KexInitMsg,
     
     ClientKex?: KexInitMsg,
     
     AlgorithmSelection?: Algorithms,
+    
+    ServerID?: EndpointId,
+    
+    ClientID?: EndpointId,
 }
 
 
@@ -197,34 +197,34 @@ export interface HandshakeLog {
  */
 export interface KexInitMsg {
     
-    KexAlgos?: string[],
-    
-    CiphersClientServer?: string[],
-    
-    MACsServerClient?: string[],
-    
-    LanguagesClientServer?: string[],
-    
-    CompressionClientServer?: string[],
-    
-    CompressionServerClient?: string[],
-    
-    Reserved?: number,
-    
-    MACsClientServer?: string[],
-    
     /**
     * fixed size array of length: [16]
     */
     
     Cookie?: Uint8Array,
     
+    KexAlgos?: string[],
+    
     ServerHostKeyAlgos?: string[],
     
+    CiphersClientServer?: string[],
+    
     CiphersServerClient?: string[],
+    
+    MACsClientServer?: string[],
+    
+    MACsServerClient?: string[],
+    
+    CompressionClientServer?: string[],
+    
+    CompressionServerClient?: string[],
+    
+    LanguagesClientServer?: string[],
     
     LanguagesServerClient?: string[],
     
     FirstKexFollows?: boolean,
+    
+    Reserved?: number,
 }
 
