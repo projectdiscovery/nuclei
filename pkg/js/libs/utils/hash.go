@@ -10,6 +10,7 @@ import (
 	"hash/adler32"
 	"hash/crc32"
 
+	//nolint:staticcheck // SA1019: MD4 is deprecated but required for NTLM compatibility
 	"golang.org/x/crypto/md4"
 )
 

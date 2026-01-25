@@ -6,6 +6,7 @@ import (
 	"crypto/des"
 	"crypto/rc4"
 	"errors"
+	"fmt"
 )
 
 // AESEncryptECB encrypts data using AES in ECB mode
@@ -116,6 +117,9 @@ func (u *Utils) AESEncryptGCM(plaintext, key, nonce []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(nonce) != gcm.NonceSize() {
+		return nil, fmt.Errorf("invalid nonce length: got %d, want %d", len(nonce), gcm.NonceSize())
+	}
 	ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
 	return ciphertext, nil
 }
@@ -135,6 +139,9 @@ func (u *Utils) AESDecryptGCM(ciphertext, key, nonce []byte) ([]byte, error) {
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
+	}
+	if len(nonce) != gcm.NonceSize() {
+		return nil, fmt.Errorf("invalid nonce length: got %d, want %d", len(nonce), gcm.NonceSize())
 	}
 	return gcm.Open(nil, nonce, ciphertext, nil)
 }

@@ -38,8 +38,15 @@ func (u *Utils) ZlibDecompress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
-	return io.ReadAll(r)
+	result, err := io.ReadAll(r)
+	cerr := r.Close()
+	if err != nil {
+		return nil, err
+	}
+	if cerr != nil {
+		return nil, cerr
+	}
+	return result, nil
 }
 
 // GzipCompress compresses data using gzip
@@ -72,8 +79,15 @@ func (u *Utils) GzipDecompress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
-	return io.ReadAll(r)
+	result, err := io.ReadAll(r)
+	cerr := r.Close()
+	if err != nil {
+		return nil, err
+	}
+	if cerr != nil {
+		return nil, cerr
+	}
+	return result, nil
 }
 
 // DeflateCompress compresses data using raw deflate (no zlib header)
@@ -106,6 +120,13 @@ func (u *Utils) DeflateCompress(data []byte) ([]byte, error) {
 // ```
 func (u *Utils) DeflateDecompress(data []byte) ([]byte, error) {
 	r := flate.NewReader(bytes.NewReader(data))
-	defer r.Close()
-	return io.ReadAll(r)
+	result, err := io.ReadAll(r)
+	cerr := r.Close()
+	if err != nil {
+		return nil, err
+	}
+	if cerr != nil {
+		return nil, cerr
+	}
+	return result, nil
 }

@@ -718,7 +718,8 @@ func TestGenerateRandomAlphanumeric(t *testing.T) {
 		t.Errorf("GenerateRandomAlphanumeric length = %d, want 16", len(s))
 	}
 	for _, c := range s {
-		if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+		isAlphanumeric := (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+		if !isAlphanumeric {
 			t.Errorf("GenerateRandomAlphanumeric contains invalid char: %c", c)
 		}
 	}

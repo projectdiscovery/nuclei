@@ -12,6 +12,9 @@ import (
 // const padded = utils.PKCS7Pad([0x41, 0x42, 0x43], 16);
 // ```
 func (u *Utils) PKCS7Pad(data []byte, blockSize int) []byte {
+	if blockSize <= 0 || blockSize > 255 {
+		return data
+	}
 	return pkcs7Pad(data, blockSize)
 }
 
@@ -70,6 +73,9 @@ func (u *Utils) PadToBlockSize(data []byte, blockSize int) []byte {
 }
 
 func pkcs7Pad(data []byte, blockSize int) []byte {
+	if blockSize <= 0 || blockSize > 255 {
+		return data
+	}
 	padding := blockSize - len(data)%blockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(data, padtext...)

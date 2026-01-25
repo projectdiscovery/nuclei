@@ -2,11 +2,11 @@ package utils
 
 import (
 	"bytes"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"strings"
 )
 
-const patternCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 const alphanumCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
 // PatternCreate creates a cyclic pattern of specified length for buffer overflow analysis
@@ -72,6 +72,9 @@ func (u *Utils) FindBytes(haystack, needle []byte) int {
 // const indices = utils.FindAllBytes([0x41, 0x42, 0x41, 0x42], [0x41, 0x42]);
 // ```
 func (u *Utils) FindAllBytes(haystack, needle []byte) []int {
+	if len(needle) == 0 {
+		return []int{}
+	}
 	var indices []int
 	start := 0
 	for {
@@ -158,8 +161,14 @@ func (u *Utils) SwapEndian32(data []byte) []byte {
 // ```
 func (u *Utils) GenerateRandomString(length int) string {
 	b := make([]byte, length)
+	charsetLen := big.NewInt(int64(len(alphanumCharset)))
 	for i := range b {
-		b[i] = alphanumCharset[rand.Intn(len(alphanumCharset))]
+		idx, err := rand.Int(rand.Reader, charsetLen)
+		if err != nil {
+			b[i] = alphanumCharset[0]
+			continue
+		}
+		b[i] = alphanumCharset[idx.Int64()]
 	}
 	return string(b)
 }
@@ -183,9 +192,7 @@ func (u *Utils) GenerateRandomAlphanumeric(length int) string {
 // ```
 func (u *Utils) GenerateRandomBytes(length int) []byte {
 	b := make([]byte, length)
-	for i := range b {
-		b[i] = byte(rand.Intn(256))
-	}
+	rand.Read(b)
 	return b
 }
 
