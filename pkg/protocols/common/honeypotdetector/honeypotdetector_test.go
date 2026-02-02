@@ -291,12 +291,12 @@ func TestDetectorLoadBlocklistDuplicateHosts(t *testing.T) {
 	detector := New(10, 100)
 	defer detector.Close()
 
-	// Loads 4 lines but should only count 2 unique hosts
+	// LoadBlocklist now returns unique count (4 entries, 2 unique hosts)
 	count, err := detector.LoadBlocklist(blocklistPath)
 	require.NoError(t, err)
-	require.Equal(t, 4, count) // 4 lines read
+	require.Equal(t, 2, count) // 2 unique hosts
 
-	// But only 2 unique honeypots flagged
+	// 2 unique honeypots flagged
 	require.Equal(t, 2, detector.GetHoneypotCount())
 }
 
@@ -668,4 +668,33 @@ func TestDetectorRecordMatchCaseInsensitive(t *testing.T) {
 	// Match count should be 2 (both templates on same normalized host)
 	require.Equal(t, 2, detector.GetMatchCount("example.com"))
 	require.Equal(t, 2, detector.GetMatchCount("EXAMPLE.COM"))
+}
+
+func TestDetectorLoadBlocklistDeduplication(t *testing.T) {
+	// Test that duplicate entries are deduplicated
+	tmpDir := t.TempDir()
+	blocklistPath := tmpDir + "/duplicates.txt"
+
+	content := `honeypot.com
+HONEYPOT.COM
+Honeypot.Com
+unique-host.com
+unique-host.com
+another.com
+`
+	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
+
+	detector := New(10, 100)
+	defer detector.Close()
+
+	// Should return unique count (3), not total entries (6)
+	count, err := detector.LoadBlocklist(blocklistPath)
+	require.NoError(t, err)
+	require.Equal(t, 3, count)
+
+	// All should be flagged
+	require.True(t, detector.IsHoneypot("honeypot.com"))
+	require.True(t, detector.IsHoneypot("unique-host.com"))
+	require.True(t, detector.IsHoneypot("another.com"))
+	require.Equal(t, 3, detector.GetHoneypotCount())
 }

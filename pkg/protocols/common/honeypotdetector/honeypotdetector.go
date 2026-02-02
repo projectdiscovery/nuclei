@@ -209,7 +209,7 @@ func (d *Detector) Close() {
 
 // LoadBlocklist loads known honeypot hosts from a file and pre-flags them.
 // Each line in the file should contain one host (blank lines and # comments are ignored).
-// Returns the number of hosts loaded and any error encountered.
+// Duplicate hosts are deduplicated. Returns the number of unique hosts loaded and any error.
 func (d *Detector) LoadBlocklist(filepath string) (int, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -217,7 +217,8 @@ func (d *Detector) LoadBlocklist(filepath string) (int, error) {
 	}
 	defer file.Close()
 
-	var count int
+	seen := make(map[string]struct{})
+	var entries, unique int
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -233,20 +234,33 @@ func (d *Detector) LoadBlocklist(filepath string) (int, error) {
 		if line == "" {
 			continue
 		}
+		entries++
+
+		// Normalize and deduplicate
+		host := strings.ToLower(line)
+		if _, exists := seen[host]; exists {
+			continue
+		}
+		seen[host] = struct{}{}
+
 		// Pre-flag this host as a honeypot
-		d.preFlagHost(line)
-		count++
+		d.preFlagHost(host)
+		unique++
 	}
 
 	if err := scanner.Err(); err != nil {
-		return count, err
+		return unique, err
 	}
 
-	if count > 0 {
-		gologger.Info().Msgf("Loaded %d known honeypot hosts from blocklist", count)
+	if unique > 0 {
+		if entries != unique {
+			gologger.Info().Msgf("Loaded %d unique honeypot hosts from blocklist (%d entries, %d duplicates skipped)", unique, entries, entries-unique)
+		} else {
+			gologger.Info().Msgf("Loaded %d honeypot hosts from blocklist", unique)
+		}
 	}
 
-	return count, nil
+	return unique, nil
 }
 
 // preFlagHost adds a host to the cache and marks it as a honeypot.
