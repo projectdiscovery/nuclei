@@ -218,6 +218,14 @@ func (d *Detector) LoadBlocklist(filepath string) (int, error) {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+		// Support CSV export format: host,match_count
+		// Extract only the host (first column) for round-trip compatibility
+		if idx := strings.Index(line, ","); idx != -1 {
+			line = strings.TrimSpace(line[:idx])
+		}
+		if line == "" {
+			continue
+		}
 		// Pre-flag this host as a honeypot
 		d.preFlagHost(line)
 		count++

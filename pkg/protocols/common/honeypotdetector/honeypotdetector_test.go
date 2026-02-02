@@ -573,3 +573,54 @@ func TestDetectorLRUEvictionNonFlaggedNotDecremented(t *testing.T) {
 	detector.RecordMatch("host4.com", "t3")
 	require.Equal(t, 1, detector.GetHoneypotCount())
 }
+
+func TestDetectorLoadBlocklistCSVFormat(t *testing.T) {
+	// Test that exported CSV format can be re-imported as blocklist
+	tmpDir := t.TempDir()
+	blocklistPath := tmpDir + "/exported.txt"
+
+	// Simulate exported CSV format with header comments
+	content := `# Honeypot hosts detected by nuclei
+# Format: host,match_count
+honeypot1.com,15
+honeypot2.com,23
+192.168.1.100,8
+`
+	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
+
+	detector := New(10, 100)
+	defer detector.Close()
+
+	count, err := detector.LoadBlocklist(blocklistPath)
+	require.NoError(t, err)
+	require.Equal(t, 3, count)
+
+	// All three hosts should be recognized (CSV parsed correctly)
+	require.True(t, detector.IsHoneypot("honeypot1.com"))
+	require.True(t, detector.IsHoneypot("honeypot2.com"))
+	require.True(t, detector.IsHoneypot("192.168.1.100"))
+}
+
+func TestDetectorLoadBlocklistMixedFormat(t *testing.T) {
+	// Test mixed format: plain hosts and CSV
+	tmpDir := t.TempDir()
+	blocklistPath := tmpDir + "/mixed.txt"
+
+	content := `# Mixed format file
+plain-host.com
+csv-host.com,42
+another-plain.com
+`
+	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
+
+	detector := New(10, 100)
+	defer detector.Close()
+
+	count, err := detector.LoadBlocklist(blocklistPath)
+	require.NoError(t, err)
+	require.Equal(t, 3, count)
+
+	require.True(t, detector.IsHoneypot("plain-host.com"))
+	require.True(t, detector.IsHoneypot("csv-host.com"))
+	require.True(t, detector.IsHoneypot("another-plain.com"))
+}
