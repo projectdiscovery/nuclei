@@ -33,6 +33,11 @@ type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalo
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
+	// Profile metadata (allows additional info without errors)
+	ProfileID          string `yaml:"id,omitempty" json:"id,omitempty"`
+	ProfileName        string `yaml:"name,omitempty" json:"name,omitempty"`
+	ProfilePurpose     string `yaml:"purpose,omitempty" json:"purpose,omitempty"`
+	ProfileDescription string `yaml:"description,omitempty" json:"description,omitempty"`
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
