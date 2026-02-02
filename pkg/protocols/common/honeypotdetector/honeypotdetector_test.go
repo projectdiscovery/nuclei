@@ -1,3 +1,6 @@
+// Package honeypotdetector provides tests for the honeypot detection system.
+// These tests verify threshold behavior, blocklist loading, LRU eviction,
+// concurrent access safety, and various edge cases.
 package honeypotdetector
 
 import (

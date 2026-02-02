@@ -1,3 +1,6 @@
+// Package output provides tests for the HoneypotWriter output wrapper.
+// These tests verify host normalization, suppression logic, export format,
+// concurrent write safety, integration workflows, and field propagation.
 package output
 
 import (
