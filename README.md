@@ -302,6 +302,9 @@ OPTIMIZATIONS:
    -irt, -input-read-timeout value  timeout on input read (default 3m0s)
    -nh, -no-httpx                   disable httpx probing for non-url input
    -no-stdin                        disable stdin processing
+   -hpt, -honeypot-threshold int    threshold of distinct template matches before flagging host as honeypot (default 10)
+   -hpd, -honeypot-detection        enable honeypot detection to identify hosts matching too many templates (default true)
+   -shp, -suppress-honeypot         suppress results from hosts flagged as potential honeypots
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)

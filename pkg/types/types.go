@@ -454,6 +454,12 @@ type Options struct {
 	HttpApiEndpoint string
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
+	// HoneypotThreshold is the number of distinct template matches to flag a host as honeypot
+	HoneypotThreshold int
+	// HoneypotDetection enables detection of honeypot hosts
+	HoneypotDetection bool
+	// SuppressHoneypotResults suppresses results from detected honeypot hosts
+	SuppressHoneypotResults bool
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
 	LoadHelperFileFunction LoadHelperFileFunction
@@ -679,6 +685,9 @@ func (options *Options) Copy() *Options {
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
 		ListTemplateProfiles:           options.ListTemplateProfiles,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotDetection:              options.HoneypotDetection,
+		SuppressHoneypotResults:        options.SuppressHoneypotResults,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
@@ -796,6 +805,8 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		HoneypotThreshold:          10,
+		HoneypotDetection:          true,
 		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
 	}

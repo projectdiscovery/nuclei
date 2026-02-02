@@ -51,6 +51,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -275,6 +276,14 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	// setup a proxy writer to automatically upload results to PDCP
 	runner.output = runner.setupPDCPUpload(outputWriter)
+
+	// Setup honeypot detection if enabled
+	if options.HoneypotDetection {
+		detector := honeypotdetector.New(options.HoneypotThreshold, honeypotdetector.DefaultMaxHosts)
+		detector.SetVerbose(options.Verbose)
+		runner.output = output.NewHoneypotWriter(runner.output, detector, options.SuppressHoneypotResults, options.Verbose)
+	}
+
 	if options.HTTPStats {
 		runner.httpStats = outputstats.NewTracker()
 		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))
