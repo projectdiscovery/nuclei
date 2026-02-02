@@ -86,12 +86,18 @@ func (d *Detector) SetVerbose(verbose bool) {
 
 // RecordMatch records a template match for a host and returns true if the host
 // is now flagged as a honeypot (either newly flagged or already flagged).
+// Host is normalized to lowercase for consistent matching with blocklists.
 func (d *Detector) RecordMatch(host, templateID string) bool {
 	if host == "" || templateID == "" {
 		return false
 	}
+	// Normalize host to lowercase for consistent matching
+	host = strings.ToLower(strings.TrimSpace(host))
 
+	// Hold d.mu lock while modifying entry to prevent race with eviction
 	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	entry, exists := d.cache.Get(host)
 	if !exists {
 		entry = &hostEntry{
@@ -99,7 +105,6 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 		}
 		d.cache.Add(host, entry)
 	}
-	d.mu.Unlock()
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
@@ -118,11 +123,7 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 		entry.flagged = true
 		d.honeypotCount.Add(1)
 
-		d.mu.RLock()
-		verbose := d.verbose
-		d.mu.RUnlock()
-
-		if verbose {
+		if d.verbose {
 			gologger.Verbose().Msgf("Honeypot detected: %s (matched %d distinct templates)", host, len(entry.templates))
 		}
 		return true
@@ -132,15 +133,18 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 }
 
 // IsHoneypot checks if a host has been flagged as a honeypot.
+// Host is normalized to lowercase for consistent matching with blocklists.
 func (d *Detector) IsHoneypot(host string) bool {
 	if host == "" {
 		return false
 	}
+	// Normalize host to lowercase for consistent matching
+	host = strings.ToLower(strings.TrimSpace(host))
 
 	d.mu.RLock()
-	entry, exists := d.cache.Get(host)
-	d.mu.RUnlock()
+	defer d.mu.RUnlock()
 
+	entry, exists := d.cache.Get(host)
 	if !exists {
 		return false
 	}
@@ -151,15 +155,18 @@ func (d *Detector) IsHoneypot(host string) bool {
 }
 
 // GetMatchCount returns the number of distinct template matches for a host.
+// Host is normalized to lowercase for consistent matching with blocklists.
 func (d *Detector) GetMatchCount(host string) int {
 	if host == "" {
 		return 0
 	}
+	// Normalize host to lowercase for consistent matching
+	host = strings.ToLower(strings.TrimSpace(host))
 
 	d.mu.RLock()
-	entry, exists := d.cache.Get(host)
-	d.mu.RUnlock()
+	defer d.mu.RUnlock()
 
+	entry, exists := d.cache.Get(host)
 	if !exists {
 		return 0
 	}

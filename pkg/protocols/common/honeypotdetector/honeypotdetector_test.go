@@ -624,3 +624,48 @@ another-plain.com
 	require.True(t, detector.IsHoneypot("csv-host.com"))
 	require.True(t, detector.IsHoneypot("another-plain.com"))
 }
+
+func TestDetectorCaseInsensitiveMatching(t *testing.T) {
+	// Test that blocklist entries match regardless of case
+	tmpDir := t.TempDir()
+	blocklistPath := tmpDir + "/blocklist.txt"
+
+	// Blocklist with uppercase entries
+	content := `HONEYPOT.COM
+MixedCase.Example.COM
+`
+	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
+
+	detector := New(10, 100)
+	defer detector.Close()
+
+	count, err := detector.LoadBlocklist(blocklistPath)
+	require.NoError(t, err)
+	require.Equal(t, 2, count)
+
+	// All case variations should match
+	require.True(t, detector.IsHoneypot("honeypot.com"))
+	require.True(t, detector.IsHoneypot("HONEYPOT.COM"))
+	require.True(t, detector.IsHoneypot("Honeypot.Com"))
+	require.True(t, detector.IsHoneypot("mixedcase.example.com"))
+	require.True(t, detector.IsHoneypot("MIXEDCASE.EXAMPLE.COM"))
+}
+
+func TestDetectorRecordMatchCaseInsensitive(t *testing.T) {
+	// Test that RecordMatch normalizes host case
+	detector := New(2, 100)
+	defer detector.Close()
+
+	// Mix case when recording matches
+	detector.RecordMatch("EXAMPLE.COM", "t1")
+	detector.RecordMatch("example.com", "t2") // Should count as same host
+
+	// Should be flagged via lowercase lookup
+	require.True(t, detector.IsHoneypot("example.com"))
+	require.True(t, detector.IsHoneypot("EXAMPLE.COM"))
+	require.True(t, detector.IsHoneypot("Example.Com"))
+
+	// Match count should be 2 (both templates on same normalized host)
+	require.Equal(t, 2, detector.GetMatchCount("example.com"))
+	require.Equal(t, 2, detector.GetMatchCount("EXAMPLE.COM"))
+}
