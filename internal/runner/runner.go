@@ -576,14 +576,35 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
+	if (len(r.options.SecretsFile) > 0 || r.options.InlineSecrets != nil) && !r.options.Validate {
 		// Clone options so GetAuthTmplStore can modify them without affecting the original
 		authOptions := r.options.Copy()
 		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
-		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
+		
+		// Build secrets files list (including inline secrets if present)
+		secretsFiles := r.options.SecretsFile
+		if r.options.InlineSecrets != nil {
+			// Convert inline secrets to JSON and write to temp file
+			jsonData, err := json.Marshal(r.options.InlineSecrets)
+			if err != nil {
+				return errors.Wrap(err, "failed to marshal inline secrets")
+			}
+			tempFile, err := os.CreateTemp(r.tmpDir, "inline-secrets-*.json")
+			if err != nil {
+				return errors.Wrap(err, "failed to create temp secrets file")
+			}
+			if _, err := tempFile.Write(jsonData); err != nil {
+				tempFile.Close()
+				return errors.Wrap(err, "failed to write inline secrets")
+			}
+			tempFile.Close()
+			secretsFiles = append(secretsFiles, tempFile.Name())
+		}
+		
+		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: secretsFiles}
 		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,

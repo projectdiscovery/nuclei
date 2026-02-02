@@ -425,6 +425,8 @@ type Options struct {
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
+	// InlineSecrets contains inline secrets configuration in profile (stored as map to avoid import cycles)
+	InlineSecrets interface{} `yaml:"secrets,omitempty" json:"secrets,omitempty"`
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
