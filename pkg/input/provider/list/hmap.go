@@ -301,13 +301,24 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 
 	// Handle target file
 	if options.TargetsFilePath != "" {
-		input, inputErr := os.Open(options.TargetsFilePath)
-		if inputErr != nil {
-			// Handle cloud based input here.
-			if opts.NotFoundCallback == nil || !opts.NotFoundCallback(options.TargetsFilePath) {
-				return errors.Wrap(inputErr, "could not open targets file")
+		var input io.ReadCloser
+		var inputErr error
+		
+		// Check if TargetsFilePath contains inline content (has newlines)
+		if strings.Contains(options.TargetsFilePath, "\n") {
+			// Inline content - create temp file
+			input = io.NopCloser(strings.NewReader(options.TargetsFilePath))
+		} else {
+			// File path - open normally
+			input, inputErr = os.Open(options.TargetsFilePath)
+			if inputErr != nil {
+				// Handle cloud based input here.
+				if opts.NotFoundCallback == nil || !opts.NotFoundCallback(options.TargetsFilePath) {
+					return errors.Wrap(inputErr, "could not open targets file")
+				}
 			}
 		}
+		
 		if input != nil {
 			i.scanInputFromReader(options.ExecutionId, input)
 			_ = input.Close()
