@@ -45,7 +45,11 @@ func New(threshold, maxHosts int) *Detector {
 		maxHosts = DefaultMaxHosts
 	}
 
-	cache, _ := lru.New[string, *hostEntry](maxHosts)
+	cache, err := lru.New[string, *hostEntry](maxHosts)
+	if err != nil {
+		// This should never happen with validated maxHosts > 0, but handle gracefully
+		cache, _ = lru.New[string, *hostEntry](DefaultMaxHosts)
+	}
 
 	return &Detector{
 		cache:     cache,
