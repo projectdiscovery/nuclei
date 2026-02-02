@@ -715,8 +715,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		typesOpts.ExecutionId = xid.New().String()
 	}
 
-	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
-	if dialers == nil {
+	if protocolstate.GetDialersWithId(typesOpts.ExecutionId) == nil {
 		store.logger.Error().Msgf("dialers with executionId %s not found, skipping template loading", typesOpts.ExecutionId)
 		return nil
 	}
