@@ -218,6 +218,14 @@ type ResultEvent struct {
 	FileToIndexPosition map[string]int `json:"-"`
 	TemplateVerifier    string         `json:"-"`
 	Error               string         `json:"error,omitempty"`
+
+	// HoneypotHost indicates this result originated from a host flagged as a potential honeypot.
+	// A honeypot is a host that matches an unusually high number of distinct templates,
+	// suggesting it's designed to fool vulnerability scanners with fake responses.
+	HoneypotHost bool `json:"honeypot-host,omitempty"`
+	// HoneypotMatchCount is the number of distinct templates that matched this host.
+	// This provides context for filtering and analysis when honeypot-host is true.
+	HoneypotMatchCount int `json:"honeypot-match-count,omitempty"`
 }
 
 type IssueTrackerMetadata struct {

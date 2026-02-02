@@ -281,7 +281,7 @@ func New(options *types.Options) (*Runner, error) {
 	if options.HoneypotDetection {
 		detector := honeypotdetector.New(options.HoneypotThreshold, honeypotdetector.DefaultMaxHosts)
 		detector.SetVerbose(options.Verbose)
-		runner.output = output.NewHoneypotWriter(runner.output, detector, options.SuppressHoneypotResults, options.Verbose)
+		runner.output = output.NewHoneypotWriter(runner.output, detector, options.SuppressHoneypotResults, options.Verbose, options.HoneypotExport)
 	}
 
 	if options.HTTPStats {

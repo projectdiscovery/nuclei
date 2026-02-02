@@ -426,6 +426,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 10, "max number of distinct template matches before flagging host as honeypot"),
 		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detection", "hpd", true, "enable detection of honeypot hosts that match many templates"),
 		flagSet.BoolVarP(&options.SuppressHoneypotResults, "suppress-honeypot", "shp", false, "suppress results from detected honeypot hosts"),
+		flagSet.StringVarP(&options.HoneypotExport, "honeypot-export", "hpe", "", "file to export detected honeypot hosts (for blocklist creation)"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
 		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),

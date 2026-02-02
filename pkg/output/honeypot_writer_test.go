@@ -1,6 +1,8 @@
 package output
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/logrusorgru/aurora"
@@ -39,7 +41,7 @@ func TestHoneypotWriterPassthrough(t *testing.T) {
 	detector := honeypotdetector.New(5, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, false, false)
+	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Write 4 results (under threshold of 5)
 	for i := 0; i < 4; i++ {
@@ -67,7 +69,7 @@ func TestHoneypotWriterDetection(t *testing.T) {
 	detector := honeypotdetector.New(3, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, false, false)
+	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Write 3 results with different templates (hits threshold)
 	for i := 0; i < 3; i++ {
@@ -94,7 +96,7 @@ func TestHoneypotWriterSuppression(t *testing.T) {
 	detector := honeypotdetector.New(3, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, true, false) // suppression ON
+	writer := NewHoneypotWriter(mock, detector, true, false, "") // suppression ON
 
 	// Write 5 results: first 2 are under threshold, 3rd crosses threshold (still written), 4th and 5th suppressed
 	for i := 0; i < 5; i++ {
@@ -122,7 +124,7 @@ func TestHoneypotWriterMultipleHosts(t *testing.T) {
 	detector := honeypotdetector.New(2, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, true, false)
+	writer := NewHoneypotWriter(mock, detector, true, false, "")
 
 	// Host A: 2 templates (flagged)
 	writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t1"})
@@ -152,7 +154,7 @@ func TestHoneypotWriterMultipleHosts(t *testing.T) {
 func TestHoneypotWriterNilDetector(t *testing.T) {
 	// Test graceful handling when detector is nil
 	mock := &mockWriter{}
-	writer := NewHoneypotWriter(mock, nil, false, false)
+	writer := NewHoneypotWriter(mock, nil, false, false, "")
 
 	event := &ResultEvent{Host: "example.com", TemplateID: "test"}
 	if err := writer.Write(event); err != nil {
@@ -170,7 +172,7 @@ func TestHoneypotWriterURLFallback(t *testing.T) {
 	detector := honeypotdetector.New(2, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, false, false)
+	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Use URL instead of Host, with path - should normalize to just hostname
 	writer.Write(&ResultEvent{URL: "https://example.com/path1", TemplateID: "t1"})
@@ -189,7 +191,7 @@ func TestHoneypotWriterPortNormalization(t *testing.T) {
 	detector := honeypotdetector.New(3, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, true, false)
+	writer := NewHoneypotWriter(mock, detector, true, false, "")
 
 	// Same IP, different ports - should all be tracked as 120.26.237.211
 	writer.Write(&ResultEvent{URL: "http://120.26.237.211:80/path", TemplateID: "cve-2021-1234"})
@@ -212,7 +214,7 @@ func TestHoneypotWriterIPv6Normalization(t *testing.T) {
 	detector := honeypotdetector.New(2, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, false, false)
+	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// IPv6 addresses with brackets and ports
 	writer.Write(&ResultEvent{Host: "[::1]:8080", TemplateID: "t1"})
@@ -230,7 +232,7 @@ func TestHoneypotWriterHostWithPort(t *testing.T) {
 	detector := honeypotdetector.New(2, 100)
 	defer detector.Close()
 
-	writer := NewHoneypotWriter(mock, detector, false, false)
+	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Host field with port
 	writer.Write(&ResultEvent{Host: "example.com:443", TemplateID: "t1"})
@@ -246,7 +248,7 @@ func TestHoneypotWriterClose(t *testing.T) {
 	mock := &mockWriter{}
 	detector := honeypotdetector.New(2, 100)
 
-	writer := NewHoneypotWriter(mock, detector, false, false)
+	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Create a honeypot
 	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t1"})
@@ -257,4 +259,89 @@ func TestHoneypotWriterClose(t *testing.T) {
 	if !mock.closed {
 		t.Error("Underlying writer should be closed")
 	}
+}
+
+func TestHoneypotWriterMatchCount(t *testing.T) {
+	// Test that HoneypotMatchCount is set correctly in JSON output
+	mock := &mockWriter{}
+	detector := honeypotdetector.New(3, 100)
+	defer detector.Close()
+
+	writer := NewHoneypotWriter(mock, detector, false, false, "")
+
+	// Write enough to trigger honeypot
+	for i := 0; i < 5; i++ {
+		event := &ResultEvent{
+			Host:       "honeypot.com",
+			TemplateID: "template-" + string(rune('a'+i)),
+		}
+		writer.Write(event)
+	}
+
+	// Check that the events after threshold have match count set
+	for i, result := range mock.results {
+		if i >= 2 { // After threshold (3), events should have count
+			if !result.HoneypotHost {
+				t.Errorf("Result %d should have HoneypotHost=true", i)
+			}
+			if result.HoneypotMatchCount == 0 {
+				t.Errorf("Result %d should have HoneypotMatchCount > 0, got %d", i, result.HoneypotMatchCount)
+			}
+		}
+	}
+}
+
+func TestHoneypotWriterExport(t *testing.T) {
+	// Test honeypot export functionality
+	tmpFile := t.TempDir() + "/honeypots.txt"
+	mock := &mockWriter{}
+	detector := honeypotdetector.New(2, 100)
+
+	writer := NewHoneypotWriter(mock, detector, false, false, tmpFile)
+
+	// Create honeypots
+	writer.Write(&ResultEvent{Host: "honeypot1.com", TemplateID: "t1"})
+	writer.Write(&ResultEvent{Host: "honeypot1.com", TemplateID: "t2"})
+	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t1"})
+	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t2"})
+	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t3"})
+
+	writer.Close()
+
+	// Verify file was created and contains hosts
+	data, err := os.ReadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to read export file: %v", err)
+	}
+
+	content := string(data)
+	if !contains(content, "honeypot1.com") || !contains(content, "honeypot2.com") {
+		t.Errorf("Export file should contain honeypot hosts, got: %s", content)
+	}
+}
+
+func TestHoneypotWriterSuppressedCount(t *testing.T) {
+	// Test that suppressed count is tracked correctly
+	mock := &mockWriter{}
+	detector := honeypotdetector.New(2, 100)
+	defer detector.Close()
+
+	writer := NewHoneypotWriter(mock, detector, true, false, "")
+
+	// Write enough to trigger and suppress
+	for i := 0; i < 5; i++ {
+		writer.Write(&ResultEvent{
+			Host:       "honeypot.com",
+			TemplateID: "template-" + string(rune('a'+i)),
+		})
+	}
+
+	// Should have suppressed 3 results (after the 2nd which is the threshold-crossing one)
+	if writer.GetSuppressedCount() != 3 {
+		t.Errorf("Expected 3 suppressed, got %d", writer.GetSuppressedCount())
+	}
+}
+
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }

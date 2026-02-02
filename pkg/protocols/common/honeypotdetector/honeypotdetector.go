@@ -18,20 +18,27 @@ const DefaultThreshold = 10
 // Honeypots often serve responses that match many nuclei templates at once,
 // which is a clear indicator of a fake/trap host designed to fool scanners.
 type Detector struct {
-	cache     *lru.Cache[string, *hostEntry]
+	// cache stores host entries with LRU eviction policy
+	cache *lru.Cache[string, *hostEntry]
+	// threshold is the number of distinct templates that triggers honeypot detection
 	threshold int
-	verbose   bool
-	mu        sync.RWMutex
+	// verbose enables verbose logging output
+	verbose bool
+	// mu protects cache access for concurrent operations
+	mu sync.RWMutex
 
-	// Statistics
+	// honeypotCount tracks the total number of flagged honeypots (atomic)
 	honeypotCount atomic.Int32
 }
 
 // hostEntry tracks distinct template IDs for a single host
 type hostEntry struct {
+	// templates stores the set of distinct template IDs that matched this host
 	templates map[string]struct{}
-	flagged   bool
-	mu        sync.Mutex
+	// flagged indicates whether this host has been marked as a honeypot
+	flagged bool
+	// mu protects this entry for concurrent access
+	mu sync.Mutex
 }
 
 // New creates a new honeypot detector with configurable threshold and max hosts.

@@ -3,8 +3,10 @@ package output
 import (
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
@@ -49,26 +51,45 @@ func normalizeHost(host, urlField string) string {
 // HoneypotWriter is a wrapper around a Writer that performs honeypot detection.
 // It tracks template matches per host and can warn or suppress results from
 // hosts that match an unusually high number of templates (indicative of honeypots).
+// Features:
+//   - Marks honeypot-originated results with HoneypotHost field for JSON output
+//   - Optional suppression of results from detected honeypots
+//   - Export detected honeypots to file for blocklist creation
+//   - Enhanced statistics including suppression counts
 type HoneypotWriter struct {
-	writer   Writer
+	// writer is the underlying output writer being wrapped
+	writer Writer
+	// detector is the honeypot detection engine
 	detector *honeypotdetector.Detector
+	// suppress controls whether results from honeypots are suppressed
 	suppress bool
-	verbose  bool
+	// verbose enables verbose logging output
+	verbose bool
 
+	// exportPath is the file path to export honeypot hosts (optional)
+	exportPath string
+
+	// warnedMu protects the warned map for concurrent access
 	warnedMu sync.RWMutex
-	warned   map[string]bool // track which hosts we have warned about
+	// warned tracks which hosts we have already warned about
+	warned map[string]bool
+
+	// suppressedCount is an atomic counter for suppressed results
+	suppressedCount int64
 }
 
 // NewHoneypotWriter creates a new honeypot-aware output writer.
 // It wraps the provided writer and uses the detector to identify honeypot hosts.
 // If suppress is true, results from detected honeypots will not be written.
-func NewHoneypotWriter(writer Writer, detector *honeypotdetector.Detector, suppress, verbose bool) *HoneypotWriter {
+// If exportPath is non-empty, detected honeypots will be written to that file on Close.
+func NewHoneypotWriter(writer Writer, detector *honeypotdetector.Detector, suppress, verbose bool, exportPath string) *HoneypotWriter {
 	return &HoneypotWriter{
-		writer:   writer,
-		detector: detector,
-		suppress: suppress,
-		verbose:  verbose,
-		warned:   make(map[string]bool),
+		writer:     writer,
+		detector:   detector,
+		suppress:   suppress,
+		verbose:    verbose,
+		exportPath: exportPath,
+		warned:     make(map[string]bool),
 	}
 }
 
@@ -77,6 +98,7 @@ func NewHoneypotWriter(writer Writer, detector *honeypotdetector.Detector, suppr
 // Otherwise, a warning is logged when a host crosses the honeypot threshold.
 // Note: The match that crosses the threshold is still written (with warning).
 // Only subsequent matches are suppressed if suppression is enabled.
+// The HoneypotHost field is set on events from flagged hosts for JSON output.
 func (w *HoneypotWriter) Write(event *ResultEvent) error {
 	if w.detector == nil {
 		return w.writer.Write(event)
@@ -99,6 +121,10 @@ func (w *HoneypotWriter) Write(event *ResultEvent) error {
 	isHoneypot := w.detector.RecordMatch(host, event.TemplateID)
 
 	if isHoneypot {
+		// Mark this event as coming from a honeypot host (for JSON output)
+		event.HoneypotHost = true
+		event.HoneypotMatchCount = w.detector.GetMatchCount(host)
+
 		// Log warning only once per host (thread-safe)
 		w.warnedMu.RLock()
 		alreadyWarned := w.warned[host]
@@ -121,6 +147,7 @@ func (w *HoneypotWriter) Write(event *ResultEvent) error {
 		// If suppression is enabled, suppress ONLY if this host was already flagged before this match
 		// This allows the threshold-crossing match to be reported with the warning
 		if w.suppress && wasAlreadyFlagged {
+			atomic.AddInt64(&w.suppressedCount, 1)
 			return nil
 		}
 	}
@@ -133,21 +160,67 @@ func (w *HoneypotWriter) WriteFailure(event *InternalWrappedEvent) error {
 	return w.writer.WriteFailure(event)
 }
 
-// Close closes the writer and logs honeypot detection summary.
+// Close closes the writer, logs honeypot detection summary, and exports honeypots to file if configured.
 func (w *HoneypotWriter) Close() {
 	if w.detector != nil {
 		count := w.detector.GetHoneypotCount()
+		suppressedCount := atomic.LoadInt64(&w.suppressedCount)
+		flaggedHosts := w.detector.GetFlaggedHosts()
+
 		if count > 0 {
-			gologger.Info().Msgf("Honeypot detection summary: %d host(s) flagged as potential honeypots", count)
+			// Log enhanced summary with suppression stats
+			if suppressedCount > 0 {
+				gologger.Info().Msgf("Honeypot detection summary: %d host(s) flagged, %d result(s) suppressed", count, suppressedCount)
+			} else {
+				gologger.Info().Msgf("Honeypot detection summary: %d host(s) flagged as potential honeypots", count)
+			}
+
 			if w.verbose {
-				for _, host := range w.detector.GetFlaggedHosts() {
+				for _, host := range flaggedHosts {
 					gologger.Verbose().Msgf("  - %s (%d templates matched)", host, w.detector.GetMatchCount(host))
+				}
+			}
+
+			// Export honeypots to file if path is configured
+			if w.exportPath != "" {
+				if err := w.exportHoneypots(flaggedHosts); err != nil {
+					gologger.Warning().Msgf("Failed to export honeypots to %s: %v", w.exportPath, err)
+				} else {
+					gologger.Info().Msgf("Exported %d honeypot host(s) to %s", count, w.exportPath)
 				}
 			}
 		}
 		w.detector.Close()
 	}
 	w.writer.Close()
+}
+
+// exportHoneypots writes the flagged honeypot hosts to the configured export file.
+// Each host is written on a separate line for easy consumption by other tools.
+func (w *HoneypotWriter) exportHoneypots(hosts []string) error {
+	f, err := os.Create(w.exportPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	for _, host := range hosts {
+		matchCount := w.detector.GetMatchCount(host)
+		// Write in format: host (count templates matched)
+		if _, err := f.WriteString(host + "\n"); err != nil {
+			return err
+		}
+		// Also log details in verbose mode
+		if w.verbose {
+			gologger.Verbose().Msgf("Exported: %s (%d templates)", host, matchCount)
+		}
+	}
+	return nil
+}
+
+// GetSuppressedCount returns the number of results that were suppressed due to honeypot detection.
+func (w *HoneypotWriter) GetSuppressedCount() int64 {
+	return atomic.LoadInt64(&w.suppressedCount)
 }
 
 // Colorizer returns the colorizer from the underlying writer.

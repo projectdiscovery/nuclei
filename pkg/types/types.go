@@ -460,6 +460,8 @@ type Options struct {
 	HoneypotDetection bool
 	// SuppressHoneypotResults suppresses results from detected honeypot hosts
 	SuppressHoneypotResults bool
+	// HoneypotExport is the file path to export detected honeypot hosts for blocklist creation
+	HoneypotExport string
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
 	LoadHelperFileFunction LoadHelperFileFunction
