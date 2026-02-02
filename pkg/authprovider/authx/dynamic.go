@@ -3,7 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
-	"sync/atomic"
+	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -30,8 +30,7 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
-	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
+	fetchOnce     sync.Once              `json:"-" yaml:"-"` // ensures fetch happens only once
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -70,8 +69,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.fetched = &atomic.Bool{}
-	d.fetching = &atomic.Bool{}
+	// fetchOnce is a zero-value sync.Once, no initialization needed
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -183,14 +181,8 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // GetStrategy returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
-	if d.fetched.Load() {
-		if d.error != nil {
-			return nil
-		}
-	} else {
-		// Try to fetch if not already fetched
-		_ = d.Fetch(true)
-	}
+	// Ensure fetch has completed (blocks if another goroutine is fetching)
+	_ = d.Fetch(true)
 
 	if d.error != nil {
 		return nil
@@ -207,23 +199,13 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
+// Uses sync.Once to ensure fetch happens exactly once and concurrent callers wait
 func (d *Dynamic) Fetch(isFatal bool) error {
-	if d.fetched.Load() {
-		return d.error
-	}
-
-	// Try to set fetching flag atomically
-	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
-		return d.error
-	}
-
-	// We're the only one fetching, call the callback
-	d.error = d.fetchCallback(d)
-
-	// Mark as fetched and clear fetching flag
-	d.fetched.Store(true)
-	d.fetching.Store(false)
+	// sync.Once ensures this runs exactly once, and all concurrent callers
+	// will block until the first call completes
+	d.fetchOnce.Do(func() {
+		d.error = d.fetchCallback(d)
+	})
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)

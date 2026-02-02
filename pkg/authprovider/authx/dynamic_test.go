@@ -1,7 +1,10 @@
 package authx
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -121,5 +124,120 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		var d Dynamic
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
+	})
+}
+
+// TestConcurrentFetch tests that concurrent Fetch() calls properly wait
+// for the first fetch to complete, fixing the race condition in issue #6592
+func TestConcurrentFetch(t *testing.T) {
+	t.Run("concurrent-fetch-waits", func(t *testing.T) {
+		var callCount atomic.Int32
+		var fetchStarted atomic.Bool
+
+		d := &Dynamic{
+			TemplatePath: "test-template.yaml",
+			Variables:    []KV{{Key: "test", Value: "value"}},
+			Secret: &Secret{
+				Type:    "BasicAuth",
+				Domains: []string{"example.com"},
+			},
+			Extracted: make(map[string]interface{}),
+		}
+
+		// Set up a callback that simulates a slow authentication fetch
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			callCount.Add(1)
+			fetchStarted.Store(true)
+			// Simulate network delay
+			time.Sleep(100 * time.Millisecond)
+			// Set extracted values
+			d.Extracted["token"] = "test-token"
+			return nil
+		})
+
+		const numGoroutines = 10
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+
+		// Start a barrier to ensure all goroutines start at roughly the same time
+		startBarrier := make(chan struct{})
+
+		// Track results from each goroutine
+		errors := make([]error, numGoroutines)
+
+		for i := 0; i < numGoroutines; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				<-startBarrier // Wait for signal to start
+				errors[idx] = d.Fetch(false)
+			}(i)
+		}
+
+		// Release all goroutines at once
+		close(startBarrier)
+
+		// Wait for all to complete
+		wg.Wait()
+
+		// Verify callback was called exactly once
+		require.Equal(t, int32(1), callCount.Load(), "callback should be called exactly once")
+
+		// Verify all goroutines got no error
+		for i, err := range errors {
+			require.NoError(t, err, "goroutine %d should have no error", i)
+		}
+
+		// Verify extracted values are available
+		require.Equal(t, "test-token", d.Extracted["token"])
+	})
+
+	t.Run("get-strategies-waits-for-fetch", func(t *testing.T) {
+		var callCount atomic.Int32
+
+		d := &Dynamic{
+			TemplatePath: "test-template.yaml",
+			Variables:    []KV{{Key: "test", Value: "value"}},
+			Secret: &Secret{
+				Type:     "BasicAuth",
+				Domains:  []string{"example.com"},
+				Username: "user",
+				Password: "pass",
+			},
+			Extracted: make(map[string]interface{}),
+		}
+
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			callCount.Add(1)
+			time.Sleep(50 * time.Millisecond)
+			d.Extracted["dummy"] = "value"
+			return nil
+		})
+
+		const numGoroutines = 5
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+
+		startBarrier := make(chan struct{})
+		strategies := make([][]AuthStrategy, numGoroutines)
+
+		for i := 0; i < numGoroutines; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				<-startBarrier
+				strategies[idx] = d.GetStrategies()
+			}(i)
+		}
+
+		close(startBarrier)
+		wg.Wait()
+
+		// Callback should be called exactly once
+		require.Equal(t, int32(1), callCount.Load(), "callback should be called exactly once")
+
+		// All goroutines should get valid strategies
+		for i, strats := range strategies {
+			require.NotNil(t, strats, "goroutine %d should get strategies", i)
+			require.Len(t, strats, 1, "goroutine %d should get 1 strategy", i)
+		}
 	})
 }
