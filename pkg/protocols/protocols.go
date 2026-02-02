@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetection"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -98,6 +99,8 @@ type ExecutorOptions struct {
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HoneypotCache is an optional cache for detecting honeypot hosts
+	HoneypotCache *honeypotdetection.Cache
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -287,6 +290,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Browser:             e.Browser,
 		Interactsh:          e.Interactsh,
 		HostErrorsCache:     e.HostErrorsCache,
+		HoneypotCache:       e.HoneypotCache,
 		StopAtFirstMatch:    e.StopAtFirstMatch,
 		Variables:           e.Variables,
 		Constants:           e.Constants,
@@ -467,6 +471,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
 	e.HostErrorsCache = n.HostErrorsCache
+	e.HoneypotCache = n.HoneypotCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB

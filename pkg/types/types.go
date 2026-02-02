@@ -133,6 +133,10 @@ type Options struct {
 	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
+	// HoneypotDetection enables detection of honeypot hosts that match an abnormally high percentage of templates
+	HoneypotDetection bool
+	// HoneypotThreshold is the percentage threshold for flagging a host as a potential honeypot (default 50)
+	HoneypotThreshold int
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
@@ -525,6 +529,8 @@ func (options *Options) Copy() *Options {
 		MaxHostError:                   options.MaxHostError,
 		TrackError:                     options.TrackError,
 		NoHostErrors:                   options.NoHostErrors,
+		HoneypotDetection:              options.HoneypotDetection,
+		HoneypotThreshold:              options.HoneypotThreshold,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
 		HeadlessBulkSize:               options.HeadlessBulkSize,
@@ -803,6 +809,19 @@ func DefaultOptions() *Options {
 
 func (options *Options) ShouldUseHostError() bool {
 	return options.MaxHostError > 0 && !options.NoHostErrors
+}
+
+// ShouldUseHoneypotDetection returns true if honeypot detection is enabled
+func (options *Options) ShouldUseHoneypotDetection() bool {
+	return options.HoneypotDetection
+}
+
+// GetHoneypotThreshold returns the honeypot detection threshold, defaulting to 50 if not set
+func (options *Options) GetHoneypotThreshold() int {
+	if options.HoneypotThreshold <= 0 || options.HoneypotThreshold > 100 {
+		return 50 // default threshold
+	}
+	return options.HoneypotThreshold
 }
 
 func (options *Options) ParseHeadlessOptionalArguments() map[string]string {

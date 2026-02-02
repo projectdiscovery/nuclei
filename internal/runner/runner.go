@@ -51,6 +51,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetection"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -89,6 +90,7 @@ type Runner struct {
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
 	hostErrors         hosterrorscache.CacheInterface
+	honeypotCache      *honeypotdetection.Cache
 	resumeCfg          *types.ResumeCfg
 	pprofServer        *pprofutil.PprofServer
 	pdcpUploadErrMsg   string
@@ -418,6 +420,10 @@ func (r *Runner) Close() {
 	if r.hostErrors != nil {
 		r.hostErrors.Close()
 	}
+	// close honeypot detection cache
+	if r.honeypotCache != nil {
+		r.honeypotCache.Close()
+	}
 	if r.output != nil {
 		r.output.Close()
 	}
@@ -610,6 +616,20 @@ func (r *Runner) RunEnumeration() error {
 
 		r.hostErrors = cache
 		executorOpts.HostErrorsCache = cache
+	}
+
+	// Initialize honeypot detection cache if enabled
+	if r.options.ShouldUseHoneypotDetection() {
+		honeypotCache := honeypotdetection.New(r.options.GetHoneypotThreshold())
+		honeypotCache.SetVerbose(r.options.Verbose)
+		r.honeypotCache = honeypotCache
+		executorOpts.HoneypotCache = honeypotCache
+
+		// Wrap the output writer to intercept results for honeypot detection
+		r.output = output.NewHoneypotWriter(r.output, honeypotCache)
+		executorOpts.Output = r.output
+
+		r.Logger.Info().Msgf("Honeypot detection enabled with %d%% threshold", r.options.GetHoneypotThreshold())
 	}
 
 	executorEngine := core.New(r.options)
@@ -850,6 +870,12 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(templates.RuntimeWarningsStats)
 	tmplCount := len(store.Templates())
 	workflowCount := len(store.Workflows())
+
+	// Set total templates count for honeypot detection
+	if r.honeypotCache != nil {
+		r.honeypotCache.SetTotalTemplates(tmplCount + workflowCount)
+	}
+
 	if r.options.Verbose || (tmplCount == 0 && workflowCount == 0) {
 		// only print these stats in verbose mode
 		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
