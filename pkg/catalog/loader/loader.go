@@ -334,7 +334,13 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
 func (store *Store) Load() {
-	store.templates = store.LoadTemplates(store.finalTemplates)
+	templates, err := store.LoadTemplates(store.finalTemplates)
+	if err != nil {
+		store.logger.Error().Msgf("could not load templates: %s", err)
+		store.templates = nil
+	} else {
+		store.templates = templates
+	}
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
 }
 
@@ -637,7 +643,7 @@ func isParsingError(store *Store, message string, template string, err error) bo
 }
 
 // LoadTemplates takes a list of templates and returns paths for them
-func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
@@ -668,7 +674,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
 // returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
@@ -718,7 +724,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
 		store.logger.Error().Msgf("dialers with executionId %s not found", typesOpts.ExecutionId)
-		return nil
+		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {
@@ -853,7 +859,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates.Slice
+	return loadedTemplates.Slice, nil
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
