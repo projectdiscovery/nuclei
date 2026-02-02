@@ -105,16 +105,19 @@ func (c *Cache) RecordMatch(host, templateID, urlStr string) {
 	c.mu.Unlock()
 
 	stats.mu.Lock()
-	defer stats.mu.Unlock()
-
 	// Record the match if we haven't seen this template for this host
 	if templateID != "" && !stats.matchedTemplates[templateID] {
 		stats.matchedTemplates[templateID] = true
 		stats.matches++
 	}
+	// Copy values needed for checkAndWarn while holding stats.mu
+	matches := stats.matches
+	templatesScanned := stats.templatesScanned
+	flagged := stats.flagged
+	stats.mu.Unlock()
 
-	// Check if this host should be flagged
-	c.checkAndWarn(normalizedHost, stats)
+	// Check if this host should be flagged (without holding stats.mu to avoid deadlock)
+	c.checkAndWarn(normalizedHost, matches, templatesScanned, flagged)
 }
 
 // RecordScan records that a template was scanned against a host (regardless of match)
@@ -140,18 +143,19 @@ func (c *Cache) RecordScan(host string) {
 }
 
 // checkAndWarn checks if a host exceeds the honeypot threshold and warns if necessary
-func (c *Cache) checkAndWarn(host string, stats *hostStats) {
+// Note: This function must NOT be called while holding stats.mu to avoid deadlock
+func (c *Cache) checkAndWarn(host string, matches, templatesScanned int, alreadyFlagged bool) {
 	c.mu.RLock()
 	totalTemplates := c.totalScanned
 	alreadyWarned := c.warnedHosts[host]
 	c.mu.RUnlock()
 
-	if alreadyWarned {
+	if alreadyWarned || alreadyFlagged {
 		return
 	}
 
 	// Use templatesScanned if available, otherwise fall back to totalScanned
-	denominator := stats.templatesScanned
+	denominator := templatesScanned
 	if denominator == 0 {
 		denominator = totalTemplates
 	}
@@ -159,16 +163,23 @@ func (c *Cache) checkAndWarn(host string, stats *hostStats) {
 		return
 	}
 
-	ratio := float64(stats.matches) / float64(denominator) * 100
+	ratio := float64(matches) / float64(denominator) * 100
 
-	if ratio >= float64(c.threshold) && !stats.flagged {
-		stats.flagged = true
+	if ratio >= float64(c.threshold) {
+		// Mark as warned and flagged
 		c.mu.Lock()
 		c.warnedHosts[host] = true
+		stats := c.hostMatches[host]
 		c.mu.Unlock()
 
+		if stats != nil {
+			stats.mu.Lock()
+			stats.flagged = true
+			stats.mu.Unlock()
+		}
+
 		gologger.Warning().Msgf("[HONEYPOT] Potential honeypot detected: %s matched %.1f%% of templates (%d/%d). Results may be false positives.",
-			host, ratio, stats.matches, denominator)
+			host, ratio, matches, denominator)
 	}
 }
 
@@ -294,14 +305,22 @@ func (c *Cache) normalizeHost(value string) string {
 		}
 	}
 
-	// Check if it's already host:port format
-	if strings.Contains(value, ":") {
-		host, port, err := net.SplitHostPort(value)
-		if err == nil {
-			return net.JoinHostPort(host, port)
-		}
+	// Try parsing as host:port format
+	// Use net.SplitHostPort first, which correctly handles IPv6 addresses like [::1]:8080
+	if host, port, err := net.SplitHostPort(value); err == nil {
+		return net.JoinHostPort(host, port)
 	}
 
-	// Return as-is (probably just a hostname)
+	// If SplitHostPort failed, it could be:
+	// - A plain hostname (example.com)
+	// - An IPv6 address without port ([::1] or ::1)
+	// - A hostname without port
+
+	// Handle bracketed IPv6 without port (e.g., [::1])
+	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		return value[1 : len(value)-1] // Remove brackets, return raw IPv6
+	}
+
+	// Return as-is (hostname or bare IPv6 address)
 	return value
 }

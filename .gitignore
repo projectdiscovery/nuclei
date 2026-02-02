@@ -52,4 +52,5 @@ vendor
 *.pprof
 *.trace
 *.mem
-*.cpunuclei-test
+*.cpu
+nuclei-test
