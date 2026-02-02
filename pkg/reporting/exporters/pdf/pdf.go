@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/phpdave11/gofpdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 )
@@ -55,6 +55,15 @@ func (exporter *Exporter) Close() error {
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
+
+	// Footer must be set before AddPage for it to appear on all pages
+	pdf.SetFooterFunc(func() {
+		pdf.SetY(-15)
+		pdf.SetFont("Arial", "I", 8)
+		pdf.SetTextColor(128, 128, 128)
+		pdf.CellFormat(0, 10, fmt.Sprintf("Page %d | Nuclei %s", pdf.PageNo(), config.Version), "", 0, "C", false, 0, "")
+	})
+
 	pdf.AddPage()
 
 	// Header
@@ -85,14 +94,6 @@ func (exporter *Exporter) Close() error {
 		// Detailed findings
 		exporter.writeDetailedFindings(pdf)
 	}
-
-	// Footer is handled by page break callback
-	pdf.SetFooterFunc(func() {
-		pdf.SetY(-15)
-		pdf.SetFont("Arial", "I", 8)
-		pdf.SetTextColor(128, 128, 128)
-		pdf.CellFormat(0, 10, fmt.Sprintf("Page %d | Nuclei %s", pdf.PageNo(), config.Version), "", 0, "C", false, 0, "")
-	})
 
 	// Write to file
 	if err := pdf.OutputFileAndClose(exporter.options.File); err != nil {
@@ -170,7 +171,7 @@ func (exporter *Exporter) writeFindingsTable(pdf *gofpdf.Fpdf) {
 	pdf.SetFont("Arial", "B", 9)
 	pdf.SetFillColor(220, 220, 220)
 
-	colWidths := []float64{20, 45, 45, 50, 25}
+	colWidths := []float64{18, 42, 42, 48, 30} // Total: 180mm (A4 width 210mm - 30mm margins)
 	headers := []string{"Severity", "Template", "Host", "Matched At", "Time"}
 
 	for i, header := range headers {
@@ -274,10 +275,11 @@ func (exporter *Exporter) setSeverityColor(pdf *gofpdf.Fpdf, severity string) {
 	}
 }
 
-// truncateString truncates a string to a maximum length
+// truncateString truncates a string to a maximum length (rune-safe for UTF-8)
 func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
-	return s[:maxLen-3] + "..."
+	return string(runes[:maxLen-3]) + "..."
 }
