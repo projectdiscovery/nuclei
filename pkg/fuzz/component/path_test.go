@@ -127,3 +127,46 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+// TestPathComponent_DeterministicIteration tests that path iteration is deterministic
+// This test verifies the fix for https://github.com/projectdiscovery/nuclei/issues/6398
+// where path-based fuzzing would non-deterministically skip numeric path segments
+// due to random map iteration order in Go.
+func TestPathComponent_DeterministicIteration(t *testing.T) {
+	// Run multiple iterations to verify deterministic behavior
+	// Previously, using regular Go maps would cause random iteration order
+	for run := 0; run < 100; run++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found, err := path.Parse(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !found {
+			t.Fatal("expected path to be found")
+		}
+
+		// Collect keys and values in iteration order
+		var keys []string
+		var values []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify consistent order: keys should always be 1, 2, 3
+		// and values should always be user, 55, profile in that order
+		expectedKeys := []string{"1", "2", "3"}
+		expectedValues := []string{"user", "55", "profile"}
+
+		require.Equal(t, expectedKeys, keys, "iteration %d: keys should be in consistent order", run)
+		require.Equal(t, expectedValues, values, "iteration %d: values should be in consistent order", run)
+	}
+}
