@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -177,6 +178,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.PDFExporter != nil {
+		exporter, err := pdf.New(options.PDFExporter)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "could not create export client: %v", ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 
 	if doNotDedupe {
 		return client, nil
@@ -226,6 +234,7 @@ func CreateConfigIfNotExists() error {
 		JSONExporter:          &json_exporter.Options{},
 		JSONLExporter:         &jsonl.Options{},
 		MongoDBExporter:       &mongo.Options{},
+		PDFExporter:           &pdf.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {
