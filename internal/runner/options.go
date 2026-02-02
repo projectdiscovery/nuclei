@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -340,6 +341,12 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 				File:    options.JSONLExport,
 				OmitRaw: options.OmitRawRequests,
 			}
+		}
+	}
+	if options.PDFExport != "" {
+		reportingOptions.PDFExporter = &pdf.Options{
+			File:    options.PDFExport,
+			OmitRaw: options.OmitRawRequests,
 		}
 	}
 

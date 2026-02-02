@@ -84,6 +84,7 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/invopop/yaml v0.3.1
 	github.com/jcmturner/gokrb5/v8 v8.4.4
+	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/kitabisa/go-ci v1.0.3
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa

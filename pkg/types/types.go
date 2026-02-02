@@ -240,6 +240,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// PDFExport is the file to export PDF output format to
+	PDFExport string
 	// Redact redacts given keys in
 	Redact goflags.StringSlice
 	// EnableProgressBar enables progress bar
@@ -575,6 +577,7 @@ func (options *Options) Copy() *Options {
 		OmitTemplate:                   options.OmitTemplate,
 		JSONExport:                     options.JSONExport,
 		JSONLExport:                    options.JSONLExport,
+		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
 		EnableProgressBar:              options.EnableProgressBar,
 		TemplateDisplay:                options.TemplateDisplay,
