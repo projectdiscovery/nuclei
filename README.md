@@ -304,7 +304,7 @@ OPTIMIZATIONS:
    -no-stdin                        disable stdin processing
    -hpt, -honeypot-threshold int    threshold of distinct template matches before flagging host as honeypot (default 10)
    -hpd, -honeypot-detection        enable honeypot detection to identify hosts matching too many templates (default true)
-   -shp, -suppress-honeypot         suppress results from hosts flagged as potential honeypots
+   -shp, -suppress-honeypot         suppress results from hosts flagged as potential honeypots (default false)
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)

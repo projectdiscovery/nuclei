@@ -80,13 +80,14 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
 
+	// Always record this template match (even if already flagged)
+	// This keeps GetMatchCount accurate for reporting
+	entry.templates[templateID] = struct{}{}
+
 	// Already flagged, just return true
 	if entry.flagged {
 		return true
 	}
-
-	// Record this template match
-	entry.templates[templateID] = struct{}{}
 
 	// Check if we crossed the threshold
 	if len(entry.templates) >= d.threshold {
