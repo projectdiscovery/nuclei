@@ -305,7 +305,9 @@ OPTIMIZATIONS:
    -hpt, -honeypot-threshold int    threshold of distinct template matches before flagging host as honeypot (default 10)
    -hpd, -honeypot-detection        enable honeypot detection to identify hosts matching too many templates (default true)
    -shp, -suppress-honeypot         suppress results from hosts flagged as potential honeypots (default false)
-   -hpe, -honeypot-export string    file to export detected honeypot hosts (for blocklist creation)
+   -hpe, -honeypot-export string    file to export detected honeypot hosts (CSV format: host,count)
+   -hpb, -honeypot-blocklist string file containing known honeypot hosts to pre-block
+   -hpmh, -honeypot-max-hosts int   maximum hosts to track in honeypot detector cache (default 10000)
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)

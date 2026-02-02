@@ -279,8 +279,21 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Setup honeypot detection if enabled
 	if options.HoneypotDetection {
-		detector := honeypotdetector.New(options.HoneypotThreshold, honeypotdetector.DefaultMaxHosts)
+		// Use configurable max hosts or default
+		maxHosts := options.HoneypotMaxHosts
+		if maxHosts <= 0 {
+			maxHosts = honeypotdetector.DefaultMaxHosts
+		}
+		detector := honeypotdetector.New(options.HoneypotThreshold, maxHosts)
 		detector.SetVerbose(options.Verbose)
+
+		// Load blocklist if provided
+		if options.HoneypotBlocklist != "" {
+			if _, err := detector.LoadBlocklist(options.HoneypotBlocklist); err != nil {
+				gologger.Warning().Msgf("Failed to load honeypot blocklist: %v", err)
+			}
+		}
+
 		runner.output = output.NewHoneypotWriter(runner.output, detector, options.SuppressHoneypotResults, options.Verbose, options.HoneypotExport)
 	}
 

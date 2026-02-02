@@ -1,6 +1,7 @@
 package output
 
 import (
+	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -196,7 +197,8 @@ func (w *HoneypotWriter) Close() {
 }
 
 // exportHoneypots writes the flagged honeypot hosts to the configured export file.
-// Each host is written on a separate line for easy consumption by other tools.
+// Format: host,match_count (CSV-like for easy parsing by other tools)
+// Lines starting with # are treated as comments when re-imported.
 func (w *HoneypotWriter) exportHoneypots(hosts []string) error {
 	f, err := os.Create(w.exportPath)
 	if err != nil {
@@ -204,10 +206,19 @@ func (w *HoneypotWriter) exportHoneypots(hosts []string) error {
 	}
 	defer f.Close()
 
+	// Write header comment
+	if _, err := f.WriteString("# Honeypot hosts detected by nuclei\n"); err != nil {
+		return err
+	}
+	if _, err := f.WriteString("# Format: host,match_count\n"); err != nil {
+		return err
+	}
+
 	for _, host := range hosts {
 		matchCount := w.detector.GetMatchCount(host)
-		// Write in format: host (count templates matched)
-		if _, err := f.WriteString(host + "\n"); err != nil {
+		// Write in format: host,count for easy parsing
+		line := fmt.Sprintf("%s,%d\n", host, matchCount)
+		if _, err := f.WriteString(line); err != nil {
 			return err
 		}
 		// Also log details in verbose mode

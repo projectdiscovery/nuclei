@@ -1,6 +1,9 @@
 package honeypotdetector
 
 import (
+	"bufio"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -52,16 +55,26 @@ func New(threshold, maxHosts int) *Detector {
 		maxHosts = DefaultMaxHosts
 	}
 
-	cache, err := lru.New[string, *hostEntry](maxHosts)
-	if err != nil {
-		// This should never happen with validated maxHosts > 0, but handle gracefully
-		cache, _ = lru.New[string, *hostEntry](DefaultMaxHosts)
-	}
-
-	return &Detector{
-		cache:     cache,
+	// Create detector first so the eviction callback can reference it
+	detector := &Detector{
 		threshold: threshold,
 	}
+
+	// Use NewWithEvict to properly decrement honeypotCount when flagged hosts are evicted
+	onEvict := func(_ string, entry *hostEntry) {
+		if entry != nil && entry.flagged {
+			detector.honeypotCount.Add(-1)
+		}
+	}
+
+	cache, err := lru.NewWithEvict[string, *hostEntry](maxHosts, onEvict)
+	if err != nil {
+		// This should never happen with validated maxHosts > 0, but handle gracefully
+		cache, _ = lru.NewWithEvict[string, *hostEntry](DefaultMaxHosts, onEvict)
+	}
+
+	detector.cache = cache
+	return detector
 }
 
 // SetVerbose enables verbose logging
@@ -185,4 +198,67 @@ func (d *Detector) Close() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.cache.Purge()
+}
+
+// LoadBlocklist loads known honeypot hosts from a file and pre-flags them.
+// Each line in the file should contain one host (blank lines and # comments are ignored).
+// Returns the number of hosts loaded and any error encountered.
+func (d *Detector) LoadBlocklist(filepath string) (int, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	var count int
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		// Pre-flag this host as a honeypot
+		d.preFlagHost(line)
+		count++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return count, err
+	}
+
+	if count > 0 {
+		gologger.Info().Msgf("Loaded %d known honeypot hosts from blocklist", count)
+	}
+
+	return count, nil
+}
+
+// preFlagHost adds a host to the cache and marks it as a honeypot.
+// This is used for loading blocklists of known honeypots.
+func (d *Detector) preFlagHost(host string) {
+	host = strings.ToLower(strings.TrimSpace(host))
+	if host == "" {
+		return
+	}
+
+	d.mu.Lock()
+	entry, exists := d.cache.Get(host)
+	if !exists {
+		entry = &hostEntry{
+			templates: make(map[string]struct{}),
+		}
+		d.cache.Add(host, entry)
+	}
+	d.mu.Unlock()
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	if !entry.flagged {
+		entry.flagged = true
+		// Mark as pre-loaded blocklist entry
+		entry.templates["__blocklist__"] = struct{}{}
+		d.honeypotCount.Add(1)
+	}
 }
