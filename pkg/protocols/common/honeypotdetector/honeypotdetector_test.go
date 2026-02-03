@@ -256,7 +256,7 @@ func TestDetectorPreFlaggedHostStillTracksTemplates(t *testing.T) {
 	detector := New(10)
 	defer detector.Close()
 
-	detector.LoadBlocklist(blocklistPath)
+	_, _ = detector.LoadBlocklist(blocklistPath)
 
 	// Record additional matches after loading blocklist
 	detector.RecordMatch("preflagged.com", "template-1")
@@ -480,7 +480,7 @@ func TestDetectorConcurrentBlocklistAndRecord(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		detector.LoadBlocklist(blocklistPath)
+		_, _ = detector.LoadBlocklist(blocklistPath)
 	}()
 
 	// Concurrent record matches

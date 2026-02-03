@@ -91,7 +91,7 @@ func TestHoneypotWriterDetection(t *testing.T) {
 			Host:       "honeypot.com",
 			TemplateID: "vuln-cve-" + string(rune('1'+i)),
 		}
-		writer.Write(event)
+		_ = writer.Write(event)
 	}
 
 	if !detector.IsHoneypot("honeypot.com") {
@@ -118,7 +118,7 @@ func TestHoneypotWriterSuppression(t *testing.T) {
 			Host:       "honeypot.com",
 			TemplateID: "template-" + string(rune('a'+i)),
 		}
-		writer.Write(event)
+		_ = writer.Write(event)
 	}
 
 	// With new semantics: 1st, 2nd written (under threshold), 3rd crosses threshold AND is written (with warning)
@@ -141,15 +141,15 @@ func TestHoneypotWriterMultipleHosts(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
 
 	// Host A: 2 templates (flagged)
-	writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t2"})
 
 	// Host B: 1 template (not flagged)
-	writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t1"})
 
 	// Host C: 2 templates (flagged)
-	writer.Write(&ResultEvent{Host: "hostC.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "hostC.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "hostC.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "hostC.com", TemplateID: "t2"})
 
 	if detector.GetHoneypotCount() != 2 {
 		t.Errorf("Expected 2 honeypots (A and C), got %d", detector.GetHoneypotCount())
@@ -189,8 +189,8 @@ func TestHoneypotWriterURLFallback(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Use URL instead of Host, with path - should normalize to just hostname
-	writer.Write(&ResultEvent{URL: "https://example.com/path1", TemplateID: "t1"})
-	writer.Write(&ResultEvent{URL: "https://example.com/path2", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{URL: "https://example.com/path1", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{URL: "https://example.com/path2", TemplateID: "t2"})
 
 	// Should detect honeypot using normalized hostname
 	if !detector.IsHoneypot("example.com") {
@@ -208,9 +208,9 @@ func TestHoneypotWriterPortNormalization(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
 
 	// Same IP, different ports - should all be tracked as 120.26.237.211
-	writer.Write(&ResultEvent{URL: "http://120.26.237.211:80/path", TemplateID: "cve-2021-1234"})
-	writer.Write(&ResultEvent{URL: "http://120.26.237.211:8080/admin", TemplateID: "cve-2022-5678"})
-	writer.Write(&ResultEvent{URL: "http://120.26.237.211:12577/api", TemplateID: "cve-2023-9999"})
+	_ = writer.Write(&ResultEvent{URL: "http://120.26.237.211:80/path", TemplateID: "cve-2021-1234"})
+	_ = writer.Write(&ResultEvent{URL: "http://120.26.237.211:8080/admin", TemplateID: "cve-2022-5678"})
+	_ = writer.Write(&ResultEvent{URL: "http://120.26.237.211:12577/api", TemplateID: "cve-2023-9999"})
 
 	// All 3 should map to same normalized host
 	if !detector.IsHoneypot("120.26.237.211") {
@@ -231,8 +231,8 @@ func TestHoneypotWriterIPv6Normalization(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// IPv6 addresses with brackets and ports
-	writer.Write(&ResultEvent{Host: "[::1]:8080", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "[::1]:9090", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "[::1]:8080", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "[::1]:9090", TemplateID: "t2"})
 
 	// Should normalize to just ::1
 	if !detector.IsHoneypot("::1") {
@@ -249,8 +249,8 @@ func TestHoneypotWriterHostWithPort(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Host field with port
-	writer.Write(&ResultEvent{Host: "example.com:443", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "example.com:8443", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "example.com:443", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "example.com:8443", TemplateID: "t2"})
 
 	// Should normalize ports away
 	if !detector.IsHoneypot("example.com") {
@@ -265,8 +265,8 @@ func TestHoneypotWriterClose(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Create a honeypot
-	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t2"})
 
 	writer.Close()
 
@@ -289,7 +289,7 @@ func TestHoneypotWriterMatchCount(t *testing.T) {
 			Host:       "honeypot.com",
 			TemplateID: "template-" + string(rune('a'+i)),
 		}
-		writer.Write(event)
+		_ = writer.Write(event)
 	}
 
 	// Check that the events after threshold have match count set
@@ -314,11 +314,11 @@ func TestHoneypotWriterExport(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, tmpFile)
 
 	// Create honeypots
-	writer.Write(&ResultEvent{Host: "honeypot1.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "honeypot1.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot1.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot1.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t3"})
 
 	writer.Close()
 
@@ -349,7 +349,7 @@ func TestHoneypotWriterSuppressedCount(t *testing.T) {
 
 	// Write enough to trigger and suppress
 	for i := 0; i < 5; i++ {
-		writer.Write(&ResultEvent{
+		_ = writer.Write(&ResultEvent{
 			Host:       "honeypot.com",
 			TemplateID: "template-" + string(rune('a'+i)),
 		})
@@ -374,8 +374,8 @@ func TestHoneypotWriterVerboseMode(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, true, "") // verbose=true
 
 	// Write enough to trigger honeypot
-	writer.Write(&ResultEvent{Host: "verbose-test.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "verbose-test.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "verbose-test.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "verbose-test.com", TemplateID: "t2"})
 
 	// Should still work without panicking
 	if len(mock.results) != 2 {
@@ -397,7 +397,7 @@ func TestHoneypotWriterConcurrentWrites(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < 5; j++ {
-				writer.Write(&ResultEvent{
+				_ = writer.Write(&ResultEvent{
 					Host:       "concurrent.com",
 					TemplateID: "template-" + string(rune('A'+id)) + "-" + string(rune('0'+j)),
 				})
@@ -421,8 +421,8 @@ func TestHoneypotWriterExportNoHoneypots(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, tmpFile)
 
 	// Write results under threshold
-	writer.Write(&ResultEvent{Host: "clean.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "clean.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "clean.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "clean.com", TemplateID: "t2"})
 
 	writer.Close()
 
@@ -445,9 +445,9 @@ func TestHoneypotWriterResultCount(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Write some results
-	writer.Write(&ResultEvent{Host: "host.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "host.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "host.com", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "host.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "host.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "host.com", TemplateID: "t3"})
 
 	// ResultCount should delegate to underlying writer
 	if writer.ResultCount() != 3 {
@@ -476,9 +476,9 @@ func TestHoneypotWriterNormalizesURLVariations(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Different URL variations for the same host
-	writer.Write(&ResultEvent{Host: "example.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "example.com:80", TemplateID: "t2"})
-	writer.Write(&ResultEvent{URL: "https://example.com:443/path", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "example.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "example.com:80", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{URL: "https://example.com:443/path", TemplateID: "t3"})
 
 	// Should all normalize to same host and trigger honeypot
 	if !detector.IsHoneypot("example.com") {
@@ -642,19 +642,19 @@ func TestHoneypotWriterHoneypotHostFieldSet(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// First two writes should NOT have HoneypotHost set
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
 	if mock.results[0].HoneypotHost {
 		t.Error("First result should not have HoneypotHost=true")
 	}
 
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
 	// Second write crosses threshold, should have HoneypotHost=true
 	if !mock.results[1].HoneypotHost {
 		t.Error("Threshold-crossing result should have HoneypotHost=true")
 	}
 
 	// Third write should also have HoneypotHost=true
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t3"})
 	if !mock.results[2].HoneypotHost {
 		t.Error("Post-threshold result should have HoneypotHost=true")
 	}
@@ -668,9 +668,9 @@ func TestHoneypotWriterMatchCountFieldSet(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Write enough to trigger honeypot
-	writer.Write(&ResultEvent{Host: "count.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "count.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "count.com", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "count.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "count.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "count.com", TemplateID: "t3"})
 
 	// Check match counts are set correctly
 	if mock.results[1].HoneypotMatchCount != 2 {
@@ -689,13 +689,13 @@ func TestHoneypotWriterSuppressionOnlyAfterThreshold(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, true, false, "") // suppress=true
 
 	// First write: passes through
-	writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t1"})
 	// Second write: threshold-crossing, passes through with warning
-	writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t2"})
 	// Third write: suppressed
-	writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t3"})
 	// Fourth write: suppressed
-	writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t4"})
+	_ = writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t4"})
 
 	// Should have 2 results (t1 and t2), not 4
 	if len(mock.results) != 2 {
@@ -716,17 +716,17 @@ func TestHoneypotWriterMultipleHostsSuppression(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
 
 	// Host A becomes honeypot
-	writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t3"}) // suppressed
+	_ = writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "hostA.com", TemplateID: "t3"}) // suppressed
 
 	// Host B becomes honeypot
-	writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t3"}) // suppressed
+	_ = writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "hostB.com", TemplateID: "t3"}) // suppressed
 
 	// Host C stays clean
-	writer.Write(&ResultEvent{Host: "hostC.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "hostC.com", TemplateID: "t1"})
 
 	// 2 from A + 2 from B + 1 from C = 5
 	if len(mock.results) != 5 {
@@ -747,8 +747,8 @@ func TestHoneypotWriterEmptyEventFields(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Event with empty host and URL should still be written
-	writer.Write(&ResultEvent{TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "", URL: "", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "", URL: "", TemplateID: "t2"})
 
 	if len(mock.results) != 2 {
 		t.Errorf("Expected 2 results, got %d", len(mock.results))
@@ -764,7 +764,7 @@ func TestHoneypotWriterExportCSVFormat(t *testing.T) {
 
 	// Create honeypot with 5 templates
 	for i := 0; i < 5; i++ {
-		writer.Write(&ResultEvent{Host: "csv-test.com", TemplateID: "template-" + string(rune('A'+i))})
+		_ = writer.Write(&ResultEvent{Host: "csv-test.com", TemplateID: "template-" + string(rune('A'+i))})
 	}
 
 	writer.Close()
@@ -797,8 +797,8 @@ func TestHoneypotWriterCloseWithDetector(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Create a honeypot
-	writer.Write(&ResultEvent{Host: "close-test.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "close-test.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "close-test.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "close-test.com", TemplateID: "t2"})
 
 	// Close should not panic and should close underlying writer
 	writer.Close()
@@ -830,23 +830,23 @@ func TestHoneypotWriterIntegrationFullWorkflow(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, true, false, tmpFile)
 
 	// Stage 1: Clean hosts
-	writer.Write(&ResultEvent{Host: "clean1.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "clean2.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "clean1.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "clean2.com", TemplateID: "t1"})
 
 	// Stage 2: Honeypot develops
-	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t3"}) // Flagged
+	_ = writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t3"}) // Flagged
 
 	// Stage 3: Suppressed results
-	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t4"}) // Suppressed
-	writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t5"}) // Suppressed
+	_ = writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t4"}) // Suppressed
+	_ = writer.Write(&ResultEvent{Host: "honeypot.com", TemplateID: "t5"}) // Suppressed
 
 	// Stage 4: Another honeypot
-	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t3"})
-	writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t4"}) // Suppressed
+	_ = writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "honeypot2.com", TemplateID: "t4"}) // Suppressed
 
 	writer.Close()
 
@@ -877,20 +877,20 @@ func TestHoneypotWriterIntegrationWithBlocklist(t *testing.T) {
 	exportPath := tmpDir + "/export.txt"
 
 	// Create blocklist
-	os.WriteFile(blocklistPath, []byte("known-bad.com\n"), 0644)
+	_ = os.WriteFile(blocklistPath, []byte("known-bad.com\n"), 0644)
 
 	mock := &mockWriter{}
 	detector := honeypotdetector.New(5)
-	detector.LoadBlocklist(blocklistPath)
+	_, _ = detector.LoadBlocklist(blocklistPath)
 
 	writer := NewHoneypotWriter(mock, detector, true, false, exportPath)
 
 	// Pre-blocked host: immediately flagged, ALL writes suppressed
-	writer.Write(&ResultEvent{Host: "known-bad.com", TemplateID: "t1"}) // Suppressed
-	writer.Write(&ResultEvent{Host: "known-bad.com", TemplateID: "t2"}) // Suppressed
+	_ = writer.Write(&ResultEvent{Host: "known-bad.com", TemplateID: "t1"}) // Suppressed
+	_ = writer.Write(&ResultEvent{Host: "known-bad.com", TemplateID: "t2"}) // Suppressed
 
 	// New host: not pre-blocked, passes through
-	writer.Write(&ResultEvent{Host: "new-host.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "new-host.com", TemplateID: "t1"})
 
 	writer.Close()
 
@@ -912,13 +912,13 @@ func TestHoneypotWriterThresholdOfTwo(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// First write: not flagged
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
 	if mock.results[0].HoneypotHost {
 		t.Error("First write should not be flagged")
 	}
 
 	// Second write: flagged (threshold reached)
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
 	if !mock.results[1].HoneypotHost {
 		t.Error("Second write should be flagged")
 	}
@@ -935,9 +935,9 @@ func TestHoneypotWriterDifferentProtocols(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Same host, different URL schemes
-	writer.Write(&ResultEvent{URL: "http://example.com/path1", TemplateID: "t1"})
-	writer.Write(&ResultEvent{URL: "https://example.com/path2", TemplateID: "t2"})
-	writer.Write(&ResultEvent{URL: "http://example.com:8080/path3", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{URL: "http://example.com/path1", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{URL: "https://example.com/path2", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{URL: "http://example.com:8080/path3", TemplateID: "t3"})
 
 	// Should normalize to same host
 	if !detector.IsHoneypot("example.com") {
@@ -953,9 +953,9 @@ func TestHoneypotWriterMixedHostAndURL(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Mix of Host and URL fields
-	writer.Write(&ResultEvent{Host: "mixed.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{URL: "https://mixed.com/path", TemplateID: "t2"})
-	writer.Write(&ResultEvent{Host: "mixed.com:443", TemplateID: "t3"})
+	_ = writer.Write(&ResultEvent{Host: "mixed.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{URL: "https://mixed.com/path", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "mixed.com:443", TemplateID: "t3"})
 
 	if !detector.IsHoneypot("mixed.com") {
 		t.Error("Mixed Host/URL should normalize correctly")
@@ -973,8 +973,8 @@ func TestHoneypotWriterExportMultipleHoneypots(t *testing.T) {
 	// Create 5 honeypots (hosts are normalized to lowercase)
 	hosts := []string{"honeypot1.com", "honeypot2.com", "honeypot3.com", "honeypot4.com", "honeypot5.com"}
 	for _, host := range hosts {
-		writer.Write(&ResultEvent{Host: host, TemplateID: "t1"})
-		writer.Write(&ResultEvent{Host: host, TemplateID: "t2"})
+		_ = writer.Write(&ResultEvent{Host: host, TemplateID: "t1"})
+		_ = writer.Write(&ResultEvent{Host: host, TemplateID: "t2"})
 	}
 
 	writer.Close()
@@ -1002,7 +1002,7 @@ func TestHoneypotWriterSuppressDisabled(t *testing.T) {
 
 	// All writes should pass through
 	for i := 0; i < 10; i++ {
-		writer.Write(&ResultEvent{Host: "all-pass.com", TemplateID: "t" + string(rune('0'+i))})
+		_ = writer.Write(&ResultEvent{Host: "all-pass.com", TemplateID: "t" + string(rune('0'+i))})
 	}
 
 	if len(mock.results) != 10 {
@@ -1022,7 +1022,7 @@ func TestHoneypotWriterSuppressEnabled(t *testing.T) {
 
 	// Write 10 templates
 	for i := 0; i < 10; i++ {
-		writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t" + string(rune('A'+i))})
+		_ = writer.Write(&ResultEvent{Host: "suppress.com", TemplateID: "t" + string(rune('A'+i))})
 	}
 
 	// First 2 pass, remaining 8 suppressed
@@ -1041,8 +1041,8 @@ func TestHoneypotWriterIPv6Address(t *testing.T) {
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
-	writer.Write(&ResultEvent{Host: "[2001:db8::1]:8080", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "[2001:db8::1]:443", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "[2001:db8::1]:8080", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "[2001:db8::1]:443", TemplateID: "t2"})
 
 	// Should normalize to same IPv6
 	if !detector.IsHoneypot("2001:db8::1") {
@@ -1057,8 +1057,8 @@ func TestHoneypotWriterIPv4Address(t *testing.T) {
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
-	writer.Write(&ResultEvent{Host: "192.168.1.1:80", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "192.168.1.1:443", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "192.168.1.1:80", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "192.168.1.1:443", TemplateID: "t2"})
 
 	if !detector.IsHoneypot("192.168.1.1") {
 		t.Error("IPv4 addresses should normalize correctly")
@@ -1073,8 +1073,8 @@ func TestHoneypotWriterSubdomainHandling(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Different subdomains are different hosts
-	writer.Write(&ResultEvent{Host: "www.example.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "api.example.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "www.example.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "api.example.com", TemplateID: "t1"})
 
 	// Neither should be flagged (only 1 template each)
 	if detector.IsHoneypot("www.example.com") || detector.IsHoneypot("api.example.com") {
@@ -1093,7 +1093,7 @@ func TestHoneypotWriterLargeScaleHoneypots(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		host := fmt.Sprintf("honeypot%d.com", i)
 		for j := 0; j < 10; j++ {
-			writer.Write(&ResultEvent{Host: host, TemplateID: fmt.Sprintf("template-%d", j)})
+			_ = writer.Write(&ResultEvent{Host: host, TemplateID: fmt.Sprintf("template-%d", j)})
 		}
 	}
 
@@ -1113,8 +1113,8 @@ func TestHoneypotWriterExportPathEmpty(t *testing.T) {
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "") // empty export path
 
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
 
 	// Should not panic when closing with empty export path
 	writer.Close()
@@ -1127,8 +1127,8 @@ func TestHoneypotWriterExportPathInvalid(t *testing.T) {
 	// Invalid path (directory doesn't exist)
 	writer := NewHoneypotWriter(mock, detector, false, false, "/nonexistent/path/export.txt")
 
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
-	writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t1"})
+	_ = writer.Write(&ResultEvent{Host: "test.com", TemplateID: "t2"})
 
 	// Should not panic, just log error
 	writer.Close()
@@ -1142,9 +1142,9 @@ func TestHoneypotWriterDuplicateTemplatesSameHost(t *testing.T) {
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
 	// Same template multiple times
-	writer.Write(&ResultEvent{Host: "dupe.com", TemplateID: "same-template"})
-	writer.Write(&ResultEvent{Host: "dupe.com", TemplateID: "same-template"})
-	writer.Write(&ResultEvent{Host: "dupe.com", TemplateID: "same-template"})
+	_ = writer.Write(&ResultEvent{Host: "dupe.com", TemplateID: "same-template"})
+	_ = writer.Write(&ResultEvent{Host: "dupe.com", TemplateID: "same-template"})
+	_ = writer.Write(&ResultEvent{Host: "dupe.com", TemplateID: "same-template"})
 
 	// Should not be flagged (only 1 unique template)
 	if detector.IsHoneypot("dupe.com") {
@@ -1169,8 +1169,8 @@ func TestHoneypotWriterResultEventPreserved(t *testing.T) {
 		Matched:          "matched content",
 		ExtractedResults: []string{"result1", "result2"},
 	}
-	writer.Write(event)
-	writer.Write(&ResultEvent{Host: "preserve.com", TemplateID: "t2"})
+	_ = writer.Write(event)
+	_ = writer.Write(&ResultEvent{Host: "preserve.com", TemplateID: "t2"})
 
 	// Original fields should be preserved
 	if mock.results[0].Matched != "matched content" {

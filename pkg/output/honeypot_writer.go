@@ -199,12 +199,16 @@ func (w *HoneypotWriter) Close() {
 // exportHoneypots writes the flagged honeypot hosts to the configured export file.
 // Format: host,match_count (CSV-like for easy parsing by other tools)
 // Lines starting with # are treated as comments when re-imported.
-func (w *HoneypotWriter) exportHoneypots(hosts []string) error {
+func (w *HoneypotWriter) exportHoneypots(hosts []string) (err error) {
 	f, err := os.Create(w.exportPath)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	// Write header comment
 	if _, err := f.WriteString("# Honeypot hosts detected by nuclei\n"); err != nil {

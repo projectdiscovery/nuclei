@@ -178,15 +178,19 @@ func (d *Detector) Close() {
 // LoadBlocklist loads known honeypot hosts from a file and pre-flags them.
 // Each line in the file should contain one host (blank lines and # comments are ignored).
 // Duplicate hosts are deduplicated. Returns the number of unique hosts loaded and any error.
-func (d *Detector) LoadBlocklist(filepath string) (int, error) {
+func (d *Detector) LoadBlocklist(filepath string) (unique int, err error) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return 0, err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	seen := make(map[string]struct{})
-	var entries, unique int
+	var entries int
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
