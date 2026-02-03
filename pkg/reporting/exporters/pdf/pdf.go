@@ -5,10 +5,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"codeberg.org/go-pdf/fpdf"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+)
+
+const (
+	maxContentLength = 2000
+	maxExtractedLen  = 200
 )
 
 type Exporter struct {
@@ -81,7 +87,7 @@ func (exporter *Exporter) Close() error {
 
 	for _, severity := range []string{"critical", "high", "medium", "low", "info", "unknown"} {
 		if count, exists := severityCount[severity]; exists && count > 0 {
-			pdf.CellFormat(0, 7, fmt.Sprintf("  %s: %d", strings.Title(severity), count), "", 1, "L", false, 0, "")
+			pdf.CellFormat(0, 7, fmt.Sprintf("  %s: %d", capitalize(severity), count), "", 1, "L", false, 0, "")
 		}
 	}
 	pdf.Ln(5)
@@ -148,13 +154,13 @@ func (exporter *Exporter) Close() error {
 		pdf.SetFont("Arial", "", 11)
 		pdf.MultiCell(0, 7, event.Matched, "", "L", false)
 
-		if event.ExtractedResults != nil && len(event.ExtractedResults) > 0 {
+		if len(event.ExtractedResults) > 0 {
 			pdf.SetFont("Arial", "B", 11)
 			pdf.Cell(35, 7, "Extracted:")
 			pdf.SetFont("Arial", "", 11)
 			extracted := strings.Join(event.ExtractedResults, ", ")
-			if len(extracted) > 200 {
-				extracted = extracted[:200] + "..."
+			if len(extracted) > maxExtractedLen {
+				extracted = extracted[:maxExtractedLen] + "..."
 			}
 			pdf.MultiCell(0, 7, extracted, "", "L", false)
 		}
@@ -198,11 +204,7 @@ func (exporter *Exporter) Close() error {
 				pdf.Cell(0, 7, "Request:")
 				pdf.Ln(5)
 				pdf.SetFont("Courier", "", 8)
-				request := event.Request
-				if len(request) > 2000 {
-					request = request[:2000] + "\n... (truncated)"
-				}
-				request = strings.ReplaceAll(request, "\x00", "")
+				request := sanitizeContent(event.Request, maxContentLength)
 				pdf.MultiCell(0, 4, request, "", "L", false)
 			}
 
@@ -212,11 +214,7 @@ func (exporter *Exporter) Close() error {
 				pdf.Cell(0, 7, "Response:")
 				pdf.Ln(5)
 				pdf.SetFont("Courier", "", 8)
-				response := event.Response
-				if len(response) > 2000 {
-					response = response[:2000] + "\n... (truncated)"
-				}
-				response = strings.ReplaceAll(response, "\x00", "")
+				response := sanitizeContent(event.Response, maxContentLength)
 				pdf.MultiCell(0, 4, response, "", "L", false)
 			}
 		}
@@ -247,4 +245,21 @@ func (exporter *Exporter) Close() error {
 	}
 
 	return nil
+}
+
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
+}
+
+func sanitizeContent(content string, maxLen int) string {
+	content = strings.ReplaceAll(content, "\x00", "")
+	if len(content) > maxLen {
+		return content[:maxLen] + "\n... (truncated)"
+	}
+	return content
 }
