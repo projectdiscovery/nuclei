@@ -596,7 +596,7 @@ func (r *Runner) RunEnumeration() error {
 			tempFile.Close()
 			secretsFiles = append(secretsFiles, tempFile.Name())
 		}
-		
+
 		// Clone options and update with all secrets files
 		authOptions := r.options.Copy()
 		authOptions.SecretsFile = secretsFiles
@@ -604,7 +604,7 @@ func (r *Runner) RunEnumeration() error {
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
-		
+
 		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: secretsFiles}
 		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,

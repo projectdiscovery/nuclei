@@ -303,7 +303,7 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 	if options.TargetsFilePath != "" {
 		var input io.ReadCloser
 		var inputErr error
-		
+
 		// Check if TargetsFilePath contains inline content (has newlines)
 		if strings.Contains(options.TargetsFilePath, "\n") {
 			// Inline content - create temp file
@@ -318,7 +318,7 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 				}
 			}
 		}
-		
+
 		if input != nil {
 			i.scanInputFromReader(options.ExecutionId, input)
 			_ = input.Close()
