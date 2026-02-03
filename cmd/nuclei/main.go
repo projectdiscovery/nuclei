@@ -51,6 +51,8 @@ var (
 	templateProfile string
 	memProfile      string // optional profile file path
 	options         = &types.Options{}
+	// Cleanup functions for temporary files created during profile loading
+	profileCleanupFuncs []func()
 )
 
 func main() {
@@ -159,6 +161,13 @@ func main() {
 	options.ExecutionId = xid.New().String()
 
 	runner.ParseOptions(options)
+
+	// Cleanup temporary files from profile loading after runner is done
+	defer func() {
+		for _, cleanup := range profileCleanupFuncs {
+			cleanup()
+		}
+	}()
 
 	if options.ScanUploadFile != "" {
 		if err := runner.UploadResultsToCloud(options); err != nil {
@@ -656,8 +665,44 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
-			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+
+		// Load and process the profile with support for extra fields and inline content
+		profileConfig, embeddedSecretsFile, err := config.LoadAndProcessProfile(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not load template profile: %s\n", err)
+		}
+
+		// Convert processed config to temporary file for goflags
+		tempProfileFile, err := config.ConvertConfigToFile(profileConfig)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not process template profile: %s\n", err)
+		}
+		// Schedule cleanup for later
+		profileCleanupFuncs = append(profileCleanupFuncs, func() {
+			os.Remove(tempProfileFile)
+		})
+
+		// Clean up temporary target list file if it was created
+		if targetListFile, ok := profileConfig["_target_list_file"].(string); ok {
+			// Schedule cleanup for later
+			profileCleanupFuncs = append(profileCleanupFuncs, func() {
+				os.Remove(targetListFile)
+			})
+		}
+
+		// Merge the processed profile with flagSet
+		if err := flagSet.MergeConfigFile(tempProfileFile); err != nil {
+			options.Logger.Fatal().Msgf("Could not merge template profile: %s\n", err)
+		}
+
+		// If there were embedded secrets, add them to the secrets file list
+		if embeddedSecretsFile != "" {
+			// Prepend embedded secrets file so user-provided secrets files take precedence
+			options.SecretsFile = append(goflags.StringSlice{embeddedSecretsFile}, options.SecretsFile...)
+			// Schedule cleanup for later
+			profileCleanupFuncs = append(profileCleanupFuncs, func() {
+				os.Remove(embeddedSecretsFile)
+			})
 		}
 	}
 
