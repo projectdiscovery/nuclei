@@ -43,7 +43,9 @@ func NewMiddleware(writer output.Writer, enabled bool, mode string, logger *golo
 		detector: New(Config{
 			Enabled: enabled,
 			Mode:    detMode,
-			Logger:  logger.Warning().Msgf,
+			Logger: func(msg string) {
+				logger.Warning().Msg(msg)
+			},
 		}),
 		logger: logger,
 		mode:   detMode,
@@ -65,18 +67,23 @@ func (m *Middleware) Write(event *output.ResultEvent) error {
 
 	// Handle suppression mode
 	if isHoneypot && m.mode == ModeSuppress {
-		m.logger.Warn().Msgf("Suppressing result from honeypot: %s", event.Host)
+		m.logger.Warning().Msgf("Suppressing result from honeypot: %s", event.Host)
 		return nil // Don't write the result
 	}
 
 	// Handle tag mode: emit a warning (actual tagging would require modifying the event)
 	if isHoneypot && m.mode == ModeTag {
-		m.logger.Warn().Msgf("Result from potential honeypot host (tagged): %s", event.Host)
+		if event.Metadata == nil {
+			event.Metadata = make(map[string]interface{})
+		}
+		event.Metadata["honeypot"] = true
+
+		m.logger.Warning().Msgf("Result from potential honeypot host (tagged): %s", event.Host)
 	}
 
 	// Handle warn mode (or default for tag mode)
 	if isHoneypot && m.mode == ModeWarn {
-		m.logger.Warn().Msg(report.String())
+		m.logger.Warning().Msg(report.String())
 	}
 
 	// Always write the result (unless suppressed above)

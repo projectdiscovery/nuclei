@@ -32,13 +32,13 @@ type Config struct {
 
 // hostMetrics tracks match statistics per host
 type hostMetrics struct {
-	templates       map[string]*templateInfo // templateID -> info
-	responseHashes  map[string]int           // response hash -> count
-	categories      map[string]bool          // distinct categories seen
-	tags            map[string]bool          // distinct tags seen
-	matchCount      int
-	totalResponses  int
-	lock            sync.RWMutex
+	templates      map[string]*templateInfo // templateID -> info
+	responseHashes map[string]int           // response hash -> count
+	categories     map[string]bool          // distinct categories seen
+	tags           map[string]bool          // distinct tags seen
+	matchCount     int
+	totalResponses int
+	lock           sync.RWMutex
 }
 
 type templateInfo struct {
@@ -73,36 +73,36 @@ func New(config Config) *Detector {
 		hostData: make(map[string]*hostMetrics),
 		conflictTechs: map[string]map[string]bool{
 			"cisco": {
-				"fortinet": true,
+				"fortinet":         true,
 				"paloaltonetworks": true,
-				"juniper": true,
+				"juniper":          true,
 			},
 			"fortinet": {
-				"cisco": true,
+				"cisco":            true,
 				"paloaltonetworks": true,
-				"juniper": true,
+				"juniper":          true,
 			},
 			"paloaltonetworks": {
-				"cisco": true,
+				"cisco":    true,
 				"fortinet": true,
-				"juniper": true,
+				"juniper":  true,
 			},
 			"juniper": {
-				"cisco": true,
-				"fortinet": true,
+				"cisco":            true,
+				"fortinet":         true,
 				"paloaltonetworks": true,
 			},
 			"apache": {
-				"iis": true,
+				"iis":   true,
 				"nginx": true,
 			},
 			"iis": {
 				"apache": true,
-				"nginx": true,
+				"nginx":  true,
 			},
 			"nginx": {
 				"apache": true,
-				"iis": true,
+				"iis":    true,
 			},
 		},
 	}
@@ -138,15 +138,20 @@ func (d *Detector) recordMatch(host string, event *output.ResultEvent) {
 
 	// Record template match
 	tplID := event.TemplateID
+
+	var tags []string
+	tags = event.Info.Tags.ToSlice()
+
 	if _, exists := metrics.templates[tplID]; !exists {
 		metrics.templates[tplID] = &templateInfo{
 			templateID: tplID,
-			categories: []string{event.Info.Classification.CVSSMetrics}, // Use classification as category proxy
-			tags:       event.Info.Tags,
+			categories: tags,
+			tags:       tags,
 			response:   event.Response,
 		}
-		metrics.matchCount++
 	}
+
+	metrics.matchCount++
 
 	// Record response hash for similarity detection
 	if event.Response != "" {
@@ -156,7 +161,7 @@ func (d *Detector) recordMatch(host string, event *output.ResultEvent) {
 	}
 
 	// Record tags as category proxies (more granular than Info.Classification)
-	for _, tag := range event.Info.Tags {
+	for _, tag := range event.Info.Tags.ToSlice() {
 		metrics.categories[tag] = true
 	}
 }
@@ -201,9 +206,9 @@ func (d *Detector) IsHoneypot(host string) (bool, *HoneypotReport) {
 	defer metrics.lock.RUnlock()
 
 	report := &HoneypotReport{
-		Host:     host,
-		Signals:  []string{},
-		Score:    0,
+		Host:    host,
+		Signals: []string{},
+		Score:   0,
 	}
 
 	// Signal 1: High match count
@@ -222,7 +227,6 @@ func (d *Detector) IsHoneypot(host string) (bool, *HoneypotReport) {
 	}
 
 	// Signal 3: High response body reuse
-	hasHighReuse := false
 	if metrics.totalResponses > 0 {
 		// Find the most common response hash
 		maxCount := 0
@@ -233,7 +237,6 @@ func (d *Detector) IsHoneypot(host string) (bool, *HoneypotReport) {
 		}
 		reuseRatio := float64(maxCount) / float64(metrics.totalResponses)
 		if reuseRatio >= 0.8 {
-			hasHighReuse = true
 			report.Signals = append(report.Signals, fmt.Sprintf("%.0f%% identical response bodies", reuseRatio*100))
 			report.Score++
 		}
