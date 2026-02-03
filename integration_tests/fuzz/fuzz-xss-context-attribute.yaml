@@ -23,3 +23,7 @@ http:
       name: xss_context
       parameters:
         canary: "xSs9K7j<>'\"/()"
+    matchers:
+      - type: dsl
+        dsl:
+          - 'analyzer == true'
