@@ -90,6 +90,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/multi-http-var-sharing.yaml", TestCase: &httpMultiVarSharing{}},
 	{Path: "protocols/http/raw-path-single-slash.yaml", TestCase: &httpRawPathSingleSlash{}},
 	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
+	{Path: "protocols/http/auth-secret-file-test.yaml", TestCase: &httpAuthSecretFile{}},
 }
 
 type httpMultiVarSharing struct{}
@@ -1754,5 +1755,111 @@ func (h *httpRawUnsafePathSingleSlash) Execute(filepath string) error {
 	if actual != expectedPath {
 		return fmt.Errorf("expected: %v\n\nactual: %v", expectedPath, actual)
 	}
+	return nil
+}
+
+type httpAuthSecretFile struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpAuthSecretFile) Execute(filePath string) error {
+	router := httprouter.New()
+	var requestLog []string
+	var mu sync.Mutex
+
+	router.POST("/login", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		mu.Lock()
+		requestLog = append(requestLog, "login")
+		mu.Unlock()
+		http.SetCookie(w, &http.Cookie{
+			Name:  "session",
+			Value: "authenticated-session-token",
+			Path:  "/",
+		})
+		_, _ = fmt.Fprint(w, "authenticated")
+	})
+
+	router.GET("/protected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		mu.Lock()
+		requestLog = append(requestLog, "protected")
+		mu.Unlock()
+
+		cookie, err := r.Cookie("session")
+		if err != nil || cookie.Value != "authenticated-session-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = fmt.Fprint(w, "unauthorized")
+			return
+		}
+		_, _ = fmt.Fprint(w, "authenticated-data")
+	})
+
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	secretFileContent := fmt.Sprintf(`id: test-auth-secret
+info:
+  name: Test Auth Secret File
+  author: pdteam
+  
+dynamic:
+  - template: protocols/http/auth-secret-file-login.yaml
+    input: %s
+    variables:
+      - key: username
+        value: testuser
+      - key: password
+        value: testpass
+    type: Cookie
+    domains:
+      - %s
+    cookies:
+      - raw: "{{session_cookie}}"
+`, ts.URL, strings.TrimPrefix(ts.URL, "http://"))
+
+	secretFile, err := os.CreateTemp("", "nuclei-secret-*.yaml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(secretFile.Name())
+
+	if _, err := secretFile.WriteString(secretFileContent); err != nil {
+		return err
+	}
+	secretFile.Close()
+
+	results, err := testutils.RunNucleiBinaryAndGetCombinedOutput(debug, []string{
+		"-t", filePath,
+		"-u", ts.URL,
+		"-sf", secretFile.Name(),
+		"-timeout", "10",
+	})
+	if err != nil {
+		return err
+	}
+
+	if !strings.Contains(results, "auth-secret-file-test") {
+		return fmt.Errorf("expected template to match but it didn't")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(requestLog) < 2 {
+		return fmt.Errorf("expected at least 2 requests, got %d", len(requestLog))
+	}
+	if requestLog[0] != "login" {
+		return fmt.Errorf("expected first request to be login, got %s", requestLog[0])
+	}
+
+	foundProtected := false
+	for _, req := range requestLog {
+		if req == "protected" {
+			foundProtected = true
+			break
+		}
+	}
+	if !foundProtected {
+		return fmt.Errorf("protected endpoint was never called")
+	}
+
 	return nil
 }
