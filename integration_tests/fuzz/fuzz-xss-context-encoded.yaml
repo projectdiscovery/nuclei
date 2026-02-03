@@ -1,0 +1,25 @@
+id: fuzz-xss-context-encoded
+
+info:
+  name: XSS Context Analyzer - Encoded Reflection (Negative Test)
+  author: pdteam
+  severity: high
+  description: |
+    Tests the xss_context analyzer with HTML-encoded reflection.
+    This is a NEGATIVE test - XSS should NOT be detected when special characters are encoded.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys: ["q"]
+        fuzz:
+          - "[XSS_CANARY]"
+    analyzer:
+      name: xss_context
+      parameters:
+        canary: "xSs9K7j<>'\"/()"

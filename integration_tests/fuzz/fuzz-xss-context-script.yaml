@@ -1,0 +1,25 @@
+id: fuzz-xss-context-script
+
+info:
+  name: XSS Context Analyzer - Script Context
+  author: pdteam
+  severity: high
+  description: |
+    Tests the xss_context analyzer detecting XSS vulnerabilities in JavaScript context.
+    The analyzer automatically detects reflection in script blocks and selects appropriate payloads.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys: ["q"]
+        fuzz:
+          - "[XSS_CANARY]"
+    analyzer:
+      name: xss_context
+      parameters:
+        canary: "xSs9K7j<>'\"/()"

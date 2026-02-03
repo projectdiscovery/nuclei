@@ -1,0 +1,25 @@
+id: fuzz-xss-context-body
+
+info:
+  name: XSS Context Analyzer - HTML Body
+  author: pdteam
+  severity: high
+  description: |
+    Tests the xss_context analyzer detecting XSS vulnerabilities in HTML body context.
+    The analyzer automatically detects reflection context and selects appropriate payloads.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys: ["q"]
+        fuzz:
+          - "[XSS_CANARY]"
+    analyzer:
+      name: xss_context
+      parameters:
+        canary: "xSs9K7j<>'\"/()"

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -33,6 +34,11 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-body-params-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-xml-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-generic-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 4}},
+	// XSS Context Analyzer tests
+	{Path: "fuzz/fuzz-xss-context-body.yaml", TestCase: &xssContextBodyFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-attribute.yaml", TestCase: &xssContextAttributeFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-script.yaml", TestCase: &xssContextScriptFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-encoded.yaml", TestCase: &xssContextEncodedFuzz{}},
 }
 
 type genericFuzzTestCase struct {
@@ -200,4 +206,93 @@ func (h *fuzzMultipleMode) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
+}
+
+// xssContextBodyFuzz tests XSS context analyzer with HTML body reflection
+type xssContextBodyFuzz struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *xssContextBodyFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html")
+		// Vulnerable: reflects input without encoding in HTML body
+		value := r.URL.Query().Get("q")
+		_, _ = fmt.Fprintf(w, "<html><body><div>Search results for: %s</div></body></html>", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=test", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+// xssContextAttributeFuzz tests XSS context analyzer with HTML attribute reflection
+type xssContextAttributeFuzz struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *xssContextAttributeFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html")
+		// Vulnerable: reflects input without encoding in HTML attribute
+		value := r.URL.Query().Get("q")
+		_, _ = fmt.Fprintf(w, `<html><body><input type="text" value="%s"></body></html>`, value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=test", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+// xssContextScriptFuzz tests XSS context analyzer with JavaScript context reflection
+type xssContextScriptFuzz struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *xssContextScriptFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html")
+		// Vulnerable: reflects input without encoding in script block
+		value := r.URL.Query().Get("q")
+		_, _ = fmt.Fprintf(w, `<html><body><script>var search = "%s";</script></body></html>`, value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=test", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+// xssContextEncodedFuzz tests XSS context analyzer with encoded reflection (negative test)
+type xssContextEncodedFuzz struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *xssContextEncodedFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html")
+		// Safe: HTML encodes special characters
+		value := html.EscapeString(r.URL.Query().Get("q"))
+		_, _ = fmt.Fprintf(w, "<html><body><div>Search results for: %s</div></body></html>", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=test", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	// Should NOT match since special chars are encoded
+	return expectResultsCount(results, 0)
 }
