@@ -120,7 +120,9 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 // GetTemplates returns all nuclei templates that are loaded
 func (e *NucleiEngine) GetTemplates() []*templates.Template {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			return nil
+		}
 	}
 	return e.store.Templates()
 }
@@ -128,7 +130,9 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 // GetWorkflows returns all nuclei workflows that are loaded
 func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			return nil
+		}
 	}
 	return e.store.Workflows()
 }
