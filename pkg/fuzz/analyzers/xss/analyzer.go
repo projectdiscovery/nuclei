@@ -123,7 +123,9 @@ func (a *Analyzer) sendRequest(options *analyzers.Options, payload string) (stri
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// Read response body (limit to 1MB to avoid memory issues)
 	limitReader := io.LimitReader(resp.Body, 1*1024*1024)

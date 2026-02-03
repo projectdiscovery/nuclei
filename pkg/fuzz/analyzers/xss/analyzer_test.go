@@ -66,7 +66,7 @@ func TestXSSAnalyzerHTMLBodyContext(t *testing.T) {
 	// Create test server that reflects input without encoding
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		_, _ = w.Write([]byte(fmt.Sprintf("<html><body><div>Search: %s</div></body></html>", param)))
+		_, _ = fmt.Fprintf(w, "<html><body><div>Search: %s</div></body></html>", param)
 	}))
 	defer server.Close()
 
@@ -123,7 +123,7 @@ func TestXSSAnalyzerAttributeContext(t *testing.T) {
 	// Create test server that reflects input in attribute
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		_, _ = w.Write([]byte(fmt.Sprintf(`<input type="text" value="%s">`, param)))
+		_, _ = fmt.Fprintf(w, `<input type="text" value="%s">`, param)
 	}))
 	defer server.Close()
 
@@ -224,7 +224,7 @@ func TestXSSAnalyzerEncodedReflection(t *testing.T) {
 		param := r.URL.Query().Get("q")
 		// Encode < > " ' characters
 		param = html.EscapeString(param)
-		_, _ = w.Write([]byte(fmt.Sprintf("<html><body><div>Search: %s</div></body></html>", param)))
+		_, _ = fmt.Fprintf(w, "<html><body><div>Search: %s</div></body></html>", param)
 	}))
 	defer server.Close()
 
