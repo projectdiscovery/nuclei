@@ -114,6 +114,10 @@ func (w *HoneypotWriter) Write(event *ResultEvent) error {
 			host = event.URL
 		}
 	}
+	// Skip honeypot tracking if host is still unresolved to avoid empty-key collisions
+	if host == "" {
+		return w.writer.Write(event)
+	}
 
 	// Check if already flagged BEFORE recording this match
 	wasAlreadyFlagged := w.detector.IsHoneypot(host)
