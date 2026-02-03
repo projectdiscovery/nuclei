@@ -2,7 +2,9 @@ package xss
 
 import "strings"
 
-// Payload sets for each context type
+// contextPayloads maps context types to their corresponding XSS exploit payloads.
+// Each context has a list of payloads ordered by effectiveness and simplicity.
+// Payloads are filtered based on available characters before being returned.
 var contextPayloads = map[ContextType][]string{
 	ContextHTMLBody: {
 		"<img src=x onerror=alert(1)>",
@@ -58,7 +60,12 @@ var contextPayloads = map[ContextType][]string{
 	},
 }
 
-// SelectPayloads returns appropriate payloads for the given context
+// SelectPayloads returns a filtered list of XSS payloads appropriate for the given
+// reflection context. It selects payloads based on context type, then filters them
+// by available characters. The max_verification_attempts parameter (default: 3)
+// limits the number of payloads returned to avoid excessive verification attempts.
+//
+// Returns up to max_verification_attempts payloads, or all available if fewer.
 func SelectPayloads(reflection ReflectionInfo, params map[string]interface{}) []string {
 	// Get base payloads for context
 	payloads := contextPayloads[reflection.Context]
@@ -82,6 +89,9 @@ func SelectPayloads(reflection ReflectionInfo, params map[string]interface{}) []
 	return filtered
 }
 
+// filterByAvailableChars filters payloads to only include those that can be used
+// with the available character set. Payloads requiring filtered characters are
+// excluded. Returns filtered list of usable payloads.
 func filterByAvailableChars(payloads []string, chars CharacterSet, context ContextType) []string {
 	var result []string
 
@@ -94,6 +104,10 @@ func filterByAvailableChars(payloads []string, chars CharacterSet, context Conte
 	return result
 }
 
+// canUsePayload checks if a payload can be used in the given context with the
+// available characters. It validates that all required characters for the payload
+// (based on context requirements) are present in the CharacterSet. Returns true
+// if payload is usable, false otherwise.
 func canUsePayload(payload string, chars CharacterSet, context ContextType) bool {
 	// Check if payload only uses available characters
 

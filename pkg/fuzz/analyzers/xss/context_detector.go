@@ -4,7 +4,13 @@ import (
 	"strings"
 )
 
-// DetectContexts finds all canary reflections and determines their contexts
+// DetectContexts detects all reflection contexts where the canary appears in the response body.
+// It performs case-insensitive search and analyzes each reflection position to determine:
+//   - Context type (HTML body, attribute, script, etc.)
+//   - Available characters (which special chars are not filtered)
+//   - Position and surrounding text
+//
+// Returns up to 10 reflections. Empty slice if canary not found.
 func DetectContexts(body, canary string) []ReflectionInfo {
 	var reflections []ReflectionInfo
 
@@ -39,6 +45,9 @@ func DetectContexts(body, canary string) []ReflectionInfo {
 	return reflections
 }
 
+// analyzeContextAtPosition analyzes the context type and available characters at a specific
+// position where the canary appears. It extracts surrounding text (up to 200 chars before,
+// 200 chars after) and performs context detection and character filtering analysis.
 func analyzeContextAtPosition(body string, canaryPos int, canary string) ReflectionInfo {
 	canaryEnd := canaryPos + len(canary)
 
@@ -74,6 +83,15 @@ func analyzeContextAtPosition(body string, canaryPos int, canary string) Reflect
 	}
 }
 
+// detectContextType determines the context type at the given position by analyzing
+// preceding text. Uses a lookback approach to detect:
+//   - HTML comments (<!-- -->)
+//   - Script blocks (<script>) and script strings
+//   - Style blocks (<style>)
+//   - HTML attributes (quoted, unquoted, URL attributes)
+//   - HTML body (default)
+//
+// Detection order ensures most specific contexts are checked first.
 func detectContextType(body string, pos int) ContextType {
 	// Walk backwards to find context markers
 	lookback := body[max(0, pos-500):pos]
@@ -144,7 +162,9 @@ func detectContextType(body string, pos int) ContextType {
 	return ContextHTMLBody
 }
 
-// countPrecedingBackslashes returns how many consecutive backslashes precede position i
+// countPrecedingBackslashes counts consecutive backslashes immediately before position i.
+// Used to determine if a quote character is escaped in JavaScript string contexts.
+// Returns the count of backslashes (0 if none found).
 func countPrecedingBackslashes(text string, i int) int {
 	count := 0
 	for j := i - 1; j >= 0 && text[j] == '\\'; j-- {
@@ -153,6 +173,9 @@ func countPrecedingBackslashes(text string, i int) int {
 	return count
 }
 
+// isInStringContext detects if the position is inside a JavaScript string by counting
+// unescaped quotes in the preceding text. Handles both single (') and double (") quotes,
+// accounting for backslash escaping. Returns true if inside a string context.
 func isInStringContext(text string) bool {
 	// Count quotes to determine if we're inside a string
 	// This is a simple heuristic - count unescaped quotes
@@ -179,6 +202,13 @@ func isInStringContext(text string) bool {
 	return (singleQuotes%2 == 1) || (doubleQuotes%2 == 1) || (backticks%2 == 1)
 }
 
+// detectStringType determines the specific string context type by analyzing quote patterns.
+// Differentiates between:
+//   - Template literals (backticks)
+//   - Single-quoted strings
+//   - Double-quoted strings
+//
+// Returns ContextScriptString for quoted strings, or ContextScriptTemplateLiteral for backticks.
 func detectStringType(text string) ContextType {
 	// Determine the type of string context (regular string vs template literal)
 	backticks := 0
@@ -208,6 +238,9 @@ func detectStringType(text string) ContextType {
 	return ContextScriptString
 }
 
+// isInAttributeContext detects if the position is inside an HTML attribute by looking
+// for the pattern: opening tag + attribute name + equals sign. Uses regex pattern
+// matching on the preceding text. Returns true if in attribute context.
 func isInAttributeContext(text string) bool {
 	// Look for pattern: <tag attr=
 	lastOpenTag := strings.LastIndex(text, "<")
@@ -219,6 +252,10 @@ func isInAttributeContext(text string) bool {
 		lastOpenTag < lastEquals && lastCloseTag < lastEquals
 }
 
+// isInURLAttribute checks if the position is in a URL-bearing attribute such as
+// href, src, action, data, formaction, or poster. These attributes have special
+// XSS exploitation considerations (e.g., javascript: protocol). Returns true
+// if inside a URL attribute context.
 func isInURLAttribute(text string) bool {
 	// List of URL attributes (comprehensive list for XSS detection)
 	urlAttributes := []string{
@@ -256,6 +293,11 @@ func isInURLAttribute(text string) bool {
 	return false
 }
 
+// getAttributeQuoteChar determines the quote character used for the current attribute.
+// Returns:
+//   - "\"" for double-quoted attributes
+//   - "'" for single-quoted attributes
+//   - "" (empty string) for unquoted attributes
 func getAttributeQuoteChar(text string) string {
 	// Find the last = and check what comes after
 	lastEquals := strings.LastIndex(text, "=")
@@ -278,6 +320,10 @@ func getAttributeQuoteChar(text string) string {
 	return "" // Unquoted
 }
 
+// extractAttributeMetadata extracts attribute name and quote character from the text
+// preceding the canary position. Uses pattern matching to find the attribute assignment
+// pattern. Returns attribute name and quote char (or empty strings if not found).
+// Context parameter helps optimize the extraction for attribute contexts.
 func extractAttributeMetadata(beforeCanary string, context ContextType) (string, string) {
 	if context != ContextHTMLAttributeQuoted &&
 		context != ContextHTMLAttributeUnquoted &&

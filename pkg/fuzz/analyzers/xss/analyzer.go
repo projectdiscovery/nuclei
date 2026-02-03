@@ -97,6 +97,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	return false, "", nil
 }
 
+// sendRequest sends an HTTP request with the given payload and returns the response body.
+// It validates options, sets the payload value in the component, rebuilds the request,
+// and executes it using the HTTP client. Response body is limited to 1MB.
 func (a *Analyzer) sendRequest(options *analyzers.Options, payload string) (string, error) {
 	if options == nil {
 		return "", fmt.Errorf("invalid options: nil options")
@@ -141,6 +144,10 @@ func (a *Analyzer) sendRequest(options *analyzers.Options, payload string) (stri
 	return string(body), nil
 }
 
+// verifyXSS verifies that an XSS payload successfully landed in an exploitable context.
+// It sends a verification request, checks if the payload appears unmodified in the response,
+// validates the context matches expectations, and ensures critical characters are not encoded.
+// Returns true and details string if XSS is confirmed, false otherwise.
 func (a *Analyzer) verifyXSS(options *analyzers.Options, payload string, originalReflection ReflectionInfo, canary string) (bool, string) {
 	// Send verification request with XSS payload
 	responseBody, err := a.sendRequest(options, payload)
@@ -213,6 +220,9 @@ func (a *Analyzer) verifyXSS(options *analyzers.Options, payload string, origina
 }
 
 // hasCriticalCharsEncoded checks if critical XSS characters in the payload were HTML-encoded
+// in the response. It examines the exact payload region (not surrounding text) to determine
+// if characters like <, >, ", ' appear in their encoded forms (&lt;, &gt;, &quot;, &#39;).
+// Returns true if any critical character from the payload appears encoded.
 func hasCriticalCharsEncoded(payload, responseBody string, payloadPos int) bool {
 	// Ensure we have valid bounds
 	if payloadPos < 0 || payloadPos+len(payload) > len(responseBody) {
@@ -244,7 +254,12 @@ func hasCriticalCharsEncoded(payload, responseBody string, payloadPos int) bool 
 	return false
 }
 
-// isContextCompatible checks if contexts are compatible
+// isContextCompatible checks if the verification context is compatible with the original context.
+// Exact matches are always compatible. Some contexts can evolve during exploitation:
+//   - Attribute contexts (quoted/unquoted/URL) can break out to HTML body
+//   - Script string context can break out to script block
+//
+// Returns true if contexts are compatible for XSS verification.
 func isContextCompatible(verifyContext, originalContext ContextType) bool {
 	// Exact match is always compatible
 	if verifyContext == originalContext {
