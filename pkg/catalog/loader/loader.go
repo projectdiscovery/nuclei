@@ -318,7 +318,7 @@ func (store *Store) ID() string {
 
 // Templates returns all the templates in the store
 func (store *Store) Templates() []*templates.Template {
-	return store.templates, nil
+	return store.templates
 }
 
 // Workflows returns all the workflows in the store
@@ -857,7 +857,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates.Slice
+	return loadedTemplates.Slice, nil
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
