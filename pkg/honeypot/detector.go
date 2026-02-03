@@ -3,6 +3,7 @@ package honeypot
 import (
 	"crypto/md5"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -149,9 +150,9 @@ func (d *Detector) recordMatch(host string, event *output.ResultEvent) {
 			tags:       tags,
 			response:   event.Response,
 		}
+		// Only increment matchCount for unique template IDs
+		metrics.matchCount++
 	}
-
-	metrics.matchCount++
 
 	// Record response hash for similarity detection
 	if event.Response != "" {
@@ -187,7 +188,7 @@ func normalizeHost(host string) string {
 // 3. High response reuse (>=80% of responses are identical)
 // 4. Conflicting tech stack indicators
 //
-// All conditions must be met for conservative detection.
+// A honeypot is flagged when at least 3 out of 4 signals are detected.
 func (d *Detector) IsHoneypot(host string) (bool, *HoneypotReport) {
 	host = normalizeHost(host)
 	if host == "" {
@@ -263,7 +264,7 @@ func (d *Detector) hasConflictingTechs(metrics *hostMetrics) bool {
 	for _, info := range metrics.templates {
 		// Extract tech from categories/tags (simplified: just use lowercase tag names)
 		for _, tag := range info.tags {
-			normalizedTag := tag
+			normalizedTag := strings.ToLower(tag)
 			if conflicts, found := d.conflictTechs[normalizedTag]; found {
 				for seenTech := range seenTechs {
 					if conflicts[seenTech] {

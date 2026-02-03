@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 )
 
@@ -22,7 +23,7 @@ func TestNormalVulnerableHostNotFlagged(t *testing.T) {
 			Host:       "example.com",
 			Response:   "Apache/2.4.41 (Ubuntu)",
 			Info: model.Info{
-				Tags: []string{"apache", "webserver"},
+				Tags: stringslice.New([]string{"apache", "webserver"}),
 			},
 		}
 		detector.recordMatch("example.com", event)
@@ -50,7 +51,7 @@ func TestHighMatchCountSameCategoryNotFlagged(t *testing.T) {
 			Host:       "target.com",
 			Response:   response, // Same response
 			Info: model.Info{
-				Tags: []string{"webserver"}, // Only one category
+				Tags: stringslice.New([]string{"webserver"}), // Only one category
 			},
 		}
 		detector.recordMatch("target.com", event)
@@ -84,7 +85,7 @@ func TestMixedCategoriesWithReusedResponseFlagged(t *testing.T) {
 			Host:       "honeypot.com",
 			Response:   commonResponse,
 			Info: model.Info{
-				Tags: []string{categories[catIdx]},
+				Tags: stringslice.New([]string{categories[catIdx]}),
 			},
 		}
 		detector.recordMatch("honeypot.com", event)
@@ -119,19 +120,13 @@ func TestDisabledDetectionDoesNotFlag(t *testing.T) {
 			Host:       "disabled.com",
 			Response:   commonResponse,
 			Info: model.Info{
-				Tags: []string{categories[catIdx]},
+				Tags: stringslice.New([]string{categories[catIdx]}),
 			},
 		}
 		detector.recordMatch("disabled.com", event)
 	}
 
-	isHoneypot, _ := detector.IsHoneypot("disabled.com")
-	// When disabled, recordMatch is a no-op, so no data is collected
-	// We need to call recordMatch first
-	if !detector.config.Enabled {
-		// recordMatch returns early, so hostData won't have the entry
-		t.Logf("Detection disabled, as expected")
-	}
+	_, _ = detector.IsHoneypot("disabled.com")
 }
 
 // TestCDNEdgeCaseNotFlagged verifies that a CDN/WAF returning similar responses
@@ -152,7 +147,7 @@ func TestCDNEdgeCaseNotFlagged(t *testing.T) {
 			Host:       "cdn-endpoint.com",
 			Response:   cdnResponse,
 			Info: model.Info{
-				Tags: []string{"cdn", "waf"}, // Only 2 categories, same throughout
+				Tags: stringslice.New([]string{"cdn", "waf"}), // Only 2 categories, same throughout
 			},
 		}
 		detector.recordMatch("cdn-endpoint.com", event)
@@ -183,7 +178,7 @@ func TestConflictingTechStackDetected(t *testing.T) {
 			Host:       "conflict.com",
 			Response:   commonResponse,
 			Info: model.Info{
-				Tags: []string{conflictingTechs[techIdx]},
+				Tags: stringslice.New([]string{conflictingTechs[techIdx]}),
 			},
 		}
 		detector.recordMatch("conflict.com", event)
@@ -241,7 +236,7 @@ func TestLowMatchCountNotFlagged(t *testing.T) {
 			Host:       "low-count.com",
 			Response:   commonResponse,
 			Info: model.Info{
-				Tags: []string{categories[catIdx]},
+				Tags: stringslice.New([]string{categories[catIdx]}),
 			},
 		}
 		detector.recordMatch("low-count.com", event)
@@ -293,7 +288,7 @@ func TestConcurrentRecording(t *testing.T) {
 					Host:       "concurrent.com",
 					Response:   "response",
 					Info: model.Info{
-						Tags: []string{"cat" + string(rune(j))},
+						Tags: stringslice.New([]string{"cat" + string(rune(j))}),
 					},
 				}
 				detector.recordMatch("concurrent.com", event)

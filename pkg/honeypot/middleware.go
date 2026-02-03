@@ -3,6 +3,7 @@ package honeypot
 import (
 	"strings"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 )
@@ -71,7 +72,7 @@ func (m *Middleware) Write(event *output.ResultEvent) error {
 		return nil // Don't write the result
 	}
 
-	// Handle tag mode: emit a warning (actual tagging would require modifying the event)
+	// Handle tag mode: mark event with honeypot metadata
 	if isHoneypot && m.mode == ModeTag {
 		if event.Metadata == nil {
 			event.Metadata = make(map[string]interface{})
@@ -96,8 +97,7 @@ func (m *Middleware) Close() {
 }
 
 // Colorizer returns the colorizer from the underlying writer
-func (m *Middleware) Colorizer() interface{} {
-	// The Writer interface returns aurora.Aurora, but we avoid the dependency here
+func (m *Middleware) Colorizer() aurora.Aurora {
 	return m.writer.Colorizer()
 }
 
