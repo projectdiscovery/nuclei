@@ -468,3 +468,82 @@ func TestXSSAnalyzerFalsePositiveInComment(t *testing.T) {
 		t.Fatal("Expected no XSS detection when payload is in HTML comment")
 	}
 }
+
+func TestSendRequestNilHttpClient(t *testing.T) {
+	analyzer := &Analyzer{}
+
+	req, err := retryablehttp.NewRequest("GET", "http://example.com?q=test", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	comp := &component.Query{}
+	if _, err := comp.Parse(req); err != nil {
+		t.Fatalf("Failed to parse component: %v", err)
+	}
+
+	options := &analyzers.Options{
+		FuzzGenerated: fuzz.GeneratedRequest{
+			Request:   req,
+			Component: comp,
+			Key:       "q",
+		},
+		HttpClient: nil, // Intentionally nil
+	}
+
+	_, err = analyzer.sendRequest(options, "test")
+	if err == nil {
+		t.Fatal("Expected error for nil HttpClient")
+	}
+	if !strings.Contains(err.Error(), "nil http client") {
+		t.Errorf("Expected 'nil http client' error, got: %v", err)
+	}
+}
+
+func TestHasCriticalCharsEncoded(t *testing.T) {
+	tests := []struct {
+		name         string
+		payload      string
+		responseBody string
+		payloadPos   int
+		expected     bool
+	}{
+		{
+			name:         "Unencoded payload with unrelated entities nearby",
+			payload:      "<img src=x>",
+			responseBody: "prefix &lt;unrelated&gt; <img src=x> &quot;after&quot;",
+			payloadPos:   27,
+			expected:     false, // Should NOT detect encoding
+		},
+		{
+			name:         "Actually encoded payload",
+			payload:      "<img src=x>",
+			responseBody: "prefix &lt;img src=x&gt; suffix",
+			payloadPos:   7,
+			expected:     true, // Should detect encoding
+		},
+		{
+			name:         "No critical chars",
+			payload:      "test123",
+			responseBody: "prefix test123 suffix",
+			payloadPos:   7,
+			expected:     false,
+		},
+		{
+			name:         "Quotes encoded in payload",
+			payload:      `onclick="alert(1)"`,
+			responseBody: `<div onclick=&quot;alert(1)&quot;>`,
+			payloadPos:   13,
+			expected:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hasCriticalCharsEncoded(tt.payload, tt.responseBody, tt.payloadPos)
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}

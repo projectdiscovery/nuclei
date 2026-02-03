@@ -107,6 +107,10 @@ func (a *Analyzer) sendRequest(options *analyzers.Options, payload string) (stri
 		return "", fmt.Errorf("invalid options: nil component")
 	}
 
+	if options.HttpClient == nil {
+		return "", fmt.Errorf("invalid options: nil http client")
+	}
+
 	// Set the payload value
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return "", err
@@ -210,10 +214,13 @@ func (a *Analyzer) verifyXSS(options *analyzers.Options, payload string, origina
 
 // hasCriticalCharsEncoded checks if critical XSS characters in the payload were HTML-encoded
 func hasCriticalCharsEncoded(payload, responseBody string, payloadPos int) bool {
-	// Get the area around where payload should be
-	searchStart := max(0, payloadPos-10)
-	searchEnd := min(len(responseBody), payloadPos+len(payload)+50)
-	searchArea := responseBody[searchStart:searchEnd]
+	// Ensure we have valid bounds
+	if payloadPos < 0 || payloadPos+len(payload) > len(responseBody) {
+		return false
+	}
+
+	// Extract the exact region in response that corresponds to the payload
+	payloadInResponse := responseBody[payloadPos : payloadPos+len(payload)]
 
 	// Check for common HTML encodings of critical characters
 	criticalEncodings := map[string]string{
@@ -223,10 +230,14 @@ func hasCriticalCharsEncoded(payload, responseBody string, payloadPos int) bool 
 		"'":  "&#39;",
 	}
 
+	// Check if any critical char in payload appears encoded in the response
 	for char, encoding := range criticalEncodings {
-		// If payload contains the critical char but response has encoded version
-		if strings.Contains(payload, char) && strings.Contains(searchArea, encoding) {
-			return true
+		if strings.Contains(payload, char) {
+			// If the payload contains this char, check if it appears encoded
+			// in the actual payload region of the response
+			if strings.Contains(payloadInResponse, encoding) {
+				return true
+			}
 		}
 	}
 
