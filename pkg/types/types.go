@@ -459,6 +459,8 @@ type Options struct {
 	LoadHelperFileFunction LoadHelperFileFunction
 	// Logger is the gologger instance for this optionset
 	Logger *gologger.Logger
+	// HoneypotDetect enables honeypot detection to reduce false positives (warn, tag, suppress)
+	HoneypotDetect string
 	// NoCacheTemplates disables caching of templates
 	DoNotCacheTemplates bool
 	// Unique identifier of the execution session
@@ -681,6 +683,7 @@ func (options *Options) Copy() *Options {
 		ListTemplateProfiles:           options.ListTemplateProfiles,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,
+		HoneypotDetect:                 options.HoneypotDetect,
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
 		ExecutionId:                    options.ExecutionId,
 		Parser:                         options.Parser,

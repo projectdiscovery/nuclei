@@ -42,6 +42,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -278,6 +279,12 @@ func New(options *types.Options) (*Runner, error) {
 	if options.HTTPStats {
 		runner.httpStats = outputstats.NewTracker()
 		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))
+	}
+
+	// Setup honeypot detection middleware if enabled
+	if options.HoneypotDetect != "" {
+		honeypotMiddleware := honeypot.NewMiddleware(runner.output, true, options.HoneypotDetect, options.Logger)
+		runner.output = honeypotMiddleware
 	}
 
 	if options.JSONL && options.EnableProgressBar {
