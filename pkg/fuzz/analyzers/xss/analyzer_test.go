@@ -66,7 +66,7 @@ func TestXSSAnalyzerHTMLBodyContext(t *testing.T) {
 	// Create test server that reflects input without encoding
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		w.Write([]byte(fmt.Sprintf("<html><body><div>Search: %s</div></body></html>", param)))
+		_, _ = w.Write([]byte(fmt.Sprintf("<html><body><div>Search: %s</div></body></html>", param)))
 	}))
 	defer server.Close()
 
@@ -123,7 +123,7 @@ func TestXSSAnalyzerAttributeContext(t *testing.T) {
 	// Create test server that reflects input in attribute
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		w.Write([]byte(fmt.Sprintf(`<input type="text" value="%s">`, param)))
+		_, _ = w.Write([]byte(fmt.Sprintf(`<input type="text" value="%s">`, param)))
 	}))
 	defer server.Close()
 
@@ -174,7 +174,7 @@ func TestXSSAnalyzerAttributeContext(t *testing.T) {
 func TestXSSAnalyzerNoReflection(t *testing.T) {
 	// Create test server that doesn't reflect input
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<html><body>Static content</body></html>"))
+		_, _ = w.Write([]byte("<html><body>Static content</body></html>"))
 	}))
 	defer server.Close()
 
@@ -224,7 +224,7 @@ func TestXSSAnalyzerEncodedReflection(t *testing.T) {
 		param := r.URL.Query().Get("q")
 		// Encode < > " ' characters
 		param = html.EscapeString(param)
-		w.Write([]byte(fmt.Sprintf("<html><body><div>Search: %s</div></body></html>", param)))
+		_, _ = w.Write([]byte(fmt.Sprintf("<html><body><div>Search: %s</div></body></html>", param)))
 	}))
 	defer server.Close()
 
@@ -273,7 +273,7 @@ func TestXSSAnalyzerScriptContext(t *testing.T) {
 	// Create test server that reflects input in script block
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		w.Write([]byte(fmt.Sprintf(`<script>var search = "%s";</script>`, param)))
+		_, _ = w.Write([]byte(fmt.Sprintf(`<script>var search = "%s";</script>`, param)))
 	}))
 	defer server.Close()
 
@@ -325,7 +325,7 @@ func TestXSSAnalyzerWithCustomCanary(t *testing.T) {
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		w.Write([]byte(fmt.Sprintf("<div>%s</div>", param)))
+		_, _ = w.Write([]byte(fmt.Sprintf("<div>%s</div>", param)))
 	}))
 	defer server.Close()
 
@@ -381,7 +381,7 @@ func TestXSSAnalyzerURLAttributeContext(t *testing.T) {
 	// Create test server that reflects input in href attribute
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		w.Write([]byte(fmt.Sprintf(`<a href="%s">click</a>`, param)))
+		_, _ = w.Write([]byte(fmt.Sprintf(`<a href="%s">click</a>`, param)))
 	}))
 	defer server.Close()
 
@@ -429,15 +429,20 @@ func TestXSSAnalyzerFalsePositiveInComment(t *testing.T) {
 	// Server reflects payload but wraps it in HTML comment
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		w.Write([]byte(fmt.Sprintf("<!-- %s -->", param)))
+		_, _ = w.Write([]byte(fmt.Sprintf("<!-- %s -->", param)))
 	}))
 	defer server.Close()
 
 	analyzer := &Analyzer{}
 
-	req, _ := retryablehttp.NewRequest("GET", server.URL+"?q=test", nil)
+	req, err := retryablehttp.NewRequest("GET", server.URL+"?q=test", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
 	comp := &component.Query{}
-	comp.Parse(req)
+	if _, err := comp.Parse(req); err != nil {
+		t.Fatalf("Failed to parse component: %v", err)
+	}
 
 	client := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
 	options := &analyzers.Options{
