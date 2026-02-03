@@ -179,7 +179,7 @@ Connection: close`, parseURL(t, "http://target.com/api"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with full URL root path")
 	// With disable-path-automerge=true and root path, it becomes empty per existing logic
 	require.Equal(t, "", request.Path, "Root path with disable-path-automerge should be empty")
-
+	
 	// Test with disable-path-automerge=false
 	request, err = Parse(`GET http://example.com/ HTTP/1.1
 Host: {{Hostname}}
