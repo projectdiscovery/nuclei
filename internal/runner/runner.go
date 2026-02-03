@@ -613,24 +613,28 @@ func (r *Runner) RunEnumeration() error {
 	hasSecretsFile := len(r.options.SecretsFile) > 0
 	hasInlineSecrets := r.options.InlineSecrets != nil
 	if (hasSecretsFile || hasInlineSecrets) && !r.options.Validate {
-		// Clone options so GetAuthTmplStore can modify them without affecting the original
-		authOptions := r.options.Copy()
-		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
-		if err != nil {
-			return errors.Wrap(err, "failed to load dynamic auth templates")
-		}
-
-		// Build secrets files list
+		// Build secrets files list FIRST (before GetAuthTmplStore)
 		secretsFiles := make([]string, 0, len(r.options.SecretsFile)+1)
 		secretsFiles = append(secretsFiles, r.options.SecretsFile...)
 
-		// Convert inline secrets to temp file if present
+		// Convert inline secrets to temp file BEFORE calling GetAuthTmplStore
+		// This ensures dynamic auth templates referenced in inline secrets are discovered
 		if hasInlineSecrets {
 			inlineSecretsFile, err := r.createInlineSecretsFile()
 			if err != nil {
 				return errors.Wrap(err, "failed to create inline secrets file")
 			}
-			secretsFiles = append(secretsFiles, inlineSecretsFile)
+			if inlineSecretsFile != "" {
+				secretsFiles = append(secretsFiles, inlineSecretsFile)
+			}
+		}
+
+		// Clone options and update SecretsFile so GetAuthTmplStore sees all secrets
+		authOptions := r.options.Copy()
+		authOptions.SecretsFile = secretsFiles
+		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
+		if err != nil {
+			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
 
 		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: secretsFiles}
