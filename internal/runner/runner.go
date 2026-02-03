@@ -449,6 +449,39 @@ func (r *Runner) Close() {
 	events.Close()
 }
 
+// createInlineSecretsFile converts inline secrets from profile YAML to a temporary JSON file
+// that can be used by the auth provider. The file is created in the runner's temp directory
+// and will be cleaned up when the runner is closed.
+func (r *Runner) createInlineSecretsFile() (string, error) {
+	if r.options.InlineSecrets == nil {
+		return "", nil
+	}
+
+	// Create the authx-compatible structure
+	secretsData := map[string]interface{}{
+		"static":  r.options.InlineSecrets.Static,
+		"dynamic": r.options.InlineSecrets.Dynamic,
+	}
+
+	jsonData, err := json.Marshal(secretsData)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to marshal inline secrets")
+	}
+
+	// Create temp file in runner's temp directory
+	tempFile, err := os.CreateTemp(r.tmpDir, "inline-secrets-*.json")
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create temp secrets file")
+	}
+	defer tempFile.Close()
+
+	if _, err := tempFile.Write(jsonData); err != nil {
+		return "", errors.Wrap(err, "failed to write inline secrets")
+	}
+
+	return tempFile.Name(), nil
+}
+
 // setupPDCPUpload sets up the PDCP upload writer
 // by creating a new writer and returning it
 func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
@@ -576,14 +609,31 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
+	// Handle secrets: both file-based and inline secrets from profile YAML
+	hasSecretsFile := len(r.options.SecretsFile) > 0
+	hasInlineSecrets := r.options.InlineSecrets != nil
+	if (hasSecretsFile || hasInlineSecrets) && !r.options.Validate {
 		// Clone options so GetAuthTmplStore can modify them without affecting the original
 		authOptions := r.options.Copy()
 		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
-		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
+
+		// Build secrets files list
+		secretsFiles := make([]string, 0, len(r.options.SecretsFile)+1)
+		secretsFiles = append(secretsFiles, r.options.SecretsFile...)
+
+		// Convert inline secrets to temp file if present
+		if hasInlineSecrets {
+			inlineSecretsFile, err := r.createInlineSecretsFile()
+			if err != nil {
+				return errors.Wrap(err, "failed to create inline secrets file")
+			}
+			secretsFiles = append(secretsFiles, inlineSecretsFile)
+		}
+
+		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: secretsFiles}
 		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,

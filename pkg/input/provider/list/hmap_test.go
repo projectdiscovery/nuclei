@@ -17,6 +17,69 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestInlineTargets tests that inline targets from profile YAML are correctly loaded
+// This tests Feature 2 from issue #5567
+func TestInlineTargets(t *testing.T) {
+	tests := []struct {
+		name            string
+		inlineTargets   string
+		expectedTargets []string
+	}{
+		{
+			name:            "multiple targets",
+			inlineTargets:   "example.com\ntest.com\napi.example.com\n",
+			expectedTargets: []string{"example.com", "test.com", "api.example.com"},
+		},
+		{
+			name:            "single target",
+			inlineTargets:   "single.example.com\n",
+			expectedTargets: []string{"single.example.com"},
+		},
+		{
+			name:            "targets with urls",
+			inlineTargets:   "https://example.com/path\nhttp://test.com:8080\n",
+			expectedTargets: []string{"https://example.com/path", "http://test.com:8080"},
+		},
+		{
+			name:            "targets with empty lines",
+			inlineTargets:   "first.com\n\nsecond.com\n\n",
+			expectedTargets: []string{"first.com", "second.com"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+			require.Nil(t, err, "could not create temporary input file")
+
+			input := &ListInputProvider{
+				hostMap: hm,
+				ipOptions: &ipOptions{
+					IPV4: true,
+				},
+				excludedHosts: make(map[string]struct{}),
+			}
+
+			// Simulate inline targets by calling scanInputFromReader
+			input.scanInputFromReader("", strings.NewReader(tc.inlineTargets))
+
+			// Collect the stored targets
+			got := []string{}
+			input.hostMap.Scan(func(k, _ []byte) error {
+				metainput := contextargs.NewMetaInput()
+				if err := metainput.Unmarshal(string(k)); err != nil {
+					return err
+				}
+				got = append(got, metainput.Input)
+				return nil
+			})
+
+			require.ElementsMatch(t, tc.expectedTargets, got, "inline targets should match expected")
+			input.Close()
+		})
+	}
+}
+
 func Test_expandCIDR(t *testing.T) {
 	tests := []struct {
 		cidr     string

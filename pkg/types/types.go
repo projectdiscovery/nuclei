@@ -31,8 +31,31 @@ var (
 // LoadHelperFileFunction can be used to load a helper file.
 type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error)
 
+// InlineSecretsConfig holds inline secrets from a profile YAML
+// It matches the authx.Authx structure for compatibility
+type InlineSecretsConfig struct {
+	Static  []map[string]interface{} `yaml:"static,omitempty" json:"static,omitempty"`
+	Dynamic []map[string]interface{} `yaml:"dynamic,omitempty" json:"dynamic,omitempty"`
+}
+
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
+	// Profile metadata fields - these allow profiles to include descriptive info
+	// without causing parse errors. These fields are ignored during execution.
+	ProfileID          string `yaml:"id,omitempty" json:"id,omitempty"`
+	ProfileName        string `yaml:"name,omitempty" json:"name,omitempty"`
+	ProfilePurpose     string `yaml:"purpose,omitempty" json:"purpose,omitempty"`
+	ProfileDescription string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// TargetsInline contains embedded target list content from profile YAML.
+	// Supports multiline YAML syntax: list: |
+	// This takes precedence over TargetsFilePath when non-empty.
+	TargetsInline string `yaml:"list,omitempty" json:"list,omitempty"`
+
+	// InlineSecrets contains inline secrets configuration from profile YAML.
+	// This is merged with file-based secrets (SecretsFile) during execution.
+	InlineSecrets *InlineSecretsConfig `yaml:"secrets,omitempty" json:"secrets,omitempty"`
+
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
@@ -476,7 +499,16 @@ type Options struct {
 
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
-		Tags:                           options.Tags,
+		// Profile metadata fields
+		ProfileID:          options.ProfileID,
+		ProfileName:        options.ProfileName,
+		ProfilePurpose:     options.ProfilePurpose,
+		ProfileDescription: options.ProfileDescription,
+		// Inline targets and secrets
+		TargetsInline: options.TargetsInline,
+		InlineSecrets: options.InlineSecrets,
+		// Standard fields
+		Tags: options.Tags,
 		ExcludeTags:                    options.ExcludeTags,
 		Workflows:                      options.Workflows,
 		WorkflowURLs:                   options.WorkflowURLs,

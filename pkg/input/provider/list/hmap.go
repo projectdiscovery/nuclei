@@ -299,6 +299,12 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 			readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
 	}
 
+	// Handle inline targets (from profile YAML with list: | multiline syntax)
+	// This takes precedence over file-based targets when non-empty
+	if options.TargetsInline != "" {
+		i.scanInputFromReader(options.ExecutionId, strings.NewReader(options.TargetsInline))
+	}
+
 	// Handle target file
 	if options.TargetsFilePath != "" {
 		input, inputErr := os.Open(options.TargetsFilePath)
