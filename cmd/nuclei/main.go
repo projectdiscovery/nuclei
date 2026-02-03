@@ -51,7 +51,6 @@ var (
 	templateProfile string
 	memProfile      string // optional profile file path
 	options         = &types.Options{}
-	// Cleanup functions for temporary files created during profile loading
 	profileCleanupFuncs []func()
 )
 
@@ -677,29 +676,22 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if err != nil {
 			options.Logger.Fatal().Msgf("Could not process template profile: %s\n", err)
 		}
-		// Schedule cleanup for later
 		profileCleanupFuncs = append(profileCleanupFuncs, func() {
 			os.Remove(tempProfileFile)
 		})
 
-		// Clean up temporary target list file if it was created
 		if targetListFile, ok := profileConfig["_target_list_file"].(string); ok {
-			// Schedule cleanup for later
 			profileCleanupFuncs = append(profileCleanupFuncs, func() {
 				os.Remove(targetListFile)
 			})
 		}
 
-		// Merge the processed profile with flagSet
 		if err := flagSet.MergeConfigFile(tempProfileFile); err != nil {
 			options.Logger.Fatal().Msgf("Could not merge template profile: %s\n", err)
 		}
 
-		// If there were embedded secrets, add them to the secrets file list
 		if embeddedSecretsFile != "" {
-			// Prepend embedded secrets file so user-provided secrets files take precedence
 			options.SecretsFile = append(goflags.StringSlice{embeddedSecretsFile}, options.SecretsFile...)
-			// Schedule cleanup for later
 			profileCleanupFuncs = append(profileCleanupFuncs, func() {
 				os.Remove(embeddedSecretsFile)
 			})
