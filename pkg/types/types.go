@@ -464,8 +464,6 @@ type Options struct {
 	HoneypotExport string
 	// HoneypotBlocklist is the file path to import known honeypot hosts to pre-block
 	HoneypotBlocklist string
-	// HoneypotMaxHosts is the maximum number of hosts to track in the honeypot detector cache
-	HoneypotMaxHosts int
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
 	LoadHelperFileFunction LoadHelperFileFunction
@@ -696,7 +694,6 @@ func (options *Options) Copy() *Options {
 		SuppressHoneypotResults:        options.SuppressHoneypotResults,
 		HoneypotExport:                 options.HoneypotExport,
 		HoneypotBlocklist:              options.HoneypotBlocklist,
-		HoneypotMaxHosts:               options.HoneypotMaxHosts,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,

@@ -12,7 +12,7 @@ import (
 )
 
 func TestDetectorThreshold(t *testing.T) {
-	detector := New(3, 100)
+	detector := New(3)
 	defer detector.Close()
 
 	host := "example.com"
@@ -34,7 +34,7 @@ func TestDetectorThreshold(t *testing.T) {
 }
 
 func TestDetectorDuplicateTemplates(t *testing.T) {
-	detector := New(3, 100)
+	detector := New(3)
 	defer detector.Close()
 
 	host := "example.com"
@@ -49,7 +49,7 @@ func TestDetectorDuplicateTemplates(t *testing.T) {
 }
 
 func TestDetectorMultipleHosts(t *testing.T) {
-	detector := New(2, 100)
+	detector := New(2)
 	defer detector.Close()
 
 	// Host A gets flagged
@@ -65,7 +65,7 @@ func TestDetectorMultipleHosts(t *testing.T) {
 }
 
 func TestDetectorEdgeCases(t *testing.T) {
-	detector := New(5, 100)
+	detector := New(5)
 	defer detector.Close()
 
 	// Empty strings should not cause issues
@@ -79,7 +79,7 @@ func TestDetectorEdgeCases(t *testing.T) {
 }
 
 func TestDetectorConcurrent(t *testing.T) {
-	detector := New(100, 1000)
+	detector := New(100)
 	defer detector.Close()
 
 	var wg sync.WaitGroup
@@ -105,7 +105,7 @@ func TestDetectorConcurrent(t *testing.T) {
 }
 
 func TestDetectorConcurrentMultipleHosts(t *testing.T) {
-	detector := New(5, 1000)
+	detector := New(5)
 	defer detector.Close()
 
 	var wg sync.WaitGroup
@@ -130,7 +130,7 @@ func TestDetectorConcurrentMultipleHosts(t *testing.T) {
 }
 
 func TestDetectorGetFlaggedHosts(t *testing.T) {
-	detector := New(2, 100)
+	detector := New(2)
 	defer detector.Close()
 
 	// Flag two hosts
@@ -149,24 +149,28 @@ func TestDetectorGetFlaggedHosts(t *testing.T) {
 	require.NotContains(t, flagged, "clean.com")
 }
 
-func TestDetectorLRUEviction(t *testing.T) {
-	// Small cache to test eviction
-	detector := New(5, 3)
+func TestDetectorAllHostsTrackedIndependently(t *testing.T) {
+	// Test that multiple hosts are tracked independently
+	detector := New(2)
 	defer detector.Close()
 
-	// Add 4 hosts to trigger eviction of the first
+	// Add 4 hosts with 1 template each - none should be flagged
 	detector.RecordMatch("host-1.com", "t1")
 	detector.RecordMatch("host-2.com", "t1")
 	detector.RecordMatch("host-3.com", "t1")
 	detector.RecordMatch("host-4.com", "t1")
 
-	// host-1 should have been evicted
-	require.Equal(t, 0, detector.GetMatchCount("host-1.com"))
+	// All hosts should be tracked
+	require.Equal(t, 1, detector.GetMatchCount("host-1.com"))
+	require.Equal(t, 1, detector.GetMatchCount("host-2.com"))
+	require.Equal(t, 1, detector.GetMatchCount("host-3.com"))
+	require.Equal(t, 1, detector.GetMatchCount("host-4.com"))
+	require.Equal(t, 0, detector.GetHoneypotCount())
 }
 
 func TestDetectorDefaultValues(t *testing.T) {
 	// Test with zero/negative values uses defaults
-	detector := New(0, 0)
+	detector := New(0)
 	defer detector.Close()
 
 	// Should use DefaultThreshold (10)
@@ -192,7 +196,7 @@ honeypot2.com
 `
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	// Load blocklist
@@ -213,7 +217,7 @@ honeypot2.com
 }
 
 func TestDetectorLoadBlocklistFileNotFound(t *testing.T) {
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	// Non-existent file should return error
@@ -229,7 +233,7 @@ func TestDetectorLoadBlocklistCaseInsensitive(t *testing.T) {
 	content := "HONEYPOT.COM\nMixedCase.Net\n"
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	count, err := detector.LoadBlocklist(blocklistPath)
@@ -249,7 +253,7 @@ func TestDetectorPreFlaggedHostStillTracksTemplates(t *testing.T) {
 	content := "preflagged.com\n"
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	detector.LoadBlocklist(blocklistPath)
@@ -271,7 +275,7 @@ func TestDetectorEmptyBlocklist(t *testing.T) {
 	content := "# This is a comment\n\n# Another comment\n"
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	count, err := detector.LoadBlocklist(blocklistPath)
@@ -288,7 +292,7 @@ func TestDetectorLoadBlocklistDuplicateHosts(t *testing.T) {
 	content := "duplicate.com\nduplicate.com\nduplicate.com\nunique.com\n"
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	// LoadBlocklist now returns unique count (4 entries, 2 unique hosts)
@@ -302,7 +306,7 @@ func TestDetectorLoadBlocklistDuplicateHosts(t *testing.T) {
 
 func TestDetectorThresholdBoundary(t *testing.T) {
 	// Test exact threshold boundary behavior
-	detector := New(5, 100)
+	detector := New(5)
 	defer detector.Close()
 
 	host := "boundary.com"
@@ -321,7 +325,7 @@ func TestDetectorThresholdBoundary(t *testing.T) {
 }
 
 func TestDetectorVerboseMode(t *testing.T) {
-	detector := New(2, 100)
+	detector := New(2)
 	defer detector.Close()
 
 	// Enable verbose mode
@@ -335,7 +339,7 @@ func TestDetectorVerboseMode(t *testing.T) {
 }
 
 func TestDetectorStatsAccuracy(t *testing.T) {
-	detector := New(3, 100)
+	detector := New(3)
 	defer detector.Close()
 
 	// Create 5 honeypots
@@ -352,7 +356,7 @@ func TestDetectorStatsAccuracy(t *testing.T) {
 
 func TestDetectorRecordMatchAfterFlagged(t *testing.T) {
 	// Test that recording matches after flagged still returns true
-	detector := New(2, 100)
+	detector := New(2)
 	defer detector.Close()
 
 	detector.RecordMatch("test.com", "t1")
@@ -365,7 +369,7 @@ func TestDetectorRecordMatchAfterFlagged(t *testing.T) {
 }
 
 func TestDetectorIsHoneypotBeforeRecord(t *testing.T) {
-	detector := New(5, 100)
+	detector := New(5)
 	defer detector.Close()
 
 	// Unknown host should not be honeypot
@@ -374,7 +378,7 @@ func TestDetectorIsHoneypotBeforeRecord(t *testing.T) {
 }
 
 func TestDetectorGetFlaggedHostsEmpty(t *testing.T) {
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	// No hosts flagged
@@ -383,7 +387,7 @@ func TestDetectorGetFlaggedHostsEmpty(t *testing.T) {
 }
 
 func TestDetectorGetFlaggedHostsPartial(t *testing.T) {
-	detector := New(3, 100)
+	detector := New(3)
 	defer detector.Close()
 
 	// Host A: 3 templates (flagged)
@@ -402,7 +406,7 @@ func TestDetectorGetFlaggedHostsPartial(t *testing.T) {
 }
 
 func TestDetectorClosePurgesCache(t *testing.T) {
-	detector := New(2, 100)
+	detector := New(2)
 
 	detector.RecordMatch("test.com", "t1")
 	detector.RecordMatch("test.com", "t2")
@@ -418,7 +422,7 @@ func TestDetectorClosePurgesCache(t *testing.T) {
 func TestDetectorMultipleBlocklistLoads(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	// First blocklist
@@ -451,7 +455,7 @@ func TestDetectorBlocklistWithWhitespace(t *testing.T) {
 	content := "  host1.com  \n\thost2.com\t\n   \n"
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	count, err := detector.LoadBlocklist(blocklistPath)
@@ -463,7 +467,7 @@ func TestDetectorBlocklistWithWhitespace(t *testing.T) {
 }
 
 func TestDetectorConcurrentBlocklistAndRecord(t *testing.T) {
-	detector := New(5, 1000)
+	detector := New(5)
 	defer detector.Close()
 
 	tmpDir := t.TempDir()
@@ -498,7 +502,7 @@ func TestDetectorConcurrentBlocklistAndRecord(t *testing.T) {
 }
 
 func TestDetectorHighThreshold(t *testing.T) {
-	detector := New(100, 1000)
+	detector := New(100)
 	defer detector.Close()
 
 	host := "high-threshold.com"
@@ -517,7 +521,7 @@ func TestDetectorHighThreshold(t *testing.T) {
 
 func TestDetectorThresholdOne(t *testing.T) {
 	// Edge case: threshold of 1 means first match flags
-	detector := New(1, 100)
+	detector := New(1)
 	defer detector.Close()
 
 	require.True(t, detector.RecordMatch("instant.com", "t1"))
@@ -525,12 +529,12 @@ func TestDetectorThresholdOne(t *testing.T) {
 	require.Equal(t, 1, detector.GetHoneypotCount())
 }
 
-func TestDetectorLRUEvictionDecrementsCount(t *testing.T) {
-	// Create detector with small cache to force evictions
-	detector := New(2, 5) // threshold=2, maxHosts=5
+func TestDetectorMultipleFlaggedHosts(t *testing.T) {
+	// Test multiple hosts can be flagged independently
+	detector := New(2)
 	defer detector.Close()
 
-	// Fill cache with 5 flagged hosts
+	// Flag 5 different hosts
 	for i := 0; i < 5; i++ {
 		host := "host" + string(rune('A'+i)) + ".com"
 		detector.RecordMatch(host, "t1")
@@ -539,39 +543,42 @@ func TestDetectorLRUEvictionDecrementsCount(t *testing.T) {
 
 	// All 5 should be flagged
 	require.Equal(t, 5, detector.GetHoneypotCount())
+	require.Len(t, detector.GetFlaggedHosts(), 5)
 
-	// Add 3 more hosts to force evictions of first 3
+	// Add 3 more flagged hosts
 	for i := 0; i < 3; i++ {
 		host := "new" + string(rune('A'+i)) + ".com"
 		detector.RecordMatch(host, "t1")
 		detector.RecordMatch(host, "t2")
 	}
 
-	// Should have evicted 3 old flagged hosts, count should be 5 (5-3+3)
-	require.Equal(t, 5, detector.GetHoneypotCount())
-	require.Len(t, detector.GetFlaggedHosts(), 5)
+	// Now 8 total flagged
+	require.Equal(t, 8, detector.GetHoneypotCount())
+	require.Len(t, detector.GetFlaggedHosts(), 8)
 }
 
-func TestDetectorLRUEvictionNonFlaggedNotDecremented(t *testing.T) {
-	// Test that non-flagged evictions don't affect count
-	detector := New(3, 3) // threshold=3, maxHosts=3
+func TestDetectorMixedFlaggedAndUnflagged(t *testing.T) {
+	// Test mix of flagged and unflagged hosts
+	detector := New(3)
 	defer detector.Close()
 
-	// Add 3 non-flagged hosts (only 1 template each)
+	// Add 3 hosts with insufficient matches
 	detector.RecordMatch("host1.com", "t1")
 	detector.RecordMatch("host2.com", "t1")
 	detector.RecordMatch("host3.com", "t1")
 
 	require.Equal(t, 0, detector.GetHoneypotCount())
 
-	// Add a 4th host (evicts host1.com) - still no honeypots
+	// Add more hosts that do get flagged
 	detector.RecordMatch("host4.com", "t1")
-	require.Equal(t, 0, detector.GetHoneypotCount())
-
-	// Now flag one host
 	detector.RecordMatch("host4.com", "t2")
 	detector.RecordMatch("host4.com", "t3")
 	require.Equal(t, 1, detector.GetHoneypotCount())
+
+	// Unflagged hosts still exist
+	require.Equal(t, 1, detector.GetMatchCount("host1.com"))
+	require.Equal(t, 1, detector.GetMatchCount("host2.com"))
+	require.Equal(t, 1, detector.GetMatchCount("host3.com"))
 }
 
 func TestDetectorLoadBlocklistCSVFormat(t *testing.T) {
@@ -588,7 +595,7 @@ honeypot2.com,23
 `
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	count, err := detector.LoadBlocklist(blocklistPath)
@@ -613,7 +620,7 @@ another-plain.com
 `
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	count, err := detector.LoadBlocklist(blocklistPath)
@@ -636,7 +643,7 @@ MixedCase.Example.COM
 `
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	count, err := detector.LoadBlocklist(blocklistPath)
@@ -653,7 +660,7 @@ MixedCase.Example.COM
 
 func TestDetectorRecordMatchCaseInsensitive(t *testing.T) {
 	// Test that RecordMatch normalizes host case
-	detector := New(2, 100)
+	detector := New(2)
 	defer detector.Close()
 
 	// Mix case when recording matches
@@ -684,7 +691,7 @@ another.com
 `
 	require.NoError(t, os.WriteFile(blocklistPath, []byte(content), 0644))
 
-	detector := New(10, 100)
+	detector := New(10)
 	defer detector.Close()
 
 	// Should return unique count (3), not total entries (6)

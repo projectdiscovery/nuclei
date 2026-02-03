@@ -1,3 +1,5 @@
+// Package honeypotdetector provides detection of honeypot hosts that match
+// an unusually high number of nuclei templates, indicating fake/trap servers.
 package honeypotdetector
 
 import (
@@ -7,12 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/projectdiscovery/gologger"
 )
-
-// DefaultMaxHosts is the default maximum number of hosts to track
-const DefaultMaxHosts = 10000
 
 // DefaultThreshold is the default number of distinct template matches to flag as honeypot
 const DefaultThreshold = 10
@@ -21,15 +19,14 @@ const DefaultThreshold = 10
 // Honeypots often serve responses that match many nuclei templates at once,
 // which is a clear indicator of a fake/trap host designed to fool scanners.
 type Detector struct {
-	// cache stores host entries with LRU eviction policy
-	cache *lru.Cache[string, *hostEntry]
+	// hosts stores host entries keyed by normalized hostname
+	hosts sync.Map // map[string]*hostEntry
 	// threshold is the number of distinct templates that triggers honeypot detection
 	threshold int
 	// verbose enables verbose logging output
 	verbose bool
-	// mu protects cache access for concurrent operations
-	mu sync.RWMutex
-
+	// verboseMu protects verbose flag
+	verboseMu sync.RWMutex
 	// honeypotCount tracks the total number of flagged honeypots (atomic)
 	honeypotCount atomic.Int32
 }
@@ -44,43 +41,21 @@ type hostEntry struct {
 	mu sync.Mutex
 }
 
-// New creates a new honeypot detector with configurable threshold and max hosts.
+// New creates a new honeypot detector with configurable threshold.
 // threshold: number of distinct template matches to trigger honeypot detection
-// maxHosts: maximum number of hosts to track (uses LRU eviction)
-func New(threshold, maxHosts int) *Detector {
+func New(threshold int) *Detector {
 	if threshold <= 0 {
 		threshold = DefaultThreshold
 	}
-	if maxHosts <= 0 {
-		maxHosts = DefaultMaxHosts
-	}
-
-	// Create detector first so the eviction callback can reference it
-	detector := &Detector{
+	return &Detector{
 		threshold: threshold,
 	}
-
-	// Use NewWithEvict to properly decrement honeypotCount when flagged hosts are evicted
-	onEvict := func(_ string, entry *hostEntry) {
-		if entry != nil && entry.flagged {
-			detector.honeypotCount.Add(-1)
-		}
-	}
-
-	cache, err := lru.NewWithEvict[string, *hostEntry](maxHosts, onEvict)
-	if err != nil {
-		// This should never happen with validated maxHosts > 0, but handle gracefully
-		cache, _ = lru.NewWithEvict[string, *hostEntry](DefaultMaxHosts, onEvict)
-	}
-
-	detector.cache = cache
-	return detector
 }
 
 // SetVerbose enables verbose logging
 func (d *Detector) SetVerbose(verbose bool) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.verboseMu.Lock()
+	defer d.verboseMu.Unlock()
 	d.verbose = verbose
 }
 
@@ -94,17 +69,11 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 	// Normalize host to lowercase for consistent matching
 	host = strings.ToLower(strings.TrimSpace(host))
 
-	// Hold d.mu lock while modifying entry to prevent race with eviction
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	entry, exists := d.cache.Get(host)
-	if !exists {
-		entry = &hostEntry{
-			templates: make(map[string]struct{}),
-		}
-		d.cache.Add(host, entry)
-	}
+	// Get or create entry for this host
+	val, _ := d.hosts.LoadOrStore(host, &hostEntry{
+		templates: make(map[string]struct{}),
+	})
+	entry := val.(*hostEntry)
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
@@ -123,7 +92,11 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 		entry.flagged = true
 		d.honeypotCount.Add(1)
 
-		if d.verbose {
+		d.verboseMu.RLock()
+		verbose := d.verbose
+		d.verboseMu.RUnlock()
+
+		if verbose {
 			gologger.Verbose().Msgf("Honeypot detected: %s (matched %d distinct templates)", host, len(entry.templates))
 		}
 		return true
@@ -141,14 +114,12 @@ func (d *Detector) IsHoneypot(host string) bool {
 	// Normalize host to lowercase for consistent matching
 	host = strings.ToLower(strings.TrimSpace(host))
 
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	entry, exists := d.cache.Get(host)
+	val, exists := d.hosts.Load(host)
 	if !exists {
 		return false
 	}
 
+	entry := val.(*hostEntry)
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
 	return entry.flagged
@@ -163,14 +134,12 @@ func (d *Detector) GetMatchCount(host string) int {
 	// Normalize host to lowercase for consistent matching
 	host = strings.ToLower(strings.TrimSpace(host))
 
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	entry, exists := d.cache.Get(host)
+	val, exists := d.hosts.Load(host)
 	if !exists {
 		return 0
 	}
 
+	entry := val.(*hostEntry)
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
 	return len(entry.templates)
@@ -183,28 +152,27 @@ func (d *Detector) GetHoneypotCount() int {
 
 // GetFlaggedHosts returns a list of all hosts that have been flagged as honeypots.
 func (d *Detector) GetFlaggedHosts() []string {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	var flagged []string
-	for _, host := range d.cache.Keys() {
-		entry, exists := d.cache.Peek(host)
-		if exists {
-			entry.mu.Lock()
-			if entry.flagged {
-				flagged = append(flagged, host)
-			}
-			entry.mu.Unlock()
+	d.hosts.Range(func(key, value any) bool {
+		host := key.(string)
+		entry := value.(*hostEntry)
+		entry.mu.Lock()
+		if entry.flagged {
+			flagged = append(flagged, host)
 		}
-	}
+		entry.mu.Unlock()
+		return true
+	})
 	return flagged
 }
 
 // Close cleans up resources used by the detector.
 func (d *Detector) Close() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.cache.Purge()
+	// sync.Map doesn't need explicit cleanup, but we clear it for consistency
+	d.hosts.Range(func(key, _ any) bool {
+		d.hosts.Delete(key)
+		return true
+	})
 }
 
 // LoadBlocklist loads known honeypot hosts from a file and pre-flags them.
@@ -263,7 +231,7 @@ func (d *Detector) LoadBlocklist(filepath string) (int, error) {
 	return unique, nil
 }
 
-// preFlagHost adds a host to the cache and marks it as a honeypot.
+// preFlagHost adds a host to the map and marks it as a honeypot.
 // This is used for loading blocklists of known honeypots.
 func (d *Detector) preFlagHost(host string) {
 	host = strings.ToLower(strings.TrimSpace(host))
@@ -271,15 +239,11 @@ func (d *Detector) preFlagHost(host string) {
 		return
 	}
 
-	d.mu.Lock()
-	entry, exists := d.cache.Get(host)
-	if !exists {
-		entry = &hostEntry{
-			templates: make(map[string]struct{}),
-		}
-		d.cache.Add(host, entry)
-	}
-	d.mu.Unlock()
+	// Get or create entry for this host
+	val, _ := d.hosts.LoadOrStore(host, &hostEntry{
+		templates: make(map[string]struct{}),
+	})
+	entry := val.(*hostEntry)
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()

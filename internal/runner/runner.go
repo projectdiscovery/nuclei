@@ -279,12 +279,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Setup honeypot detection if enabled
 	if options.HoneypotDetection {
-		// Use configurable max hosts or default
-		maxHosts := options.HoneypotMaxHosts
-		if maxHosts <= 0 {
-			maxHosts = honeypotdetector.DefaultMaxHosts
-		}
-		detector := honeypotdetector.New(options.HoneypotThreshold, maxHosts)
+		detector := honeypotdetector.New(options.HoneypotThreshold)
 		detector.SetVerbose(options.Verbose)
 
 		// Load blocklist if provided

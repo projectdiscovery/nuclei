@@ -52,7 +52,7 @@ var _ Writer = &mockWriter{}
 func TestHoneypotWriterPassthrough(t *testing.T) {
 	// Test that results pass through when under threshold
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -80,7 +80,7 @@ func TestHoneypotWriterPassthrough(t *testing.T) {
 func TestHoneypotWriterDetection(t *testing.T) {
 	// Test that honeypots are detected at threshold
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -107,7 +107,7 @@ func TestHoneypotWriterDetection(t *testing.T) {
 func TestHoneypotWriterSuppression(t *testing.T) {
 	// Test that results are suppressed after honeypot detection
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "") // suppression ON
@@ -135,7 +135,7 @@ func TestHoneypotWriterSuppression(t *testing.T) {
 func TestHoneypotWriterMultipleHosts(t *testing.T) {
 	// Test that detection works correctly across multiple hosts
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
@@ -183,7 +183,7 @@ func TestHoneypotWriterNilDetector(t *testing.T) {
 func TestHoneypotWriterURLFallback(t *testing.T) {
 	// Test that URL is used when Host is empty
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -202,7 +202,7 @@ func TestHoneypotWriterPortNormalization(t *testing.T) {
 	// Test that the same IP with different ports is treated as the same host
 	// This is critical for detecting honeypots on Shodan that respond on multiple ports
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
@@ -225,7 +225,7 @@ func TestHoneypotWriterPortNormalization(t *testing.T) {
 func TestHoneypotWriterIPv6Normalization(t *testing.T) {
 	// Test that IPv6 addresses are properly normalized
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -243,7 +243,7 @@ func TestHoneypotWriterIPv6Normalization(t *testing.T) {
 func TestHoneypotWriterHostWithPort(t *testing.T) {
 	// Test that Host field with port is normalized
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -260,7 +260,7 @@ func TestHoneypotWriterHostWithPort(t *testing.T) {
 
 func TestHoneypotWriterClose(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
@@ -278,7 +278,7 @@ func TestHoneypotWriterClose(t *testing.T) {
 func TestHoneypotWriterMatchCount(t *testing.T) {
 	// Test that HoneypotMatchCount is set correctly in JSON output
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -309,7 +309,7 @@ func TestHoneypotWriterExport(t *testing.T) {
 	// Test honeypot export functionality
 	tmpFile := t.TempDir() + "/honeypots.txt"
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 
 	writer := NewHoneypotWriter(mock, detector, false, false, tmpFile)
 
@@ -342,7 +342,7 @@ func TestHoneypotWriterExport(t *testing.T) {
 func TestHoneypotWriterSuppressedCount(t *testing.T) {
 	// Test that suppressed count is tracked correctly
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
@@ -368,7 +368,7 @@ func contains(s, substr string) bool {
 func TestHoneypotWriterVerboseMode(t *testing.T) {
 	// Test that verbose mode doesn't cause errors
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, true, "") // verbose=true
@@ -385,7 +385,7 @@ func TestHoneypotWriterVerboseMode(t *testing.T) {
 
 func TestHoneypotWriterConcurrentWrites(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 1000)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -416,7 +416,7 @@ func TestHoneypotWriterExportNoHoneypots(t *testing.T) {
 	// Test export when no honeypots detected
 	tmpFile := t.TempDir() + "/empty_export.txt"
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(10, 100) // High threshold
+	detector := honeypotdetector.New(10) // High threshold
 
 	writer := NewHoneypotWriter(mock, detector, false, false, tmpFile)
 
@@ -439,7 +439,7 @@ func TestHoneypotWriterExportNoHoneypots(t *testing.T) {
 
 func TestHoneypotWriterResultCount(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -457,7 +457,7 @@ func TestHoneypotWriterResultCount(t *testing.T) {
 
 func TestHoneypotWriterGetDetector(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -470,7 +470,7 @@ func TestHoneypotWriterGetDetector(t *testing.T) {
 
 func TestHoneypotWriterNormalizesURLVariations(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -570,7 +570,7 @@ func TestNormalizeHostEdgeCases(t *testing.T) {
 
 func TestHoneypotWriterWriteFailure(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -589,7 +589,7 @@ func TestHoneypotWriterWriteFailure(t *testing.T) {
 
 func TestHoneypotWriterColorizer(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -603,7 +603,7 @@ func TestHoneypotWriterColorizer(t *testing.T) {
 
 func TestHoneypotWriterRequest(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -614,7 +614,7 @@ func TestHoneypotWriterRequest(t *testing.T) {
 
 func TestHoneypotWriterRequestStatsLog(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -625,7 +625,7 @@ func TestHoneypotWriterRequestStatsLog(t *testing.T) {
 
 func TestHoneypotWriterWriteStoreDebugData(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -636,7 +636,7 @@ func TestHoneypotWriterWriteStoreDebugData(t *testing.T) {
 
 func TestHoneypotWriterHoneypotHostFieldSet(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -662,7 +662,7 @@ func TestHoneypotWriterHoneypotHostFieldSet(t *testing.T) {
 
 func TestHoneypotWriterMatchCountFieldSet(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -683,7 +683,7 @@ func TestHoneypotWriterMatchCountFieldSet(t *testing.T) {
 
 func TestHoneypotWriterSuppressionOnlyAfterThreshold(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "") // suppress=true
@@ -710,7 +710,7 @@ func TestHoneypotWriterSuppressionOnlyAfterThreshold(t *testing.T) {
 
 func TestHoneypotWriterMultipleHostsSuppression(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
@@ -741,7 +741,7 @@ func TestHoneypotWriterMultipleHostsSuppression(t *testing.T) {
 
 func TestHoneypotWriterEmptyEventFields(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -758,7 +758,7 @@ func TestHoneypotWriterEmptyEventFields(t *testing.T) {
 func TestHoneypotWriterExportCSVFormat(t *testing.T) {
 	tmpFile := t.TempDir() + "/csv_test.txt"
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 
 	writer := NewHoneypotWriter(mock, detector, false, false, tmpFile)
 
@@ -792,7 +792,7 @@ func TestHoneypotWriterExportCSVFormat(t *testing.T) {
 
 func TestHoneypotWriterCloseWithDetector(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
 
@@ -825,7 +825,7 @@ func TestHoneypotWriterCloseWithNilDetector(t *testing.T) {
 func TestHoneypotWriterIntegrationFullWorkflow(t *testing.T) {
 	tmpFile := t.TempDir() + "/full_workflow.txt"
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 
 	writer := NewHoneypotWriter(mock, detector, true, false, tmpFile)
 
@@ -880,7 +880,7 @@ func TestHoneypotWriterIntegrationWithBlocklist(t *testing.T) {
 	os.WriteFile(blocklistPath, []byte("known-bad.com\n"), 0644)
 
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 100)
+	detector := honeypotdetector.New(5)
 	detector.LoadBlocklist(blocklistPath)
 
 	writer := NewHoneypotWriter(mock, detector, true, false, exportPath)
@@ -906,7 +906,7 @@ func TestHoneypotWriterIntegrationWithBlocklist(t *testing.T) {
 
 func TestHoneypotWriterThresholdOfTwo(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -929,7 +929,7 @@ func TestHoneypotWriterThresholdOfTwo(t *testing.T) {
 
 func TestHoneypotWriterDifferentProtocols(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -947,7 +947,7 @@ func TestHoneypotWriterDifferentProtocols(t *testing.T) {
 
 func TestHoneypotWriterMixedHostAndURL(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -965,7 +965,7 @@ func TestHoneypotWriterMixedHostAndURL(t *testing.T) {
 func TestHoneypotWriterExportMultipleHoneypots(t *testing.T) {
 	tmpFile := t.TempDir() + "/multi_export.txt"
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, tmpFile)
@@ -995,7 +995,7 @@ func TestHoneypotWriterExportMultipleHoneypots(t *testing.T) {
 
 func TestHoneypotWriterSuppressDisabled(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "") // suppress=false
@@ -1015,7 +1015,7 @@ func TestHoneypotWriterSuppressDisabled(t *testing.T) {
 
 func TestHoneypotWriterSuppressEnabled(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "") // suppress=true
@@ -1036,7 +1036,7 @@ func TestHoneypotWriterSuppressEnabled(t *testing.T) {
 
 func TestHoneypotWriterIPv6Address(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -1052,7 +1052,7 @@ func TestHoneypotWriterIPv6Address(t *testing.T) {
 
 func TestHoneypotWriterIPv4Address(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -1067,7 +1067,7 @@ func TestHoneypotWriterIPv4Address(t *testing.T) {
 
 func TestHoneypotWriterSubdomainHandling(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -1084,7 +1084,7 @@ func TestHoneypotWriterSubdomainHandling(t *testing.T) {
 
 func TestHoneypotWriterLargeScaleHoneypots(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(5, 10000)
+	detector := honeypotdetector.New(5)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, true, false, "")
@@ -1109,7 +1109,7 @@ func TestHoneypotWriterLargeScaleHoneypots(t *testing.T) {
 
 func TestHoneypotWriterExportPathEmpty(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "") // empty export path
 
@@ -1122,7 +1122,7 @@ func TestHoneypotWriterExportPathEmpty(t *testing.T) {
 
 func TestHoneypotWriterExportPathInvalid(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 
 	// Invalid path (directory doesn't exist)
 	writer := NewHoneypotWriter(mock, detector, false, false, "/nonexistent/path/export.txt")
@@ -1136,7 +1136,7 @@ func TestHoneypotWriterExportPathInvalid(t *testing.T) {
 
 func TestHoneypotWriterDuplicateTemplatesSameHost(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(3, 100)
+	detector := honeypotdetector.New(3)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
@@ -1157,7 +1157,7 @@ func TestHoneypotWriterDuplicateTemplatesSameHost(t *testing.T) {
 
 func TestHoneypotWriterResultEventPreserved(t *testing.T) {
 	mock := &mockWriter{}
-	detector := honeypotdetector.New(2, 100)
+	detector := honeypotdetector.New(2)
 	defer detector.Close()
 
 	writer := NewHoneypotWriter(mock, detector, false, false, "")
