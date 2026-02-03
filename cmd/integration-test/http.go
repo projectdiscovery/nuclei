@@ -1819,12 +1819,14 @@ dynamic:
 	if err != nil {
 		return err
 	}
-	defer os.Remove(secretFile.Name())
+	defer func() { _ = os.Remove(secretFile.Name()) }()
 
 	if _, err := secretFile.WriteString(secretFileContent); err != nil {
 		return err
 	}
-	secretFile.Close()
+	if err := secretFile.Close(); err != nil {
+		return err
+	}
 
 	results, err := testutils.RunNucleiBinaryAndGetCombinedOutput(debug, []string{
 		"-t", filePath,
