@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"codeberg.org/go-pdf/fpdf"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 )
@@ -53,7 +53,7 @@ func (exporter *Exporter) Close() error {
 		return nil
 	}
 
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(10, 10, 10)
 	pdf.SetAutoPageBreak(true, 10)
 
