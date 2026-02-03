@@ -126,7 +126,13 @@ func TestDisabledDetectionDoesNotFlag(t *testing.T) {
 		detector.recordMatch("disabled.com", event)
 	}
 
-	_, _ = detector.IsHoneypot("disabled.com")
+	isHoneypot, report := detector.IsHoneypot("disabled.com")
+	if isHoneypot {
+		t.Fatalf("Expected detection to be disabled, but IsHoneypot returned true")
+	}
+	if report != nil {
+		t.Fatalf("Expected nil report when detection is disabled, but got: %+v", report)
+	}
 }
 
 // TestCDNEdgeCaseNotFlagged verifies that a CDN/WAF returning similar responses
