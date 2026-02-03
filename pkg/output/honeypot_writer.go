@@ -29,6 +29,11 @@ func normalizeHost(host, urlField string) string {
 		if h, _, err := net.SplitHostPort(host); err == nil {
 			return strings.ToLower(h)
 		}
+		// Handle bracketed IPv6 without port (e.g., "[::1]")
+		if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+			host = strings.TrimPrefix(host, "[")
+			host = strings.TrimSuffix(host, "]")
+		}
 		// No port, return as-is
 		return strings.ToLower(host)
 	}
