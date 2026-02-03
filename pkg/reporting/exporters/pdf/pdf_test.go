@@ -88,8 +88,8 @@ func TestClose_GeneratesValidPDF(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "nuclei-test-*.pdf")
 	require.NoError(t, err)
 	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
+	_ = tmpFile.Close()
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	options := &Options{File: tmpPath}
 	exporter, err := New(options)
@@ -108,8 +108,8 @@ func TestClose_EmptyResults(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "nuclei-test-empty-*.pdf")
 	require.NoError(t, err)
 	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
+	_ = tmpFile.Close()
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	options := &Options{File: tmpPath}
 	exporter, err := New(options)
@@ -126,8 +126,8 @@ func TestClose_IdempotentClose(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "nuclei-test-idempotent-*.pdf")
 	require.NoError(t, err)
 	tmpPath := tmpFile.Name()
-	tmpFile.Close()
-	defer os.Remove(tmpPath)
+	_ = tmpFile.Close()
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	options := &Options{File: tmpPath}
 	exporter, err := New(options)
