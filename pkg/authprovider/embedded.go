@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/utils/errkit"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -62,6 +63,7 @@ func (f *EmbeddedAuthProvider) init() {
 				}
 				compiled, err := regexp.Compile(domain)
 				if err != nil {
+					gologger.Warning().Msgf("failed to compile domain regex '%s': %v", domain, err)
 					continue
 				}
 
@@ -96,6 +98,7 @@ func (f *EmbeddedAuthProvider) init() {
 				}
 				compiled, err := regexp.Compile(domain)
 				if err != nil {
+					gologger.Warning().Msgf("failed to compile domain regex '%s': %v", domain, err)
 					continue
 				}
 				if ss, ok := f.compiled[compiled]; !ok {
