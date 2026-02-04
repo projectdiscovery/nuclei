@@ -5,6 +5,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	_ "go.dw1.io/x/exp/gctuner/auto"
 )
 
 // Engine is an executer for running Nuclei Templates/Workflows.
