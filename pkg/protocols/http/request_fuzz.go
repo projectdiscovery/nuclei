@@ -27,8 +27,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
-	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/useragent"
 	urlutil "github.com/projectdiscovery/utils/url"
 	xssContext "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/context"
 )
