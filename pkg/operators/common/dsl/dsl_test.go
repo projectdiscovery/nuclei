@@ -2,6 +2,7 @@ package dsl
 
 import (
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/Knetic/govaluate"
@@ -51,7 +52,17 @@ func testDslExpressionScenariosWithDNS(t *testing.T, dslExpressions map[string]i
 			actualResult := evaluateExpression(t, dslExpression)
 
 			if expectedResult != nil {
-				require.Equal(t, expectedResult, actualResult)
+				if dslExpression == `resolve("scanme.sh","aaaa")` {
+					// AAAA can return different IPv6s depending on resolver/network; only check it's valid IPv6
+					require.IsType(t, "", actualResult)
+					s := actualResult.(string)
+					require.NotEmpty(t, s, "AAAA resolve should return non-empty string")
+					ip := net.ParseIP(s)
+					require.NotNil(t, ip, "expected valid IP, got %q", s)
+					require.True(t, ip.To4() == nil, "expected IPv6 address, got %q", s)
+				} else {
+					require.Equal(t, expectedResult, actualResult)
+				}
 			}
 
 			fmt.Printf("%s: \t %v\n", dslExpression, actualResult)
