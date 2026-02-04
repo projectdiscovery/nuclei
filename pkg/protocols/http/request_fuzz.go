@@ -27,7 +27,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/useragent"
 	urlutil "github.com/projectdiscovery/utils/url"
+	xssContext "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/context"
 )
 
 // executeFuzzingRule executes fuzzing request for a URL
@@ -196,6 +199,20 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 			result.FuzzingMethod = gr.Request.Method
 			result.FuzzingParameter = gr.Parameter
 			result.FuzzingPosition = gr.Component.Name()
+		}
+
+		// XSS Context Analyzer Check
+		// If we have a match, verify it with context analyzer
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			if body, ok := event.InternalEvent["body"].(string); ok && body != "" {
+				result := xssContext.Analyze([]byte(body), gr.Value)
+				// If we found the payload (Context != Unknown) and it is NOT vulnerable,
+				// we suppress the finding.
+				if result.Context != xssContext.ContextUnknown && !result.Vulnerable {
+					event.OperatorsResult.Matched = false
+					gologger.Verbose().Msgf("[%s] Suppressed False Positive XSS in %s (Context: %s)", request.options.TemplateID, gr.Parameter, result.Context.String())
+				}
+			}
 		}
 
 		setInteractshCallback := false
