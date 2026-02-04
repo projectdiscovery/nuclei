@@ -41,6 +41,8 @@ type AuthProvider interface {
 type AuthProviderOptions struct {
 	// File based auth provider options
 	SecretsFiles []string
+	// EmbeddedSecrets contains secrets embedded directly in config/profile files
+	EmbeddedSecrets []*authx.Authx
 	// LazyFetchSecret is a callback for lazy fetching of dynamic secrets
 	LazyFetchSecret authx.LazyFetchSecret
 }
@@ -50,6 +52,14 @@ func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
 	var providers []AuthProvider
 	for _, file := range options.SecretsFiles {
 		provider, err := NewFileAuthProvider(file, options.LazyFetchSecret)
+		if err != nil {
+			return nil, err
+		}
+		providers = append(providers, provider)
+	}
+	// Add providers for embedded secrets
+	for _, embedded := range options.EmbeddedSecrets {
+		provider, err := NewEmbeddedAuthProvider(embedded, options.LazyFetchSecret)
 		if err != nil {
 			return nil, err
 		}

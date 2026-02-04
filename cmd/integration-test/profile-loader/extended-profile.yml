@@ -1,0 +1,18 @@
+# Extended Profile Format Test
+# This profile demonstrates the new template profile improvements:
+# - Profile metadata fields (id, name, description, purpose, author, version)
+# - Embedded secrets configuration
+
+id: extended-profile-test
+name: Extended Profile Test
+description: A test profile demonstrating the extended profile format with metadata and embedded secrets
+purpose: Integration testing for template profile improvements
+author: nuclei-team
+version: "1.0"
+profile-tags:
+  - test
+  - integration
+
+# Standard nuclei options (passed to goflags)
+tags:
+  - kev

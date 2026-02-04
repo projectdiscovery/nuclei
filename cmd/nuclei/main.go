@@ -35,6 +35,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/profile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -656,8 +657,49 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
-			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+
+		// Parse profile using the new profile package to handle extended format
+		// This supports metadata fields (id, name, description, purpose, etc.) and embedded secrets
+		loadedProfile, err := profile.LoadProfile(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not parse template profile: %s\n", err)
+		}
+
+		// Log profile info if available
+		if loadedProfile.Name != "" {
+			options.Logger.Info().Msgf("Using profile: %s", loadedProfile.Name)
+		}
+		if loadedProfile.Description != "" && options.Verbose {
+			options.Logger.Info().Msgf("Profile description: %s", loadedProfile.Description)
+		}
+
+		// Handle embedded secrets if present
+		if loadedProfile.HasSecrets() {
+			if err := loadedProfile.ValidateSecrets(); err != nil {
+				options.Logger.Fatal().Msgf("Invalid secrets in profile: %s\n", err)
+			}
+			// Store embedded secrets in options for later use by auth provider
+			authxData := loadedProfile.GetAuthx()
+			if authxData != nil {
+				options.EmbeddedSecrets = append(options.EmbeddedSecrets, authxData)
+			}
+			options.Logger.Info().Msgf("Loaded embedded secrets from profile")
+		}
+
+		// Write a temporary config file with only goflags-compatible fields
+		// This excludes profile metadata (id, name, etc.) and embedded secrets
+		if len(loadedProfile.RawConfig) > 0 {
+			tmpDir := os.TempDir()
+			tmpConfigPath, err := loadedProfile.WriteConfigForGoflags(tmpDir)
+			if err != nil {
+				options.Logger.Fatal().Msgf("Could not create temp profile config: %s\n", err)
+			}
+			if tmpConfigPath != "" {
+				defer os.Remove(tmpConfigPath)
+				if err := flagSet.MergeConfigFile(tmpConfigPath); err != nil {
+					options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+				}
+			}
 		}
 	}
 

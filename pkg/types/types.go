@@ -420,6 +420,8 @@ type Options struct {
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
+	// EmbeddedSecrets contains secrets embedded directly in profile files
+	EmbeddedSecrets []interface{}
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
@@ -665,6 +667,7 @@ func (options *Options) Copy() *Options {
 		TeamID:                         options.TeamID,
 		JsConcurrency:                  options.JsConcurrency,
 		SecretsFile:                    options.SecretsFile,
+		EmbeddedSecrets:                options.EmbeddedSecrets,
 		PreFetchSecrets:                options.PreFetchSecrets,
 		FormatUseRequiredOnly:          options.FormatUseRequiredOnly,
 		SkipFormatValidation:           options.SkipFormatValidation,

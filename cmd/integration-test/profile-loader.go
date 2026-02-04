@@ -11,6 +11,7 @@ var profileLoaderTestcases = []TestCaseInfo{
 	{Path: "profile-loader/load-with-filename", TestCase: &profileLoaderByRelFile{}},
 	{Path: "profile-loader/load-with-id", TestCase: &profileLoaderById{}},
 	{Path: "profile-loader/basic.yml", TestCase: &customProfileLoader{}},
+	{Path: "profile-loader/extended-profile.yml", TestCase: &extendedProfileLoader{}},
 }
 
 type profileLoaderByRelFile struct{}
@@ -46,6 +47,22 @@ func (h *customProfileLoader) Execute(filepath string) error {
 	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", filepath)
 	if err != nil {
 		return errkit.Wrap(err, "failed to load template with id")
+	}
+	if len(results) < 1 {
+		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 1, len(results))
+	}
+	return nil
+}
+
+// extendedProfileLoader tests the extended profile format with metadata fields
+// The profile contains id, name, description, purpose, author, version fields
+// which should be ignored by goflags but parsed by the profile loader
+type extendedProfileLoader struct{}
+
+func (h *extendedProfileLoader) Execute(filepath string) error {
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", filepath, "-v")
+	if err != nil {
+		return errkit.Wrap(err, "failed to load extended profile")
 	}
 	if len(results) < 1 {
 		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 1, len(results))
