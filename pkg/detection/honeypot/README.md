@@ -29,6 +29,7 @@ The core detection engine implements fingerprinting techniques to identify commo
 - **SSHesame**: SSH honeypot detection
 
 **Detection Methods:**
+
 - SSH banner analysis (ports 22, 2222)
 - Telnet banner patterns (port 23)
 - HTTP/HTTPS response analysis (ports 80, 443, 8080, 8443)
@@ -97,6 +98,7 @@ nuclei -u example.com -hd
 ```
 
 Output:
+
 ```
 [INF] Starting honeypot detection phase...
 [WRN] Target is a suspected honeypot: example.com:22 [Type: cowrie, Confidence: 85%]
@@ -132,18 +134,22 @@ nuclei -u example.com -hd -hdt 75
 ### SSH Honeypots
 
 **Cowrie**:
+
 - `SSH-2.0-OpenSSH_6.0p1 Debian-4+deb7u2`
 - `SSH-2.0-OpenSSH_5.9p1 Debian-5ubuntu1.4`
 - `SSH-2.0-OpenSSH_6.0p1`
 
 **Kippo**:
+
 - `SSH-2.0-OpenSSH_5.1p1 Debian-5`
 - `SSH-1.99-OpenSSH_4.7p1`
 
 **SSHesame**:
+
 - `SSH-2.0-sshesame`
 
 **Generic SSH Indicators**:
+
 - Very old OpenSSH versions (3.x, 4.x, 5.x)
 - libssh-based servers
 - Debian 7 (EOL) default SSH configurations
@@ -152,6 +158,7 @@ nuclei -u example.com -hd -hdt 75
 ### Telnet Honeypots
 
 **Cowrie Telnet**:
+
 - `BusyBox v1.19.4`
 - `BusyBox v1.20.2`
 - `BusyBox built-in shell`
@@ -160,22 +167,26 @@ nuclei -u example.com -hd -hdt 75
 ### HTTP/HTTPS Honeypots
 
 **Glastopf**:
+
 - Response contains "glastopf" keyword
 - "Blog Comments" in response
 
 **Generic HTTP Indicators**:
+
 - Response contains "honeypot" or "honeytoken"
 - Server header: "cowrie", "dionaea"
 
 ### FTP Honeypots
 
 **Dionaea**:
+
 - `220 DiskStation FTP server ready`
 - `220 FTP server ready`
 
 ### SMTP Honeypots
 
 **Mailoney**:
+
 - `220 localhost ESMTP Postfix`
 - `220 mailhoney`
 
@@ -217,6 +228,7 @@ go test -v
 ```
 
 Test coverage includes:
+
 - Detector initialization
 - Target parsing
 - SSH banner detection
@@ -289,11 +301,11 @@ This feature follows Nuclei's existing license (MIT).
 
 ## References
 
-- Cowrie: https://github.com/cowrie/cowrie
-- Kippo: https://github.com/desaster/kippo
-- Dionaea: https://github.com/DinoTools/dionaea
-- Glastopf: https://github.com/mushorg/glastopf
-- Conpot: https://github.com/mushorg/conpot
+- Cowrie: <https://github.com/cowrie/cowrie>
+- Kippo: <https://github.com/desaster/kippo>
+- Dionaea: <https://github.com/DinoTools/dionaea>
+- Glastopf: <https://github.com/mushorg/glastopf>
+- Conpot: <https://github.com/mushorg/conpot>
 
 ---
 

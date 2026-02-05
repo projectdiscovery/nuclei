@@ -1,6 +1,7 @@
 # Honeypot Detection Feature Implementation Summary
 
 ## Feature Request
+
 **Issue**: #6403 - Add honeypot detection to nuclei  
 **Bounty**: $250  
 **Branch**: `feature-honeypot-detection-6403`  
@@ -13,6 +14,7 @@ This feature adds sophisticated honeypot detection capabilities to Nuclei, enabl
 ## Technical Implementation
 
 ### 1. Core Detection Engine
+
 **Location**: `pkg/detection/honeypot/honeypot.go`
 
 - **Lines of Code**: ~550
@@ -22,6 +24,7 @@ This feature adds sophisticated honeypot detection capabilities to Nuclei, enabl
 - **Performance**: 5-second timeout per port, concurrent checking
 
 **Supported Honeypot Types:**
+
 1. Cowrie (SSH/Telnet)
 2. Kippo (SSH)
 3. Dionaea (Multi-protocol)
@@ -34,6 +37,7 @@ This feature adds sophisticated honeypot detection capabilities to Nuclei, enabl
 10. Generic honeypots (keyword-based)
 
 **Detection Techniques:**
+
 - Banner string matching
 - Regular expression pattern analysis
 - Protocol-specific fingerprinting
@@ -41,6 +45,7 @@ This feature adds sophisticated honeypot detection capabilities to Nuclei, enabl
 - Multi-port scanning
 
 ### 2. Target Filtering Module
+
 **Location**: `pkg/detection/honeypot/filter.go`
 
 - **Lines of Code**: ~85
@@ -52,9 +57,11 @@ This feature adds sophisticated honeypot detection capabilities to Nuclei, enabl
   - Batch target checking
 
 ### 3. Integration with Runner
+
 **Location**: `internal/runner/runner.go`
 
 **Changes Made:**
+
 - Added honeypotFilter field to Runner struct
 - Initialized filter in New() function
 - Added performHoneypotDetection() method
@@ -62,11 +69,13 @@ This feature adds sophisticated honeypot detection capabilities to Nuclei, enabl
 - Respects user configuration (threshold, ports, skip mode)
 
 **Execution Flow:**
+
 ```
 Input Loading → Honeypot Detection (if enabled) → Warning/Filtering → Template Execution
 ```
 
 ### 4. CLI Flags
+
 **Location**: `cmd/nuclei/main.go`
 
 Added new "Honeypot Detection" flag group:
@@ -79,9 +88,11 @@ Added new "Honeypot Detection" flag group:
 | `--honeypot-threshold` | `-hdt` | int | 60 | Confidence threshold (0-100%) |
 
 ### 5. Type Definitions
+
 **Location**: `pkg/types/types.go`
 
 Added four new fields to Options struct:
+
 ```go
 HoneypotDetection bool
 HoneypotSkip      bool
@@ -92,6 +103,7 @@ HoneypotThreshold int
 ## Testing
 
 ### Unit Tests
+
 **Location**: `pkg/detection/honeypot/honeypot_test.go`
 
 - **Test Functions**: 10
@@ -106,6 +118,7 @@ HoneypotThreshold int
   - Result caching
 
 **Test Results:**
+
 ```
 === RUN   TestNewDetector
 === RUN   TestDefaultOptions
@@ -122,12 +135,14 @@ ok      github.com/projectdiscovery/nuclei/v3/pkg/detection/honeypot    0.002s
 ```
 
 ### Build Test
+
 ```bash
 $ go build -o nuclei cmd/nuclei/main.go
 ✅ Build successful
 ```
 
 ### CLI Test
+
 ```bash
 $ ./nuclei -h | grep -i honeypot
 HONEYPOT DETECTION:
@@ -141,9 +156,11 @@ HONEYPOT DETECTION:
 ## Documentation
 
 ### README
+
 **Location**: `pkg/detection/honeypot/README.md`
 
 Comprehensive documentation including:
+
 - Feature overview
 - Architecture description
 - CLI flag reference
@@ -157,6 +174,7 @@ Comprehensive documentation including:
 **Word Count**: ~2,000 words
 
 ### Code Documentation
+
 - Package-level documentation
 - Function/method comments
 - Inline explanations for complex logic
@@ -165,12 +183,14 @@ Comprehensive documentation including:
 ## Code Quality
 
 ### Static Analysis
+
 - ✅ Passes `go vet`
 - ✅ Passes `go fmt`
 - ✅ No race conditions detected
 - ✅ No memory leaks identified
 
 ### Best Practices
+
 - Thread-safe concurrent access
 - Graceful error handling
 - Timeout-based network operations
@@ -181,16 +201,19 @@ Comprehensive documentation including:
 ## Usage Examples
 
 ### Basic Detection
+
 ```bash
 nuclei -u example.com -hd
 ```
 
 ### Skip Detected Honeypots
+
 ```bash
 nuclei -u example.com -hd -hds
 ```
 
 ### Custom Configuration
+
 ```bash
 nuclei -l targets.txt -hd -hdp 22,2222,8022 -hdt 75
 ```
@@ -198,6 +221,7 @@ nuclei -l targets.txt -hd -hdp 22,2222,8022 -hdt 75
 ## Files Changed
 
 ### New Files (4)
+
 1. `pkg/detection/honeypot/honeypot.go` (550 lines)
 2. `pkg/detection/honeypot/filter.go` (85 lines)
 3. `pkg/detection/honeypot/honeypot_test.go` (300 lines)
@@ -206,6 +230,7 @@ nuclei -l targets.txt -hd -hdp 22,2222,8022 -hdt 75
 **Total New Code**: ~1,335 lines
 
 ### Modified Files (3)
+
 1. `cmd/nuclei/main.go` (+6 lines)
 2. `internal/runner/runner.go` (+65 lines)
 3. `pkg/types/types.go` (+8 lines)
