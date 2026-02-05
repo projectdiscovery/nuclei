@@ -53,8 +53,7 @@ JSONL = "JSONL"
 extend-exclude = [
     "README_*.md",
     "doc/CHANGELOG.md",
-    "README.md",
     "**/testdata/**",
     "**/*.json",
-    "pkg/model/worflow_loader.go",  # Existing filename typo
+    "pkg/model/worflow_loader.go",  # Existing filename typo - tracked in separate issue
 ]
