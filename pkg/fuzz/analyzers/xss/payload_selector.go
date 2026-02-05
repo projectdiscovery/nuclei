@@ -77,10 +77,17 @@ func SelectPayloads(reflection ReflectionInfo, params map[string]interface{}) []
 	filtered := filterByAvailableChars(payloads, reflection.AvailableChars, reflection.Context)
 
 	// Limit number of attempts
-	maxAttempts := 3
-	if max, ok := params["max_verification_attempts"].(int); ok && max > 0 {
-		maxAttempts = max
-	}
+  maxAttempts := 3
+  switch v := params["max_verification_attempts"].(type) {
+  case int:
+      if v > 0 {
+          maxAttempts = v
+      }
+  case float64:
+      if v > 0 {
+          maxAttempts = int(v)
+      }
+  }
 
 	if len(filtered) > maxAttempts {
 		return filtered[:maxAttempts]
