@@ -39,7 +39,13 @@ func (d *DynamicAuthStrategy) Apply(req *http.Request) {
 // ApplyOnRR applies the strategy to the retryable request
 func (d *DynamicAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 	strategy := d.Dynamic.GetStrategies()
+	if strategy == nil {
+		return
+	}
 	for _, s := range strategy {
+		if s == nil {
+			continue
+		}
 		s.ApplyOnRR(req)
 	}
 }
