@@ -192,7 +192,7 @@ func (u *Utils) GenerateRandomAlphanumeric(length int) string {
 // ```
 func (u *Utils) GenerateRandomBytes(length int) []byte {
 	b := make([]byte, length)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return b
 }
 
