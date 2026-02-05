@@ -431,4 +431,9 @@ require (
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
 
+// Temporary fork: Adds inline content support for multiline YAML strings
+// Feature: Detects newlines in input values and processes as inline content
+// Upstream: https://github.com/NandanKopplu/goflags/tree/feat/inline-content-support
+// TODO: Remove this replace once PR is merged to projectdiscovery/goflags
+// Related: nuclei#5567 - Template Profile Improvements
 replace github.com/projectdiscovery/goflags => github.com/NandanKopplu/goflags v0.0.0-20260205125853-809d973e9965
