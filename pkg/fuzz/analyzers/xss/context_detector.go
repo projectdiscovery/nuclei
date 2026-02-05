@@ -346,13 +346,13 @@ func extractAttributeMetadata(beforeCanary string, context ContextType) (string,
       return "", ""
   }
 
-	attrPart := strings.TrimSpace(parts[len(parts)-2])
-	words := strings.Fields(attrPart)
-	if len(words) > 0 {
-		attrName := words[len(words)-1]
-		quoteChar := getAttributeQuoteChar(beforeCanary)
-		return attrName, quoteChar
-	}
+ beforeEquals := strings.TrimSpace(beforeCanary[:lastEquals])
+  words := strings.Fields(beforeEquals)
+  if len(words) > 0 {
+      attrName := words[len(words)-1]
+      quoteChar := getAttributeQuoteChar(beforeCanary)
+      return attrName, quoteChar
+  }
 
 	return "", ""
 }
