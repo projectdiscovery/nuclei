@@ -1,0 +1,60 @@
+# Configuration for typos spell checker
+# https://github.com/crate-ci/typos
+
+[default.extend-words]
+# Existing typos that would require code changes to fix (tracked separately)
+# Constants and identifiers
+Exluded = "Exluded"
+AllowdTypes = "AllowdTypes"
+Allowd = "Allowd"
+Splitted = "Splitted"
+splitted = "splitted"
+Formated = "Formated"
+formated = "formated"
+Reuests = "Reuests"
+
+# CLI abbreviations used as flags
+ot = "ot"
+ue = "ue"
+hae = "hae"
+ine = "ine"
+ines = "ines"
+
+# Test identifiers/placeholders
+BA = "BA"
+Iy = "Iy"
+Fo = "Fo"
+Noo = "Noo"
+Iif = "Iif"
+
+# Words from test data or yaml templates
+fiter = "fiter"
+seperate = "seperate"
+noticable = "noticable"
+pannel = "pannel"
+thant = "thant"
+algoritmos = "algoritmos"
+ser = "ser"
+
+# Additional words from test data and regex patterns
+alo = "alo"
+nd = "nd"
+IST = "IST"
+Mis = "Mis"
+aas = "aas"
+ded = "ded"
+Nin = "Nin"
+
+[default.extend-identifiers]
+JSONL = "JSONL"
+
+[files]
+# Exclude non-English README files, changelog, test data, and specific files
+extend-exclude = [
+    "README_*.md",
+    "doc/CHANGELOG.md",
+    "README.md",
+    "**/testdata/**",
+    "**/*.json",
+    "pkg/model/worflow_loader.go",  # Existing filename typo
+]
