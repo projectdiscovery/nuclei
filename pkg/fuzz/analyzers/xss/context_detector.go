@@ -106,8 +106,14 @@ func detectContextType(body string, pos int) ContextType {
 			// This handles cases like <script src="CANARY"> where we're in an attribute
 			closingBracketPos := strings.Index(afterScript, ">")
 			if closingBracketPos == -1 {
-				// No closing bracket found, we're still in the opening tag attributes
-				return ContextHTMLAttributeUnquoted
+				
+	       if isInAttributeContext(lookback) {
+          quoteChar := getAttributeQuoteChar(lookback)
+          if quoteChar == "\"" || quoteChar == "'" {
+              return ContextHTMLAttributeQuoted
+          }
+      }
+      return ContextHTMLAttributeUnquoted
 			}
 
 			// We're inside the script content (after the opening tag's >)
