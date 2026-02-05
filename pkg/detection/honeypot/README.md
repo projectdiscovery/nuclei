@@ -99,7 +99,7 @@ nuclei -u example.com -hd
 
 Output:
 
-```
+```log
 [INF] Starting honeypot detection phase...
 [WRN] Target is a suspected honeypot: example.com:22 [Type: cowrie, Confidence: 85%]
 [INF] Honeypot detection completed: 1 targets flagged

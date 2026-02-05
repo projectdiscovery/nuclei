@@ -324,6 +324,7 @@ func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *Detect
 	if isHTTPS {
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS12,
 		}
 		conn, err = tls.DialWithDialer(&net.Dialer{Timeout: d.opts.Timeout}, "tcp", address, tlsConfig)
 	} else {
@@ -462,6 +463,7 @@ func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner 
 func (d *Detector) analyzeGenericBanner(banner string, port int) *DetectionResult {
 	result := &DetectionResult{
 		Port:       port,
+		Target:     "",
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
 		Indicators: make([]string, 0),
@@ -505,12 +507,11 @@ func parseTarget(target string) (string, int) {
 	host := target
 	port := 0
 
-	if strings.Contains(target, ":") {
-		parts := strings.Split(target, ":")
-		if len(parts) == 2 {
-			host = parts[0]
-			fmt.Sscanf(parts[1], "%d", &port)
-		}
+	// Use net.SplitHostPort for proper IPv6 support
+	h, p, err := net.SplitHostPort(target)
+	if err == nil {
+		host = h
+		fmt.Sscanf(p, "%d", &port)
 	}
 
 	return host, port

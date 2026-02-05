@@ -408,6 +408,8 @@ func New(options *types.Options) (*Runner, error) {
 			for _, portStr := range options.HoneypotPorts {
 				if port, err := strconv.Atoi(portStr); err == nil && port > 0 && port <= 65535 {
 					customPorts = append(customPorts, port)
+				} else {
+					runner.Logger.Warning().Msgf("Skipping invalid honeypot port '%s': must be a number between 1 and 65535", portStr)
 				}
 			}
 			if len(customPorts) > 0 {
@@ -833,7 +835,8 @@ func (r *Runner) isInputNonHTTP() bool {
 }
 
 // performHoneypotDetection checks all input targets for honeypot indicators
-// Returns a list of detected honeypot targets and the count of targets to skip
+// Returns a list of detected honeypot targets and the count of targets
+// When HoneypotSkip is enabled, honeypot targets can be skipped during scanning
 func (r *Runner) performHoneypotDetection() ([]string, int) {
 	if r.honeypotFilter == nil {
 		return nil, 0
