@@ -1,0 +1,30 @@
+# Configuration for typos spell checker
+# https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = [
+    "*.min.js",
+    "*.min.css",
+    "vendor/",
+    "go.sum",
+    "go.mod",
+    "*.pb.go",
+    "testdata/",
+    "*.svg",
+]
+
+[default]
+extend-ignore-re = [
+    # Ignore base64 encoded strings
+    "[A-Za-z0-9+/]{40,}={0,2}",
+    # Ignore hex strings
+    "[0-9a-fA-F]{32,}",
+    # Ignore URLs
+    "https?://[^\\s]+",
+]
+
+[default.extend-words]
+# Project-specific words to ignore
+hto = "hto"
+numer = "numer"
+requestor = "requestor"
