@@ -94,6 +94,8 @@ github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697 h1:54I+OF5vS4a/rxnU
 github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697/go.mod h1:yNqYRqxYkSROY1J+LX+A0tOSA/6soXQs5m8hZSqYBac=
 github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883 h1:+Is1AS20q3naP+qJophNpxuvx1daFOx9C0kLIuI0GVk=
 github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883/go.mod h1:K+FhM7iKGKtalkeXGEviafPPwyVjDv1a/ehomabLF2w=
+github.com/NandanKopplu/goflags v0.0.0-20260205125853-809d973e9965 h1:odGesnPUQJnuktlRDAP+/dPurpZRhWBpHWzfpgdBvH8=
+github.com/NandanKopplu/goflags v0.0.0-20260205125853-809d973e9965/go.mod h1:BBmTyEq3QNIbCI1gNbOWvwkEm+ebewNb39DE20P4OUY=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEVMRuU21PR1EtLVZJmdB18Gu3Rw=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
@@ -851,8 +853,6 @@ github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c h1:s+lLAlr
 github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c/go.mod h1:rN35/D3lVx2YDeENFFz06uj8j3XIqK1Ym9XcISF5fzg=
 github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb h1:rutG906Drtbpz4DwU5mhGIeOhRcktDH4cGQitGUMAsg=
 github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb/go.mod h1:FLjF1DmZ+POoGEiIQdWuYVwS++C/GwpX8YaCsTSm1RY=
-github.com/projectdiscovery/goflags v0.1.74 h1:n85uTRj5qMosm0PFBfsvOL24I7TdWRcWq/1GynhXS7c=
-github.com/projectdiscovery/goflags v0.1.74/go.mod h1:UMc9/7dFz2oln+10tv6cy+7WZKTHf9UGhaNkF95emh4=
 github.com/projectdiscovery/gologger v1.1.68 h1:KfdIO/3X7BtHssWZuqhxPZ+A946epCCx2cz+3NnRAnU=
 github.com/projectdiscovery/gologger v1.1.68/go.mod h1:Xae0t4SeqJVa0RQGK9iECx/+HfXhvq70nqOQp2BuW+o=
 github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBDDSv7VEdG1M=

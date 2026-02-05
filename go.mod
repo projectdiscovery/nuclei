@@ -430,3 +430,5 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
+
+replace github.com/projectdiscovery/goflags => github.com/NandanKopplu/goflags v0.0.0-20260205125853-809d973e9965
