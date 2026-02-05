@@ -70,9 +70,10 @@ other-flag: value
 	require.NotEmpty(t, filesSlice, "secret-file slice should not be empty")
 
 	// Verify the content of the generated secret file
-	generatedSecretPath := filesSlice[0].(string)
+	generatedSecretPath, ok := filesSlice[0].(string)
+	require.True(t, ok, "secret file path should be a string")
 	defer os.Remove(generatedSecretPath)
-	
+		
 	secretContent, err := os.ReadFile(generatedSecretPath)
 	require.NoError(t, err)
 	

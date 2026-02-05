@@ -54,6 +54,11 @@ var (
 )
 
 func main() {
+    defer func() {
+		for _, f := range tempFiles {
+			os.Remove(f)
+		}
+	}()
 	options.Logger = gologger.DefaultLogger
 
 	// enables CLI specific configs mostly interactive behavior
@@ -238,6 +243,8 @@ func main() {
 	}
 }
 
+var tempFiles []string
+
 func preprocessConfigFile(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -260,11 +267,21 @@ func preprocessConfigFile(filePath string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		defer tmpSecretsFile.Close()
-
-		if err := yaml.NewEncoder(tmpSecretsFile).Encode(secrets); err != nil {
+		// Secure permissions for secrets file
+		if err := os.Chmod(tmpSecretsFile.Name(), 0600); err != nil {
+			tmpSecretsFile.Close()
+			os.Remove(tmpSecretsFile.Name())
 			return "", err
 		}
+
+		tempFiles = append(tempFiles, tmpSecretsFile.Name())
+		defer tmpSecretsFile.Close()
+
+		encoder := yaml.NewEncoder(tmpSecretsFile)
+		if err := encoder.Encode(secrets); err != nil {
+			return "", err
+		}
+		encoder.Close()
 
 		secretFileKey := "secret-file"
 		var secretFiles []string
@@ -289,11 +306,14 @@ func preprocessConfigFile(filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	tempFiles = append(tempFiles, tmpFile.Name())
 	defer tmpFile.Close()
 
-	if err := yaml.NewEncoder(tmpFile).Encode(data); err != nil {
+	encoder := yaml.NewEncoder(tmpFile)
+	if err := encoder.Encode(data); err != nil {
 		return "", err
 	}
+	encoder.Close()
 
 	return tmpFile.Name(), nil
 }
