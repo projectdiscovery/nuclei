@@ -590,7 +590,7 @@ func (r *Runner) RunEnumeration() error {
 				return errors.Wrap(err, "failed to create temp secrets file")
 			}
 			if _, err := tempFile.Write(jsonData); err != nil {
-				tempFile.Close()
+				_ = tempFile.Close()
 				return errors.Wrap(err, "failed to write inline secrets")
 			}
 			if err := tempFile.Close(); err != nil {
