@@ -239,15 +239,14 @@ nuclei -l targets.txt -hd -hdp 22,2222,8022 -hdt 75
 
 ## Git Commit
 
-```bash
-commit b39c5affe
-Author: Ali Akbar
-Date:   Thu Feb 6 2026
+**Note**: The following information represents the implementation PR. After merge (especially if squashed), the final commit hash and message may differ.
 
-    feat: Add honeypot detection feature (#6403)
-    
-    Implement comprehensive honeypot detection to identify and warn about
-    deceptive honeypot environments before scanning.
+```bash
+# Implementation PR Reference
+# PR #6403: Honeypot Detection Feature
+# Branch: feature-honeypot-detection-6403
+
+# Final commit details will be established upon merge
 ```
 
 ## Performance Characteristics

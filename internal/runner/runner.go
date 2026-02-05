@@ -835,8 +835,8 @@ func (r *Runner) isInputNonHTTP() bool {
 }
 
 // performHoneypotDetection checks all input targets for honeypot indicators
-// Returns a list of detected honeypot targets and the count of targets
-// When HoneypotSkip is enabled, honeypot targets can be skipped during scanning
+// Excludes detected honeypots from r.inputProvider when HoneypotSkip is enabled
+// Returns a list of detected honeypot targets and the count of targets excluded
 func (r *Runner) performHoneypotDetection() ([]string, int) {
 	if r.honeypotFilter == nil {
 		return nil, 0
@@ -845,12 +845,15 @@ func (r *Runner) performHoneypotDetection() ([]string, int) {
 	ctx := context.Background()
 	threshold := float64(r.options.HoneypotThreshold) / 100.0
 	var honeypotTargets []string
+	var allTargets []string
 	var skippedCount int
 
 	r.Logger.Info().Msg("Starting honeypot detection phase...")
 
+	// Collect all targets and check for honeypots
 	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		target := value.Input
+		allTargets = append(allTargets, target)
 		isHoneypot, result := r.honeypotFilter.CheckTarget(ctx, target)
 
 		if isHoneypot && result != nil && result.Confidence >= threshold {
@@ -864,6 +867,25 @@ func (r *Runner) performHoneypotDetection() ([]string, int) {
 		return true
 	})
 
+	// If HoneypotSkip is enabled, rebuild the input provider with only non-honeypot targets
+	if r.options.HoneypotSkip && len(honeypotTargets) > 0 {
+		honeypotMap := make(map[string]bool)
+		for _, target := range honeypotTargets {
+			honeypotMap[target] = true
+		}
+
+		// Create a new input provider with filtered targets
+		filteredTargets := make([]string, 0)
+		for _, target := range allTargets {
+			if !honeypotMap[target] {
+				filteredTargets = append(filteredTargets, target)
+			}
+		}
+
+		// Replace the input provider with a new one containing only non-honeypot targets
+		r.inputProvider = provider.NewSimpleInputProviderWithUrls(r.options.ExecutionId, filteredTargets...)
+	}
+
 	if len(honeypotTargets) > 0 {
 		r.Logger.Info().Msgf("Honeypot detection completed: %d targets flagged", len(honeypotTargets))
 	} else {
@@ -873,7 +895,9 @@ func (r *Runner) performHoneypotDetection() ([]string, int) {
 	return honeypotTargets, skippedCount
 }
 
-// IsHoneypot checks if a target is a known honeypot
+// IsHoneypot checks if a target is a known honeypot based on cached detection results.
+// This method is intended for external callers or future integrations that need to
+// query honeypot status for a specific target without re-running detection.
 func (r *Runner) IsHoneypot(target string) bool {
 	if r.honeypotFilter == nil {
 		return false

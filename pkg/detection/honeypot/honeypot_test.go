@@ -283,19 +283,19 @@ func TestTargetFilterClear(t *testing.T) {
 	opts := DefaultOptions()
 	filter := NewTargetFilter(opts, nil, nil)
 
-	// Add a fake result
-	filter.results["test.example.com"] = &DetectionResult{
-		IsHoneypot: true,
-		Type:       HoneypotCowrie,
-	}
+	// Use CheckTarget to populate results instead of accessing internal field
+	ctx := context.Background()
+	filter.CheckTarget(ctx, "mock-detection-target")
 
-	if len(filter.results) != 1 {
-		t.Fatal("Expected 1 result before clear")
+	results := filter.GetResults()
+	if len(results) < 1 {
+		t.Fatal("Expected at least 1 result before clear")
 	}
 
 	filter.Clear()
 
-	if len(filter.results) != 0 {
-		t.Errorf("Expected empty results after clear, got %d", len(filter.results))
+	clearedResults := filter.GetResults()
+	if len(clearedResults) != 0 {
+		t.Errorf("Expected empty results after clear, got %d", len(clearedResults))
 	}
 }
