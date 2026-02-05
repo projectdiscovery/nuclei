@@ -40,7 +40,7 @@ type Authx struct {
 	ID      string       `json:"id" yaml:"id"`
 	Info    AuthFileInfo `json:"info" yaml:"info"`
 	Secrets []Secret     `json:"static" yaml:"static"`
-	Dynamic []Dynamic    `json:"dynamic" yaml:"dynamic"`
+	Dynamic []*Dynamic    `json:"dynamic" yaml:"dynamic"`
 }
 
 type AuthFileInfo struct {

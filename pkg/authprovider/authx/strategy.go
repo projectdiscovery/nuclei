@@ -19,7 +19,7 @@ type AuthStrategy interface {
 // it implements the AuthStrategy interface
 type DynamicAuthStrategy struct {
 	// Dynamic is the dynamic secret to use
-	Dynamic Dynamic
+	Dynamic *Dynamic
 }
 
 // Apply applies the strategy to the request

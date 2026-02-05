@@ -1,7 +1,10 @@
 package authx
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -121,5 +124,160 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		var d Dynamic
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
+	})
+}
+
+// TestConcurrentFetch tests that concurrent Fetch calls properly wait for the
+// first fetch to complete and all receive the same result. This test verifies
+// the fix for issue #6592 where templates started executing before authentication
+// completed due to a race condition with atomic bool flags.
+func TestConcurrentFetch(t *testing.T) {
+	t.Run("concurrent-fetch-waits-for-completion", func(t *testing.T) {
+		var callCount atomic.Int32
+
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "test", Value: "value"}},
+			Extracted:    make(map[string]interface{}),
+		}
+
+		// Set up a callback that simulates network delay
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			callCount.Add(1)
+			// Simulate authentication network delay
+			time.Sleep(100 * time.Millisecond)
+			d.Extracted["token"] = "test-token"
+			return nil
+		})
+
+		const numGoroutines = 10
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+
+		// Use a barrier to ensure all goroutines start at approximately the same time
+		barrier := make(chan struct{})
+
+		errors := make([]error, numGoroutines)
+
+		for i := 0; i < numGoroutines; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				<-barrier // Wait for barrier
+				errors[idx] = d.Fetch(false)
+			}(i)
+		}
+
+		// Release all goroutines at once
+		close(barrier)
+
+		// Wait for all goroutines to complete
+		wg.Wait()
+
+		// Verify callback was called exactly once
+		require.Equal(t, int32(1), callCount.Load(), "fetch callback should be called exactly once")
+
+		// Verify all goroutines got no error
+		for i, err := range errors {
+			require.NoError(t, err, "goroutine %d should not have error", i)
+		}
+
+		// Verify extracted values are available
+		require.Equal(t, "test-token", d.Extracted["token"])
+	})
+
+	t.Run("concurrent-get-strategies-waits-for-fetch", func(t *testing.T) {
+		var callCount atomic.Int32
+
+		d := &Dynamic{
+			Secret: &Secret{
+				Type:     "BasicAuth",
+				Domains:  []string{"example.com"},
+				Username: "{{username}}",
+				Password: "{{password}}",
+			},
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "test", Value: "value"}},
+			Extracted:    make(map[string]interface{}),
+		}
+
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			callCount.Add(1)
+			// Simulate authentication network delay
+			time.Sleep(100 * time.Millisecond)
+			d.Extracted["username"] = "testuser"
+			d.Extracted["password"] = "testpass"
+			return nil
+		})
+
+		const numGoroutines = 10
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+
+		barrier := make(chan struct{})
+		strategies := make([][]AuthStrategy, numGoroutines)
+
+		for i := 0; i < numGoroutines; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				<-barrier
+				strategies[idx] = d.GetStrategies()
+			}(i)
+		}
+
+		close(barrier)
+		wg.Wait()
+
+		// Verify callback was called exactly once
+		require.Equal(t, int32(1), callCount.Load(), "fetch callback should be called exactly once")
+
+		// Verify all goroutines got valid strategies
+		for i, s := range strategies {
+			require.NotNil(t, s, "goroutine %d should have strategies", i)
+			require.Len(t, s, 1, "goroutine %d should have 1 strategy", i)
+		}
+
+		// Verify the secret was properly populated
+		require.Equal(t, "testuser", d.Secret.Username)
+		require.Equal(t, "testpass", d.Secret.Password)
+	})
+
+	t.Run("fetch-with-nil-callback-returns-error", func(t *testing.T) {
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "test", Value: "value"}},
+		}
+		// Don't set callback
+
+		err := d.Fetch(false)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "fetch callback not set")
+	})
+
+	t.Run("fetch-error-is-cached", func(t *testing.T) {
+		var callCount atomic.Int32
+
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "test", Value: "value"}},
+			Extracted:    make(map[string]interface{}),
+		}
+
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			callCount.Add(1)
+			// Return empty extracted to trigger error
+			return nil // This will cause "no extracted values found" error
+		})
+
+		// First call should get error
+		err1 := d.Fetch(false)
+		require.Error(t, err1)
+
+		// Second call should return same cached error without calling callback again
+		err2 := d.Fetch(false)
+		require.Error(t, err2)
+		require.Equal(t, err1, err2)
+
+		// Callback should only be called once
+		require.Equal(t, int32(1), callCount.Load())
 	})
 }
