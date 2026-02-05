@@ -1,15 +1,15 @@
-# Honeypot Detection Feature Implementation Summary
+# Honeypot Detection Engine with Multi-Protocol Support
 
-## Feature Request
+## Feature Implementation Summary
 
-**Issue**: #6403 - Add honeypot detection to nuclei  
+**Issue**: #6403 - Implement honeypot detection to identify and filter deceptive honeypot environments  
 **Bounty**: $250  
 **Branch**: `feature-honeypot-detection-6403`  
 **Status**: ✅ Complete
 
-## Implementation Overview
+## Overview
 
-This feature adds sophisticated honeypot detection capabilities to Nuclei, enabling users to identify and optionally skip deceptive honeypot environments during vulnerability scanning.
+This implementation introduces a comprehensive honeypot detection engine to Nuclei, enabling security researchers to automatically identify and optionally skip deceptive honeypot systems during vulnerability assessments. The engine supports multi-protocol detection (SSH, Telnet, HTTP/HTTPS, FTP, SMTP) with confidence-based scoring and concurrent scanning capabilities.
 
 ## Technical Implementation
 
@@ -70,7 +70,7 @@ This feature adds sophisticated honeypot detection capabilities to Nuclei, enabl
 
 **Execution Flow:**
 
-```
+```text
 Input Loading → Honeypot Detection (if enabled) → Warning/Filtering → Template Execution
 ```
 
@@ -81,7 +81,7 @@ Input Loading → Honeypot Detection (if enabled) → Warning/Filtering → Temp
 Added new "Honeypot Detection" flag group:
 
 | Flag | Short | Type | Default | Description |
-|------|-------|------|---------|-------------|
+| ---- | ----- | ---- | ------- | ----------- |
 | `--honeypot-detection` | `-hd` | bool | false | Enable honeypot detection |
 | `--honeypot-skip` | `-hds` | bool | false | Skip detected honeypots |
 | `--honeypot-ports` | `-hdp` | []string | - | Custom ports to check |
@@ -119,7 +119,7 @@ HoneypotThreshold int
 
 **Test Results:**
 
-```
+```bash
 === RUN   TestNewDetector
 === RUN   TestDefaultOptions
 === RUN   TestParseTarget

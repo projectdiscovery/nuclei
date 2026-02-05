@@ -17,43 +17,72 @@ import (
 	"github.com/projectdiscovery/gologger"
 )
 
-// HoneypotType represents the type of honeypot detected
+// HoneypotType represents the type of honeypot detected during analysis.
+// It identifies specific honeypot systems based on fingerprinting techniques.
 type HoneypotType string
 
 const (
-	HoneypotUnknown      HoneypotType = "unknown"
-	HoneypotCowrie       HoneypotType = "cowrie"
-	HoneypotKippo        HoneypotType = "kippo"
-	HoneypotDionaea      HoneypotType = "dionaea"
-	HoneypotHoneyD       HoneypotType = "honeyd"
-	HoneypotGlastopf     HoneypotType = "glastopf"
-	HoneypotConpot       HoneypotType = "conpot"
+	// HoneypotUnknown indicates an unidentified honeypot type
+	HoneypotUnknown HoneypotType = "unknown"
+	// HoneypotCowrie indicates a Cowrie SSH/Telnet honeypot
+	HoneypotCowrie HoneypotType = "cowrie"
+	// HoneypotKippo indicates a Kippo SSH honeypot
+	HoneypotKippo HoneypotType = "kippo"
+	// HoneypotDionaea indicates a Dionaea malware collection honeypot
+	HoneypotDionaea HoneypotType = "dionaea"
+	// HoneypotHoneyD indicates a HoneyD virtual honeypot
+	HoneypotHoneyD HoneypotType = "honeyd"
+	// HoneypotGlastopf indicates a Glastopf web application honeypot
+	HoneypotGlastopf HoneypotType = "glastopf"
+	// HoneypotConpot indicates a Conpot ICS/SCADA honeypot
+	HoneypotConpot HoneypotType = "conpot"
+	// HoneypotElasticHoney indicates an ElasticHoney Elasticsearch honeypot
 	HoneypotElasticHoney HoneypotType = "elastichoney"
-	HoneypotMailoney     HoneypotType = "mailoney"
-	HoneypotSSHesame     HoneypotType = "sshesame"
-	HoneypotGenericSSH   HoneypotType = "generic-ssh-honeypot"
-	HoneypotGenericHTTP  HoneypotType = "generic-http-honeypot"
-	HoneypotGenericTCP   HoneypotType = "generic-tcp-honeypot"
+	// HoneypotMailoney indicates a Mailoney SMTP honeypot
+	HoneypotMailoney HoneypotType = "mailoney"
+	// HoneypotSSHesame indicates an SSHesame SSH honeypot
+	HoneypotSSHesame HoneypotType = "sshesame"
+	// HoneypotGenericSSH indicates a generic SSH honeypot without specific identification
+	HoneypotGenericSSH HoneypotType = "generic-ssh-honeypot"
+	// HoneypotGenericHTTP indicates a generic HTTP honeypot without specific identification
+	HoneypotGenericHTTP HoneypotType = "generic-http-honeypot"
+	// HoneypotGenericTCP indicates a generic TCP honeypot without specific identification
+	HoneypotGenericTCP HoneypotType = "generic-tcp-honeypot"
 )
 
-// DetectionResult holds the result of honeypot detection
+// DetectionResult holds the comprehensive result of honeypot detection for a target.
+// It includes the detection status, type, confidence level, and indicators.
 type DetectionResult struct {
+	// IsHoneypot indicates whether the target was identified as a honeypot
 	IsHoneypot bool
-	Type       HoneypotType
+	// Type identifies the specific type of honeypot detected
+	Type HoneypotType
+	// Confidence is a score between 0.0 and 1.0 indicating detection confidence
 	Confidence float64
+	// Indicators contains specific evidence/signatures that led to the detection
 	Indicators []string
-	Target     string
-	Port       int
+	// Target is the hostname or IP address that was scanned
+	Target string
+	// Port is the network port that was checked during detection
+	Port int
 }
 
-// Options contains configuration for honeypot detection
+// Options contains all configuration parameters for honeypot detection.
+// These options control detection behavior, protocols, ports, and concurrency.
 type Options struct {
-	Timeout     time.Duration
-	EnableSSH   bool
-	EnableHTTP  bool
-	EnableTCP   bool
-	Ports       []int
-	Logger      *gologger.Logger
+	// Timeout specifies the maximum duration for each port check attempt
+	Timeout time.Duration
+	// EnableSSH enables detection on SSH/Telnet ports (default: true)
+	EnableSSH bool
+	// EnableHTTP enables detection on HTTP/HTTPS ports (default: true)
+	EnableHTTP bool
+	// EnableTCP enables generic TCP banner detection (default: true)
+	EnableTCP bool
+	// Ports specifies the list of ports to check for honeypot indicators
+	Ports []int
+	// Logger is the logger instance for debug output
+	Logger *gologger.Logger
+	// Concurrency specifies the number of concurrent port checks per target
 	Concurrency int
 }
 
@@ -69,9 +98,12 @@ func DefaultOptions() *Options {
 	}
 }
 
-// Detector is the main honeypot detection engine
+// Detector is the main honeypot detection engine responsible for analyzing targets
+// and identifying honeypot indicators across multiple protocols.
 type Detector struct {
-	opts   *Options
+	// opts contains the detection configuration and parameters
+	opts *Options
+	// logger is used for logging detection operations and errors
 	logger *gologger.Logger
 }
 
@@ -140,7 +172,8 @@ func (d *Detector) Detect(ctx context.Context, target string) (*DetectionResult,
 	return result, nil
 }
 
-// checkPort performs honeypot detection on a specific port
+// checkPort performs honeypot detection on a specific port.
+// It returns a DetectionResult if a honeypot is detected, or nil if no detection occurs.
 func (d *Detector) checkPort(ctx context.Context, host string, port int) *DetectionResult {
 	result := &DetectionResult{
 		Target:     fmt.Sprintf("%s:%d", host, port),
@@ -191,7 +224,8 @@ func (d *Detector) checkPort(ctx context.Context, host string, port int) *Detect
 	return result
 }
 
-// checkSSH performs SSH honeypot detection
+// checkSSH performs SSH honeypot detection using banner analysis.
+// It checks for known SSH honeypot signatures like Cowrie, Kippo, and SSHesame.
 func (d *Detector) checkSSH(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
 	result := &DetectionResult{
 		Target:     fmt.Sprintf("%s:%d", host, port),
@@ -273,7 +307,8 @@ func (d *Detector) checkSSH(ctx context.Context, host string, port int, banner [
 	return result
 }
 
-// checkTelnet performs Telnet honeypot detection
+// checkTelnet performs Telnet honeypot detection by analyzing banners.
+// It identifies patterns commonly associated with Cowrie Telnet honeypots.
 func (d *Detector) checkTelnet(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
 	result := &DetectionResult{
 		Target:     fmt.Sprintf("%s:%d", host, port),
@@ -305,7 +340,8 @@ func (d *Detector) checkTelnet(ctx context.Context, host string, port int, banne
 	return result
 }
 
-// checkHTTP performs HTTP honeypot detection
+// checkHTTP performs HTTP honeypot detection by sending HTTP requests and analyzing responses.
+// It detects Glastopf and other HTTP-based honeypots through pattern matching.
 func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *DetectionResult {
 	result := &DetectionResult{
 		Target:     fmt.Sprintf("%s:%d", host, port),
@@ -397,7 +433,8 @@ func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *Detect
 	return result
 }
 
-// checkFTP performs FTP honeypot detection
+// checkFTP performs FTP honeypot detection through banner analysis.
+// It identifies FTP services that match known honeypot patterns like Dionaea.
 func (d *Detector) checkFTP(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
 	result := &DetectionResult{
 		Target:     fmt.Sprintf("%s:%d", host, port),
@@ -429,7 +466,8 @@ func (d *Detector) checkFTP(ctx context.Context, host string, port int, banner [
 	return result
 }
 
-// checkSMTP performs SMTP honeypot detection
+// checkSMTP performs SMTP honeypot detection using banner analysis.
+// It checks for SMTP banners that match Mailoney and other SMTP honeypot patterns.
 func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
 	result := &DetectionResult{
 		Target:     fmt.Sprintf("%s:%d", host, port),
@@ -459,7 +497,8 @@ func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner 
 	return result
 }
 
-// analyzeGenericBanner analyzes a generic banner for honeypot indicators
+// analyzeGenericBanner analyzes a generic banner for honeypot indicators.
+// It searches for common honeypot keywords in service banners.
 func (d *Detector) analyzeGenericBanner(banner string, port int) *DetectionResult {
 	result := &DetectionResult{
 		Port:       port,
@@ -494,7 +533,8 @@ func (d *Detector) analyzeGenericBanner(banner string, port int) *DetectionResul
 	return result
 }
 
-// parseTarget parses a target string to extract host and port
+// parseTarget parses a target string to extract host and port information.
+// It handles various URL formats and IPv6 addresses correctly.
 func parseTarget(target string) (string, int) {
 	target = strings.TrimPrefix(target, "http://")
 	target = strings.TrimPrefix(target, "https://")

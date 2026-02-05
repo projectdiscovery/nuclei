@@ -9,12 +9,18 @@ import (
 	"github.com/projectdiscovery/gologger"
 )
 
-// TargetFilter provides functionality to filter out honeypot targets
+// TargetFilter provides thread-safe honeypot detection and filtering functionality
+// with caching of detection results for improved performance.
 type TargetFilter struct {
-	detector    *Detector
-	logger      *gologger.Logger
-	colorizer   aurora.Aurora
-	results     map[string]*DetectionResult
+	// detector performs the actual honeypot detection analysis
+	detector *Detector
+	// logger handles debug and informational logging
+	logger *gologger.Logger
+	// colorizer provides colored output for terminal warnings
+	colorizer aurora.Aurora
+	// results caches detection results to avoid redundant scanning
+	results map[string]*DetectionResult
+	// resultMutex protects concurrent access to the results cache
 	resultMutex sync.RWMutex
 }
 
