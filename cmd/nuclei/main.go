@@ -238,6 +238,66 @@ func main() {
 	}
 }
 
+func preprocessConfigFile(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	var data map[string]interface{}
+	if err := yaml.NewDecoder(file).Decode(&data); err != nil {
+		return "", err
+	}
+
+	ignoreList := []string{"name", "purpose", "description", "id", "info"}
+	for _, field := range ignoreList {
+		delete(data, field)
+	}
+
+	if secrets, ok := data["secrets"]; ok {
+		tmpSecretsFile, err := os.CreateTemp("", "nuclei-secrets-*.yaml")
+		if err != nil {
+			return "", err
+		}
+		defer tmpSecretsFile.Close()
+
+		if err := yaml.NewEncoder(tmpSecretsFile).Encode(secrets); err != nil {
+			return "", err
+		}
+
+		secretFileKey := "secret-file"
+		var secretFiles []string
+
+		if existing, ok := data[secretFileKey]; ok {
+			if strVal, ok := existing.(string); ok {
+				secretFiles = append(secretFiles, strVal)
+			} else if sliceVal, ok := existing.([]interface{}); ok {
+				for _, v := range sliceVal {
+					if s, ok := v.(string); ok {
+						secretFiles = append(secretFiles, s)
+					}
+				}
+			}
+		}
+		secretFiles = append(secretFiles, tmpSecretsFile.Name())
+		data[secretFileKey] = secretFiles
+		delete(data, "secrets")
+	}
+
+	tmpFile, err := os.CreateTemp("", "nuclei-config-*.yaml")
+	if err != nil {
+		return "", err
+	}
+	defer tmpFile.Close()
+
+	if err := yaml.NewEncoder(tmpFile).Encode(data); err != nil {
+		return "", err
+	}
+
+	return tmpFile.Name(), nil
+}
+
 func readConfig() *goflags.FlagSet {
 
 	// when true updates nuclei binary to latest version
@@ -584,6 +644,12 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(cfgFile) {
 			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
 		}
+		var err error
+		cfgFile, err = preprocessConfigFile(cfgFile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not preprocess config file: %s\n", err)
+		}
+
 		// merge config file with flags
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
@@ -656,6 +722,13 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
+
+		var err error
+		templateProfile, err = preprocessConfigFile(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not preprocess template profile: %s\n", err)
+		}
+
 		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
