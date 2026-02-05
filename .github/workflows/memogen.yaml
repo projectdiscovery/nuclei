@@ -1,0 +1,30 @@
+name: 💾 Memoize Functions
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'pkg/js/libs/**'
+      - 'cmd/memogen/**'
+  workflow_dispatch: {}
+
+jobs:
+  memogen:
+    if: ${{ !endsWith(github.actor, '[bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/setup/git@v1
+      - run: make memogen
+      - run: git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
+        id: status
+      - uses: projectdiscovery/actions/commit@v1
+        if: steps.status.outputs.CHANGES > 0
+        with:
+          files: |
+            pkg/js/libs/
+          message: 'chore(js): update memoized functions 🤖'
+      - run: git push origin $GITHUB_REF
+        if: steps.status.outputs.CHANGES > 0
