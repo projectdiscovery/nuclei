@@ -341,10 +341,10 @@ func extractAttributeMetadata(beforeCanary string, context ContextType) (string,
 	}
 
 	// Extract attribute name (word before =)
-	parts := strings.Split(beforeCanary, "=")
-	if len(parts) < 2 {
-		return "", ""
-	}
+  lastEquals := strings.LastIndex(beforeCanary, "=")
+  if lastEquals == -1 {
+      return "", ""
+  }
 
 	attrPart := strings.TrimSpace(parts[len(parts)-2])
 	words := strings.Fields(attrPart)
