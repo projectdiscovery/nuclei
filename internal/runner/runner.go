@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/detection/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
@@ -95,6 +97,7 @@ type Runner struct {
 	inputProvider      provider.InputProvider
 	fuzzFrequencyCache *frequency.Tracker
 	httpStats          *outputstats.Tracker
+	honeypotFilter     *honeypot.TargetFilter
 	Logger             *gologger.Logger
 
 	//general purpose temporary directory
@@ -393,6 +396,29 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 
+	// Initialize honeypot filter if honeypot detection is enabled
+	if options.HoneypotDetection {
+		honeypotOpts := honeypot.DefaultOptions()
+		honeypotOpts.Timeout = time.Duration(options.Timeout) * time.Second
+		honeypotOpts.Logger = runner.Logger
+
+		// Parse custom ports if specified
+		if len(options.HoneypotPorts) > 0 {
+			var customPorts []int
+			for _, portStr := range options.HoneypotPorts {
+				if port, err := strconv.Atoi(portStr); err == nil && port > 0 && port <= 65535 {
+					customPorts = append(customPorts, port)
+				}
+			}
+			if len(customPorts) > 0 {
+				honeypotOpts.Ports = customPorts
+			}
+		}
+
+		runner.honeypotFilter = honeypot.NewTargetFilter(honeypotOpts, runner.Logger, runner.colorizer)
+		runner.Logger.Info().Msgf("Honeypot detection enabled (threshold: %d%%)", options.HoneypotThreshold)
+	}
+
 	// Initialization successful, disable cleanup on error
 	cleanupOnError = false
 	return runner, nil
@@ -681,6 +707,17 @@ func (r *Runner) RunEnumeration() error {
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
+	// Perform honeypot detection if enabled
+	if r.honeypotFilter != nil {
+		honeypotTargets, skippedCount := r.performHoneypotDetection()
+		if skippedCount > 0 && r.options.HoneypotSkip {
+			r.Logger.Info().Msgf("Skipped %d targets identified as honeypots", skippedCount)
+		}
+		if len(honeypotTargets) > 0 && !r.options.HoneypotSkip {
+			r.Logger.Info().Msgf("Detected %d potential honeypot targets (continuing scan with warnings)", len(honeypotTargets))
+		}
+	}
+
 	// prefetch secrets if enabled
 	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
 		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
@@ -793,6 +830,57 @@ func (r *Runner) isInputNonHTTP() bool {
 		return true
 	})
 	return nonURLInput
+}
+
+// performHoneypotDetection checks all input targets for honeypot indicators
+// Returns a list of detected honeypot targets and the count of targets to skip
+func (r *Runner) performHoneypotDetection() ([]string, int) {
+	if r.honeypotFilter == nil {
+		return nil, 0
+	}
+
+	ctx := context.Background()
+	threshold := float64(r.options.HoneypotThreshold) / 100.0
+	var honeypotTargets []string
+	var skippedCount int
+
+	r.Logger.Info().Msg("Starting honeypot detection phase...")
+
+	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
+		target := value.Input
+		isHoneypot, result := r.honeypotFilter.CheckTarget(ctx, target)
+
+		if isHoneypot && result != nil && result.Confidence >= threshold {
+			honeypotTargets = append(honeypotTargets, target)
+			r.honeypotFilter.PrintWarning(result)
+
+			if r.options.HoneypotSkip {
+				skippedCount++
+			}
+		}
+		return true
+	})
+
+	if len(honeypotTargets) > 0 {
+		r.Logger.Info().Msgf("Honeypot detection completed: %d targets flagged", len(honeypotTargets))
+	} else {
+		r.Logger.Info().Msg("Honeypot detection completed: no honeypots detected")
+	}
+
+	return honeypotTargets, skippedCount
+}
+
+// IsHoneypot checks if a target is a known honeypot
+func (r *Runner) IsHoneypot(target string) bool {
+	if r.honeypotFilter == nil {
+		return false
+	}
+	results := r.honeypotFilter.GetResults()
+	if result, exists := results[target]; exists {
+		threshold := float64(r.options.HoneypotThreshold) / 100.0
+		return result.IsHoneypot && result.Confidence >= threshold
+	}
+	return false
 }
 
 func (r *Runner) executeSmartWorkflowInput(executorOpts *protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {

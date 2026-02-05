@@ -498,6 +498,13 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
 	)
 
+	flagSet.CreateGroup("honeypot", "Honeypot Detection",
+		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detection", "hd", false, "enable honeypot detection before scanning targets"),
+		flagSet.BoolVarP(&options.HoneypotSkip, "honeypot-skip", "hds", false, "skip targets detected as honeypots (default: warn only)"),
+		flagSet.StringSliceVarP(&options.HoneypotPorts, "honeypot-ports", "hdp", nil, "custom ports for honeypot detection (comma-separated)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hdt", 60, "confidence threshold for honeypot detection (0-100 percent)"),
+	)
+
 	flagSet.SetCustomHelpText(`EXAMPLES:
 Run nuclei on single host:
 	$ nuclei -target example.com

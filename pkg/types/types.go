@@ -463,6 +463,14 @@ type Options struct {
 	DoNotCacheTemplates bool
 	// Unique identifier of the execution session
 	ExecutionId string
+	// HoneypotDetection enables honeypot detection before scanning
+	HoneypotDetection bool
+	// HoneypotSkip determines whether to skip detected honeypots (true) or just warn (false)
+	HoneypotSkip bool
+	// HoneypotPorts specifies custom ports to check for honeypot detection
+	HoneypotPorts goflags.StringSlice
+	// HoneypotThreshold is the confidence threshold for honeypot detection (0-100 percent)
+	HoneypotThreshold int
 	// Parser is a cached parser for the template store
 	Parser any
 	// timeouts contains various types of timeouts used in nuclei
@@ -683,6 +691,10 @@ func (options *Options) Copy() *Options {
 		Logger:                         options.Logger,
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
 		ExecutionId:                    options.ExecutionId,
+		HoneypotDetection:              options.HoneypotDetection,
+		HoneypotSkip:                   options.HoneypotSkip,
+		HoneypotPorts:                  options.HoneypotPorts,
+		HoneypotThreshold:              options.HoneypotThreshold,
 		Parser:                         options.Parser,
 	}
 	optCopy.SetTimeouts(options.timeouts)
