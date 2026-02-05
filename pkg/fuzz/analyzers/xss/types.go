@@ -86,14 +86,14 @@ type ReflectionInfo struct {
 }
 
 // CharacterSet tracks which special characters survived encoding
-type CharacterSet struct {
-	LessThan    bool // <
-	GreaterThan bool // >
-	SingleQuote bool // '
-	DoubleQuote bool // "
-	Slash       bool // /
-	Backtick    bool // `
-}
+  type CharacterSet struct {
+      HasLessThan    bool // <
+      HasGreaterThan bool // >
+      HasSingleQuote bool // '
+      HasDoubleQuote bool // "
+      HasSlash       bool // /
+      HasBacktick    bool // `
+  }
 
 const (
 	// DefaultCanary is the default probe payload with special chars
