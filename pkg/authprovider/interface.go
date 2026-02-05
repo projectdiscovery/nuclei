@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
+	"github.com/projectdiscovery/utils/errkit"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -56,4 +57,47 @@ func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
 		providers = append(providers, provider)
 	}
 	return NewMultiAuthProvider(providers...), nil
+}
+
+// NewAuthProviderFromData creates a new auth provider from already-parsed secrets
+func NewAuthProviderFromData(data *authx.Authx, callback authx.LazyFetchSecret) (AuthProvider, error) {
+	if data == nil {
+		return nil, ErrNoSecrets
+	}
+	if len(data.Secrets) == 0 && len(data.Dynamic) == 0 {
+		return nil, ErrNoSecrets
+	}
+	if len(data.Dynamic) > 0 && callback == nil {
+		return nil, errkit.New("lazy fetch callback is required for dynamic secrets")
+	}
+	
+	// Validate static secrets
+	for _, _secret := range data.Secrets {
+		secret := _secret // Create copy to avoid issues
+		if err := secret.Validate(); err != nil {
+			errorErr := errkit.FromError(err)
+			errorErr.Msgf("invalid secret in inline config")
+			return nil, errorErr
+		}
+	}
+	
+	// Validate and setup dynamic secrets
+	for i, _dynamic := range data.Dynamic {
+		dynamic := _dynamic // Create copy
+		if err := dynamic.Validate(); err != nil {
+			errorErr := errkit.FromError(err)
+			errorErr.Msgf("invalid dynamic secret in inline config")
+			return nil, errorErr
+		}
+		dynamic.SetLazyFetchCallback(callback)
+		data.Dynamic[i] = dynamic
+	}
+	
+	// Create provider using same logic as FileAuthProvider
+	provider := &FileAuthProvider{
+		Path:  "inline-secrets",
+		store: data,
+	}
+	provider.init()
+	return provider, nil
 }

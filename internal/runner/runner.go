@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	outputstats "github.com/projectdiscovery/nuclei/v3/pkg/output/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -577,47 +578,52 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if (len(r.options.SecretsFile) > 0 || r.options.InlineSecrets != nil) && !r.options.Validate {
-		// Build secrets files list FIRST (including inline secrets if present)
-		secretsFiles := r.options.SecretsFile
-		if r.options.InlineSecrets != nil {
-			// Convert inline secrets to JSON and write to temp file
-			jsonData, err := json.Marshal(r.options.InlineSecrets)
-			if err != nil {
-				return errors.Wrap(err, "failed to marshal inline secrets")
-			}
-			tempFile, err := os.CreateTemp(r.tmpDir, "inline-secrets-*.json")
-			if err != nil {
-				return errors.Wrap(err, "failed to create temp secrets file")
-			}
-			if _, err := tempFile.Write(jsonData); err != nil {
-				_ = tempFile.Close()
-				return errors.Wrap(err, "failed to write inline secrets")
-			}
-			if err := tempFile.Close(); err != nil {
-				return errors.Wrap(err, "failed to close inline secrets temp file")
-			}
-			secretsFiles = append(secretsFiles, tempFile.Name())
-		}
-
-		// Clone options and update with all secrets files
+		// Clone options so GetAuthTmplStore can modify them without affecting the original
 		authOptions := r.options.Copy()
-		authOptions.SecretsFile = secretsFiles
 		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
-
-		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: secretsFiles}
-		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
-			TemplateStore: authTmplStore,
-			ExecOpts:      executorOpts,
-		})
-		// initialize auth provider
-		provider, err := authprovider.NewAuthProvider(authOpts)
-		if err != nil {
-			return errors.Wrap(err, "could not create auth provider")
+		
+		var providers []authprovider.AuthProvider
+		
+		// Add file-based auth providers
+		for _, file := range r.options.SecretsFile {
+			provider, err := authprovider.NewFileAuthProvider(file, GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
+				TemplateStore: authTmplStore,
+				ExecOpts:      executorOpts,
+			}))
+			if err != nil {
+				return errors.Wrap(err, "could not create file auth provider")
+			}
+			providers = append(providers, provider)
 		}
-		executorOpts.AuthProvider = provider
+		
+		// Add inline secrets provider if present
+		if r.options.InlineSecrets != nil {
+			// Convert interface{} to *authx.Authx using JSON
+			jsonBytes, err := json.Marshal(r.options.InlineSecrets)
+			if err != nil {
+				return errors.Wrap(err, "failed to marshal inline secrets")
+			}
+			
+			authxData, err := authx.GetAuthDataFromJSON(jsonBytes)
+			if err != nil {
+				return errors.Wrap(err, "failed to parse inline secrets")
+			}
+			
+			provider, err := authprovider.NewAuthProviderFromData(authxData, GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
+				TemplateStore: authTmplStore,
+				ExecOpts:      executorOpts,
+			}))
+			if err != nil {
+				return errors.Wrap(err, "could not create inline auth provider")
+			}
+			providers = append(providers, provider)
+		}		
+		
+		// Combine all providers
+		executorOpts.AuthProvider = authprovider.NewMultiAuthProvider(providers...)
 	}
 
 	if r.options.ShouldUseHostError() {
