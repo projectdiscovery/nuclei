@@ -80,6 +80,36 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+func TestPathComponent_DeterministicIteration(t *testing.T) {
+	// Regression test for https://github.com/projectdiscovery/nuclei/issues/6398
+	// Path iteration must be deterministic to ensure all path segments are fuzzed
+	for run := 0; run < 100; run++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found, err := path.Parse(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !found {
+			t.Fatal("expected path to be found")
+		}
+
+		var keys []string
+		var vals []string
+		_ = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			vals = append(vals, value.(string))
+			return nil
+		})
+
+		require.Equal(t, []string{"1", "2", "3"}, keys, "run %d: keys must be in insertion order", run)
+		require.Equal(t, []string{"user", "55", "profile"}, vals, "run %d: values must be in insertion order", run)
+	}
+}
+
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
