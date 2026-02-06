@@ -52,13 +52,9 @@ var errEmptyResult = errors.New("Empty result")
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
 	if err != nil {
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"path": input.MetaInput.Input, "error": err.Error()}})
 		return err
 	}
 	if input.MetaInput.Input == "" {
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"path": input.MetaInput.Input, "error": "input cannot be empty file or folder expected"}})
 		return errors.New("input cannot be empty file or folder expected")
 	}
 	err = request.getInputPaths(input.MetaInput.Input, func(filePath string) {
@@ -196,8 +192,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"path": input.MetaInput.Input, "error": err.Error()}})
 		return errors.Wrap(err, "could not send file request")
 	}
 	return nil

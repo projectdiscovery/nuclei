@@ -145,8 +145,6 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	hostname, err := getAddress(input.MetaInput.Input)
 	if err != nil {
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 		return err
 	}
 
@@ -178,8 +176,6 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	parsed, err := urlutil.Parse(input)
 	if err != nil {
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input, "error": err.Error()}})
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
@@ -194,8 +190,6 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			// Invoke callback with error event for matcher-status
-			callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input, "error": dataErr.Error()}})
 			return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
 		header.Set(key, string(finalData))
@@ -223,8 +217,6 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input, "error": dataErr.Error()}})
 		return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 	}
 
@@ -233,8 +225,6 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input, "error": err.Error()}})
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
 	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
@@ -244,8 +234,6 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input, "error": err.Error()}})
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
@@ -261,8 +249,6 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input, "error": err.Error()}})
 		return errors.Wrap(err, "could not read write response")
 	}
 	requestOptions.Progress.IncrementRequests()

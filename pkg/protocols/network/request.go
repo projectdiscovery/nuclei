@@ -88,22 +88,16 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 	visitedAddresses := make(mapsutil.Map[string, struct{}])
 
 	if request.Port == "" {
-		// backwards compatibility or for other use cases
-		// where port is not provided in template.
-		// Return early to avoid falling through into the port-scanning
-		// branch below, which would see an empty port list and emit a
-		// spurious "no open ports found" failure event.
+		// backwords compatibility or for other use cases
+		// where port is not provided in template
 		if err := request.executeOnTarget(target, visitedAddresses, metadata, previous, callback); err != nil {
 			return err
 		}
-		return nil
 	}
 
 	// get open ports from list of ports provided in template
 	ports, err := request.getOpenPorts(target)
 	if len(ports) == 0 {
-		// Invoke callback with error event for matcher-status (only when Port is defined but no ports found)
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": target.MetaInput.Input, "error": "no open ports found"}})
 		return err
 	}
 	if err != nil {
@@ -145,8 +139,6 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	var err error
 	if request.isUnresponsiveAddress(input) {
 		// skip on unresponsive address no need to continue
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": "unresponsive address"}})
 		return nil
 	}
 
@@ -296,8 +288,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	if request.isUnresponsiveAddress(updatedTarget) {
 		// skip on unresponsive address no need to continue
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": actualAddress, "error": "unresponsive address"}})
 		return nil
 	}
 
@@ -311,8 +301,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": actualAddress, "error": err.Error()}})
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
@@ -353,8 +341,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
-			// Invoke callback with error event for matcher-status
-			callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": actualAddress, "error": err.Error()}})
 			return nil
 		}
 

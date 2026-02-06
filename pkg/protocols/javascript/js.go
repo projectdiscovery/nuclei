@@ -316,8 +316,6 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		// Invoke callback with error event for matcher-status
-		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 		return err
 	}
 	hostname, port, _ := net.SplitHostPort(hostPort)
@@ -375,8 +373,6 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 
 		argsCopy, err := request.getArgsCopy(input, payloads, requestOptions, true)
 		if err != nil {
-			// Invoke callback with error event for matcher-status
-			callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 			return err
 		}
 		argsCopy.TemplateCtx = templateCtx.GetAll()
@@ -434,8 +430,6 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 
 			select {
 			case <-input.Context().Done():
-				// Invoke callback with error event for matcher-status
-				callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": "context cancelled"}})
 				return input.Context().Err()
 			default:
 			}
