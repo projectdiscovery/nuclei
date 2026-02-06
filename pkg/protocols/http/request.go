@@ -913,15 +913,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
 
-		if len(generatedRequest.interactshURLs) > 0 {
-			// according to logic we only need to trigger a callback if interactsh was used
-			// and request failed in hope that later on oast interaction will be received
-			event := &output.InternalWrappedEvent{}
-			if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
-				event.InternalEvent = outputEvent
-			}
-			callback(event)
-		}
+		// Always invoke callback on error so matcher-status can report failures
+		callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 		return err
 	}
 

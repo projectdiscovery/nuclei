@@ -250,6 +250,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 		return errkit.Wrap(err, "could not connect to server")
 	}
 

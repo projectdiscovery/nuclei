@@ -41,6 +41,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if request.SelfContained {
 		url, err := extractBaseURLFromActions(request.Steps)
 		if err != nil {
+			// Invoke callback with error event for matcher-status
+			callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 			return err
 		}
 		input = contextargs.NewWithInput(input.Context(), url)
@@ -116,6 +118,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer func() {
@@ -127,6 +131,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	options := &engine.Options{
@@ -136,6 +142,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	}
 
 	if !options.DisableCookie && input.CookieJar == nil {
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": "cookie reuse enabled but cookie-jar is nil"}})
 		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
@@ -143,6 +151,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": input.MetaInput.Input, "error": err.Error()}})
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer page.Close()

@@ -109,6 +109,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	rdapReq.Server = request.parsedServerURL
 	res, err := request.client.Do(rdapReq)
 	if err != nil {
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": query, "error": err.Error()}})
 		return errors.Wrap(err, "could not make whois request")
 	}
 	gologger.Verbose().Msgf("Sent WHOIS request to %s", query)

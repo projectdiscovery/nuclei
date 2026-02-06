@@ -180,6 +180,8 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) (err error) {
 	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "", request.options.TemporaryDirectory)
 	if err != nil {
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"input": input.MetaInput.Input, "error": err.Error()}})
 		return err
 	}
 	defer func() {
@@ -236,11 +238,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				Context:         input.Context(),
 			})
 		if err != nil {
+			// Invoke callback with error event for matcher-status
+			callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"input": input.MetaInput.Input, "error": err.Error()}})
 			return errkit.Newf("could not execute pre-condition: %s", err)
 		}
 		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
 			request.options.Progress.IncrementFailedRequestsBy(1)
+			// Invoke callback with error event for matcher-status
+			callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"input": input.MetaInput.Input, "error": "precondition not satisfied"}})
 			return nil
 		}
 		if request.options.Options.Debug || request.options.Options.DebugRequests {

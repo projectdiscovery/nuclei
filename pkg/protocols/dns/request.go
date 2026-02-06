@@ -124,6 +124,8 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	if varErr := expressions.ContainsUnresolvedVariables(request.Resolvers...); varErr != nil {
 		if dnsClient, varErr = request.getDnsClient(request.options, metadata); varErr != nil {
 			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+			// Invoke callback with error event for matcher-status
+			callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": domain, "error": varErr.Error()}})
 			return nil
 		}
 	}
@@ -138,6 +140,8 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
 		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, question, varErr)
+		// Invoke callback with error event for matcher-status
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": domain, "error": varErr.Error()}})
 		return nil
 	}
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
@@ -162,6 +166,12 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		request.options.Progress.IncrementRequests()
 	}
 	if response == nil {
+		// Invoke callback with error event for matcher-status
+		errMsg := "could not send dns request"
+		if err != nil {
+			errMsg = err.Error()
+		}
+		callback(&output.InternalWrappedEvent{InternalEvent: output.InternalEvent{"host": domain, "error": errMsg}})
 		return errors.Wrap(err, "could not send dns request")
 	}
 
