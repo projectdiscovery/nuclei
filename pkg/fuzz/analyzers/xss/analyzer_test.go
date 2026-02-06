@@ -500,6 +500,40 @@ func TestSendRequestNilHttpClient(t *testing.T) {
 	}
 }
 
+func TestIsContextCompatible(t *testing.T) {
+	tests := []struct {
+		name            string
+		verifyContext   ContextType
+		originalContext ContextType
+		expected        bool
+	}{
+		{"exact match HTML body", ContextHTMLBody, ContextHTMLBody, true},
+		{"exact match attribute quoted", ContextHTMLAttributeQuoted, ContextHTMLAttributeQuoted, true},
+		{"exact match script block", ContextScriptBlock, ContextScriptBlock, true},
+		{"exact match script string", ContextScriptString, ContextScriptString, true},
+		{"attribute quoted breakout to body", ContextHTMLBody, ContextHTMLAttributeQuoted, true},
+		{"attribute unquoted breakout to body", ContextHTMLBody, ContextHTMLAttributeUnquoted, true},
+		{"URL attribute breakout to body", ContextHTMLBody, ContextURLAttribute, true},
+		{"script string breakout to block", ContextScriptBlock, ContextScriptString, true},
+		{"script string with verify body", ContextHTMLBody, ContextScriptString, false},
+		{"script string with verify attribute", ContextHTMLAttributeQuoted, ContextScriptString, false},
+		{"script block with verify string", ContextScriptString, ContextScriptBlock, false},
+		{"attribute with verify script block", ContextScriptBlock, ContextHTMLAttributeQuoted, false},
+		{"unknown original", ContextHTMLBody, ContextUnknown, false},
+		{"comment original", ContextHTMLBody, ContextHTMLComment, false},
+		{"style block original", ContextHTMLBody, ContextStyleBlock, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isContextCompatible(tt.verifyContext, tt.originalContext)
+			if got != tt.expected {
+				t.Errorf("isContextCompatible(%s, %s) = %v, want %v",
+					tt.verifyContext.String(), tt.originalContext.String(), got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestHasCriticalCharsEncoded(t *testing.T) {
 	tests := []struct {
 		name         string

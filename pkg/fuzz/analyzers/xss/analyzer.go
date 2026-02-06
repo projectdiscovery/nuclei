@@ -12,7 +12,6 @@ import (
 // Analyzer is an XSS context analyzer for the fuzzer
 type Analyzer struct{}
 
-// Compile-time interface verification
 var _ analyzers.Analyzer = &Analyzer{}
 
 func init() {
@@ -37,18 +36,13 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 		canary = c
 	}
 
-	// Replace [XSS_CANARY] placeholder
 	data = strings.ReplaceAll(data, "[XSS_CANARY]", canary)
-
-	// Apply standard transformations ([RANDNUM], [RANDSTR])
 	data = analyzers.ApplyPayloadTransformations(data)
 
 	return data
 }
 
-// Analyze is the main function for the analyzer
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
-	// Get canary from parameters or use default
 	canary := DefaultCanary
 	if c, ok := options.AnalyzerParameters["canary"].(string); ok && c != "" {
 		canary = c
@@ -56,7 +50,6 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 	gologger.Verbose().Msgf("[%s] Starting XSS context analysis with canary: %q", a.Name(), canary)
 
-	// Step 1: Send canary request
 	responseBody, err := a.sendRequest(options, canary)
 	if err != nil {
 		gologger.Verbose().Msgf("[%s] Error sending canary request: %v", a.Name(), err)
@@ -65,16 +58,14 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 	gologger.Verbose().Msgf("[%s] Received response of %d bytes", a.Name(), len(responseBody))
 
-	// Step 2: Detect contexts
 	reflections := DetectContexts(responseBody, canary)
 	if len(reflections) == 0 {
 		gologger.Verbose().Msgf("[%s] No reflections found", a.Name())
-		return false, "", nil // No reflection found
+		return false, "", nil
 	}
 
 	gologger.Verbose().Msgf("[%s] Found %d reflection(s)", a.Name(), len(reflections))
 
-	// Step 3: Try verification for each reflection
 	for i, reflection := range reflections {
 		gologger.Verbose().Msgf("[%s] Reflection #%d: context=%s, position=%d",
 			a.Name(), i+1, reflection.Context.String(), reflection.Position)
@@ -114,18 +105,15 @@ func (a *Analyzer) sendRequest(options *analyzers.Options, payload string) (stri
 		return "", fmt.Errorf("invalid options: nil http client")
 	}
 
-	// Set the payload value
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return "", err
 	}
 
-	// Rebuild request with new payload
 	req, err := gr.Component.Rebuild()
 	if err != nil {
 		return "", err
 	}
 
-	// Send request
 	resp, err := options.HttpClient.Do(req)
 	if err != nil {
 		return "", err
@@ -134,7 +122,6 @@ func (a *Analyzer) sendRequest(options *analyzers.Options, payload string) (stri
 		_ = resp.Body.Close()
 	}()
 
-	// Read response body (limit to 1MB to avoid memory issues)
 	limitReader := io.LimitReader(resp.Body, 1*1024*1024)
 	body, err := io.ReadAll(limitReader)
 	if err != nil {
@@ -149,60 +136,43 @@ func (a *Analyzer) sendRequest(options *analyzers.Options, payload string) (stri
 // validates the context matches expectations, and ensures critical characters are not encoded.
 // Returns true and details string if XSS is confirmed, false otherwise.
 func (a *Analyzer) verifyXSS(options *analyzers.Options, payload string, originalReflection ReflectionInfo, canary string) (bool, string) {
-	// Send verification request with XSS payload
 	responseBody, err := a.sendRequest(options, payload)
 	if err != nil {
 		return false, ""
 	}
 
-	// Check if payload appears in response unmodified
 	if !strings.Contains(responseBody, payload) {
 		return false, ""
 	}
 
-	// For verification, we check if the payload appears in an exploitable position
-	// We use a unique marker from the payload to verify context, not the full payload
-	// which could contain HTML tags that confuse context detection
-
-	// Find where the payload is reflected
 	payloadPos := strings.Index(responseBody, payload)
 	if payloadPos == -1 {
 		return false, ""
 	}
 
-	// Get lookback text to determine context at payload position
-	lookbackStart := max(0, payloadPos-500)
+	lookbackStart := max(0, payloadPos-contextLookbackSize)
 	lookbackText := responseBody[lookbackStart:payloadPos]
 	lookbackLower := strings.ToLower(lookbackText)
 
-	// Check if the payload is inside an HTML comment (not exploitable)
 	commentStart := strings.LastIndex(lookbackLower, "<!--")
 	commentEnd := strings.LastIndex(lookbackLower, "-->")
 	if commentStart != -1 && (commentEnd == -1 || commentStart > commentEnd) {
 		return false, ""
 	}
 
-	// Re-run context detection to verify payload landed in an exploitable context
 	verifyContext := detectContextType(responseBody, payloadPos)
 
-	// Check if the verification context is compatible with the original context
 	if !isContextCompatible(verifyContext, originalReflection.Context) {
 		gologger.Verbose().Msgf("[%s] Context mismatch: original=%s, verified=%s",
 			a.Name(), originalReflection.Context.String(), verifyContext.String())
 		return false, ""
 	}
 
-	// Check if critical characters in the payload were encoded
 	if hasCriticalCharsEncoded(payload, responseBody, payloadPos) {
 		gologger.Verbose().Msgf("[%s] Critical characters in payload were encoded", a.Name())
 		return false, ""
 	}
 
-	// The payload was reflected unmodified, is not in a comment,
-	// context is compatible, and critical chars are not encoded
-	// This is considered a successful XSS verification
-
-	// Build detailed match reason
 	details := fmt.Sprintf(
 		"[xss_context] XSS confirmed in %s context at position %d. Canary: %q, Payload: %q, AvailableChars: <:%v >:%v ':%v \":%v /:%v",
 		originalReflection.Context.String(),
@@ -224,15 +194,12 @@ func (a *Analyzer) verifyXSS(options *analyzers.Options, payload string, origina
 // if characters like <, >, ", ' appear in their encoded forms (&lt;, &gt;, &quot;, &#39;).
 // Returns true if any critical character from the payload appears encoded.
 func hasCriticalCharsEncoded(payload, responseBody string, payloadPos int) bool {
-	// Ensure we have valid bounds
 	if payloadPos < 0 || payloadPos+len(payload) > len(responseBody) {
 		return false
 	}
 
-	// Extract the exact region in response that corresponds to the payload
 	payloadInResponse := responseBody[payloadPos : payloadPos+len(payload)]
 
-	// Check for common HTML encodings of critical characters
 	criticalEncodings := map[string]string{
 		"<":  "&lt;",
 		">":  "&gt;",
@@ -240,11 +207,8 @@ func hasCriticalCharsEncoded(payload, responseBody string, payloadPos int) bool 
 		"'":  "&#39;",
 	}
 
-	// Check if any critical char in payload appears encoded in the response
 	for char, encoding := range criticalEncodings {
 		if strings.Contains(payload, char) {
-			// If the payload contains this char, check if it appears encoded
-			// in the actual payload region of the response
 			if strings.Contains(payloadInResponse, encoding) {
 				return true
 			}
@@ -261,18 +225,14 @@ func hasCriticalCharsEncoded(payload, responseBody string, payloadPos int) bool 
 //
 // Returns true if contexts are compatible for XSS verification.
 func isContextCompatible(verifyContext, originalContext ContextType) bool {
-	// Exact match is always compatible
 	if verifyContext == originalContext {
 		return true
 	}
 
-	// Some contexts can evolve (e.g., attribute -> body if we break out)
 	switch originalContext {
 	case ContextHTMLAttributeQuoted, ContextHTMLAttributeUnquoted, ContextURLAttribute:
-		// Attribute breakout can lead to body context
 		return verifyContext == ContextHTMLBody
 	case ContextScriptString:
-		// Script string breakout can lead to script block
 		return verifyContext == ContextScriptBlock
 	default:
 		return false

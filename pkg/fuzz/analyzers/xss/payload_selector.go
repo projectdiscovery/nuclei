@@ -67,27 +67,24 @@ var contextPayloads = map[ContextType][]string{
 //
 // Returns up to max_verification_attempts payloads, or all available if fewer.
 func SelectPayloads(reflection ReflectionInfo, params map[string]interface{}) []string {
-	// Get base payloads for context
 	payloads := contextPayloads[reflection.Context]
 	if payloads == nil {
 		return nil
 	}
 
-	// Filter by available characters
 	filtered := filterByAvailableChars(payloads, reflection.AvailableChars, reflection.Context)
 
-	// Limit number of attempts
-  maxAttempts := 3
-  switch v := params["max_verification_attempts"].(type) {
-  case int:
-      if v > 0 {
-          maxAttempts = v
-      }
-  case float64:
-      if v > 0 {
-          maxAttempts = int(v)
-      }
-  }
+	maxAttempts := 3
+	switch v := params["max_verification_attempts"].(type) {
+	case int:
+		if v > 0 {
+			maxAttempts = v
+		}
+	case float64:
+		if v > 0 {
+			maxAttempts = int(v)
+		}
+	}
 
 	if len(filtered) > maxAttempts {
 		return filtered[:maxAttempts]
@@ -116,16 +113,12 @@ func filterByAvailableChars(payloads []string, chars CharacterSet, context Conte
 // (based on context requirements) are present in the CharacterSet. Returns true
 // if payload is usable, false otherwise.
 func canUsePayload(payload string, chars CharacterSet, context ContextType) bool {
-	// Check if payload only uses available characters
-
-	// For HTML body context, always need < and > for tag injection
 	if context == ContextHTMLBody {
 		if !chars.LessThan || !chars.GreaterThan {
 			return false
 		}
 	}
 
-	// For any payload containing < or >, verify those chars are available
 	if strings.Contains(payload, "<") && !chars.LessThan {
 		return false
 	}
@@ -133,7 +126,6 @@ func canUsePayload(payload string, chars CharacterSet, context ContextType) bool
 		return false
 	}
 
-	// For attribute breakout with quotes
 	if strings.Contains(payload, "\"") && !chars.DoubleQuote {
 		return false
 	}
@@ -141,12 +133,10 @@ func canUsePayload(payload string, chars CharacterSet, context ContextType) bool
 		return false
 	}
 
-	// For script/style tag closing
 	if strings.Contains(payload, "/") && !chars.Slash {
 		return false
 	}
 
-	// For template literals
 	if strings.Contains(payload, "`") && !chars.Backtick {
 		return false
 	}

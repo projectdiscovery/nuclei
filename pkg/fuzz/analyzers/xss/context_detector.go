@@ -14,12 +14,10 @@ import (
 func DetectContexts(body, canary string) []ReflectionInfo {
 	var reflections []ReflectionInfo
 
-	// Guard against empty canary (would cause infinite loop)
 	if canary == "" {
 		return reflections
 	}
 
-	// Find all occurrences (case-insensitive)
 	lowerBody := strings.ToLower(body)
 	lowerCanary := strings.ToLower(canary)
 
@@ -36,7 +34,6 @@ func DetectContexts(body, canary string) []ReflectionInfo {
 
 		offset = actualPos + len(canary)
 
-		// Limit to 10 reflections to avoid performance issues
 		if len(reflections) >= 10 {
 			break
 		}
@@ -46,30 +43,23 @@ func DetectContexts(body, canary string) []ReflectionInfo {
 }
 
 // analyzeContextAtPosition analyzes the context type and available characters at a specific
-// position where the canary appears. It extracts surrounding text (up to 200 chars before,
-// 200 chars after) and performs context detection and character filtering analysis.
+// position where the canary appears. It extracts surrounding text (up to surroundingTextSize
+// chars before/after) and performs context detection and character filtering analysis.
 func analyzeContextAtPosition(body string, canaryPos int, canary string) ReflectionInfo {
 	canaryEnd := canaryPos + len(canary)
 
-	// Bounds check to prevent panic
 	if canaryEnd > len(body) {
 		canaryEnd = len(body)
 	}
 
-	// Extract surrounding text (200 chars before/after)
-	start := max(0, canaryPos-200)
-	end := min(len(body), canaryEnd+200)
+	start := max(0, canaryPos-surroundingTextSize)
+	end := min(len(body), canaryEnd+surroundingTextSize)
 
 	beforeCanary := body[start:canaryPos]
 	afterCanary := body[canaryEnd:end]
 
-	// Detect context by walking backwards
 	context := detectContextType(body, canaryPos)
-
-	// Detect available characters
 	chars := detectAvailableCharacters(body[canaryPos:canaryEnd], canary)
-
-	// Extract metadata (quote char, attribute name, etc.)
 	attributeName, quoteChar := extractAttributeMetadata(beforeCanary, context)
 
 	return ReflectionInfo{
@@ -93,69 +83,55 @@ func analyzeContextAtPosition(body string, canaryPos int, canary string) Reflect
 //
 // Detection order ensures most specific contexts are checked first.
 func detectContextType(body string, pos int) ContextType {
-	// Walk backwards to find context markers
-	lookback := body[max(0, pos-500):pos]
-	lookbackLower := strings.ToLower(lookback) // Case-insensitive matching for tags
+	lookback := body[max(0, pos-contextLookbackSize):pos]
+	lookbackLower := strings.ToLower(lookback)
 
-	// Check for script context (highest priority)
 	if lastIndex := strings.LastIndex(lookbackLower, "<script"); lastIndex != -1 {
 		afterScript := lookbackLower[lastIndex:]
-		// Make sure we're inside the script tag, not after </script>
 		if !strings.Contains(afterScript, "</script>") {
-			// Check if the opening tag is properly closed with >
-			// This handles cases like <script src="CANARY"> where we're in an attribute
 			closingBracketPos := strings.Index(afterScript, ">")
 			if closingBracketPos == -1 {
-				
-	       if isInAttributeContext(lookback) {
-          quoteChar := getAttributeQuoteChar(lookback)
-          if quoteChar == "\"" || quoteChar == "'" {
-              return ContextHTMLAttributeQuoted
-          }
-      }
-      return ContextHTMLAttributeUnquoted
+				if isInAttributeContext(lookback) {
+					quoteChar := getAttributeQuoteChar(lookback)
+					if quoteChar == "\"" || quoteChar == "'" {
+						return ContextHTMLAttributeQuoted
+					}
+				}
+				return ContextHTMLAttributeUnquoted
 			}
 
-			// We're inside the script content (after the opening tag's >)
-			// Use the portion after the closing bracket for string context detection
-			// Note: lastIndex and closingBracketPos are from lookbackLower, but since
-			// strings.ToLower preserves byte positions, indexing into lookback is safe
 			scriptContent := lookback[lastIndex+closingBracketPos+1:]
 			if isInStringContext(scriptContent) {
-				// Differentiate between string and template literal
 				return detectStringType(scriptContent)
 			}
 			return ContextScriptBlock
 		}
 	}
 
-	// Check for style context
 	if lastIndex := strings.LastIndex(lookbackLower, "<style"); lastIndex != -1 {
 		afterStyle := lookbackLower[lastIndex:]
 		if !strings.Contains(afterStyle, "</style>") {
-			// Check if the opening tag is properly closed with >
 			closingBracketPos := strings.Index(afterStyle, ">")
 			if closingBracketPos == -1 {
 				if isInAttributeContext(lookback) {
-          quoteChar := getAttributeQuoteChar(lookback)
-          if quoteChar == "\"" || quoteChar == "'" {
-              return ContextHTMLAttributeQuoted
-          }
-      }			}
+					quoteChar := getAttributeQuoteChar(lookback)
+					if quoteChar == "\"" || quoteChar == "'" {
+						return ContextHTMLAttributeQuoted
+					}
+				}
+				return ContextHTMLAttributeUnquoted
+			}
 			return ContextStyleBlock
 		}
 	}
 
-	// Check for comment context
 	commentStart := strings.LastIndex(lookbackLower, "<!--")
 	commentEnd := strings.LastIndex(lookbackLower, "-->")
 	if commentStart != -1 && (commentEnd == -1 || commentStart > commentEnd) {
 		return ContextHTMLComment
 	}
 
-	// Check for attribute context
 	if isInAttributeContext(lookback) {
-		// Check if we're specifically in a URL attribute
 		if isInURLAttribute(lookback) {
 			return ContextURLAttribute
 		}
@@ -167,7 +143,6 @@ func detectContextType(body string, pos int) ContextType {
 		return ContextHTMLAttributeUnquoted
 	}
 
-	// Default to HTML body
 	return ContextHTMLBody
 }
 
@@ -186,14 +161,11 @@ func countPrecedingBackslashes(text string, i int) int {
 // unescaped quotes in the preceding text. Handles both single (') and double (") quotes,
 // accounting for backslash escaping. Returns true if inside a string context.
 func isInStringContext(text string) bool {
-	// Count quotes to determine if we're inside a string
-	// This is a simple heuristic - count unescaped quotes
 	singleQuotes := 0
 	doubleQuotes := 0
 	backticks := 0
 
 	for i := 0; i < len(text); i++ {
-		// Quote is unescaped if preceded by even number of backslashes (0, 2, 4...)
 		isEscaped := countPrecedingBackslashes(text, i)%2 == 1
 
 		if text[i] == '\'' && !isEscaped {
@@ -207,7 +179,6 @@ func isInStringContext(text string) bool {
 		}
 	}
 
-	// Odd number of quotes or backticks means we're inside a string/template literal
 	return (singleQuotes%2 == 1) || (doubleQuotes%2 == 1) || (backticks%2 == 1)
 }
 
@@ -219,13 +190,11 @@ func isInStringContext(text string) bool {
 //
 // Returns ContextScriptString for quoted strings, or ContextScriptTemplateLiteral for backticks.
 func detectStringType(text string) ContextType {
-	// Determine the type of string context (regular string vs template literal)
 	backticks := 0
 	singleQuotes := 0
 	doubleQuotes := 0
 
 	for i := 0; i < len(text); i++ {
-		// Quote is unescaped if preceded by even number of backslashes (0, 2, 4...)
 		isEscaped := countPrecedingBackslashes(text, i)%2 == 1
 
 		if text[i] == '`' {
@@ -239,7 +208,6 @@ func detectStringType(text string) ContextType {
 		}
 	}
 
-	// Check what type of string we're in based on odd counts
 	if backticks%2 == 1 {
 		return ContextScriptTemplateLiteral
 	}
@@ -251,12 +219,10 @@ func detectStringType(text string) ContextType {
 // for the pattern: opening tag + attribute name + equals sign. Uses regex pattern
 // matching on the preceding text. Returns true if in attribute context.
 func isInAttributeContext(text string) bool {
-	// Look for pattern: <tag attr=
 	lastOpenTag := strings.LastIndex(text, "<")
 	lastCloseTag := strings.LastIndex(text, ">")
 	lastEquals := strings.LastIndex(text, "=")
 
-	// We're in an attribute if: < comes before = and no > after =
 	return lastOpenTag != -1 && lastEquals != -1 &&
 		lastOpenTag < lastEquals && lastCloseTag < lastEquals
 }
@@ -266,25 +232,15 @@ func isInAttributeContext(text string) bool {
 // XSS exploitation considerations (e.g., javascript: protocol). Returns true
 // if inside a URL attribute context.
 func isInURLAttribute(text string) bool {
-	// List of URL attributes (comprehensive list for XSS detection)
-	urlAttributes := []string{
-		"href", "src", "action", "data", "formaction", "poster",
-		"codebase", "cite", "background", "dynsrc", "lowsrc", "manifest",
-	}
-
 	textLower := strings.ToLower(text)
 
-	// Find the last attribute assignment
 	lastEquals := strings.LastIndex(text, "=")
 	if lastEquals == -1 {
 		return false
 	}
 
-	// Look backwards from = to find attribute name
-	// Get text before equals and extract last word
 	beforeEquals := strings.TrimSpace(textLower[:lastEquals])
 
-	// Extract the last word (attribute name)
 	words := strings.Fields(beforeEquals)
 	if len(words) == 0 {
 		return false
@@ -292,8 +248,7 @@ func isInURLAttribute(text string) bool {
 
 	attrName := words[len(words)-1]
 
-	// Check if it's a URL attribute
-	for _, urlAttr := range urlAttributes {
+	for _, urlAttr := range URLAttributes {
 		if attrName == urlAttr {
 			return true
 		}
@@ -308,7 +263,6 @@ func isInURLAttribute(text string) bool {
 //   - "'" for single-quoted attributes
 //   - "" (empty string) for unquoted attributes
 func getAttributeQuoteChar(text string) string {
-	// Find the last = and check what comes after
 	lastEquals := strings.LastIndex(text, "=")
 	if lastEquals == -1 || lastEquals == len(text)-1 {
 		return ""
@@ -326,7 +280,7 @@ func getAttributeQuoteChar(text string) string {
 		}
 	}
 
-	return "" // Unquoted
+	return ""
 }
 
 // extractAttributeMetadata extracts attribute name and quote character from the text
@@ -340,37 +294,29 @@ func extractAttributeMetadata(beforeCanary string, context ContextType) (string,
 		return "", ""
 	}
 
-	// Extract attribute name (word before =)
-  lastEquals := strings.LastIndex(beforeCanary, "=")
-  if lastEquals == -1 {
-      return "", ""
-  }
-
- beforeEquals := strings.TrimSpace(beforeCanary[:lastEquals])
-  words := strings.Fields(beforeEquals)
-  if len(words) > 0 {
-      attrName := words[len(words)-1]
-      quoteChar := getAttributeQuoteChar(beforeCanary)
-      return attrName, quoteChar
-  }
+	lastEquals := strings.LastIndex(beforeCanary, "=")
+	if lastEquals == -1 {
+		return "", ""
+	}
+	beforeEquals := strings.TrimSpace(beforeCanary[:lastEquals])
+	words := strings.Fields(beforeEquals)
+	if len(words) > 0 {
+		attrName := words[len(words)-1]
+		quoteChar := getAttributeQuoteChar(beforeCanary)
+		return attrName, quoteChar
+	}
 
 	return "", ""
 }
 
 // detectAvailableCharacters determines which special characters survived server-side encoding.
 //
-// Detection Logic:
-//   - If a character WAS in the original canary: available only if it appears in reflected version
-//   - If a character was NOT in the original canary: assumed available (optimistic approach)
+// If a character WAS in the original canary: available only if it appears in reflected version.
+// If a character was NOT in the original canary: assumed available (optimistic approach).
 //
-// The optimistic approach is intentional - when we can't determine if a character is filtered,
-// we allow payload testing to proceed. The verification phase will catch false positives
-// by checking if the payload actually executes in an exploitable context.
-//
-// Example with DefaultCanary "xSs9K7j<>'\"/()":
-//   - Original: xSs9K7j<>'"/()
-//   - Reflected: xSs9K7j&lt;&gt;'"/()
-//   - Result: LessThan=false, GreaterThan=false, SingleQuote=true, DoubleQuote=true
+// The optimistic approach allows payload testing to proceed when we can't determine if a character
+// is filtered. The verification phase will catch false positives by checking if the payload
+// actually executes in an exploitable context.
 func detectAvailableCharacters(reflectedCanary, originalCanary string) CharacterSet {
 	return CharacterSet{
 		LessThan:    !strings.Contains(originalCanary, "<") || strings.Contains(reflectedCanary, "<"),

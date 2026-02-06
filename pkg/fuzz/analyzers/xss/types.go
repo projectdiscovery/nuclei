@@ -86,18 +86,29 @@ type ReflectionInfo struct {
 }
 
 // CharacterSet tracks which special characters survived encoding
-  type CharacterSet struct {
-      HasLessThan    bool // <
-      HasGreaterThan bool // >
-      HasSingleQuote bool // '
-      HasDoubleQuote bool // "
-      HasSlash       bool // /
-      HasBacktick    bool // `
-  }
+type CharacterSet struct {
+	HasLessThan    bool // <
+	HasGreaterThan bool // >
+	HasSingleQuote bool // '
+	HasDoubleQuote bool // "
+	HasSlash       bool // /
+	HasBacktick    bool // `
+}
 
 const (
 	// DefaultCanary is the default probe payload with special chars
 	DefaultCanary = "xSs9K7j<>'\"/()"
 	// AnalyzerName is the identifier for the XSS context analyzer
 	AnalyzerName = "xss_context"
+	// contextLookbackSize is the number of bytes to look back for context detection
+	contextLookbackSize = 500
+	// surroundingTextSize is the number of chars to extract before/after canary for analysis
+	surroundingTextSize = 200
 )
+
+// URLAttributes lists HTML attributes that accept URLs (href, src, etc.) and have
+// special XSS considerations (e.g., javascript: protocol).
+var URLAttributes = []string{
+	"href", "src", "action", "data", "formaction", "poster",
+	"codebase", "cite", "background", "dynsrc", "lowsrc", "manifest",
+}
