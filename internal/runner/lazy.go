@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -67,11 +69,28 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets
 func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret {
 	return func(d *authx.Dynamic) error {
+		if opts == nil || opts.TemplateStore == nil {
+			return fmt.Errorf("secret-file auth is not configured")
+		}
+		var logger *gologger.Logger
+		if opts != nil && opts.ExecOpts != nil {
+			logger = opts.ExecOpts.Logger
+		}
+		if logger != nil {
+			logger.Info().Msgf("Secret-file auth: executing template %s", d.TemplatePath)
+		}
+		start := time.Now()
 		tmpls := opts.TemplateStore.LoadTemplates([]string{d.TemplatePath})
 		if len(tmpls) == 0 {
+			if logger != nil {
+				logger.Error().Msgf("Secret-file auth: template %s not found", d.TemplatePath)
+			}
 			return fmt.Errorf("%w for path: %s", disk.ErrNoTemplatesFound, d.TemplatePath)
 		}
 		if len(tmpls) > 1 {
+			if logger != nil {
+				logger.Error().Msgf("Secret-file auth: multiple templates found for %s", d.TemplatePath)
+			}
 			return fmt.Errorf("multiple templates found for path: %s", d.TemplatePath)
 		}
 		data := map[string]interface{}{}
@@ -146,6 +165,13 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		}
 		// store extracted result in auth context
 		d.Extracted = data
+		if logger != nil {
+			if finalErr != nil {
+				logger.Error().Msgf("Secret-file auth: template %s failed after %s: %s", d.TemplatePath, time.Since(start), finalErr)
+			} else {
+				logger.Info().Msgf("Secret-file auth: template %s completed in %s", d.TemplatePath, time.Since(start))
+			}
+		}
 		if finalErr != nil && opts.OnError != nil {
 			opts.OnError(finalErr)
 		}

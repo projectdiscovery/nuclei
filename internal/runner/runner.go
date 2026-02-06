@@ -594,6 +594,10 @@ func (r *Runner) RunEnumeration() error {
 			return errors.Wrap(err, "could not create auth provider")
 		}
 		executorOpts.AuthProvider = provider
+		// Ensure authenticated scans do not race with template execution before auth completes.
+		if err := PrefetchAuthSecrets(r.Logger, executorOpts.AuthProvider, r.options); err != nil {
+			return err
+		}
 	}
 
 	if r.options.ShouldUseHostError() {
@@ -681,13 +685,7 @@ func (r *Runner) RunEnumeration() error {
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
-	// prefetch secrets if enabled
-	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
-		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
-		if err := executorOpts.AuthProvider.PreFetchSecrets(); err != nil {
-			return errors.Wrap(err, "could not pre-fetch secrets")
-		}
-	}
+	// secret-file auth prefetch is handled before template execution
 
 	// If not explicitly disabled, check if http based protocols
 	// are used, and if inputs are non-http to pre-perform probing

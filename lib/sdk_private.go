@@ -223,17 +223,16 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 			return errors.Wrap(err, "could not create auth provider")
 		}
 		e.executerOpts.AuthProvider = provider
+		// Ensure authenticated scans do not race with template execution before auth completes.
+		if err := runner.PrefetchAuthSecrets(e.opts.Logger, e.executerOpts.AuthProvider, e.opts); err != nil {
+			return err
+		}
 	}
 	if e.authprovider != nil {
 		e.executerOpts.AuthProvider = e.authprovider
 	}
 
-	// prefetch secrets
-	if e.executerOpts.AuthProvider != nil && e.opts.PreFetchSecrets {
-		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
-			return errors.Wrap(err, "could not prefetch secrets")
-		}
-	}
+	// secret-file auth prefetch is handled before template execution
 
 	if e.executerOpts.RateLimiter == nil {
 		if e.opts.RateLimitMinute > 0 {
