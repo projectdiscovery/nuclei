@@ -202,33 +202,6 @@ func TestGenericBannerDetection(t *testing.T) {
 	}
 }
 
-func TestDetectionResult(t *testing.T) {
-	result := &DetectionResult{
-		IsHoneypot: true,
-		Type:       HoneypotCowrie,
-		Confidence: 0.85,
-		Indicators: []string{"SSH banner matches Cowrie pattern"},
-		Target:     "example.com",
-		Port:       22,
-	}
-
-	if !result.IsHoneypot {
-		t.Error("Expected IsHoneypot to be true")
-	}
-
-	if result.Type != HoneypotCowrie {
-		t.Errorf("Expected type %s, got %s", HoneypotCowrie, result.Type)
-	}
-
-	if result.Confidence != 0.85 {
-		t.Errorf("Expected confidence 0.85, got %f", result.Confidence)
-	}
-
-	if len(result.Indicators) != 1 {
-		t.Errorf("Expected 1 indicator, got %d", len(result.Indicators))
-	}
-}
-
 func TestHoneypotTypes(t *testing.T) {
 	types := []HoneypotType{
 		HoneypotUnknown,

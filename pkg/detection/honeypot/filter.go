@@ -98,10 +98,10 @@ func (tf *TargetFilter) PrintWarning(result *DetectionResult) {
 			result.Target, result.Type, result.Confidence*100)
 
 		if tf.colorizer != nil {
-			tf.logger.Print().Msgf("[%s] %s", tf.colorizer.BrightYellow("WRN"), warningMsg)
-		} else {
-			tf.logger.Warning().Msg(warningMsg)
+			warningMsg = fmt.Sprintf("%s", tf.colorizer.BrightYellow(warningMsg))
 		}
+
+		tf.logger.Warning().Msg(warningMsg)
 
 		// Print indicators in verbose mode
 		for _, indicator := range result.Indicators {

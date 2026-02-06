@@ -184,13 +184,33 @@ func (d *Detector) Detect(ctx context.Context, target string) (*DetectionResult,
 		close(resultChan)
 	}()
 
+	var honeypotResults []*DetectionResult
 	for portResult := range resultChan {
-		if portResult.Confidence > result.Confidence {
-			result = portResult
+		honeypotResults = append(honeypotResults, portResult)
+	}
+
+	if len(honeypotResults) == 0 {
+		return result, nil
+	}
+
+	bestResult := honeypotResults[0]
+	for _, portResult := range honeypotResults[1:] {
+		if portResult.Confidence > bestResult.Confidence {
+			bestResult = portResult
 		}
 	}
 
-	return result, nil
+	for _, portResult := range honeypotResults {
+		if portResult == bestResult {
+			continue
+		}
+		for _, indicator := range portResult.Indicators {
+			bestResult.Indicators = append(bestResult.Indicators,
+				fmt.Sprintf("Port %d (%s): %s", portResult.Port, portResult.Type, indicator))
+		}
+	}
+
+	return bestResult, nil
 }
 
 // checkPort performs honeypot detection on a specific port.
@@ -201,16 +221,18 @@ func (d *Detector) checkPort(ctx context.Context, host string, port int) *Detect
 		return d.checkHTTP(ctx, host, port)
 	}
 
+	target := net.JoinHostPort(host, strconv.Itoa(port))
+
 	// For non-HTTP ports, perform TCP dial and banner read
 	result := &DetectionResult{
-		Target:     fmt.Sprintf("%s:%d", host, port),
+		Target:     target,
 		Port:       port,
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
 		Indicators: make([]string, 0),
 	}
 
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := net.JoinHostPort(host, strconv.Itoa(port))
 	conn, err := net.DialTimeout("tcp", address, d.opts.Timeout)
 	if err != nil {
 		return nil
@@ -240,7 +262,21 @@ func (d *Detector) checkPort(ctx context.Context, host string, port int) *Detect
 		return d.checkSMTP(ctx, host, port, banner)
 	default:
 		if len(banner) > 0 {
-			return d.analyzeGenericBanner(string(banner), host, port)
+			bannerStr := string(banner)
+			bannerLower := strings.ToLower(bannerStr)
+			if strings.HasPrefix(bannerStr, "SSH-") {
+				return d.checkSSH(ctx, host, port, banner)
+			}
+			if strings.Contains(bannerLower, "busybox") || strings.Contains(bannerLower, "dd-wrt") || strings.Contains(bannerLower, "login:") {
+				return d.checkTelnet(ctx, host, port, banner)
+			}
+			if strings.HasPrefix(bannerStr, "220 ") && strings.Contains(bannerLower, "ftp") {
+				return d.checkFTP(ctx, host, port, banner)
+			}
+			if strings.HasPrefix(bannerStr, "220 ") && (strings.Contains(bannerLower, "smtp") || strings.Contains(bannerLower, "esmtp")) {
+				return d.checkSMTP(ctx, host, port, banner)
+			}
+			return d.analyzeGenericBanner(bannerStr, host, port)
 		}
 	}
 
@@ -250,8 +286,9 @@ func (d *Detector) checkPort(ctx context.Context, host string, port int) *Detect
 // checkSSH performs SSH honeypot detection using banner analysis.
 // It checks for known SSH honeypot signatures like Cowrie, Kippo, and SSHesame.
 func (d *Detector) checkSSH(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
+	target := net.JoinHostPort(host, strconv.Itoa(port))
 	result := &DetectionResult{
-		Target:     fmt.Sprintf("%s:%d", host, port),
+		Target:     target,
 		Port:       port,
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
@@ -332,8 +369,9 @@ func (d *Detector) checkSSH(ctx context.Context, host string, port int, banner [
 // checkTelnet performs Telnet honeypot detection by analyzing banners.
 // It identifies patterns commonly associated with Cowrie Telnet honeypots.
 func (d *Detector) checkTelnet(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
+	target := net.JoinHostPort(host, strconv.Itoa(port))
 	result := &DetectionResult{
-		Target:     fmt.Sprintf("%s:%d", host, port),
+		Target:     target,
 		Port:       port,
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
@@ -365,8 +403,9 @@ func (d *Detector) checkTelnet(ctx context.Context, host string, port int, banne
 // checkHTTP performs HTTP honeypot detection by sending HTTP requests and analyzing responses.
 // It detects Glastopf and other HTTP-based honeypots through pattern matching.
 func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *DetectionResult {
+	target := net.JoinHostPort(host, strconv.Itoa(port))
 	result := &DetectionResult{
-		Target:     fmt.Sprintf("%s:%d", host, port),
+		Target:     target,
 		Port:       port,
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
@@ -377,7 +416,7 @@ func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *Detect
 
 	var conn net.Conn
 	var err error
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := net.JoinHostPort(host, strconv.Itoa(port))
 
 	if isHTTPS {
 		tlsConfig := &tls.Config{
@@ -403,12 +442,19 @@ func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *Detect
 	}
 
 	response := make([]byte, 8192)
-	n, _ := conn.Read(response)
-	if n == 0 {
+	totalRead := 0
+	for totalRead < len(response) {
+		n, err := conn.Read(response[totalRead:])
+		totalRead += n
+		if err != nil {
+			break
+		}
+	}
+	if totalRead == 0 {
 		return nil
 	}
 
-	responseStr := string(response[:n])
+	responseStr := string(response[:totalRead])
 
 	// Glastopf detection
 	glastopfPatterns := []string{
@@ -456,8 +502,9 @@ func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *Detect
 // checkFTP performs FTP honeypot detection through banner analysis.
 // It identifies FTP services that match known honeypot patterns like Dionaea.
 func (d *Detector) checkFTP(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
+	target := net.JoinHostPort(host, strconv.Itoa(port))
 	result := &DetectionResult{
-		Target:     fmt.Sprintf("%s:%d", host, port),
+		Target:     target,
 		Port:       port,
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
@@ -468,13 +515,12 @@ func (d *Detector) checkFTP(ctx context.Context, host string, port int, banner [
 
 	dionaeaFTPPatterns := []string{
 		"220 DiskStation FTP server ready",
-		"220 FTP server ready",
 	}
 
 	for _, pattern := range dionaeaFTPPatterns {
 		if strings.Contains(bannerStr, pattern) {
 			result.Indicators = append(result.Indicators, fmt.Sprintf("FTP banner matches potential honeypot: %s", pattern))
-			result.Confidence += 0.4
+			result.Confidence += 0.65
 		}
 	}
 
@@ -489,8 +535,9 @@ func (d *Detector) checkFTP(ctx context.Context, host string, port int, banner [
 // checkSMTP performs SMTP honeypot detection using banner analysis.
 // It checks for SMTP banners that match Mailoney and other SMTP honeypot patterns.
 func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner []byte) *DetectionResult {
+	target := net.JoinHostPort(host, strconv.Itoa(port))
 	result := &DetectionResult{
-		Target:     fmt.Sprintf("%s:%d", host, port),
+		Target:     target,
 		Port:       port,
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
@@ -513,14 +560,14 @@ func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner 
 	if strings.Contains(bannerLower, "220 localhost esmtp postfix") {
 		result.Confidence += 0.35
 		result.Indicators = append(result.Indicators, "Generic 'localhost ESMTP Postfix' banner (common but suspicious)")
-		
+
 		// Check for additional honeypot indicators
 		if strings.Contains(bannerLower, "ubuntu") || strings.Contains(bannerLower, "debian") {
 			// Real servers typically show more specific hostnames
 			result.Confidence += 0.25
 			result.Indicators = append(result.Indicators, "Generic OS identifier in SMTP banner")
 		}
-		
+
 		if result.Confidence >= 0.6 {
 			result.IsHoneypot = true
 			result.Type = HoneypotMailoney
@@ -535,7 +582,7 @@ func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner 
 func (d *Detector) analyzeGenericBanner(banner string, host string, port int) *DetectionResult {
 	result := &DetectionResult{
 		Port:       port,
-		Target:     fmt.Sprintf("%s:%d", host, port),
+		Target:     net.JoinHostPort(host, strconv.Itoa(port)),
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
 		Indicators: make([]string, 0),
