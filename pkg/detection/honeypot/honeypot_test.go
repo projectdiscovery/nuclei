@@ -180,7 +180,7 @@ func TestGenericBannerDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
-			result := detector.analyzeGenericBanner(tt.banner, 80)
+			result := detector.analyzeGenericBanner(tt.banner, "test.example.com", 80)
 
 			if result == nil {
 				t.Fatal("Expected result to not be nil")

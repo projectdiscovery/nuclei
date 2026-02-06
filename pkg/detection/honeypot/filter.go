@@ -98,6 +98,20 @@ func (tf *TargetFilter) GetResults() map[string]*DetectionResult {
 	return results
 }
 
+// IsHoneypot returns whether a target has been identified as a honeypot.
+// This method should only be called after CheckTarget has been run for the target.
+// Returns (isHoneypot, hasBeenChecked). If hasBeenChecked is false, detection has not been performed yet.
+func (tf *TargetFilter) IsHoneypot(target string) (isHoneypot bool, hasBeenChecked bool) {
+	tf.resultMutex.RLock()
+	defer tf.resultMutex.RUnlock()
+
+	result, exists := tf.results[target]
+	if !exists {
+		return false, false
+	}
+	return result.IsHoneypot, true
+}
+
 // Clear clears the cached detection results
 func (tf *TargetFilter) Clear() {
 	tf.resultMutex.Lock()

@@ -105,6 +105,16 @@ type Detector struct {
 	opts *Options
 	// logger is used for logging detection operations and errors
 	logger *gologger.Logger
+	// Precompiled regex patterns for SSH detection
+	sshOldVersionRegex *regexp.Regexp
+	sshLibsshRegex     *regexp.Regexp
+	sshDebian7Regex    *regexp.Regexp
+	sshCompatModeRegex *regexp.Regexp
+	// Precompiled regex patterns for HTTP detection
+	httpHoneypotRegex      *regexp.Regexp
+	httpHoneytokenRegex    *regexp.Regexp
+	httpServerCowrieRegex  *regexp.Regexp
+	httpServerDionaeaRegex *regexp.Regexp
 }
 
 // NewDetector creates a new honeypot detector
@@ -115,6 +125,16 @@ func NewDetector(opts *Options) *Detector {
 	return &Detector{
 		opts:   opts,
 		logger: opts.Logger,
+		// Compile SSH regex patterns once
+		sshOldVersionRegex: regexp.MustCompile(`SSH-2\.0-OpenSSH_[345]\.[0-9]`),
+		sshLibsshRegex:     regexp.MustCompile(`SSH-2\.0-libssh`),
+		sshDebian7Regex:    regexp.MustCompile(`SSH-2\.0-OpenSSH.*Debian-4\+deb7`),
+		sshCompatModeRegex: regexp.MustCompile(`SSH-1\.99-`),
+		// Compile HTTP regex patterns once
+		httpHoneypotRegex:      regexp.MustCompile(`(?i)honeypot`),
+		httpHoneytokenRegex:    regexp.MustCompile(`(?i)honeytoken`),
+		httpServerCowrieRegex:  regexp.MustCompile(`Server:\s*cowrie`),
+		httpServerDionaeaRegex: regexp.MustCompile(`Server:\s*dionaea`),
 	}
 }
 
@@ -217,7 +237,7 @@ func (d *Detector) checkPort(ctx context.Context, host string, port int) *Detect
 		return d.checkSMTP(ctx, host, port, banner)
 	default:
 		if len(banner) > 0 {
-			return d.analyzeGenericBanner(string(banner), port)
+			return d.analyzeGenericBanner(string(banner), host, port)
 		}
 	}
 
@@ -279,21 +299,20 @@ func (d *Detector) checkSSH(ctx context.Context, host string, port int, banner [
 		return result
 	}
 
-	// Generic SSH honeypot indicators
+	// Generic SSH honeypot indicators using precompiled regex patterns
 	sshHoneypotIndicators := []struct {
-		pattern    string
+		regex      *regexp.Regexp
 		confidence float64
 		desc       string
 	}{
-		{`SSH-2\.0-OpenSSH_[345]\.[0-9]`, 0.5, "Very old OpenSSH version (common in honeypots)"},
-		{`SSH-2\.0-libssh`, 0.3, "libssh based server (sometimes used in honeypots)"},
-		{`SSH-2\.0-OpenSSH.*Debian-4\+deb7`, 0.7, "Debian 7 default SSH (EOL, common honeypot)"},
-		{`SSH-1\.99-`, 0.6, "SSH-1.99 compatibility mode (unusual in modern deployments)"},
+		{d.sshOldVersionRegex, 0.5, "Very old OpenSSH version (common in honeypots)"},
+		{d.sshLibsshRegex, 0.3, "libssh based server (sometimes used in honeypots)"},
+		{d.sshDebian7Regex, 0.7, "Debian 7 default SSH (EOL, common honeypot)"},
+		{d.sshCompatModeRegex, 0.6, "SSH-1.99 compatibility mode (unusual in modern deployments)"},
 	}
 
 	for _, indicator := range sshHoneypotIndicators {
-		re := regexp.MustCompile(indicator.pattern)
-		if re.MatchString(bannerStr) {
+		if indicator.regex.MatchString(bannerStr) {
 			result.Confidence += indicator.confidence * 0.5
 			result.Indicators = append(result.Indicators, indicator.desc)
 		}
@@ -403,21 +422,20 @@ func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *Detect
 		}
 	}
 
-	// Generic HTTP honeypot indicators
+	// Generic HTTP honeypot indicators using precompiled regex patterns
 	httpHoneypotIndicators := []struct {
-		pattern    string
+		regex      *regexp.Regexp
 		confidence float64
 		desc       string
 	}{
-		{`(?i)honeypot`, 0.9, "Response contains 'honeypot' keyword"},
-		{`(?i)honeytoken`, 0.85, "Response contains 'honeytoken' keyword"},
-		{`Server:\s*cowrie`, 0.95, "Server header identifies as Cowrie"},
-		{`Server:\s*dionaea`, 0.95, "Server header identifies as Dionaea"},
+		{d.httpHoneypotRegex, 0.9, "Response contains 'honeypot' keyword"},
+		{d.httpHoneytokenRegex, 0.85, "Response contains 'honeytoken' keyword"},
+		{d.httpServerCowrieRegex, 0.95, "Server header identifies as Cowrie"},
+		{d.httpServerDionaeaRegex, 0.95, "Server header identifies as Dionaea"},
 	}
 
 	for _, indicator := range httpHoneypotIndicators {
-		re := regexp.MustCompile(indicator.pattern)
-		if re.MatchString(responseStr) {
+		if indicator.regex.MatchString(responseStr) {
 			result.Confidence += indicator.confidence * 0.5
 			result.Indicators = append(result.Indicators, indicator.desc)
 		}
@@ -499,10 +517,10 @@ func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner 
 
 // analyzeGenericBanner analyzes a generic banner for honeypot indicators.
 // It searches for common honeypot keywords in service banners.
-func (d *Detector) analyzeGenericBanner(banner string, port int) *DetectionResult {
+func (d *Detector) analyzeGenericBanner(banner string, host string, port int) *DetectionResult {
 	result := &DetectionResult{
 		Port:       port,
-		Target:     "",
+		Target:     fmt.Sprintf("%s:%d", host, port),
 		IsHoneypot: false,
 		Type:       HoneypotUnknown,
 		Indicators: make([]string, 0),
