@@ -70,6 +70,11 @@ func TestParseTarget(t *testing.T) {
 		{"192.168.1.1:80", "192.168.1.1", 80},
 		{"http://example.com/path", "example.com", 0},
 		{"https://example.com:8443/admin", "example.com", 8443},
+		// IPv6 test cases
+		{"[::1]:8080", "::1", 8080},
+		{"[2001:db8::1]:443", "2001:db8::1", 443},
+		{"[fe80::1%eth0]:22", "fe80::1%eth0", 22},
+		{"2001:db8::1", "2001:db8::1", 0},
 	}
 
 	for _, tt := range tests {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
+	"golang.org/x/sync/singleflight"
 )
 
 // TargetFilter provides thread-safe honeypot detection and filtering functionality
@@ -22,6 +23,8 @@ type TargetFilter struct {
 	results map[string]*DetectionResult
 	// resultMutex protects concurrent access to the results cache
 	resultMutex sync.RWMutex
+	// detectGroup coalesces concurrent detection requests for the same target
+	detectGroup singleflight.Group
 }
 
 // NewTargetFilter creates a new target filter for honeypot detection
@@ -45,19 +48,41 @@ func (tf *TargetFilter) CheckTarget(ctx context.Context, target string) (bool, *
 	}
 	tf.resultMutex.RUnlock()
 
-	// Perform detection
-	result, err := tf.detector.Detect(ctx, target)
-	if err != nil {
-		if tf.logger != nil {
-			tf.logger.Debug().Msgf("Honeypot detection error for %s: %v", target, err)
+	// Use singleflight to coalesce concurrent detection requests
+	v, err, _ := tf.detectGroup.Do(target, func() (interface{}, error) {
+		// Double-check cache after acquiring singleflight lock
+		tf.resultMutex.RLock()
+		if result, exists := tf.results[target]; exists {
+			tf.resultMutex.RUnlock()
+			return result, nil
 		}
+		tf.resultMutex.RUnlock()
+
+		// Perform detection
+		result, err := tf.detector.Detect(ctx, target)
+		if err != nil {
+			if tf.logger != nil {
+				tf.logger.Debug().Msgf("Honeypot detection error for %s: %v", target, err)
+			}
+			return nil, err
+		}
+
+		// Cache result
+		tf.resultMutex.Lock()
+		tf.results[target] = result
+		tf.resultMutex.Unlock()
+
+		return result, nil
+	})
+
+	if err != nil {
 		return false, nil
 	}
 
-	// Cache result
-	tf.resultMutex.Lock()
-	tf.results[target] = result
-	tf.resultMutex.Unlock()
+	result, ok := v.(*DetectionResult)
+	if !ok || result == nil {
+		return false, nil
+	}
 
 	return result.IsHoneypot, result
 }
@@ -85,12 +110,15 @@ func (tf *TargetFilter) PrintWarning(result *DetectionResult) {
 	}
 }
 
-// GetResults returns all cached detection results
+// GetResults returns all cached detection results.
+// The returned map is a shallow copy; DetectionResult pointers are shared with the cache.
+// Callers must not modify the returned DetectionResult objects to maintain cache integrity.
 func (tf *TargetFilter) GetResults() map[string]*DetectionResult {
 	tf.resultMutex.RLock()
 	defer tf.resultMutex.RUnlock()
 
-	// Return a copy to prevent race conditions
+	// Return a shallow copy to prevent map race conditions
+	// DetectionResult objects are immutable and shared with cache
 	results := make(map[string]*DetectionResult, len(tf.results))
 	for k, v := range tf.results {
 		results[k] = v

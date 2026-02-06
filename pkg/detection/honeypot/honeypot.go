@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -195,6 +196,12 @@ func (d *Detector) Detect(ctx context.Context, target string) (*DetectionResult,
 // checkPort performs honeypot detection on a specific port.
 // It returns a DetectionResult if a honeypot is detected, or nil if no detection occurs.
 func (d *Detector) checkPort(ctx context.Context, host string, port int) *DetectionResult {
+	// HTTP ports: skip banner read and TCP dial here; checkHTTP does its own dial
+	if (port == 80 || port == 8080 || port == 443 || port == 8443) && d.opts.EnableHTTP {
+		return d.checkHTTP(ctx, host, port)
+	}
+
+	// For non-HTTP ports, perform TCP dial and banner read
 	result := &DetectionResult{
 		Target:     fmt.Sprintf("%s:%d", host, port),
 		Port:       port,
@@ -227,10 +234,6 @@ func (d *Detector) checkPort(ctx context.Context, host string, port int) *Detect
 		}
 	case port == 23:
 		return d.checkTelnet(ctx, host, port, banner)
-	case port == 80 || port == 8080 || port == 443 || port == 8443:
-		if d.opts.EnableHTTP {
-			return d.checkHTTP(ctx, host, port)
-		}
 	case port == 21:
 		return d.checkFTP(ctx, host, port, banner)
 	case port == 25:
@@ -410,7 +413,6 @@ func (d *Detector) checkHTTP(ctx context.Context, host string, port int) *Detect
 	// Glastopf detection
 	glastopfPatterns := []string{
 		"glastopf",
-		"Blog Comments",
 	}
 	for _, pattern := range glastopfPatterns {
 		if strings.Contains(strings.ToLower(responseStr), pattern) {
@@ -496,19 +498,32 @@ func (d *Detector) checkSMTP(ctx context.Context, host string, port int, banner 
 	}
 
 	bannerStr := string(banner)
+	bannerLower := strings.ToLower(bannerStr)
 
-	mailoneyPatterns := []string{
-		"220 localhost ESMTP Postfix",
-		"220 mailhoney",
+	// High-confidence specific honeypot banners
+	if strings.Contains(bannerLower, "220 mailhoney") {
+		result.IsHoneypot = true
+		result.Type = HoneypotMailoney
+		result.Confidence = 0.85
+		result.Indicators = append(result.Indicators, "SMTP banner explicitly identifies as mailhoney")
+		return result
 	}
 
-	for _, pattern := range mailoneyPatterns {
-		if strings.Contains(strings.ToLower(bannerStr), strings.ToLower(pattern)) {
+	// Generic Postfix banner - common in legitimate servers, requires secondary signals
+	if strings.Contains(bannerLower, "220 localhost esmtp postfix") {
+		result.Confidence += 0.35
+		result.Indicators = append(result.Indicators, "Generic 'localhost ESMTP Postfix' banner (common but suspicious)")
+		
+		// Check for additional honeypot indicators
+		if strings.Contains(bannerLower, "ubuntu") || strings.Contains(bannerLower, "debian") {
+			// Real servers typically show more specific hostnames
+			result.Confidence += 0.25
+			result.Indicators = append(result.Indicators, "Generic OS identifier in SMTP banner")
+		}
+		
+		if result.Confidence >= 0.6 {
 			result.IsHoneypot = true
 			result.Type = HoneypotMailoney
-			result.Confidence = 0.70
-			result.Indicators = append(result.Indicators, fmt.Sprintf("SMTP banner matches honeypot pattern: %s", pattern))
-			return result
 		}
 	}
 
@@ -569,7 +584,9 @@ func parseTarget(target string) (string, int) {
 	h, p, err := net.SplitHostPort(target)
 	if err == nil {
 		host = h
-		fmt.Sscanf(p, "%d", &port)
+		if parsedPort, err := strconv.Atoi(p); err == nil {
+			port = parsedPort
+		}
 	}
 
 	return host, port
