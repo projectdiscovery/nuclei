@@ -106,9 +106,9 @@ const (
 	surroundingTextSize = 200
 )
 
-// URLAttributes lists HTML attributes that accept URLs (href, src, etc.) and have
+// urlAttributes lists HTML attributes that accept URLs (href, src, etc.) and have
 // special XSS considerations (e.g., javascript: protocol).
-var URLAttributes = []string{
+var urlAttributes = []string{
 	"href", "src", "action", "data", "formaction", "poster",
 	"codebase", "cite", "background", "dynsrc", "lowsrc", "manifest",
 }
