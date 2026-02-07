@@ -334,8 +334,18 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
 func (store *Store) Load() {
-	store.templates = store.LoadTemplates(store.finalTemplates)
-	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+	templates, err := store.LoadTemplates(store.finalTemplates)
+	if err != nil {
+		store.config.ExecutorOptions.Logger.Error().Msgf("could not load templates: %s", err)
+	} else {
+		store.templates = templates
+	}
+	workflows, err := store.LoadWorkflows(store.finalWorkflows)
+	if err != nil {
+		store.config.ExecutorOptions.Logger.Error().Msgf("could not load workflows: %s", err)
+	} else {
+		store.workflows = workflows
+	}
 }
 
 var templateIDPathMap map[string]string
@@ -637,12 +647,12 @@ func isParsingError(store *Store, message string, template string, err error) bo
 }
 
 // LoadTemplates takes a list of templates and returns paths for them
-func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
 // LoadWorkflows takes a list of workflows and returns paths for them
-func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
+func (store *Store) LoadWorkflows(workflowsList []string) ([]*templates.Template, error) {
 	includedWorkflows, errs := store.config.Catalog.GetTemplatesPath(workflowsList)
 	store.logErroredTemplates(errs)
 
@@ -663,12 +673,12 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 		}
 	}
 
-	return loadedWorkflows
+	return loadedWorkflows, nil
 }
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
 // returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
@@ -720,20 +730,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		// Dialers might be uninitialized in non-scanning flows (e.g. template listing/display)
 		// and should not crash the process.
 		if err := protocolstate.Init(typesOpts); err != nil {
-			store.config.ExecutorOptions.Logger.Error().Msgf(
-				"could not initialize dialers for executionId %s: %s",
-				typesOpts.ExecutionId,
-				err,
-			)
-		} else {
-			dialers = protocolstate.GetDialersWithId(typesOpts.ExecutionId)
+			return nil, fmt.Errorf("dialers for executionId %s could not be initialized: %w", typesOpts.ExecutionId, err)
 		}
+		dialers = protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 		if dialers == nil {
-			store.config.ExecutorOptions.Logger.Error().Msgf(
-				"dialers with executionId %s not found",
-				typesOpts.ExecutionId,
-			)
-			return loadedTemplates.Slice
+			return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
 		}
 	}
 
@@ -869,7 +870,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates.Slice
+	return loadedTemplates.Slice, nil
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
