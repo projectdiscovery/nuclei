@@ -1,0 +1,46 @@
+# Configuration for the typos spell checker
+# https://github.com/crate-ci/typos
+
+[files]
+# Skip non-English translated README files (contain legitimate non-English words)
+extend-exclude = [
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test data and fixtures
+    "pkg/input/formats/testdata/*",
+    "pkg/protocols/common/helpers/deserialization/testdata/*",
+    # WAF regex patterns (contain intentional fragments)
+    "pkg/output/stats/waf/regexes.json",
+]
+
+[default.extend-words]
+# CLI flag abbreviations used in help text and code
+ines = "ines"  # JSONL(ines)
+ine = "ine"    # -ine flag suffix
+hae = "hae"    # -hae (http-api-endpoint)
+ue = "ue"      # -ue (uncover-engine)
+ot = "ot"      # -ot flag
+# Variable/identifier names
+fo = "fo"      # variable name in request_generator.go
+# Type from external dependency (projectdiscovery/goflags)
+Allowd = "Allowd"
+# NooP is a standard abbreviation for No-Operation
+Noo = "Noo"
+# MisMatched is used as a struct field name
+Mis = "Mis"
+# Test data values (XML content, base64, certificates, etc.)
+alo = "alo"    # XML test data (Croatian word "dijete>alo")
+Iif = "Iif"    # base64 encoded test data
+# Base64/certificate data fragments
+BA = "BA"
+UE = "UE"
+Iy = "Iy"
+Fo = "Fo"      # test payload "inFo"
+nd = "nd"
+# Test data content
+algoritmos = "algoritmos"  # Spanish word in fuzz playground test data
