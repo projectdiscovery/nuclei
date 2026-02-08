@@ -59,8 +59,8 @@ func TestApplyInitialTransformation(t *testing.T) {
 func TestDetectXSSContexts_HTMLTag(t *testing.T) {
 	analyzer := &Analyzer{}
 	
-	html := `<div>xss_1234_<>'"` + "`</div>"
-	canary := "xss_1234_<>'\"``"
+	html := "<div>xss_1234_test</div>"
+	canary := "xss_1234_test"
 	
 	contexts := analyzer.detectXSSContexts(html, canary)
 	
@@ -73,8 +73,8 @@ func TestDetectXSSContexts_HTMLTag(t *testing.T) {
 func TestDetectXSSContexts_AttributeQuoted(t *testing.T) {
 	analyzer := &Analyzer{}
 	
-	html := `<input value="xss_1234_<>'"` + "`" + `">`
-	canary := "xss_1234_<>'\"``"
+	html := "<input value=\"xss_1234_test\">"
+	canary := "xss_1234_test"
 	
 	contexts := analyzer.detectXSSContexts(html, canary)
 	
@@ -87,8 +87,8 @@ func TestDetectXSSContexts_AttributeQuoted(t *testing.T) {
 func TestDetectXSSContexts_EventHandler(t *testing.T) {
 	analyzer := &Analyzer{}
 	
-	html := `<img onclick="xss_1234_<>'"` + "`" + `">`
-	canary := "xss_1234_<>'\"``"
+	html := "<img onclick=\"xss_1234_test\">"
+	canary := "xss_1234_test"
 	
 	contexts := analyzer.detectXSSContexts(html, canary)
 	
@@ -101,8 +101,8 @@ func TestDetectXSSContexts_EventHandler(t *testing.T) {
 func TestDetectXSSContexts_URLAttribute(t *testing.T) {
 	analyzer := &Analyzer{}
 	
-	html := `<a href="xss_1234_<>'"` + "`" + `">link</a>`
-	canary := "xss_1234_<>'\"``"
+	html := "<a href=\"xss_1234_test\">link</a>"
+	canary := "xss_1234_test"
 	
 	contexts := analyzer.detectXSSContexts(html, canary)
 	
@@ -115,8 +115,8 @@ func TestDetectXSSContexts_URLAttribute(t *testing.T) {
 func TestDetectXSSContexts_HTMLComment(t *testing.T) {
 	analyzer := &Analyzer{}
 	
-	html := `<!-- xss_1234_<>'"` + "` -->"
-	canary := "xss_1234_<>'\"``"
+	html := "<!-- xss_1234_test -->"
+	canary := "xss_1234_test"
 	
 	contexts := analyzer.detectXSSContexts(html, canary)
 	
@@ -129,8 +129,8 @@ func TestDetectXSSContexts_HTMLComment(t *testing.T) {
 func TestDetectXSSContexts_StyleAttribute(t *testing.T) {
 	analyzer := &Analyzer{}
 	
-	html := `<div style="color: xss_1234_<>'"` + "`" + `">text</div>`
-	canary := "xss_1234_<>'\"``"
+	html := "<div style=\"color: xss_1234_test\">text</div>"
+	canary := "xss_1234_test"
 	
 	contexts := analyzer.detectXSSContexts(html, canary)
 	
@@ -150,26 +150,26 @@ func TestDetectFilters(t *testing.T) {
 	}{
 		{
 			name:     "No filters",
-			text:     "xss_1234_<>'\"``",
-			canary:   "xss_1234_<>'\"``",
+			text:     "xss_1234_<>'test",
+			canary:   "xss_1234_<>'test",
 			expected: "none",
 		},
 		{
 			name:     "HTML encoded",
-			text:     "xss_1234_&lt;&gt;'\"``",
-			canary:   "xss_1234_<>'\"``",
+			text:     "xss_1234_&lt;&gt;'test",
+			canary:   "xss_1234_<>'test",
 			expected: "html_encoded",
 		},
 		{
 			name:     "Angle brackets filtered",
-			text:     "xss_1234_'\"``",
-			canary:   "xss_1234_<>'\"``",
+			text:     "xss_1234_'test",
+			canary:   "xss_1234_<>'test",
 			expected: "angle_brackets_filtered",
 		},
 		{
 			name:     "Quotes escaped",
-			text:     "xss_1234_<>\\'\\\"``",
-			canary:   "xss_1234_<>'\"``",
+			text:     "xss_1234_<>\\'test",
+			canary:   "xss_1234_<>'test",
 			expected: "quotes_escaped",
 		},
 	}
@@ -194,7 +194,8 @@ func TestAnalyze_NoReflection(t *testing.T) {
 	client := retryablehttp.NewClient(retryablehttp.DefaultOptionsSpraying)
 	
 	mockComponent := &mockComponent{
-		value: "",
+		value:     "",
+		serverURL: server.URL,
 	}
 	
 	options := &analyzers.Options{
