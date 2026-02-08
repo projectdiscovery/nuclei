@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -222,13 +221,8 @@ func TestAnalyze_HTMLTagContext(t *testing.T) {
 	// Setup mock HTTP server that reflects input in HTML context
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
-		if strings.Contains(query, "<script>alert(1)</script>") {
-			// Exploit request - reflect unescaped
-			w.Write([]byte("<html><body>" + query + "</body></html>"))
-		} else {
-			// Probe request - reflect canary
-			w.Write([]byte("<html><body>" + query + "</body></html>"))
-		}
+		// Reflect input directly (both probe and exploit)
+		w.Write([]byte("<html><body>" + query + "</body></html>"))
 	}))
 	defer server.Close()
 	
@@ -257,6 +251,99 @@ func TestAnalyze_HTMLTagContext(t *testing.T) {
 	require.True(t, matched)
 	require.Contains(t, reason, "XSS vulnerability confirmed")
 	require.Contains(t, reason, "html_tag")
+}
+
+// TestDetectFilters_RealisticCanary tests filter detection with realistic canary containing all XSS chars
+func TestDetectFilters_RealisticCanary(t *testing.T) {
+	analyzer := &Analyzer{}
+	
+	tests := []struct {
+		name       string
+		text       string
+		canary     string
+		isRawHTML  bool
+		expected   string
+	}{
+		{
+			name:       "Realistic canary - no filters",
+			text:       `xss_1234_<>'"` + "`",
+			canary:     `xss_1234_<>'"` + "`",
+			isRawHTML:  true,
+			expected:   "none",
+		},
+		{
+			name:       "Realistic canary - angle brackets filtered",
+			text:       `xss_1234_'"` + "`",
+			canary:     `xss_1234_<>'"` + "`",
+			isRawHTML:  true,
+			expected:   "angle_brackets_filtered",
+		},
+		{
+			name:       "Realistic canary - HTML encoded",
+			text:       `xss_1234_&lt;&gt;'"` + "`",
+			canary:     `xss_1234_<>'"` + "`",
+			isRawHTML:  true,
+			expected:   "html_encoded",
+		},
+		{
+			name:       "Realistic canary - quotes escaped",
+			text:       `xss_1234_<>\\'\"` + "`",
+			canary:     `xss_1234_<>'"` + "`",
+			isRawHTML:  true,
+			expected:   "quotes_escaped",
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := analyzer.detectFilters(tt.text, tt.canary, tt.isRawHTML)
+			require.Contains(t, result, tt.expected)
+		})
+	}
+}
+
+// TestDetectFilters_NonRawHTML tests filter detection with isRawHTML=false (tokenizer-decoded attributes)
+func TestDetectFilters_NonRawHTML(t *testing.T) {
+	analyzer := &Analyzer{}
+	
+	tests := []struct {
+		name       string
+		text       string
+		canary     string
+		expected   string
+	}{
+		{
+			name:       "Non-raw HTML - no filters",
+			text:       `xss_1234_<>'"`,
+			canary:     `xss_1234_<>'"`,
+			expected:   "none",
+		},
+		{
+			name:       "Non-raw HTML - angle brackets filtered (tokenizer already decoded)",
+			text:       `xss_1234_'"`,
+			canary:     `xss_1234_<>'"`,
+			expected:   "angle_brackets_filtered",
+		},
+		{
+			name:       "Non-raw HTML - quotes escaped (still visible after decode)",
+			text:       `xss_1234_<>\'\"`,
+			canary:     `xss_1234_<>'"`,
+			expected:   "quotes_escaped",
+		},
+		{
+			name:       "Non-raw HTML - no HTML encoding detected (isRawHTML=false)",
+			text:       `xss_1234_<>'"`,
+			canary:     `xss_1234_<>'"`,
+			expected:   "none",
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := analyzer.detectFilters(tt.text, tt.canary, false)
+			require.Contains(t, result, tt.expected)
+		})
+	}
 }
 
 // TestVerifyExploitation tests various exploitation verification scenarios

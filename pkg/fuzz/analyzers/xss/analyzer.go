@@ -265,12 +265,12 @@ func (a *Analyzer) classifyAttributeContext(tagName, attrName, attrValue, canary
 		}
 	}
 	
-	// Style attribute (modern CSS-based XSS)
+	// Style attribute (attribute breakout since CSS-based XSS doesn't work in modern browsers)
 	if attrName == "style" {
 		return XSSContext{
 			Type:     "style_attribute",
 			Location: fmt.Sprintf("%s style attribute", tagName),
-			Payload:  `background-image:url("javascript:alert(1)")`,
+			Payload:  `";><script>alert(1)</script><div style="`,
 			Filter:   a.detectFilters(attrValue, canary, false),
 		}
 	}
@@ -380,8 +380,8 @@ func (a *Analyzer) verifyExploitation(body string, ctx XSSContext) bool {
 		return strings.Contains(body, "<script>alert(1)</script>")
 		
 	case "event_handler":
-		// Check for alert(1) in any event handler attribute (on*)
-		return strings.Contains(body, "alert(1)") && strings.Contains(body, " on")
+		// Check for payload in response
+		return strings.Contains(body, ctx.Payload)
 		
 	case "url_attribute":
 		return strings.Contains(body, "javascript:alert(1)")
@@ -393,9 +393,8 @@ func (a *Analyzer) verifyExploitation(body string, ctx XSSContext) bool {
 		return strings.Contains(body, "--><script>alert(1)</script><!--")
 		
 	case "style_attribute":
-		// Check for unescaped background-image URL or style injection
-		return strings.Contains(body, `background-image:url("javascript:alert(1)")`) ||
-		       strings.Contains(body, "javascript:alert(1)")
+		// Check for attribute breakout
+		return strings.Contains(body, `"><script>`)
 		
 	default:
 		// Generic check for unescaped payload

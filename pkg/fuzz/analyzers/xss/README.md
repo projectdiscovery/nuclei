@@ -28,7 +28,7 @@ This approach achieves:
 | **Quoted Attribute** | `<input value="USER_INPUT">` | `"><script>alert(1)</script><div x="` |
 | **Event Handler** | `<img onclick="USER_INPUT">` | `';alert(1)//` |
 | **URL Attribute** | `<a href="USER_INPUT">` | `javascript:alert(1)` |
-| **Style Attribute** | `<div style="USER_INPUT">` | `expression(alert(1))` |
+| **Style Attribute** | `<div style="USER_INPUT">` | `";><script>alert(1)</script><div style="` |
 | **HTML Comment** | `<!-- USER_INPUT -->` | `--><script>alert(1)</script><!--` |
 
 ## Usage
