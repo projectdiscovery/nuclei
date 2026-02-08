@@ -16,9 +16,9 @@ This analyzer implements a **Probe-and-Exploit** strategy:
 3. **Exploit**: Select context-specific payload or skip if unexploitable (fail-fast)
 
 This approach achieves:
-- ✅ Higher accuracy (fewer false positives)
-- ✅ Fewer HTTP requests (context-targeted payloads)
-- ✅ Better coverage (handles 6+ XSS context types)
+- Higher accuracy (fewer false positives)
+- Fewer HTTP requests (context-targeted payloads)
+- Better coverage (handles 6+ XSS context types)
 
 ## Supported XSS Contexts
 

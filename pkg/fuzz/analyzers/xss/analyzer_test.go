@@ -384,11 +384,56 @@ func TestVerifyExploitation(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "Attribute quoted context exploited",
+			body: `<input value=""><script>alert(1)</script><div x="">`,
+			context: XSSContext{
+				Type:    "attribute_quoted",
+				Payload: `"><script>alert(1)</script><div x="`,
+			},
+			expected: true,
+		},
+		{
+			name: "HTML comment context exploited",
+			body: `<!-- test --><script>alert(1)</script><!-- more -->`,
+			context: XSSContext{
+				Type:    "html_comment",
+				Payload: "--><script>alert(1)</script><!--",
+			},
+			expected: true,
+		},
+		{
+			name: "Style attribute context exploited",
+			body: `<div style="color: red;"><script>alert(1)</script></div>`,
+			context: XSSContext{
+				Type:    "style_attribute",
+				Payload: `";><script>alert(1)</script><div style="`,
+			},
+			expected: true,
+		},
+		{
 			name: "Payload escaped - not exploited",
 			body: `<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>`,
 			context: XSSContext{
 				Type:    "html_tag",
 				Payload: "<script>alert(1)</script>",
+			},
+			expected: false,
+		},
+		{
+			name: "Attribute quoted - payload escaped",
+			body: `<input value="&quot;&gt;&lt;script&gt;alert(1)">`,
+			context: XSSContext{
+				Type:    "attribute_quoted",
+				Payload: `"><script>alert(1)</script><div x="`,
+			},
+			expected: false,
+		},
+		{
+			name: "HTML comment - payload not broken out",
+			body: `<!-- test alert(1) -->`,
+			context: XSSContext{
+				Type:    "html_comment",
+				Payload: "--><script>alert(1)</script><!--",
 			},
 			expected: false,
 		},

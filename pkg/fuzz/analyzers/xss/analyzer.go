@@ -245,6 +245,7 @@ func (a *Analyzer) classifyAttributeContext(tagName, attrName, attrValue, canary
 	attrName = strings.ToLower(attrName)
 	
 	// Event handler attributes (onclick, onerror, etc.)
+	// Payload assumes single-quote JS string context (common pattern in event handlers)
 	if strings.HasPrefix(attrName, "on") {
 		return XSSContext{
 			Type:     "event_handler",
@@ -295,6 +296,9 @@ func (a *Analyzer) detectFilters(text, canary string, isRawHTML bool) string {
 	}
 	
 	// Check for HTML entity encoding (only in raw HTML, not decoded attributes)
+	// When isRawHTML=false, the tokenizer has already decoded entities, so this check
+	// may under-report encoding. This is acceptable since verifyExploitation will reject
+	// false positives by checking the final response for unescaped payloads.
 	if isRawHTML && (strings.Contains(text, "&lt;") || strings.Contains(text, "&gt;")) {
 		filters = append(filters, "html_encoded")
 	}
@@ -314,8 +318,8 @@ func (a *Analyzer) detectFilters(text, canary string, isRawHTML bool) string {
 // exploitContext attempts to exploit a detected XSS context
 func (a *Analyzer) exploitContext(options *analyzers.Options, ctx XSSContext) (bool, string, error) {
 	// Skip if critical filters detected
-	// Contexts that require angle brackets: html_tag, attribute_quoted, html_comment
-	requiresAngleBrackets := ctx.Type == "html_tag" || ctx.Type == "attribute_quoted" || ctx.Type == "html_comment"
+	// Contexts that require angle brackets: html_tag, attribute_quoted, html_comment, style_attribute
+	requiresAngleBrackets := ctx.Type == "html_tag" || ctx.Type == "attribute_quoted" || ctx.Type == "html_comment" || ctx.Type == "style_attribute"
 	if (strings.Contains(ctx.Filter, "angle_brackets_filtered") || strings.Contains(ctx.Filter, "html_encoded")) && requiresAngleBrackets {
 		gologger.Verbose().Msgf("[%s] Skipping %s context: angle brackets filtered or encoded", a.Name(), ctx.Type)
 		return false, "", nil
