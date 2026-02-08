@@ -112,7 +112,7 @@ http:
 
 The analyzer sends a unique canary payload:
 
-```
+```text
 xss_[RANDNUM]_<>'"``
 ```
 
@@ -185,7 +185,7 @@ The analyzer automatically detects these common XSS filters:
 
 When XSS is detected, the analyzer returns detailed information:
 
-```
+```text
 [xss_context] XSS vulnerability confirmed
   Context: attribute_quoted
   Location: input value attribute  
@@ -203,7 +203,7 @@ This helps security researchers:
 
 ### Package Structure
 
-```
+```text
 pkg/fuzz/analyzers/xss/
 ├── analyzer.go        # Main analyzer implementation
 ├── analyzer_test.go   # Comprehensive unit tests

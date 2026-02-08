@@ -3,6 +3,7 @@ package xss
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -176,7 +177,7 @@ func TestDetectFilters(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := analyzer.detectFilters(tt.text, tt.canary)
+			result := analyzer.detectFilters(tt.text, tt.canary, true)
 			require.Contains(t, result, tt.expected)
 		})
 	}
@@ -326,7 +327,7 @@ func (m *mockComponent) SetValue(key, value string) error {
 }
 
 func (m *mockComponent) Rebuild() (*retryablehttp.Request, error) {
-	req, _ := retryablehttp.NewRequest("GET", m.serverURL+"?q="+m.value, nil)
+	req, _ := retryablehttp.NewRequest("GET", m.serverURL+"?q="+url.QueryEscape(m.value), nil)
 	return req, nil
 }
 

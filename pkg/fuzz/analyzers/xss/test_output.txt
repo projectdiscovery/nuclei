@@ -1,0 +1,50 @@
+=== RUN   TestAnalyzerName
+--- PASS: TestAnalyzerName (0.00s)
+=== RUN   TestApplyInitialTransformation
+=== RUN   TestApplyInitialTransformation/XSS_CANARY_replacement
+=== RUN   TestApplyInitialTransformation/Multiple_placeholders
+=== RUN   TestApplyInitialTransformation/No_transformation_needed
+--- PASS: TestApplyInitialTransformation (0.00s)
+    --- PASS: TestApplyInitialTransformation/XSS_CANARY_replacement (0.00s)
+    --- PASS: TestApplyInitialTransformation/Multiple_placeholders (0.00s)
+    --- PASS: TestApplyInitialTransformation/No_transformation_needed (0.00s)
+=== RUN   TestDetectXSSContexts_HTMLTag
+--- PASS: TestDetectXSSContexts_HTMLTag (0.00s)
+=== RUN   TestDetectXSSContexts_AttributeQuoted
+--- PASS: TestDetectXSSContexts_AttributeQuoted (0.00s)
+=== RUN   TestDetectXSSContexts_EventHandler
+--- PASS: TestDetectXSSContexts_EventHandler (0.00s)
+=== RUN   TestDetectXSSContexts_URLAttribute
+--- PASS: TestDetectXSSContexts_URLAttribute (0.00s)
+=== RUN   TestDetectXSSContexts_HTMLComment
+--- PASS: TestDetectXSSContexts_HTMLComment (0.00s)
+=== RUN   TestDetectXSSContexts_StyleAttribute
+--- PASS: TestDetectXSSContexts_StyleAttribute (0.00s)
+=== RUN   TestDetectFilters
+=== RUN   TestDetectFilters/No_filters
+=== RUN   TestDetectFilters/HTML_encoded
+=== RUN   TestDetectFilters/Angle_brackets_filtered
+=== RUN   TestDetectFilters/Quotes_escaped
+--- PASS: TestDetectFilters (0.00s)
+    --- PASS: TestDetectFilters/No_filters (0.00s)
+    --- PASS: TestDetectFilters/HTML_encoded (0.00s)
+    --- PASS: TestDetectFilters/Angle_brackets_filtered (0.00s)
+    --- PASS: TestDetectFilters/Quotes_escaped (0.00s)
+=== RUN   TestAnalyze_NoReflection
+--- PASS: TestAnalyze_NoReflection (0.00s)
+=== RUN   TestAnalyze_HTMLTagContext
+[[34mINF[0m] [xss_context] Detected 1 potential XSS context(s)
+--- PASS: TestAnalyze_HTMLTagContext (0.00s)
+=== RUN   TestVerifyExploitation
+=== RUN   TestVerifyExploitation/HTML_tag_context_exploited
+=== RUN   TestVerifyExploitation/Event_handler_context_exploited
+=== RUN   TestVerifyExploitation/URL_attribute_context_exploited
+=== RUN   TestVerifyExploitation/Payload_escaped_-_not_exploited
+--- PASS: TestVerifyExploitation (0.00s)
+    --- PASS: TestVerifyExploitation/HTML_tag_context_exploited (0.00s)
+    --- PASS: TestVerifyExploitation/Event_handler_context_exploited (0.00s)
+    --- PASS: TestVerifyExploitation/URL_attribute_context_exploited (0.00s)
+    --- PASS: TestVerifyExploitation/Payload_escaped_-_not_exploited (0.00s)
+PASS
+coverage: 81.5% of statements
+ok  	github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss	0.070s

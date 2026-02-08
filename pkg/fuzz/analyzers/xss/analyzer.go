@@ -100,8 +100,8 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 	defer probeResp.Body.Close()
 	
-	// Step 2: Read and parse response body
-	bodyBytes, err := io.ReadAll(probeResp.Body)
+	// Step 2: Read and parse response body (capped at 5MB to prevent OOM)
+	bodyBytes, err := io.ReadAll(io.LimitReader(probeResp.Body, 5*1024*1024))
 	if err != nil {
 		return false, "", errors.Wrap(err, "failed to read probe response body")
 	}
@@ -152,7 +152,7 @@ func (a *Analyzer) sendProbeRequest(options *analyzers.Options) (*http.Response,
 	
 	// Replace placeholder with canary
 	probePayload := strings.ReplaceAll(gr.OriginalPayload, "[XSS_CANARY]", canary)
-	probePayload = a.ApplyInitialTransformation(probePayload, options.AnalyzerParameters)
+	probePayload = analyzers.ApplyPayloadTransformations(probePayload)
 	
 	// Set payload in request component
 	if err := gr.Component.SetValue(gr.Key, probePayload); err != nil {
@@ -206,7 +206,7 @@ func (a *Analyzer) detectXSSContexts(body, canary string) []XSSContext {
 					Type:     "html_tag",
 					Location: "text node",
 					Payload:  "<script>alert(1)</script>",
-					Filter:   a.detectFilters(text, canary),
+					Filter:   a.detectFilters(text, canary, true),
 				})
 			}
 			
@@ -232,7 +232,7 @@ func (a *Analyzer) detectXSSContexts(body, canary string) []XSSContext {
 					Type:     "html_comment",
 					Location: "HTML comment",
 					Payload:  "--><script>alert(1)</script><!--",
-					Filter:   a.detectFilters(comment, canary),
+					Filter:   a.detectFilters(comment, canary, true),
 				})
 			}
 		}
@@ -250,7 +250,7 @@ func (a *Analyzer) classifyAttributeContext(tagName, attrName, attrValue, canary
 			Type:     "event_handler",
 			Location: fmt.Sprintf("%s %s attribute", tagName, attrName),
 			Payload:  "';alert(1)//",
-			Filter:   a.detectFilters(attrValue, canary),
+			Filter:   a.detectFilters(attrValue, canary, false),
 		}
 	}
 	
@@ -261,17 +261,17 @@ func (a *Analyzer) classifyAttributeContext(tagName, attrName, attrValue, canary
 			Type:     "url_attribute",
 			Location: fmt.Sprintf("%s %s attribute", tagName, attrName),
 			Payload:  "javascript:alert(1)",
-			Filter:   a.detectFilters(attrValue, canary),
+			Filter:   a.detectFilters(attrValue, canary, false),
 		}
 	}
 	
-	// Style attribute
+	// Style attribute (modern CSS-based XSS)
 	if attrName == "style" {
 		return XSSContext{
 			Type:     "style_attribute",
 			Location: fmt.Sprintf("%s style attribute", tagName),
-			Payload:  "expression(alert(1))",
-			Filter:   a.detectFilters(attrValue, canary),
+			Payload:  `background-image:url("javascript:alert(1)")`,
+			Filter:   a.detectFilters(attrValue, canary, false),
 		}
 	}
 	
@@ -280,12 +280,13 @@ func (a *Analyzer) classifyAttributeContext(tagName, attrName, attrValue, canary
 		Type:     "attribute_quoted",
 		Location: fmt.Sprintf("%s %s attribute", tagName, attrName),
 		Payload:  `"><script>alert(1)</script><div x="`,
-		Filter:   a.detectFilters(attrValue, canary),
+		Filter:   a.detectFilters(attrValue, canary, false),
 	}
 }
 
 // detectFilters checks which XSS-critical characters are filtered/encoded
-func (a *Analyzer) detectFilters(text, canary string) string {
+// isRawHTML: true for raw HTML text, false for tokenizer-decoded attribute values
+func (a *Analyzer) detectFilters(text, canary string, isRawHTML bool) string {
 	var filters []string
 	
 	// Check if angle brackets are present
@@ -293,8 +294,8 @@ func (a *Analyzer) detectFilters(text, canary string) string {
 		filters = append(filters, "angle_brackets_filtered")
 	}
 	
-	// Check for HTML entity encoding
-	if strings.Contains(text, "&lt;") || strings.Contains(text, "&gt;") {
+	// Check for HTML entity encoding (only in raw HTML, not decoded attributes)
+	if isRawHTML && (strings.Contains(text, "&lt;") || strings.Contains(text, "&gt;")) {
 		filters = append(filters, "html_encoded")
 	}
 	
@@ -313,8 +314,10 @@ func (a *Analyzer) detectFilters(text, canary string) string {
 // exploitContext attempts to exploit a detected XSS context
 func (a *Analyzer) exploitContext(options *analyzers.Options, ctx XSSContext) (bool, string, error) {
 	// Skip if critical filters detected
-	if strings.Contains(ctx.Filter, "angle_brackets_filtered") && ctx.Type == "html_tag" {
-		gologger.Verbose().Msgf("[%s] Skipping %s context: angle brackets filtered", a.Name(), ctx.Type)
+	// Contexts that require angle brackets: html_tag, attribute_quoted, html_comment
+	requiresAngleBrackets := ctx.Type == "html_tag" || ctx.Type == "attribute_quoted" || ctx.Type == "html_comment"
+	if (strings.Contains(ctx.Filter, "angle_brackets_filtered") || strings.Contains(ctx.Filter, "html_encoded")) && requiresAngleBrackets {
+		gologger.Verbose().Msgf("[%s] Skipping %s context: angle brackets filtered or encoded", a.Name(), ctx.Type)
 		return false, "", nil
 	}
 	
@@ -343,8 +346,8 @@ func (a *Analyzer) exploitContext(options *analyzers.Options, ctx XSSContext) (b
 	}
 	defer resp.Body.Close()
 	
-	// Read response
-	bodyBytes, err := io.ReadAll(resp.Body)
+	// Read response (capped at 5MB to prevent OOM)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
 		return false, "", errors.Wrap(err, "failed to read exploit response")
 	}
@@ -377,8 +380,8 @@ func (a *Analyzer) verifyExploitation(body string, ctx XSSContext) bool {
 		return strings.Contains(body, "<script>alert(1)</script>")
 		
 	case "event_handler":
-		return strings.Contains(body, "alert(1)") && 
-		       (strings.Contains(body, "onclick=") || strings.Contains(body, "onerror="))
+		// Check for alert(1) in any event handler attribute (on*)
+		return strings.Contains(body, "alert(1)") && strings.Contains(body, " on")
 		
 	case "url_attribute":
 		return strings.Contains(body, "javascript:alert(1)")
@@ -388,6 +391,11 @@ func (a *Analyzer) verifyExploitation(body string, ctx XSSContext) bool {
 		
 	case "html_comment":
 		return strings.Contains(body, "--><script>alert(1)</script><!--")
+		
+	case "style_attribute":
+		// Check for unescaped background-image URL or style injection
+		return strings.Contains(body, `background-image:url("javascript:alert(1)")`) ||
+		       strings.Contains(body, "javascript:alert(1)")
 		
 	default:
 		// Generic check for unescaped payload
