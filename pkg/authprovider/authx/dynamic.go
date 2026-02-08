@@ -3,6 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -33,6 +34,8 @@ type Dynamic struct {
 	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
 	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
 	error         error                  `json:"-" yaml:"-"` // error if any
+	fetchMu       sync.Mutex             `json:"-" yaml:"-"`
+	fetchCond     *sync.Cond             `json:"-" yaml:"-"`
 }
 
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
@@ -72,6 +75,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 func (d *Dynamic) Validate() error {
 	d.fetched = &atomic.Bool{}
 	d.fetching = &atomic.Bool{}
+	d.initFetchSync()
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -92,6 +96,12 @@ func (d *Dynamic) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (d *Dynamic) initFetchSync() {
+	if d.fetchCond == nil {
+		d.fetchCond = sync.NewCond(&d.fetchMu)
+	}
 }
 
 // SetLazyFetchCallback sets the lazy fetch callback for the dynamic secret
@@ -208,22 +218,35 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
 func (d *Dynamic) Fetch(isFatal bool) error {
+	d.initFetchSync()
 	if d.fetched.Load() {
 		return d.error
 	}
 
-	// Try to set fetching flag atomically
-	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
+	d.fetchMu.Lock()
+	if d.fetched.Load() {
+		d.fetchMu.Unlock()
 		return d.error
 	}
+	if d.fetching.Load() {
+		for d.fetching.Load() && !d.fetched.Load() {
+			d.fetchCond.Wait()
+		}
+		d.fetchMu.Unlock()
+		return d.error
+	}
+	d.fetching.Store(true)
+	d.fetchMu.Unlock()
 
 	// We're the only one fetching, call the callback
 	d.error = d.fetchCallback(d)
 
-	// Mark as fetched and clear fetching flag
+	// Mark as fetched and clear fetching flag, then wake any waiters
+	d.fetchMu.Lock()
 	d.fetched.Store(true)
 	d.fetching.Store(false)
+	d.fetchCond.Broadcast()
+	d.fetchMu.Unlock()
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)

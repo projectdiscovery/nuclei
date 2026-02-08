@@ -1,0 +1,4 @@
+=== RUN   TestDynamicFetchWaitsForInFlight
+--- PASS: TestDynamicFetchWaitsForInFlight (0.05s)
+PASS
+ok  	github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx	3.560s

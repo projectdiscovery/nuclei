@@ -2,6 +2,7 @@ package authx
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -122,4 +123,46 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
 	})
+}
+
+func TestDynamicFetchWaitsForInFlight(t *testing.T) {
+	d := &Dynamic{
+		TemplatePath: "test-template.yaml",
+		Variables: []KV{
+			{Key: "username", Value: "testuser"},
+		},
+	}
+	require.NoError(t, d.Validate())
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	d.SetLazyFetchCallback(func(d *Dynamic) error {
+		close(started)
+		<-release
+		d.Extracted = map[string]interface{}{"token": "abc123"}
+		return nil
+	})
+
+	done1 := make(chan error, 1)
+	go func() {
+		done1 <- d.Fetch(false)
+	}()
+
+	<-started
+
+	done2 := make(chan error, 1)
+	go func() {
+		done2 <- d.Fetch(false)
+	}()
+
+	select {
+	case err := <-done2:
+		require.NoError(t, err)
+		t.Fatalf("expected second fetch to wait for in-flight fetch")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(release)
+	require.NoError(t, <-done1)
+	require.NoError(t, <-done2)
 }
