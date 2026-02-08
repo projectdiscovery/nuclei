@@ -1,0 +1,38 @@
+id: basic-xss-fuzzing-example
+
+info:
+  name: XSS Context Analyzer - Basic Example
+  author: projectdiscovery
+  severity: high
+  description: |
+    Demonstrates XSS Context Analyzer usage for intelligent XSS detection.
+    
+    The analyzer automatically:
+    1. Detects HTML context where input is reflected
+    2. Selects optimal payload for that context  
+    3. Verifies successful exploitation
+    
+    This reduces false positives and HTTP requests compared to blind fuzzing.
+  tags: xss,fuzzing,context-analysis
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?search=[XSS_CANARY]&sort=[XSS_CANARY]"
+
+    fuzzing:
+      - part: query
+        type: replace
+        mode: multiple
+        fuzz:
+          search: "[XSS_CANARY]"
+          sort: "[XSS_CANARY]"
+
+    analyzers:
+      - name: xss_context
+
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "http"
