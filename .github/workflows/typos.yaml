@@ -1,0 +1,25 @@
+name: 🔤 Typo Check
+
+on:
+  pull_request:
+  push:
+    branches: ["dev", "main"]
+  workflow_dispatch:
+
+jobs:
+  typos:
+    name: "Check for typos"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Check spelling with typos
+        uses: crate-ci/typos@master
+        with:
+          files: .
+          
+      - name: Post typos check results
+        if: failure()
+        run: |
+          echo "::error::Typos found! Please fix them or add false positives to _typos.toml"
+          exit 1

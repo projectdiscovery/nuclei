@@ -1,0 +1,28 @@
+[files]
+extend-exclude = [
+    "*.log",
+    "*.json",
+    "*.yml",
+    "*.yaml",
+    "go.sum",
+    "testdata/*",
+    "vendor/*",
+]
+
+[default]
+extend-ignore-re = [
+    # GitHub Actions variables
+    "\\$\\{\\{.*\\}\\}",
+    # URLs and domains
+    "https?://[^\\s]+",
+    # Hex strings and hashes
+    "[0-9a-fA-F]{8,}",
+]
+
+[default.extend-words]
+# Common security/tech terms that might be flagged
+ba = "ba"
+ect = "ect"
+nd = "nd"
+te = "te"
+ue = "ue"
