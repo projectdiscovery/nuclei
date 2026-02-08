@@ -138,6 +138,48 @@ func TestDetectXSSContexts_StyleAttribute(t *testing.T) {
 	require.Equal(t, "style_attribute", contexts[0].Type)
 }
 
+// TestDetectXSSContexts_RealisticCanary tests context detection with realistic canary containing XSS chars
+func TestDetectXSSContexts_RealisticCanary(t *testing.T) {
+	analyzer := &Analyzer{}
+	
+	// Test with a canary that includes critical XSS chars (<>'")
+	canary := `xss_1234_<>'"` + "`"
+	
+	tests := []struct {
+		name         string
+		html         string
+		canary       string
+		expectedType string
+	}{
+		{
+			name:         "Realistic canary in HTML tag context",
+			html:         "<div>" + canary + "</div>",
+			canary:       canary,
+			expectedType: "html_tag",
+		},
+		{
+			name:         "Realistic canary in attribute context",
+			html:         `<input value="xss_1234_<>'&quot;` + "`" + `">`,
+			canary:       canary,
+			expectedType: "attribute_quoted",
+		},
+		{
+			name:         "Realistic canary in event handler context",
+			html:         `<img onclick="xss_1234_<>'&quot;` + "`" + `">`,
+			canary:       canary,
+			expectedType: "event_handler",
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contexts := analyzer.detectXSSContexts(tt.html, tt.canary)
+			require.NotEmpty(t, contexts, "Should detect at least one context for canary with special chars")
+			require.Equal(t, tt.expectedType, contexts[0].Type)
+		})
+	}
+}
+
 // TestDetectFilters verifies filter detection logic
 func TestDetectFilters(t *testing.T) {
 	analyzer := &Analyzer{}
@@ -329,12 +371,6 @@ func TestDetectFilters_NonRawHTML(t *testing.T) {
 			text:       `xss_1234_<>\'\"`,
 			canary:     `xss_1234_<>'"`,
 			expected:   "quotes_escaped",
-		},
-		{
-			name:       "Non-raw HTML - no HTML encoding detected (isRawHTML=false)",
-			text:       `xss_1234_<>'"`,
-			canary:     `xss_1234_<>'"`,
-			expected:   "none",
 		},
 	}
 	

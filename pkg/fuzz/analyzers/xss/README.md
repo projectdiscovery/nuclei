@@ -112,9 +112,9 @@ http:
 
 The analyzer sends a unique canary payload:
 
-```text
+````text
 xss_[RANDNUM]_<>'"``
-```
+````
 
 Example request:
 ```http

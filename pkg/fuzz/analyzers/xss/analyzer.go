@@ -83,6 +83,10 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 // 5. Send exploit request with context-specific payload
 // 6. Verify successful XSS exploitation
 //
+// Note: Component state is modified during analysis and should not be assumed
+// to retain its original value after this function returns. Callers should
+// clone the component if preservation of the original state is required.
+//
 // Returns:
 //   - bool: true if XSS vulnerability confirmed
 //   - string: detailed reason explaining detection (context, payload, location)
@@ -169,6 +173,10 @@ func (a *Analyzer) sendProbeRequest(options *analyzers.Options) (*http.Response,
 	
 	resp, err := options.HttpClient.Do(rebuilt)
 	if err != nil {
+		if resp != nil {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
 		return nil, "", errors.Wrap(err, "failed to execute probe request")
 	}
 	
@@ -196,6 +204,9 @@ func (a *Analyzer) detectXSSContexts(body, canary string) []XSSContext {
 		switch tokenType {
 		case html.ErrorToken:
 			// End of document or parse error
+			if err := tokenizer.Err(); err != nil && err != io.EOF {
+				gologger.Verbose().Msgf("[xss_context] HTML tokenizer error: %v", err)
+			}
 			return contexts
 			
 		case html.TextToken:
@@ -245,7 +256,9 @@ func (a *Analyzer) classifyAttributeContext(tagName, attrName, attrValue, canary
 	attrName = strings.ToLower(attrName)
 	
 	// Event handler attributes (onclick, onerror, etc.)
-	// Payload assumes single-quote JS string context (common pattern in event handlers)
+	// Payload assumes single-quote JS string context (common pattern in event handlers).
+	// Known limitation: does not handle all JS context variants (double-quotes, template literals).
+	// Future enhancement: detect exact JS context and adapt payload accordingly.
 	if strings.HasPrefix(attrName, "on") {
 		return XSSContext{
 			Type:     "event_handler",
@@ -299,6 +312,8 @@ func (a *Analyzer) detectFilters(text, canary string, isRawHTML bool) string {
 	// When isRawHTML=false, the tokenizer has already decoded entities, so this check
 	// may under-report encoding. This is acceptable since verifyExploitation will reject
 	// false positives by checking the final response for unescaped payloads.
+	// Known limitation: attribute filter detection is conservative and may miss some encoding.
+	// Future enhancement: inspect raw HTML for attribute values to improve accuracy.
 	if isRawHTML && (strings.Contains(text, "&lt;") || strings.Contains(text, "&gt;")) {
 		filters = append(filters, "html_encoded")
 	}
@@ -346,6 +361,10 @@ func (a *Analyzer) exploitContext(options *analyzers.Options, ctx XSSContext) (b
 	
 	resp, err := options.HttpClient.Do(rebuilt)
 	if err != nil {
+		if resp != nil {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
 		return false, "", errors.Wrap(err, "failed to execute exploit request")
 	}
 	defer resp.Body.Close()
@@ -377,6 +396,8 @@ func (a *Analyzer) exploitContext(options *analyzers.Options, ctx XSSContext) (b
 }
 
 // verifyExploitation checks if the exploit payload was successfully injected
+// Known limitation: uses exact string matching which may be fragile with HTML minification
+// or whitespace normalization. Future enhancement: use HTML tokenizer for structural verification.
 func (a *Analyzer) verifyExploitation(body string, ctx XSSContext) bool {
 	// Look for unencoded script tags or event handlers
 	switch ctx.Type {
