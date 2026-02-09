@@ -33,7 +33,8 @@ func (c ContextType) String() string {
 }
 
 var (
-	onPrefix = []byte("on")
+	onPrefix  = []byte("on")
+	scriptTag = []byte("script")
 )
 
 func DetectContext(body string, marker string) ContextType {
@@ -42,7 +43,6 @@ func DetectContext(body string, marker string) ContextType {
 	}
 
 	m := []byte(marker)
-	st := []byte("script")
 	z := html.NewTokenizer(strings.NewReader(body))
 
 	var (
@@ -65,7 +65,7 @@ func DetectContext(body string, marker string) ContextType {
 
 		case html.StartTagToken, html.SelfClosingTagToken:
 			tn, hasAttr := z.TagName()
-			if tt == html.StartTagToken && len(tn) == 6 && bytes.EqualFold(tn, st) {
+			if tt == html.StartTagToken && len(tn) == 6 && bytes.EqualFold(tn, scriptTag) {
 				inScript = true
 			}
 			if hasAttr {
@@ -92,7 +92,7 @@ func DetectContext(body string, marker string) ContextType {
 
 		case html.EndTagToken:
 			tn, _ := z.TagName()
-			if len(tn) == 6 && bytes.EqualFold(tn, st) {
+			if len(tn) == 6 && bytes.EqualFold(tn, scriptTag) {
 				inScript = false
 			}
 
