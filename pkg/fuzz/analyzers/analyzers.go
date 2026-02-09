@@ -85,6 +85,7 @@ func ApplyPayloadTransformations(value string) string {
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+// RandStringBytesMask returns a random alphabetic string of length n.
 func RandStringBytesMask(n int) string {
 	b := make([]byte, n)
 	for i := range b {

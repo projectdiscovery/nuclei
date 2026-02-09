@@ -7,6 +7,7 @@ import (
 	"golang.org/x/net/html"
 )
 
+// ContextType represents the HTML reflection context of a marker.
 type ContextType int
 
 const (
@@ -37,6 +38,7 @@ var (
 	scriptTag = []byte("script")
 )
 
+// DetectContext returns the highest-priority HTML context where marker appears.
 func DetectContext(body string, marker string) ContextType {
 	if !strings.Contains(body, marker) {
 		return ContextNone
@@ -105,10 +107,6 @@ func DetectContext(body string, marker string) ContextType {
 					best = ContextHTML
 				}
 			}
-		}
-
-		if best == ContextScript {
-			return best
 		}
 	}
 }

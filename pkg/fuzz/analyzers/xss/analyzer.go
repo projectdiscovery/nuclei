@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
+// Analyzer detects the HTML rendering context of reflected values.
 type Analyzer struct{}
 
 var _ analyzers.Analyzer = &Analyzer{}
@@ -15,10 +16,12 @@ func init() {
 	analyzers.RegisterAnalyzer("xss_context", &Analyzer{})
 }
 
+// Name returns the analyzer identifier.
 func (a *Analyzer) Name() string {
 	return "xss_context"
 }
 
+// ApplyInitialTransformation replaces [XSS_MARKER] with a unique canary and persists it in params.
 func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
 	data = analyzers.ApplyPayloadTransformations(data)
 	if strings.Contains(data, "[XSS_MARKER]") {
@@ -29,6 +32,7 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 	return data
 }
 
+// Analyze classifies the HTML context of a reflected canary in the response body.
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if options.ResponseBody == "" {
 		return false, "", nil
