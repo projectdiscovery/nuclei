@@ -1,7 +1,10 @@
 package authx
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -122,4 +125,145 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
 	})
+}
+
+// TestConcurrentFetch tests that concurrent calls to Fetch properly wait for
+// the first fetch to complete instead of returning immediately with empty auth credentials.
+// This is a regression test for https://github.com/projectdiscovery/nuclei/issues/6592
+func TestConcurrentFetch(t *testing.T) {
+	d := &Dynamic{
+		Secret: &Secret{
+			Type:    "Cookie",
+			Domains: []string{"example.com"},
+			Cookies: []Cookie{{Key: "session", Value: "{{token}}"}},
+		},
+		TemplatePath: "test.yaml",
+		Variables:    []KV{{Key: "user", Value: "test"}},
+	}
+
+	// Initialize the dynamic secret (normally done by Validate)
+	require.NoError(t, d.Validate())
+
+	var fetchCount atomic.Int32
+	fetchStarted := make(chan struct{})
+	fetchComplete := make(chan struct{})
+
+	// Set up a callback that simulates a slow fetch operation
+	d.SetLazyFetchCallback(func(d *Dynamic) error {
+		fetchCount.Add(1)
+		close(fetchStarted) // Signal that fetch has started
+		<-fetchComplete     // Wait for signal to complete the fetch
+		d.Extracted = map[string]interface{}{
+			"token": "extracted-token-value",
+		}
+		return nil
+	})
+
+	const numGoroutines = 10
+	var wg sync.WaitGroup
+	results := make([]error, numGoroutines)
+	allStarted := make(chan struct{})
+
+	// Launch multiple goroutines that will all try to fetch concurrently
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			<-allStarted // Wait for all goroutines to be ready
+			results[idx] = d.Fetch(false)
+		}(i)
+	}
+
+	// Start all goroutines at once
+	close(allStarted)
+
+	// Wait for the fetch to start
+	select {
+	case <-fetchStarted:
+	case <-time.After(5 * time.Second):
+		t.Fatal("fetch did not start within timeout")
+	}
+
+	// Give goroutines time to attempt concurrent fetch
+	time.Sleep(100 * time.Millisecond)
+
+	// Complete the fetch
+	close(fetchComplete)
+
+	// Wait for all goroutines to finish
+	wg.Wait()
+
+	// Verify the callback was only called once
+	require.Equal(t, int32(1), fetchCount.Load(), "fetch callback should only be called once")
+
+	// Verify all goroutines received no error
+	for i, err := range results {
+		require.NoError(t, err, "goroutine %d should have no error", i)
+	}
+
+	// Verify the extracted value is available
+	require.Equal(t, "extracted-token-value", d.Extracted["token"])
+
+	// Verify subsequent calls don't trigger another fetch
+	err := d.Fetch(false)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), fetchCount.Load(), "fetch callback should still only be called once after subsequent calls")
+}
+
+// TestConcurrentFetchWithError tests that concurrent calls properly handle errors
+func TestConcurrentFetchWithError(t *testing.T) {
+	d := &Dynamic{
+		TemplatePath: "test.yaml",
+		Variables:    []KV{{Key: "user", Value: "test"}},
+	}
+
+	require.NoError(t, d.Validate())
+
+	var fetchCount atomic.Int32
+	fetchStarted := make(chan struct{})
+	fetchComplete := make(chan struct{})
+
+	// Set up a callback that simulates a slow fetch operation that returns an error
+	d.SetLazyFetchCallback(func(d *Dynamic) error {
+		fetchCount.Add(1)
+		close(fetchStarted)
+		<-fetchComplete
+		// Return error - no extracted values
+		return nil // callback wrapper will detect no extracted values and return error
+	})
+
+	const numGoroutines = 5
+	var wg sync.WaitGroup
+	results := make([]error, numGoroutines)
+	allStarted := make(chan struct{})
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			<-allStarted
+			results[idx] = d.Fetch(false)
+		}(i)
+	}
+
+	close(allStarted)
+
+	select {
+	case <-fetchStarted:
+	case <-time.After(5 * time.Second):
+		t.Fatal("fetch did not start within timeout")
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	close(fetchComplete)
+	wg.Wait()
+
+	// Verify the callback was only called once
+	require.Equal(t, int32(1), fetchCount.Load())
+
+	// Verify all goroutines received the same error
+	for i, err := range results {
+		require.Error(t, err, "goroutine %d should have an error", i)
+		require.Contains(t, err.Error(), "no extracted values", "error message should indicate missing extracted values")
+	}
 }
