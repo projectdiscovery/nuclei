@@ -224,7 +224,7 @@ type DASTServerInfo struct {
 	NucleiVersion         string `json:"nuclei_version"`
 	NucleiTemplateVersion string `json:"nuclei_template_version"`
 	NucleiDastServerAPI   string `json:"nuclei_dast_server_api"`
-	ServerAuthEnabled     bool   `json:"sever_auth_enabled"`
+	ServerAuthEnabled     bool   `json:"server_auth_enabled"`
 }
 
 type DASTScanStatistics struct {

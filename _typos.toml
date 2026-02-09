@@ -38,13 +38,13 @@ Mis = "Mis"
 SELEC = "SELEC"  # Part of "SELECTs" in SQL error messages
 
 # Base64/certificate data fragments and test data values
+# These appear in PEM-encoded certificates and test fixtures - typos flags them
+# as potential misspellings but they are legitimate base64 alphabet sequences
 alo = "alo"    # XML test data (Croatian word "dijete>alo")
-Iif = "Iif"    # base64 encoded test data
-BA = "BA"
-UE = "UE"
-Iy = "Iy"
-Iz = "Iz"      # base64 certificate data fragment
-Fo = "Fo"      # test payload "inFo"
-nd = "nd"
+Iif = "Iif"    # Base64 encoded test data
+BA = "BA"      # Base64 sequence in PEM certificates (cmd/integration-test/generic.go:36)
+Iy = "Iy"      # Base64 sequence in PEM certificates (pkg/testutils/integration.go:274)
+Iz = "Iz"      # Base64 sequence in PEM certificates
+inFo = "inFo"  # Test payload in pkg/model/types/severity/severity_test.go (case-sensitive severity test)
 # Test data content
 algoritmos = "algoritmos"  # Spanish word in fuzz playground test data
