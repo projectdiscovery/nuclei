@@ -47,14 +47,21 @@ import (
 )
 
 var (
-	cfgFile         string
-	templateProfile string
-	memProfile      string // optional profile file path
-	options         = &types.Options{}
+	cfgFile                string
+	templateProfile        string
+	memProfile             string // optional profile file path
+	options                = &types.Options{}
+	inlineSecretsTempFiles []string
 )
 
 func main() {
 	options.Logger = gologger.DefaultLogger
+
+	defer func() {
+		for _, f := range inlineSecretsTempFiles {
+			os.Remove(f)
+		}
+	}()
 
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
@@ -257,6 +264,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringVarP(&options.InlineTargetsList, "targets-inline", "", "", "inline multiline target list (for use in template profiles)"),
 		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
@@ -659,6 +667,39 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
+
+		// Process inline target list from profile.
+		// Supports both the dedicated targets-inline key and multiline
+		// content in the list key (which normally holds a file path).
+		if options.InlineTargetsList != "" {
+			inlineTargets := strings.Split(strings.TrimSpace(options.InlineTargetsList), "\n")
+			for _, target := range inlineTargets {
+				target = strings.TrimSpace(target)
+				if target != "" && !strings.HasPrefix(target, "#") {
+					options.Targets = append(options.Targets, target)
+				}
+			}
+		}
+		if strings.Contains(options.TargetsFilePath, "\n") {
+			// list key has multiline content, treat as inline targets
+			inlineTargets := strings.Split(strings.TrimSpace(options.TargetsFilePath), "\n")
+			for _, target := range inlineTargets {
+				target = strings.TrimSpace(target)
+				if target != "" && !strings.HasPrefix(target, "#") {
+					options.Targets = append(options.Targets, target)
+				}
+			}
+			options.TargetsFilePath = ""
+		}
+
+		// Process inline secrets from profile YAML
+		tempSecretsFile, err := processInlineSecretsFromProfile(templateProfile, options)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not process inline secrets: %s\n", err)
+		}
+		if tempSecretsFile != "" {
+			inlineSecretsTempFiles = append(inlineSecretsTempFiles, tempSecretsFile)
+		}
 	}
 
 	if len(options.SecretsFile) > 0 {
@@ -805,4 +846,52 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
+}
+
+// profileSecrets is a helper struct to extract secrets section from a template profile YAML
+type profileSecrets struct {
+	Secrets interface{} `yaml:"secrets"`
+}
+
+// processInlineSecretsFromProfile parses the profile YAML file for inline secrets
+// and creates a temporary secrets file compatible with nuclei's auth provider.
+// Returns the path to the temp file or empty string if no secrets found.
+func processInlineSecretsFromProfile(profilePath string, options *types.Options) (string, error) {
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		return "", fmt.Errorf("could not read profile file: %w", err)
+	}
+
+	var profile profileSecrets
+	if err := yaml.Unmarshal(data, &profile); err != nil {
+		return "", fmt.Errorf("could not parse profile YAML: %w", err)
+	}
+
+	if profile.Secrets == nil {
+		return "", nil
+	}
+
+	secretsData, err := yaml.Marshal(profile.Secrets)
+	if err != nil {
+		return "", fmt.Errorf("could not marshal inline secrets: %w", err)
+	}
+
+	tempDir := filepath.Join(os.TempDir(), "nuclei-secrets")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", fmt.Errorf("could not create temp directory: %w", err)
+	}
+
+	tempFile, err := os.CreateTemp(tempDir, "inline-secrets-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("could not create temp secrets file: %w", err)
+	}
+	defer tempFile.Close()
+
+	if _, err := tempFile.Write(secretsData); err != nil {
+		os.Remove(tempFile.Name())
+		return "", fmt.Errorf("could not write to temp secrets file: %w", err)
+	}
+
+	options.SecretsFile = append(options.SecretsFile, tempFile.Name())
+	return tempFile.Name(), nil
 }

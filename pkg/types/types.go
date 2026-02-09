@@ -452,6 +452,8 @@ type Options struct {
 	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
+	// InlineTargetsList holds inline multiline target list from a template profile
+	InlineTargetsList string `yaml:"targets-inline,omitempty"`
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
@@ -678,6 +680,7 @@ func (options *Options) Copy() *Options {
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
+		InlineTargetsList:              options.InlineTargetsList,
 		ListTemplateProfiles:           options.ListTemplateProfiles,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,
