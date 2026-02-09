@@ -19,11 +19,14 @@ type Options struct {
 	File string `yaml:"file"`
 }
 
+const pageBreakThreshold = 250
+
 // Exporter is an exporter for PDF file
 type Exporter struct {
 	options *Options
 	mutex   *sync.Mutex
 	data    []*output.ResultEvent
+	closed  bool
 }
 
 // New creates a new PDF exporter
@@ -48,6 +51,11 @@ func New(options *Options) (*Exporter, error) {
 func (e *Exporter) Export(event *output.ResultEvent) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
+
+	if e.closed {
+		return fmt.Errorf("exporter is closed")
+	}
+
 	e.data = append(e.data, event)
 	return nil
 }
@@ -56,6 +64,11 @@ func (e *Exporter) Export(event *output.ResultEvent) error {
 func (e *Exporter) Close() error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
+
+	if e.closed {
+		return nil
+	}
+	e.closed = true
 
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(10, 15, 10)
@@ -135,9 +148,9 @@ func (e *Exporter) Close() error {
 	})
 
 	for i, event := range e.data {
-		// Avoid page break inside a finding block if possible. Estimate height?
+		// Avoid page break inside a finding block if possible.
 		// Simple approach: Check Y position.
-		if pdf.GetY() > 250 {
+		if pdf.GetY() > pageBreakThreshold {
 			pdf.AddPage()
 		}
 
@@ -146,8 +159,8 @@ func (e *Exporter) Close() error {
 		r, g, b := getSeverityColor(sev)
 		pdf.SetFillColor(r, g, b)
 
-		// Use dark text on light backgrounds (low/yellow)
-		if sev == "low" {
+		// Use dark text on light backgrounds (low/yellow and medium/orange)
+		if sev == "low" || sev == "medium" {
 			pdf.SetTextColor(0, 0, 0)
 		} else {
 			pdf.SetTextColor(255, 255, 255)

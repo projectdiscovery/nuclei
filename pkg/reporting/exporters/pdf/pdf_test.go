@@ -115,3 +115,34 @@ func TestExportWithVariousSeverities(t *testing.T) {
 	require.NoError(t, err)
 	require.FileExists(t, outputFile)
 }
+
+func TestExportClosed(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "nuclei-pdf-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	outputFile := filepath.Join(tempDir, "closed_test.pdf")
+	options := &Options{File: outputFile}
+	exporter, err := New(options)
+	require.NoError(t, err)
+
+	// Close the exporter
+	err = exporter.Close()
+	require.NoError(t, err)
+
+	// Verify idempotency of Close
+	err = exporter.Close()
+	require.NoError(t, err)
+
+	// Verify Export after Close fails
+	event := &output.ResultEvent{
+		TemplateID: "test",
+		Host:       "example.com",
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.High},
+		},
+	}
+	err = exporter.Export(event)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "exporter is closed")
+}
