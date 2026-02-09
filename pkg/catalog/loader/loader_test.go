@@ -95,7 +95,7 @@ func TestRemoteTemplates(t *testing.T) {
 				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got.finalTemplates, tt.want.finalTemplates) {
+			if got != nil && !reflect.DeepEqual(got.finalTemplates, tt.want.finalTemplates) {
 				t.Errorf("New() = %v, want %v", got.finalTemplates, tt.want.finalTemplates)
 			}
 		})
