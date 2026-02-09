@@ -68,6 +68,9 @@ func DetectContext(body string, marker string) ContextType {
 
 		case html.StartTagToken, html.SelfClosingTagToken:
 			tn, hasAttr := z.TagName()
+			if bytes.Contains(tn, m) {
+				return ContextScript
+			}
 			if tt == html.StartTagToken && len(tn) == 6 && bytes.EqualFold(tn, scriptTag) {
 				inScript = true
 			}

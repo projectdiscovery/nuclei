@@ -185,6 +185,12 @@ func TestDetectContext(t *testing.T) {
 			marker:   "nuclei12345",
 			expected: ContextHTML,
 		},
+		{
+			name:     "marker in tag name",
+			body:     `<nuclei12345>content</nuclei12345>`,
+			marker:   "nuclei12345",
+			expected: ContextScript,
+		},
 	}
 
 	for _, tt := range tests {
