@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// TestDetectContext validates context classification across all context types.
 func TestDetectContext(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -174,10 +175,10 @@ func TestDetectContext(t *testing.T) {
 			expected: ContextScript,
 		},
 		{
-			name:     "marker in style tag body is html context",
+			name:     "marker in style tag body is attribute context",
 			body:     `<style>.nuclei12345 { color: red; }</style>`,
 			marker:   "nuclei12345",
-			expected: ContextHTML,
+			expected: ContextAttribute,
 		},
 		{
 			name:     "self-closing script tag does not affect subsequent text",
@@ -189,6 +190,18 @@ func TestDetectContext(t *testing.T) {
 			name:     "marker in tag name",
 			body:     `<nuclei12345>content</nuclei12345>`,
 			marker:   "nuclei12345",
+			expected: ContextScript,
+		},
+		{
+			name:     "marker in event handler attribute name",
+			body:     `<div nuclei12345="value">text</div>`,
+			marker:   "nuclei12345",
+			expected: ContextAttribute,
+		},
+		{
+			name:     "marker forms onclick attribute name",
+			body:     `<div onclick="alert(1)">text</div>`,
+			marker:   "onclick",
 			expected: ContextScript,
 		},
 	}
@@ -204,6 +217,7 @@ func TestDetectContext(t *testing.T) {
 	}
 }
 
+// TestIsEventHandler validates event handler attribute recognition.
 func TestIsEventHandler(t *testing.T) {
 	tests := []struct {
 		attr     string
@@ -236,6 +250,7 @@ func TestIsEventHandler(t *testing.T) {
 	}
 }
 
+// TestContextTypeString validates string representation of context types.
 func TestContextTypeString(t *testing.T) {
 	tests := []struct {
 		ctx      ContextType
@@ -257,6 +272,7 @@ func TestContextTypeString(t *testing.T) {
 	}
 }
 
+// BenchmarkDetectContext_NoReflection measures performance when marker is absent.
 func BenchmarkDetectContext_NoReflection(b *testing.B) {
 	body := `<html><head><title>Test</title></head><body><div class="container"><p>Hello world</p></div></body></html>`
 	marker := "nucleiXYZ12345"
@@ -267,6 +283,7 @@ func BenchmarkDetectContext_NoReflection(b *testing.B) {
 	}
 }
 
+// BenchmarkDetectContext_HTMLContext measures performance for HTML text context.
 func BenchmarkDetectContext_HTMLContext(b *testing.B) {
 	body := `<html><body><div>nucleiXYZ12345</div></body></html>`
 	marker := "nucleiXYZ12345"
@@ -277,6 +294,7 @@ func BenchmarkDetectContext_HTMLContext(b *testing.B) {
 	}
 }
 
+// BenchmarkDetectContext_ScriptContext measures performance for script context.
 func BenchmarkDetectContext_ScriptContext(b *testing.B) {
 	body := `<html><body><script>var x = "nucleiXYZ12345";</script></body></html>`
 	marker := "nucleiXYZ12345"
@@ -287,6 +305,7 @@ func BenchmarkDetectContext_ScriptContext(b *testing.B) {
 	}
 }
 
+// BenchmarkDetectContext_AttributeContext measures performance for attribute context.
 func BenchmarkDetectContext_AttributeContext(b *testing.B) {
 	body := `<html><body><input type="text" value="nucleiXYZ12345"></body></html>`
 	marker := "nucleiXYZ12345"
@@ -297,6 +316,7 @@ func BenchmarkDetectContext_AttributeContext(b *testing.B) {
 	}
 }
 
+// BenchmarkDetectContext_LargePage measures performance on a large HTML document.
 func BenchmarkDetectContext_LargePage(b *testing.B) {
 	var page string
 	for i := 0; i < 100; i++ {

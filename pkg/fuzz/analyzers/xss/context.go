@@ -10,6 +10,7 @@ import (
 // ContextType represents the HTML reflection context of a marker.
 type ContextType int
 
+// Context classification constants, ordered by exploitability.
 const (
 	ContextNone ContextType = iota
 	ContextComment
@@ -37,6 +38,7 @@ func (c ContextType) String() string {
 var (
 	onPrefix  = []byte("on")
 	scriptTag = []byte("script")
+	styleTag  = []byte("style")
 )
 
 // DetectContext returns the highest-priority HTML context where marker appears.
@@ -50,6 +52,7 @@ func DetectContext(body string, marker string) ContextType {
 
 	var (
 		inScript bool
+		inStyle  bool
 		best     = ContextNone
 	)
 
@@ -71,8 +74,12 @@ func DetectContext(body string, marker string) ContextType {
 			if bytes.Contains(tn, m) {
 				return ContextScript
 			}
-			if tt == html.StartTagToken && len(tn) == 6 && bytes.EqualFold(tn, scriptTag) {
-				inScript = true
+			if tt == html.StartTagToken {
+				if len(tn) == 6 && bytes.EqualFold(tn, scriptTag) {
+					inScript = true
+				} else if len(tn) == 5 && bytes.EqualFold(tn, styleTag) {
+					inStyle = true
+				}
 			}
 			if hasAttr {
 				for {
@@ -86,6 +93,9 @@ func DetectContext(body string, marker string) ContextType {
 						}
 					}
 					if bytes.Contains(k, m) {
+						if isEventHandler(k) {
+							return ContextScript
+						}
 						if best < ContextAttribute {
 							best = ContextAttribute
 						}
@@ -100,6 +110,8 @@ func DetectContext(body string, marker string) ContextType {
 			tn, _ := z.TagName()
 			if len(tn) == 6 && bytes.EqualFold(tn, scriptTag) {
 				inScript = false
+			} else if len(tn) == 5 && bytes.EqualFold(tn, styleTag) {
+				inStyle = false
 			}
 
 		case html.TextToken:
@@ -107,7 +119,11 @@ func DetectContext(body string, marker string) ContextType {
 				if inScript {
 					return ContextScript
 				}
-				if best < ContextHTML {
+				if inStyle {
+					if best < ContextAttribute {
+						best = ContextAttribute
+					}
+				} else if best < ContextHTML {
 					best = ContextHTML
 				}
 			}
@@ -115,6 +131,7 @@ func DetectContext(body string, marker string) ContextType {
 	}
 }
 
+// isEventHandler reports whether key is a known HTML event handler attribute.
 func isEventHandler(key []byte) bool {
 	const maxLen = 32
 	if len(key) > maxLen {
