@@ -63,12 +63,15 @@ func (e *Exporter) Export(event *output.ResultEvent) error {
 // Close closes the exporter and writes the PDF file
 func (e *Exporter) Close() error {
 	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
 	if e.closed {
+		e.mutex.Unlock()
 		return nil
 	}
 	e.closed = true
+	// Copy data and release lock to avoid long-running blocking of Export()
+	data := make([]*output.ResultEvent, len(e.data))
+	copy(data, e.data)
+	e.mutex.Unlock()
 
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(10, 15, 10)
@@ -97,7 +100,7 @@ func (e *Exporter) Close() error {
 	pdf.Cell(0, 20, "Nuclei Vulnerability Scan Report")
 	pdf.Ln(20)
 
-	if len(e.data) == 0 {
+	if len(data) == 0 {
 		pdf.SetFont("Arial", "", 12)
 		pdf.Cell(0, 10, "No vulnerabilities found.")
 		return pdf.OutputFileAndClose(e.options.File)
@@ -109,7 +112,7 @@ func (e *Exporter) Close() error {
 	pdf.Ln(10)
 
 	stats := make(map[string]int)
-	for _, event := range e.data {
+	for _, event := range data {
 		stats[event.Info.SeverityHolder.Severity.String()]++
 	}
 
@@ -143,11 +146,11 @@ func (e *Exporter) Close() error {
 	pdf.Ln(10)
 
 	// Sort findings by severity
-	sort.Slice(e.data, func(i, j int) bool {
-		return getSeverityWeight(e.data[i].Info.SeverityHolder.Severity.String()) > getSeverityWeight(e.data[j].Info.SeverityHolder.Severity.String())
+	sort.Slice(data, func(i, j int) bool {
+		return getSeverityWeight(data[i].Info.SeverityHolder.Severity.String()) > getSeverityWeight(data[j].Info.SeverityHolder.Severity.String())
 	})
 
-	for i, event := range e.data {
+	for i, event := range data {
 		// Avoid page break inside a finding block if possible.
 		// Simple approach: Check Y position.
 		if pdf.GetY() > pageBreakThreshold {
@@ -159,8 +162,8 @@ func (e *Exporter) Close() error {
 		r, g, b := getSeverityColor(sev)
 		pdf.SetFillColor(r, g, b)
 
-		// Use dark text on light backgrounds (low/yellow and medium/orange)
-		if sev == "low" || sev == "medium" {
+		// Use dark text on light backgrounds
+		if isLightBackground(r, g, b) {
 			pdf.SetTextColor(0, 0, 0)
 		} else {
 			pdf.SetTextColor(255, 255, 255)
@@ -243,4 +246,11 @@ func getSeverityWeight(sev string) int {
 	default:
 		return 0
 	}
+}
+
+// isLightBackground returns true if the background color is light based on relative luminance
+func isLightBackground(r, g, b int) bool {
+	// Formula: 0.299*R + 0.587*G + 0.114*B > 186
+	luminance := 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)
+	return luminance > 186
 }

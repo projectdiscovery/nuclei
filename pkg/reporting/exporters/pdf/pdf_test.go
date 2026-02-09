@@ -15,7 +15,8 @@ import (
 )
 
 func TestNewExporter(t *testing.T) {
-	options := &Options{File: "test_report.pdf"}
+	tempDir := t.TempDir()
+	options := &Options{File: filepath.Join(tempDir, "test_report.pdf")}
 	exporter, err := New(options)
 	require.NoError(t, err)
 	require.NotNil(t, exporter)
