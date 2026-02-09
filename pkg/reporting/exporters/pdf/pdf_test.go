@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +48,7 @@ func TestExportConcurrency(t *testing.T) {
 				},
 			}
 			err := exporter.Export(event)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}(i)
 	}
 

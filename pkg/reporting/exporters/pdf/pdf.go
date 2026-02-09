@@ -2,6 +2,8 @@ package pdf
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -26,6 +28,15 @@ type Exporter struct {
 
 // New creates a new PDF exporter
 func New(options *Options) (*Exporter, error) {
+	if options == nil || options.File == "" {
+		return nil, fmt.Errorf("pdf export file path is required")
+	}
+	dir := filepath.Dir(options.File)
+	if dir != "" {
+		if err := os.MkdirAll(dir, 0750); err != nil {
+			return nil, fmt.Errorf("could not create output directory: %w", err)
+		}
+	}
 	return &Exporter{
 		options: options,
 		mutex:   &sync.Mutex{},
@@ -51,10 +62,11 @@ func (e *Exporter) Close() error {
 	pdf.SetAutoPageBreak(true, 15)
 
 	// --- Header & Footer ---
+	reportTime := time.Now().Format("2006-01-02 15:04:05")
 	pdf.SetHeaderFunc(func() {
 		pdf.SetFont("Arial", "I", 8)
 		pdf.SetTextColor(128, 128, 128)
-		pdf.CellFormat(0, 10, fmt.Sprintf("Nuclei Scan Report - Generated: %s", time.Now().Format("2006-01-02 15:04:05")), "", 0, "R", false, 0, "")
+		pdf.CellFormat(0, 10, fmt.Sprintf("Nuclei Scan Report - Generated: %s", reportTime), "", 0, "R", false, 0, "")
 		pdf.Ln(4)
 	})
 	pdf.SetFooterFunc(func() {
@@ -130,12 +142,19 @@ func (e *Exporter) Close() error {
 		}
 
 		// Finding Header
-		r, g, b := getSeverityColor(event.Info.SeverityHolder.Severity.String())
+		sev := strings.ToLower(event.Info.SeverityHolder.Severity.String())
+		r, g, b := getSeverityColor(sev)
 		pdf.SetFillColor(r, g, b)
-		pdf.SetTextColor(255, 255, 255)
+
+		// Use dark text on light backgrounds (low/yellow)
+		if sev == "low" {
+			pdf.SetTextColor(0, 0, 0)
+		} else {
+			pdf.SetTextColor(255, 255, 255)
+		}
 		pdf.SetFont("Arial", "B", 11)
 
-		title := fmt.Sprintf("#%d [%s] %s", i+1, strings.ToUpper(event.Info.SeverityHolder.Severity.String()), event.TemplateID)
+		title := fmt.Sprintf("#%d [%s] %s", i+1, strings.ToUpper(sev), event.TemplateID)
 		pdf.CellFormat(0, 8, title, "0", 1, "L", true, 0, "")
 
 		// Finding Details
