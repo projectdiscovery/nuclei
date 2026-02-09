@@ -33,6 +33,11 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-body-params-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-xml-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-generic-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 4}},
+	{Path: "fuzz/fuzz-xss-body.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-attribute.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-script.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-comment.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-event.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 }
 
 type genericFuzzTestCase struct {

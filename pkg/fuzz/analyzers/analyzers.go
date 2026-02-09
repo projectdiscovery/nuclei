@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -67,7 +68,8 @@ type Options struct {
 }
 
 var (
-	random = rand.New(rand.NewSource(time.Now().UnixNano()))
+	random   = rand.New(rand.NewSource(time.Now().UnixNano()))
+	randomMu sync.Mutex
 )
 
 // ApplyPayloadTransformations applies the payload transformations to the payload
@@ -87,14 +89,19 @@ const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // RandStringBytesMask returns a random alphabetic string of length n.
 func RandStringBytesMask(n int) string {
+	randomMu.Lock()
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letterBytes[random.Intn(len(letterBytes))]
 	}
+	randomMu.Unlock()
 	return string(b)
 }
 
 // GetRandomInteger returns a random integer between 1000 and 9999
 func GetRandomInteger() int {
-	return random.Intn(9000) + 1000
+	randomMu.Lock()
+	n := random.Intn(9000) + 1000
+	randomMu.Unlock()
+	return n
 }

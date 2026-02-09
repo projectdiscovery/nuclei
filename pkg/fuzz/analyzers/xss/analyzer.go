@@ -27,12 +27,15 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 	if strings.Contains(data, "[XSS_MARKER]") {
 		marker := "nuclei" + analyzers.RandStringBytesMask(8)
 		data = strings.ReplaceAll(data, "[XSS_MARKER]", marker)
-		params["xss_marker"] = marker
+		if params != nil {
+			params["xss_marker"] = marker
+		}
 	}
 	return data
 }
 
-// Analyze classifies the HTML context of a reflected canary in the response body.
+// Analyze classifies the HTML context of a reflected canary in the response body
+// and verifies exploitability by analyzing Content-Type, CSP, and quoting.
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if options.ResponseBody == "" {
 		return false, "", nil
@@ -53,10 +56,20 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if ctx == ContextNone {
 		return false, "", nil
 	}
-	detail := fmt.Sprintf(
-		"[xss_context] reflection detected in %s context for parameter '%s'",
+	exploitable, detail := VerifyContext(
+		options.ResponseBody,
+		options.ResponseHeaders,
+		reflectedValue,
+		ctx,
+	)
+	if !exploitable {
+		return false, "", nil
+	}
+	result := fmt.Sprintf(
+		"[xss_context] %s reflection for parameter '%s' (%s)",
 		ctx.String(),
 		options.FuzzGenerated.Parameter,
+		detail,
 	)
-	return true, detail, nil
+	return true, result, nil
 }
