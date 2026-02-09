@@ -128,6 +128,10 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	t.Logf("Full URL: %s", newReq.String())
 }
 
+// TestPathComponent_DeterministicIteration verifies that path segment iteration order is deterministic
+// by running 100 iterations and ensuring keys and values are always returned in the same order.
+// This test validates the fix that replaced standard maps with OrderedMap to ensure consistent
+// fuzzing behavior across multiple executions.
 func TestPathComponent_DeterministicIteration(t *testing.T) {
 	// Run the test 100 times to catch non-deterministic behavior
 	for iteration := 0; iteration < 100; iteration++ {

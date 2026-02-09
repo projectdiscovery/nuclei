@@ -30,8 +30,10 @@ func (q *Path) Name() string {
 	return RequestPathComponent
 }
 
-// Parse parses the component and returns the
-// parsed component
+// Parse parses the URL path component from the HTTP request and extracts individual path segments
+// into a deterministically ordered map with 1-based numeric keys. It handles leading slashes and
+// empty segments correctly, ensuring consistent iteration order for fuzzing operations.
+// Returns true if parsing was successful, along with any error encountered.
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue("")
@@ -87,8 +89,10 @@ func (q *Path) Delete(key string) error {
 	return nil
 }
 
-// Rebuild returns a new request with the
-// component rebuilt
+// Rebuild constructs a new HTTP request with modified path segments based on values set during fuzzing.
+// It preserves the original path structure while replacing segments that were modified via SetValue().
+// The method handles URL encoding/decoding to avoid double-encoding issues and maintains proper path formatting.
+// Returns a cloned request with the rebuilt path, or an error if reconstruction fails.
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Get the original path segments
 	originalSplitted := strings.Split(q.req.Path, "/")
