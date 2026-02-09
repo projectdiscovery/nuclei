@@ -18,6 +18,7 @@ const (
 	ContextScript
 )
 
+// String returns the string representation of the context type.
 func (c ContextType) String() string {
 	switch c {
 	case ContextComment:
