@@ -25,6 +25,10 @@ func (h *httpNoAccess) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	results = filterLines(results)
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
+	}
 	event := &output.ResultEvent{}
 	_ = json.Unmarshal([]byte(results[0]), event)
 	expectedError := "no address found for host"
@@ -41,6 +45,10 @@ func (h *networkNoAccess) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "trust_me_bro.real", debug, "-ms", "-j")
 	if err != nil {
 		return err
+	}
+	results = filterLines(results)
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
 	}
 	event := &output.ResultEvent{}
 	_ = json.Unmarshal([]byte(results[0]), event)
@@ -59,6 +67,10 @@ func (h *headlessNoAccess) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	results = filterLines(results)
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
+	}
 	event := &output.ResultEvent{}
 	_ = json.Unmarshal([]byte(results[0]), event)
 
@@ -75,6 +87,10 @@ func (h *javascriptNoAccess) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "trust_me_bro.real", debug, "-ms", "-j")
 	if err != nil {
 		return err
+	}
+	results = filterLines(results)
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
 	}
 	event := &output.ResultEvent{}
 	_ = json.Unmarshal([]byte(results[0]), event)
@@ -93,6 +109,10 @@ func (h *websocketNoAccess) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	results = filterLines(results)
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
+	}
 	event := &output.ResultEvent{}
 	_ = json.Unmarshal([]byte(results[0]), event)
 
@@ -109,6 +129,10 @@ func (h *dnsNoAccess) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "trust_me_bro.real", debug, "-ms", "-j")
 	if err != nil {
 		return err
+	}
+	results = filterLines(results)
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
 	}
 	event := &output.ResultEvent{}
 	_ = json.Unmarshal([]byte(results[0]), event)
