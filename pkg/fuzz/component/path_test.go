@@ -127,3 +127,33 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+func TestPathComponent_DeterministicIteration(t *testing.T) {
+	// Run the test 100 times to catch non-deterministic behavior
+	for iteration := 0; iteration < 100; iteration++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var keys []string
+		var values []string
+
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+
+		// Keys and values should always be in the same order
+		expectedKeys := []string{"1", "2", "3"}
+		expectedValues := []string{"user", "55", "profile"}
+
+		require.Equal(t, expectedKeys, keys, "iteration %d: keys should be deterministic", iteration)
+		require.Equal(t, expectedValues, values, "iteration %d: values should be deterministic", iteration)
+	}
+}
