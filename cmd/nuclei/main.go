@@ -424,7 +424,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 10, "max number of distinct template matches before flagging host as honeypot"),
-		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detection", "hpd", true, "enable detection of honeypot hosts that match many templates"),
+		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detection", "hpd", false, "enable detection of honeypot hosts that match many templates"),
 		flagSet.BoolVarP(&options.SuppressHoneypotResults, "suppress-honeypot", "shp", false, "suppress results from detected honeypot hosts"),
 		flagSet.StringVarP(&options.HoneypotExport, "honeypot-export", "hpe", "", "file to export detected honeypot hosts (for blocklist creation)"),
 		flagSet.StringVarP(&options.HoneypotBlocklist, "honeypot-blocklist", "hpb", "", "file containing known honeypot hosts to pre-block"),

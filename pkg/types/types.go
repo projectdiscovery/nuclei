@@ -812,7 +812,7 @@ func DefaultOptions() *Options {
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
 		HoneypotThreshold:          10,
-		HoneypotDetection:          true,
+		HoneypotDetection:          false,
 		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
 	}
