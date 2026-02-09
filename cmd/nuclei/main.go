@@ -228,6 +228,9 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+		for _, f := range inlineSecretsTempFiles {
+			os.Remove(f)
+		}
 		os.Exit(1)
 	}()
 
@@ -877,7 +880,7 @@ func processInlineSecretsFromProfile(profilePath string, options *types.Options)
 	}
 
 	tempDir := filepath.Join(os.TempDir(), "nuclei-secrets")
-	if err := os.MkdirAll(tempDir, 0755); err != nil {
+	if err := os.MkdirAll(tempDir, 0700); err != nil {
 		return "", fmt.Errorf("could not create temp directory: %w", err)
 	}
 
@@ -888,6 +891,7 @@ func processInlineSecretsFromProfile(profilePath string, options *types.Options)
 	defer tempFile.Close()
 
 	if _, err := tempFile.Write(secretsData); err != nil {
+		tempFile.Close()
 		os.Remove(tempFile.Name())
 		return "", fmt.Errorf("could not write to temp secrets file: %w", err)
 	}
