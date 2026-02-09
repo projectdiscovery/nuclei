@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
@@ -50,6 +51,8 @@ type Options struct {
 	JSONLExporter *jsonl.Options `yaml:"jsonl"`
 	// MongoDBExporter containers the configuration options for the MongoDB Exporter Module
 	MongoDBExporter *mongo.Options `yaml:"mongodb"`
+	// PDFExporter contains configuration options for PDF Exporter Module
+	PDFExporter *pdf.Options `yaml:"pdf"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 	OmitRaw    bool                  `yaml:"-"`

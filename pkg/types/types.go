@@ -121,6 +121,8 @@ type Options struct {
 	MarkdownExportSortMode string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
+	// PDFExport is the file to export PDF output format to
+	PDFExport string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
@@ -519,6 +521,7 @@ func (options *Options) Copy() *Options {
 		MarkdownExportDirectory:        options.MarkdownExportDirectory,
 		MarkdownExportSortMode:         options.MarkdownExportSortMode,
 		SarifExport:                    options.SarifExport,
+		PDFExport:                      options.PDFExport,
 		ResolversFile:                  options.ResolversFile,
 		StatsInterval:                  options.StatsInterval,
 		MetricsPort:                    options.MetricsPort,
