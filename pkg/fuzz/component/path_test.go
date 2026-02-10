@@ -80,6 +80,43 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+func TestPathComponent_DeterministicIteration(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := path.Parse(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("expected path to be found")
+	}
+
+	var expectedKeys []string
+	var expectedValues []string
+	for i := 0; i < 100; i++ {
+		var keys []string
+		var values []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			expectedKeys = keys
+			expectedValues = values
+			continue
+		}
+		require.Equal(t, expectedKeys, keys, "unexpected key order")
+		require.Equal(t, expectedValues, values, "unexpected value order")
+	}
+}
+
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
