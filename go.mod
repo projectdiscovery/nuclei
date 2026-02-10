@@ -75,7 +75,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
 	github.com/getkin/kin-openapi v0.132.0
-	github.com/go-git/go-git/v5 v5.16.2
+	github.com/go-git/go-git/v5 v5.16.5
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/go-pg/pg/v10 v10.15.0
 	github.com/go-sql-driver/mysql v1.9.3
