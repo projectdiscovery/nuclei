@@ -135,7 +135,9 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 			}
 		}()
 
-		return ExecuteProgram(program, args, opts)
+		execOpts := *opts
+		execOpts.Context = ctx
+		return ExecuteProgram(program, args, &execOpts)
 	})
 	if err != nil {
 		if val, ok := err.(*goja.Exception); ok {

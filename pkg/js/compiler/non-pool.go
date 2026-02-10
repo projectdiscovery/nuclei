@@ -16,7 +16,9 @@ var (
 
 func executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	lazyFixedSgInit()
-	ephemeraljsc.Add()
+	if err := ephemeraljsc.AddWithContext(opts.Context); err != nil {
+		return nil, err
+	}
 	defer ephemeraljsc.Done()
 	runtime := createNewRuntime()
 	return executeWithRuntime(runtime, p, args, opts)
