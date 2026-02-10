@@ -139,7 +139,9 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	lazySgInit()
 	sgResizeCheck(opts.Context)
 
-	pooljsc.Add()
+	if err := pooljsc.AddWithContext(opts.Context); err != nil {
+		return nil, err
+	}
 	defer pooljsc.Done()
 	runtime := gojapool.Get().(*goja.Runtime)
 	defer gojapool.Put(runtime)
