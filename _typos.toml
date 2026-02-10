@@ -44,3 +44,7 @@ Fo = "Fo"      # test payload "inFo"
 nd = "nd"
 # Test data content
 algoritmos = "algoritmos"  # Spanish word in fuzz playground test data
+# SQL grammar: "SELECTs to the left and right of UNION..." (plural of SELECT in error messages)
+SELEC = "SELEC"
+# Base64-encoded certificate data fragment
+Iz = "Iz"
