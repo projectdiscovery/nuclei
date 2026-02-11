@@ -11,6 +11,7 @@ import (
 	"github.com/go-pg/pg/v10"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"   //nolint:staticcheck // need to call init
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap" //nolint:staticcheck
@@ -51,7 +52,7 @@ func isPostgres(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}
@@ -184,7 +185,7 @@ func connect(executionId string, host string, port int, username string, passwor
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(libs.GetDialContext(executionId))
 	defer cancel()
 
 	dialer := protocolstate.GetDialersWithId(executionId)

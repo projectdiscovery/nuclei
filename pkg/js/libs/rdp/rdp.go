@@ -9,6 +9,7 @@ import (
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/rdp"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -52,7 +53,7 @@ func isRDP(executionId string, host string, port int) (IsRDPResponse, error) {
 	}
 
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
@@ -110,7 +111,7 @@ func checkRDPAuth(executionId string, host string, port int) (CheckRDPAuthRespon
 		return CheckRDPAuthResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
@@ -210,7 +211,7 @@ func checkRDPEncryption(executionId string, host string, port int) (RDPEncryptio
 	}
 
 	for name, value := range protocols {
-		ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+		ctx, cancel := context.WithTimeout(libs.GetDialContext(executionId), defaultTimeout)
 		defer cancel()
 		conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
@@ -247,7 +248,7 @@ func checkRDPEncryption(executionId string, host string, port int) (RDPEncryptio
 	}
 
 	for encryptionLevel, value := range ciphers {
-		ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+		ctx, cancel := context.WithTimeout(libs.GetDialContext(executionId), defaultTimeout)
 		defer cancel()
 		conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {

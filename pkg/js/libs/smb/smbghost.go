@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/structs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/utils/reader"
 )
@@ -42,7 +43,7 @@ func detectSMBGhost(executionId string, host string, port int) (bool, error) {
 	if dialer == nil {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", addr)
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", addr)
 	if err != nil {
 		return false, err
 

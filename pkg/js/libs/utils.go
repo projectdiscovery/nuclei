@@ -1,0 +1,40 @@
+package libs
+
+import (
+	"context"
+	"sync"
+)
+
+var dialContexts sync.Map
+
+// SetDialContext stores the execution context for a given executionId.
+// This is called by the JS compiler before running a script.
+// Used as a fallback for @memo functions that only have executionId.
+func SetDialContext(executionId string, ctx context.Context) {
+	dialContexts.Store(executionId, ctx)
+}
+
+// GetDialContext returns the execution context for network dials.
+// It accepts either a context.Context (the goja runtime context) or
+// a string (executionId) for backward compatibility with @memo functions.
+//
+// When passed a goja context, it extracts the per-execution context
+// stored by the JS compiler — this is the correct, race-free path.
+// When passed an executionId string, it falls back to a shared map
+// which is acceptable for @memo functions (cached, first-call-only).
+func GetDialContext(key any) context.Context {
+	switch v := key.(type) {
+	case context.Context:
+		if execCtx, ok := v.Value("ctx").(context.Context); ok {
+			return execCtx
+		}
+		return context.Background()
+	case string:
+		if val, ok := dialContexts.Load(v); ok {
+			return val.(context.Context)
+		}
+		return context.Background()
+	default:
+		return context.Background()
+	}
+}

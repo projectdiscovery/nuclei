@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 )
 
 type (
@@ -84,7 +86,7 @@ func connectWithDSN(executionId string, dsn string) (bool, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	ctx := context.WithValue(context.Background(), "executionId", executionId) // nolint: staticcheck
+	ctx := context.WithValue(libs.GetDialContext(executionId), "executionId", executionId) // nolint: staticcheck
 	err = db.PingContext(ctx)
 	if err != nil {
 		return false, err

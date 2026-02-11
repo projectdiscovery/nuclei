@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -27,11 +28,11 @@ func (o *oracleCustomDialer) dialWithCtx(ctx context.Context, network, address s
 }
 
 func (o *oracleCustomDialer) Dial(network, address string) (net.Conn, error) {
-	return o.dialWithCtx(context.TODO(), network, address)
+	return o.dialWithCtx(libs.GetDialContext(o.executionId), network, address)
 }
 
 func (o *oracleCustomDialer) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(libs.GetDialContext(o.executionId), timeout)
 	defer cancel()
 
 	return o.dialWithCtx(ctx, network, address)

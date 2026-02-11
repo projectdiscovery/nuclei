@@ -11,6 +11,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -27,7 +28,7 @@ func (p *pgDial) Dial(network, address string) (net.Conn, error) {
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
-	return dialers.Fastdialer.Dial(context.TODO(), network, address)
+	return dialers.Fastdialer.Dial(libs.GetDialContext(p.executionId), network, address)
 }
 
 func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
@@ -35,7 +36,7 @@ func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (ne
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
-	ctx, cancel := context.WithTimeoutCause(context.Background(), timeout, fastdialer.ErrDialTimeout)
+	ctx, cancel := context.WithTimeoutCause(libs.GetDialContext(p.executionId), timeout, fastdialer.ErrDialTimeout)
 	defer cancel()
 	return dialers.Fastdialer.Dial(ctx, network, address)
 }

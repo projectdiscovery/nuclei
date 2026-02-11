@@ -10,6 +10,7 @@ import (
 	vnclib "github.com/alexsnet/go-vnc"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	vncplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/vnc"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -49,12 +50,12 @@ type (
 // const connected = client.Connect('acme.com', 5900, 'password');
 // ```
 func (c *VNCClient) Connect(ctx context.Context, host string, port int, password string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
-	return connect(executionId, host, port, password)
+	return connect(ctx, host, port, password)
 }
 
 // connect attempts to authenticate with a VNC server using the given password
-func connect(executionId string, host string, port int, password string) (bool, error) {
+func connect(ctx context.Context, host string, port int, password string) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
@@ -68,7 +69,8 @@ func connect(executionId string, host string, port int, password string) (bool, 
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	dialCtx := libs.GetDialContext(ctx)
+	conn, err := dialer.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
@@ -83,7 +85,7 @@ func connect(executionId string, host string, port int, password string) (bool, 
 	vncConfig := vnclib.NewClientConfig(password)
 
 	// Attempt to connect and authenticate
-	c, err := vnclib.Connect(context.TODO(), conn, vncConfig)
+	c, err := vnclib.Connect(dialCtx, conn, vncConfig)
 	if err != nil {
 		// Check for specific authentication errors
 		if isAuthError(err) {
@@ -132,7 +134,7 @@ func isVNC(executionId string, host string, port int) (IsVNCResponse, error) {
 	if dialer == nil {
 		return IsVNCResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

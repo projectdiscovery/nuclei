@@ -5,7 +5,6 @@ package kerberos
 // it is copied here because the library does not export "SendToKDC()"
 
 import (
-	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -81,7 +80,7 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		tcpConn, err := dialers.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+		tcpConn, err := dialers.Fastdialer.Dial(kclient.nj.DialContext(), "tcp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue
@@ -121,7 +120,7 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		udpConn, err := dialers.Fastdialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+		udpConn, err := dialers.Fastdialer.Dial(kclient.nj.DialContext(), "udp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue

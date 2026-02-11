@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -48,6 +49,18 @@ func (j *NucleiJS) ExecutionId() string {
 		return ""
 	}
 	return executionId.(string)
+}
+
+// DialContext returns the per-execution context stored in the goja runtime.
+// This context carries the JS execution deadline, ensuring network dials
+// are cancelled when the execution times out.
+func (j *NucleiJS) DialContext() context.Context {
+	if ctx, ok := j.vm.GetContextValue("ctx"); ok {
+		if execCtx, ok := ctx.(context.Context); ok {
+			return execCtx
+		}
+	}
+	return context.Background()
 }
 
 // see: https://arc.net/l/quote/wpenftpc for throwing docs
