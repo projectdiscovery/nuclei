@@ -3,16 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/kitabisa/go-ci"
 	"github.com/logrusorgru/aurora"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/fuzzplayground"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -33,33 +34,7 @@ var (
 	failed  = aurora.Red("[✘]").String()
 
 	protocolTests = map[string][]TestCaseInfo{
-		"http":            httpTestcases,
-		"interactsh":      interactshTestCases,
-		"network":         networkTestcases,
-		"dns":             dnsTestCases,
-		"workflow":        workflowTestcases,
-		"loader":          loaderTestcases,
-		"profile-loader":  profileLoaderTestcases,
-		"websocket":       websocketTestCases,
-		"headless":        headlessTestcases,
-		"whois":           whoisTestCases,
-		"ssl":             sslTestcases,
-		"library":         libraryTestcases,
-		"templatesPath":   templatesPathTestCases,
-		"templatesDir":    templatesDirTestCases,
-		"env_vars":        templatesDirEnvTestCases,
-		"file":            fileTestcases,
-		"offlineHttp":     offlineHttpTestcases,
-		"customConfigDir": customConfigDirTestCases,
 		"fuzzing":         fuzzingTestCases,
-		"code":            codeTestCases,
-		"multi":           multiProtoTestcases,
-		"generic":         genericTestcases,
-		"dsl":             dslTestcases,
-		"flow":            flowTestcases,
-		"javascript":      jsTestcases,
-		"matcher-status":  matcherStatusTestcases,
-		"exporters":       exportersTestCases,
 	}
 
 	// flakyTests are run with a retry count of 3
@@ -72,6 +47,7 @@ var (
 	runTemplate          = ""
 	extraArgs            = []string{}
 	interactshRetryCount = 3
+	playgroundAddress    = "127.0.0.1:8082"
 )
 
 func main() {
@@ -86,11 +62,6 @@ func main() {
 		testutils.ExtraDebugArgs = extraArgs
 	}
 
-	if runProtocol != "" {
-		debugTests()
-		os.Exit(1)
-	}
-
 	// start fuzz playground server
 	server := fuzzplayground.GetPlaygroundServer()
 	defer func() {
@@ -99,12 +70,39 @@ func main() {
 	}()
 
 	go func() {
-		if err := server.Start("localhost:8082"); err != nil {
+		fmt.Printf("Attempting to start playground server on %s...\n", playgroundAddress)
+		if err := server.Start(playgroundAddress); err != nil {
 			if !strings.Contains(err.Error(), "Server closed") {
-				gologger.Fatal().Msgf("Could not start server: %s\n", err)
+				fmt.Printf("FATAL: Could not start server: %s\n", err)
+				os.Exit(1)
 			}
 		}
 	}()
+
+	// Wait for server to be ready
+	serverReady := false
+	client := &http.Client{Timeout: 1 * time.Second}
+	for i := 0; i < 100; i++ {
+		resp, err := client.Get("http://" + playgroundAddress)
+		if err == nil {
+			resp.Body.Close()
+			fmt.Printf("Playground server is ready on %s\n", playgroundAddress)
+			serverReady = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if !serverReady {
+		fmt.Println("FATAL: Server failed to become ready within timeout")
+		os.Exit(1)
+	}
+
+	if runProtocol != "" {
+		if debugTests() {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
 
 	customTestsList := normalizeSplit(customTests)
 	failedTestTemplatePaths := runTests(customTestsList)
@@ -169,8 +167,9 @@ func executeWithRetry(testCase testutils.TestCase, templatePath string, retryCou
 	return templatePath, err
 }
 
-func debugTests() {
+func debugTests() bool {
 	testCaseInfos := protocolTests[runProtocol]
+	hasFailed := false
 	for _, testCaseInfo := range testCaseInfos {
 		if (runTemplate != "" && !strings.Contains(testCaseInfo.Path, runTemplate)) ||
 			(testCaseInfo.DisableOn != nil && testCaseInfo.DisableOn()) {
@@ -179,13 +178,16 @@ func debugTests() {
 		if runProtocol == "interactsh" {
 			if _, err := executeWithRetry(testCaseInfo.TestCase, testCaseInfo.Path, interactshRetryCount); err != nil {
 				fmt.Printf("\n%v", err.Error())
+				hasFailed = true
 			}
 		} else {
 			if _, err := execute(testCaseInfo.TestCase, testCaseInfo.Path); err != nil {
 				fmt.Printf("\n%v", err.Error())
+				hasFailed = true
 			}
 		}
 	}
+	return !hasFailed
 }
 
 func runTests(customTemplatePaths []string) []string {

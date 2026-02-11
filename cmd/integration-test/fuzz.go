@@ -22,6 +22,12 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-type.yaml", TestCase: &fuzzTypeOverride{}},
 	{Path: "fuzz/fuzz-query.yaml", TestCase: &httpFuzzQuery{}},
 	{Path: "fuzz/fuzz-headless.yaml", TestCase: &HeadlessFuzzingQuery{}},
+	{Path: "fuzz/xss-context-test.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-attribute.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-body.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-comment.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-event.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-xss-script.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	// for fuzzing we should prioritize adding test case related backend
 	// logic in fuzz playground server instead of adding them here
 	{Path: "fuzz/fuzz-query-num-replace.yaml", TestCase: &genericFuzzTestCase{expectedResults: 2}},

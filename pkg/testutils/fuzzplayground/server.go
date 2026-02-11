@@ -34,6 +34,14 @@ func GetPlaygroundServer() *echo.Echo {
 	e.GET("/user/:id/profile", userProfileHandler)
 	e.POST("/user", patchUnsanitizedUserHandler)
 	e.GET("/blog/posts", getPostsHandler)
+
+	// XSS context reflection endpoints
+	e.GET("/xss/body", xssBodyHandler)
+	e.GET("/xss/attribute", xssAttributeHandler)
+	e.GET("/xss/script", xssScriptHandler)
+	e.GET("/xss/comment", xssCommentHandler)
+	e.GET("/xss/event", xssEventHandler)
+	e.GET("/xss/encoded", xssEncodedHandler)
 	return e
 }
 
@@ -223,4 +231,49 @@ func getPostsHandler(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(http.StatusOK, posts)
+}
+
+// xssBodyHandler reflects input directly in HTML body text.
+func xssBodyHandler(ctx echo.Context) error {
+	name := ctx.QueryParam("name")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("<h1>Hello %s</h1>", name)))
+}
+
+// xssAttributeHandler reflects input inside an HTML attribute value.
+func xssAttributeHandler(ctx echo.Context) error {
+	name := ctx.QueryParam("name")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate,
+		fmt.Sprintf(`<input type="text" value="%s"><p>Search results</p>`, name)))
+}
+
+// xssScriptHandler reflects input inside a JavaScript block.
+func xssScriptHandler(ctx echo.Context) error {
+	name := ctx.QueryParam("name")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate,
+		fmt.Sprintf(`<script>var user = "%s";</script><p>Dashboard</p>`, name)))
+}
+
+// xssCommentHandler reflects input inside an HTML comment.
+func xssCommentHandler(ctx echo.Context) error {
+	name := ctx.QueryParam("name")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate,
+		fmt.Sprintf(`<!-- debug: user=%s --><p>Page content</p>`, name)))
+}
+
+// xssEventHandler reflects input inside an event handler attribute.
+func xssEventHandler(ctx echo.Context) error {
+	name := ctx.QueryParam("name")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate,
+		fmt.Sprintf(`<div onclick="handle('%s')">Click me</div>`, name)))
+}
+
+// xssEncodedHandler HTML-encodes reflected input (negative test case).
+func xssEncodedHandler(ctx echo.Context) error {
+	name := ctx.QueryParam("name")
+	name = strings.ReplaceAll(name, "&", "&amp;")
+	name = strings.ReplaceAll(name, "<", "&lt;")
+	name = strings.ReplaceAll(name, ">", "&gt;")
+	name = strings.ReplaceAll(name, "\"", "&quot;")
+	name = strings.ReplaceAll(name, "'", "&#x27;")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("<h1>Hello %s</h1>", name)))
 }

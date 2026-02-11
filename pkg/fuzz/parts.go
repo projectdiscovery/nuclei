@@ -123,6 +123,9 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 	return func(key, value string) error {
 		var evaluated string
 		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+		if input.ApplyPayloadInitialTransformation != nil {
+			evaluated = input.ApplyPayloadInitialTransformation(evaluated, input.AnalyzerParams)
+		}
 		if err := ruleComponent.SetValue(key, evaluated); err != nil {
 			return err
 		}
@@ -132,7 +135,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value, "", "", "", ""); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value, "", "", key, evaluated); qerr != nil {
 				return qerr
 			}
 

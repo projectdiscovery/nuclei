@@ -1,0 +1,43 @@
+id: xss-context-analyzer-test
+info:
+  name: XSS Context Analyzer - Integration Test
+  author: pdteam
+  severity: high
+  description: Integration test for the XSS context analyzer
+  tags: xss,fuzzing,analyzer
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/xss/body?name={{fuzz}}"
+    
+    fuzzing:
+      - part: query
+        type: postfix
+        mode: single
+        keys:
+          - name
+        fuzz:
+          - "[XSS_CANARY]"
+    
+    analyzer:
+      name: xss_context
+    
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "<img"
+          - "onerror="
+          - "<script>"
+        condition: or
+      
+      - type: word
+        part: header
+        words:
+          - "text/html"
+      
+      - type: status
+        status:
+          - 200

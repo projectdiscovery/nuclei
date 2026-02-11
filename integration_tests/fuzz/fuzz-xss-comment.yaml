@@ -1,0 +1,30 @@
+id: fuzz-xss-comment-context
+
+info:
+  name: XSS Context Analyzer - Comment Reflection
+  author: pdteam
+  severity: info
+  description: Detects reflected input in HTML comment context using xss_context analyzer.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "GET"'
+          - 'contains(path, "/xss/comment")'
+        condition: and
+
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        fuzz:
+          - "[XSS_MARKER]"
+
+    analyzer:
+      name: xss_context
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

@@ -1,0 +1,30 @@
+id: fuzz-xss-event-context
+
+info:
+  name: XSS Context Analyzer - Event Handler Reflection
+  author: pdteam
+  severity: info
+  description: Detects reflected input in event handler attribute context using xss_context analyzer.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "GET"'
+          - 'contains(path, "/xss/event")'
+        condition: and
+
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        fuzz:
+          - "[XSS_MARKER]"
+
+    analyzer:
+      name: xss_context
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"
