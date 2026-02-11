@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/redis/go-redis/v9"
 
@@ -40,13 +41,13 @@ func getServerInfo(executionId string, host string, port int) (string, error) {
 	}()
 
 	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(libs.GetDialContext(executionId)).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(libs.GetDialContext(executionId))
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
@@ -81,12 +82,12 @@ func connect(executionId string, host string, port int, password string) (bool, 
 		_ = client.Close()
 	}()
 
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(libs.GetDialContext(executionId)).Result()
 	if err != nil {
 		return false, err
 	}
 	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(libs.GetDialContext(executionId))
 	if infoCmd.Err() != nil {
 		return false, infoCmd.Err()
 	}
@@ -122,13 +123,13 @@ func getServerInfoAuth(executionId string, host string, port int, password strin
 	}()
 
 	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(libs.GetDialContext(executionId)).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(libs.GetDialContext(executionId))
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
@@ -156,7 +157,7 @@ func isAuthenticated(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}
@@ -194,13 +195,13 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	}()
 
 	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(libs.GetDialContext(ctx)).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Eval(context.Background(), script, []string{})
+	infoCmd := client.Eval(libs.GetDialContext(ctx), script, []string{})
 
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()

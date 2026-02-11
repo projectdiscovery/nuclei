@@ -1,13 +1,13 @@
 package smb
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smb"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	zgrabsmb "github.com/zmap/zgrab2/lib/smb/smb"
 )
@@ -25,7 +25,7 @@ func collectSMBv2Metadata(executionId string, host string, port int, timeout tim
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return nil, err
 	}

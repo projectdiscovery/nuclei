@@ -13,6 +13,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -113,22 +114,24 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		},
 		Description: "isPortOpen checks if given TCP port is open on host. timeout is optional and defaults to 5 seconds",
 		FuncDecl: func(ctx context.Context, host string, port string, timeout ...int) (bool, error) {
-			if len(timeout) > 0 {
-				var cancel context.CancelFunc
-				ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout[0])*time.Second)
-				defer cancel()
-			}
 			if host == "" || port == "" {
 				return false, errkit.New("isPortOpen: host or port is empty")
 			}
 
 			executionId := ctx.Value("executionId").(string)
+			dialCtx := libs.GetDialContext(ctx)
+			if len(timeout) > 0 {
+				var cancel context.CancelFunc
+				dialCtx, cancel = context.WithTimeout(dialCtx, time.Duration(timeout[0])*time.Second)
+				defer cancel()
+			}
+
 			dialer := protocolstate.GetDialersWithId(executionId)
 			if dialer == nil {
 				panic("dialers with executionId " + executionId + " not found")
 			}
 
-			conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, port))
+			conn, err := dialer.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, port))
 			if err != nil {
 				return false, err
 			}
@@ -144,22 +147,24 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		},
 		Description: "isUDPPortOpen checks if the given UDP port is open on the host. Timeout is optional and defaults to 5 seconds.",
 		FuncDecl: func(ctx context.Context, host string, port string, timeout ...int) (bool, error) {
-			if len(timeout) > 0 {
-				var cancel context.CancelFunc
-				ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout[0])*time.Second)
-				defer cancel()
-			}
 			if host == "" || port == "" {
 				return false, errkit.New("isPortOpen: host or port is empty")
 			}
 
 			executionId := ctx.Value("executionId").(string)
+			dialCtx := libs.GetDialContext(ctx)
+			if len(timeout) > 0 {
+				var cancel context.CancelFunc
+				dialCtx, cancel = context.WithTimeout(dialCtx, time.Duration(timeout[0])*time.Second)
+				defer cancel()
+			}
+
 			dialer := protocolstate.GetDialersWithId(executionId)
 			if dialer == nil {
 				panic("dialers with executionId " + executionId + " not found")
 			}
 
-			conn, err := dialer.Fastdialer.Dial(ctx, "udp", net.JoinHostPort(host, port))
+			conn, err := dialer.Fastdialer.Dial(dialCtx, "udp", net.JoinHostPort(host, port))
 			if err != nil {
 				return false, err
 			}

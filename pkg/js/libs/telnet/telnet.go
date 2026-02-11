@@ -9,6 +9,7 @@ import (
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/telnet"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/telnetmini"
 )
@@ -88,7 +89,7 @@ func isTelnet(executionId string, host string, port int) (IsTelnetResponse, erro
 		return IsTelnetResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(executionId), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
@@ -132,7 +133,7 @@ func (c *TelnetClient) Connect(ctx context.Context, host string, port int, usern
 	}
 
 	// Create TCP connection
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(ctx), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
@@ -180,7 +181,7 @@ func (c *TelnetClient) Info(ctx context.Context, host string, port int) (TelnetI
 		return TelnetInfoResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(ctx), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return TelnetInfoResponse{}, err
 	}
@@ -226,7 +227,7 @@ func (c *TelnetClient) GetTelnetNTLMInfo(ctx context.Context, host string, port 
 	}
 
 	// Create TCP connection
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(libs.GetDialContext(ctx), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return nil, err
 	}

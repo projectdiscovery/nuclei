@@ -34,6 +34,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libvnc"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -85,6 +86,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 			opts.Cleanup(runtime)
 		}
 		runtime.RemoveContextValue("executionId")
+		runtime.RemoveContextValue("ctx")
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -113,6 +115,8 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 
 	// inject execution id and context
 	runtime.SetContextValue("executionId", opts.ExecutionId)
+	runtime.SetContextValue("ctx", opts.Context)
+	libs.SetDialContext(opts.ExecutionId, opts.Context)
 
 	// execute the script
 	return runtime.RunProgram(p)
