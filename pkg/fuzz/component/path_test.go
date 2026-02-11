@@ -80,6 +80,32 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+func TestPathComponent_DeterministicIteration(t *testing.T) {
+	// Verify that path segments are always iterated in insertion order.
+	// Before the fix, a plain Go map caused non-deterministic iteration,
+	// which randomly skipped path segments during fuzzing.
+	for run := 0; run < 100; run++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var keys []string
+		var values []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"1", "2", "3"}, keys, "run %d: unexpected keys", run)
+		require.Equal(t, []string{"user", "55", "profile"}, values, "run %d: unexpected values", run)
+	}
+}
+
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
