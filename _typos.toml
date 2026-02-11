@@ -1,0 +1,57 @@
+[files]
+extend-exclude = [
+    # Non-English READMEs (Chinese, Spanish, Portuguese, etc.)
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test data files with encoded/binary content
+    "pkg/input/formats/testdata/",
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    "pkg/output/stats/waf/",
+]
+
+[default.extend-words]
+# CLI flag abbreviations used in nuclei
+ot = "ot"
+ue = "ue"
+hae = "hae"
+jle = "jle"
+# JSONL(ines)/JSONL(ine) is intentional formatting
+ines = "ines"
+ine = "ine"
+# NooP = No Operation (intentional casing)
+Noo = "Noo"
+# goflags.AllowdTypes is from an external dependency
+Allowd = "Allowd"
+# MisMatched is a Go struct field name
+Mis = "Mis"
+mis = "mis"
+# SELECTs is valid SQL terminology
+SELEC = "SELEC"
+# .ser is a Java serialization file extension
+ser = "ser"
+# Base64 encoded content triggers
+Iy = "Iy"
+Iz = "Iz"
+Fo = "Fo"
+fo = "fo"
+UE = "UE"
+Ue = "Ue"
+BA = "BA"
+ba = "ba"
+nd = "nd"
+Iif = "Iif"
+IST = "IST"
+Nin = "Nin"
+nin = "nin"
+ded = "ded"
+alo = "alo"
+aas = "aas"
+siz = "siz"
+ABD = "ABD"
+# Test data contains Spanish text
+algoritmos = "algoritmos"

@@ -35,9 +35,9 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue("")
 
-	splitted := strings.Split(req.Path, "/")
+	splitParts := strings.Split(req.Path, "/")
 	values := make(map[string]interface{})
-	for i, segment := range splitted {
+	for i, segment := range splitParts {
 		if segment == "" && i == 0 {
 			// Skip the first empty segment from leading "/"
 			continue
@@ -88,20 +88,20 @@ func (q *Path) Delete(key string) error {
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Get the original path segments
-	originalSplitted := strings.Split(q.req.Path, "/")
+	originalParts := strings.Split(q.req.Path, "/")
 
 	// Create a new slice to hold the rebuilt segments
-	rebuiltSegments := make([]string, 0, len(originalSplitted))
+	rebuiltSegments := make([]string, 0, len(originalParts))
 
 	// Add the first empty segment (from leading "/")
-	if len(originalSplitted) > 0 && originalSplitted[0] == "" {
+	if len(originalParts) > 0 && originalParts[0] == "" {
 		rebuiltSegments = append(rebuiltSegments, "")
 	}
 
 	// Process each segment
 	segmentIndex := 1 // 1-based indexing for our stored values
-	for i := 1; i < len(originalSplitted); i++ {
-		originalSegment := originalSplitted[i]
+	for i := 1; i < len(originalParts); i++ {
+		originalSegment := originalParts[i]
 		if originalSegment == "" {
 			// Skip empty segments
 			continue
