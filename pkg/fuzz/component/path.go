@@ -47,6 +47,7 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 			continue
 		}
 		// Use 1-based indexing and store individual segments
+		// FIX: Ensure numeric segments are also stored properly
 		key := strconv.Itoa(len(values) + 1)
 		values[key] = segment
 	}
@@ -121,12 +122,6 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	rebuiltPath := strings.Join(rebuiltSegments, "/")
 
 	if unescaped, err := urlutil.PathDecode(rebuiltPath); err == nil {
-		// this is handle the case where anyportion of path has url encoded data
-		// by default the http/request official library will escape/encode special characters in path
-		// to avoid double encoding we unescape/decode already encoded value
-		//
-		// if there is a invalid url encoded value like %99 then it will still be encoded as %2599 and not %99
-		// the only way to make sure it stays as %99 is to implement raw request and unsafe for fuzzing as well
 		rebuiltPath = unescaped
 	}
 
