@@ -637,7 +637,7 @@ func isParsingError(store *Store, message string, template string, err error) bo
 }
 
 // LoadTemplates takes a list of templates and returns paths for them
-func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
@@ -668,7 +668,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
 // returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
@@ -717,7 +717,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
+		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {
