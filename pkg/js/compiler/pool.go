@@ -34,10 +34,10 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libvnc"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
@@ -85,6 +85,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 			opts.Cleanup(runtime)
 		}
 		runtime.RemoveContextValue("executionId")
+		runtime.RemoveContextValue("ctx")
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -113,22 +114,18 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 
 	// inject execution id and context
 	runtime.SetContextValue("executionId", opts.ExecutionId)
+	runtime.SetContextValue("ctx", opts.Context)
+	libs.SetDialContext(opts.ExecutionId, opts.Context)
 
 	// execute the script
 	return runtime.RunProgram(p)
 }
 
 // ExecuteProgram executes a compiled program with the default options.
-// it deligates if a particular program should run in a pooled or non-pooled runtime
+// All scripts now use the pooled runtime path to share a single concurrency
+// pool, avoiding the bottleneck where pre-conditions and non-Export scripts
+// were limited to 20 non-pooling slots.
 func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
-	if opts.Source == nil {
-		// not-recommended anymore
-		return executeWithoutPooling(p, args, opts)
-	}
-	if !stringsutil.ContainsAny(*opts.Source, exportAsToken, exportToken) {
-		// not-recommended anymore
-		return executeWithoutPooling(p, args, opts)
-	}
 	return executeWithPoolingProgram(p, args, opts)
 }
 
@@ -143,6 +140,16 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 		return nil, err
 	}
 	defer pooljsc.Done()
+
+	// Create fresh execution context with full timeout starting NOW.
+	// This ensures scripts get their full allotted time regardless of how
+	// long they waited for a pool slot.
+	execCtx, execCancel := context.WithTimeoutCause(opts.Context, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
+	defer execCancel()
+	execOpts := *opts
+	execOpts.Context = execCtx
+	opts = &execOpts
+
 	runtime := gojapool.Get().(*goja.Runtime)
 	defer gojapool.Put(runtime)
 	var buff bytes.Buffer
@@ -191,12 +198,19 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	if err != nil {
 		return nil, err
 	}
-	if val.Export() != nil {
-		// append last value to output
-		buff.WriteString(stringify(val, runtime))
+
+	// Scripts that use Export/ExportAs collect output into a string buffer.
+	// Scripts that don't (e.g., pre-conditions, vnc-default-login) must return
+	// the raw value to preserve its type (bool, number, etc.) so DSL matchers
+	// like "response == true" can compare types correctly.
+	usesExport := opts.Source != nil && CanRunAsIIFE(*opts.Source)
+	if usesExport {
+		if val.Export() != nil {
+			buff.WriteString(stringify(val, runtime))
+		}
+		return runtime.ToValue(buff.String()), nil
 	}
-	// and return it as result
-	return runtime.ToValue(buff.String()), nil
+	return val, nil
 }
 
 // Internal purposes i.e generating bindings
