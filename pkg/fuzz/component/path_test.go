@@ -80,6 +80,7 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+// TestPathComponent_DeterministicIteration ensures path iteration order is stable.
 func TestPathComponent_DeterministicIteration(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
