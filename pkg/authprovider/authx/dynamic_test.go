@@ -1,7 +1,10 @@
 package authx
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -121,5 +124,66 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		var d Dynamic
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
+	})
+}
+
+func TestConcurrentFetch(t *testing.T) {
+	t.Run("concurrent-fetch-waits", func(t *testing.T) {
+		var callCount atomic.Int32
+
+		d := &Dynamic{
+			Secret: &Secret{
+				Type:    "Header",
+				Domains: []string{"example.com"},
+				Headers: []KV{{Key: "Authorization", Value: "{{token}}"}},
+			},
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "username", Value: "test"}},
+		}
+		require.NoError(t, d.Validate())
+
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			callCount.Add(1)
+			// Simulate slow network fetch
+			time.Sleep(100 * time.Millisecond)
+			d.Extracted = map[string]interface{}{
+				"token": "Bearer secret-token",
+			}
+			return nil
+		})
+
+		// Launch multiple goroutines that all call Fetch concurrently
+		const numGoroutines = 10
+		var wg sync.WaitGroup
+		errs := make([]error, numGoroutines)
+
+		// Use a barrier to ensure all goroutines start at the same time
+		barrier := make(chan struct{})
+
+		for i := 0; i < numGoroutines; i++ {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				<-barrier // wait for barrier
+				errs[idx] = d.Fetch(false)
+			}(i)
+		}
+
+		// Release all goroutines at once
+		close(barrier)
+		wg.Wait()
+
+		// The fetch callback should have been called exactly once
+		require.Equal(t, int32(1), callCount.Load(), "fetch callback should be called exactly once")
+
+		// All goroutines should have received nil error
+		for i, err := range errs {
+			require.NoError(t, err, "goroutine %d should not have received an error", i)
+		}
+
+		// Verify the secret was properly populated
+		strategies := d.GetStrategies()
+		require.NotNil(t, strategies, "strategies should not be nil after fetch")
+		require.Len(t, strategies, 1, "should have exactly one strategy")
 	})
 }
