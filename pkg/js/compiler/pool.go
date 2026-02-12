@@ -87,6 +87,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 		}
 		runtime.RemoveContextValue("executionId")
 		runtime.RemoveContextValue("ctx")
+		libs.RemoveDialContext(opts.ExecutionId)
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.

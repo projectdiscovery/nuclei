@@ -14,6 +14,12 @@ func SetDialContext(executionId string, ctx context.Context) {
 	dialContexts.Store(executionId, ctx)
 }
 
+// RemoveDialContext removes the stored execution context for the given executionId.
+// This should be called during cleanup to prevent memory leaks.
+func RemoveDialContext(executionId string) {
+	dialContexts.Delete(executionId)
+}
+
 // GetDialContext returns the execution context for network dials.
 // It accepts either a context.Context (the goja runtime context) or
 // a string (executionId) for backward compatibility with @memo functions.
@@ -28,7 +34,9 @@ func GetDialContext(key any) context.Context {
 		if execCtx, ok := v.Value("ctx").(context.Context); ok {
 			return execCtx
 		}
-		return context.Background()
+		// Fall back to the caller's context rather than a bare Background,
+		// so at least the parent's cancellation is respected.
+		return v
 	case string:
 		if val, ok := dialContexts.Load(v); ok {
 			return val.(context.Context)
