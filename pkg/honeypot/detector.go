@@ -169,6 +169,11 @@ func normalizeHost(input string) string {
 		input = input[:idx]
 	}
 
+	// Strip fragment
+	if idx := strings.IndexByte(input, '#'); idx != -1 {
+		input = input[:idx]
+	}
+
 	// Strip userinfo (user:pass@)
 	if idx := strings.LastIndex(input, "@"); idx != -1 {
 		input = input[idx+1:]

@@ -112,6 +112,8 @@ func TestNormalizeHost(t *testing.T) {
 		{"http://user:pass@example.com/path", "example.com"},
 		{"http://user@example.com:8080", "example.com"},
 		{"user:pass@example.com", "example.com"},
+		{"http://example.com#frag", "example.com"},
+		{"http://example.com/path#section", "example.com"},
 		{"", ""},
 		{"   ", ""},
 	}

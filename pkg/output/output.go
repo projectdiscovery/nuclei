@@ -308,7 +308,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	}
 
 	// Record match for honeypot detection
-	if w.honeypotDetector.IsEnabled() && event.TemplateID != "" {
+	if w.honeypotDetector != nil && w.honeypotDetector.IsEnabled() && event.TemplateID != "" {
 		host := event.Host
 		if host == "" {
 			host = event.URL
@@ -478,11 +478,13 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
 	// Print honeypot detection summary if any hosts were flagged
-	if w.honeypotDetector.IsEnabled() && w.honeypotDetector.FlaggedCount() > 0 {
+	if w.honeypotDetector != nil && w.honeypotDetector.IsEnabled() {
 		flagged := w.honeypotDetector.FlaggedHosts()
-		gologger.Info().Msgf("Honeypot detection: %d host(s) flagged as potential honeypots (results suppressed)", len(flagged))
-		for host, count := range flagged {
-			gologger.Verbose().Msgf("  Honeypot: %s (%d unique template matches)", host, count)
+		if len(flagged) > 0 {
+			gologger.Info().Msgf("Honeypot detection: %d host(s) flagged as potential honeypots (results suppressed)", len(flagged))
+			for host, count := range flagged {
+				gologger.Verbose().Msgf("  Honeypot: %s (%d unique template matches)", host, count)
+			}
 		}
 	}
 
