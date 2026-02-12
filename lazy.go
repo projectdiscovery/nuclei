@@ -122,8 +122,14 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 				// largest value as the extracted value
 				for _, value := range v {
 					oldVal, ok := data[k]
-					if !ok || len(value) > len(oldVal.(string)) {
+					if !ok {
 						data[k] = value
+						continue
+					}
+					if oldStr, ok := oldVal.(string); ok {
+						if len(value) > len(oldStr) {
+							data[k] = value
+						}
 					}
 				}
 			}
@@ -145,7 +151,11 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		}
 		_, err := tmpl.Executer.ExecuteWithResults(ctx)
 		if err != nil {
-			finalErr = err
+			if finalErr != nil {
+				finalErr = fmt.Errorf("%w; execute error: %v", finalErr, err)
+			} else {
+				finalErr = err
+			}
 		}
 		// store extracted result in auth context
 		d.Extracted = data

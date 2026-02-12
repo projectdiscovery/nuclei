@@ -193,7 +193,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
-	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
+	if options.ProxyInternal && (options.AliveHttpProxy != "" || options.AliveSocksProxy != "") {
 		var err error
 		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
 		if err != nil {
@@ -725,12 +725,10 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	now := time.Now()
-	enumeration := false
 	var results *atomic.Bool
 	results, err = r.runStandardEnumeration(executorOpts, store, executorEngine)
-	enumeration = true
 
-	if !enumeration {
+	if err != nil {
 		return err
 	}
 
@@ -761,7 +759,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// check if a passive scan was requested but no target was provided
 	if r.options.OfflineHTTP && len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
-		return errors.Wrap(err, "missing required input (http response) to run passive templates")
+		return errors.New("missing required input (http response) to run passive templates")
 	}
 
 	return err
