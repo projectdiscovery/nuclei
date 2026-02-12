@@ -27,11 +27,11 @@ func DetectReflections(body, marker string) []ReflectionInfo {
 		switch tokenType {
 		case html.StartTagToken:
 			tagName := strings.ToLower(token.Data)
-			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker, body)...)
+			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker)...)
 			stack = append(stack, tagName)
 
 		case html.SelfClosingTagToken:
-			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker, body)...)
+			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker)...)
 
 		case html.EndTagToken:
 			if len(stack) > 0 {
@@ -118,13 +118,13 @@ func classifyScriptContext(scriptText, marker string) ContextType {
 	}
 }
 
-func findAttributeReflections(raw string, attrs []html.Attribute, marker, fullBody string) []ReflectionInfo {
+func findAttributeReflections(raw string, attrs []html.Attribute, marker string) []ReflectionInfo {
 	results := make([]ReflectionInfo, 0, 2)
 	for _, attr := range attrs {
 		if !strings.Contains(attr.Val, marker) {
 			continue
 		}
-		ctx := classifyAttributeContext(raw, marker)
+		ctx := classifyAttributeContext(raw, attr, marker)
 		if isURLAttribute(attr.Key) && ctx != ContextAttributeUnquoted {
 			ctx = ContextURLAttribute
 		}
@@ -135,7 +135,81 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker, fullBo
 	return results
 }
 
-func classifyAttributeContext(rawToken, marker string) ContextType {
+func classifyAttributeContext(rawToken string, attr html.Attribute, marker string) ContextType {
+	// Prefer matching the specific attribute occurrence so multiple marker
+	// reflections in the same tag do not all inherit the first one’s quoting style.
+	attrKey := strings.ToLower(attr.Key)
+	rawLower := strings.ToLower(rawToken)
+	searchFrom := 0
+
+	for {
+		offset := strings.Index(rawLower[searchFrom:], attrKey)
+		if offset < 0 {
+			break
+		}
+		keyPos := searchFrom + offset
+
+		if keyPos > 0 {
+			prev := rawToken[keyPos-1]
+			if !isHTMLSpace(prev) && prev != '<' {
+				searchFrom = keyPos + len(attrKey)
+				continue
+			}
+		}
+
+		i := keyPos + len(attrKey)
+		for i < len(rawToken) && isHTMLSpace(rawToken[i]) {
+			i++
+		}
+		if i >= len(rawToken) || rawToken[i] != '=' {
+			searchFrom = keyPos + len(attrKey)
+			continue
+		}
+		i++
+		for i < len(rawToken) && isHTMLSpace(rawToken[i]) {
+			i++
+		}
+		if i >= len(rawToken) {
+			return ContextAttributeUnquoted
+		}
+
+		switch rawToken[i] {
+		case '"':
+			start := i + 1
+			end := start
+			for end < len(rawToken) && rawToken[end] != '"' {
+				end++
+			}
+			if strings.Contains(rawToken[start:end], marker) {
+				return ContextAttributeDoubleQuoted
+			}
+		case '\'':
+			start := i + 1
+			end := start
+			for end < len(rawToken) && rawToken[end] != '\'' {
+				end++
+			}
+			if strings.Contains(rawToken[start:end], marker) {
+				return ContextAttributeSingleQuoted
+			}
+		default:
+			start := i
+			end := start
+			for end < len(rawToken) && !isHTMLSpace(rawToken[end]) && rawToken[end] != '>' {
+				end++
+			}
+			if strings.Contains(rawToken[start:end], marker) {
+				return ContextAttributeUnquoted
+			}
+		}
+
+		searchFrom = keyPos + len(attrKey)
+	}
+
+	return classifyAttributeContextByMarker(rawToken, marker)
+}
+
+func classifyAttributeContextByMarker(rawToken, marker string) ContextType {
 	markerPos := strings.Index(rawToken, marker)
 	if markerPos < 0 {
 		return ContextAttributeUnquoted
@@ -159,6 +233,10 @@ func classifyAttributeContext(rawToken, marker string) ContextType {
 	default:
 		return ContextAttributeUnquoted
 	}
+}
+
+func isHTMLSpace(ch byte) bool {
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
 func reflectionForContext(ctx ContextType, attrName string, chars CharacterSet) ReflectionInfo {

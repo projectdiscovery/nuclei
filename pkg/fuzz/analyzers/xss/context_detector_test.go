@@ -73,6 +73,14 @@ func TestDetectReflections_AttributeSrc(t *testing.T) {
 	require.Equal(t, ContextURLAttribute, got[0].Context)
 }
 
+func TestDetectReflections_AttributeMixedQuotingSameTag(t *testing.T) {
+	body := `<input value="` + testMarker + `" data-x='` + testMarker + `'>`
+	got := DetectReflections(body, testMarker)
+	require.Len(t, got, 2)
+	require.Equal(t, ContextAttributeDoubleQuoted, got[0].Context)
+	require.Equal(t, ContextAttributeSingleQuoted, got[1].Context)
+}
+
 func TestDetectReflections_ScriptBlock(t *testing.T) {
 	body := `<script>var x = ` + testMarker + `;</script>`
 	got := DetectReflections(body, testMarker)

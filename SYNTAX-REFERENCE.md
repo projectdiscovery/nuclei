@@ -2081,7 +2081,7 @@ Valid values:
 Parameters is the parameters for the analyzer
 
 Parameters are different for each analyzer. For example, you can customize
-time_delay analyzer with sleep_duration, time_slope_error_range, etc, and
+time_delay analyzer with sleep_duration, time_slope_error_range, etc., and
 xss_context analyzer with canary payload value. Refer to the docs for each
 analyzer to get an idea about parameters.
 

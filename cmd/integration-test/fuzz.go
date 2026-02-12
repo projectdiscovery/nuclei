@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -270,7 +271,7 @@ func (h *xssContextEncodedFuzz) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		value := r.URL.Query().Get("q")
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = fmt.Fprintf(w, "<html><body><div>&lt;%s&gt;</div></body></html>", value)
+		_, _ = fmt.Fprintf(w, "<html><body><div>&lt;%s&gt;</div></body></html>", html.EscapeString(value))
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
