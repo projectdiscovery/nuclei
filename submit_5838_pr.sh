@@ -46,12 +46,14 @@ EOF
 echo "[4/5] Pushing branch ${BRANCH}..."
 git push -u origin "${BRANCH}"
 
-echo "[5/5] Creating PR..."
-gh pr create \
-  --base dev \
-  --head "${BRANCH}" \
-  --title "feat(xss): add context-aware XSS analyzer with tokenizer verification" \
-  --body "$(cat <<EOF
+echo "[5/5] Creating PR (upstream: projectdiscovery/nuclei)..."
+# When pushing from a fork, PR head must be fork_owner:branch
+ORIGIN_URL="$(git remote get-url origin 2>/dev/null || true)"
+FORK_OWNER="$(echo "$ORIGIN_URL" | sed -n 's|.*github\.com[:/]\([^/]*\)/.*|\1|p')"
+[[ -z "$FORK_OWNER" ]] && FORK_OWNER="ashuwhy"
+HEAD_FOR_PR="${FORK_OWNER}:${BRANCH}"
+
+PR_BODY="$(cat <<EOF
 /claim #5838
 
 ## Proposed Changes
@@ -93,8 +95,21 @@ $(cat "$COMPILE_OUT")
 EOF
 )"
 
-echo
-echo "PR created successfully."
-echo "Proof files:"
-echo "  - $UNIT_OUT"
-echo "  - $COMPILE_OUT"
+if gh pr create --repo projectdiscovery/nuclei --base dev --head "${HEAD_FOR_PR}" \
+  --title "feat(xss): add context-aware XSS analyzer with tokenizer verification" \
+  --body "$PR_BODY"; then
+  echo
+  echo "PR created successfully."
+else
+  echo
+  echo "PR create failed (e.g. no default repo). Run this manually:"
+  echo
+  echo "  gh pr create --repo projectdiscovery/nuclei --base dev --head ${HEAD_FOR_PR} \\"
+  echo "    --title \"feat(xss): add context-aware XSS analyzer with tokenizer verification\" \\"
+  echo "    --body-file - <<'PRBODY'"
+  echo "$PR_BODY"
+  echo "PRBODY"
+  echo
+  echo "Or set default repo first: gh repo set-default projectdiscovery/nuclei"
+fi
+echo "Proof files: $UNIT_OUT, $COMPILE_OUT"
