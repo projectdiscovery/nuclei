@@ -109,6 +109,9 @@ func TestNormalizeHost(t *testing.T) {
 		{"192.168.1.1:80", "192.168.1.1"},
 		{"[::1]:8080", "::1"},
 		{"http://[::1]:8080/path", "::1"},
+		{"http://user:pass@example.com/path", "example.com"},
+		{"http://user@example.com:8080", "example.com"},
+		{"user:pass@example.com", "example.com"},
 		{"", ""},
 		{"   ", ""},
 	}
