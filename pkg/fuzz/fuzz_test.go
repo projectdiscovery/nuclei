@@ -1,10 +1,12 @@
 package fuzz
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -257,4 +259,56 @@ func TestEvaluateVariables(t *testing.T) {
 			require.Equal(t, "{{nonexistent}}", result2, "should return original string for unresolved variable")
 		}
 	})
+}
+
+// TestEvaluateVarsWithInteractshClone verifies that evaluateVarsWithInteractsh
+// clones the data map so the caller's original map is not mutated.
+func TestEvaluateVarsWithInteractshClone(t *testing.T) {
+	rule := &Rule{}
+	rule.options = &protocols.ExecutorOptions{
+		Interactsh: &interactsh.Client{},
+	}
+
+	original := map[string]interface{}{
+		"var1": "hello",
+		"var2": "{{var1}}_world",
+	}
+
+	result, _ := rule.evaluateVarsWithInteractsh(original, nil)
+
+	// The returned map should have the evaluated value
+	require.Equal(t, "hello_world", result["var2"], "should evaluate template expression")
+	// The original map must not be mutated
+	require.Equal(t, "{{var1}}_world", original["var2"], "original map should not be modified")
+}
+
+// TestEvaluateVarsWithInteractshConcurrent verifies that concurrent calls
+// to evaluateVarsWithInteractsh with a shared map do not cause data races.
+// Run with: go test -race -run TestEvaluateVarsWithInteractshConcurrent
+func TestEvaluateVarsWithInteractshConcurrent(t *testing.T) {
+	rule := &Rule{}
+	rule.options = &protocols.ExecutorOptions{
+		Interactsh: &interactsh.Client{},
+	}
+
+	sharedData := map[string]interface{}{
+		"var1": "value1",
+		"var2": "{{var1}}_suffix",
+		"var3": "prefix_{{var1}}",
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rule.evaluateVarsWithInteractsh(sharedData, nil)
+		}()
+	}
+	wg.Wait()
+
+	// Original map should be unmodified
+	require.Equal(t, "value1", sharedData["var1"])
+	require.Equal(t, "{{var1}}_suffix", sharedData["var2"])
+	require.Equal(t, "prefix_{{var1}}", sharedData["var3"])
 }

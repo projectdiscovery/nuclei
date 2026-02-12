@@ -3,6 +3,7 @@ package fuzz
 import (
 	"fmt"
 	"io"
+	"maps"
 	"regexp"
 	"strings"
 
@@ -221,6 +222,10 @@ func (rule *Rule) evaluateVars(input string) (string, error) {
 func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string) (map[string]interface{}, []string) {
 	// Check if Interactsh options are configured
 	if rule.options.Interactsh != nil {
+		// Clone the data map to avoid concurrent map writes when multiple
+		// goroutines execute fuzzing rules sharing the same input map.
+		data = maps.Clone(data)
+
 		interactshUrlsMap := make(map[string]struct{})
 		for _, url := range interactshUrls {
 			interactshUrlsMap[url] = struct{}{}
