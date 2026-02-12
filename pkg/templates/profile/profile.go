@@ -64,19 +64,10 @@ func (p *Profile) HasSecrets() bool {
 }
 
 // GetAuthx returns the embedded secrets as an Authx struct
-// Creates defensive copies of slices to prevent unexpected mutations
 func (p *Profile) GetAuthx() *authx.Authx {
 	if !p.HasSecrets() {
 		return nil
 	}
-
-	// Create defensive copies of slices to prevent mutations
-	staticCopy := make([]authx.Secret, len(p.Secrets.Static))
-	copy(staticCopy, p.Secrets.Static)
-
-	dynamicCopy := make([]authx.Dynamic, len(p.Secrets.Dynamic))
-	copy(dynamicCopy, p.Secrets.Dynamic)
-
 	return &authx.Authx{
 		ID: p.ID,
 		Info: authx.AuthFileInfo{
@@ -84,10 +75,10 @@ func (p *Profile) GetAuthx() *authx.Authx {
 			Description: p.Description,
 			Author:      p.Author,
 		},
-		Secrets: staticCopy,
-		Dynamic: dynamicCopy,
+		Secrets: p.Secrets.Static,
+		Dynamic: p.Secrets.Dynamic,
 	}
-}Expand commentComment on lines R66 to R90Resolved
+}Expand commentComment on lines R66 to R81Resolved
 
 // LoadProfile loads a profile from a file
 func LoadProfile(filePath string) (*Profile, error) {

@@ -591,8 +591,8 @@ func (r *Runner) RunEnumeration() error {
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,
 		})
+
 		
-		// Add embedded secrets from profile files
 		for _, embedded := range r.options.EmbeddedSecrets {
 			if authxData, ok := embedded.(*authx.Authx); ok {
 				authOpts.EmbeddedSecrets = append(authOpts.EmbeddedSecrets, authxData)

@@ -1,195 +1,126 @@
 package authprovider
 
 import (
-	"net"
-	"net/url"
-	"regexp"
-	"strings"
+	"testing"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
-	"github.com/projectdiscovery/utils/errkit"
-	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/stretchr/testify/require"
 )
 
-// EmbeddedAuthProvider is an auth provider for embedded auth data
-// it accepts an Authx struct directly and returns its provider
-type EmbeddedAuthProvider struct {
-	store    *authx.Authx
-	compiled map[*regexp.Regexp][]authx.AuthStrategy
-	domains  map[string][]authx.AuthStrategy
+func TestNewEmbeddedAuthProvider(t *testing.T) {
+	store := &authx.Authx{
+		ID: "test-secrets",
+		Info: authx.AuthFileInfo{
+			Name:   "Test Secrets",
+			Author: "test",
+		},
+		Secrets: []authx.Secret{
+			{
+				Type:    "Header",
+				Domains: []string{"example.com"},
+				Headers: []authx.KV{
+					{Key: "X-API-Key", Value: "test-key"},
+				},
+			},
+		},
+	}
+
+	provider, err := NewEmbeddedAuthProvider(store, nil)
+	require.NoError(t, err)
+	require.NotNil(t, provider)
 }
 
-// NewEmbeddedAuthProvider creates a new embedded auth provider from Authx data
-func NewEmbeddedAuthProvider(store *authx.Authx, callback authx.LazyFetchSecret) (AuthProvider, error) {
-	if store == nil {
-		return nil, errkit.New("store cannot be nil")
+func TestEmbeddedAuthProviderLookupAddr(t *testing.T) {
+	store := &authx.Authx{
+		ID: "test-secrets",
+		Secrets: []authx.Secret{
+			{
+				Type:    "Header",
+				Domains: []string{"example.com", "api.example.com"},
+				Headers: []authx.KV{
+					{Key: "X-API-Key", Value: "test-key"},
+				},
+			},
+		},
 	}
-	if len(store.Secrets) == 0 && len(store.Dynamic) == 0 {
-		return nil, ErrNoSecrets
-	}
-	if len(store.Dynamic) > 0 && callback == nil {
-		return nil, errkit.New("lazy fetch callback is required for dynamic secrets")
-	}
-	for _, secret := range store.Secrets {
-		if err := secret.Validate(); err != nil {
-			errorErr := errkit.FromError(err)
-			errorErr.Msgf("invalid embedded secret")
-			return nil, errorErr
-		}
-	}
-	for i, dynamic := range store.Dynamic {
-		if err := dynamic.Validate(); err != nil {
-			errorErr := errkit.FromError(err)
-			errorErr.Msgf("invalid embedded dynamic secret")
-			return nil, errorErr
-		}
-		dynamic.SetLazyFetchCallback(callback)
-		store.Dynamic[i] = dynamic
-	}
-	f := &EmbeddedAuthProvider{store: store}
-	f.init()
-	return f, nil
+
+	provider, err := NewEmbeddedAuthProvider(store, nil)
+	require.NoError(t, err)
+
+	// Test exact domain match
+	strategies := provider.LookupAddr("example.com")
+	require.Len(t, strategies, 1)
+
+	// Test domain with port normalization
+	strategies = provider.LookupAddr("example.com:443")
+	require.Len(t, strategies, 1)
+
+	// Test non-matching domain
+	strategies = provider.LookupAddr("other.com")
+	require.Len(t, strategies, 0)
 }
 
-// init initializes the embedded auth provider
-func (f *EmbeddedAuthProvider) init() {
-	for _, _secret := range f.store.Secrets {
-		secret := _secret // allocate copy of pointer
-		if len(secret.DomainsRegex) > 0 {
-			for _, domain := range secret.DomainsRegex {
-				if f.compiled == nil {
-					f.compiled = make(map[*regexp.Regexp][]authx.AuthStrategy)
-				}
-				compiled, err := regexp.Compile(domain)
-				if err != nil {
-					gologger.Warning().Msgf("failed to compile domain regex '%s': %v", domain, err)
-					continue
-				}Expand commentComment on lines R64 to R68Resolved
-
-				if ss, ok := f.compiled[compiled]; ok {
-					f.compiled[compiled] = append(ss, secret.GetStrategy())
-				} else {
-					f.compiled[compiled] = []authx.AuthStrategy{secret.GetStrategy()}
-				}
-			}
-		}
-		for _, domain := range secret.Domains {
-			if f.domains == nil {
-				f.domains = make(map[string][]authx.AuthStrategy)
-			}
-			domain = strings.TrimSpace(domain)
-			domain = strings.TrimSuffix(domain, ":80")
-			domain = strings.TrimSuffix(domain, ":443")
-			if ss, ok := f.domains[domain]; ok {
-				f.domains[domain] = append(ss, secret.GetStrategy())
-			} else {
-				f.domains[domain] = []authx.AuthStrategy{secret.GetStrategy()}
-			}
-		}
+func TestEmbeddedAuthProviderWithRegex(t *testing.T) {
+	store := &authx.Authx{
+		ID: "test-secrets",
+		Secrets: []authx.Secret{
+			{
+				Type:         "Header",
+				DomainsRegex: []string{`.*\.example\.com`},
+				Headers: []authx.KV{
+					{Key: "X-API-Key", Value: "test-key"},
+				},
+			},
+		},
 	}
-	for _, dynamic := range f.store.Dynamic {
-		domain, domainsRegex := dynamic.GetDomainAndDomainRegex()
 
-		if len(domainsRegex) > 0 {
-			for _, domain := range domainsRegex {
-				if f.compiled == nil {
-					f.compiled = make(map[*regexp.Regexp][]authx.AuthStrategy)
-				}
-				compiled, err := regexp.Compile(domain)
-				if err != nil {
-					gologger.Warning().Msgf("failed to compile domain regex '%s': %v", domain, err)
-					continue
-				}
-				if ss, ok := f.compiled[compiled]; !ok {
-					f.compiled[compiled] = []authx.AuthStrategy{&authx.DynamicAuthStrategy{Dynamic: dynamic}}
-				} else {
-					f.compiled[compiled] = append(ss, &authx.DynamicAuthStrategy{Dynamic: dynamic})
-				}
-			}
-		}
-		for _, domain := range domain {
-			if f.domains == nil {
-				f.domains = make(map[string][]authx.AuthStrategy)
-			}
-			domain = strings.TrimSpace(domain)
-			domain = strings.TrimSuffix(domain, ":80")
-			domain = strings.TrimSuffix(domain, ":443")
+	provider, err := NewEmbeddedAuthProvider(store, nil)
+	require.NoError(t, err)
 
-			if ss, ok := f.domains[domain]; !ok {
-				f.domains[domain] = []authx.AuthStrategy{&authx.DynamicAuthStrategy{Dynamic: dynamic}}
-			} else {
-				f.domains[domain] = append(ss, &authx.DynamicAuthStrategy{Dynamic: dynamic})
-			}
-		}
-	}
+	// Test regex match
+	strategies := provider.LookupAddr("api.example.com")
+	require.Len(t, strategies, 1)
+
+	strategies = provider.LookupAddr("sub.example.com")
+	require.Len(t, strategies, 1)
+
+	// Test non-matching domain
+	strategies = provider.LookupAddr("example.org")
+	require.Len(t, strategies, 0)
 }
 
-// LookupAddr looks up a given domain/address and returns appropriate auth strategy
-func (f *EmbeddedAuthProvider) LookupAddr(addr string) []authx.AuthStrategy {
-	var strategies []authx.AuthStrategy
-
-	if strings.Contains(addr, ":") {
-		// default normalization for host:port
-		host, port, err := net.SplitHostPort(addr)
-		if err == nil && (port == "80" || port == "443") {
-			addr = host
-		}
-	}
-	for domain, strategy := range f.domains {
-		if strings.EqualFold(domain, addr) {
-			strategies = append(strategies, strategy...)
-		}
-	}
-	for compiled, strategy := range f.compiled {
-		if compiled.MatchString(addr) {
-			strategies = append(strategies, strategy...)
-		}
+func TestEmbeddedAuthProviderNoSecrets(t *testing.T) {
+	store := &authx.Authx{
+		ID: "test-secrets",
 	}
 
-	return strategies
+	_, err := NewEmbeddedAuthProvider(store, nil)
+	require.Error(t, err)
+	require.Equal(t, ErrNoSecrets, err)
 }
 
-// LookupURL looks up a given URL and returns appropriate auth strategy
-func (f *EmbeddedAuthProvider) LookupURL(u *url.URL) []authx.AuthStrategy {
-	return f.LookupAddr(u.Host)
+func TestEmbeddedAuthProviderNilStore(t *testing.T) {
+	_, err := NewEmbeddedAuthProvider(nil, nil)
+	require.Error(t, err)
 }
 
-// LookupURLX looks up a given URL and returns appropriate auth strategy
-func (f *EmbeddedAuthProvider) LookupURLX(u *urlutil.URL) []authx.AuthStrategy {
-	return f.LookupAddr(u.Host)
-}
+func TestEmbeddedAuthProviderGetTemplatePaths(t *testing.T) {
+	store := &authx.Authx{
+		ID: "test-secrets",
+		Secrets: []authx.Secret{
+			{
+				Type:    "Header",
+				Domains: []string{"example.com"},
+				Headers: []authx.KV{
+					{Key: "X-API-Key", Value: "test-key"},
+				},
+			},
+		},
+	}
 
-// GetTemplatePaths returns the template path for the auth provider
-func (f *EmbeddedAuthProvider) GetTemplatePaths() []string {
-	res := []string{}
-	for _, dynamic := range f.store.Dynamic {
-		if dynamic.TemplatePath != "" {
-			res = append(res, dynamic.TemplatePath)
-		}
-	}
-	return res
-}
+	provider, err := NewEmbeddedAuthProvider(store, nil)
+	require.NoError(t, err)
 
-// PreFetchSecrets pre-fetches the secrets from the auth provider
-func (f *EmbeddedAuthProvider) PreFetchSecrets() error {
-	for _, ss := range f.domains {
-		for _, s := range ss {
-			if val, ok := s.(*authx.DynamicAuthStrategy); ok {
-				if err := val.Dynamic.Fetch(false); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	for _, ss := range f.compiled {
-		for _, s := range ss {
-			if val, ok := s.(*authx.DynamicAuthStrategy); ok {
-				if err := val.Dynamic.Fetch(false); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
+	paths := provider.GetTemplatePaths()
+	require.Empty(t, paths)
 }
