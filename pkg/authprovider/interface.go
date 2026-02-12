@@ -55,5 +55,14 @@ func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
 		}
 		providers = append(providers, provider)
 	}
+	
+	// Add providers for embedded secrets
+	for _, embedded := range options.EmbeddedSecrets {
+		provider, err := NewEmbeddedAuthProvider(embedded, options.LazyFetchSecret)
+		if err != nil {
+			return nil, err
+		}
+		providers = append(providers, provider)
+	}
 	return NewMultiAuthProvider(providers...), nil
 }

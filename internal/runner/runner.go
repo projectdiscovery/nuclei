@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
@@ -576,7 +577,9 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
+	hasSecretsFile := len(r.options.SecretsFile) > 0
+	hasEmbeddedSecrets := len(r.options.EmbeddedSecrets) > 0
+	if (hasSecretsFile || hasEmbeddedSecrets) && !r.options.Validate {
 		// Clone options so GetAuthTmplStore can modify them without affecting the original
 		authOptions := r.options.Copy()
 		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
@@ -588,6 +591,13 @@ func (r *Runner) RunEnumeration() error {
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,
 		})
+		
+		// Add embedded secrets from profile files
+		for _, embedded := range r.options.EmbeddedSecrets {
+			if authxData, ok := embedded.(*authx.Authx); ok {
+				authOpts.EmbeddedSecrets = append(authOpts.EmbeddedSecrets, authxData)
+			}
+		}
 		// initialize auth provider
 		provider, err := authprovider.NewAuthProvider(authOpts)
 		if err != nil {
