@@ -1013,6 +1013,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
 				HttpClient:         request.httpClient,
 				ResponseTimeDelay:  duration,
+				ResponseBody:       bodyStr,
+				ResponseHeaders:    headersStr,
+				ResponseStatusCode: respChain.Response().StatusCode,
 				AnalyzerParameters: request.Analyzer.Parameters,
 			})
 			if err != nil {

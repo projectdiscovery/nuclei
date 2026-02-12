@@ -1,0 +1,30 @@
+id: fuzz-xss-context-encoded
+
+info:
+  name: XSS context analyzer encoded reflection
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - q
+        fuzz:
+          - "[XSS_CANARY]"
+
+    analyzer:
+      name: xss_context
+      parameters:
+        canary: "nuclei_xss_probe_<>\"'`"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - analyzer == true

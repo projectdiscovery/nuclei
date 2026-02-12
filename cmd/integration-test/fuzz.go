@@ -33,6 +33,10 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-body-params-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-xml-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-generic-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 4}},
+	{Path: "fuzz/fuzz-xss-context-body.yaml", TestCase: &xssContextBodyFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-attribute.yaml", TestCase: &xssContextAttributeFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-script.yaml", TestCase: &xssContextScriptFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-encoded.yaml", TestCase: &xssContextEncodedFuzz{}},
 }
 
 type genericFuzzTestCase struct {
@@ -200,4 +204,80 @@ func (h *fuzzMultipleMode) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
+}
+
+type xssContextBodyFuzz struct{}
+
+func (h *xssContextBodyFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, "<html><body><div>%s</div></body></html>", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=hello", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+type xssContextAttributeFuzz struct{}
+
+func (h *xssContextAttributeFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, `<html><body><input type="text" value="%s"></body></html>`, value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=hello", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+type xssContextScriptFuzz struct{}
+
+func (h *xssContextScriptFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, `<html><script>var user = "%s";</script></html>`, value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=hello", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+type xssContextEncodedFuzz struct{}
+
+func (h *xssContextEncodedFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, "<html><body><div>&lt;%s&gt;</div></body></html>", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=hello", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 0)
 }

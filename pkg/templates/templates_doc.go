@@ -870,11 +870,12 @@ func init() {
 	ANALYZERSAnalyzerTemplateDoc.Fields[0].Comments[encoder.LineComment] = "Name is the name of the analyzer to use"
 	ANALYZERSAnalyzerTemplateDoc.Fields[0].Values = []string{
 		"time_delay",
+		"xss_context",
 	}
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Name = "parameters"
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Type = "map[string]interface{}"
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Note = ""
-	ANALYZERSAnalyzerTemplateDoc.Fields[1].Description = "Parameters is the parameters for the analyzer\n\nParameters are different for each analyzer. For example, you can customize\ntime_delay analyzer with sleep_duration, time_slope_error_range, etc. Refer\nto the docs for each analyzer to get an idea about parameters."
+	ANALYZERSAnalyzerTemplateDoc.Fields[1].Description = "Parameters is the parameters for the analyzer\n\nParameters are different for each analyzer. For example, you can customize\ntime_delay analyzer with sleep_duration, time_slope_error_range, etc, and\nxss_context analyzer with canary payload value. Refer to the docs for each\nanalyzer to get an idea about parameters."
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Comments[encoder.LineComment] = "Parameters is the parameters for the analyzer"
 
 	SignatureTypeHolderDoc.Type = "SignatureTypeHolder"

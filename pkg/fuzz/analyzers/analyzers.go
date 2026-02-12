@@ -27,6 +27,7 @@ type AnalyzerTemplate struct {
 	//   Name is the name of the analyzer to use
 	// values:
 	//   - time_delay
+	//   - xss_context
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
@@ -60,6 +61,9 @@ type Options struct {
 	FuzzGenerated      fuzz.GeneratedRequest
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
+	ResponseBody       string
+	ResponseHeaders    string
+	ResponseStatusCode int
 	AnalyzerParameters map[string]interface{}
 }
 

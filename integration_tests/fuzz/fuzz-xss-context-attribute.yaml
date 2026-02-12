@@ -1,0 +1,30 @@
+id: fuzz-xss-context-attribute
+
+info:
+  name: XSS context analyzer attribute reflection
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - q
+        fuzz:
+          - "[XSS_CANARY]"
+
+    analyzer:
+      name: xss_context
+      parameters:
+        canary: "nuclei9x7q<>\"'`"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - analyzer == true
