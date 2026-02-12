@@ -199,12 +199,16 @@ func verifyReplayBody(body, payload string, expected ContextType) bool {
 	case ContextEventHandler:
 		return strings.Contains(body, "alert(1)") ||
 			strings.Contains(body, "alert`1`") ||
+			strings.Contains(body, "alert(document.domain)") ||
 			strings.Contains(body, "confirm(1)") ||
 			strings.Contains(body, "prompt(1)")
 	case ContextAttributeDoubleQuoted, ContextAttributeSingleQuoted, ContextAttributeUnquoted:
 		return strings.Contains(body, "onfocus=alert(1)") ||
 			strings.Contains(body, "onmouseover=alert(1)") ||
-			strings.Contains(body, "onerror=alert(1)")
+			strings.Contains(body, "onerror=alert(1)") ||
+			strings.Contains(body, "onload=alert(1)") ||
+			((strings.Contains(body, "<svg") || strings.Contains(body, "<img") ||
+				strings.Contains(body, "<script")) && strings.Contains(body, "alert(1)"))
 	case ContextHTMLText, ContextRCDATA, ContextStyle:
 		return (strings.Contains(body, "<svg") || strings.Contains(body, "<img") ||
 			strings.Contains(body, "<script") || strings.Contains(body, "<math")) &&

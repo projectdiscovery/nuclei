@@ -118,11 +118,11 @@ func isEventHandler(name string) bool {
 			buf[i] = c
 		}
 	}
-	lower := string(buf[:n])
-	if !strings.HasPrefix(lower, "on") {
+	// Check prefix "on" directly on bytes to avoid string allocation for non-handlers
+	if buf[0] != 'o' || buf[1] != 'n' {
 		return false
 	}
-	_, ok := eventHandlers[lower]
+	_, ok := eventHandlers[string(buf[:n])]
 	return ok
 }
 

@@ -53,13 +53,23 @@ func DetectReflections(body, marker string) []ReflectionInfo {
 			}
 			ctx := classifyTextContext(currentTag(stack), token.Data, marker)
 			chars := DetectAvailableChars(token.Data, marker)
-			startIdx := tokenOffset + strings.Index(raw, marker)
+
+			idx := strings.Index(raw, marker)
+			if idx == -1 {
+				idx = strings.Index(token.Data, marker)
+			}
+			startIdx := tokenOffset + idx
 			reflections = append(reflections, reflectionForContext(ctx, "", chars, startIdx, startIdx+len(marker)))
 
 		case html.CommentToken:
 			if strings.Contains(token.Data, marker) {
 				chars := DetectAvailableChars(token.Data, marker)
-				startIdx := tokenOffset + strings.Index(raw, marker)
+
+				idx := strings.Index(raw, marker)
+				if idx == -1 {
+					idx = strings.Index(token.Data, marker)
+				}
+				startIdx := tokenOffset + idx
 				reflections = append(reflections, reflectionForContext(ContextComment, "", chars, startIdx, startIdx+len(marker)))
 			}
 		}
@@ -83,19 +93,45 @@ func drainRemainingReflections(body, marker string, existing []ReflectionInfo) [
 	if len(existing) >= maxReflections {
 		return existing
 	}
-	// Count marker occurrences in body vs found reflections
-	bodyCount := strings.Count(body, marker)
-	if bodyCount <= len(existing) {
-		return existing
+	// Track found indices to avoid duplicates
+	foundIndices := make(map[int]struct{})
+	for _, ref := range existing {
+		if ref.StartIndex >= 0 {
+			foundIndices[ref.StartIndex] = struct{}{}
+		}
 	}
-	// There are unfound reflections — add them as HTMLText (conservative fallback)
-	missing := bodyCount - len(existing)
-	if missing+len(existing) > maxReflections {
-		missing = maxReflections - len(existing)
-	}
-	chars := DetectAvailableChars(body, marker)
-	for i := 0; i < missing; i++ {
-		existing = append(existing, reflectionForContext(ContextHTMLText, "", chars, -1, -1))
+
+	// Scan for all marker occurrences not already covered
+	start := 0
+	for {
+		idx := strings.Index(body[start:], marker)
+		if idx == -1 {
+			break
+		}
+		realIdx := start + idx
+
+		if _, ok := foundIndices[realIdx]; !ok {
+			// Found a missing reflection
+			// Extract a window around it for character detection
+			wStart := realIdx - 50
+			if wStart < 0 {
+				wStart = 0
+			}
+			wEnd := realIdx + len(marker) + 50
+			if wEnd > len(body) {
+				wEnd = len(body)
+			}
+			window := body[wStart:wEnd]
+
+			chars := DetectAvailableChars(window, marker)
+			existing = append(existing, reflectionForContext(ContextHTMLText, "", chars, realIdx, realIdx+len(marker)))
+
+			if len(existing) >= maxReflections {
+				return existing
+			}
+		}
+		// Move past this occurrence
+		start = realIdx + 1
 	}
 	return existing
 }
@@ -201,14 +237,7 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string,
 		}
 
 		// Calculate the start search position for this attribute
-		// We can't rely just on the previous attr's end, because attributes can be reordered by parser vs raw?
-		// Actually html.Tokenizer.Raw() gives the exact raw tag.
-		// So we can search sequentially.
-
-		// Fallback to simple search if we can't reliably track
-		// But the request specifically asks to "compute the offset of the marker for the current attr"
-		// and "search raw starting from the last seen index"
-
+		// html.Tokenizer.Raw() gives the exact raw tag, so we can search sequentially.
 		idx := strings.Index(rawLower[lastIndex:], strings.ToLower(attr.Key))
 		searchFrom := 0
 		if idx >= 0 {
@@ -217,9 +246,7 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string,
 
 		ctx := classifyAttributeContext(raw, attr, marker, searchFrom)
 
-		// Update lastIndex to avoid re-matching the same attribute (generic approximation)
-		// Ideally classifyAttributeContext would return the end index.
-		// For now, we update it if we found the key.
+		// Update lastIndex to avoid re-matching the same attribute
 		if idx >= 0 {
 			lastIndex = searchFrom + len(attr.Key)
 		}
@@ -232,18 +259,6 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string,
 		}
 
 		chars := DetectAvailableChars(attr.Val, marker)
-		// Approximate start/end calculation:
-		// We know 'searchFrom' points to start of Key.
-		// Detailed location inside value is tricky due to quotes/spaces.
-		// For simplicity/robustness, we can point to the attribute value's rough location.
-		// But wait, we need detection encoding window.
-		// Let's refine:
-		// We have `attr.Val` which contains marker.
-		// We can find marker in `attr.Val`?
-		// But we need offset in `raw`.
-		// `classifyAttributeContext` logic parses `raw`.
-		// Let's just use a window around the attribute for now?
-		// No, better to search marker in `raw` after `searchFrom` + `len(attr.Key)`.
 
 		valIdx := strings.Index(rawLower[searchFrom:], strings.ToLower(marker))
 		startIdx := -1
