@@ -8,6 +8,7 @@ import (
 
 	osutils "github.com/projectdiscovery/utils/os"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -21,7 +22,7 @@ var codeTestCases = []TestCaseInfo{
 	{Path: "protocols/code/py-env-var.yaml", TestCase: &codeEnvVar{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/unsigned.yaml", TestCase: &unsignedCode{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-nosig.yaml", TestCase: &codePyNoSig{}, DisableOn: isCodeDisabled},
-	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}, DisableOn: isCodeDisabled},
+	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return isCodeDisabled() || !interactsh.AreDefaultServersCompatible() }},
 	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() || isCodeDisabled() }},
 	{Path: "protocols/code/pre-condition.yaml", TestCase: &codePreCondition{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/sh-virtual.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsLinux() || isCodeDisabled() }},

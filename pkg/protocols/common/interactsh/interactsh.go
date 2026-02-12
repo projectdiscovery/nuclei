@@ -12,6 +12,7 @@ import (
 
 	"errors"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/Mzack9999/gcache"
 
 	"github.com/projectdiscovery/gologger"
@@ -98,6 +99,11 @@ func (c *Client) poll() error {
 	gologger.Info().Msgf("Using Interactsh Server: %s", interactDomain)
 
 	c.setHostname(interactDomain)
+
+	if err := checkServerVersion(c.options.HTTPClient, interactDomain); err != nil {
+		gologger.Warning().Msgf("Interactsh Server: %v", err)
+		return nil
+	}
 
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		request, err := c.requests.Get(interaction.UniqueID)
@@ -467,4 +473,76 @@ func (c *Client) setHostname(hostname string) {
 // GetHostname returns the configured interactsh server hostname.
 func (c *Client) GetHostname() string {
 	return c.getHostname()
+}
+
+// checkServerVersion checks if the interactsh server version is compatible.
+func checkServerVersion(httpClient *retryablehttp.Client, serverURL string) error {
+	if httpClient == nil {
+		return nil
+	}
+	warn := func(msg string) {
+		gologger.Warning().Msgf("Could not check interactsh server version: %s", msg)
+	}
+
+	// Ensure serverURL has scheme.
+	if !strings.HasPrefix(serverURL, "http") {
+		serverURL = "https://" + serverURL
+	}
+
+	req, err := retryablehttp.NewRequest("HEAD", serverURL, nil)
+	if err != nil {
+		warn(err.Error())
+		return nil
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		warn(err.Error())
+		return nil
+	}
+	defer resp.Body.Close()
+
+	version := resp.Header.Get("X-Interactsh-Version")
+	if version == "" {
+		warn("version not found")
+		return nil
+	}
+	gologger.Debug().Msgf("Interactsh Server Version: %s", version)
+
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		warn(err.Error())
+		return nil
+	}
+
+	constraint, _ := semver.NewConstraint(">= 1.3.0")
+	if !constraint.Check(v) {
+		return ErrIncompatibleServerVersion
+	}
+	return nil
+}
+
+// AreDefaultServersCompatible checks if any of the default interactsh servers is incompatible.
+// It returns true if all servers are compatible, or false if any server has a version mismatch.
+func AreDefaultServersCompatible() bool {
+	defaultServers := strings.Split(client.DefaultOptions.ServerURL, ",")
+
+	httpClient := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	httpClient.HTTPClient.Timeout = 5 * time.Second
+
+	var wg sync.WaitGroup
+	var incompatible atomic.Bool
+
+	for _, server := range defaultServers {
+		wg.Add(1)
+		go func(serverURL string) {
+			defer wg.Done()
+
+			if err := checkServerVersion(httpClient, serverURL); errors.Is(err, ErrIncompatibleServerVersion) {
+				incompatible.Store(true)
+			}
+		}(server)
+	}
+
+	wg.Wait()
+	return !incompatible.Load()
 }
