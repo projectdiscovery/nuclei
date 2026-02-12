@@ -80,6 +80,31 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+// TestPathComponent_DeterministicOrder verifies that path segments are always
+// iterated in insertion order, not random map order. This was the root cause of
+// https://github.com/projectdiscovery/nuclei/issues/6398.
+func TestPathComponent_DeterministicOrder(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/blog/post/123/comments/456/replies", nil)
+		require.NoError(t, err)
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var keys []string
+		var values []string
+		_ = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+
+		require.Equal(t, []string{"1", "2", "3", "4", "5", "6"}, keys, "iteration %d: keys must be in insertion order", i)
+		require.Equal(t, []string{"blog", "post", "123", "comments", "456", "replies"}, values, "iteration %d: values must be in insertion order", i)
+	}
+}
+
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
