@@ -1,0 +1,25 @@
+id: fuzz-xss-context-comment
+
+info:
+  name: XSS Context Analyzer - Comment Context
+  author: pdteam
+  severity: high
+  description: Tests XSS detection in HTML comment context.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        fuzz:
+          - "[XSS_CANARY]"
+    analyzer:
+      name: xss_context
+    matchers:
+      - type: word
+        part: analyzer
+        words:
+          - "true"

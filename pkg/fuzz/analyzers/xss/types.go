@@ -16,6 +16,7 @@ const (
 	ContextAttributeDoubleQuoted             // <input value="MARKER">
 	ContextAttributeSingleQuoted             // <input value='MARKER'>
 	ContextAttributeUnquoted                 // <input value=MARKER>
+	ContextEventHandler                      // <div onclick="MARKER">
 	ContextScriptBlock                       // <script>MARKER</script>
 	ContextScriptStringDouble                // <script>var x="MARKER"</script>
 	ContextScriptStringSingle                // <script>var x='MARKER'</script>
@@ -36,6 +37,8 @@ func (c ContextType) String() string {
 		return "attr_single_quoted"
 	case ContextAttributeUnquoted:
 		return "attr_unquoted"
+	case ContextEventHandler:
+		return "event_handler"
 	case ContextScriptBlock:
 		return "script_block"
 	case ContextScriptStringDouble:
@@ -64,6 +67,8 @@ type CharacterSet struct {
 	DoubleQuote bool // "
 	Slash       bool // /
 	Backtick    bool // `
+	Parenthesis bool // (
+	Equals      bool // =
 }
 
 type ReflectionInfo struct {
@@ -76,13 +81,83 @@ type ReflectionInfo struct {
 func isURLAttribute(name string) bool {
 	switch strings.ToLower(name) {
 	case "href", "src", "action", "formaction", "poster", "data",
-		"codebase", "cite", "background", "dynsrc", "lowsrc":
+		"codebase", "cite", "background", "dynsrc", "lowsrc", "ping",
+		"manifest", "icon", "srcset":
 		return true
 	default:
 		return false
 	}
 }
 
+// isEventHandler returns true for HTML event handler attributes (onclick, onerror, etc.)
+// Uses case-insensitive matching without heap allocation on the hot path.
+func isEventHandler(name string) bool {
+	if len(name) < 3 {
+		return false
+	}
+	// Stack-allocated lowercase buffer for short attribute names (covers all event handlers)
+	var buf [32]byte
+	n := len(name)
+	if n > 32 {
+		return false
+	}
+	for i := 0; i < n; i++ {
+		c := name[i]
+		if c >= 'A' && c <= 'Z' {
+			buf[i] = c + 32
+		} else {
+			buf[i] = c
+		}
+	}
+	lower := string(buf[:n])
+	if !strings.HasPrefix(lower, "on") {
+		return false
+	}
+	_, ok := eventHandlers[lower]
+	return ok
+}
+
+// eventHandlers is the comprehensive set of HTML event handler attribute names.
+var eventHandlers = map[string]struct{}{
+	// Mouse events
+	"onclick": {}, "ondblclick": {}, "onmousedown": {}, "onmouseup": {},
+	"onmousemove": {}, "onmouseover": {}, "onmouseout": {},
+	"onmouseenter": {}, "onmouseleave": {}, "oncontextmenu": {},
+	// Keyboard events
+	"onkeydown": {}, "onkeyup": {}, "onkeypress": {},
+	// Form events
+	"onfocus": {}, "onblur": {}, "onchange": {}, "oninput": {},
+	"onsubmit": {}, "onreset": {}, "onselect": {}, "oninvalid": {},
+	// Window events
+	"onload": {}, "onunload": {}, "onbeforeunload": {},
+	"onresize": {}, "onscroll": {}, "onerror": {},
+	"onhashchange": {}, "onpopstate": {}, "onstorage": {},
+	"onpagehide": {}, "onpageshow": {},
+	// Clipboard events
+	"oncopy": {}, "oncut": {}, "onpaste": {},
+	// Drag events
+	"ondrag": {}, "ondragstart": {}, "ondragend": {},
+	"ondragover": {}, "ondragenter": {}, "ondragleave": {}, "ondrop": {},
+	// Media events
+	"onplay": {}, "onpause": {}, "onended": {}, "onvolumechange": {},
+	"onseeking": {}, "onseeked": {}, "oncanplay": {}, "ontimeupdate": {},
+	// Touch events
+	"ontouchstart": {}, "ontouchend": {}, "ontouchmove": {}, "ontouchcancel": {},
+	// Pointer events
+	"onpointerdown": {}, "onpointerup": {}, "onpointermove": {},
+	"onpointerover": {}, "onpointerout": {},
+	"onpointerenter": {}, "onpointerleave": {}, "ongotpointercapture": {},
+	// Animation / Transition events
+	"onanimationstart": {}, "onanimationend": {}, "onanimationiteration": {},
+	"ontransitionend": {}, "ontransitionstart": {}, "ontransitionrun": {},
+	// Other common events
+	"onfocusin": {}, "onfocusout": {}, "ontoggle": {},
+	"onwheel": {}, "onafterprint": {}, "onbeforeprint": {},
+	"onabort": {}, "oncanplaythrough": {}, "onwaiting": {},
+}
+
+// DetectAvailableChars compares the reflected output against the original canary
+// to determine which special characters survived server-side encoding.
 func DetectAvailableChars(reflected, original string) CharacterSet {
 	return CharacterSet{
 		LessThan:    !strings.Contains(original, "<") || strings.Contains(reflected, "<"),
@@ -91,5 +166,25 @@ func DetectAvailableChars(reflected, original string) CharacterSet {
 		DoubleQuote: !strings.Contains(original, "\"") || strings.Contains(reflected, "\""),
 		Slash:       !strings.Contains(original, "/") || strings.Contains(reflected, "/"),
 		Backtick:    !strings.Contains(original, "`") || strings.Contains(reflected, "`"),
+		Parenthesis: !strings.Contains(original, "(") || strings.Contains(reflected, "("),
+		Equals:      !strings.Contains(original, "=") || strings.Contains(reflected, "="),
 	}
+}
+
+// DetectDoubleEncoding checks if the server double-encoded special characters.
+// e.g. < -> &amp;lt; instead of &lt;
+func DetectDoubleEncoding(reflected string) bool {
+	return strings.Contains(reflected, "&amp;lt;") ||
+		strings.Contains(reflected, "&amp;gt;") ||
+		strings.Contains(reflected, "&amp;quot;") ||
+		strings.Contains(reflected, "&amp;#") ||
+		strings.Contains(reflected, "&amp;apos;")
+}
+
+// DetectUnicodeEscape checks if the server used unicode escapes on special chars.
+func DetectUnicodeEscape(reflected string) bool {
+	return strings.Contains(reflected, "\\u003c") || // <
+		strings.Contains(reflected, "\\u003e") || // >
+		strings.Contains(reflected, "\\u0022") || // "
+		strings.Contains(reflected, "\\u0027") // '
 }

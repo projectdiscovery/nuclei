@@ -33,6 +33,12 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 	return analyzers.ApplyPayloadTransformations(data)
 }
 
+// Analyze performs the full XSS detection pipeline:
+//  1. Detect reflections of the canary marker in the response body
+//  2. Sort by exploitation priority (script > event > attr > html > comment)
+//  3. For each reflection context, select payloads filtered by available chars
+//  4. Replay each payload and verify the response confirms exploitability
+//  5. Fail fast on double-encoding or unicode escaping
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if options == nil || options.ResponseBody == "" {
 		return false, "", nil
@@ -43,6 +49,13 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		marker = options.FuzzGenerated.OriginalPayload
 	}
 	if marker == "" {
+		return false, "", nil
+	}
+
+	// Fail fast: double-encoding or unicode escaping means the server
+	// is aggressively sanitising and payloads are unlikely to work.
+	if DetectDoubleEncoding(options.ResponseBody) || DetectUnicodeEscape(options.ResponseBody) {
+		gologger.Verbose().Msgf("[%s] Double-encoding or unicode escape detected, skipping", a.Name())
 		return false, "", nil
 	}
 
@@ -78,16 +91,19 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			}
 			if ok {
 				details := fmt.Sprintf(
-					"[xss_context] XSS confirmed: parameter=%s context=%s payload=%q chars=<:%v >:%v ':%v \":%v /:%v `:%v",
+					"[xss_context] XSS confirmed: parameter=%s context=%s payload=%q attr=%s chars=<:%v >:%v ':%v \":%v /:%v `:%v (:%v =:%v",
 					options.FuzzGenerated.Parameter,
 					ref.Context.String(),
 					payload,
+					ref.AttributeName,
 					ref.AvailableChars.LessThan,
 					ref.AvailableChars.GreaterThan,
 					ref.AvailableChars.SingleQuote,
 					ref.AvailableChars.DoubleQuote,
 					ref.AvailableChars.Slash,
 					ref.AvailableChars.Backtick,
+					ref.AvailableChars.Parenthesis,
+					ref.AvailableChars.Equals,
 				)
 				gologger.Verbose().Msgf("[%s] %s", a.Name(), details)
 				return true, details, nil
@@ -141,14 +157,20 @@ func replayAndVerify(options *analyzers.Options, payload string, expected Contex
 func verifyReplayBody(body, payload string, expected ContextType) bool {
 	switch expected {
 	case ContextScriptBlock, ContextScriptStringDouble, ContextScriptStringSingle, ContextScriptTemplate:
-		return strings.Contains(body, "alert(1)")
+		return strings.Contains(body, "alert(1)") || strings.Contains(body, "alert`1`")
+	case ContextEventHandler:
+		return strings.Contains(body, "alert(1)") ||
+			strings.Contains(body, "alert`1`") ||
+			strings.Contains(body, "confirm(1)") ||
+			strings.Contains(body, "prompt(1)")
 	case ContextAttributeDoubleQuoted, ContextAttributeSingleQuoted, ContextAttributeUnquoted:
 		return strings.Contains(body, "onfocus=alert(1)") ||
 			strings.Contains(body, "onmouseover=alert(1)") ||
 			strings.Contains(body, "onerror=alert(1)")
 	case ContextHTMLText, ContextRCDATA, ContextStyle:
 		return (strings.Contains(body, "<svg") || strings.Contains(body, "<img") ||
-			strings.Contains(body, "<script")) && strings.Contains(body, "alert(1)")
+			strings.Contains(body, "<script") || strings.Contains(body, "<math")) &&
+			strings.Contains(body, "alert(1)")
 	case ContextComment:
 		return (strings.Contains(body, "<img") || strings.Contains(body, "<svg")) &&
 			strings.Contains(body, "alert(1)")

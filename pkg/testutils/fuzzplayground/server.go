@@ -34,6 +34,14 @@ func GetPlaygroundServer() *echo.Echo {
 	e.GET("/user/:id/profile", userProfileHandler)
 	e.POST("/user", patchUnsanitizedUserHandler)
 	e.GET("/blog/posts", getPostsHandler)
+
+	// XSS context test endpoints
+	e.GET("/xss/body", xssBodyHandler)
+	e.GET("/xss/attribute", xssAttributeHandler)
+	e.GET("/xss/script", xssScriptHandler)
+	e.GET("/xss/comment", xssCommentHandler)
+	e.GET("/xss/event", xssEventHandler)
+	e.GET("/xss/encoded", xssEncodedHandler)
 	return e
 }
 
@@ -223,4 +231,41 @@ func getPostsHandler(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(http.StatusOK, posts)
+}
+
+// --- XSS playground handlers ---
+
+func xssBodyHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("<div>%s</div>", q)))
+}
+
+func xssAttributeHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf(`<input type="text" value="%s">`, q)))
+}
+
+func xssScriptHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	return ctx.HTML(200, fmt.Sprintf(`<html><script>var user = "%s";</script></html>`, q))
+}
+
+func xssCommentHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("<!-- user: %s -->", q)))
+}
+
+func xssEventHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf(`<div onclick="%s">click me</div>`, q)))
+}
+
+func xssEncodedHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	// Server-side encoding of user input
+	q = strings.ReplaceAll(q, "<", "&lt;")
+	q = strings.ReplaceAll(q, ">", "&gt;")
+	q = strings.ReplaceAll(q, "\"", "&quot;")
+	q = strings.ReplaceAll(q, "'", "&#39;")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("<div>%s</div>", q)))
 }

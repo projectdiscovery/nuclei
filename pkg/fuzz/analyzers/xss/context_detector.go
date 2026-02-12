@@ -6,6 +6,9 @@ import (
 	"golang.org/x/net/html"
 )
 
+// DetectReflections tokenizes an HTML response body and returns all locations
+// where the marker appears, classified by HTML parsing context. Results are
+// capped at maxReflections to avoid pathological inputs.
 func DetectReflections(body, marker string) []ReflectionInfo {
 	if body == "" || marker == "" || !strings.Contains(body, marker) {
 		return nil
@@ -57,7 +60,35 @@ func DetectReflections(body, marker string) []ReflectionInfo {
 			break
 		}
 	}
+
+	// Drain: catch reflections in malformed/truncated HTML that the tokenizer
+	// didn't fully parse (e.g. unclosed tags at end of document).
+	reflections = drainRemainingReflections(body, marker, reflections)
+
 	return reflections
+}
+
+// drainRemainingReflections scans for marker occurrences that the tokenizer
+// may have missed due to malformed HTML (unclosed tags, truncated documents).
+func drainRemainingReflections(body, marker string, existing []ReflectionInfo) []ReflectionInfo {
+	if len(existing) >= maxReflections {
+		return existing
+	}
+	// Count marker occurrences in body vs found reflections
+	bodyCount := strings.Count(body, marker)
+	if bodyCount <= len(existing) {
+		return existing
+	}
+	// There are unfound reflections — add them as HTMLText (conservative fallback)
+	missing := bodyCount - len(existing)
+	if missing+len(existing) > maxReflections {
+		missing = maxReflections - len(existing)
+	}
+	for i := 0; i < missing; i++ {
+		chars := DetectAvailableChars(body, marker)
+		existing = append(existing, reflectionForContext(ContextHTMLText, "", chars))
+	}
+	return existing
 }
 
 func currentTag(stack []string) string {
@@ -125,9 +156,14 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string)
 			continue
 		}
 		ctx := classifyAttributeContext(raw, attr, marker)
-		if isURLAttribute(attr.Key) && ctx != ContextAttributeUnquoted {
+
+		// Event handler attributes get a distinct context type
+		if isEventHandler(attr.Key) {
+			ctx = ContextEventHandler
+		} else if isURLAttribute(attr.Key) && ctx != ContextAttributeUnquoted {
 			ctx = ContextURLAttribute
 		}
+
 		chars := DetectAvailableChars(attr.Val, marker)
 		info := reflectionForContext(ctx, attr.Key, chars)
 		results = append(results, info)
@@ -136,8 +172,6 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string)
 }
 
 func classifyAttributeContext(rawToken string, attr html.Attribute, marker string) ContextType {
-	// Prefer matching the specific attribute occurrence so multiple marker
-	// reflections in the same tag do not all inherit the first one’s quoting style.
 	attrKey := strings.ToLower(attr.Key)
 	rawLower := strings.ToLower(rawToken)
 	searchFrom := 0
@@ -219,7 +253,7 @@ func classifyAttributeContextByMarker(rawToken, marker string) ContextType {
 		return ContextAttributeUnquoted
 	}
 	i := eqPos + 1
-	for i < len(rawToken) && (rawToken[i] == ' ' || rawToken[i] == '\t' || rawToken[i] == '\n' || rawToken[i] == '\r') {
+	for i < len(rawToken) && isHTMLSpace(rawToken[i]) {
 		i++
 	}
 	if i >= len(rawToken) {
@@ -244,6 +278,8 @@ func reflectionForContext(ctx ContextType, attrName string, chars CharacterSet) 
 	switch ctx {
 	case ContextScriptBlock, ContextScriptStringDouble, ContextScriptStringSingle, ContextScriptTemplate:
 		priority = 10
+	case ContextEventHandler:
+		priority = 12
 	case ContextURLAttribute:
 		priority = 15
 	case ContextAttributeUnquoted:

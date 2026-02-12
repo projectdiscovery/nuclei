@@ -133,6 +133,42 @@ func TestAnalyze_CommentReflectionSkipped(t *testing.T) {
 	_ = ok
 }
 
+func TestAnalyze_EventHandlerReflection(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><body><div onclick="` + q + `">click</div></body></html>`))
+	}))
+	defer srv.Close()
+
+	marker := "nucleiProbe123"
+	ok, details := runAnalyzer(t, srv.URL, marker)
+	require.True(t, ok, "should detect exploitable event handler reflection")
+	require.Contains(t, details, "[xss_context]")
+	require.Contains(t, details, "event_handler")
+}
+
+func TestAnalyze_DoubleEncodingNegative(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
+		// Double-encode: &lt; -> &amp;lt;
+		q = html.EscapeString(html.EscapeString(q))
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<html><body>" + q + "</body></html>"))
+	}))
+	defer srv.Close()
+
+	marker := "nucleiProbe123<>\"'"
+	ok, _ := runAnalyzer(t, srv.URL, marker)
+	require.False(t, ok, "double-encoded reflection should NOT be exploitable")
+}
+
+func TestVerifyReplayBody_EventHandlerContext(t *testing.T) {
+	require.True(t, verifyReplayBody(`<div onclick="alert(1)">`, `alert(1)`, ContextEventHandler))
+	require.True(t, verifyReplayBody(`<div onclick="confirm(1)">`, `confirm(1)`, ContextEventHandler))
+	require.False(t, verifyReplayBody(`<div onclick="safe()">`, `alert(1)`, ContextEventHandler))
+}
+
 func TestAnalyze_NilOptions(t *testing.T) {
 	a := &Analyzer{}
 	ok, details, err := a.Analyze(nil)

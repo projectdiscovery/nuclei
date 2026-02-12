@@ -37,6 +37,8 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-xss-context-body.yaml", TestCase: &xssContextBodyFuzz{}},
 	{Path: "fuzz/fuzz-xss-context-attribute.yaml", TestCase: &xssContextAttributeFuzz{}},
 	{Path: "fuzz/fuzz-xss-context-script.yaml", TestCase: &xssContextScriptFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-comment.yaml", TestCase: &xssContextCommentFuzz{}},
+	{Path: "fuzz/fuzz-xss-context-event.yaml", TestCase: &xssContextEventFuzz{}},
 	{Path: "fuzz/fuzz-xss-context-encoded.yaml", TestCase: &xssContextEncodedFuzz{}},
 }
 
@@ -253,6 +255,44 @@ func (h *xssContextScriptFuzz) Execute(filePath string) error {
 		value := r.URL.Query().Get("q")
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = fmt.Fprintf(w, `<html><script>var user = "%s";</script></html>`, value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=hello", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+type xssContextCommentFuzz struct{}
+
+func (h *xssContextCommentFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, "<html><body><!-- user: %s --></body></html>", value)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?q=hello", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+type xssContextEventFuzz struct{}
+
+func (h *xssContextEventFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("q")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, `<html><body><div onclick="%s">click me</div></body></html>`, value)
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
