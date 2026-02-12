@@ -308,16 +308,18 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	}
 
 	// Record match for honeypot detection
-	if w.honeypotDetector.IsEnabled() && event.Host != "" && event.TemplateID != "" {
+	if w.honeypotDetector.IsEnabled() && event.TemplateID != "" {
 		host := event.Host
 		if host == "" {
 			host = event.URL
 		}
-		w.honeypotDetector.RecordMatch(host, event.TemplateID)
+		if host != "" {
+			w.honeypotDetector.RecordMatch(host, event.TemplateID)
 
-		// Suppress results from flagged honeypot hosts
-		if w.honeypotDetector.IsHoneypot(host) {
-			return nil
+			// Suppress results from flagged honeypot hosts
+			if w.honeypotDetector.IsHoneypot(host) {
+				return nil
+			}
 		}
 	}
 

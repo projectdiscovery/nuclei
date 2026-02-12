@@ -169,6 +169,11 @@ func normalizeHost(input string) string {
 		input = input[:idx]
 	}
 
+	// Strip userinfo (user:pass@)
+	if idx := strings.LastIndex(input, "@"); idx != -1 {
+		input = input[idx+1:]
+	}
+
 	// Handle IPv6 brackets
 	if strings.HasPrefix(input, "[") {
 		if host, _, err := net.SplitHostPort(input); err == nil {
