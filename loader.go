@@ -343,10 +343,10 @@ func (store *Store) Load() error {
 	return nil
 }
 
-var templateIDPathMap map[string]string
+var templateIDPathMap *mapsutil.SyncLockMap[string, string]
 
 func init() {
-	templateIDPathMap = make(map[string]string)
+	templateIDPathMap = mapsutil.NewSyncLockMap[string, string]()
 }
 
 // buildIndexFilter creates an [index.Filter] from the store configuration.
@@ -585,8 +585,8 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 			// clustering, AFAIK.
 			continue
 		} else {
-			if existingTemplatePath, found := templateIDPathMap[template.ID]; !found {
-				templateIDPathMap[template.ID] = templatePath
+			if existingTemplatePath, found := templateIDPathMap.Get(template.ID); !found {
+				_ = templateIDPathMap.Set(template.ID, template.Path)
 			} else {
 				// TODO: until https://github.com/projectdiscovery/nuclei-templates/issues/11324 is deployed
 				// disable strict validation to allow GH actions to run
@@ -713,7 +713,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
+		return nil, fmt.Errorf("could not create wait group: %w", errWg)
 	}
 
 	if typesOpts.ExecutionId == "" {
@@ -880,18 +880,18 @@ func IsHTTPBasedProtocolUsed(store *Store) bool {
 }
 
 func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
-	for _, workflow := range workflow {
-		for _, template := range workflow.Matchers {
+	for _, wf := range workflow {
+		for _, template := range wf.Matchers {
 			if workflowContainsProtocol(template.Subtemplates) {
 				return true
 			}
 		}
-		for _, template := range workflow.Subtemplates {
+		for _, template := range wf.Subtemplates {
 			if workflowContainsProtocol(template.Subtemplates) {
 				return true
 			}
 		}
-		for _, executer := range workflow.Executers {
+		for _, executer := range wf.Executers {
 			if executer.TemplateType == templateTypes.HTTPProtocol || executer.TemplateType == templateTypes.HeadlessProtocol {
 				return true
 			}
