@@ -46,8 +46,27 @@ func (pf *ProjectFile) cleanupData(data []byte) []byte {
 	return regexDefaultInteract.ReplaceAll(data, []byte(""))
 }
 
+// cacheKey builds a cache key from the request data and URL.
+// When a URL is provided, it is prepended to the cleaned request data
+// so that requests with different schemes (http vs https) or ports
+// produce different cache keys.
+func (pf *ProjectFile) cacheKey(req []byte, reqURL string) []byte {
+	cleaned := pf.cleanupData(req)
+	if reqURL == "" {
+		return cleaned
+	}
+	return append([]byte(reqURL+"\n"), cleaned...)
+}
+
 func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
-	reqHash, err := hash(pf.cleanupData(req))
+	return pf.GetWithURL(req, "")
+}
+
+// GetWithURL retrieves a cached response using the request data and URL.
+// The URL is included in the cache key to differentiate requests by scheme
+// and port (e.g., http:// vs https://).
+func (pf *ProjectFile) GetWithURL(req []byte, reqURL string) (*http.Response, error) {
+	reqHash, err := hash(pf.cacheKey(req, reqURL))
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +86,14 @@ func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
 }
 
 func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
-	reqHash, err := hash(pf.cleanupData(req))
+	return pf.SetWithURL(req, "", resp, data)
+}
+
+// SetWithURL stores a response in the cache using the request data and URL.
+// The URL is included in the cache key to differentiate requests by scheme
+// and port (e.g., http:// vs https://).
+func (pf *ProjectFile) SetWithURL(req []byte, reqURL string, resp *http.Response, data []byte) error {
+	reqHash, err := hash(pf.cacheKey(req, reqURL))
 	if err != nil {
 		return err
 	}
