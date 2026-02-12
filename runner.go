@@ -361,7 +361,6 @@ func New(options *types.Options) (*Runner, error) {
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
 	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
-	opts.Debug = runner.options.Debug
 	opts.DebugRequest = runner.options.DebugRequests
 	opts.DebugResponse = runner.options.DebugResponse
 	if httpclient != nil {
@@ -587,6 +586,9 @@ func (r *Runner) RunEnumeration() error {
 		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,
+			OnError: func(err error) {
+				runner.Logger.Error().Msgf("auth template fetch failed: %s", err)
+			},
 		})
 		// initialize auth provider
 		provider, err := authprovider.NewAuthProvider(authOpts)
@@ -928,7 +930,10 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	}
 	resumeCfgClone := r.resumeCfg.Clone()
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
+	data, err := json.MarshalIndent(resumeCfgClone, "", "\t")
+	if err != nil {
+		return err
+	}
 
 	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
@@ -977,7 +982,9 @@ func UploadResultsToCloud(options *types.Options) error {
 			options.Logger.Warning().Msgf("[%s] failed to upload: %s\n", r.TemplateID, err)
 		}
 	}
-	uploadWriter.Close()
+	if err := uploadWriter.Close(); err != nil {
+		options.Logger.Warning().Msgf("Could not close upload writer: %s\n", err)
+	}
 	return nil
 }
 
@@ -1003,7 +1010,7 @@ func Walk(s interface{}, callback WalkFunc) {
 		}
 		if field.Kind() == reflect.Struct {
 			Walk(field.Addr().Interface(), callback)
-		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+		} else if field.Kind() == reflect.Ptr && !field.IsNil() && field.Elem().Kind() == reflect.Struct {
 			Walk(field.Interface(), callback)
 		} else {
 			callback(field, fieldType)
@@ -1021,10 +1028,10 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 	if f.Kind() == reflect.String {
 		str := f.String()
 		if strings.HasPrefix(str, "$") {
-			env := strings.TrimPrefix(str, "$")
-			retrievedEnv := os.Getenv(env)
+			envKey := strings.TrimPrefix(str, "$")
+			retrievedEnv := os.Getenv(envKey)
 			if retrievedEnv != "" {
-				f.SetString(os.Getenv(env))
+				f.SetString(os.Getenv(envKey))
 			}
 		}
 	}

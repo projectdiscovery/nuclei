@@ -28,6 +28,7 @@ type AuthLazyFetchOptions struct {
 }
 
 // GetAuthTmplStore create new loader for loading auth templates
+// Note: this function mutates opts; callers should pass a copy.
 func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *protocols.ExecutorOptions) (*loader.Store, error) {
 	tmpls := []string{}
 	for _, file := range opts.SecretsFile {
