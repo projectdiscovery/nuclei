@@ -17,6 +17,7 @@ func DetectReflections(body, marker string) []ReflectionInfo {
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
 	stack := make([]string, 0, 8)
 	reflections := make([]ReflectionInfo, 0, 4)
+	tokenOffset := 0
 
 	for {
 		tokenType := tokenizer.Next()
@@ -30,11 +31,11 @@ func DetectReflections(body, marker string) []ReflectionInfo {
 		switch tokenType {
 		case html.StartTagToken:
 			tagName := strings.ToLower(token.Data)
-			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker)...)
+			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker, tokenOffset)...)
 			stack = append(stack, tagName)
 
 		case html.SelfClosingTagToken:
-			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker)...)
+			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker, tokenOffset)...)
 
 		case html.EndTagToken:
 			closingTag := strings.ToLower(token.Data)
@@ -47,18 +48,22 @@ func DetectReflections(body, marker string) []ReflectionInfo {
 
 		case html.TextToken:
 			if !strings.Contains(token.Data, marker) {
+				tokenOffset += len(raw)
 				continue
 			}
 			ctx := classifyTextContext(currentTag(stack), token.Data, marker)
 			chars := DetectAvailableChars(token.Data, marker)
-			reflections = append(reflections, reflectionForContext(ctx, "", chars))
+			startIdx := tokenOffset + strings.Index(raw, marker)
+			reflections = append(reflections, reflectionForContext(ctx, "", chars, startIdx, startIdx+len(marker)))
 
 		case html.CommentToken:
 			if strings.Contains(token.Data, marker) {
 				chars := DetectAvailableChars(token.Data, marker)
-				reflections = append(reflections, reflectionForContext(ContextComment, "", chars))
+				startIdx := tokenOffset + strings.Index(raw, marker)
+				reflections = append(reflections, reflectionForContext(ContextComment, "", chars, startIdx, startIdx+len(marker)))
 			}
 		}
+		tokenOffset += len(raw)
 
 		if len(reflections) >= maxReflections {
 			break
@@ -88,9 +93,9 @@ func drainRemainingReflections(body, marker string, existing []ReflectionInfo) [
 	if missing+len(existing) > maxReflections {
 		missing = maxReflections - len(existing)
 	}
+	chars := DetectAvailableChars(body, marker)
 	for i := 0; i < missing; i++ {
-		chars := DetectAvailableChars(body, marker)
-		existing = append(existing, reflectionForContext(ContextHTMLText, "", chars))
+		existing = append(existing, reflectionForContext(ContextHTMLText, "", chars, -1, -1))
 	}
 	return existing
 }
@@ -124,9 +129,13 @@ func classifyScriptContext(scriptText, marker string) ContextType {
 	if pos < 0 {
 		return ContextScriptBlock
 	}
+
 	var quote rune
+	var braceStack []bool // true = entered from template interpolation
 	escaped := false
-	for _, ch := range scriptText[:pos] {
+
+	for i := 0; i < pos; i++ {
+		ch := rune(scriptText[i])
 		if escaped {
 			escaped = false
 			continue
@@ -135,16 +144,38 @@ func classifyScriptContext(scriptText, marker string) ContextType {
 			escaped = true
 			continue
 		}
+
 		if quote != 0 {
 			if ch == quote {
 				quote = 0
+				continue
+			}
+			if quote == '`' && ch == '$' && i+1 < pos && scriptText[i+1] == '{' {
+				// Enter interpolation: ${
+				quote = 0
+				braceStack = append(braceStack, true)
+				i++ // skip {
 			}
 			continue
 		}
-		if ch == '\'' || ch == '"' || ch == '`' {
+
+		// Not in quote
+		switch ch {
+		case '"', '\'', '`':
 			quote = ch
+		case '{':
+			braceStack = append(braceStack, false)
+		case '}':
+			if len(braceStack) > 0 {
+				fromTemplate := braceStack[len(braceStack)-1]
+				braceStack = braceStack[:len(braceStack)-1]
+				if fromTemplate {
+					quote = '`'
+				}
+			}
 		}
 	}
+
 	switch quote {
 	case '"':
 		return ContextScriptStringDouble
@@ -159,7 +190,7 @@ func classifyScriptContext(scriptText, marker string) ContextType {
 
 // findAttributeReflections identifies marker reflections inside tag attributes
 // and classifies each reflection by quoting and attribute type.
-func findAttributeReflections(raw string, attrs []html.Attribute, marker string) []ReflectionInfo {
+func findAttributeReflections(raw string, attrs []html.Attribute, marker string, baseOffset int) []ReflectionInfo {
 	results := make([]ReflectionInfo, 0, 2)
 	lastIndex := 0
 	rawLower := strings.ToLower(raw)
@@ -201,7 +232,28 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string)
 		}
 
 		chars := DetectAvailableChars(attr.Val, marker)
-		info := reflectionForContext(ctx, attr.Key, chars)
+		// Approximate start/end calculation:
+		// We know 'searchFrom' points to start of Key.
+		// Detailed location inside value is tricky due to quotes/spaces.
+		// For simplicity/robustness, we can point to the attribute value's rough location.
+		// But wait, we need detection encoding window.
+		// Let's refine:
+		// We have `attr.Val` which contains marker.
+		// We can find marker in `attr.Val`?
+		// But we need offset in `raw`.
+		// `classifyAttributeContext` logic parses `raw`.
+		// Let's just use a window around the attribute for now?
+		// No, better to search marker in `raw` after `searchFrom` + `len(attr.Key)`.
+
+		valIdx := strings.Index(rawLower[searchFrom:], strings.ToLower(marker))
+		startIdx := -1
+		endIdx := -1
+		if valIdx >= 0 {
+			startIdx = baseOffset + searchFrom + valIdx
+			endIdx = startIdx + len(marker)
+		}
+
+		info := reflectionForContext(ctx, attr.Key, chars, startIdx, endIdx)
 		results = append(results, info)
 	}
 	return results
@@ -316,7 +368,7 @@ func isHTMLSpace(ch byte) bool {
 
 // reflectionForContext builds reflection metadata and assigns execution priority
 // so high-impact contexts are attempted first.
-func reflectionForContext(ctx ContextType, attrName string, chars CharacterSet) ReflectionInfo {
+func reflectionForContext(ctx ContextType, attrName string, chars CharacterSet, start, end int) ReflectionInfo {
 	priority := 100
 	switch ctx {
 	case ContextScriptBlock, ContextScriptStringDouble, ContextScriptStringSingle, ContextScriptTemplate:
@@ -345,5 +397,7 @@ func reflectionForContext(ctx ContextType, attrName string, chars CharacterSet) 
 		AvailableChars: chars,
 		AttributeName:  strings.ToLower(attrName),
 		PriorityWeight: priority,
+		StartIndex:     start,
+		EndIndex:       end,
 	}
 }

@@ -80,6 +80,30 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			continue
 		}
 
+		// Check for encoding/escaping ONLY around the reflection
+		// The server might encode specific contexts but not others.
+		// We use a small window around the reflection.
+		var window string
+		if ref.StartIndex >= 0 && ref.EndIndex >= 0 {
+			start := ref.StartIndex - 50
+			if start < 0 {
+				start = 0
+			}
+			end := ref.EndIndex + 50
+			if end > len(options.ResponseBody) {
+				end = len(options.ResponseBody)
+			}
+			window = options.ResponseBody[start:end]
+		} else {
+			// Fallback to global check if indices are unavailable
+			window = options.ResponseBody
+		}
+
+		if DetectDoubleEncoding(window) || DetectUnicodeEscape(window) {
+			gologger.Verbose().Msgf("[%s] Context %s: Encoding detected, skipping", a.Name(), ref.Context)
+			continue
+		}
+
 		payloads := SelectPayloads(ref, options.AnalyzerParameters)
 		if len(payloads) == 0 {
 			gologger.Verbose().Msgf("[%s] No usable payloads for context %s (chars filtered)", a.Name(), ref.Context)
@@ -136,9 +160,14 @@ func replayAndVerify(options *analyzers.Options, payload string, expected Contex
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, err
 	}
+
+	needsRestore := true
 	defer func() {
-		if original != "" {
+		if needsRestore {
+			// Restore the original value (even if empty)
 			_ = gr.Component.SetValue(gr.Key, original)
+			// Always rebuild to restore the request state for next analyzer/step
+			_, _ = gr.Component.Rebuild()
 		}
 	}()
 

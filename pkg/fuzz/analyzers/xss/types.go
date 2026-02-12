@@ -4,7 +4,7 @@ import "strings"
 
 const (
 	// AnalyzerName is the registry name used by fuzz templates.
-	AnalyzerName   = "xss_context"
+	AnalyzerName = "xss_context"
 	// DefaultCanary is the default marker used for reflection tracking.
 	DefaultCanary  = "nuclei9x7q<>\"'`"
 	maxReflections = 10
@@ -82,6 +82,8 @@ type ReflectionInfo struct {
 	AvailableChars CharacterSet
 	AttributeName  string
 	PriorityWeight int // lower = higher priority (tried first)
+	StartIndex     int
+	EndIndex       int
 }
 
 // isURLAttribute returns true for attributes that accept URL-like values.
