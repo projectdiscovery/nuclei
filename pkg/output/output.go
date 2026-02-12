@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -82,7 +83,8 @@ type StandardWriter struct {
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
 
-	resultCount atomic.Int32
+	resultCount        atomic.Int32
+	honeypotDetector   *honeypot.Detector
 }
 
 var _ Writer = &StandardWriter{}
@@ -280,6 +282,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
 		KeysToRedact:     options.Redact,
+		honeypotDetector: honeypot.New(options.HoneypotThreshold),
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -293,10 +296,29 @@ func (w *StandardWriter) ResultCount() int {
 	return int(w.resultCount.Load())
 }
 
+// HoneypotDetector returns the honeypot detector instance.
+func (w *StandardWriter) HoneypotDetector() *honeypot.Detector {
+	return w.honeypotDetector
+}
+
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Record match for honeypot detection
+	if w.honeypotDetector.IsEnabled() && event.Host != "" && event.TemplateID != "" {
+		host := event.Host
+		if host == "" {
+			host = event.URL
+		}
+		w.honeypotDetector.RecordMatch(host, event.TemplateID)
+
+		// Suppress results from flagged honeypot hosts
+		if w.honeypotDetector.IsHoneypot(host) {
+			return nil
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -453,6 +475,15 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
+	// Print honeypot detection summary if any hosts were flagged
+	if w.honeypotDetector.IsEnabled() && w.honeypotDetector.FlaggedCount() > 0 {
+		flagged := w.honeypotDetector.FlaggedHosts()
+		gologger.Info().Msgf("Honeypot detection: %d host(s) flagged as potential honeypots (results suppressed)", len(flagged))
+		for host, count := range flagged {
+			gologger.Verbose().Msgf("  Honeypot: %s (%d unique template matches)", host, count)
+		}
+	}
+
 	if w.outputFile != nil {
 		_ = w.outputFile.Close()
 	}
