@@ -1,2 +1,0 @@
-?   	github.com/projectdiscovery/nuclei/v3/cmd/integration-test	[no test files]
-ok  	github.com/projectdiscovery/nuclei/v3/pkg/protocols/http	0.951s [no tests to run]
