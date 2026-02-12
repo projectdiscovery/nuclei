@@ -95,6 +95,7 @@ func drainRemainingReflections(body, marker string, existing []ReflectionInfo) [
 	return existing
 }
 
+// currentTag returns the innermost open tag from the tokenizer stack.
 func currentTag(stack []string) string {
 	if len(stack) == 0 {
 		return ""
@@ -102,6 +103,7 @@ func currentTag(stack []string) string {
 	return stack[len(stack)-1]
 }
 
+// classifyTextContext determines text-node context based on the current tag.
 func classifyTextContext(tagName, text, marker string) ContextType {
 	switch tagName {
 	case "script":
@@ -115,6 +117,8 @@ func classifyTextContext(tagName, text, marker string) ContextType {
 	}
 }
 
+// classifyScriptContext detects whether a marker appears in script block code
+// or inside a string/template literal.
 func classifyScriptContext(scriptText, marker string) ContextType {
 	pos := strings.Index(scriptText, marker)
 	if pos < 0 {
@@ -153,6 +157,8 @@ func classifyScriptContext(scriptText, marker string) ContextType {
 	}
 }
 
+// findAttributeReflections identifies marker reflections inside tag attributes
+// and classifies each reflection by quoting and attribute type.
 func findAttributeReflections(raw string, attrs []html.Attribute, marker string) []ReflectionInfo {
 	results := make([]ReflectionInfo, 0, 2)
 	lastIndex := 0
@@ -201,6 +207,8 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string)
 	return results
 }
 
+// classifyAttributeContext determines whether the marker is reflected in a
+// double-quoted, single-quoted, or unquoted attribute value.
 func classifyAttributeContext(rawToken string, attr html.Attribute, marker string, searchFrom int) ContextType {
 	attrKey := strings.ToLower(attr.Key)
 	rawLower := strings.ToLower(rawToken)
@@ -273,6 +281,8 @@ func classifyAttributeContext(rawToken string, attr html.Attribute, marker strin
 	return classifyAttributeContextByMarker(rawToken, marker)
 }
 
+// classifyAttributeContextByMarker infers attribute quoting directly from the
+// marker location when per-attribute parsing fails.
 func classifyAttributeContextByMarker(rawToken, marker string) ContextType {
 	markerPos := strings.Index(rawToken, marker)
 	if markerPos < 0 {
@@ -299,10 +309,13 @@ func classifyAttributeContextByMarker(rawToken, marker string) ContextType {
 	}
 }
 
+// isHTMLSpace reports whether a byte is one of the HTML ASCII whitespace chars.
 func isHTMLSpace(ch byte) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
+// reflectionForContext builds reflection metadata and assigns execution priority
+// so high-impact contexts are attempted first.
 func reflectionForContext(ctx ContextType, attrName string, chars CharacterSet) ReflectionInfo {
 	priority := 100
 	switch ctx {

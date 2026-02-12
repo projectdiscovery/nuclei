@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
+// Analyzer implements the xss_context fuzz analyzer.
 type Analyzer struct{}
 
 var _ analyzers.Analyzer = &Analyzer{}
@@ -18,10 +19,13 @@ func init() {
 	analyzers.RegisterAnalyzer(AnalyzerName, &Analyzer{})
 }
 
+// Name returns the analyzer registry name.
 func (a *Analyzer) Name() string {
 	return AnalyzerName
 }
 
+// ApplyInitialTransformation injects the canary value and applies common
+// payload transformations before the first fuzz request is sent.
 func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
 	canary := DefaultCanary
 	if params != nil {
@@ -116,6 +120,8 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	return false, "", nil
 }
 
+// replayAndVerify sends a replay request with the candidate payload and checks
+// whether the replay response confirms exploitability for the expected context.
 func replayAndVerify(options *analyzers.Options, payload string, expected ContextType) (bool, error) {
 	gr := options.FuzzGenerated
 	if gr.Component == nil || options.HttpClient == nil {
@@ -155,6 +161,8 @@ func replayAndVerify(options *analyzers.Options, payload string, expected Contex
 	return verifyReplayBody(string(body), payload, expected), nil
 }
 
+// verifyReplayBody applies context-specific confirmation checks to reduce false
+// positives when validating replay responses.
 func verifyReplayBody(body, payload string, expected ContextType) bool {
 	switch expected {
 	case ContextScriptBlock, ContextScriptStringDouble, ContextScriptStringSingle, ContextScriptTemplate:

@@ -2,6 +2,8 @@ package xss
 
 import "strings"
 
+// contextPayloads maps reflection contexts to payloads that are likely to
+// execute in those contexts.
 var contextPayloads = map[ContextType][]string{
 	ContextHTMLText: {
 		"<img src=x onerror=alert(1)>",
@@ -87,6 +89,8 @@ var contextPayloads = map[ContextType][]string{
 	},
 }
 
+// SelectPayloads returns context-appropriate payloads filtered by reflected
+// character survival and capped by max_verification_attempts.
 func SelectPayloads(ref ReflectionInfo, params map[string]interface{}) []string {
 	payloads := contextPayloads[ref.Context]
 	if payloads == nil {
@@ -115,6 +119,8 @@ func SelectPayloads(ref ReflectionInfo, params map[string]interface{}) []string 
 	return filtered
 }
 
+// filterByAvailableChars removes payloads that rely on characters not present
+// in the reflected output.
 func filterByAvailableChars(payloads []string, chars CharacterSet, ctx ContextType) []string {
 	result := make([]string, 0, len(payloads))
 	for _, p := range payloads {
@@ -125,6 +131,8 @@ func filterByAvailableChars(payloads []string, chars CharacterSet, ctx ContextTy
 	return result
 }
 
+// canUsePayload validates whether a payload can be represented in the current
+// response context based on available special characters.
 func canUsePayload(payload string, chars CharacterSet, ctx ContextType) bool {
 	if ctx == ContextHTMLText || ctx == ContextRCDATA || ctx == ContextStyle {
 		if !chars.LessThan || !chars.GreaterThan {
