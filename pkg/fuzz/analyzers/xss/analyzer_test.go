@@ -116,7 +116,7 @@ func TestAnalyze_NoReflection(t *testing.T) {
 	require.False(t, ok, "no reflection should return false")
 }
 
-func TestAnalyze_CommentReflectionSkipped(t *testing.T) {
+func TestAnalyze_CommentReflection_NoPanic(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query().Get("q")
 		w.Header().Set("Content-Type", "text/html")
@@ -127,9 +127,14 @@ func TestAnalyze_CommentReflectionSkipped(t *testing.T) {
 	// Comment-only reflections should still try breakout payloads
 	marker := "nucleiProbe123<>\"'"
 	// The analyzer attempts comment breakout payloads now
-	ok, _ := runAnalyzer(t, srv.URL, marker)
-	// Comments are in the payloads list so they may or may not succeed
-	// depending on whether the server reflects the breakout unencoded
+	a := &Analyzer{}
+	ok, _, err := a.Analyze(&analyzers.Options{
+		FuzzGenerated:      buildGeneratedRequest(t, srv.URL, marker),
+		HttpClient:         retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle),
+		ResponseBody:       fetchBody(t, srv.URL, marker),
+		AnalyzerParameters: map[string]interface{}{},
+	})
+	require.NoError(t, err)
 	_ = ok
 }
 

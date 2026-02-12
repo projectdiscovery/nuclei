@@ -450,3 +450,26 @@ func TestIsEventHandler(t *testing.T) {
 		})
 	}
 }
+
+// --- Missing Coverage Tests ---
+
+func TestDetectReflections_ContextStyle(t *testing.T) {
+	body := `<style>body { color: ` + testMarker + `; }</style>`
+	got := DetectReflections(body, testMarker)
+	require.NotEmpty(t, got)
+	require.Equal(t, ContextStyle, got[0].Context)
+}
+
+func TestDetectReflections_ContextRCDATA(t *testing.T) {
+	body := `<title>` + testMarker + `</title>`
+	got := DetectReflections(body, testMarker)
+	require.NotEmpty(t, got)
+	require.Equal(t, ContextRCDATA, got[0].Context)
+}
+
+func TestDetectReflections_ContextAttributeUnquoted_Explicit(t *testing.T) {
+	body := `<div class=` + testMarker + `></div>`
+	got := DetectReflections(body, testMarker)
+	require.NotEmpty(t, got)
+	require.Equal(t, ContextAttributeUnquoted, got[0].Context)
+}

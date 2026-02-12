@@ -37,8 +37,12 @@ func DetectReflections(body, marker string) []ReflectionInfo {
 			reflections = append(reflections, findAttributeReflections(raw, token.Attr, marker)...)
 
 		case html.EndTagToken:
-			if len(stack) > 0 {
-				stack = stack[:len(stack)-1]
+			closingTag := strings.ToLower(token.Data)
+			for i := len(stack) - 1; i >= 0; i-- {
+				if stack[i] == closingTag {
+					stack = stack[:i]
+					break
+				}
 			}
 
 		case html.TextToken:
@@ -151,11 +155,37 @@ func classifyScriptContext(scriptText, marker string) ContextType {
 
 func findAttributeReflections(raw string, attrs []html.Attribute, marker string) []ReflectionInfo {
 	results := make([]ReflectionInfo, 0, 2)
+	lastIndex := 0
+	rawLower := strings.ToLower(raw)
+
 	for _, attr := range attrs {
 		if !strings.Contains(attr.Val, marker) {
 			continue
 		}
-		ctx := classifyAttributeContext(raw, attr, marker)
+
+		// Calculate the start search position for this attribute
+		// We can't rely just on the previous attr's end, because attributes can be reordered by parser vs raw?
+		// Actually html.Tokenizer.Raw() gives the exact raw tag.
+		// So we can search sequentially.
+
+		// Fallback to simple search if we can't reliably track
+		// But the request specifically asks to "compute the offset of the marker for the current attr"
+		// and "search raw starting from the last seen index"
+
+		idx := strings.Index(rawLower[lastIndex:], strings.ToLower(attr.Key))
+		searchFrom := 0
+		if idx >= 0 {
+			searchFrom = lastIndex + idx
+		}
+
+		ctx := classifyAttributeContext(raw, attr, marker, searchFrom)
+
+		// Update lastIndex to avoid re-matching the same attribute (generic approximation)
+		// Ideally classifyAttributeContext would return the end index.
+		// For now, we update it if we found the key.
+		if idx >= 0 {
+			lastIndex = searchFrom + len(attr.Key)
+		}
 
 		// Event handler attributes get a distinct context type
 		if isEventHandler(attr.Key) {
@@ -171,10 +201,10 @@ func findAttributeReflections(raw string, attrs []html.Attribute, marker string)
 	return results
 }
 
-func classifyAttributeContext(rawToken string, attr html.Attribute, marker string) ContextType {
+func classifyAttributeContext(rawToken string, attr html.Attribute, marker string, searchFrom int) ContextType {
 	attrKey := strings.ToLower(attr.Key)
 	rawLower := strings.ToLower(rawToken)
-	searchFrom := 0
+	// searchFrom is passed in now
 
 	for {
 		offset := strings.Index(rawLower[searchFrom:], attrKey)

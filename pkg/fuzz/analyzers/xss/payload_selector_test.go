@@ -101,7 +101,7 @@ func TestSelectPayloads_MaxAttemptsFloat(t *testing.T) {
 func TestSelectPayloads_UnknownContext(t *testing.T) {
 	ref := ReflectionInfo{Context: ContextUnknown, AvailableChars: allChars}
 	got := SelectPayloads(ref, nil)
-	require.Nil(t, got)
+	require.Empty(t, got)
 }
 
 func TestCanUsePayload_AngleBracketRequired(t *testing.T) {

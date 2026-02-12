@@ -9,6 +9,7 @@
 .idea
 .vscode
 .claude/settings.local.json
+.pr-proof-*
 # Binaries
 /bin/*
 /bindgen

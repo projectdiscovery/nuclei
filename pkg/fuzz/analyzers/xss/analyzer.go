@@ -87,6 +87,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		for _, payload := range payloads {
 			ok, err := replayAndVerify(options, payload, ref.Context)
 			if err != nil {
+				gologger.Verbose().Msgf("[%s] Replay failed for payload %q: %v", a.Name(), payload, err)
 				continue
 			}
 			if ok {
