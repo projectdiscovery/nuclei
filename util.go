@@ -69,9 +69,9 @@ func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, l
 }
 
 // returns total requests count
-func getRequestCount(templates []*templates.Template) int {
+func getRequestCount(tmpls []*templates.Template) int {
 	count := 0
-	for _, template := range templates {
+	for _, template := range tmpls {
 		// ignore requests in workflows as total requests in workflow
 		// depends on what templates will be called in workflow
 		if len(template.Workflows) > 0 {
