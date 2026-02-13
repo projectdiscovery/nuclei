@@ -181,6 +181,8 @@ func TestBuildCanary(t *testing.T) {
 	require.Contains(t, canary, "'")
 	require.Contains(t, canary, "\"")
 	require.Contains(t, canary, "`")
+	require.Contains(t, canary, "-")
+	require.Contains(t, canary, "/")
 }
 
 func TestBuildCanary_CustomPrefix(t *testing.T) {
@@ -239,6 +241,30 @@ func TestClassifyJSContext(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestAsciiToLower_PreservesByteOffsets(t *testing.T) {
+	// Turkish İ (U+0130) lowercases to "i̇" (2 bytes → 3 bytes) with strings.ToLower,
+	// but asciiToLower preserves the byte length.
+	input := "A\xc4\xb0B" // A + İ (2-byte UTF-8) + B
+	result := asciiToLower(input)
+	require.Equal(t, len(input), len(result), "byte length must be preserved")
+	require.Equal(t, byte('a'), result[0])
+	require.Equal(t, byte('b'), result[len(result)-1])
+}
+
+func TestIsExploitable_HTMLComment(t *testing.T) {
+	canary := buildCanary(nil) // includes - and > so --> can form
+	body := `<!-- ` + canary + ` -->`
+	ref := Reflection{Context: ContextHTMLComment, Position: 5}
+	require.True(t, isExploitable(body, canary, ref))
+}
+
+func TestIsExploitable_StyleBlock(t *testing.T) {
+	canary := buildCanary(nil) // includes < and / so </ can form
+	body := `<style>.x { color: ` + canary + `; }</style>`
+	ref := Reflection{Context: ContextStyleBlock, Position: 19}
+	require.True(t, isExploitable(body, canary, ref))
 }
 
 func TestFormatFindings(t *testing.T) {

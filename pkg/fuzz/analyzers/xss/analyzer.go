@@ -26,8 +26,9 @@ const (
 	// canaryPrefix is the static prefix used to identify our probe in responses.
 	canaryPrefix = "xc4n4ry"
 	// probeChars are XSS-critical characters included in the canary to test
-	// which ones survive sanitization.
-	probeChars = `<>'"` + "`"
+	// which ones survive sanitization. Order matters: </ must be adjacent for
+	// style/script breakout detection; - and > for comment breakout.
+	probeChars = `</>'"` + "`-"
 )
 
 func init() {
@@ -207,7 +208,9 @@ func doRequest(req *retryablehttp.Request, client *retryablehttp.Client) (string
 	}
 	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	// Limit read to 10 MB to match the main request path and prevent OOM.
+	const maxProbeRead = 10 * 1024 * 1024
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeRead))
 	if err != nil {
 		return "", err
 	}

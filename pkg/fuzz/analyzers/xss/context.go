@@ -123,8 +123,8 @@ func ClassifyReflections(body, canary string) []Reflection {
 		return nil
 	}
 
-	lowerBody := strings.ToLower(body)
-	lowerCanary := strings.ToLower(canary)
+	lowerBody := asciiToLower(body)
+	lowerCanary := asciiToLower(canary)
 
 	var reflections []Reflection
 
@@ -475,4 +475,20 @@ func classifyAttrQuoteFromSegment(segment string) ReflectionContext {
 	default:
 		return ContextHTMLAttrUnquoted
 	}
+}
+
+// asciiToLower performs ASCII-only lowercasing. Unlike strings.ToLower, this
+// preserves byte offsets for non-ASCII characters (e.g. Turkish İ) so that
+// positions found in the lowered string can be used to index the original.
+func asciiToLower(s string) string {
+	b := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			b[i] = c + 32
+		} else {
+			b[i] = c
+		}
+	}
+	return string(b)
 }
