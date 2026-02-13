@@ -127,6 +127,9 @@ func (d *Detector) GetMatchCount(host string) int {
 
 // FlaggedCount returns the total number of flagged honeypot hosts.
 func (d *Detector) FlaggedCount() int {
+	if !d.enabled {
+		return 0
+	}
 	return int(d.flagged.Load())
 }
 
@@ -134,6 +137,9 @@ func (d *Detector) FlaggedCount() int {
 // along with their match counts.
 func (d *Detector) FlaggedHosts() map[string]int {
 	result := make(map[string]int)
+	if !d.enabled {
+		return result
+	}
 	d.hosts.Range(func(key, value any) bool {
 		host := key.(string)
 		entry := value.(*hostEntry)
@@ -158,6 +164,9 @@ func normalizeHost(input string) string {
 	if idx := strings.Index(input, "://"); idx != -1 {
 		input = input[idx+3:]
 	}
+
+	// Strip leading slashes (e.g. protocol-relative "//host")
+	input = strings.TrimLeft(input, "/")
 
 	// Strip path
 	if idx := strings.IndexByte(input, '/'); idx != -1 {

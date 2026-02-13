@@ -62,6 +62,8 @@ func TestDetectorDisabled(t *testing.T) {
 func TestDetectorNegativeThreshold(t *testing.T) {
 	d := New(-1)
 	require.False(t, d.IsEnabled())
+	require.Equal(t, 0, d.FlaggedCount())
+	require.Empty(t, d.FlaggedHosts())
 }
 
 func TestDetectorRecordAfterFlagged(t *testing.T) {
@@ -114,6 +116,8 @@ func TestNormalizeHost(t *testing.T) {
 		{"user:pass@example.com", "example.com"},
 		{"http://example.com#frag", "example.com"},
 		{"http://example.com/path#section", "example.com"},
+		{"//example.com/path", "example.com"},
+		{"//example.com", "example.com"},
 		{"", ""},
 		{"   ", ""},
 	}
