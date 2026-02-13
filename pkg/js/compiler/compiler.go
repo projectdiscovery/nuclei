@@ -135,6 +135,11 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 			}
 		}()
 
+		// Propagate the deadline context so that ExecuteProgram (and both
+		// the pooled and non-pooled paths) can use it for slot acquisition
+		// and watchdog goroutines. Without this, opts.Context carries no
+		// deadline and pool slots are held indefinitely by zombie goroutines.
+		opts.Context = ctx
 		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
