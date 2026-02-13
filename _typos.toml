@@ -1,0 +1,58 @@
+# Configuration for the typos spell checker
+# https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = [
+    # Non-English README translations
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test fixtures and binary/encoded data
+    "pkg/input/formats/testdata/*",
+    "pkg/protocols/common/helpers/deserialization/testdata/*",
+    # WAF regex patterns contain intentional fragments
+    "pkg/output/stats/waf/regexes.json",
+]
+
+[default.extend-identifiers]
+# Variable names in code
+fo = "fo"
+Splitted = "Splitted"
+splitted = "splitted"
+originalSplitted = "originalSplitted"
+
+[default.extend-words]
+# CLI flag abbreviations used in help text
+ines = "ines"
+ine = "ine"
+hae = "hae"
+ue = "ue"
+ot = "ot"
+# External dependency type (projectdiscovery/goflags)
+Allowd = "Allowd"
+# NooP is a standard abbreviation for No-Operation
+Noo = "Noo"
+# MisMatched is a struct field name
+Mis = "Mis"
+# Test data values
+alo = "alo"
+Iif = "Iif"
+BA = "BA"
+UE = "UE"
+Iy = "Iy"
+Fo = "Fo"
+Iz = "Iz"
+nd = "nd"
+ba = "ba"
+IST = "IST"
+Nin = "Nin"
+# SQL keyword fragments in test templates
+SELEC = "SELEC"
+# Spanish word in fuzz playground test data
+algoritmos = "algoritmos"
+# Base64/encoded data fragments in test fixtures
+Ue = "Ue"
