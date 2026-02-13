@@ -186,9 +186,13 @@ func classifyPosition(body, lowerBody string, pos int, canary string) Reflection
 		return ctx
 	}
 
-	// Check if inside a <style> tag
+	// Check if inside a <style> tag (ensure canary is in the body, not the attributes)
 	if isInsideTag(lowerBody, pos, "style") {
-		return ContextStyleBlock
+		contentStart := findLastTagContentStart(lowerBody, pos, "style")
+		if contentStart != -1 && contentStart <= pos {
+			return ContextStyleBlock
+		}
+		// pos is inside the <style> opening tag's attributes — fall through to attribute handling
 	}
 
 	// Check if inside an HTML attribute
@@ -273,7 +277,13 @@ func classifyScriptContext(body, lowerBody string, pos int, canary string) (Refl
 	// Now determine the JS sub-context by examining chars before the canary
 	// within the script block
 	scriptStart := findLastTagContentStart(lowerBody, pos, "script")
-	if scriptStart == -1 {
+	if scriptStart == -1 || scriptStart > pos {
+		// scriptStart == -1: couldn't locate the tag content start
+		// scriptStart > pos: canary is inside the opening tag's attributes,
+		// not the script body — fall through to attribute handling.
+		if scriptStart > pos {
+			return ContextNone, false
+		}
 		return ContextScriptBlock, true
 	}
 
@@ -293,8 +303,19 @@ func findLastTagContentStart(lowerBody string, pos int, tagName string) int {
 		if found == -1 {
 			break
 		}
-		lastOpen = idx + found
-		idx = lastOpen + 1
+		absIdx := idx + found
+		endIdx := absIdx + len(openTag)
+		// Validate boundary: next char must be >, whitespace, /, or end-of-string
+		// to avoid matching e.g. <script-loader> as <script>.
+		if endIdx >= len(lowerBody) {
+			lastOpen = absIdx
+		} else {
+			ch := lowerBody[endIdx]
+			if ch == ' ' || ch == '>' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '/' {
+				lastOpen = absIdx
+			}
+		}
+		idx = absIdx + 1
 	}
 	if lastOpen == -1 {
 		return -1
@@ -447,7 +468,7 @@ func findAttributeName(tagSegment string) string {
 	nameEnd := lastEq
 	nameStart := nameEnd - 1
 	// Skip whitespace before =
-	for nameStart >= 0 && (tagSegment[nameStart] == ' ' || tagSegment[nameStart] == '\t' || tagSegment[nameStart] == '\n') {
+	for nameStart >= 0 && (tagSegment[nameStart] == ' ' || tagSegment[nameStart] == '\t' || tagSegment[nameStart] == '\n' || tagSegment[nameStart] == '\r') {
 		nameStart--
 	}
 	if nameStart < 0 {
