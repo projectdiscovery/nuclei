@@ -240,9 +240,27 @@ func isInsideTag(lowerBody string, pos int, tagName string) bool {
 		return false
 	}
 
-	// Check there's no close tag between lastOpen and pos
-	closeIdx := strings.Index(lowerBody[lastOpen:pos], closeTag)
-	return closeIdx == -1
+	// Check there's no close tag between lastOpen and pos.
+	// Like the open-tag scan, validate the boundary character after the match
+	// so that e.g. "</scripting" doesn't falsely match "</script".
+	searchIdx := lastOpen
+	for {
+		found := strings.Index(lowerBody[searchIdx:pos], closeTag)
+		if found == -1 {
+			break
+		}
+		absIdx := searchIdx + found
+		endIdx := absIdx + len(closeTag)
+		if endIdx >= len(lowerBody) {
+			return false // close tag at end of body counts
+		}
+		ch := lowerBody[endIdx]
+		if ch == ' ' || ch == '>' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '/' {
+			return false // valid close tag found between open and pos
+		}
+		searchIdx = absIdx + 1
+	}
+	return true
 }
 
 // classifyScriptContext determines if the position is inside a <script> tag
