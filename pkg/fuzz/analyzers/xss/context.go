@@ -277,13 +277,13 @@ func classifyScriptContext(body, lowerBody string, pos int, canary string) (Refl
 	// Now determine the JS sub-context by examining chars before the canary
 	// within the script block
 	scriptStart := findLastTagContentStart(lowerBody, pos, "script")
-	if scriptStart == -1 || scriptStart > pos {
-		// scriptStart == -1: couldn't locate the tag content start
-		// scriptStart > pos: canary is inside the opening tag's attributes,
+	if scriptStart > pos {
+		// Canary is inside the opening tag's attributes,
 		// not the script body — fall through to attribute handling.
-		if scriptStart > pos {
-			return ContextNone, false
-		}
+		return ContextNone, false
+	}
+	if scriptStart == -1 {
+		// Couldn't locate the tag content start (malformed HTML).
 		return ContextScriptBlock, true
 	}
 

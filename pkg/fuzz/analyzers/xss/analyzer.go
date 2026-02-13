@@ -159,7 +159,11 @@ func isExploitable(body, canary string, ref Reflection) bool {
 		return true
 
 	case ContextHTMLComment:
-		// Need --> to break out
+		// Need --> to break out of the comment. The second disjunct is a
+		// heuristic: if both '-' and '>' survive encoding (even non-adjacently),
+		// an attacker can likely craft a payload containing "-->". This errs on
+		// the side of over-reporting, which is acceptable for a probe-based
+		// design where a follow-up confirmation payload is used.
 		return strings.Contains(reflected, "-->") || (strings.Contains(reflected, "-") && strings.Contains(reflected, ">"))
 
 	case ContextStyleBlock:
@@ -167,8 +171,9 @@ func isExploitable(body, canary string, ref Reflection) bool {
 		return strings.Contains(reflected, "</")
 
 	case ContextURLAttribute:
-		// Check for javascript: protocol
-		lowerReflected := strings.ToLower(reflected)
+		// Check for javascript: protocol. Use asciiToLower for consistency
+		// with the rest of the package (avoids byte-offset issues on non-ASCII).
+		lowerReflected := asciiToLower(reflected)
 		return strings.Contains(lowerReflected, "javascript:") || strings.Contains(reflected, "\"") || strings.Contains(reflected, "'")
 
 	default:
