@@ -60,6 +60,8 @@ type Options struct {
 	FuzzGenerated      fuzz.GeneratedRequest
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
+	ResponseBody       string
+	ResponseHeaders    string
 	AnalyzerParameters map[string]interface{}
 }
 
