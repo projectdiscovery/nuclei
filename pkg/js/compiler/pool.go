@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Mzack9999/goja"
 	"github.com/Mzack9999/goja_nodejs/console"
@@ -85,6 +86,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 			opts.Cleanup(runtime)
 		}
 		runtime.RemoveContextValue("executionId")
+		runtime.RemoveContextValue("ctx")
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -113,6 +115,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 
 	// inject execution id and context
 	runtime.SetContextValue("executionId", opts.ExecutionId)
+	runtime.SetContextValue("ctx", opts.Context)
 
 	// execute the script
 	return runtime.RunProgram(p)
@@ -139,8 +142,34 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	lazySgInit()
 	sgResizeCheck(opts.Context)
 
-	pooljsc.Add()
-	defer pooljsc.Done()
+	// Acquire a pool slot, respecting the execution deadline. Returns
+	// immediately if the context has already expired.
+	if err := pooljsc.AddWithContext(opts.Context); err != nil {
+		return nil, err
+	}
+	// Watchdog: release the pool slot if the deadline expires while the
+	// goroutine is still running (zombie). ExecFuncWithTwoReturns abandons
+	// the caller on timeout, but the goroutine keeps running and holds its
+	// slot via defer. The watchdog ensures the slot is freed at the deadline
+	// so the pool doesn't starve. The atomic.Bool guarantees exactly one
+	// Done() call between the watchdog and the normal defer path.
+	var slotReleased atomic.Bool
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-opts.Context.Done():
+			if slotReleased.CompareAndSwap(false, true) {
+				pooljsc.Done()
+			}
+		case <-done:
+		}
+	}()
+	defer func() {
+		close(done)
+		if slotReleased.CompareAndSwap(false, true) {
+			pooljsc.Done()
+		}
+	}()
 	runtime := gojapool.Get().(*goja.Runtime)
 	defer gojapool.Put(runtime)
 	var buff bytes.Buffer
