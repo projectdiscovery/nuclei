@@ -324,11 +324,13 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		data = generators.MergeMaps(data, dataDynamicValues)
 	}
 
+	excludedCount := 0
 	matchCount := 0
 	for matcherIndex, matcher := range operators.Matchers {
 		// Skip matchers that are in the blocklist
 		if operators.ExcludeMatchers != nil {
 			if operators.ExcludeMatchers.Match(operators.TemplateID, matcher.Name) {
+				excludedCount++
 				continue
 			}
 		}
@@ -353,7 +355,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	// Honeypot detection heuristic:
 	// Require both (a) high absolute count and (b) high coverage of matchers to reduce false positives
 	// for templates that intentionally include many OR matchers (e.g. fingerprinting/WAF templates).
-	if total := len(operators.Matchers); total > 0 &&
+	if total := len(operators.Matchers) - excludedCount; total > 0 &&
 		matchCount > GetHoneypotThreshold() &&
 		float64(matchCount)/float64(total) >= 0.90 {
 		result.HoneypotDetected = true

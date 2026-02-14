@@ -68,7 +68,7 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
-	if options.HoneypotThreshold <= 0 {
+	if options.HoneypotThreshold == 0 {
 		options.HoneypotThreshold = operators.DefaultHoneypotThreshold
 	}
 
