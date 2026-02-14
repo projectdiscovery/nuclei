@@ -158,8 +158,12 @@ func ValidateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
-	if options.HoneypotThreshold <= 0 {
-		return errors.New("honeypot-threshold must be greater than 0")
+	// Allow default (0) for non-CLI consumers (SDK/tests) and only error on negative values.
+	if options.HoneypotThreshold < 0 {
+		return errors.New("honeypot-threshold must be greater than or equal to 0")
+	}
+	if options.HoneypotThreshold == 0 {
+		options.HoneypotThreshold = operators.DefaultHoneypotThreshold
 	}
 
 	if (options.HeadlessOptionalArguments != nil || options.ShowBrowser || options.UseInstalledChrome) && !options.Headless {

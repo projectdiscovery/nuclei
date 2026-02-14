@@ -45,7 +45,7 @@ type Operators struct {
 	ExcludeMatchers *excludematchers.ExcludeMatchers `json:"-" yaml:"-" jsonschema:"-"`
 }
 
-const DefaultHoneypotThreshold = 15
+const DefaultHoneypotThreshold = 25
 
 var honeypotThreshold atomic.Int64
 
