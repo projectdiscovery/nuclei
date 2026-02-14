@@ -132,8 +132,8 @@ func (r *requestGenerator) wasMarked(request string, mark flowMark) bool {
 
 // hasMarker returns true if request has a marker (ex: @once which means request should only be executed once)
 func (r *requestGenerator) hasMarker(request string, mark flowMark) bool {
-	fo, hasOverrides := parseFlowAnnotations(request)
-	return hasOverrides && fo == mark
+	flowOverride, hasOverrides := parseFlowAnnotations(request)
+	return hasOverrides && flowOverride == mark
 }
 
 // Remaining returns the number of requests that are still left to be
