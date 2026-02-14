@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>CFBundleDevelopmentRegion</key>
+        <string>English</string>
+        <key>CFBundleExecutable</key>
+        <string>libjli.dylib</string>
+        <key>CFBundleGetInfoString</key>
+        <string>Java SE 25.0.2+10-LTS-69</string>
+        <key>CFBundleIdentifier</key>
+        <string>com.oracle.java.jdk</string>
+        <key>CFBundleInfoDictionaryVersion</key>
+        <string>7.0</string>
+        <key>CFBundleName</key>
+        <string>Java SE 25.0.2</string>
+        <key>CFBundlePackageType</key>
+        <string>BNDL</string>
+        <key>CFBundleShortVersionString</key>
+        <string>25.0.2</string>
+        <key>CFBundleSignature</key>
+        <string>????</string>
+        <key>CFBundleVersion</key>
+        <string>10.69</string>
+        <key>NSMicrophoneUsageDescription</key>
+        <string>The application is requesting access to the microphone.</string>
+        <key>JavaVM</key>
+        <dict>
+                <key>JVMCapabilities</key>
+                <array>
+                        <string>CommandLine</string>
+                </array>
+                <key>JVMMinimumFrameworkVersion</key>
+                <string>13.2.9</string>
+                <key>JVMMinimumSystemVersion</key>
+                <string>11.00.00</string>
+                <key>JVMPlatformVersion</key>
+                <string>25.0.2</string>
+                <key>JVMVendor</key>
+                <string>Oracle Corporation</string>
+                <key>JVMVersion</key>
+                <string>25.0.2</string>
+        </dict>
+</dict>
+</plist>

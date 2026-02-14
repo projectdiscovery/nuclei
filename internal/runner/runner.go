@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	outputstats "github.com/projectdiscovery/nuclei/v3/pkg/output/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -111,6 +112,7 @@ func New(options *types.Options) (*Runner, error) {
 		options: options,
 		Logger:  options.Logger,
 	}
+	operators.SetHoneypotThreshold(options.HoneypotThreshold)
 
 	if options.HealthCheck {
 		runner.Logger.Print().Msgf("%s\n", DoHealthCheck(options))

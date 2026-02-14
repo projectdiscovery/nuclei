@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -66,6 +67,10 @@ func ParseOptions(options *types.Options) {
 
 	// Show the user the banner
 	showBanner()
+
+	if options.HoneypotThreshold <= 0 {
+		options.HoneypotThreshold = operators.DefaultHoneypotThreshold
+	}
 
 	if options.ShowVarDump {
 		vardump.EnableVarDump = true
@@ -152,6 +157,9 @@ func ValidateOptions(options *types.Options) error {
 	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
+	}
+	if options.HoneypotThreshold <= 0 {
+		return errors.New("honeypot-threshold must be greater than 0")
 	}
 
 	if (options.HeadlessOptionalArguments != nil || options.ShowBrowser || options.UseInstalledChrome) && !options.Headless {

@@ -274,6 +274,10 @@ type Options struct {
 	EnvironmentVariables bool
 	// MatcherStatus displays optional status for the failed matches as well
 	MatcherStatus bool
+	// IgnoreHoneypots skips printing honeypot-flagged results
+	IgnoreHoneypots bool
+	// HoneypotThreshold is the number of matcher hits used to detect honeypot behavior
+	HoneypotThreshold int
 	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCertFile string
 	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
@@ -592,6 +596,8 @@ func (options *Options) Copy() *Options {
 		NoInteractsh:                   options.NoInteractsh,
 		EnvironmentVariables:           options.EnvironmentVariables,
 		MatcherStatus:                  options.MatcherStatus,
+		IgnoreHoneypots:                options.IgnoreHoneypots,
+		HoneypotThreshold:              options.HoneypotThreshold,
 		ClientCertFile:                 options.ClientCertFile,
 		ClientKeyFile:                  options.ClientKeyFile,
 		ClientCAFile:                   options.ClientCAFile,
