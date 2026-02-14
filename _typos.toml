@@ -1,0 +1,44 @@
+# Configuration for the typos spell checker
+# https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = [
+    # Non-English README translations
+    "README_*.md",
+    # Test data with binary/encoded content
+    "pkg/input/formats/testdata/",
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    # WAF fingerprint regexes contain intentional patterns
+    "pkg/output/stats/waf/regexes.json",
+    # Fuzz playground test database with non-English strings
+    "pkg/testutils/fuzzplayground/db.go",
+]
+
+[default]
+extend-ignore-re = [
+    # Base64 encoded strings (40+ chars)
+    "[A-Za-z0-9+/]{40,}={0,2}",
+]
+
+[default.extend-words]
+# CLI flag short names used in help text and flag definitions
+ot = "ot"
+ue = "ue"
+hae = "hae"
+ine = "ine"
+ines = "ines"
+# IST is a valid timezone abbreviation
+IST = "IST"
+# SQL error pattern used in integration tests
+SELECs = "SELECs"
+# Test XML data
+alo = "alo"
+# GoFlags library type name (external dependency)
+Allowd = "Allowd"
+# ssl.go struct field for TLS mismatch detection
+MisMatched = "MisMatched"
+# SQL plural form used in error messages
+SELEC = "SELEC"
+# Test case for case-insensitive severity parsing
+Fo = "Fo"
+Mis = "Mis"
