@@ -43,13 +43,16 @@ func New(threshold int) *Detector {
 
 // IsEnabled returns whether honeypot detection is active.
 func (d *Detector) IsEnabled() bool {
+	if d == nil {
+		return false
+	}
 	return d.enabled
 }
 
 // RecordMatch records that the given template matched the given host.
 // Returns true if this match caused the host to be newly flagged as a honeypot.
 func (d *Detector) RecordMatch(host, templateID string) bool {
-	if !d.enabled {
+	if d == nil || !d.enabled {
 		return false
 	}
 
@@ -85,7 +88,7 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 
 // IsHoneypot returns whether the given host has been flagged as a honeypot.
 func (d *Detector) IsHoneypot(host string) bool {
-	if !d.enabled {
+	if d == nil || !d.enabled {
 		return false
 	}
 
@@ -106,7 +109,7 @@ func (d *Detector) IsHoneypot(host string) bool {
 
 // GetMatchCount returns the number of unique template matches for a host.
 func (d *Detector) GetMatchCount(host string) int {
-	if !d.enabled {
+	if d == nil || !d.enabled {
 		return 0
 	}
 
@@ -127,7 +130,7 @@ func (d *Detector) GetMatchCount(host string) int {
 
 // FlaggedCount returns the total number of flagged honeypot hosts.
 func (d *Detector) FlaggedCount() int {
-	if !d.enabled {
+	if d == nil || !d.enabled {
 		return 0
 	}
 	return int(d.flagged.Load())
@@ -137,7 +140,7 @@ func (d *Detector) FlaggedCount() int {
 // along with their match counts.
 func (d *Detector) FlaggedHosts() map[string]int {
 	result := make(map[string]int)
-	if !d.enabled {
+	if d == nil || !d.enabled {
 		return result
 	}
 	d.hosts.Range(func(key, value any) bool {

@@ -201,3 +201,15 @@ func TestDetectorUnknownHost(t *testing.T) {
 	require.False(t, d.IsHoneypot("unknown.com"))
 	require.Equal(t, 0, d.GetMatchCount("unknown.com"))
 }
+
+func TestDetectorNilReceiver(t *testing.T) {
+	var d *Detector
+
+	// All public methods should be safe to call on a nil receiver
+	require.False(t, d.IsEnabled())
+	require.False(t, d.RecordMatch("example.com", "t1"))
+	require.False(t, d.IsHoneypot("example.com"))
+	require.Equal(t, 0, d.GetMatchCount("example.com"))
+	require.Equal(t, 0, d.FlaggedCount())
+	require.Empty(t, d.FlaggedHosts())
+}
