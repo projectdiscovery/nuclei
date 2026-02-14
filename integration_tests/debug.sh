@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $1 = "-h" ]; then
+if [ "${1:-}" = "-h" ]; then
  echo "Help for ./debug.sh"
  printf "\n1. To run all integration tests of 'x' protocol:\n"
  printf " \$ ./debug.sh http\n\n"
@@ -33,7 +33,7 @@ if [ -n "$2" ]; then
 fi
 
 # Parse any extra args that are directly passed to nuclei
-if [ -n $debugArgs ]; then
+if [ -n "${debugArgs:-}" ]; then
  export DebugExtraArgs="${@:3}"
 fi
 

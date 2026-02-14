@@ -35,14 +35,14 @@ func (m *mongoExporter) Execute(filepath string) error {
 
 	// Start a MongoDB container
 	mongodbContainer, err := mongocontainer.Run(ctx, dbImage)
+	if err != nil {
+		return fmt.Errorf("failed to start container: %w", err)
+	}
 	defer func() {
 		if err := testcontainers.TerminateContainer(mongodbContainer); err != nil {
 			log.Printf("failed to terminate container: %s", err)
 		}
 	}()
-	if err != nil {
-		return fmt.Errorf("failed to start container: %w", err)
-	}
 
 	connString, err := mongodbContainer.ConnectionString(ctx)
 	if err != nil {

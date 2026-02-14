@@ -341,7 +341,8 @@ func purge(resource *dockertest.Resource) {
 
 func init() {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
+	var err error
+	pool, err = dockertest.NewPool("")
 	if err != nil {
 		log.Printf("something went wrong with dockertest: %s", err)
 		return

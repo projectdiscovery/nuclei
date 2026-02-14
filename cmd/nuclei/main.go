@@ -114,9 +114,10 @@ func main() {
 		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile))
 
 		createProfileFile := func(ext, profileType string) *os.File {
-			f, err := os.Create(memProfile + ext)
+			filePath := memProfile + ext
+			f, err := os.Create(filePath)
 			if err != nil {
-				options.Logger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+				options.Logger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, filePath, err)
 			}
 			return f
 		}

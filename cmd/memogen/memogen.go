@@ -37,12 +37,11 @@ func main() {
 }
 
 func walk(path string, info fs.FileInfo, err error) error {
-	if info.IsDir() {
-		return nil
-	}
-
 	if err != nil {
 		return err
+	}
+	if info == nil || info.IsDir() {
+		return nil
 	}
 
 	ext := filepath.Ext(path)
