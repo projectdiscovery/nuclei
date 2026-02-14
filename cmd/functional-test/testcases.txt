@@ -51,15 +51,15 @@
 {{binary}} -t http/cves/ -t http/exposures/ -tags config -severity high,critical -author geeknik,pdteam -etags sqli -include-templates http/cves/2017/CVE-2017-7269.yaml
 
 # Advanced Filtering
-{{binary}} -tags cve -author geeknik,pdteam  -tc severity=='high'
-{{binary}} -tc contains(authors,'pdteam')
-{{binary}} -t http/cves/ -t http/exposures/ -tc contains(tags,'cve') -exclude-templates http/cves/2020/CVE-2020-9757.yaml
-{{binary}} -tc protocol=='dns'
-{{binary}} -tc contains(http_method,'GET')
+{{binary}} -tags cve -author geeknik,pdteam  -tc "severity=='high'"
+{{binary}} -tc "contains(authors,'pdteam')"
+{{binary}} -t http/cves/ -t http/exposures/ -tc "contains(tags,'cve')" -exclude-templates http/cves/2020/CVE-2020-9757.yaml
+{{binary}} -tc "protocol=='dns'"
+{{binary}} -tc "contains(http_method,'GET')"
 {{binary}} -tc len(body)>0
-{{binary}} -tc contains(matcher_type,'word')
-{{binary}} -tc contains(extractor_type,'regex')
-{{binary}} -tc contains(description,'wordpress')
+{{binary}} -tc "contains(matcher_type,'word')"
+{{binary}} -tc "contains(extractor_type,'regex')"
+{{binary}} -tc "contains(description,'wordpress')"
 
 # Workflow Filters
 {{binary}} -w workflows

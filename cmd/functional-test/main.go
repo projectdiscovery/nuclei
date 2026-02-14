@@ -12,6 +12,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 
+	"github.com/google/shlex"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 )
 
@@ -91,21 +92,9 @@ func runTestCase(testCase string, debug bool) bool {
 }
 
 func runIndividualTestCase(testcase string, debug bool) error {
-	quoted := false
-
-	// split upon unquoted spaces
-	parts := strings.FieldsFunc(testcase, func(r rune) bool {
-		if r == '"' {
-			quoted = !quoted
-		}
-		return !quoted && r == ' '
-	})
-
-	// Quoted strings containing spaces are expressions and must have trailing \" removed
-	for index, part := range parts {
-		if strings.Contains(part, " ") {
-			parts[index] = strings.Trim(part, "\"")
-		}
+	parts, err := shlex.Split(testcase)
+	if err != nil {
+		return errors.Wrap(err, "could not parse test case")
 	}
 
 	var finalArgs []string
