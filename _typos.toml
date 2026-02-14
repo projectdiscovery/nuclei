@@ -1,0 +1,65 @@
+[files]
+extend-exclude = [
+    # Translated READMEs (non-English content triggers false positives)
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test fixtures and data files
+    "pkg/input/formats/testdata/",
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    # WAF regex patterns (contain intentional fragments)
+    "pkg/output/stats/waf/regexes.json",
+    # Generated JavaScript bindings
+    "pkg/js/generated/",
+    # Go module checksums
+    "go.sum",
+]
+
+[default]
+extend-ignore-re = [
+    # CLI flag short names that look like typos (e.g. -ot, -ue, -hae, -jle, -sj)
+    '"-[a-z]{1,4}"',
+    # Base64-encoded data and certificates
+    "-----BEGIN ",
+    # Hex-encoded strings
+    "[0-9a-fA-F]{32,}",
+]
+
+[default.extend-words]
+# Intentional variable/field names
+fo = "fo"
+Mis = "Mis"
+MisMatched = "MisMatched"
+Noo = "Noo"
+NooP = "NooP"
+Fo = "Fo"
+Splitted = "Splitted"
+splitted = "splitted"
+# External dependency type names
+Allowd = "Allowd"
+AllowdTypes = "AllowdTypes"
+# SQL fragments in test templates
+SELEC = "SELEC"
+SELECTs = "SELECTs"
+# Non-English content in test data
+alo = "alo"
+algoritmos = "algoritmos"
+# CLI help text abbreviations
+ines = "ines"
+ine = "ine"
+ot = "ot"
+hae = "hae"
+ue = "ue"
+pannel = "pannel"
+# Test data identifiers
+UE = "UE"
+Iz = "Iz"
+Iy = "Iy"
+BA = "BA"
+Iif = "Iif"
+# Non-English words in deserialization testdata
+ser = "ser"
