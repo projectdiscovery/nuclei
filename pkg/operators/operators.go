@@ -350,7 +350,12 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 			return result, false
 		}
 	}
-	if matchCount > GetHoneypotThreshold() {
+	// Honeypot detection heuristic:
+	// Require both (a) high absolute count and (b) high coverage of matchers to reduce false positives
+	// for templates that intentionally include many OR matchers (e.g. fingerprinting/WAF templates).
+	if total := len(operators.Matchers); total > 0 &&
+		matchCount > GetHoneypotThreshold() &&
+		float64(matchCount)/float64(total) >= 0.90 {
 		result.HoneypotDetected = true
 	}
 

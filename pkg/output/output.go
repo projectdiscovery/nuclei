@@ -300,7 +300,7 @@ func (w *StandardWriter) ResultCount() int {
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.HoneypotDetected {
-		gologger.Warning().Msgf("Honeypot behavior detected for %s! Triggered %d matchers.", event.Host, len(event.ExtractedResults))
+		gologger.Warning().Msgf("Honeypot behavior detected for %s — result may be deceptive.", event.Host)
 		if w.IgnoreHoneypots {
 			return nil
 		}

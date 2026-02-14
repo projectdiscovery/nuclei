@@ -81,8 +81,15 @@ function retry_failed_jobs() {
     select ( .conclusion=="failure" ) |
     select ( .updatedAt > $date) ' --arg date "$date" --arg branch "$BRANCH" --arg workflow "$WORKFLOW" | jq .databaseId)
 
+    if [[ -z "$workflowIds" ]]; then
+        print_bold "Could not find any failed workflows in the last $BEFORE"
+        exit 0
+    fi
+
     # convert line separated ids to array safely (no eval)
     mapfile -t arr <<<"$workflowIds"
+    # filter out empty elements (here-string can yield an empty entry)
+    arr=("${arr[@]:#}")
 
     if [[ ${#arr[@]} -eq 0 ]]
     then
