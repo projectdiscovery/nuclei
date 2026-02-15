@@ -682,10 +682,15 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	// prefetch secrets if enabled
-	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
-		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
+	// Ensure authentication secrets are pre-fetched before starting the scan.
+	// This prevents a race condition where standard templates are executed
+	// before the 'secret-file' login process has finished populating dynamic secrets.
+	if executorOpts.AuthProvider != nil {
+		r.Logger.Info().Msgf("Initializing authentication and pre-fetching secrets")
 		if err := executorOpts.AuthProvider.PreFetchSecrets(); err != nil {
-			return errors.Wrap(err, "could not pre-fetch secrets")
+			// We return an error here because a failed authentication setup
+			// would lead to inaccurate scan results for authenticated-only targets.
+			return errors.Wrap(err, "could not pre-fetch authentication secrets")
 		}
 	}
 
