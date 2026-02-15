@@ -334,13 +334,13 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
 func (store *Store) Load() error {
-    tmpls, err := store.LoadTemplates(store.finalTemplates)
-    if err != nil {
-        return err
-    }
-    store.templates = tmpls
-    store.workflows = store.LoadWorkflows(store.finalWorkflows)
-    return nil
+	tmpls, err := store.LoadTemplates(store.finalTemplates)
+	if err != nil {
+		return err
+	}
+	store.templates = tmpls
+	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+	return nil
 }
 
 var templateIDPathMap map[string]string
@@ -643,7 +643,7 @@ func isParsingError(store *Store, message string, template string, err error) bo
 
 // LoadTemplates takes a list of templates and returns paths for them
 func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
-    return store.LoadTemplatesWithTags(templatesList, nil)
+	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
 // LoadWorkflows takes a list of workflows and returns paths for them
@@ -712,8 +712,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	}
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
-		if errWg != nil {
-    return nil, errors.Wrap(errWg, "could not create wait group")
+	if errWg != nil {
+		return nil, errors.Wrap(errWg, "could not create wait group")
 	}
 
 	if typesOpts.ExecutionId == "" {
@@ -721,8 +721,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	}
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
-		if dialers == nil {
-    return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {

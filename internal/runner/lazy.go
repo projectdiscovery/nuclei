@@ -67,10 +67,7 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets
 func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret {
 	return func(d *authx.Dynamic) error {
-		// CORREZIONE: Aggiungi ', err' per ricevere il secondo valore di ritorno
 		tmpls, err := opts.TemplateStore.LoadTemplates([]string{d.TemplatePath})
-
-		// NUOVO: Gestisci l'errore restituito dal loader
 		if err != nil {
 			return err
 		}

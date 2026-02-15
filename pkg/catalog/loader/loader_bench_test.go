@@ -71,9 +71,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			for b.Loop() {
-				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
-			}
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 
