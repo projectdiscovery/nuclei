@@ -67,12 +67,16 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets
 func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret {
 	return func(d *authx.Dynamic) error {
-		tmpls := opts.TemplateStore.LoadTemplates([]string{d.TemplatePath})
+		// CORREZIONE: Aggiungi ', err' per ricevere il secondo valore di ritorno
+		tmpls, err := opts.TemplateStore.LoadTemplates([]string{d.TemplatePath})
+
+		// NUOVO: Gestisci l'errore restituito dal loader
+		if err != nil {
+			return err
+		}
+
 		if len(tmpls) == 0 {
 			return fmt.Errorf("%w for path: %s", disk.ErrNoTemplatesFound, d.TemplatePath)
-		}
-		if len(tmpls) > 1 {
-			return fmt.Errorf("multiple templates found for path: %s", d.TemplatePath)
 		}
 		data := map[string]interface{}{}
 		tmpl := tmpls[0]
@@ -140,7 +144,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 			// log result of template in result file/screen
 			_ = writer.WriteResult(e, opts.ExecOpts.Output, opts.ExecOpts.Progress, opts.ExecOpts.IssuesClient)
 		}
-		_, err := tmpl.Executer.ExecuteWithResults(ctx)
+		_, err = tmpl.Executer.ExecuteWithResults(ctx)
 		if err != nil {
 			finalErr = err
 		}

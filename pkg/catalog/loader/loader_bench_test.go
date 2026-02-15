@@ -71,7 +71,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			for b.Loop() {
+				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			}
 		}
 	})
 
@@ -89,7 +91,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			for b.Loop() {
+				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			}
 		}
 	})
 
@@ -107,7 +111,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			for b.Loop() {
+				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			}
 		}
 	})
 
@@ -125,7 +131,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			for b.Loop() {
+				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			}
 		}
 	})
 
@@ -143,7 +151,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			for b.Loop() {
+				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			}
 		}
 	})
 
@@ -161,7 +171,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			for b.Loop() {
+				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			}
 		}
 	})
 
@@ -181,7 +193,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			for b.Loop() {
+				_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			}
 		}
 	})
 }
