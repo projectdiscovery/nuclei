@@ -68,19 +68,15 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate traverses the path segments in the exact order they appear in the URL.
-// This ensures predictable behavior for fuzzing engines.
+// It uses an ordered slice to guarantee deterministic behavior.
 func (q *Path) Iterate(callback func(key string, value interface{}) error) (err error) {
-	// Instead of iterating over the random map, we iterate over our ordered keys.
-	// This ensures numeric path parts like "/55/" are always processed correctly.
 	for _, key := range q.keys {
-		// Get the value from the parsed map using the deterministic key
-		val := q.value.parsed.Map.GetOrDefault(key, nil)
-		if val == nil {
-			// Defensive check: if a key exists in q.keys but not in the map,
-			// we return an error to avoid silent bugs.
+		// Use Has() for a precise existence check as suggested by review
+		if !q.value.parsed.Map.Has(key) {
 			return fmt.Errorf("path component: key %q present in keys slice but missing from parsed map", key)
 		}
 
+		val := q.value.parsed.Map.GetOrDefault(key, nil)
 		if errx := callback(key, val); errx != nil {
 			return errx
 		}
@@ -113,7 +109,8 @@ func (q *Path) Delete(key string) error {
 	return nil
 }
 
-// Rebuild constructs a new HTTP request with the modified path segments.
+// Rebuild constructs a new HTTP request with the modified path segments,
+// strictly respecting deletions and modifications.
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Get the original path segments
 	originalSplitted := strings.Split(q.req.Path, "/")
@@ -135,6 +132,13 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		}
 
 		key := strconv.Itoa(segmentIndex)
+
+		// Respect explicit deletions by checking if the key still exists in the map
+		if !q.value.parsed.Map.Has(key) {
+			segmentIndex++
+			continue
+		}
+
 		// Retrieve the value (it might have been changed by the fuzzer)
 		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
 			rebuiltSegments = append(rebuiltSegments, newValue)

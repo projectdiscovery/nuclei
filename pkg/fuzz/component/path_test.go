@@ -51,7 +51,6 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 
 	isSet := false
 	err = path.Iterate(func(key string, value interface{}) error {
-		t.Logf("Key: %s, Value: %s", key, value.(string))
 		if !isSet && value.(string) == "753" {
 			isSet = true
 			if setErr := path.SetValue(key, "753'"); setErr != nil {
@@ -94,16 +93,14 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 }
 
 // TestPathComponent_Determinism addresses issue #6398 by verifying that path
-// iteration remains 100% deterministic across multiple parsing cycles.
+// iteration remains 100% deterministic across 100 repeated cycles.
 func TestPathComponent_Determinism(t *testing.T) {
 	pathStr := "/user/55/profile/settings/12345"
-	// Fix: Captured and validated error from NewRequest
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com"+pathStr, nil)
 	require.NoError(t, err)
 
 	expected := []string{"user", "55", "profile", "settings", "12345"}
 
-	// Run multiple times to ensure Go's map randomization doesn't affect the order
 	for i := 0; i < 100; i++ {
 		p := NewPath()
 		found, err := p.Parse(req)
@@ -111,13 +108,12 @@ func TestPathComponent_Determinism(t *testing.T) {
 		require.True(t, found)
 
 		var results []string
-		// Fix: Captured and validated error from Iterate
 		err = p.Iterate(func(key string, value interface{}) error {
 			results = append(results, value.(string))
 			return nil
 		})
 		require.NoError(t, err)
 
-		require.Equal(t, expected, results, "Non-deterministic order at iteration %d", i)
+		require.Equal(t, expected, results, "Non-deterministic order detected at iteration %d", i)
 	}
 }
