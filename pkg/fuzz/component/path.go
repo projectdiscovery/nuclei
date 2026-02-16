@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -10,7 +11,7 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-// Path is a component for a request Path
+// Path is a component for a request URL Path that supports deterministic iteration.
 type Path struct {
 	value *Value
 
@@ -24,17 +25,18 @@ type Path struct {
 
 var _ Component = &Path{}
 
-// NewPath creates a new URL component
+// NewPath creates a new Path component instance.
 func NewPath() *Path {
 	return &Path{}
 }
 
-// Name returns the name of the component
+// Name returns the identifier for the Path component.
 func (q *Path) Name() string {
 	return RequestPathComponent
 }
 
-// Parse parses the component and returns the parsed component
+// Parse dissects the request path into individual segments and stores them internally.
+// It returns true if the path was successfully parsed.
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue("")
@@ -65,7 +67,8 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	return true, nil
 }
 
-// Iterate iterates through the component segments in a deterministic order
+// Iterate traverses the path segments in the exact order they appear in the URL.
+// This ensures predictable behavior for fuzzing engines.
 func (q *Path) Iterate(callback func(key string, value interface{}) error) (err error) {
 	// Instead of iterating over the random map, we iterate over our ordered keys.
 	// This ensures numeric path parts like "/55/" are always processed correctly.
@@ -73,7 +76,9 @@ func (q *Path) Iterate(callback func(key string, value interface{}) error) (err 
 		// Get the value from the parsed map using the deterministic key
 		val := q.value.parsed.Map.GetOrDefault(key, nil)
 		if val == nil {
-			continue
+			// Defensive check: if a key exists in q.keys but not in the map,
+			// we return an error to avoid silent bugs.
+			return fmt.Errorf("path component: key %q present in keys slice but missing from parsed map", key)
 		}
 
 		if errx := callback(key, val); errx != nil {
@@ -83,7 +88,7 @@ func (q *Path) Iterate(callback func(key string, value interface{}) error) (err 
 	return nil
 }
 
-// SetValue sets a value in the component for a key
+// SetValue replaces a specific path segment identified by its key with a new value.
 func (q *Path) SetValue(key string, value string) error {
 	escaped := urlutil.PathEncode(value)
 	if !q.value.SetParsedValue(key, escaped) {
@@ -92,13 +97,13 @@ func (q *Path) SetValue(key string, value string) error {
 	return nil
 }
 
-// Delete deletes a key from the component
+// Delete removes a path segment from the component and updates the order tracking.
 func (q *Path) Delete(key string) error {
 	if !q.value.Delete(key) {
 		return ErrKeyNotFound
 	}
 
-	// Remove the key from our ordered slice as well
+	// Remove the key from our ordered slice as well to keep them in sync
 	for i, v := range q.keys {
 		if v == key {
 			q.keys = append(q.keys[:i], q.keys[i+1:]...)
@@ -108,7 +113,7 @@ func (q *Path) Delete(key string) error {
 	return nil
 }
 
-// Rebuild returns a new request with the component rebuilt
+// Rebuild constructs a new HTTP request with the modified path segments.
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Get the original path segments
 	originalSplitted := strings.Split(q.req.Path, "/")
@@ -152,7 +157,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	return cloned, nil
 }
 
-// Clone clones current state to a new component
+// Clone creates a deep copy of the Path component, including the deterministic keys.
 func (q *Path) Clone() Component {
 	// Ensure we deep copy the keys slice to maintain determinism in the clone
 	newKeys := make([]string, len(q.keys))
