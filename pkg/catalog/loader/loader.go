@@ -337,7 +337,7 @@ func (store *Store) Load() error {
 	var err error
 	store.templates, err = store.LoadTemplates(store.finalTemplates)
 	if err != nil {
-		return fmt.Errorf("could not load templates: %w", err)
+		return err
 	}
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
 	return nil
