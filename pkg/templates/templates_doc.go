@@ -673,12 +673,13 @@ func init() {
 	HTTPRequestDoc.Fields[36].Type = "string"
 	HTTPRequestDoc.Fields[36].Note = ""
 	HTTPRequestDoc.Fields[36].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
-	HTTPRequestDoc.Fields[36].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
-	HTTPRequestDoc.Fields[37].Name = "global-matchers"
-	HTTPRequestDoc.Fields[37].Type = "bool"
-	HTTPRequestDoc.Fields[37].Note = ""
-	HTTPRequestDoc.Fields[37].Description = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
-	HTTPRequestDoc.Fields[37].Comments[encoder.LineComment] = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
+HTTPRequestDoc.Fields[36].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+HTTPRequestDoc.Fields[36].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+HTTPRequestDoc.Fields[37].Name = "global-matchers"
+HTTPRequestDoc.Fields[37].Type = "bool"
+HTTPRequestDoc.Fields[37].Note = ""
+HTTPRequestDoc.Fields[37].Description = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
+HTTPRequestDoc.Fields[37].Comments[encoder.LineComment] = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
@@ -978,7 +979,8 @@ func init() {
 	MATCHERSMatcherDoc.Fields[10].Type = "[]string"
 	MATCHERSMatcherDoc.Fields[10].Note = ""
 	MATCHERSMatcherDoc.Fields[10].Description = "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules.\nA list of these helper functions are available [here](https://nuclei.projectdiscovery.io/templating-guide/helper-functions/)."
-	MATCHERSMatcherDoc.Fields[10].Comments[encoder.LineComment] = "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules."
+	MATCHERSMatcherDoc.Fields[10].Description = "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules."
+MATCHERSMatcherDoc.Fields[10].Comments[encoder.LineComment] = "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules."
 
 	MATCHERSMatcherDoc.Fields[10].AddExample("DSL Matcher for package.json file", []string{"contains(body, 'packages') && contains(tolower(all_headers), 'application/octet-stream') && status_code == 200"})
 
