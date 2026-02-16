@@ -227,6 +227,9 @@ func GetTemplatePathsFromSecretFile(file string) ([]string, error) {
 	}
 	var paths []string
 	for _, dynamic := range auth.Dynamic {
+		if dynamic == nil {
+			continue
+		}
 		paths = append(paths, dynamic.TemplatePath)
 	}
 	return paths, nil
