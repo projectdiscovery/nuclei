@@ -39,6 +39,18 @@ func New(options *Options) (*ProjectFile, error) {
 	return &p, nil
 }
 
+// cacheKey combines the cleaned request data with the URL to create a unique cache key.
+// Including the URL ensures that requests to the same path but different schemes (http vs https)
+// or different ports produce different cache entries.
+func (pf *ProjectFile) cacheKey(req []byte, reqURL string) []byte {
+	cleaned := pf.cleanupData(req)
+	if reqURL == "" {
+		return cleaned
+	}
+	// Prepend URL as a prefix to ensure scheme+host+port differentiation
+	return append([]byte(reqURL+"\n"), cleaned...)
+}
+
 func (pf *ProjectFile) cleanupData(data []byte) []byte {
 	// ignore all user agents
 	data = regexUserAgent.ReplaceAll(data, []byte("\r\n"))
@@ -47,7 +59,13 @@ func (pf *ProjectFile) cleanupData(data []byte) []byte {
 }
 
 func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
-	reqHash, err := hash(pf.cleanupData(req))
+	return pf.GetWithURL(req, "")
+}
+
+// GetWithURL retrieves a cached response using both the request data and URL as cache key.
+// The URL ensures scheme and port isolation (e.g., http:// vs https:// requests are cached separately).
+func (pf *ProjectFile) GetWithURL(req []byte, reqURL string) (*http.Response, error) {
+	reqHash, err := hash(pf.cacheKey(req, reqURL))
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +85,13 @@ func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
 }
 
 func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
-	reqHash, err := hash(pf.cleanupData(req))
+	return pf.SetWithURL(req, "", resp, data)
+}
+
+// SetWithURL stores a response using both the request data and URL as cache key.
+// The URL ensures scheme and port isolation (e.g., http:// vs https:// requests are cached separately).
+func (pf *ProjectFile) SetWithURL(req []byte, reqURL string, resp *http.Response, data []byte) error {
+	reqHash, err := hash(pf.cacheKey(req, reqURL))
 	if err != nil {
 		return err
 	}

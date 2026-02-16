@@ -812,7 +812,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromCache = true
-			resp, err = request.options.ProjectFile.Get(dumpedRequest)
+			resp, err = request.options.ProjectFile.GetWithURL(dumpedRequest, input.MetaInput.Input)
 			if err != nil {
 				fromCache = false
 			}
@@ -962,7 +962,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.BodyBytes()); err != nil {
+			if err := request.options.ProjectFile.SetWithURL(dumpedRequest, input.MetaInput.Input, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
