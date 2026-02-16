@@ -60,3 +60,32 @@ func TestPathComponent_Determinism(t *testing.T) {
 		require.Equal(t, expected, results)
 	}
 }
+
+// TestPathComponent_Delete verifies that deleting a segment preserves the order of remaining segments.
+func TestPathComponent_Delete(t *testing.T) {
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/a/b/c/d", nil)
+	require.NoError(t, err)
+
+	p := NewPath()
+	_, err = p.Parse(req)
+	require.NoError(t, err)
+
+	// Eliminiamo il secondo segmento ("b") che ha chiave "2"
+	err = p.Delete("2")
+	require.NoError(t, err)
+
+	// Verifichiamo che l'ordine dei segmenti rimanenti sia [a, c, d]
+	expected := []string{"a", "c", "d"}
+	var results []string
+	err = p.Iterate(func(key string, value interface{}) error {
+		results = append(results, value.(string))
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, expected, results, "The order of segments after deletion is not deterministic")
+
+	// Verifichiamo che il Rebuild generi il path corretto senza "b"
+	rebuilt, err := p.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/a/c/d", rebuilt.URL.Path)
+}
