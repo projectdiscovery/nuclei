@@ -127,3 +127,30 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+func TestPathComponent_Determinism(t *testing.T) {
+	// Testing for non-deterministic behavior as reported in issue #6398.
+	// We use a path with mixed string and numeric segments.
+	pathStr := "/user/55/profile/settings/12345"
+	req, _ := retryablehttp.NewRequest(http.MethodGet, "https://example.com"+pathStr, nil)
+
+	// Expected deterministic order of segments
+	expected := []string{"user", "55", "profile", "settings", "12345"}
+
+	// Run the parse and iteration 100 times to ensure the order is stable.
+	// Standard Go maps iterate in random order, but our fix must remain consistent.
+	for i := 0; i < 100; i++ {
+		p := NewPath()
+		found, err := p.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var results []string
+		_ = p.Iterate(func(key string, value interface{}) error {
+			results = append(results, value.(string))
+			return nil
+		})
+
+		require.Equal(t, expected, results, "Order mismatch detected at iteration %d", i)
+	}
+}

@@ -15,6 +15,11 @@ type Path struct {
 	value *Value
 
 	req *retryablehttp.Request
+
+	// keys stores the order of path segments to ensure deterministic iteration.
+	// This fixes issue #6398 where numeric segments were skipped due to
+	// random map iteration in Go.
+	keys []string
 }
 
 var _ Component = &Path{}
@@ -29,14 +34,15 @@ func (q *Path) Name() string {
 	return RequestPathComponent
 }
 
-// Parse parses the component and returns the
-// parsed component
+// Parse parses the component and returns the parsed component
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue("")
+	q.keys = []string{} // Reset keys
 
 	splitted := strings.Split(req.Path, "/")
 	values := make(map[string]interface{})
+
 	for i, segment := range splitted {
 		if segment == "" && i == 0 {
 			// Skip the first empty segment from leading "/"
@@ -46,28 +52,38 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 			// Skip any other empty segments
 			continue
 		}
-		// Use 1-based indexing and store individual segments
+
+		// Create a 1-based index key
 		key := strconv.Itoa(len(values) + 1)
 		values[key] = segment
+
+		// Store the key in our slice to preserve insertion order
+		q.keys = append(q.keys, key)
 	}
+
 	q.value.SetParsed(dataformat.KVMap(values), "")
 	return true, nil
 }
 
-// Iterate iterates through the component
+// Iterate iterates through the component segments in a deterministic order
 func (q *Path) Iterate(callback func(key string, value interface{}) error) (err error) {
-	q.value.parsed.Iterate(func(key string, value any) bool {
-		if errx := callback(key, value); errx != nil {
-			err = errx
-			return false
+	// Instead of iterating over the random map, we iterate over our ordered keys.
+	// This ensures numeric path parts like "/55/" are always processed correctly.
+	for _, key := range q.keys {
+		// Get the value from the parsed map using the deterministic key
+		val := q.value.parsed.Map.GetOrDefault(key, nil)
+		if val == nil {
+			continue
 		}
-		return true
-	})
-	return
+
+		if errx := callback(key, val); errx != nil {
+			return errx
+		}
+	}
+	return nil
 }
 
-// SetValue sets a value in the component
-// for a key
+// SetValue sets a value in the component for a key
 func (q *Path) SetValue(key string, value string) error {
 	escaped := urlutil.PathEncode(value)
 	if !q.value.SetParsedValue(key, escaped) {
@@ -81,11 +97,18 @@ func (q *Path) Delete(key string) error {
 	if !q.value.Delete(key) {
 		return ErrKeyNotFound
 	}
+
+	// Remove the key from our ordered slice as well
+	for i, v := range q.keys {
+		if v == key {
+			q.keys = append(q.keys[:i], q.keys[i+1:]...)
+			break
+		}
+	}
 	return nil
 }
 
-// Rebuild returns a new request with the
-// component rebuilt
+// Rebuild returns a new request with the component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Get the original path segments
 	originalSplitted := strings.Split(q.req.Path, "/")
@@ -98,17 +121,16 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		rebuiltSegments = append(rebuiltSegments, "")
 	}
 
-	// Process each segment
-	segmentIndex := 1 // 1-based indexing for our stored values
+	// Process each segment using 1-based indexing
+	segmentIndex := 1
 	for i := 1; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
-			// Skip empty segments
 			continue
 		}
 
-		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
+		// Retrieve the value (it might have been changed by the fuzzer)
 		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
 			rebuiltSegments = append(rebuiltSegments, newValue)
 		} else {
@@ -117,20 +139,12 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		segmentIndex++
 	}
 
-	// Join the segments back into a path
 	rebuiltPath := strings.Join(rebuiltSegments, "/")
 
 	if unescaped, err := urlutil.PathDecode(rebuiltPath); err == nil {
-		// this is handle the case where anyportion of path has url encoded data
-		// by default the http/request official library will escape/encode special characters in path
-		// to avoid double encoding we unescape/decode already encoded value
-		//
-		// if there is a invalid url encoded value like %99 then it will still be encoded as %2599 and not %99
-		// the only way to make sure it stays as %99 is to implement raw request and unsafe for fuzzing as well
 		rebuiltPath = unescaped
 	}
 
-	// Clone the request and update the path
 	cloned := q.req.Clone(context.Background())
 	if err := cloned.UpdateRelPath(rebuiltPath, true); err != nil {
 		cloned.RawPath = rebuiltPath
@@ -138,10 +152,15 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	return cloned, nil
 }
 
-// Clones current state to a new component
+// Clone clones current state to a new component
 func (q *Path) Clone() Component {
+	// Ensure we deep copy the keys slice to maintain determinism in the clone
+	newKeys := make([]string, len(q.keys))
+	copy(newKeys, q.keys)
+
 	return &Path{
 		value: q.value.Clone(),
 		req:   q.req.Clone(context.Background()),
+		keys:  newKeys,
 	}
 }
