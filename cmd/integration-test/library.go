@@ -132,7 +132,9 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create loader")
 	}
-	store.Load()
+	if err := store.Load(); err != nil {
+		return nil, errors.Wrap(err, "could not load templates")
+	}
 
 	_ = engine.Execute(context.Background(), store.Templates(), provider.NewSimpleInputProviderWithUrls(defaultOpts.ExecutionId, templateURL))
 	engine.WorkPool().Wait() // Wait for the scan to finish
