@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestURLComponent verifies basic path parsing and rebuilding logic.
+// TestURLComponent verifies basic path parsing, mutation, and rebuilding logic.
 func TestURLComponent(t *testing.T) {
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/testpath", nil)
 	require.NoError(t, err)
@@ -17,6 +17,7 @@ func TestURLComponent(t *testing.T) {
 	_, err = urlComponent.Parse(req)
 	require.NoError(t, err)
 
+	// 1. Verify initial deterministic iteration
 	var keys []string
 	err = urlComponent.Iterate(func(key string, value interface{}) error {
 		keys = append(keys, key)
@@ -24,6 +25,16 @@ func TestURLComponent(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, []string{"1"}, keys)
+
+	// 2. Test Mutation (The CodeRabbit nitpick)
+	err = urlComponent.SetValue("1", "fuzzed-path")
+	require.NoError(t, err)
+
+	// 3. Test Rebuild
+	rebuilt, err := urlComponent.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/fuzzed-path", rebuilt.URL.Path)
+	require.Equal(t, "https://example.com/fuzzed-path", rebuilt.String())
 }
 
 // TestPathComponent_Determinism ensures that path iteration remains deterministic across 100 cycles.
