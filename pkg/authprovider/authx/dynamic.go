@@ -3,6 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -32,6 +33,7 @@ type Dynamic struct {
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
 	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
 	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
+	fetchOnce     sync.Once              `json:"-" yaml:"-"` // ensures fetch runs exactly once and concurrent callers wait
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -212,18 +214,20 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		return d.error
 	}
 
-	// Try to set fetching flag atomically
-	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
+	// If we're inside a recursive fetch call (e.g. the fetch callback itself
+	// triggers another fetch for the same dynamic), skip to avoid deadlock.
+	if d.fetching.Load() {
 		return d.error
 	}
 
-	// We're the only one fetching, call the callback
-	d.error = d.fetchCallback(d)
-
-	// Mark as fetched and clear fetching flag
-	d.fetched.Store(true)
-	d.fetching.Store(false)
+	// Use sync.Once to ensure the fetch callback runs exactly once.
+	// Concurrent callers will block here until the first caller completes.
+	d.fetchOnce.Do(func() {
+		d.fetching.Store(true)
+		d.error = d.fetchCallback(d)
+		d.fetched.Store(true)
+		d.fetching.Store(false)
+	})
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
