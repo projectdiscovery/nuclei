@@ -139,8 +139,9 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 			continue
 		}
 
-		// Retrieve the value (it might have been changed by the fuzzer)
-		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
+		// Type-assert to string; fall back to the original segment
+		// when the value is not a string or is empty to prevent broken paths.
+		if newValue, ok := q.value.parsed.Map.GetOrDefault(key, "").(string); ok && newValue != "" {
 			rebuiltSegments = append(rebuiltSegments, newValue)
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
