@@ -1,0 +1,23 @@
+id: xss-context-demo
+
+info:
+  name: XSS Context Demo (Analyzer)
+  author: syedather
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?q=[XSS]"
+
+    # This is the important part:
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys: ["q"]
+        values:
+          - "[XSS]"
+        analyzers:
+          - name: xss_context
+
