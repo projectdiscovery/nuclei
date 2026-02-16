@@ -14,13 +14,8 @@ import (
 // Path is a component for a request URL Path that supports deterministic iteration.
 type Path struct {
 	value *Value
-
-	req *retryablehttp.Request
-
-	// keys stores the order of path segments to ensure deterministic iteration.
-	// This fixes issue #6398 where numeric segments were skipped due to
-	// random map iteration in Go.
-	keys []string
+	req   *retryablehttp.Request
+	keys  []string
 }
 
 var _ Component = &Path{}
@@ -36,30 +31,24 @@ func (q *Path) Name() string {
 }
 
 // Parse dissects the request path into individual segments and stores them internally.
-// It returns true if the path was successfully parsed.
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue("")
-	q.keys = []string{} // Reset keys
+	q.keys = []string{}
 
 	splitted := strings.Split(req.Path, "/")
 	values := make(map[string]interface{})
 
 	for i, segment := range splitted {
 		if segment == "" && i == 0 {
-			// Skip the first empty segment from leading "/"
 			continue
 		}
 		if segment == "" {
-			// Skip any other empty segments
 			continue
 		}
 
-		// Create a 1-based index key
 		key := strconv.Itoa(len(values) + 1)
 		values[key] = segment
-
-		// Store the key in our slice to preserve insertion order
 		q.keys = append(q.keys, key)
 	}
 
@@ -68,10 +57,8 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate traverses the path segments in the exact order they appear in the URL.
-// It uses an ordered slice to guarantee deterministic behavior.
 func (q *Path) Iterate(callback func(key string, value interface{}) error) (err error) {
 	for _, key := range q.keys {
-		// Use Has() for a precise existence check as suggested by review
 		if !q.value.parsed.Map.Has(key) {
 			return fmt.Errorf("path component: key %q present in keys slice but missing from parsed map", key)
 		}
@@ -99,7 +86,6 @@ func (q *Path) Delete(key string) error {
 		return ErrKeyNotFound
 	}
 
-	// Remove the key from our ordered slice as well to keep them in sync
 	for i, v := range q.keys {
 		if v == key {
 			q.keys = append(q.keys[:i], q.keys[i+1:]...)
@@ -109,21 +95,15 @@ func (q *Path) Delete(key string) error {
 	return nil
 }
 
-// Rebuild constructs a new HTTP request with the modified path segments,
-// strictly respecting deletions and modifications.
+// Rebuild constructs a new HTTP request with the modified path segments.
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	// Get the original path segments
 	originalSplitted := strings.Split(q.req.Path, "/")
-
-	// Create a new slice to hold the rebuilt segments
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
 
-	// Add the first empty segment (from leading "/")
 	if len(originalSplitted) > 0 && originalSplitted[0] == "" {
 		rebuiltSegments = append(rebuiltSegments, "")
 	}
 
-	// Process each segment using 1-based indexing
 	segmentIndex := 1
 	for i := 1; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
@@ -132,15 +112,11 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		}
 
 		key := strconv.Itoa(segmentIndex)
-
-		// Respect explicit deletions by checking if the key still exists in the map
 		if !q.value.parsed.Map.Has(key) {
 			segmentIndex++
 			continue
 		}
 
-		// Type-assert to string; fall back to the original segment
-		// when the value is not a string or is empty to prevent broken paths.
 		if newValue, ok := q.value.parsed.Map.GetOrDefault(key, "").(string); ok && newValue != "" {
 			rebuiltSegments = append(rebuiltSegments, newValue)
 		} else {
@@ -150,7 +126,6 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	}
 
 	rebuiltPath := strings.Join(rebuiltSegments, "/")
-
 	if unescaped, err := urlutil.PathDecode(rebuiltPath); err == nil {
 		rebuiltPath = unescaped
 	}
@@ -164,7 +139,6 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 
 // Clone creates a deep copy of the Path component, including the deterministic keys.
 func (q *Path) Clone() Component {
-	// Ensure we deep copy the keys slice to maintain determinism in the clone
 	newKeys := make([]string, len(q.keys))
 	copy(newKeys, q.keys)
 
