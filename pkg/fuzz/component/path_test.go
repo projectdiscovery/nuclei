@@ -80,6 +80,34 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+func TestPathComponent_DeterministicOrder(t *testing.T) {
+	// Regression test for https://github.com/projectdiscovery/nuclei/issues/6398
+	// Path.Parse() previously used a plain Go map which has non-deterministic
+	// iteration order, causing numeric path segments like "55" to be skipped
+	// intermittently during fuzzing.
+	for i := 0; i < 50; i++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var keys []string
+		var values []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+
+		require.Equal(t, []string{"1", "2", "3"}, keys, "iteration %d: keys must be in insertion order", i)
+		require.Equal(t, []string{"user", "55", "profile"}, values, "iteration %d: values must be in insertion order", i)
+	}
+}
+
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
