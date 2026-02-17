@@ -18,3 +18,12 @@ func TestDetectNormalServer(t *testing.T) {
 	}
 }
 
+func TestDetectHoneypotApache(t *testing.T) {
+    server := "Apache/2.4.49"
+    body := "Forbidden access"
+
+    result := Detect(server, body)
+
+    require.True(t, result)
+}
+
