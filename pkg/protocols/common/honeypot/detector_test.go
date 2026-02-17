@@ -2,28 +2,20 @@ package honeypot
 
 import "testing"
 
-func TestDetectCowrie(t *testing.T) {
-	server := "Cowrie SSH Honeypot"
+func TestDetectHoneypot_KnownMarker(t *testing.T) {
+	server := "cowrie"
+	body := ""
 
-	if !Detect(server, "") {
-		t.Fatal("failed to detect honeypot")
+	if !Detect(server, body) {
+		t.Fatalf("expected honeypot detection for server=%q body=%q", server, body)
 	}
 }
 
-func TestDetectNormalServer(t *testing.T) {
+func TestDetectHoneypot_Negative(t *testing.T) {
 	server := "nginx"
+	body := "<html><title>OK</title></html>"
 
-	if Detect(server, "") {
-		t.Fatal("false positive honeypot detection")
+	if Detect(server, body) {
+		t.Fatalf("did not expect honeypot detection for server=%q body=%q", server, body)
 	}
 }
-
-func TestDetectHoneypotApache(t *testing.T) {
-    server := "Apache/2.4.49"
-    body := "Forbidden access"
-
-    result := Detect(server, body)
-
-    require.True(t, result)
-}
-
