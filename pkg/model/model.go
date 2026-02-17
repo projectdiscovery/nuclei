@@ -19,8 +19,17 @@ var infoSchemaMetadata = []schemaMetadata{
 
 // Info contains metadata information about a template
 type Info struct {
-	ID      string `json:"id,omitempty" yaml:"id,omitempty"`
-	Purpose string `json:"purpose,omitempty" yaml:"purpose,omitempty"`
+	// description: |
+	//   ID is the unique identifier for the template info.
+	// examples:
+	//   - value: "\"basic-detection\""
+	ID string `json:"id,omitempty" yaml:"id,omitempty" jsonschema:"title=id,description=Unique identifier for the template info,type=string,example=basic-detection"`
+
+	// description: |
+	//   Purpose describes the high-level goal of the template.
+	// examples:
+	//   - value: "\"Detect common misconfigurations\""
+	Purpose string `json:"purpose,omitempty" yaml:"purpose,omitempty" jsonschema:"title=purpose,description=High-level goal or intent of the template,type=string,example=Detect common misconfigurations"`
 	// description: |
 	//   Name should be good short summary that identifies what the template does.
 	//
