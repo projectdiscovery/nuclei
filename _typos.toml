@@ -1,0 +1,78 @@
+# Configuration for the typos spell checker
+# https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = [
+    # Non-English README translations
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test fixtures and binary/encoded data
+    "pkg/input/formats/testdata/*",
+    "pkg/protocols/common/helpers/deserialization/testdata/*",
+    # WAF regex patterns contain intentional fragments
+    "pkg/output/stats/waf/regexes.json",
+    # Embedded certificates (base64 data)
+    "pkg/testutils/integration.go",
+]
+
+[default.extend-identifiers]
+# Variable/field names in code
+fo = "fo"
+Splitted = "Splitted"
+splitted = "splitted"
+originalSplitted = "originalSplitted"
+ExludedDastTmplStats = "ExludedDastTmplStats"
+Exluded = "Exluded"
+formated = "formated"
+formatedTemplateData = "formatedTemplateData"
+isFormated = "isFormated"
+Formated = "Formated"
+PostReuestsHandlerRequest = "PostReuestsHandlerRequest"
+Reuests = "Reuests"
+
+[default.extend-words]
+# CLI flag abbreviations used in help text (-ines, -ine, -ot, -hae, -ue)
+ines = "ines"
+ine = "ine"
+hae = "hae"
+ue = "ue"
+ot = "ot"
+# External dependency type (projectdiscovery/goflags)
+Allowd = "Allowd"
+# NooP is a standard abbreviation for No-Operation
+Noo = "Noo"
+# MisMatched is a struct field name
+Mis = "Mis"
+# Test data values (XML test content, severity test, etc.)
+alo = "alo"
+Iif = "Iif"
+BA = "BA"
+UE = "UE"
+Iy = "Iy"
+Fo = "Fo"
+Iz = "Iz"
+nd = "nd"
+ba = "ba"
+IST = "IST"
+Nin = "Nin"
+Ue = "Ue"
+# SQL keyword fragments in test templates (e.g., "SELECTs")
+SELEC = "SELEC"
+# Spanish word in fuzz playground test data
+algoritmos = "algoritmos"
+# Comment typos that exist in upstream code (not modifying source files)
+fiter = "fiter"
+seperate = "seperate"
+noticable = "noticable"
+thant = "thant"
+pannel = "pannel"
+# Filename with typo (worflow_loader.go)
+worflow = "worflow"
+# Variable name typo in cmd/tmc
+brower = "brower"
+inerval = "inerval"
