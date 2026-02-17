@@ -124,6 +124,9 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 			gologger.Warning().Msgf("could not load templates: %s", err)
 		}
 	}
+	if e.store == nil {
+		return nil
+	}
 	return e.store.Templates()
 }
 
@@ -133,6 +136,9 @@ func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 		if err := e.LoadAllTemplates(); err != nil {
 			gologger.Warning().Msgf("could not load workflows: %s", err)
 		}
+	}
+	if e.store == nil {
+		return nil
 	}
 	return e.store.Workflows()
 }
