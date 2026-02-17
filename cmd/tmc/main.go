@@ -196,14 +196,14 @@ func process(opts options) error {
 		}
 
 		if opts.format {
-			formatedTemplateData, isFormated, err := formatTemplate(dataString)
+			formattedTemplateData, isFormatted, err := formatTemplate(dataString)
 			if err != nil {
 				gologger.Info().Label("format").Msg(logErrMsg(path, err, opts.debug, errFile))
 			} else {
-				if isFormated {
-					_ = os.WriteFile(path, []byte(formatedTemplateData), 0644)
-					dataString = formatedTemplateData
-					gologger.Info().Label("format").Msgf("✅ formated template: %s\n", path)
+				if isFormatted {
+					_ = os.WriteFile(path, []byte(formattedTemplateData), 0644)
+					dataString = formattedTemplateData
+					gologger.Info().Label("format").Msgf("✅ formatted template: %s\n", path)
 				}
 			}
 		}

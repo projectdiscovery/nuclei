@@ -1,0 +1,60 @@
+# Configuration for the typos spell checker
+# https://github.com/crate-ci/typos
+
+[files]
+# Exclude files that contain non-English or generated content
+extend-exclude = [
+    # Non-English translated README files (contain legitimate non-English words)
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Go dependency lock file (hashes that look like typos)
+    "go.sum",
+    # Protobuf-generated Go files
+    "*.pb.go",
+    # Vendor directory (third-party code)
+    "vendor/",
+    # Test data and fixtures (may contain intentional non-words, binary data, etc.)
+    "pkg/input/formats/testdata/*",
+    "pkg/protocols/common/helpers/deserialization/testdata/*",
+    # WAF detection regex patterns (contain intentional fragments)
+    "pkg/output/stats/waf/regexes.json",
+]
+
+[default.extend-words]
+# CLI flag abbreviations used in help text (nuclei uses short flags like -hae, -ue, -ot)
+ines = "ines"  # JSONL(ines) — ends with "ines" which typos flags as "lines"
+ine  = "ine"   # -ine flag suffix
+hae  = "hae"   # -hae (--header-api-endpoint)
+ue   = "ue"    # -ue (--uncover-engine)
+ot   = "ot"    # -ot (--output-type)
+
+# Variable / identifier names in the codebase
+fo   = "fo"    # local variable in request_generator.go (flowOverride shorthand)
+
+# External dependency identifiers (from projectdiscovery/goflags)
+Allowd = "Allowd"   # AllowdTypes — type exported from goflags; cannot be renamed here
+
+# Standard abbreviation for No-Operation
+Noo = "Noo"    # NooP / NoOpLogger pattern
+
+# Struct field name used across the codebase
+Mis = "Mis"    # MisMatched struct field
+
+# Test data fragments (XML content, base64, certificates, fuzzing payloads)
+alo       = "alo"        # Croatian word in XML test fixture ("dijete>alo")
+Iif       = "Iif"        # Base64-encoded test data prefix
+BA        = "BA"         # Base64 fragment
+UE        = "UE"         # Base64 fragment
+Iy        = "Iy"         # Base64 fragment
+Fo        = "Fo"         # Payload fragment ("inFo")
+nd        = "nd"         # Base64 fragment
+Iz        = "Iz"         # Base64-encoded certificate data fragment
+algoritmos = "algoritmos" # Spanish word in fuzz-playground test data
+
+# SQL grammar in error messages ("SELECTs to the left of UNION")
+SELEC = "SELEC"
