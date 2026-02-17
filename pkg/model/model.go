@@ -19,6 +19,8 @@ var infoSchemaMetadata = []schemaMetadata{
 
 // Info contains metadata information about a template
 type Info struct {
+	ID      string `json:"id,omitempty" yaml:"id,omitempty"`
+	Purpose string `json:"purpose,omitempty" yaml:"purpose,omitempty"`
 	// description: |
 	//   Name should be good short summary that identifies what the template does.
 	//
