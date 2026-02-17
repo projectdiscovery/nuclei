@@ -1090,7 +1090,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		responseContentType := respChain.Response().Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
 		serverHeader := respChain.Response().Header.Get("Server")
-		_ = honeypot.Detect(serverHeader, bodyStr)
+
+		if honeypot.Detect(serverHeader, bodyStr) {
+
+			outputEvent["honeypot"] = true
+
+			if event.InternalEvent == nil {
+				event.InternalEvent = make(map[string]interface{})
+			}
+			event.InternalEvent["honeypot"] = true
+		}
 
 		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
