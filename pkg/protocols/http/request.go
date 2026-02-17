@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -1088,6 +1089,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
+		serverHeader := respChain.Response().Header.Get("Server")
+		_ = honeypot.Detect(serverHeader, bodyStr)
+
 		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
@@ -1265,9 +1269,8 @@ func createResponseHexDump(event *output.InternalWrappedEvent, response string, 
 		highlightedHeaders := responsehighlighter.Highlight(event.OperatorsResult, headers, noColor, false)
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBodyHexDump, noColor, true)
 		return fmt.Sprintf("%s\n%s", highlightedHeaders, highlightedResponse)
-	} else {
-		return responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), noColor, true)
 	}
+	return responsehighlighter.Highlight(event.OperatorsResult, hex.Dump([]byte(response)), noColor, true)
 }
 
 func (request *Request) pruneSignatureInternalValues(maps ...map[string]interface{}) {
