@@ -32,6 +32,7 @@ type Dynamic struct {
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
 	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
 	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
+	fetchDone     chan struct{}           `json:"-" yaml:"-"` // closed when fetch completes; concurrent callers block on this
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -72,6 +73,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 func (d *Dynamic) Validate() error {
 	d.fetched = &atomic.Bool{}
 	d.fetching = &atomic.Bool{}
+	d.fetchDone = make(chan struct{})
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -212,17 +214,19 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		return d.error
 	}
 
-	// Try to set fetching flag atomically
+	// Try to become the fetcher atomically
 	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
+		// Another goroutine is already fetching — wait for it to complete
+		<-d.fetchDone
 		return d.error
 	}
 
 	// We're the only one fetching, call the callback
 	d.error = d.fetchCallback(d)
 
-	// Mark as fetched and clear fetching flag
+	// Mark as fetched, then signal all waiters by closing the done channel
 	d.fetched.Store(true)
+	close(d.fetchDone)
 	d.fetching.Store(false)
 
 	if d.error != nil && isFatal {
