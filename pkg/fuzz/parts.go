@@ -238,3 +238,4 @@ func (rule *Rule) executeRuleTypes(_ *ExecuteRuleInput, value, replacement strin
 	}
 	return returnValue
 }
+
