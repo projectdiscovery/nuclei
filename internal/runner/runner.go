@@ -275,6 +275,15 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	// setup a proxy writer to automatically upload results to PDCP
 	runner.output = runner.setupPDCPUpload(outputWriter)
+	if options.HoneypotDetection {
+		runner.output = output.NewHoneypotWriter(output.HoneypotWriterOptions{
+			Inner:          runner.output,
+			Threshold:      options.HoneypotThreshold,
+			ExcludeResults: options.HoneypotExcludeResults,
+			Logger:         runner.Logger,
+		})
+		runner.Logger.Info().Msgf("Honeypot detection enabled (threshold: %d unique template matches per host)", options.HoneypotThreshold)
+	}
 	if options.HTTPStats {
 		runner.httpStats = outputstats.NewTracker()
 		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))

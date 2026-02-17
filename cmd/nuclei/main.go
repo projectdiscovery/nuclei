@@ -437,6 +437,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 	)
 
+	flagSet.CreateGroup("honeypot", "Honeypot",
+		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detection", "hpd", false, "enable honeypot detection for hosts with abnormally high template match count"),
+		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 100, "minimum number of unique template matches to flag a host as honeypot"),
+		flagSet.BoolVarP(&options.HoneypotExcludeResults, "honeypot-exclude", "hpe", false, "exclude results from detected honeypot hosts"),
+	)
+
 	flagSet.CreateGroup("headless", "Headless",
 		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support (root user on Linux will disable sandbox)"),
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
