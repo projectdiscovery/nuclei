@@ -3,7 +3,7 @@ package honeypot
 import "testing"
 
 func TestDetectHoneypot_KnownMarker(t *testing.T) {
-	server := "cowrie"
+	server := "Cowrie" // mixed case to ensure lowercasing works
 	body := ""
 
 	if !Detect(server, body) {
@@ -13,7 +13,7 @@ func TestDetectHoneypot_KnownMarker(t *testing.T) {
 
 func TestDetectHoneypot_Negative(t *testing.T) {
 	server := "nginx"
-	body := "<html><title>OK</title></html>"
+	body := "<html>ok</html>"
 
 	if Detect(server, body) {
 		t.Fatalf("did not expect honeypot detection for server=%q body=%q", server, body)
