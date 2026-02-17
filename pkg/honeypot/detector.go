@@ -23,7 +23,7 @@ type Detector struct {
 	// flagged tracks hosts that have been flagged as honeypots.
 	flagged map[string]bool
 	// mu protects concurrent access to matches and flagged maps.
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 // New creates a new honeypot Detector with the given threshold and suppression mode.
@@ -58,10 +58,10 @@ func (d *Detector) Record(host, templateID string) (isFlagged, shouldSuppress bo
 	normalizedHost := normalizeHost(host)
 
 	d.mu.Lock()
-	defer d.mu.Unlock()
 
 	// If already flagged, skip counting
 	if d.flagged[normalizedHost] {
+		d.mu.Unlock()
 		return true, d.suppress
 	}
 
@@ -74,10 +74,14 @@ func (d *Detector) Record(host, templateID string) (isFlagged, shouldSuppress bo
 
 	if len(templates) >= d.threshold {
 		d.flagged[normalizedHost] = true
-		gologger.Warning().Msgf("[honeypot] %s matched %d unique templates (threshold: %d) — likely honeypot", normalizedHost, len(templates), d.threshold)
+		matchCount := len(templates)
+		d.mu.Unlock()
+		// Log outside the lock to avoid stalling concurrent writers
+		gologger.Warning().Msgf("[honeypot] %s matched %d unique templates (threshold: %d) — likely honeypot", normalizedHost, matchCount, d.threshold)
 		return true, d.suppress
 	}
 
+	d.mu.Unlock()
 	return false, false
 }
 
@@ -86,8 +90,8 @@ func (d *Detector) IsFlagged(host string) bool {
 	if !d.Enabled() {
 		return false
 	}
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	return d.flagged[normalizeHost(host)]
 }
 
@@ -96,8 +100,8 @@ func (d *Detector) FlaggedHosts() map[string]int {
 	if !d.Enabled() {
 		return nil
 	}
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 
 	result := make(map[string]int, len(d.flagged))
 	for host := range d.flagged {
@@ -135,6 +139,10 @@ func normalizeHost(input string) string {
 			host := u.Hostname()
 			port := u.Port()
 			if port != "" {
+				// Preserve bracket notation for IPv6 to avoid ambiguity
+				if strings.Contains(host, ":") {
+					return "[" + host + "]:" + port
+				}
 				return host + ":" + port
 			}
 			return host
@@ -151,14 +159,14 @@ func normalizeHost(input string) string {
 		input = input[idx+1:]
 	}
 
-	// Normalize IPv6 addresses in bracket notation: [::1]:8080 → ::1:8080
+	// Preserve IPv6 bracket notation: [::1]:8080 stays as [::1]:8080
 	if strings.HasPrefix(input, "[") {
 		if closeBracket := strings.Index(input, "]"); closeBracket != -1 {
 			host := input[1:closeBracket]
 			if closeBracket+1 < len(input) && input[closeBracket+1] == ':' {
-				return host + ":" + input[closeBracket+2:]
+				return "[" + host + "]:" + input[closeBracket+2:]
 			}
-			return host
+			return "[" + host + "]"
 		}
 	}
 
