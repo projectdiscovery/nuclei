@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -81,6 +82,9 @@ type StandardWriter struct {
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
+
+	// honeypotDetector tracks template match density per host to identify honeypots.
+	honeypotDetector *honeypot.Detector
 
 	resultCount atomic.Int32
 }
@@ -218,6 +222,9 @@ type ResultEvent struct {
 	FileToIndexPosition map[string]int `json:"-"`
 	TemplateVerifier    string         `json:"-"`
 	Error               string         `json:"error,omitempty"`
+	// HoneypotDetected indicates the host was flagged as a potential honeypot
+	// due to an unusually high number of unique template matches.
+	HoneypotDetected bool `json:"honeypot_detected,omitempty"`
 }
 
 type IssueTrackerMetadata struct {
@@ -280,6 +287,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
 		KeysToRedact:     options.Redact,
+		honeypotDetector: honeypot.New(options.HoneypotThreshold, options.HoneypotSuppressResults),
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -297,6 +305,21 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Check honeypot detection: track unique template matches per host
+	if w.honeypotDetector.Enabled() {
+		host := event.Host
+		if host == "" {
+			host = event.URL
+		}
+		isFlagged, shouldSuppress := w.honeypotDetector.Record(host, event.TemplateID)
+		if isFlagged {
+			event.HoneypotDetected = true
+			if shouldSuppress {
+				return nil
+			}
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -451,8 +474,18 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 	return w.aurora
 }
 
+// HoneypotDetector returns the honeypot detector instance for the writer.
+func (w *StandardWriter) HoneypotDetector() *honeypot.Detector {
+	return w.honeypotDetector
+}
+
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
+	// Print honeypot detection summary if any hosts were flagged
+	if summary := w.honeypotDetector.Summary(); summary != "" {
+		gologger.Warning().Msgf("\n%s", summary)
+	}
+
 	if w.outputFile != nil {
 		_ = w.outputFile.Close()
 	}
