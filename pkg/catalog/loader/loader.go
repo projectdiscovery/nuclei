@@ -484,8 +484,10 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 		}
 
 		if loadedTemplateIDs.Has(template.ID) {
-			store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", template.ID, templatePath)
-			continue
+			if !store.config.ExecutorOptions.Options.AllowDuplicateTemplateIDs {
+				store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", template.ID, templatePath)
+				continue
+			}
 		}
 
 		_ = loadedTemplateIDs.Set(template.ID, struct{}{})
@@ -681,8 +683,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	loadTemplate := func(tmpl *templates.Template) {
 		if loadedTemplateIDs.Has(tmpl.ID) {
-			store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", tmpl.ID, tmpl.Path)
-			return
+			if !store.config.ExecutorOptions.Options.AllowDuplicateTemplateIDs {
+				store.logger.Debug().Msgf("Skipping duplicate template ID '%s' from path '%s'", tmpl.ID, tmpl.Path)
+				return
+			}
 		}
 
 		_ = loadedTemplateIDs.Set(tmpl.ID, struct{}{})

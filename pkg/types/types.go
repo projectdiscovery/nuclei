@@ -188,6 +188,8 @@ type Options struct {
 	HeadlessOptionalArguments goflags.StringSlice
 	// DisableClustering disables clustering of templates
 	DisableClustering bool
+	// AllowDuplicateTemplateIDs allows loading multiple templates with the same ID
+	AllowDuplicateTemplateIDs bool
 	// UseInstalledChrome skips chrome install and use local instance
 	UseInstalledChrome bool
 	// SystemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
@@ -549,6 +551,7 @@ func (options *Options) Copy() *Options {
 		ShowBrowser:                    options.ShowBrowser,
 		HeadlessOptionalArguments:      options.HeadlessOptionalArguments,
 		DisableClustering:              options.DisableClustering,
+		AllowDuplicateTemplateIDs:      options.AllowDuplicateTemplateIDs,
 		UseInstalledChrome:             options.UseInstalledChrome,
 		SystemResolvers:                options.SystemResolvers,
 		ShowActions:                    options.ShowActions,
