@@ -1089,20 +1089,27 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
+
 		serverHeader := respChain.Response().Header.Get("Server")
 
-		if honeypot.Detect(serverHeader, bodyStr) {
+		isHoneypot := honeypot.Detect(serverHeader, bodyStr)
 
-			outputEvent["honeypot"] = true
+		if isHoneypot {
+		    outputEvent["honeypot"] = true
 
-			if event.InternalEvent == nil {
-				event.InternalEvent = make(map[string]interface{})
-			}
-			event.InternalEvent["honeypot"] = true
+		    if event.InternalEvent == nil {
+		        event.InternalEvent = make(map[string]interface{})
+		    }
+
+		    event.InternalEvent["honeypot"] = true
+
+		    if serverHeader != "" {
+        		outputEvent["honeypot_server"] = serverHeader
+	        	event.InternalEvent["honeypot_server"] = serverHeader
+		    }
 		}
 
-		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
-
+		dumpResponse(...)
 		callback(event)
 
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
