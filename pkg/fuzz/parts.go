@@ -239,3 +239,17 @@ func (rule *Rule) executeRuleTypes(_ *ExecuteRuleInput, value, replacement strin
 	return returnValue
 }
 
+
+// AnalyzeXSSContext checks for XSS contexts in the response
+func (p *Part) AnalyzeXSSContext(body string) string {
+	if body == "" {
+		return ""
+	}
+	if strings.Contains(body, "<script>") {
+		return "script"
+	}
+	if strings.Contains(body, "href=") {
+		return "attribute"
+	}
+	return "html"
+}
