@@ -109,10 +109,10 @@ func TestNormalizeHost(t *testing.T) {
 		{"user:pass@example.com:22", "example.com:22"},
 		{"", ""},
 		{"  https://example.com  ", "example.com"},
-		// IPv6 bracket notation
-		{"https://[::1]:8080/path", "::1:8080"},
-		{"[::1]:8080", "::1:8080"},
-		{"[::1]", "::1"},
+		// IPv6 bracket notation (preserved to avoid ambiguity)
+		{"https://[::1]:8080/path", "[::1]:8080"},
+		{"[::1]:8080", "[::1]:8080"},
+		{"[::1]", "[::1]"},
 	}
 
 	for _, tt := range tests {
@@ -179,6 +179,8 @@ func TestDetectorConcurrentAccess(t *testing.T) {
 
 	// Should not panic and flagged hosts should be consistent
 	flagged := d.FlaggedHosts()
+	// All 5 hosts (host0-host4) should be flagged: 100 goroutines / 5 hosts = 20 templates each > threshold 10
+	require.Len(t, flagged, 5)
 	for _, count := range flagged {
 		require.GreaterOrEqual(t, count, 10)
 	}
