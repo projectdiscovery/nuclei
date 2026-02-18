@@ -3,6 +3,7 @@ package honeypot
 import (
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 
@@ -125,10 +126,17 @@ func (d *Detector) Summary() string {
 		return ""
 	}
 
+	// Sort hosts for deterministic output across runs
+	hosts := make([]string, 0, len(flagged))
+	for host := range flagged {
+		hosts = append(hosts, host)
+	}
+	sort.Strings(hosts)
+
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("[honeypot] %d host(s) flagged as potential honeypot(s):\n", len(flagged)))
-	for host, count := range flagged {
-		sb.WriteString(fmt.Sprintf("  - %s (%d unique template matches)\n", host, count))
+	for _, host := range hosts {
+		sb.WriteString(fmt.Sprintf("  - %s (%d unique template matches)\n", host, flagged[host]))
 	}
 	return sb.String()
 }
@@ -146,12 +154,17 @@ func normalizeHost(input string) string {
 		if u, err := url.Parse(input); err == nil {
 			host := u.Hostname()
 			port := u.Port()
+			isIPv6 := strings.Contains(host, ":")
 			if port != "" {
 				// Preserve bracket notation for IPv6 to avoid ambiguity
-				if strings.Contains(host, ":") {
+				if isIPv6 {
 					return "[" + host + "]:" + port
 				}
 				return host + ":" + port
+			}
+			// Wrap bare IPv6 in brackets for consistency with non-URL input "[::1]"
+			if isIPv6 {
+				return "[" + host + "]"
 			}
 			return host
 		}
