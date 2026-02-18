@@ -193,7 +193,9 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 // GetStrategies returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
 	// Ensure fetch has completed before returning strategies.
-	_ = d.Fetch(true)
+	// Fetch errors are treated as non-fatal here so a failed dynamic auth fetch
+	// does not terminate the entire scan process.
+	_ = d.Fetch(false)
 
 	if d.fetchState != nil && d.fetchState.err != nil {
 		return nil
