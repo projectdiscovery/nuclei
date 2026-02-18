@@ -668,7 +668,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
 // returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
@@ -708,7 +708,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
+		return nil, fmt.Errorf("could not create wait group: %w", errWg)
 	}
 
 	if typesOpts.ExecutionId == "" {
@@ -717,7 +717,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
+		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {
@@ -852,7 +852,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates.Slice
+	return loadedTemplates.Slice, nil
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
