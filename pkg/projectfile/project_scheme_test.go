@@ -37,17 +37,17 @@ func TestSchemeIsolation(t *testing.T) {
 	}
 
 	// Store HTTPS response
-	if err := pf.SetWithURL(reqData, "https://example.com", httpsResp, []byte("https body")); err != nil {
+	if err := pf.Set(reqData, "https://example.com", httpsResp, []byte("https body")); err != nil {
 		t.Fatal(err)
 	}
 
 	// Store HTTP response (different scheme, same host+path)
-	if err := pf.SetWithURL(reqData, "http://example.com", httpResp, []byte("http body")); err != nil {
+	if err := pf.Set(reqData, "http://example.com", httpResp, []byte("http body")); err != nil {
 		t.Fatal(err)
 	}
 
 	// Retrieve HTTPS - should get 200
-	got, err := pf.GetWithURL(reqData, "https://example.com")
+	got, err := pf.Get(reqData, "https://example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestSchemeIsolation(t *testing.T) {
 	}
 
 	// Retrieve HTTP - should get 404
-	got, err = pf.GetWithURL(reqData, "http://example.com")
+	got, err = pf.Get(reqData, "http://example.com")
 	if err != nil {
 		t.Fatal(err)
 	}

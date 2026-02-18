@@ -39,18 +39,6 @@ func New(options *Options) (*ProjectFile, error) {
 	return &p, nil
 }
 
-// cacheKey combines the cleaned request data with the URL to create a unique cache key.
-// Including the URL ensures that requests to the same path but different schemes (http vs https)
-// or different ports produce different cache entries.
-func (pf *ProjectFile) cacheKey(req []byte, reqURL string) []byte {
-	cleaned := pf.cleanupData(req)
-	if reqURL == "" {
-		return cleaned
-	}
-	// Prepend URL as a prefix to ensure scheme+host+port differentiation
-	return append([]byte(reqURL+"\n"), cleaned...)
-}
-
 func (pf *ProjectFile) cleanupData(data []byte) []byte {
 	// ignore all user agents
 	data = regexUserAgent.ReplaceAll(data, []byte("\r\n"))
@@ -58,13 +46,20 @@ func (pf *ProjectFile) cleanupData(data []byte) []byte {
 	return regexDefaultInteract.ReplaceAll(data, []byte(""))
 }
 
-func (pf *ProjectFile) Get(req []byte) (*http.Response, error) {
-	return pf.GetWithURL(req, "")
+// cacheKey builds a unique cache key from the request data and optional URL.
+// Including the URL ensures requests to different schemes (http vs https)
+// or ports produce distinct cache entries.
+func (pf *ProjectFile) cacheKey(req []byte, reqURL string) []byte {
+	cleaned := pf.cleanupData(req)
+	if reqURL == "" {
+		return cleaned
+	}
+	return append([]byte(reqURL+"\n"), cleaned...)
 }
 
-// GetWithURL retrieves a cached response using both the request data and URL as cache key.
-// The URL ensures scheme and port isolation (e.g., http:// vs https:// requests are cached separately).
-func (pf *ProjectFile) GetWithURL(req []byte, reqURL string) (*http.Response, error) {
+// Get retrieves a cached response. The reqURL parameter is included in the
+// cache key to isolate entries by scheme and port (e.g. http vs https).
+func (pf *ProjectFile) Get(req []byte, reqURL string) (*http.Response, error) {
 	reqHash, err := hash(pf.cacheKey(req, reqURL))
 	if err != nil {
 		return nil, err
@@ -84,13 +79,9 @@ func (pf *ProjectFile) GetWithURL(req []byte, reqURL string) (*http.Response, er
 	return fromInternalResponse(httpRecord.Response), nil
 }
 
-func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
-	return pf.SetWithURL(req, "", resp, data)
-}
-
-// SetWithURL stores a response using both the request data and URL as cache key.
-// The URL ensures scheme and port isolation (e.g., http:// vs https:// requests are cached separately).
-func (pf *ProjectFile) SetWithURL(req []byte, reqURL string, resp *http.Response, data []byte) error {
+// Set stores a response in the cache. The reqURL parameter is included in the
+// cache key to isolate entries by scheme and port (e.g. http vs https).
+func (pf *ProjectFile) Set(req []byte, reqURL string, resp *http.Response, data []byte) error {
 	reqHash, err := hash(pf.cacheKey(req, reqURL))
 	if err != nil {
 		return err
