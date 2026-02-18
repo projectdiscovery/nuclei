@@ -70,6 +70,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
 	d.fetchOnce = &sync.Once{}
+	d.error = nil // reset stale error from any previous fetch cycle
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -202,9 +203,14 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // block until it completes and then observe the same result.
 // If isFatal is true, it will stop the execution if the secret could not be fetched.
 func (d *Dynamic) Fetch(isFatal bool) error {
-	d.fetchOnce.Do(func() {
-		d.error = d.fetchCallback(d)
-	})
+	if d.fetchOnce == nil {
+		// Defensive: Fetch called before Validate — treat as error rather than panic.
+		d.error = errkit.New("dynamic secret not validated: call Validate() before Fetch()")
+	} else {
+		d.fetchOnce.Do(func() {
+			d.error = d.fetchCallback(d)
+		})
+	}
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
