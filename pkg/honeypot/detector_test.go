@@ -19,6 +19,9 @@ func TestDetectorDisabledByDefault(t *testing.T) {
 func TestDetectorNilSafe(t *testing.T) {
 	var d *Detector
 	require.False(t, d.Enabled())
+	flagged, suppress := d.Record("host1", "t1")
+	require.False(t, flagged)
+	require.False(t, suppress)
 	require.False(t, d.IsFlagged("host1"))
 	require.Nil(t, d.FlaggedHosts())
 	require.Empty(t, d.Summary())

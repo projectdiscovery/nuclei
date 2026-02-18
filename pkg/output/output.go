@@ -491,7 +491,7 @@ func (w *StandardWriter) HoneypotDetector() *honeypot.Detector {
 func (w *StandardWriter) Close() {
 	// Print honeypot detection summary if any hosts were flagged
 	if summary := w.honeypotDetector.Summary(); summary != "" {
-		gologger.Warning().Msgf("\n%s", summary)
+		gologger.Warning().Msgf("\n%s", strings.TrimRight(summary, "\n"))
 	}
 
 	if w.outputFile != nil {
