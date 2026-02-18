@@ -208,6 +208,10 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		d.error = errkit.New("dynamic secret not validated: call Validate() before Fetch()")
 	} else {
 		d.fetchOnce.Do(func() {
+			if d.fetchCallback == nil {
+				d.error = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
+				return
+			}
 			d.error = d.fetchCallback(d)
 		})
 	}
