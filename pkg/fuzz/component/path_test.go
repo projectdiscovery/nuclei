@@ -1,6 +1,7 @@
 package component
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -126,4 +127,66 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
+}
+
+// TestPathComponent_DeterministicOrder verifies that path segments are always
+// iterated in insertion (URL) order, not random map order. This is a regression
+// test for https://github.com/projectdiscovery/nuclei/issues/6398.
+func TestPathComponent_DeterministicOrder(t *testing.T) {
+	expectedKeys := []string{"1", "2", "3"}
+	expectedVals := []string{"user", "55", "profile"}
+
+	for i := 0; i < 50; i++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var keys []string
+		var vals []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			vals = append(vals, fmt.Sprint(value))
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, expectedKeys, keys, "iteration %d: keys not in insertion order", i)
+		require.Equal(t, expectedVals, vals, "iteration %d: values not in insertion order", i)
+	}
+}
+
+// TestPathComponent_AllSegmentsFuzzed verifies that every path segment
+// (including numeric ones) is fuzzed exactly once across iterations.
+func TestPathComponent_AllSegmentsFuzzed(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var fuzzedPaths []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			clone := path.Clone().(*Path)
+			setErr := clone.SetValue(key, fmt.Sprint(value)+" OR True")
+			require.NoError(t, setErr)
+
+			rebuilt, rebuildErr := clone.Rebuild()
+			require.NoError(t, rebuildErr)
+			fuzzedPaths = append(fuzzedPaths, rebuilt.Path)
+			return nil
+		})
+		require.NoError(t, err)
+
+		require.Equal(t, []string{
+			"/user OR True/55/profile",
+			"/user/55 OR True/profile",
+			"/user/55/profile OR True",
+		}, fuzzedPaths, "iteration %d: not all segments were fuzzed deterministically", i)
+	}
 }
