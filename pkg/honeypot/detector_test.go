@@ -111,6 +111,7 @@ func TestNormalizeHost(t *testing.T) {
 		{"  https://example.com  ", "example.com"},
 		// IPv6 bracket notation (preserved to avoid ambiguity)
 		{"https://[::1]:8080/path", "[::1]:8080"},
+		{"http://[::1]", "[::1]"},
 		{"[::1]:8080", "[::1]:8080"},
 		{"[::1]", "[::1]"},
 	}
