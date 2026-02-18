@@ -1,0 +1,62 @@
+# Configuration for the typos spell checker
+# https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = [
+    # Non-English README translations
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test fixtures and binary/encoded data
+    "pkg/input/formats/testdata/*",
+    "pkg/protocols/common/helpers/deserialization/testdata/*",
+    # WAF regex patterns contain intentional fragments
+    "pkg/output/stats/waf/regexes.json",
+    # Embedded certificates (base64 data)
+    "pkg/testutils/integration.go",
+    # Integration test templates with encoded payloads
+    "integration_tests/fuzz/*.yaml",
+    "integration_tests/protocols/**/*.yaml",
+    # Integration test binary/encoded data
+    "cmd/integration-test/generic.go",
+]
+
+[default.extend-identifiers]
+# Variable/field names in code that are intentionally spelled this way
+fo = "fo"
+# Exported constant used across multiple files (changing would break API)
+ExludedDastTmplStats = "ExludedDastTmplStats"
+Exluded = "Exluded"
+# Exported struct name (changing would break API)
+PostReuestsHandlerRequest = "PostReuestsHandlerRequest"
+Reuests = "Reuests"
+# Variable names using "splitted" (non-standard but intentional)
+splitted = "splitted"
+originalSplitted = "originalSplitted"
+Splitted = "Splitted"
+
+[default.extend-words]
+# CLI flag abbreviations used in help text and flag definitions
+ines = "ines"
+ine = "ine"
+hae = "hae"
+ue = "ue"
+ot = "ot"
+# External dependency type (projectdiscovery/goflags)
+Allowd = "Allowd"
+# NooP is a standard abbreviation for No-Operation
+Noo = "Noo"
+# MisMatched is a struct field name (Mis + Matched)
+Mis = "Mis"
+# Test data values (XML content, severity test case, base64 fragments)
+alo = "alo"
+Iif = "Iif"
+Fo = "Fo"
+# Spanish word in fuzz playground test data
+algoritmos = "algoritmos"
+# SELEC appears as part of SQL keyword testing
+SELEC = "SELEC"
