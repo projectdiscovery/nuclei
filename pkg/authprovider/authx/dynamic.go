@@ -17,6 +17,11 @@ type LazyFetchSecret func(d *Dynamic) error
 // errNotValidated is returned when Fetch is called before Validate.
 var errNotValidated = errkit.New("dynamic secret not validated: call Validate() before Fetch()")
 
+type fetchState struct {
+	once sync.Once
+	err  error
+}
+
 var (
 	_ json.Unmarshaler = &Dynamic{}
 )
@@ -33,8 +38,9 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	fetchOnce     *sync.Once             `json:"-" yaml:"-"` // executes fetch exactly once for concurrent callers
-	error         error                  `json:"-" yaml:"-"` // error if any
+	// fetchState is shared across value-copies of Dynamic (e.g., inside DynamicAuthStrategy).
+	// It must be initialized via Validate() before calling Fetch().
+	fetchState *fetchState `json:"-" yaml:"-"`
 }
 
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
@@ -72,8 +78,9 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.fetchOnce = &sync.Once{}
-	d.error = nil
+	// NOTE: Validate() must not be called concurrently with Fetch()/GetStrategies().
+	// Re-validating resets fetch state and allows re-fetching.
+	d.fetchState = &fetchState{}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -188,7 +195,7 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	// Ensure fetch has completed before returning strategies.
 	_ = d.Fetch(true)
 
-	if d.error != nil {
+	if d.fetchState != nil && d.fetchState.err != nil {
 		return nil
 	}
 	var strategies []AuthStrategy
@@ -204,28 +211,31 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
 func (d *Dynamic) Fetch(isFatal bool) error {
-	if d.fetchOnce == nil {
+	if d.fetchState == nil {
 		if isFatal {
 			gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", errNotValidated)
 		}
 		return errNotValidated
 	}
 
-	d.fetchOnce.Do(func() {
+	d.fetchState.once.Do(func() {
 		if d.fetchCallback == nil {
-			d.error = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
+			d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
 			return
 		}
-		d.error = d.fetchCallback(d)
+		d.fetchState.err = d.fetchCallback(d)
 	})
 
-	if d.error != nil && isFatal {
-		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
+	if d.fetchState.err != nil && isFatal {
+		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.fetchState.err)
 	}
-	return d.error
+	return d.fetchState.err
 }
 
 // Error returns the error if any
 func (d *Dynamic) Error() error {
-	return d.error
+	if d.fetchState == nil {
+		return nil
+	}
+	return d.fetchState.err
 }

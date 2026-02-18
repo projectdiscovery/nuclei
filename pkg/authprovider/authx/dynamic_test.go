@@ -190,6 +190,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		const numGoroutines = 20
 		var callCount atomic.Int32
 		errs := make(chan error, numGoroutines)
+		barrier := make(chan struct{})
 
 		d := &Dynamic{
 			TemplatePath: "test-template.yaml",
@@ -208,9 +209,11 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		for i := 0; i < numGoroutines; i++ {
 			go func() {
 				defer wg.Done()
+				<-barrier
 				errs <- d.Fetch(false)
 			}()
 		}
+		close(barrier)
 		wg.Wait()
 		close(errs)
 
