@@ -51,6 +51,9 @@ func TestSchemeIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got == nil {
+		t.Fatal("HTTPS cache: expected non-nil response")
+	}
 	if got.StatusCode != 200 {
 		t.Errorf("HTTPS cache: expected status 200, got %d", got.StatusCode)
 	}
@@ -59,6 +62,9 @@ func TestSchemeIsolation(t *testing.T) {
 	got, err = pf.Get(reqData, "http://example.com")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got == nil {
+		t.Fatal("HTTP cache: expected non-nil response")
 	}
 	if got.StatusCode != 404 {
 		t.Errorf("HTTP cache: expected status 404, got %d", got.StatusCode)
