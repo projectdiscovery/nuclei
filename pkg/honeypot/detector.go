@@ -19,9 +19,11 @@ type Detector struct {
 	// suppress controls whether results from flagged hosts are suppressed (true) or only warned (false).
 	suppress bool
 	// matches tracks unique template IDs matched per normalized host.
+	// Entries are pruned once a host is flagged to bound memory growth.
 	matches map[string]map[string]struct{}
-	// flagged tracks hosts that have been flagged as honeypots.
-	flagged map[string]bool
+	// flagged tracks hosts that have been flagged as honeypots, storing the match count
+	// at the time of flagging. This allows matches to be pruned while preserving counts.
+	flagged map[string]int
 	// mu protects concurrent access to matches and flagged maps.
 	mu sync.RWMutex
 }
@@ -33,7 +35,7 @@ func New(threshold int, suppress bool) *Detector {
 		threshold: threshold,
 		suppress:  suppress,
 		matches:   make(map[string]map[string]struct{}),
-		flagged:   make(map[string]bool),
+		flagged:   make(map[string]int),
 	}
 }
 
@@ -60,7 +62,7 @@ func (d *Detector) Record(host, templateID string) (isFlagged, shouldSuppress bo
 	d.mu.Lock()
 
 	// If already flagged, skip counting
-	if d.flagged[normalizedHost] {
+	if _, ok := d.flagged[normalizedHost]; ok {
 		d.mu.Unlock()
 		return true, d.suppress
 	}
@@ -73,8 +75,13 @@ func (d *Detector) Record(host, templateID string) (isFlagged, shouldSuppress bo
 	templates[templateID] = struct{}{}
 
 	if len(templates) >= d.threshold {
-		d.flagged[normalizedHost] = true
 		matchCount := len(templates)
+		// Store the match count in flagged map and prune the per-template set:
+		// once flagged, Record() short-circuits on the flagged check above,
+		// so these entries would never be read again. This bounds memory growth
+		// for scans with many flagged hosts.
+		d.flagged[normalizedHost] = matchCount
+		delete(d.matches, normalizedHost)
 		d.mu.Unlock()
 		// Log outside the lock to avoid stalling concurrent writers
 		gologger.Warning().Msgf("[honeypot] %s matched %d unique templates (threshold: %d) — likely honeypot", normalizedHost, matchCount, d.threshold)
@@ -92,7 +99,8 @@ func (d *Detector) IsFlagged(host string) bool {
 	}
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	return d.flagged[normalizeHost(host)]
+	_, ok := d.flagged[normalizeHost(host)]
+	return ok
 }
 
 // FlaggedHosts returns a list of all hosts flagged as honeypots with their match counts.
@@ -104,8 +112,8 @@ func (d *Detector) FlaggedHosts() map[string]int {
 	defer d.mu.RUnlock()
 
 	result := make(map[string]int, len(d.flagged))
-	for host := range d.flagged {
-		result[host] = len(d.matches[host])
+	for host, count := range d.flagged {
+		result[host] = count
 	}
 	return result
 }
