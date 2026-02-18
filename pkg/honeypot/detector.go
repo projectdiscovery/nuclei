@@ -215,5 +215,10 @@ func normalizeHost(input string) string {
 		return ""
 	}
 
+	// Strip trailing colon (host with no port, e.g., "host:").
+	// "host" and "host:" refer to the same target; treat them identically
+	// to avoid splitting match counts for the same actual host.
+	input = strings.TrimRight(input, ":")
+
 	return input
 }

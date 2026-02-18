@@ -150,6 +150,9 @@ func TestNormalizeHost(t *testing.T) {
 		{"http:///path", ""},
 		{"https://", ""},
 		{"://", ""},
+		// Trailing-colon inputs (host with no port) normalise to host without colon
+		{"host:", "host"},
+		{"example.com:", "example.com"},
 	}
 
 	for _, tt := range tests {
@@ -219,6 +222,7 @@ func TestDetectorConcurrentAccess(t *testing.T) {
 	// All 5 hosts (host0-host4) should be flagged: 100 goroutines / 5 hosts = 20 templates each > threshold 10
 	require.Len(t, flagged, 5)
 	for _, count := range flagged {
-		require.GreaterOrEqual(t, count, 10)
+		// Due to mutex serialisation, the flag fires exactly at threshold (10 unique templates)
+		require.Equal(t, count, 10)
 	}
 }
