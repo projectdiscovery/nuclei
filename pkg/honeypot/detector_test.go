@@ -114,6 +114,10 @@ func TestNormalizeHost(t *testing.T) {
 		{"http://[::1]", "[::1]"},
 		{"[::1]:8080", "[::1]:8080"},
 		{"[::1]", "[::1]"},
+		// Bare IPv6 without brackets (wrapped for consistency)
+		{"::1", "[::1]"},
+		{"fe80::1", "[fe80::1]"},
+		{"2001:db8::1", "[2001:db8::1]"},
 	}
 
 	for _, tt := range tests {
