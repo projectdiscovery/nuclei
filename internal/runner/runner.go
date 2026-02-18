@@ -660,7 +660,9 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return nil // exit
 	}
-	store.Load()
+	if err := store.Load(); err != nil {
+		return err
+	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
