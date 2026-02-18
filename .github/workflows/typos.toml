@@ -1,0 +1,28 @@
+name = "Typos Check"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  typos-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install typos
+      run: |
+        pip install typos
+
+    - name: Run typos check
+      run: |
+        typos --config .github/workflows/typos.toml .
