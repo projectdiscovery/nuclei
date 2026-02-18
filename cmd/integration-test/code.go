@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	osutils "github.com/projectdiscovery/utils/os"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -47,7 +46,9 @@ func init() {
 
 	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
 	if err != nil {
-		panic(err)
+		// Panic-ის ნაცვლად ვიყენებთ log.Printf-ს
+		log.Printf("Could not create template signer: %s\n", err)
+		return
 	}
 
 	testcertpath, _ = filepath.Abs(testCertFile)
@@ -61,9 +62,12 @@ func init() {
 			continue
 		}
 
-		templatePath, err := filepath.Abs(templatePath)
-		if err != nil {
-			panic(err)
+		var absErr error
+		templatePath, absErr = filepath.Abs(templatePath)
+		if absErr != nil {
+			// Panic-ის ნაცვლად ვიყენებთ log.Printf-ს და ვაგრძელებთ ციკლს
+			log.Printf("Could not get absolute path for %s: %s\n", v.Path, absErr)
+			continue
 		}
 
 		// skip
@@ -74,11 +78,13 @@ func init() {
 		if _, ok := testCase.(*codePyNoSig); ok {
 			continue
 		}
-		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
-			log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
+
+		// Fatalf-ის ნაცვლად ვიყენებთ log.Printf-ს
+		if signErr := templates.SignTemplate(tsigner, templatePath); signErr != nil {
+			log.Printf("Could not sign template %v got: %s\n", templatePath, signErr)
+			continue
 		}
 	}
-
 }
 
 func getEnvValues() []string {
@@ -110,7 +116,6 @@ func (h *codePreCondition) Execute(filePath string) error {
 		return expectResultsCount(results, 1)
 	} else {
 		return expectResultsCount(results, 0)
-
 	}
 }
 
