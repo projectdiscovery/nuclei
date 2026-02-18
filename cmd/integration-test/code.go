@@ -47,9 +47,9 @@ func init() {
 
 	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
 	if err != nil {
-        log.Printf("Could not create template signer: %s\n", err)
-        return
-    }
+		log.Printf("Could not create template signer: %s", err)
+		return
+	}
 
 	testcertpath, _ = filepath.Abs(testCertFile)
 
@@ -61,12 +61,11 @@ func init() {
 			// skip ps1 test case on non-windows platforms
 			continue
 		}
-
 		templatePath, err = filepath.Abs(templatePath)
-if err != nil {
-    log.Printf("Could not get absolute path for %s: %s\n", v.Path, err)
-    continue
-}
+		if err != nil {
+			log.Printf("Could not get absolute path for %s: %s", v.Path, err)
+			continue
+		}
 
 		// skip
 		// - unsigned test cases
@@ -77,11 +76,10 @@ if err != nil {
 			continue
 		}
 		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
-    log.Printf("Could not sign template %v: %s\n", templatePath, err)
-    continue
-}
-	}
-
+			log.Printf("Could not sign template %v: %s", templatePath, err)
+			continue
+		}
+	}	
 }
 
 func getEnvValues() []string {
