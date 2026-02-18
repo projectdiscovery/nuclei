@@ -307,7 +307,15 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		return nil
 	}
 
-	// Check honeypot detection: track unique template matches per host
+	// Check honeypot detection: track unique template matches per host.
+	// When a host is flagged and suppress mode is enabled, the result is dropped here
+	// without incrementing resultCount. This is intentional: suppressed honeypot results
+	// should not appear in scan summaries, progress bars, exit codes, or cloud uploads.
+	//
+	// Note: this is a streaming design — results written *before* a host crosses the
+	// honeypot threshold will not have HoneypotDetected set retroactively. Users relying
+	// on JSON output post-processing should filter by host using the honeypot summary
+	// rather than solely by this per-event field.
 	if w.honeypotDetector.Enabled() {
 		host := event.Host
 		if host == "" {
