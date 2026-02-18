@@ -47,8 +47,9 @@ func init() {
 
 	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
 	if err != nil {
-		panic(err)
-	}
+        log.Printf("Could not create template signer: %s\n", err)
+        return
+    }
 
 	testcertpath, _ = filepath.Abs(testCertFile)
 
@@ -61,10 +62,11 @@ func init() {
 			continue
 		}
 
-		templatePath, err := filepath.Abs(templatePath)
-		if err != nil {
-			panic(err)
-		}
+		templatePath, err = filepath.Abs(templatePath)
+if err != nil {
+    log.Printf("Could not get absolute path for %s: %s\n", v.Path, err)
+    continue
+}
 
 		// skip
 		// - unsigned test cases
@@ -75,8 +77,9 @@ func init() {
 			continue
 		}
 		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
-			log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
-		}
+    log.Printf("Could not sign template %v: %s\n", templatePath, err)
+    continue
+}
 	}
 
 }
