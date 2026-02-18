@@ -88,6 +88,10 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	if err != nil {
 		return err
 	}
+	if input.MetaInput.Input == "" {
+		input.MetaInput.Input = requestForDump.URL()
+	}
+	reqURL = input.MetaInput.Input
 	request.setCustomHeaders(requestForDump)
 	dumpedRequest, err := dump(requestForDump, reqURL)
 	if err != nil {

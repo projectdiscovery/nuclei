@@ -2,7 +2,9 @@ package projectfile
 
 import (
 	"net/http"
+	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -46,6 +48,32 @@ func (pf *ProjectFile) cleanupData(data []byte) []byte {
 	return regexDefaultInteract.ReplaceAll(data, []byte(""))
 }
 
+// normalizeURL canonicalizes a URL for use as a cache key prefix.
+// It lowercases scheme and host, strips default ports (80/443),
+// and ensures a trailing slash on bare-host URLs.
+func normalizeURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	u.Host = strings.ToLower(u.Host)
+
+	// Strip default ports
+	hostname := u.Hostname()
+	port := u.Port()
+	if (u.Scheme == "http" && port == "80") || (u.Scheme == "https" && port == "443") {
+		u.Host = hostname
+	}
+
+	// Ensure root path has trailing slash for consistency
+	if u.Path == "" {
+		u.Path = "/"
+	}
+
+	return u.String()
+}
+
 // cacheKey builds a unique cache key from the request data and optional URL.
 // Including the URL ensures requests to different schemes (http vs https)
 // or ports produce distinct cache entries.
@@ -54,7 +82,7 @@ func (pf *ProjectFile) cacheKey(req []byte, reqURL string) []byte {
 	if reqURL == "" {
 		return cleaned
 	}
-	return append([]byte(reqURL+"\n"), cleaned...)
+	return append([]byte(normalizeURL(reqURL)+"\n"), cleaned...)
 }
 
 // Get retrieves a cached response. The reqURL parameter is included in the

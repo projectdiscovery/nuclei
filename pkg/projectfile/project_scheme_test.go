@@ -6,6 +6,58 @@ import (
 	"testing"
 )
 
+func TestSchemeNormalization(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "nuclei-project-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	pf, err := New(&Options{Path: tmpDir, Cleanup: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pf.Close()
+
+	reqData := []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+
+	resp := &http.Response{
+		StatusCode: 200,
+		Status:     "200 OK",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     http.Header{},
+	}
+
+	// Store with trailing slash
+	if err := pf.Set(reqData, "https://example.com/", resp, []byte("body")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Retrieve without trailing slash - should hit same cache entry
+	got, err := pf.Get(reqData, "https://example.com")
+	if err != nil {
+		t.Fatalf("expected cache hit for normalized URL, got error: %v", err)
+	}
+	if got.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", got.StatusCode)
+	}
+
+	// Store with default port
+	if err := pf.Set(reqData, "https://other.com:443/path", resp, []byte("body2")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Retrieve without port - should hit same cache entry
+	got, err = pf.Get(reqData, "https://other.com/path")
+	if err != nil {
+		t.Fatalf("expected cache hit for URL without default port, got error: %v", err)
+	}
+	if got.StatusCode != 200 {
+		t.Errorf("expected status 200, got %d", got.StatusCode)
+	}
+}
+
 func TestSchemeIsolation(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "nuclei-project-test")
 	if err != nil {
