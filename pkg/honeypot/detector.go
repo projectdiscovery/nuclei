@@ -61,6 +61,9 @@ func (d *Detector) Record(host, templateID string) (isFlagged, shouldSuppress bo
 	}
 
 	normalizedHost := normalizeHost(host)
+	if normalizedHost == "" {
+		return false, false
+	}
 
 	d.mu.Lock()
 
@@ -158,6 +161,9 @@ func normalizeHost(input string) string {
 	if strings.Contains(input, "://") {
 		if u, err := url.Parse(input); err == nil {
 			host := u.Hostname()
+			if host == "" {
+				return ""
+			}
 			port := u.Port()
 			isIPv6 := strings.Contains(host, ":")
 			if port != "" {
@@ -201,6 +207,12 @@ func normalizeHost(input string) string {
 	// Wrap in brackets for consistency with all other IPv6 code paths above.
 	if strings.Count(input, ":") >= 2 {
 		return "[" + input + "]"
+	}
+
+	// Reject degenerate inputs that reduce to punctuation-only after stripping
+	// (e.g., "://" → ":" after path/userinfo stripping).
+	if strings.Trim(input, ":/") == "" {
+		return ""
 	}
 
 	return input

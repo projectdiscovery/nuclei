@@ -95,6 +95,30 @@ func TestDetectorEmptyInputs(t *testing.T) {
 	require.False(t, flagged)
 }
 
+func TestDetectorEmptyHostURLs(t *testing.T) {
+	d := New(2, false)
+
+	// URLs that are syntactically valid but have empty hosts should not
+	// accumulate under a phantom "" key in the matches map.
+	emptyHostInputs := []string{
+		"http://",
+		"http:///path",
+		"https://",
+		"://",
+	}
+	for _, input := range emptyHostInputs {
+		flagged, suppress := d.Record(input, "t1")
+		require.False(t, flagged, "expected no flag for empty-host URL: %q", input)
+		require.False(t, suppress, "expected no suppress for empty-host URL: %q", input)
+	}
+
+	// Verify no phantom entries were created
+	d.mu.RLock()
+	_, hasEmpty := d.matches[""]
+	d.mu.RUnlock()
+	require.False(t, hasEmpty, "matches map should not contain an empty-string key")
+}
+
 func TestNormalizeHost(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -118,6 +142,11 @@ func TestNormalizeHost(t *testing.T) {
 		{"::1", "[::1]"},
 		{"fe80::1", "[fe80::1]"},
 		{"2001:db8::1", "[2001:db8::1]"},
+		// Empty-host URLs — normalizeHost must return "" so Record() can reject them
+		{"http://", ""},
+		{"http:///path", ""},
+		{"https://", ""},
+		{"://", ""},
 	}
 
 	for _, tt := range tests {
