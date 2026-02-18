@@ -126,7 +126,7 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 		return nil, errors.Wrap(err, "Could not create loader options.")
 	}
 	if err := store.Load(); err != nil {
-		return nil, errors.Wrap(err, "could not load templates")
+		return nil, err
 	}
 
 	return &nucleiExecutor{
