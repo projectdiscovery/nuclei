@@ -20,7 +20,9 @@ type Detector struct {
 	// suppress controls whether results from flagged hosts are suppressed (true) or only warned (false).
 	suppress bool
 	// matches tracks unique template IDs matched per normalized host.
-	// Entries are pruned once a host is flagged to bound memory growth.
+	// Each host's set is naturally bounded at threshold entries: once the set
+	// reaches threshold, the host is flagged and the entry is pruned entirely.
+	// Total memory is therefore O(uniqueHosts × threshold).
 	matches map[string]map[string]struct{}
 	// flagged tracks hosts that have been flagged as honeypots, storing the match count
 	// at the time of flagging. This allows matches to be pruned while preserving counts.
@@ -75,6 +77,9 @@ func (d *Detector) Record(host, templateID string) (isFlagged, shouldSuppress bo
 	}
 	templates[templateID] = struct{}{}
 
+	// Cap check: once the per-host set reaches threshold, flag and prune.
+	// This bounds each host's set to at most threshold entries; combined
+	// with pruning on flag, total memory is O(uniqueHosts × threshold).
 	if len(templates) >= d.threshold {
 		matchCount := len(templates)
 		// Store the match count in flagged map and prune the per-template set:
@@ -189,6 +194,13 @@ func normalizeHost(input string) string {
 			}
 			return "[" + host + "]"
 		}
+	}
+
+	// Detect bare IPv6 without brackets (e.g., "::1", "fe80::1").
+	// Two or more colons distinguishes IPv6 from host:port (which has exactly one).
+	// Wrap in brackets for consistency with all other IPv6 code paths above.
+	if strings.Count(input, ":") >= 2 {
+		return "[" + input + "]"
 	}
 
 	return input
