@@ -14,6 +14,11 @@ import (
 
 type LazyFetchSecret func(d *Dynamic) error
 
+// errNotValidated is a package-level sentinel returned when Fetch is called
+// before Validate. Using a pre-allocated error avoids concurrent writes to
+// d.error when multiple goroutines enter the nil-fetchOnce branch.
+var errNotValidated = errkit.New("dynamic secret not validated: call Validate() before Fetch()")
+
 var (
 	_ json.Unmarshaler = &Dynamic{}
 )
@@ -204,17 +209,22 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // If isFatal is true, it will stop the execution if the secret could not be fetched.
 func (d *Dynamic) Fetch(isFatal bool) error {
 	if d.fetchOnce == nil {
-		// Defensive: Fetch called before Validate — treat as error rather than panic.
-		d.error = errkit.New("dynamic secret not validated: call Validate() before Fetch()")
-	} else {
-		d.fetchOnce.Do(func() {
-			if d.fetchCallback == nil {
-				d.error = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
-				return
-			}
-			d.error = d.fetchCallback(d)
-		})
+		// Defensive: Fetch called before Validate — return the pre-allocated
+		// sentinel error directly instead of writing to d.error, which avoids
+		// a data race when multiple goroutines enter this branch concurrently.
+		if isFatal {
+			gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", errNotValidated)
+		}
+		return errNotValidated
 	}
+
+	d.fetchOnce.Do(func() {
+		if d.fetchCallback == nil {
+			d.error = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
+			return
+		}
+		d.error = d.fetchCallback(d)
+	})
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
