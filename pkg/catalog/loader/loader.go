@@ -333,9 +333,19 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
-func (store *Store) Load() {
-	store.templates = store.LoadTemplates(store.finalTemplates)
-	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+func (store *Store) Load() error {
+	tmpls, err := store.LoadTemplates(store.finalTemplates)
+	if err != nil {
+		return fmt.Errorf("could not load templates: %w", err)
+	}
+	store.templates = tmpls
+
+	workflows, err := store.LoadWorkflows(store.finalWorkflows)
+	if err != nil {
+		return fmt.Errorf("could not load workflows: %w", err)
+	}
+	store.workflows = workflows
+	return nil
 }
 
 var templateIDPathMap map[string]string
@@ -637,33 +647,44 @@ func isParsingError(store *Store, message string, template string, err error) bo
 }
 
 // LoadTemplates takes a list of templates and returns paths for them
-func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
 // LoadWorkflows takes a list of workflows and returns paths for them
-func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
+func (store *Store) LoadWorkflows(workflowsList []string) ([]*templates.Template, error) {
 	includedWorkflows, errs := store.config.Catalog.GetTemplatesPath(workflowsList)
-	store.logErroredTemplates(errs)
+	if len(errs) > 0 {
+		store.logErroredTemplates(errs)
+		// Non-fatal - continue with workflows that were found
+	}
 
 	loadedWorkflows := make([]*templates.Template, 0, len(includedWorkflows))
+	var loadErrors []error
 	for _, workflowPath := range includedWorkflows {
 		loaded, err := store.config.ExecutorOptions.Parser.LoadWorkflow(workflowPath, store.config.Catalog)
 		if err != nil {
 			store.logger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
+			loadErrors = append(loadErrors, fmt.Errorf("workflow %s: %w", workflowPath, err))
+			continue
 		}
 
 		if loaded {
 			parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				store.logger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
+				loadErrors = append(loadErrors, fmt.Errorf("parse workflow %s: %w", workflowPath, err))
 			} else if parsed != nil {
 				loadedWorkflows = append(loadedWorkflows, parsed)
 			}
 		}
 	}
 
-	return loadedWorkflows
+	if len(loadErrors) > 0 && len(loadedWorkflows) == 0 {
+		return nil, fmt.Errorf("failed to load any workflows: %v", loadErrors)
+	}
+
+	return loadedWorkflows, nil
 }
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
