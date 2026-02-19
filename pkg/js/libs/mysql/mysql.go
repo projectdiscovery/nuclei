@@ -17,34 +17,18 @@ import (
 )
 
 type (
-	// MySQLClient is a client for MySQL database.
-	// Internally client uses go-sql-driver/mysql driver.
-	// @example
-	// ```javascript
-	// const mysql = require('nuclei/mysql');
-	// const client = new mysql.MySQLClient;
-	// ```
 	MySQLClient struct{}
 )
 
-// IsMySQL checks if the given host is running MySQL database.
-// If the host is running MySQL database, it returns true.
-// If the host is not running MySQL database, it returns false.
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const isMySQL = mysql.IsMySQL('acme.com', 3306);
-// ```
 func (c *MySQLClient) IsMySQL(ctx context.Context, host string, port int) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	// todo: why this is exposed? Service fingerprint should be automatic
-	return memoizedisMySQL(executionId, host, port)
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປຫາ memoizedisMySQL
+	return memoizedisMySQL(ctx, executionId, host, port)
 }
 
 // @memo
-func isMySQL(executionId string, host string, port int) (bool, error) {
+func isMySQL(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -52,7 +36,8 @@ func isMySQL(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	// ແກ້ໄຂ: ປ່ຽນ context.TODO() ເປັນ ctx
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -71,24 +56,12 @@ func isMySQL(executionId string, host string, port int) (bool, error) {
 	return true, nil
 }
 
-// Connect connects to MySQL database using given credentials.
-// If connection is successful, it returns true.
-// If connection is unsuccessful, it returns false and error.
-// The connection is closed after the function returns.
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const client = new mysql.MySQLClient;
-// const connected = client.Connect('acme.com', 3306, 'username', 'password');
-// ```
 func (c *MySQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	// executing queries implies the remote mysql service
 	ok, err := c.IsMySQL(ctx, host, port)
 	if err != nil {
 		return false, err
@@ -108,12 +81,11 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 	if err != nil {
 		return false, err
 	}
-	return connectWithDSN(executionId, dsn)
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
 type (
-	// MySQLInfo contains information about MySQL server.
-	// this is returned when fingerprint is successful
 	MySQLInfo struct {
 		Host      string               `json:"host,omitempty"`
 		IP        string               `json:"ip"`
@@ -127,23 +99,16 @@ type (
 	}
 )
 
-// returns MySQLInfo when fingerprint is successful
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const info = mysql.FingerprintMySQL('acme.com', 3306);
-// log(to_json(info));
-// ```
 func (c *MySQLClient) FingerprintMySQL(ctx context.Context, host string, port int) (MySQLInfo, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedfingerprintMySQL(executionId, host, port)
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	return memoizedfingerprintMySQL(ctx, executionId, host, port)
 }
 
 // @memo
-func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, error) {
+func fingerprintMySQL(ctx context.Context, executionId string, host string, port int) (MySQLInfo, error) {
 	info := MySQLInfo{}
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return info, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -151,7 +116,8 @@ func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, err
 		return MySQLInfo{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	// ແກ້ໄຂ: ປ່ຽນ context.TODO() ເປັນ ctx
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return info, err
 	}
@@ -167,7 +133,7 @@ func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, err
 	if service == nil {
 		return info, fmt.Errorf("something went wrong got null output")
 	}
-	// fill all fields
+	
 	info.Host = service.Host
 	info.IP = service.IP
 	info.Port = service.Port
@@ -181,39 +147,18 @@ func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, err
 	return info, nil
 }
 
-// ConnectWithDSN connects to MySQL database using given DSN.
-// we override mysql dialer with fastdialer so it respects network policy
-// If connection is successful, it returns true.
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const client = new mysql.MySQLClient;
-// const connected = client.ConnectWithDSN('username:password@tcp(acme.com:3306)/');
-// ```
 func (c *MySQLClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnectWithDSN(executionId, dsn)
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
-// ExecuteQueryWithOpts connects to Mysql database using given credentials
-// and executes a query on the db.
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const options = new mysql.MySQLOptions();
-// options.Host = 'acme.com';
-// options.Port = 3306;
-// const result = mysql.ExecuteQueryWithOpts(options, 'SELECT * FROM users');
-// log(to_json(result));
-// ```
 func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOptions, query string) (*utils.SQLResult, error) {
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
-		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
-	// executing queries implies the remote mysql service
 	ok, err := c.IsMySQL(ctx, opts.Host, opts.Port)
 	if err != nil {
 		return nil, err
@@ -237,7 +182,8 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	rows, err := db.Query(query)
+	// ແກ້ໄຂ: ປ່ຽນຈາກ db.Query ເປັນ db.QueryContext(ctx, query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +191,6 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	data, err := utils.UnmarshalSQLRows(rows)
 	if err != nil {
 		if len(data.Rows) > 0 {
-			// allow partial results
 			return data, nil
 		}
 		return nil, err
@@ -253,16 +198,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	return data, nil
 }
 
-// ExecuteQuery connects to Mysql database using given credentials
-// and executes a query on the db.
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const result = mysql.ExecuteQuery('acme.com', 3306, 'username', 'password', 'SELECT * FROM users');
-// log(to_json(result));
-// ```
 func (c *MySQLClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, query string) (*utils.SQLResult, error) {
-	// executing queries implies the remote mysql service
 	ok, err := c.IsMySQL(ctx, host, port)
 	if err != nil {
 		return nil, err
@@ -280,14 +216,6 @@ func (c *MySQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	}, query)
 }
 
-// ExecuteQuery connects to Mysql database using given credentials
-// and executes a query on the db.
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const result = mysql.ExecuteQueryOnDB('acme.com', 3306, 'username', 'password', 'dbname', 'SELECT * FROM users');
-// log(to_json(result));
-// ```
 func (c *MySQLClient) ExecuteQueryOnDB(ctx context.Context, host string, port int, username, password, dbname, query string) (*utils.SQLResult, error) {
 	return c.ExecuteQueryWithOpts(ctx, MySQLOptions{
 		Host:     host,
