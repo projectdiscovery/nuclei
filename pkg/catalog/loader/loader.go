@@ -714,12 +714,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	if typesOpts.ExecutionId == "" {
 		typesOpts.ExecutionId = xid.New().String()
 	}
-
-	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
-	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
-	}
-
+dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
+if dialers == nil {
+    return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
+}
 	for _, templatePath := range includedTemplates {
 		wgLoadTemplates.Add()
 		go func(templatePath string) {
