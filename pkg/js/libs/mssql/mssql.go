@@ -16,53 +16,28 @@ import (
 )
 
 type (
-	// Client is a client for MS SQL database.
-	// Internally client uses microsoft/go-mssqldb driver.
-	// @example
-	// ```javascript
-	// const mssql = require('nuclei/mssql');
-	// const client = new mssql.MSSQLClient;
-	// ```
 	MSSQLClient struct{}
 )
 
-// Connect connects to MS SQL database using given credentials.
-// If connection is successful, it returns true.
-// If connection is unsuccessful, it returns false and error.
-// The connection is closed after the function returns.
-// @example
-// ```javascript
-// const mssql = require('nuclei/mssql');
-// const client = new mssql.MSSQLClient;
-// const connected = client.Connect('acme.com', 1433, 'username', 'password');
-// ```
 func (c *MSSQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnect(executionId, host, port, username, password, "master")
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	return memoizedconnect(ctx, executionId, host, port, username, password, "master")
 }
 
-// ConnectWithDB connects to MS SQL database using given credentials and database name.
-// If connection is successful, it returns true.
-// If connection is unsuccessful, it returns false and error.
-// The connection is closed after the function returns.
-// @example
-// ```javascript
-// const mssql = require('nuclei/mssql');
-// const client = new mssql.MSSQLClient;
-// const connected = client.ConnectWithDB('acme.com', 1433, 'username', 'password', 'master');
-// ```
 func (c *MSSQLClient) ConnectWithDB(ctx context.Context, host string, port int, username, password, dbName string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnect(executionId, host, port, username, password, dbName)
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	return memoizedconnect(ctx, executionId, host, port, username, password, dbName)
 }
 
 // @memo
-func connect(executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
+// ແກ້ໄຂ: ເເພີ່ມ ctx ເຂົ້າໃນພາຣາມິເຕີ
+func connect(ctx context.Context, executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
@@ -82,7 +57,8 @@ func connect(executionId string, host string, port int, username string, passwor
 		_ = db.Close()
 	}()
 
-	_, err = db.Exec("select 1")
+	// ແກ້ໄຂ: ປ່ຽນມາໃຊ້ ExecContext ພ້ອມກັບ ctx
+	_, err = db.ExecContext(ctx, "select 1")
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "connect: connection refused"):
@@ -101,23 +77,16 @@ func connect(executionId string, host string, port int, username string, passwor
 	return true, nil
 }
 
-// IsMssql checks if the given host is running MS SQL database.
-// If the host is running MS SQL database, it returns true.
-// If the host is not running MS SQL database, it returns false.
-// @example
-// ```javascript
-// const mssql = require('nuclei/mssql');
-// const isMssql = mssql.IsMssql('acme.com', 1433);
-// ```
 func (c *MSSQLClient) IsMssql(ctx context.Context, host string, port int) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisMssql(executionId, host, port)
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	return memoizedisMssql(ctx, executionId, host, port)
 }
 
 // @memo
-func isMssql(executionId string, host string, port int) (bool, error) {
+// ແກ້ໄຂ: ເເພີ່ມ ctx ເຂົ້າໃນພາຣາມິເຕີ
+func isMssql(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
@@ -126,7 +95,8 @@ func isMssql(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	// ແກ້ໄຂ: ປ່ຽນ context.TODO() ເປັນ ctx
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -146,22 +116,12 @@ func isMssql(executionId string, host string, port int) (bool, error) {
 	return false, nil
 }
 
-// ExecuteQuery connects to MS SQL database using given credentials and executes a query.
-// It returns the results of the query or an error if something goes wrong.
-// @example
-// ```javascript
-// const mssql = require('nuclei/mssql');
-// const client = new mssql.MSSQLClient;
-// const result = client.ExecuteQuery('acme.com', 1433, 'username', 'password', 'master', 'SELECT @@version');
-// log(to_json(result));
-// ```
 func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
 	executionId := ctx.Value("executionId").(string)
 	if host == "" || port <= 0 {
 		return nil, fmt.Errorf("invalid host or port")
 	}
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
@@ -192,7 +152,8 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	rows, err := db.Query(query)
+	// ແກ້ໄຂ: ປ່ຽນມາໃຊ້ QueryContext ພ້ອມກັບ ctx
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
