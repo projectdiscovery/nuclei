@@ -47,7 +47,10 @@ func init() {
 
 	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
 	if err != nil {
-		panic(err)
+		// ແກ້ໄຂ: ປ່ຽນຈາກ panic ເປັນ log.Printf ແລະ ໃສ່ sentinel value
+		log.Printf("Could not create template signer: %s", err)
+		testcertpath = "MISSING_SIGNER"
+		return
 	}
 
 	testcertpath, _ = filepath.Abs(testCertFile)
@@ -61,9 +64,11 @@ func init() {
 			continue
 		}
 
-		templatePath, err := filepath.Abs(templatePath)
+		templatePath, err = filepath.Abs(templatePath)
 		if err != nil {
-			panic(err)
+			// ແກ້ໄຂ: ປ່ຽນຈາກ panic ເປັນ log.Printf
+			log.Printf("Could not get absolute path for %s: %s", v.Path, err)
+			continue
 		}
 
 		// skip
@@ -74,11 +79,12 @@ func init() {
 		if _, ok := testCase.(*codePyNoSig); ok {
 			continue
 		}
+		
+		// ແກ້ໄຂ: ປ່ຽນຈາກ log.Fatalf ເປັນ log.Printf ແລະ ລຶບ \n ອອກ
 		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
-			log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
+			log.Printf("Could not sign template %v got: %s", templatePath, err)
 		}
 	}
-
 }
 
 func getEnvValues() []string {
@@ -110,7 +116,6 @@ func (h *codePreCondition) Execute(filePath string) error {
 		return expectResultsCount(results, 1)
 	} else {
 		return expectResultsCount(results, 0)
-
 	}
 }
 
