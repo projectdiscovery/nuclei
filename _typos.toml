@@ -1,0 +1,61 @@
+[files]
+extend-exclude = [
+    # Filename contains legacy typo (renaming would be breaking)
+    "pkg/model/worflow_loader.go",
+    # Non-English README translations
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # WAF regex patterns
+    "pkg/output/stats/waf/regexes.json",
+    # Test fixtures with binary/encoded content
+    "pkg/testutils/integration.go",
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    "pkg/input/formats/testdata/",
+    # Integration test templates (SQL error messages, URL paths, etc.)
+    "integration_tests/",
+]
+
+[default]
+extend-ignore-re = [
+    # Base64 encoded strings
+    "[A-Za-z0-9+/]{40,}={0,2}",
+    # JSONL(ines) format is intentional CLI output description
+    "JSONL\\(ines?\\)",
+]
+
+[default.extend-words]
+# CLI flag short names
+hae = "hae"
+ot = "ot"
+ue = "ue"
+# Intentional identifiers/words
+NooP = "NooP"
+Noo = "Noo"
+splitted = "splitted"
+alo = "alo"
+ser = "ser"
+# Spanish content in test data
+algoritmos = "algoritmos"
+cliente = "cliente"
+# Timezone abbreviation (Indian Standard Time)
+IST = "IST"
+
+[default.extend-identifiers]
+# Existing Go identifiers (renaming would be a breaking change)
+formated = "formated"
+isFormated = "isFormated"
+formatedTemplateData = "formatedTemplateData"
+Reuests = "Reuests"
+PostReuestsHandlerRequest = "PostReuestsHandlerRequest"
+MisMatched = "MisMatched"
+fo = "fo"
+Fo = "Fo"
+ExludedDastTmplStats = "ExludedDastTmplStats"
+AllowdTypes = "AllowdTypes"
+worflow = "worflow"
+inFo = "inFo"
