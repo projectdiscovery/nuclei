@@ -11,6 +11,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -249,6 +250,7 @@ func New(cfg *Config) (*Store, error) {
 	return store, nil
 }
 
+// getTemplateVerification returns the verification status for a template at the given path.
 func (store *Store) getTemplateVerification(templatePath string) *protocols.TemplateVerification {
 	if store.metadataIndex == nil {
 		return nil
@@ -265,6 +267,7 @@ func (store *Store) getTemplateVerification(templatePath string) *protocols.Temp
 	}
 }
 
+// handleTemplatesEditorURLs converts cloud template editor URLs to raw template download URLs.
 func handleTemplatesEditorURLs(input string) string {
 	parsed, err := url.Parse(input)
 	if err != nil {
@@ -312,6 +315,7 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 	}
 }
 
+// ID returns the unique identifier for this store instance.
 func (store *Store) ID() string {
 	return store.id
 }
@@ -333,18 +337,23 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
+// Load loads all templates and workflows from the store's configured paths.
+// It uses local variables to avoid partial initialization — the store's
+// templates and workflows fields are only assigned after both load successfully.
 func (store *Store) Load() error {
 	tmpls, err := store.LoadTemplates(store.finalTemplates)
 	if err != nil {
 		return fmt.Errorf("could not load templates: %w", err)
 	}
-	store.templates = tmpls
 
-	workflows, err := store.LoadWorkflows(store.finalWorkflows)
+	wflows, err := store.LoadWorkflows(store.finalWorkflows)
 	if err != nil {
 		return fmt.Errorf("could not load workflows: %w", err)
 	}
-	store.workflows = workflows
+
+	// Only assign after both succeed to avoid partial initialization
+	store.templates = tmpls
+	store.workflows = wflows
 	return nil
 }
 
@@ -378,6 +387,7 @@ func (store *Store) buildIndexFilter() *index.Filter {
 	}
 }
 
+// loadTemplatesIndex loads or creates the metadata index used for template filtering.
 func (store *Store) loadTemplatesIndex() *index.Index {
 	var metadataIdx *index.Index
 
@@ -532,18 +542,21 @@ func (store *Store) ValidateTemplates() error {
 	return errors.New("errors occurred during template validation")
 }
 
+// areWorkflowsValid checks whether all filtered workflow paths can be loaded and parsed successfully.
 func (store *Store) areWorkflowsValid(filteredWorkflowPaths map[string]struct{}) bool {
 	return store.areWorkflowOrTemplatesValid(filteredWorkflowPaths, true, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
 		return store.config.ExecutorOptions.Parser.LoadWorkflow(templatePath, store.config.Catalog)
 	})
 }
 
+// areTemplatesValid checks whether all filtered template paths can be loaded and parsed successfully.
 func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{}) bool {
 	return store.areWorkflowOrTemplatesValid(filteredTemplatePaths, false, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
 		return store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 	})
 }
 
+// areWorkflowOrTemplatesValid validates a set of template or workflow paths by attempting to load each one.
 func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *templates.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
 	parsedCache := store.parserCacheOnce()
@@ -615,6 +628,7 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 	return areTemplatesValid
 }
 
+// areWorkflowTemplatesValid recursively validates that all templates referenced by workflows exist and can be loaded.
 func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemplate) bool {
 	for _, workflow := range workflows {
 		if !areWorkflowTemplatesValid(store, workflow.Subtemplates) {
@@ -632,6 +646,7 @@ func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemp
 	return true
 }
 
+// isParsingError logs a parsing error and returns true if the error is non-nil, indicating a template parsing failure.
 func isParsingError(store *Store, message string, template string, err error) bool {
 	if errors.Is(err, templates.ErrExcluded) {
 		return false
@@ -681,7 +696,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) ([]*templates.Template
 	}
 
 	if len(loadErrors) > 0 && len(loadedWorkflows) == 0 {
-		return nil, fmt.Errorf("failed to load any workflows: %v", loadErrors)
+		return nil, fmt.Errorf("failed to load any workflows: %w", multierr.Combine(loadErrors...))
 	}
 
 	return loadedWorkflows, nil

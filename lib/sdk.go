@@ -102,16 +102,16 @@ type NucleiEngine struct {
 func (e *NucleiEngine) LoadAllTemplates() error {
 	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
-		return errkit.Wrapf(err, "Could not create workflow loader: %s", err)
+		return errkit.Wrap(err, "could not create workflow loader")
 	}
 	e.executerOpts.WorkflowLoader = workflowLoader
 
 	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, e.executerOpts))
 	if err != nil {
-		return errkit.Wrapf(err, "Could not create loader client: %s", err)
+		return errkit.Wrap(err, "could not create loader client")
 	}
 	if err := e.store.Load(); err != nil {
-		return errkit.Wrapf(err, "Could not load templates: %s", err)
+		return errkit.Wrap(err, "could not load templates")
 	}
 	e.templatesLoaded = true
 	return nil
@@ -255,7 +255,9 @@ func (e *NucleiEngine) Close() {
 // enable matcher-status option if you expect this callback to be called for all results regardless if it matched or not
 func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...func(event *output.ResultEvent)) error {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			return err
+		}
 	}
 	if len(e.store.Templates()) == 0 && len(e.store.Workflows()) == 0 {
 		return ErrNoTemplatesAvailable
