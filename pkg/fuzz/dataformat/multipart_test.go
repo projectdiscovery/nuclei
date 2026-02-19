@@ -384,10 +384,10 @@ func TestMultiPartFormDecode_ConcurrentWithSeparateInstances(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			mpf := NewMultiPartForm()
-			require.NoError(t, mpf.ParseBoundary("multipart/form-data; boundary="+boundary))
+			assert.NoError(t, mpf.ParseBoundary("multipart/form-data; boundary="+boundary))
 			kv, err := mpf.Decode(body)
-			require.NoError(t, err)
-			require.NotNil(t, kv)
+			assert.NoError(t, err)
+			assert.NotNil(t, kv)
 		}()
 	}
 	wg.Wait()
