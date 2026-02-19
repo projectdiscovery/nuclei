@@ -35,7 +35,7 @@ func TestPathNumericFuzzing(t *testing.T) {
 	// Rebuild the request with the fuzzed value
 	rebuilt, err := path.Rebuild()
 	require.Nil(t, err, "could not rebuild request")
-	
+
 	// Verify the path contains the fuzzed value
 	// Note: The path will be unescaped by the Rebuild method
 	expectedPath := "/user/55 OR True/profile"
