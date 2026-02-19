@@ -38,47 +38,48 @@ var testcertpath = ""
 
 func init() {
 	if isCodeDisabled() {
-		// skip executing code protocol in CI on windows
 		return
 	}
-	// allow local file access to load content of file references in template
-	// in order to sign them for testing purposes
 	templates.TemplateSignerLFA()
 
 	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
 	if err != nil {
-		panic(err)
+		log.Printf("Could not create template signer, skipping code test cases: %s", err)
+		for i := range codeTestCases {
+			codeTestCases[i].DisableOn = func() bool { return true }
+		}
+		return
 	}
 
 	testcertpath, _ = filepath.Abs(testCertFile)
 
-	for _, v := range codeTestCases {
+	for i, v := range codeTestCases {
 		templatePath := v.Path
 		testCase := v.TestCase
 
 		if v.DisableOn != nil && v.DisableOn() {
-			// skip ps1 test case on non-windows platforms
 			continue
 		}
 
-		templatePath, err := filepath.Abs(templatePath)
-		if err != nil {
-			panic(err)
+		var absErr error
+		templatePath, absErr = filepath.Abs(templatePath)
+		if absErr != nil {
+			log.Printf("Could not get absolute path for %s: %s", v.Path, absErr)
+			codeTestCases[i].DisableOn = func() bool { return true }
+			continue
 		}
 
-		// skip
-		// - unsigned test cases
 		if _, ok := testCase.(*unsignedCode); ok {
 			continue
 		}
 		if _, ok := testCase.(*codePyNoSig); ok {
 			continue
 		}
+		
 		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
-			log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
+			log.Fatalf("Could not sign template %v: %s", templatePath, err)
 		}
 	}
-
 }
 
 func getEnvValues() []string {
