@@ -16,43 +16,24 @@ import (
 )
 
 type (
-	// IsOracleResponse is the response from the IsOracle function.
-	// this is returned by IsOracle function.
-	// @example
-	// ```javascript
-	// const oracle = require('nuclei/oracle');
-	// const isOracle = oracle.IsOracle('acme.com', 1521);
-	// ```
 	IsOracleResponse struct {
 		IsOracle bool
 		Banner   string
 	}
-	// Client is a client for Oracle database.
-	// Internally client uses oracle/godror driver.
-	// @example
-	// ```javascript
-	// const oracle = require('nuclei/oracle');
-	// const client = new oracle.OracleClient();
-	// ```
 	OracleClient struct {
 		connector *goora.OracleConnector
 	}
 )
 
-// IsOracle checks if a host is running an Oracle server
-// @example
-// ```javascript
-// const oracle = require('nuclei/oracle');
-// const isOracle = oracle.IsOracle('acme.com', 1521);
-// log(toJSON(isOracle));
-// ```
 func (c *OracleClient) IsOracle(ctx context.Context, host string, port int) (IsOracleResponse, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisOracle(executionId, host, port)
+	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	return memoizedisOracle(ctx, executionId, host, port)
 }
 
 // @memo
-func isOracle(executionId string, host string, port int) (IsOracleResponse, error) {
+// ແກ້ໄຂ: ເພີ່ມ ctx ເຂົ້າໃນພາຣາມິເຕີ
+func isOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -61,7 +42,8 @@ func isOracle(executionId string, host string, port int) (IsOracleResponse, erro
 	}
 
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	// ແກ້ໄຂ: ປ່ຽນ context.TODO() ເປັນ ctx
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
@@ -94,28 +76,18 @@ func (c *OracleClient) oracleDbInstance(connStr string, executionId string) (*go
 		return nil, fmt.Errorf("failed to cast connector to OracleConnector")
 	}
 
-	// Create custom dialer wrapper
 	customDialer := &oracleCustomDialer{
 		executionId: executionId,
 	}
 
 	oraConnector.Dialer(customDialer)
-
 	c.connector = oraConnector
 
 	return oraConnector, nil
 }
 
-// Connect connects to an Oracle database
-// @example
-// ```javascript
-// const oracle = require('nuclei/oracle');
-// const client = new oracle.OracleClient;
-// client.Connect('acme.com', 1521, 'XE', 'user', 'password');
-// ```
 func (c *OracleClient) Connect(ctx context.Context, host string, port int, serviceName string, username string, password string) (bool, error) {
 	connStr := goora.BuildUrl(host, port, serviceName, username, password, nil)
-
 	return c.ConnectWithDSN(ctx, connStr)
 }
 
@@ -135,8 +107,8 @@ func (c *OracleClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, er
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	// Test the connection
-	err = db.Ping()
+	// ແກ້ໄຂ: ປ່ຽນມາໃຊ້ PingContext(ctx)
+	err = db.PingContext(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -144,15 +116,6 @@ func (c *OracleClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, er
 	return true, nil
 }
 
-// ExecuteQuery connects to MS SQL database using given credentials and executes a query.
-// It returns the results of the query or an error if something goes wrong.
-// @example
-// ```javascript
-// const oracle = require('nuclei/oracle');
-// const client = new oracle.OracleClient;
-// const result = client.ExecuteQuery('acme.com', 1521, 'username', 'password', 'XE', 'SELECT @@version');
-// log(to_json(result));
-// ```
 func (c *OracleClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
 	if host == "" || port <= 0 {
 		return nil, fmt.Errorf("invalid host or port")
@@ -167,18 +130,9 @@ func (c *OracleClient) ExecuteQuery(ctx context.Context, host string, port int, 
 	}
 
 	connStr := goora.BuildUrl(host, port, dbName, username, password, nil)
-
 	return c.ExecuteQueryWithDSN(ctx, connStr, query)
 }
 
-// ExecuteQueryWithDSN executes a query on an Oracle database using a DSN
-// @example
-// ```javascript
-// const oracle = require('nuclei/oracle');
-// const client = new oracle.OracleClient;
-// const result = client.ExecuteQueryWithDSN('oracle://user:password@host:port/service', 'SELECT @@version');
-// log(to_json(result));
-// ```
 func (c *OracleClient) ExecuteQueryWithDSN(ctx context.Context, dsn string, query string) (*utils.SQLResult, error) {
 	executionId := ctx.Value("executionId").(string)
 
@@ -194,7 +148,8 @@ func (c *OracleClient) ExecuteQueryWithDSN(ctx context.Context, dsn string, quer
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	rows, err := db.Query(query)
+	// ແກ້ໄຂ: ປ່ຽນມາໃຊ້ QueryContext(ctx, query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
