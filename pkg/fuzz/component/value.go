@@ -2,7 +2,6 @@ package component
 
 import (
 	"reflect"
-	"strconv"
 
 	"github.com/leslie-qiwa/flat"
 	"github.com/logrusorgru/aurora"
@@ -101,17 +100,12 @@ func (v *Value) SetParsedValue(key, value string) bool {
 	case string:
 		origValue = value
 	case int, int32, int64, float32, float64:
-		parsed, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			return false
-		}
-		origValue = parsed
+		// For fuzzing, always allow setting string values even if original was numeric.
+		// This enables fuzzing of numeric path parts with payloads like "55 OR True"
+		origValue = value
 	case bool:
-		parsed, err := strconv.ParseBool(value)
-		if err != nil {
-			return false
-		}
-		origValue = parsed
+		// For fuzzing, always allow setting string values even if original was boolean
+		origValue = value
 	default:
 		// explicitly check for typed slice
 		if val, ok := IsTypedSlice(v); ok {
