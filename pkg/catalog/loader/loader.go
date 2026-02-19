@@ -668,7 +668,13 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
 // returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) (templates []*templates.Template) {
+	defer func() {
+		if r := recover(); r != nil {
+			store.logger.Error().Msgf("Recovered from panic in LoadTemplatesWithTags: %v", r)
+			templates = nil
+		}
+	}()
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
