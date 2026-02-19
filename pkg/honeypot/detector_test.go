@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestDetectorDisabledByDefault verifies that a Detector with threshold 0 is inactive
+// and never flags or suppresses hosts.
 func TestDetectorDisabledByDefault(t *testing.T) {
 	d := New(0, false)
 	require.False(t, d.Enabled())
@@ -16,6 +18,8 @@ func TestDetectorDisabledByDefault(t *testing.T) {
 	require.False(t, suppress)
 }
 
+// TestDetectorNilSafe verifies that all Detector methods are safe to call on a nil receiver
+// without panicking, returning zero-value results.
 func TestDetectorNilSafe(t *testing.T) {
 	var d *Detector
 	require.False(t, d.Enabled())
@@ -27,6 +31,8 @@ func TestDetectorNilSafe(t *testing.T) {
 	require.Empty(t, d.Summary())
 }
 
+// TestDetectorThresholdTriggered verifies that a host is flagged once its unique template
+// match count reaches the configured threshold.
 func TestDetectorThresholdTriggered(t *testing.T) {
 	d := New(3, false)
 	require.True(t, d.Enabled())
@@ -43,6 +49,8 @@ func TestDetectorThresholdTriggered(t *testing.T) {
 	require.False(t, suppress) // suppress is false in warn-only mode
 }
 
+// TestDetectorSuppressMode verifies that when suppress mode is enabled, results from
+// flagged hosts return shouldSuppress=true on both the triggering and subsequent calls.
 func TestDetectorSuppressMode(t *testing.T) {
 	d := New(2, true)
 
@@ -57,6 +65,8 @@ func TestDetectorSuppressMode(t *testing.T) {
 	require.True(t, suppress)
 }
 
+// TestDetectorWarnOnlyMode verifies that when suppress is disabled, flagged hosts return
+// shouldSuppress=false so results are emitted with a warning rather than dropped.
 func TestDetectorWarnOnlyMode(t *testing.T) {
 	d := New(2, false)
 
@@ -66,6 +76,8 @@ func TestDetectorWarnOnlyMode(t *testing.T) {
 	require.False(t, suppress) // warn only, never suppress
 }
 
+// TestDetectorDuplicateTemplateNotCounted verifies that repeated matches of the same
+// template ID against a host are deduplicated and do not inflate the match count.
 func TestDetectorDuplicateTemplateNotCounted(t *testing.T) {
 	d := New(3, false)
 
@@ -77,6 +89,8 @@ func TestDetectorDuplicateTemplateNotCounted(t *testing.T) {
 	require.False(t, d.IsFlagged("host1"))
 }
 
+// TestDetectorMultipleHosts verifies that match tracking is isolated per host,
+// so flagging one host does not affect the state of another.
 func TestDetectorMultipleHosts(t *testing.T) {
 	d := New(2, true)
 
@@ -90,6 +104,8 @@ func TestDetectorMultipleHosts(t *testing.T) {
 	require.False(t, d.IsFlagged("host2"))
 }
 
+// TestDetectorEmptyInputs verifies that Record gracefully handles empty host or
+// template ID arguments without recording entries or panicking.
 func TestDetectorEmptyInputs(t *testing.T) {
 	d := New(2, false)
 	flagged, _ := d.Record("", "t1")
@@ -98,6 +114,8 @@ func TestDetectorEmptyInputs(t *testing.T) {
 	require.False(t, flagged)
 }
 
+// TestDetectorEmptyHostURLs verifies that URLs with syntactically empty hosts
+// (e.g. "http://", "://") are rejected by Record and do not create phantom entries.
 func TestDetectorEmptyHostURLs(t *testing.T) {
 	d := New(2, false)
 
@@ -122,6 +140,8 @@ func TestDetectorEmptyHostURLs(t *testing.T) {
 	require.False(t, hasEmpty, "matches map should not contain an empty-string key")
 }
 
+// TestNormalizeHost exercises the normalizeHost helper with a table of URL formats,
+// IPv4/IPv6 addresses, userinfo, trailing colons, and edge cases.
 func TestNormalizeHost(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -163,6 +183,8 @@ func TestNormalizeHost(t *testing.T) {
 	}
 }
 
+// TestDetectorFlaggedHosts verifies that FlaggedHosts returns a snapshot of all
+// flagged hosts with their match counts at the time of flagging.
 func TestDetectorFlaggedHosts(t *testing.T) {
 	d := New(2, false)
 
@@ -177,6 +199,8 @@ func TestDetectorFlaggedHosts(t *testing.T) {
 	require.Equal(t, 2, flagged["host2"])
 }
 
+// TestDetectorSummary verifies that Summary returns an empty string when no hosts
+// are flagged, and a formatted report listing flagged hosts when present.
 func TestDetectorSummary(t *testing.T) {
 	d := New(2, false)
 
@@ -192,6 +216,8 @@ func TestDetectorSummary(t *testing.T) {
 	require.Contains(t, summary, "host1")
 }
 
+// TestDetectorHostNormalization verifies that different URL representations of the
+// same host are normalized to a single key, so their matches are counted together.
 func TestDetectorHostNormalization(t *testing.T) {
 	d := New(2, false)
 
@@ -202,6 +228,8 @@ func TestDetectorHostNormalization(t *testing.T) {
 	require.True(t, d.IsFlagged("example.com"))
 }
 
+// TestDetectorConcurrentAccess verifies that Record is safe for concurrent use from
+// multiple goroutines, producing deterministic flag counts under contention.
 func TestDetectorConcurrentAccess(t *testing.T) {
 	d := New(10, false)
 	var wg sync.WaitGroup
