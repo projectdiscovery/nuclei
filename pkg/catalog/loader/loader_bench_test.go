@@ -71,7 +71,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 
@@ -89,7 +89,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 
@@ -107,7 +107,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 
@@ -125,7 +125,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 
@@ -143,7 +143,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 
@@ -161,7 +161,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 
@@ -181,7 +181,7 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
 		}
 	})
 }
@@ -210,13 +210,13 @@ func BenchmarkLoadTemplatesOnlyMetadata(b *testing.B) {
 		}
 
 		// Pre-warm the cache
-		_ = store.LoadTemplatesOnlyMetadata()
+		_, _ = store.LoadTemplatesOnlyMetadata()
 
 		b.ResetTimer()
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplatesOnlyMetadata()
+			_, _ = store.LoadTemplatesOnlyMetadata()
 		}
 	})
 
@@ -231,13 +231,13 @@ func BenchmarkLoadTemplatesOnlyMetadata(b *testing.B) {
 		}
 
 		// Pre-warm the cache
-		_ = store.LoadTemplatesOnlyMetadata()
+		_, _ = store.LoadTemplatesOnlyMetadata()
 
 		b.ResetTimer()
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplatesOnlyMetadata()
+			_, _ = store.LoadTemplatesOnlyMetadata()
 		}
 	})
 }
