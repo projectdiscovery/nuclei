@@ -111,16 +111,11 @@ func TestPathComponent_DeterministicOrder(t *testing.T) {
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	found, err := path.Parse(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !found {
-		t.Fatal("expected path to be found")
-	}
+	require.NoError(t, err)
+	require.True(t, found, "expected path to be found")
 
 	t.Logf("Original path: %s", req.Path)
 
@@ -130,27 +125,19 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 
 		// Try fuzzing the "55" segment specifically (which should be key "2")
 		if value.(string) == "55" {
-			if setErr := path.SetValue(key, "55 OR True"); setErr != nil {
-				t.Fatal(setErr)
-			}
+			require.NoError(t, path.SetValue(key, "55 OR True"))
 		}
 		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	newReq, err := path.Rebuild()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	t.Logf("Modified path: %s", newReq.Path)
 
 	// Now with PathEncode, spaces are preserved correctly for SQL injection
-	if newReq.Path != "/user/55 OR True/profile" {
-		t.Fatalf("expected path to be '/user/55 OR True/profile', got '%s'", newReq.Path)
-	}
+	require.Equal(t, "/user/55 OR True/profile", newReq.Path, "unexpected modified path")
 
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
