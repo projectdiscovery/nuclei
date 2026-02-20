@@ -28,9 +28,18 @@ func TestNormalizeHostCandidate(t *testing.T) {
 		require.Equal(t, "::1", normalizeHostCandidate("[::1]:8080"))
 	})
 
+	t.Run("IPv6BracketOnly", func(t *testing.T) {
+		require.Equal(t, "::1", normalizeHostCandidate("[::1]"))
+	})
+
 	t.Run("IPv4Host", func(t *testing.T) {
 		require.Equal(t, "192.168.1.1", normalizeHostCandidate("192.168.1.1"))
 	})
+}
+
+func TestNormalizeHoneypotHostIgnoresMatchedFallback(t *testing.T) {
+	host := normalizeHoneypotHost(&ResultEvent{Matched: "example.com", Type: "file"})
+	require.Equal(t, "", host)
 }
 
 func TestStandardWriterHoneypotThresholdWarnOnly(t *testing.T) {

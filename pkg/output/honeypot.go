@@ -78,7 +78,7 @@ func (d *honeypotDetector) evaluate(event *ResultEvent) honeypotDecision {
 }
 
 func normalizeHoneypotHost(event *ResultEvent) string {
-	for _, candidate := range []string{event.Host, event.URL, event.Matched} {
+	for _, candidate := range []string{event.Host, event.URL} {
 		host := normalizeHostCandidate(candidate)
 		if host != "" {
 			return host
@@ -107,6 +107,8 @@ func normalizeHostCandidate(candidate string) string {
 	}
 	if host, _, err := net.SplitHostPort(value); err == nil {
 		value = host
+	} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		value = strings.TrimPrefix(strings.TrimSuffix(value, "]"), "[")
 	}
 
 	value = strings.TrimSpace(value)
