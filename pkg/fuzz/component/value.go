@@ -112,9 +112,12 @@ func (v *Value) SetParsedValue(key, value string) bool {
 	case bool:
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {
-			return false
+			// If the new value can't be parsed as a bool, store it as a string
+			// This allows fuzzing payloads to be set on boolean-typed path segments
+			origValue = value
+		} else {
+			origValue = parsed
 		}
-		origValue = parsed
 	default:
 		// explicitly check for typed slice
 		if val, ok := IsTypedSlice(v); ok {

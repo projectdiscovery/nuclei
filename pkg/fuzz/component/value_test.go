@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/leslie-qiwa/flat"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,6 +37,23 @@ func TestFlatMap_FlattenUnflatten(t *testing.T) {
 		t.Fatal(err)
 	}
 	require.Equal(t, data, nested, "unexpected data")
+}
+
+// TestSetParsedValue_BoolFallback tests that boolean-typed values accept
+// arbitrary fuzzing payloads instead of silently dropping them (regression
+// for https://github.com/projectdiscovery/nuclei/issues/6398)
+func TestSetParsedValue_BoolFallback(t *testing.T) {
+	v := &Value{}
+	v.parsed = dataformat.KVMap(map[string]interface{}{
+		"enabled": true,
+	})
+
+	// Setting a non-bool fuzzing payload should succeed
+	ok := v.SetParsedValue("enabled", "true OR 1=1")
+	require.True(t, ok, "expected SetParsedValue to return true for bool field with non-bool payload")
+
+	got := v.parsed.Get("enabled")
+	require.Equal(t, "true OR 1=1", got, "expected string fallback value to be stored")
 }
 
 func TestAnySlice(t *testing.T) {
