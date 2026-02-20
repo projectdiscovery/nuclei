@@ -13,38 +13,24 @@ import (
 
 // GetServerInfo returns the server info for a redis server
 func GetServerInfo(ctx context.Context, host string, port int) (string, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return "", fmt.Errorf("missing or invalid executionId in context")
+	}
 	return memoizedgetServerInfo(ctx, executionId, host, port)
 }
 
 // @memo
 func getServerInfo(ctx context.Context, executionId string, host string, port int) (string, error) {
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		return "", protocolstate.ErrHostDenied.Msgf(host)
-	}
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: "",
-		DB:       0,
-	})
-	defer client.Close()
-
-	_, err := client.Ping(ctx).Result()
-	if err != nil {
-		return "", err
-	}
-
-	infoCmd := client.Info(ctx)
-	if infoCmd.Err() != nil {
-		return "", infoCmd.Err()
-	}
-
-	return infoCmd.Val(), nil
+	return getServerInfoInternal(ctx, executionId, host, port, "")
 }
 
 // Connect tries to connect redis server with password
 func Connect(ctx context.Context, host string, port int, password string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return false, fmt.Errorf("missing or invalid executionId in context")
+	}
 	return memoizedconnect(ctx, executionId, host, port, password)
 }
 
@@ -60,30 +46,33 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 	})
 	defer client.Close()
 
-	_, err := client.Ping(ctx).Result()
-	if err != nil {
+	if _, err := client.Ping(ctx).Result(); err != nil {
 		return false, err
-	}
-	
-	infoCmd := client.Info(ctx)
-	if infoCmd.Err() != nil {
-		return false, infoCmd.Err()
 	}
 
 	return true, nil
 }
 
-// GetServerInfoAuth returns the server info for a redis server
+// GetServerInfoAuth returns the server info for a redis server with password
 func GetServerInfoAuth(ctx context.Context, host string, port int, password string) (string, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return "", fmt.Errorf("missing or invalid executionId in context")
+	}
 	return memoizedgetServerInfoAuth(ctx, executionId, host, port, password)
 }
 
 // @memo
 func getServerInfoAuth(ctx context.Context, executionId string, host string, port int, password string) (string, error) {
+	return getServerInfoInternal(ctx, executionId, host, port, password)
+}
+
+// getServerInfoInternal contains common logic for fetching redis info
+func getServerInfoInternal(ctx context.Context, executionId string, host string, port int, password string) (string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
 		Password: password,
@@ -91,32 +80,33 @@ func getServerInfoAuth(ctx context.Context, executionId string, host string, por
 	})
 	defer client.Close()
 
-	_, err := client.Ping(ctx).Result()
-	if err != nil {
+	if _, err := client.Ping(ctx).Result(); err != nil {
 		return "", err
 	}
 
-	infoCmd := client.Info(ctx)
-	if infoCmd.Err() != nil {
-		return "", infoCmd.Err()
-	}
-
-	return infoCmd.Val(), nil
+	return client.Info(ctx).Result()
 }
 
 // IsAuthenticated checks if the redis server requires authentication
 func IsAuthenticated(ctx context.Context, host string, port int) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return false, fmt.Errorf("missing or invalid executionId in context")
+	}
 	return memoizedisAuthenticated(ctx, executionId, host, port)
 }
 
 // @memo
 func isAuthenticated(ctx context.Context, executionId string, host string, port int) (bool, error) {
+	// Added host validation to prevent SSRF
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	plugin := pluginsredis.REDISPlugin{}
-	timeout := 5 * time.Second
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	dialer, err := protocolstate.GetDialer()
+	if err != nil {
+		return false, err
 	}
 
 	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
@@ -125,19 +115,25 @@ func isAuthenticated(ctx context.Context, executionId string, host string, port 
 	}
 	defer conn.Close()
 
-	_, err = plugin.Run(conn, timeout, plugins.Target{Host: host})
+	service, err := plugin.Run(conn, time.Duration(5)*time.Second, plugins.Target{Host: host})
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+
+	return service != nil, nil
 }
 
 // RunLuaScript runs a lua script on the redis server
 func RunLuaScript(ctx context.Context, host string, port int, password string, script string) (interface{}, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return nil, fmt.Errorf("missing or invalid executionId in context")
+	}
+	
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
 		Password: password,
@@ -145,15 +141,9 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	})
 	defer client.Close()
 
-	_, err := client.Ping(ctx).Result()
-	if err != nil {
+	if _, err := client.Ping(ctx).Result(); err != nil {
 		return nil, err
 	}
 
-	val, err := client.Eval(ctx, script, []string{}).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	return val, nil
+	return client.Eval(ctx, script, []string{}).Result()
 }
