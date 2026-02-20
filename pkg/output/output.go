@@ -82,7 +82,8 @@ type StandardWriter struct {
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
 
-	resultCount atomic.Int32
+	honeypotDetector *honeypotDetector
+	resultCount      atomic.Int32
 }
 
 var _ Writer = &StandardWriter{}
@@ -280,6 +281,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
 		KeysToRedact:     options.Redact,
+		honeypotDetector: newHoneypotDetector(options.HoneypotThreshold, options.HoneypotSuppressResults),
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -297,6 +299,15 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	if decision := w.honeypotDetector.evaluate(event); decision.host != "" {
+		if decision.newlyFlagged {
+			gologger.Warning().Msgf("Potential honeypot-like target detected (%s): matched %d unique template ids (threshold=%d)", decision.host, decision.count, w.honeypotDetector.threshold)
+		}
+		if decision.suppress {
+			return nil
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.

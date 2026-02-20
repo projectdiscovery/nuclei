@@ -421,6 +421,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
+		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 0, "flag hosts as potential honeypots when this many unique template ids match (0 disables)"),
+		flagSet.BoolVar(&options.HoneypotSuppressResults, "honeypot-suppress", false, "suppress findings from hosts flagged by honeypot-threshold"),
 		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),

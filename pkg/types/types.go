@@ -236,6 +236,13 @@ type Options struct {
 	HTTPStats bool
 	// OmitTemplate omits encoded template from JSON output
 	OmitTemplate bool
+	// HoneypotThreshold is the number of unique matched templates per host
+	// after which the host is marked as a potential honeypot.
+	// 0 disables detection.
+	HoneypotThreshold int
+	// HoneypotSuppressResults suppresses subsequent results from hosts flagged
+	// as potential honeypots when HoneypotThreshold is set.
+	HoneypotSuppressResults bool
 	// JSONExport is the file to export JSON output format to
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
