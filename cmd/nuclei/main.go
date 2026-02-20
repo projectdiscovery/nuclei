@@ -38,6 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	yamlv3 "gopkg.in/yaml.v3"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/monitor"
 	"github.com/projectdiscovery/utils/errkit"
@@ -244,6 +245,7 @@ func readConfig() *goflags.FlagSet {
 	var updateNucleiBinary bool
 	var pdcpauth string
 	var fuzzFlag bool
+	var dummyString string
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
@@ -336,6 +338,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
 		flagSet.StringVarP(&templateProfile, "profile", "tp", "", "template profile config file to run"),
 		flagSet.BoolVarP(&options.ListTemplateProfiles, "profile-list", "tpl", false, "list community template profiles"),
+		flagSet.StringVar(&dummyString, "name", "", "name of the profile (ignored)"),
+		flagSet.StringVar(&dummyString, "purpose", "", "purpose of the profile (ignored)"),
 		flagSet.BoolVarP(&options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
 		flagSet.BoolVarP(&options.FollowHostRedirects, "follow-host-redirects", "fhr", false, "follow redirects on the same host"),
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
@@ -494,7 +498,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("Authentication", "Authentication",
-		flagSet.StringSliceVarP(&options.SecretsFile, "secret-file", "sf", nil, "path to config file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.SecretsFile, "secret-file", "sf", nil, "path to config file containing secrets for nuclei authenticated scan", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
 	)
 
@@ -656,7 +660,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
+		if err := mergeConfigFileWithFilter(flagSet, templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
 	}
@@ -664,6 +668,9 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if len(options.SecretsFile) > 0 {
 		for _, secretFile := range options.SecretsFile {
 			if !fileutil.FileExists(secretFile) {
+				if (strings.Contains(secretFile, "static:") || strings.Contains(secretFile, "dynamic:")) || (strings.HasPrefix(secretFile, "{") && strings.HasSuffix(secretFile, "}")) {
+					continue
+				}
 				options.Logger.Fatal().Msgf("given secrets file '%s' does not exist", secretFile)
 			}
 		}
@@ -707,7 +714,7 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 		return
 	}
 	// if config file exists, merge it with the default config
-	if err = flagset.MergeConfigFile(cfgFile); err != nil {
+	if err = mergeConfigFileWithFilter(flagset, cfgFile); err != nil {
 		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
 	}
 }
@@ -805,4 +812,41 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
+}
+
+func mergeConfigFileWithFilter(flagset *goflags.FlagSet, path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var m map[string]interface{}
+	if err := yamlv3.Unmarshal(data, &m); err == nil {
+		hasMetadata := false
+		if _, ok := m["id"]; ok {
+			delete(m, "id")
+			hasMetadata = true
+		}
+		if _, ok := m["name"]; ok {
+			delete(m, "name")
+			hasMetadata = true
+		}
+		if _, ok := m["purpose"]; ok {
+			delete(m, "purpose")
+			hasMetadata = true
+		}
+		if hasMetadata {
+			data, err = yamlv3.Marshal(m)
+			if err != nil {
+				return err
+			}
+			tmpFile, err := os.CreateTemp("", "nuclei-config-*.yaml")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(tmpFile.Name())
+			_ = os.WriteFile(tmpFile.Name(), data, 0600)
+			return flagset.MergeConfigFile(tmpFile.Name())
+		}
+	}
+	return flagset.MergeConfigFile(path)
 }

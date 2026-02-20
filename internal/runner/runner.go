@@ -577,6 +577,26 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
+		// handle embedded secrets
+		var secretsFiles []string
+		for _, secretFile := range r.options.SecretsFile {
+			if fileutil.FileExists(secretFile) {
+				secretsFiles = append(secretsFiles, secretFile)
+				continue
+			}
+			// check if it is content
+			if strings.Contains(secretFile, ":") && (strings.Contains(secretFile, "static") || strings.Contains(secretFile, "dynamic")) {
+				// write to temp file
+				tempFile := filepath.Join(r.tmpDir, fmt.Sprintf("secret-%d.yaml", time.Now().UnixNano()))
+				if err := os.WriteFile(tempFile, []byte(secretFile), 0600); err == nil {
+					secretsFiles = append(secretsFiles, tempFile)
+					continue
+				}
+			}
+			secretsFiles = append(secretsFiles, secretFile)
+		}
+		r.options.SecretsFile = secretsFiles
+
 		// Clone options so GetAuthTmplStore can modify them without affecting the original
 		authOptions := r.options.Copy()
 		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
