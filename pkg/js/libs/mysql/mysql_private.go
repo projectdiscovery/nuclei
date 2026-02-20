@@ -7,18 +7,12 @@ import (
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (
 	// MySQLOptions defines the data source name (DSN) options required to connect to a MySQL database.
-	// along with other options like Timeout etc
-	// @example
-	// ```javascript
-	// const mysql = require('nuclei/mysql');
-	// const options = new mysql.MySQLOptions();
-	// options.Host = 'acme.com';
-	// options.Port = 3306;
-	// ```
 	MySQLOptions struct {
 		Host     string // Host is the host name or IP address of the MySQL server.
 		Port     int    // Port is the port number on which the MySQL server is listening.
@@ -32,14 +26,6 @@ type (
 )
 
 // BuildDSN builds a MySQL data source name (DSN) from the given options.
-// @example
-// ```javascript
-// const mysql = require('nuclei/mysql');
-// const options = new mysql.MySQLOptions();
-// options.Host = 'acme.com';
-// options.Port = 3306;
-// const dsn = mysql.BuildDSN(options);
-// ```
 func BuildDSN(opts MySQLOptions) (string, error) {
 	if opts.Host == "" || opts.Port <= 0 {
 		return "", fmt.Errorf("invalid host or port")
@@ -47,25 +33,23 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	if opts.Protocol == "" {
 		opts.Protocol = "tcp"
 	}
-	// We're going to use a custom dialer when creating MySQL connections, so if we've been
-	// given "tcp" as the protocol, then quietly switch it to "nucleitcp", which we have
-	// already registered.
+	// Switch to nucleitcp which handles SSRF and custom dialing
 	if opts.Protocol == "tcp" {
 		opts.Protocol = "nucleitcp"
 	}
 	if opts.DbName == "" {
 		opts.DbName = "/"
 	} else {
-		opts.DbName = "/" + opts.DbName
+		if !strings.HasPrefix(opts.DbName, "/") {
+			opts.DbName = "/" + opts.DbName
+		}
 	}
 	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
 	var dsn strings.Builder
 	dsn.WriteString(fmt.Sprintf("%v:%v", url.QueryEscape(opts.Username), opts.Password))
 	dsn.WriteString("@")
 	dsn.WriteString(fmt.Sprintf("%v(%v)", opts.Protocol, target))
-	if opts.DbName != "" {
-		dsn.WriteString(opts.DbName)
-	}
+	dsn.WriteString(opts.DbName)
 	if opts.RawQuery != "" {
 		dsn.WriteString(opts.RawQuery)
 	}
@@ -73,7 +57,12 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 }
 
 // @memo
-func connectWithDSN(executionId string, dsn string) (bool, error) {
+func connectWithDSN(ctx context.Context, executionId string, dsn string) (bool, error) {
+	// SSRF Check: Verify if host is allowed
+	if !protocolstate.IsHostAllowed(executionId, dsn) {
+		return false, protocolstate.ErrHostDenied.Msgf(dsn)
+	}
+
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return false, err
@@ -81,10 +70,11 @@ func connectWithDSN(executionId string, dsn string) (bool, error) {
 	defer func() {
 		_ = db.Close()
 	}()
+	
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	ctx := context.WithValue(context.Background(), "executionId", executionId) // nolint: staticcheck
+	// Use the passed context for Ping to handle timeouts correctly
 	err = db.PingContext(ctx)
 	if err != nil {
 		return false, err
