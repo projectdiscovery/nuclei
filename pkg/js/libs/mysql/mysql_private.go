@@ -46,7 +46,8 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	}
 	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
 	var dsn strings.Builder
-	dsn.WriteString(fmt.Sprintf("%v:%v", url.QueryEscape(opts.Username), opts.Password))
+	// Escaping both username and password to prevent DSN parsing errors and security issues
+	dsn.WriteString(fmt.Sprintf("%v:%v", url.QueryEscape(opts.Username), url.QueryEscape(opts.Password)))
 	dsn.WriteString("@")
 	dsn.WriteString(fmt.Sprintf("%v(%v)", opts.Protocol, target))
 	dsn.WriteString(opts.DbName)
@@ -58,11 +59,9 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 
 // @memo
 func connectWithDSN(ctx context.Context, executionId string, dsn string) (bool, error) {
-	// SSRF Check: Verify if host is allowed
-	if !protocolstate.IsHostAllowed(executionId, dsn) {
-		return false, protocolstate.ErrHostDenied.Msgf(dsn)
-	}
-
+	// ໝາຍເຫດ: SSRF Check ຖືກຍ້າຍໄປກວດຢູ່ຟັງຊັນ Connect ກ່ອນຈະສ້າງ DSN ແລ້ວ
+	// ເພື່ອປ້ອງກັນການຮົ່ວໄຫຼຂອງຂໍ້ມູນ (Credential Leak) ໃນ error message.
+	
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return false, err
