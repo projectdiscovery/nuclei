@@ -5,48 +5,36 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/redis/go-redis/v9"
-
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	pluginsredis "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/redis"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/redis/go-redis/v9"
 )
 
 // GetServerInfo returns the server info for a redis server
-// @example
-// ```javascript
-// const redis = require('nuclei/redis');
-// const info = redis.GetServerInfo('acme.com', 6379);
-// ```
 func GetServerInfo(ctx context.Context, host string, port int) (string, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedgetServerInfo(executionId, host, port)
+	return memoizedgetServerInfo(ctx, executionId, host, port)
 }
 
 // @memo
-func getServerInfo(executionId string, host string, port int) (string, error) {
+func getServerInfo(ctx context.Context, executionId string, host string, port int) (string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
-	// create a new client
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Password: "",
+		DB:       0,
 	})
-	defer func() {
-		_ = client.Close()
-	}()
+	defer client.Close()
 
-	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return "", err
 	}
 
-	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(ctx)
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
@@ -55,38 +43,29 @@ func getServerInfo(executionId string, host string, port int) (string, error) {
 }
 
 // Connect tries to connect redis server with password
-// @example
-// ```javascript
-// const redis = require('nuclei/redis');
-// const connected = redis.Connect('acme.com', 6379, 'password');
-// ```
 func Connect(ctx context.Context, host string, port int, password string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnect(executionId, host, port, password)
+	return memoizedconnect(ctx, executionId, host, port, password)
 }
 
 // @memo
-func connect(executionId string, host string, port int, password string) (bool, error) {
+func connect(ctx context.Context, executionId string, host string, port int, password string) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	// create a new client
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
+		Password: password,
+		DB:       0,
 	})
-	defer func() {
-		_ = client.Close()
-	}()
+	defer client.Close()
 
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return false, err
 	}
-	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	
+	infoCmd := client.Info(ctx)
 	if infoCmd.Err() != nil {
 		return false, infoCmd.Err()
 	}
@@ -95,40 +74,29 @@ func connect(executionId string, host string, port int, password string) (bool, 
 }
 
 // GetServerInfoAuth returns the server info for a redis server
-// @example
-// ```javascript
-// const redis = require('nuclei/redis');
-// const info = redis.GetServerInfoAuth('acme.com', 6379, 'password');
-// ```
 func GetServerInfoAuth(ctx context.Context, host string, port int, password string) (string, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedgetServerInfoAuth(executionId, host, port, password)
+	return memoizedgetServerInfoAuth(ctx, executionId, host, port, password)
 }
 
 // @memo
-func getServerInfoAuth(executionId string, host string, port int, password string) (string, error) {
+func getServerInfoAuth(ctx context.Context, executionId string, host string, port int, password string) (string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
-	// create a new client
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
+		Password: password,
+		DB:       0,
 	})
-	defer func() {
-		_ = client.Close()
-	}()
+	defer client.Close()
 
-	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return "", err
 	}
 
-	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(ctx)
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
@@ -137,18 +105,13 @@ func getServerInfoAuth(executionId string, host string, port int, password strin
 }
 
 // IsAuthenticated checks if the redis server requires authentication
-// @example
-// ```javascript
-// const redis = require('nuclei/redis');
-// const isAuthenticated = redis.IsAuthenticated('acme.com', 6379);
-// ```
 func IsAuthenticated(ctx context.Context, host string, port int) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisAuthenticated(executionId, host, port)
+	return memoizedisAuthenticated(ctx, executionId, host, port)
 }
 
 // @memo
-func isAuthenticated(executionId string, host string, port int) (bool, error) {
+func isAuthenticated(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	plugin := pluginsredis.REDISPlugin{}
 	timeout := 5 * time.Second
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -156,13 +119,11 @@ func isAuthenticated(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
+	defer conn.Close()
 
 	_, err = plugin.Run(conn, timeout, plugins.Target{Host: host})
 	if err != nil {
@@ -172,39 +133,27 @@ func isAuthenticated(executionId string, host string, port int) (bool, error) {
 }
 
 // RunLuaScript runs a lua script on the redis server
-// @example
-// ```javascript
-// const redis = require('nuclei/redis');
-// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])');
-// ```
 func RunLuaScript(ctx context.Context, host string, port int, password string, script string) (interface{}, error) {
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	// create a new client
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
 		Password: password,
-		DB:       0, // use default DB
+		DB:       0,
 	})
-	defer func() {
-		_ = client.Close()
-	}()
+	defer client.Close()
 
-	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// Get Redis server info
-	infoCmd := client.Eval(context.Background(), script, []string{})
-
-	if infoCmd.Err() != nil {
-		return "", infoCmd.Err()
+	val, err := client.Eval(ctx, script, []string{}).Result()
+	if err != nil {
+		return nil, err
 	}
 
-	return infoCmd.Val(), nil
+	return val, nil
 }
