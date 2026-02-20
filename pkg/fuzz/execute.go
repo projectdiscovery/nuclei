@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -164,6 +165,18 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		}
 		return nil
 	}
+	// Antigravity Architect: XSS Context Analyzer Integration
+	if strings.Contains(strings.ToLower(rule.options.TemplateID), "xss") && input.BaseRequest != nil {
+		if input.Input.MetaInput.ReqResp != nil {
+			respBody := string(input.Input.MetaInput.ReqResp.Response.Body)
+			reflectionContext := xss.Analyze(respBody, "pz7_context")
+			gologger.Verbose().Msgf("[%s] XSS Context Identified: %s\n", rule.options.TemplateID, reflectionContext)
+			if reflectionContext != xss.Unknown {
+				input.Values["xss_context"] = string(reflectionContext)
+			}
+		}
+	}
+
 mainLoop:
 	for _, component := range finalComponentList {
 		iterator := rule.generator.NewIterator()
