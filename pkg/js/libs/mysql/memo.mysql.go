@@ -4,6 +4,7 @@ package mysql
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -12,7 +13,7 @@ func memoizedisMySQL(ctx context.Context, executionId string, host string, port 
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
-	hash := "isMySQL:" + executionId + ":" + host + ":" + string(rune(port))
+	hash := "isMySQL:" + executionId + ":" + host + ":" + strconv.Itoa(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isMySQL(ctx, executionId, host, port)
@@ -31,7 +32,7 @@ func memoizedfingerprintMySQL(ctx context.Context, executionId string, host stri
 	if err := ctx.Err(); err != nil {
 		return MySQLInfo{}, err
 	}
-	hash := "fingerprintMySQL:" + executionId + ":" + host + ":" + string(rune(port))
+	hash := "fingerprintMySQL:" + executionId + ":" + host + ":" + strconv.Itoa(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return fingerprintMySQL(ctx, executionId, host, port)
