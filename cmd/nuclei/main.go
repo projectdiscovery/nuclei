@@ -671,7 +671,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 				if (strings.Contains(secretFile, "static:") || strings.Contains(secretFile, "dynamic:")) || (strings.HasPrefix(secretFile, "{") && strings.HasSuffix(secretFile, "}")) {
 					continue
 				}
-				options.Logger.Fatal().Msgf("given secrets file '%s' does not exist", secretFile)
+				options.Logger.Fatal().Msgf("given secrets file does not exist and is not valid embedded secret content")
 			}
 		}
 	}
@@ -844,7 +844,11 @@ func mergeConfigFileWithFilter(flagset *goflags.FlagSet, path string) error {
 				return err
 			}
 			defer os.Remove(tmpFile.Name())
-			_ = os.WriteFile(tmpFile.Name(), data, 0600)
+			if _, err := tmpFile.Write(data); err != nil {
+				tmpFile.Close()
+				return err
+			}
+			tmpFile.Close()
 			return flagset.MergeConfigFile(tmpFile.Name())
 		}
 	}

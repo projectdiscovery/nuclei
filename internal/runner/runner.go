@@ -2,6 +2,8 @@ package runner
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -246,7 +248,12 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+	// Secure temp directory generation
+	randBytes := make([]byte, 8)
+	if _, err := rand.Read(randBytes); err != nil {
+		return nil, err
+	}
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("nuclei-tmp-%s-*", hex.EncodeToString(randBytes)))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
@@ -587,7 +594,11 @@ func (r *Runner) RunEnumeration() error {
 			// check if it is content
 			if strings.Contains(secretFile, ":") && (strings.Contains(secretFile, "static") || strings.Contains(secretFile, "dynamic")) {
 				// write to temp file
-				tempFile := filepath.Join(r.tmpDir, fmt.Sprintf("secret-%d.yaml", time.Now().UnixNano()))
+				randBytes := make([]byte, 8)
+				if _, err := rand.Read(randBytes); err != nil {
+					return errors.Wrap(err, "could not generate random filename")
+				}
+				tempFile := filepath.Join(r.tmpDir, fmt.Sprintf("secret-%s.yaml", hex.EncodeToString(randBytes)))
 				if err := os.WriteFile(tempFile, []byte(secretFile), 0600); err == nil {
 					secretsFiles = append(secretsFiles, tempFile)
 					continue

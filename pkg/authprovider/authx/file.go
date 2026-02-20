@@ -209,6 +209,15 @@ func GetAuthDataFromFile(file string) (*Authx, error) {
 	if !generic.EqualsAny(ext, ".yml", ".yaml", ".json") {
 		return nil, fmt.Errorf("invalid file extension: supported extensions are .yml,.yaml and .json got %s", ext)
 	}
+
+	fi, err := os.Stat(file)
+	if err != nil {
+		return nil, err
+	}
+	if fi.Size() > 1024*1024 {
+		return nil, fmt.Errorf("secrets file is too large: 1MB max")
+	}
+
 	bin, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -237,9 +246,7 @@ func GetAuthDataFromYAML(data []byte) (*Authx, error) {
 	var auth Authx
 	err := yaml.Unmarshal(data, &auth)
 	if err != nil {
-		errorErr := errkit.FromError(err)
-		errorErr.Msgf("could not unmarshal yaml")
-		return nil, errorErr
+		return nil, fmt.Errorf("could not unmarshal yaml")
 	}
 	return &auth, nil
 }
@@ -249,9 +256,7 @@ func GetAuthDataFromJSON(data []byte) (*Authx, error) {
 	var auth Authx
 	err := json.Unmarshal(data, &auth)
 	if err != nil {
-		errorErr := errkit.FromError(err)
-		errorErr.Msgf("could not unmarshal json")
-		return nil, errorErr
+		return nil, fmt.Errorf("could not unmarshal json")
 	}
 	return &auth, nil
 }
