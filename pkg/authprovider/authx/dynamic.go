@@ -3,7 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
-	"sync/atomic"
+	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -13,6 +13,13 @@ import (
 )
 
 type LazyFetchSecret func(d *Dynamic) error
+
+// fetchState holds the sync.Once and error for thread-safe fetching.
+// This is stored as a pointer in Dynamic so that value copies share the same state.
+type fetchState struct {
+	once sync.Once
+	err  error
+}
 
 var (
 	_ json.Unmarshaler = &Dynamic{}
@@ -30,9 +37,9 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
-	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
-	error         error                  `json:"-" yaml:"-"` // error if any
+	// fetchState is shared across value-copies of Dynamic (e.g., inside DynamicAuthStrategy).
+	// It must be initialized via Validate() before calling Fetch().
+	fetchState *fetchState `json:"-" yaml:"-"`
 }
 
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
@@ -70,8 +77,9 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.fetched = &atomic.Bool{}
-	d.fetching = &atomic.Bool{}
+	// NOTE: Validate() must not be called concurrently with Fetch()/GetStrategies().
+	// Re-validating resets fetch state and allows re-fetching.
+	d.fetchState = &fetchState{}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -181,18 +189,14 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 	return nil
 }
 
-// GetStrategy returns the auth strategies for the dynamic secret
+// GetStrategies returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
-	if d.fetched.Load() {
-		if d.error != nil {
-			return nil
-		}
-	} else {
-		// Try to fetch if not already fetched
-		_ = d.Fetch(true)
-	}
+	// Ensure fetch has completed before returning strategies.
+	// Fetch errors are treated as non-fatal here so a failed dynamic auth fetch
+	// does not terminate the entire scan process.
+	_ = d.Fetch(false)
 
-	if d.error != nil {
+	if d.fetchState != nil && d.fetchState.err != nil {
 		return nil
 	}
 	var strategies []AuthStrategy
@@ -208,30 +212,31 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
 func (d *Dynamic) Fetch(isFatal bool) error {
-	if d.fetched.Load() {
-		return d.error
+	if d.fetchState == nil {
+		if isFatal {
+			gologger.Fatal().Msgf("Could not fetch dynamic secret: Validate() must be called before Fetch()")
+		}
+		return errkit.New("dynamic secret not validated: call Validate() before Fetch()")
 	}
 
-	// Try to set fetching flag atomically
-	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
-		return d.error
+	d.fetchState.once.Do(func() {
+		if d.fetchCallback == nil {
+			d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
+			return
+		}
+		d.fetchState.err = d.fetchCallback(d)
+	})
+
+	if d.fetchState.err != nil && isFatal {
+		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.fetchState.err)
 	}
-
-	// We're the only one fetching, call the callback
-	d.error = d.fetchCallback(d)
-
-	// Mark as fetched and clear fetching flag
-	d.fetched.Store(true)
-	d.fetching.Store(false)
-
-	if d.error != nil && isFatal {
-		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
-	}
-	return d.error
+	return d.fetchState.err
 }
 
 // Error returns the error if any
 func (d *Dynamic) Error() error {
-	return d.error
+	if d.fetchState == nil {
+		return nil
+	}
+	return d.fetchState.err
 }
