@@ -7,6 +7,37 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
+// classifyContexts detects whether payload is reflected and tries to infer a rough context.
+// This is intentionally lightweight (no HTML parser) and is meant for fuzzing guidance.
+func classifyContexts(body, payload string) (bool, string) {
+	if payload == "" {
+		return false, ""
+	}
+	idx := strings.Index(body, payload)
+	if idx < 0 {
+		return false, ""
+	}
+
+	before := body[:idx]
+	// comment context
+	if strings.LastIndex(before, "<!--") > strings.LastIndex(before, "-->") {
+		return true, "reflected payload detected in html_comment context"
+	}
+	// script context
+	if strings.LastIndex(strings.ToLower(before), "<script") > strings.LastIndex(strings.ToLower(before), "</script>") {
+		return true, "reflected payload detected in script context"
+	}
+	// tag/attribute context
+	lastLt := strings.LastIndex(before, "<")
+	lastGt := strings.LastIndex(before, ">")
+	if lastLt > lastGt {
+		// inside a tag declaration; assume attribute-ish
+		return true, "reflected payload detected in html_attribute context"
+	}
+
+	return true, "reflected payload detected in html context"
+}
+
 const analyzerName = "xss_context"
 
 // Analyzer is a first-pass XSS analyzer that validates reflection.
@@ -58,8 +89,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", err
 	}
 
-	if strings.Contains(string(body), payload) {
-		return true, "reflected payload detected (xss_context classifier WIP)", nil
+	matched, reason := classifyContexts(string(body), payload)
+	if matched {
+		return true, reason, nil
 	}
 
 	return false, "", nil
