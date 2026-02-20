@@ -111,7 +111,7 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	if err := e.store.Load(); err != nil {
-		return errkit.Wrapf(err, "Could not load templates: %s", err)
+		return errkit.Wrap(err, "Could not load templates")
 	}
 	e.templatesLoaded = true
 	return nil

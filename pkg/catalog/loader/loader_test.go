@@ -2,7 +2,6 @@ package loader
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/gologger"
@@ -118,6 +117,5 @@ func TestLoadTemplatesWithTags_MissingDialersReturnsError(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.LoadTemplatesWithTags([]string{}, nil)
-	require.Error(t, err)
-	require.True(t, strings.Contains(err.Error(), "dialers not initialized for "+options.ExecutionId))
+	require.ErrorContains(t, err, "dialers not initialized for "+options.ExecutionId)
 }
