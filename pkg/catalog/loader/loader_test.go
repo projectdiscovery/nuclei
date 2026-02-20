@@ -2,10 +2,15 @@ package loader
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/rs/xid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,4 +105,19 @@ func TestRemoteTemplates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoadTemplatesWithTags_MissingDialersReturnsError(t *testing.T) {
+	options := types.DefaultOptions()
+	options.ExecutionId = xid.New().String()
+	options.Logger = gologger.DefaultLogger
+	catalog := disk.NewCatalog("")
+	executorOpts := &protocols.ExecutorOptions{Options: options}
+
+	store, err := New(NewConfig(options, catalog, executorOpts))
+	require.NoError(t, err)
+
+	_, err = store.LoadTemplatesWithTags([]string{}, nil)
+	require.Error(t, err)
+	require.True(t, strings.Contains(err.Error(), "dialers not initialized for "+options.ExecutionId))
 }
