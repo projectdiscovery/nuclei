@@ -1,7 +1,10 @@
 package authx
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -122,4 +125,56 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
 	})
+}
+
+func TestDynamicFetchConcurrentWaitsForCompletion(t *testing.T) {
+	d := &Dynamic{
+		Secret: &Secret{
+			Type:    string(BearerTokenAuth),
+			Domains: []string{"example.com"},
+			Token:   "{{token}}",
+		},
+		TemplatePath: "dynamic-auth-template.yaml",
+		Variables: []KV{
+			{Key: "username", Value: "alice"},
+		},
+		fetched:  &atomic.Bool{},
+		fetching: &atomic.Bool{},
+	}
+
+	d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+		time.Sleep(120 * time.Millisecond)
+		dynamic.Extracted = map[string]interface{}{"token": "resolved-token"}
+		return nil
+	})
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	results := make([][]AuthStrategy, 2)
+	durations := make([]time.Duration, 2)
+
+	for i := 0; i < 2; i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			begin := time.Now()
+			results[i] = d.GetStrategies()
+			durations[i] = time.Since(begin)
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+
+	for i := range results {
+		require.Len(t, results[i], 1)
+		bearer, ok := results[i][0].(*BearerTokenAuthStrategy)
+		require.True(t, ok)
+		require.Equal(t, "resolved-token", bearer.Data.Token)
+	}
+	for i := range durations {
+		require.GreaterOrEqual(t, durations[i], 100*time.Millisecond)
+	}
 }

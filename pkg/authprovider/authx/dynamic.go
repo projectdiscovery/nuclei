@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -214,7 +215,11 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 
 	// Try to set fetching flag atomically
 	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
+		// Another goroutine is fetching this secret. Wait until it finishes so
+		// concurrent template execution can't proceed with unresolved auth values.
+		for !d.fetched.Load() {
+			time.Sleep(5 * time.Millisecond)
+		}
 		return d.error
 	}
 
