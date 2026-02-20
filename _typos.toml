@@ -1,7 +1,5 @@
 [files]
 extend-exclude = [
-    # Filename contains legacy typo (renaming would be breaking)
-    "pkg/model/worflow_loader.go",
     # Non-English README translations
     "README_CN.md",
     "README_ES.md",
@@ -54,7 +52,6 @@ Reuests = "Reuests"
 PostReuestsHandlerRequest = "PostReuestsHandlerRequest"
 MisMatched = "MisMatched"
 fo = "fo"
-Fo = "Fo"
 ExludedDastTmplStats = "ExludedDastTmplStats"
 AllowdTypes = "AllowdTypes"
 worflow = "worflow"
