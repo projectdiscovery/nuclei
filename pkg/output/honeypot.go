@@ -100,8 +100,9 @@ func normalizeHostCandidate(candidate string) string {
 		}
 	}
 
-	value = strings.TrimPrefix(value, "http://")
-	value = strings.TrimPrefix(value, "https://")
+	if schemeIdx := strings.Index(value, "://"); schemeIdx != -1 {
+		value = value[schemeIdx+3:]
+	}
 	if idx := strings.IndexAny(value, "/?#"); idx != -1 {
 		value = value[:idx]
 	}
