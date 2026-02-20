@@ -24,7 +24,8 @@ func classifyContexts(body, payload string) (bool, string) {
 		return true, "reflected payload detected in html_comment context"
 	}
 	// script context
-	if strings.LastIndex(strings.ToLower(before), "<script") > strings.LastIndex(strings.ToLower(before), "</script>") {
+	lowerBefore := strings.ToLower(before)
+	if strings.LastIndex(lowerBefore, "<script") > strings.LastIndex(lowerBefore, "</script>") {
 		return true, "reflected payload detected in script context"
 	}
 	// tag/attribute context
@@ -38,7 +39,10 @@ func classifyContexts(body, payload string) (bool, string) {
 	return true, "reflected payload detected in html context"
 }
 
-const analyzerName = "xss_context"
+const (
+	analyzerName        = "xss_context"
+	maxResponseBodySize = 10 << 20 // 10MB
+)
 
 // Analyzer is a first-pass XSS analyzer that validates reflection.
 // Context classification is implemented in follow-up steps.
@@ -64,7 +68,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 
 	gr := options.FuzzGenerated
-	payload := a.ApplyInitialTransformation(gr.OriginalPayload, options.AnalyzerParameters)
+	payload := a.ApplyInitialTransformation(gr.Value, options.AnalyzerParameters)
 	if payload == "" {
 		return false, "", nil
 	}
@@ -72,6 +76,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, "", err
 	}
+	defer func() {
+		_ = gr.Component.SetValue(gr.Key, gr.Value)
+	}()
 
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
@@ -84,7 +91,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return false, "", err
 	}
