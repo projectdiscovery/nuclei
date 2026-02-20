@@ -19,6 +19,18 @@ func TestNormalizeHostCandidate(t *testing.T) {
 	t.Run("HostOnly", func(t *testing.T) {
 		require.Equal(t, "example.com", normalizeHostCandidate("EXAMPLE.COM"))
 	})
+
+	t.Run("Empty", func(t *testing.T) {
+		require.Equal(t, "", normalizeHostCandidate(""))
+	})
+
+	t.Run("IPv6WithPort", func(t *testing.T) {
+		require.Equal(t, "::1", normalizeHostCandidate("[::1]:8080"))
+	})
+
+	t.Run("IPv4Host", func(t *testing.T) {
+		require.Equal(t, "192.168.1.1", normalizeHostCandidate("192.168.1.1"))
+	})
 }
 
 func TestStandardWriterHoneypotThresholdWarnOnly(t *testing.T) {
@@ -45,8 +57,10 @@ func TestStandardWriterHoneypotThresholdSuppress(t *testing.T) {
 
 	require.NoError(t, writer.Write(&ResultEvent{TemplateID: "tpl-1", URL: "https://example.com", Type: "http"}))
 	require.NoError(t, writer.Write(&ResultEvent{TemplateID: "tpl-2", URL: "https://example.com", Type: "http"}))
+	require.NoError(t, writer.Write(&ResultEvent{TemplateID: "tpl-3", URL: "https://example.com", Type: "http"}))
 
-	require.Equal(t, 1, writer.ResultCount())
+	require.Equal(t, 2, writer.ResultCount())
 	require.Contains(t, output.String(), `"template-id":"tpl-1"`)
-	require.NotContains(t, output.String(), `"template-id":"tpl-2"`)
+	require.Contains(t, output.String(), `"template-id":"tpl-2"`)
+	require.NotContains(t, output.String(), `"template-id":"tpl-3"`)
 }

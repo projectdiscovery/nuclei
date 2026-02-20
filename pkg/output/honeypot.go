@@ -49,6 +49,10 @@ func (d *honeypotDetector) evaluate(event *ResultEvent) honeypotDecision {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	if _, alreadyFlagged := d.flagged[host]; alreadyFlagged {
+		return honeypotDecision{host: host, suppress: d.suppress}
+	}
+
 	templates, ok := d.hostMatches[host]
 	if !ok {
 		templates = make(map[string]struct{})
@@ -61,16 +65,15 @@ func (d *honeypotDetector) evaluate(event *ResultEvent) honeypotDecision {
 		return honeypotDecision{host: host, count: count}
 	}
 
-	_, alreadyFlagged := d.flagged[host]
-	if !alreadyFlagged {
-		d.flagged[host] = struct{}{}
-	}
+	d.flagged[host] = struct{}{}
+	delete(d.hostMatches, host)
 
+	// The event that crosses threshold should still be emitted.
 	return honeypotDecision{
 		host:         host,
 		count:        count,
-		newlyFlagged: !alreadyFlagged,
-		suppress:     d.suppress,
+		newlyFlagged: true,
+		suppress:     false,
 	}
 }
 

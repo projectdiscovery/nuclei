@@ -580,6 +580,8 @@ func (options *Options) Copy() *Options {
 		OmitRawRequests:                options.OmitRawRequests,
 		HTTPStats:                      options.HTTPStats,
 		OmitTemplate:                   options.OmitTemplate,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotSuppressResults:        options.HoneypotSuppressResults,
 		JSONExport:                     options.JSONExport,
 		JSONLExport:                    options.JSONLExport,
 		Redact:                         options.Redact,
