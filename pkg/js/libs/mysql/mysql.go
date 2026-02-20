@@ -66,10 +66,6 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 		return false, err
 	}
 
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
-
 	isMySQLService, err := c.IsMySQL(ctx, host, port)
 	if err != nil || !isMySQLService {
 		return false, fmt.Errorf("not a mysql service")
@@ -159,15 +155,6 @@ func (c *MySQLClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, err
 }
 
 func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOptions, query string) (*utils.SQLResult, error) {
-	executionId, err := executionIdFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
-		return nil, protocolstate.ErrHostDenied.Msgf(opts.Host)
-	}
-
 	isMySQLService, err := c.IsMySQL(ctx, opts.Host, opts.Port)
 	if err != nil || !isMySQLService {
 		return nil, fmt.Errorf("not a mysql service")
