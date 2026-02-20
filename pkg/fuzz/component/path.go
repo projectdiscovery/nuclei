@@ -2,11 +2,13 @@ package component
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -36,7 +38,8 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.value = NewValue("")
 
 	splitted := strings.Split(req.Path, "/")
-	values := make(map[string]interface{})
+	values := mapsutil.NewOrderedMap[string, any]()
+	segmentIndex := 1
 	for i, segment := range splitted {
 		if segment == "" && i == 0 {
 			// Skip the first empty segment from leading "/"
@@ -46,11 +49,12 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 			// Skip any other empty segments
 			continue
 		}
-		// Use 1-based indexing and store individual segments
-		key := strconv.Itoa(len(values) + 1)
-		values[key] = segment
+		// Use 1-based indexing and store individual segments in insertion order
+		key := strconv.Itoa(segmentIndex)
+		values.Set(key, segment)
+		segmentIndex++
 	}
-	q.value.SetParsed(dataformat.KVMap(values), "")
+	q.value.SetParsed(dataformat.KVOrderedMap(&values), "")
 	return true, nil
 }
 
@@ -109,10 +113,20 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 
 		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
-		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
-			rebuiltSegments = append(rebuiltSegments, newValue)
-		} else {
+		replacement := q.value.parsed.Get(key)
+		switch v := replacement.(type) {
+		case string:
+			if v != "" {
+				rebuiltSegments = append(rebuiltSegments, v)
+			} else {
+				rebuiltSegments = append(rebuiltSegments, originalSegment)
+			}
+		case nil:
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
+		default:
+			// Be defensive: in case a non-string sneaks in (shouldn't for Path),
+			// stringify instead of dropping the segment.
+			rebuiltSegments = append(rebuiltSegments, fmt.Sprint(v))
 		}
 		segmentIndex++
 	}
