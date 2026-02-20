@@ -127,3 +127,54 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+// TestPathComponent_NumericSegmentFuzzing tests that numeric path segments
+// can be fuzzed with non-numeric payloads. This is a regression test for
+// https://github.com/projectdiscovery/nuclei/issues/6398
+func TestPathComponent_NumericSegmentFuzzing(t *testing.T) {
+	// Test that all path segments including numeric ones can be fuzzed
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := path.Parse(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("expected path to be found")
+	}
+
+	// Count the number of path segments
+	segmentCount := 0
+	_ = path.Iterate(func(key string, value interface{}) error {
+		segmentCount++
+		return nil
+	})
+	if segmentCount != 3 {
+		t.Fatalf("expected 3 path segments, got %d", segmentCount)
+	}
+
+	// Test setting a fuzzing payload on each segment including the numeric one
+	// This verifies that numeric segments (like "55") can be replaced with
+	// non-numeric fuzzing payloads (like "55 OR True")
+	_ = path.Iterate(func(key string, value interface{}) error {
+		// Clone the path for this test
+		cloned := path.Clone()
+
+		// Set a fuzzing payload that is NOT a valid number
+		// This should succeed even for originally numeric segments
+		err := cloned.SetValue(key, value.(string)+" OR True")
+		if err != nil {
+			t.Fatalf("failed to set fuzzing payload on segment %s (value: %s): %v", key, value.(string), err)
+		}
+
+		_, err = cloned.Rebuild()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return nil
+	})
+}

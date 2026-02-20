@@ -103,9 +103,12 @@ func (v *Value) SetParsedValue(key, value string) bool {
 	case int, int32, int64, float32, float64:
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return false
+			// If the new value can't be parsed as a number, store it as a string
+			// This allows fuzzing payloads like "55%20OR%20True" to be set on numeric values
+			origValue = value
+		} else {
+			origValue = parsed
 		}
-		origValue = parsed
 	case bool:
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {
