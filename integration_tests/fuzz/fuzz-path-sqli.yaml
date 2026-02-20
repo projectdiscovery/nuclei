@@ -25,6 +25,8 @@ http:
       - part: path
         type: postfix
         mode: single
+        values:
+          - "^[0-9]+$"
         fuzz:
           - '{{pathsqli}}'
 
