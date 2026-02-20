@@ -20,9 +20,12 @@ type (
 	MySQLClient struct{}
 )
 
+// IsMySQL checks if the given host and port is a MySQL service
 func (c *MySQLClient) IsMySQL(ctx context.Context, host string, port int) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
-	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປຫາ memoizedisMySQL
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return false, fmt.Errorf("missing executionId in context")
+	}
 	return memoizedisMySQL(ctx, executionId, host, port)
 }
 
@@ -36,7 +39,6 @@ func isMySQL(ctx context.Context, executionId string, host string, port int) (bo
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	// ແກ້ໄຂ: ປ່ຽນ context.TODO() ເປັນ ctx
 	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
@@ -56,8 +58,13 @@ func isMySQL(ctx context.Context, executionId string, host string, port int) (bo
 	return true, nil
 }
 
+// Connect attempts to connect to a MySQL server
 func (c *MySQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return false, fmt.Errorf("missing executionId in context")
+	}
+
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
@@ -81,7 +88,6 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 	if err != nil {
 		return false, err
 	}
-	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
 	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
@@ -99,9 +105,12 @@ type (
 	}
 )
 
+// FingerprintMySQL fingerprints a MySQL service
 func (c *MySQLClient) FingerprintMySQL(ctx context.Context, host string, port int) (MySQLInfo, error) {
-	executionId := ctx.Value("executionId").(string)
-	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return MySQLInfo{}, fmt.Errorf("missing executionId in context")
+	}
 	return memoizedfingerprintMySQL(ctx, executionId, host, port)
 }
 
@@ -116,7 +125,6 @@ func fingerprintMySQL(ctx context.Context, executionId string, host string, port
 		return MySQLInfo{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	// ແກ້ໄຂ: ປ່ຽນ context.TODO() ເປັນ ctx
 	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return info, err
@@ -147,14 +155,22 @@ func fingerprintMySQL(ctx context.Context, executionId string, host string, port
 	return info, nil
 }
 
+// ConnectWithDSN connects to MySQL using a DSN string
 func (c *MySQLClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
-	// ແກ້ໄຂ: ສົ່ງ ctx ຕໍ່ໄປ
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return false, fmt.Errorf("missing executionId in context")
+	}
 	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
+// ExecuteQueryWithOpts executes a query with the provided MySQLOptions
 func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOptions, query string) (*utils.SQLResult, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId, ok := ctx.Value("executionId").(string)
+	if !ok {
+		return nil, fmt.Errorf("missing executionId in context")
+	}
+
 	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
 		return nil, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
@@ -182,7 +198,6 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	// ແກ້ໄຂ: ປ່ຽນຈາກ db.Query ເປັນ db.QueryContext(ctx, query)
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -198,6 +213,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	return data, nil
 }
 
+// ExecuteQuery executes a query on a MySQL server
 func (c *MySQLClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, query string) (*utils.SQLResult, error) {
 	ok, err := c.IsMySQL(ctx, host, port)
 	if err != nil {
@@ -216,6 +232,7 @@ func (c *MySQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	}, query)
 }
 
+// ExecuteQueryOnDB executes a query on a specific database
 func (c *MySQLClient) ExecuteQueryOnDB(ctx context.Context, host string, port int, username, password, dbname, query string) (*utils.SQLResult, error) {
 	return c.ExecuteQueryWithOpts(ctx, MySQLOptions{
 		Host:     host,
