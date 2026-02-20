@@ -129,6 +129,9 @@ type Options struct {
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host
 	MaxHostError int
+	// HoneypotThreshold suppresses results for hosts matching too many distinct templates
+	// (0 disables honeypot detection).
+	HoneypotThreshold int
 	// TrackError contains additional error messages that count towards the maximum number of errors allowed for a host
 	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors

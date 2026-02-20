@@ -51,6 +51,25 @@ func TestStandardWriterRequest(t *testing.T) {
 	})
 }
 
+func TestHoneypotThresholdSuppressesHostAfterDistinctTemplateLimit(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{HoneypotThreshold: 1})
+	require.NoError(t, err)
+	w.DisableStdout = true
+
+	err = w.Write(&ResultEvent{Host: "http://example.com", TemplateID: "t1", Type: "http"})
+	require.NoError(t, err)
+	require.Equal(t, 1, w.ResultCount())
+
+	err = w.Write(&ResultEvent{Host: "https://example.com", TemplateID: "t2", Type: "http"})
+	require.NoError(t, err)
+	require.Equal(t, 1, w.ResultCount())
+}
+
+func TestNormalizeResultHostFromURL(t *testing.T) {
+	host := normalizeResultHost(&ResultEvent{URL: "https://Sub.EXAMPLE.com:8443/path", Host: "ignored"})
+	require.Equal(t, "sub.example.com:8443", host)
+}
+
 type testWriteCloser struct {
 	strings.Builder
 }

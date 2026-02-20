@@ -77,6 +77,9 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+	honeypotThreshold     int
+	hostTemplateMatches   map[string]map[string]struct{}
+	flaggedHoneypotHosts  map[string]struct{}
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -265,21 +268,24 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	}
 
 	writer := &StandardWriter{
-		json:             options.JSONL,
-		jsonReqResp:      !options.OmitRawRequests,
-		noMetadata:       options.NoMeta,
-		matcherStatus:    options.MatcherStatus,
-		timestamp:        options.Timestamp,
-		aurora:           auroraColorizer,
-		mutex:            &sync.Mutex{},
-		outputFile:       outputFile,
-		traceFile:        traceOutput,
-		errorFile:        errorOutput,
-		severityColors:   colorizer.New(auroraColorizer),
-		storeResponse:    options.StoreResponse,
-		storeResponseDir: options.StoreResponseDir,
-		omitTemplate:     options.OmitTemplate,
-		KeysToRedact:     options.Redact,
+		json:                 options.JSONL,
+		jsonReqResp:          !options.OmitRawRequests,
+		noMetadata:           options.NoMeta,
+		matcherStatus:        options.MatcherStatus,
+		timestamp:            options.Timestamp,
+		aurora:               auroraColorizer,
+		mutex:                &sync.Mutex{},
+		outputFile:           outputFile,
+		traceFile:            traceOutput,
+		errorFile:            errorOutput,
+		severityColors:       colorizer.New(auroraColorizer),
+		storeResponse:        options.StoreResponse,
+		storeResponseDir:     options.StoreResponseDir,
+		omitTemplate:         options.OmitTemplate,
+		KeysToRedact:         options.Redact,
+		honeypotThreshold:    options.HoneypotThreshold,
+		hostTemplateMatches:  make(map[string]map[string]struct{}),
+		flaggedHoneypotHosts: make(map[string]struct{}),
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -296,6 +302,13 @@ func (w *StandardWriter) ResultCount() int {
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
+		return nil
+	}
+
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	if w.isLikelyHoneypot(event) {
 		return nil
 	}
 
@@ -327,8 +340,6 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if len(data) == 0 {
 		return nil
 	}
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
 
 	if !w.DisableStdout {
 		_, _ = os.Stdout.Write(data)
@@ -348,6 +359,61 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	}
 	w.resultCount.Add(1)
 	return nil
+}
+
+func (w *StandardWriter) isLikelyHoneypot(event *ResultEvent) bool {
+	if w.honeypotThreshold <= 0 || event == nil {
+		return false
+	}
+
+	host := normalizeResultHost(event)
+	if host == "" {
+		return false
+	}
+
+	if _, ok := w.flaggedHoneypotHosts[host]; ok {
+		return true
+	}
+
+	if event.TemplateID == "" {
+		return false
+	}
+
+	templates, ok := w.hostTemplateMatches[host]
+	if !ok {
+		templates = make(map[string]struct{})
+		w.hostTemplateMatches[host] = templates
+	}
+	templates[event.TemplateID] = struct{}{}
+
+	if len(templates) > w.honeypotThreshold {
+		w.flaggedHoneypotHosts[host] = struct{}{}
+		gologger.Warning().Msgf("[honeypot] suppressing host %s after %d distinct template matches (threshold=%d)", host, len(templates), w.honeypotThreshold)
+		return true
+	}
+
+	return false
+}
+
+func normalizeResultHost(event *ResultEvent) string {
+	if event == nil {
+		return ""
+	}
+	if event.URL != "" {
+		if parsed, err := urlutil.ParseAbsoluteURL(event.URL, false); err == nil && parsed != nil {
+			if parsed.Host != "" {
+				return strings.ToLower(parsed.Host)
+			}
+		}
+	}
+	if event.Host != "" {
+		host := strings.TrimSpace(strings.ToLower(event.Host))
+		host = strings.TrimPrefix(host, "http://")
+		host = strings.TrimPrefix(host, "https://")
+		host = strings.TrimSuffix(host, "/")
+		return host
+	}
+	return ""
 }
 
 func redactKeys(data string, keysToRedact []string) string {
