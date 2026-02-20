@@ -11,6 +11,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const defaultRedisTimeout = 5 * time.Second
+
 // executionIdFromCtx extracts the executionId from the context safely
 func executionIdFromCtx(ctx context.Context) (string, error) {
 	id, ok := ctx.Value("executionId").(string)
@@ -18,6 +20,18 @@ func executionIdFromCtx(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("missing or invalid executionId in context")
 	}
 	return id, nil
+}
+
+// newRedisClient centralizes the redis client creation with timeouts
+func newRedisClient(host string, port int, password string) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr:         fmt.Sprintf("%s:%d", host, port),
+		Password:     password,
+		DB:           0,
+		DialTimeout:  defaultRedisTimeout,
+		ReadTimeout:  defaultRedisTimeout,
+		WriteTimeout: defaultRedisTimeout,
+	})
 }
 
 // GetServerInfo returns the server info for a redis server
@@ -48,14 +62,7 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", host, port),
-		Password:     password,
-		DB:           0,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-	})
+	client := newRedisClient(host, port, password)
 	defer client.Close()
 
 	if _, err := client.Ping(ctx).Result(); err != nil {
@@ -85,14 +92,7 @@ func getServerInfoInternal(ctx context.Context, executionId string, host string,
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", host, port),
-		Password:     password,
-		DB:           0,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-	})
+	client := newRedisClient(host, port, password)
 	defer client.Close()
 
 	if _, err := client.Ping(ctx).Result(); err != nil {
@@ -102,7 +102,7 @@ func getServerInfoInternal(ctx context.Context, executionId string, host string,
 	return client.Info(ctx).Result()
 }
 
-// IsAuthenticated checks if the redis server requires authentication
+// IsAuthenticated checks if a Redis server is reachable at the given host:port
 func IsAuthenticated(ctx context.Context, host string, port int) (bool, error) {
 	executionId, err := executionIdFromCtx(ctx)
 	if err != nil {
@@ -129,7 +129,7 @@ func isAuthenticated(ctx context.Context, executionId string, host string, port 
 	}
 	defer conn.Close()
 
-	service, err := plugin.Run(conn, 5*time.Second, plugins.Target{Host: host})
+	service, err := plugin.Run(conn, defaultRedisTimeout, plugins.Target{Host: host})
 	if err != nil {
 		return false, err
 	}
@@ -148,14 +148,7 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", host, port),
-		Password:     password,
-		DB:           0,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-	})
+	client := newRedisClient(host, port, password)
 	defer client.Close()
 
 	if _, err := client.Ping(ctx).Result(); err != nil {
