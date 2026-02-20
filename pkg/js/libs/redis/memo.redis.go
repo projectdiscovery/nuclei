@@ -18,6 +18,9 @@ func memoizedgetServerInfo(ctx context.Context, executionId string, host string,
 	if err != nil {
 		return "", err
 	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	if value, ok := v.(string); ok {
 		return value, nil
 	}
@@ -32,6 +35,9 @@ func memoizedconnect(ctx context.Context, executionId string, host string, port 
 		return connect(ctx, executionId, host, port, password)
 	})
 	if err != nil {
+		return false, err
+	}
+	if err := ctx.Err(); err != nil {
 		return false, err
 	}
 	if value, ok := v.(bool); ok {
@@ -50,6 +56,9 @@ func memoizedgetServerInfoAuth(ctx context.Context, executionId string, host str
 	if err != nil {
 		return "", err
 	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	if value, ok := v.(string); ok {
 		return value, nil
 	}
@@ -64,6 +73,9 @@ func memoizedisAuthenticated(ctx context.Context, executionId string, host strin
 		return isAuthenticated(ctx, executionId, host, port)
 	})
 	if err != nil {
+		return false, err
+	}
+	if err := ctx.Err(); err != nil {
 		return false, err
 	}
 	if value, ok := v.(bool); ok {
