@@ -4,8 +4,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,6 +47,28 @@ func TestLoadTemplates(t *testing.T) {
 		})
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
+	})
+}
+
+func TestLoadTemplatesWithTags_NoDialers_NoPanic(t *testing.T) {
+	catalog := disk.NewCatalog("")
+	execID := "missing-dialer-test"
+	protocolstate.Close(execID)
+
+	store := &Store{
+		config: &Config{
+			Catalog: catalog,
+			ExecutorOptions: &protocols.ExecutorOptions{
+				Options: &types.Options{ExecutionId: execID},
+			},
+		},
+		logger: gologger.DefaultLogger,
+		saveMetadataIndexOnce: func() {},
+	}
+
+	require.NotPanics(t, func() {
+		got := store.LoadTemplatesWithTags([]string{}, nil)
+		require.Empty(t, got)
 	})
 }
 
