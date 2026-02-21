@@ -684,6 +684,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		registerRuntimeCleanup(cleanup)
 
 		if err := flagSet.MergeConfigFile(sanitizedProfilePath); err != nil {
+			runRuntimeCleanups()
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
 
@@ -693,6 +694,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		} else {
 			cleanup, err = materializeInlineListTargets(profileData)
 			if err != nil {
+				runRuntimeCleanups()
 				options.Logger.Fatal().Msgf("Could not process template profile list field: %s\n", err)
 			}
 			registerRuntimeCleanup(cleanup)
@@ -703,6 +705,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		} else {
 			cleanup, err = materializeInlineSecretsFromProfile(profileData)
 			if err != nil {
+				runRuntimeCleanups()
 				options.Logger.Fatal().Msgf("Could not process template profile secrets field: %s\n", err)
 			}
 			registerRuntimeCleanup(cleanup)
@@ -1063,7 +1066,7 @@ func normalizeInlineTargets(value interface{}) (string, error) {
 		}
 		return strings.Join(lines, "\n") + "\n", nil
 	default:
-		return "", nil
+		return "", fmt.Errorf("unsupported list value type: %T", value)
 	}
 }
 

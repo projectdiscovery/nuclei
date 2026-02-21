@@ -54,6 +54,8 @@ tags:
 }
 
 func TestMaterializeInlineListTargets(t *testing.T) {
+	// NOTE: These tests mutate package-level globals (options, runtimeCleanupFns);
+	// keep them non-parallel unless the shared state is refactored.
 	options = &types.Options{}
 	runtimeCleanupFns = nil
 
@@ -80,6 +82,8 @@ func TestMaterializeInlineListTargets(t *testing.T) {
 }
 
 func TestMaterializeSingleLineInlineTarget(t *testing.T) {
+	// NOTE: These tests mutate package-level globals (options, runtimeCleanupFns);
+	// keep them non-parallel unless the shared state is refactored.
 	options = &types.Options{}
 	runtimeCleanupFns = nil
 
@@ -101,7 +105,27 @@ func TestMaterializeSingleLineInlineTarget(t *testing.T) {
 	require.Equal(t, "https://single.example\n", string(data))
 }
 
+func TestMaterializeInlineListTargetsRejectsUnsupportedType(t *testing.T) {
+	// NOTE: These tests mutate package-level globals (options, runtimeCleanupFns);
+	// keep them non-parallel unless the shared state is refactored.
+	options = &types.Options{}
+	runtimeCleanupFns = nil
+
+	profilePath := filepath.Join(t.TempDir(), "profile.yaml")
+	require.NoError(t, os.WriteFile(profilePath, []byte("list: 42\n"), 0o600))
+
+	profileData, err := readTemplateProfileData(profilePath)
+	require.NoError(t, err)
+
+	cleanup, err := materializeInlineListTargets(profileData)
+	require.Error(t, err)
+	require.Nil(t, cleanup)
+	require.Contains(t, err.Error(), "unsupported list value type")
+}
+
 func TestMaterializeInlineSecretsFromProfile(t *testing.T) {
+	// NOTE: These tests mutate package-level globals (options, runtimeCleanupFns);
+	// keep them non-parallel unless the shared state is refactored.
 	options = &types.Options{}
 	runtimeCleanupFns = nil
 
