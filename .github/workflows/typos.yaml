@@ -1,0 +1,25 @@
+name: Check for typos
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+    paths:
+      - '**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typos:
+    name: Check for typos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run typos
+        uses: crate-ci/typos-action@v1
