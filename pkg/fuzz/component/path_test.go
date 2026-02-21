@@ -80,6 +80,26 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+func TestPathComponent_PreservesSegmentOrderWithNumericSegment(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var values []string
+		err = path.Iterate(func(_ string, value interface{}) error {
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"user", "55", "profile"}, values)
+	}
+}
+
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
