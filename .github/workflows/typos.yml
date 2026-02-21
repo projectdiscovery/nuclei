@@ -14,15 +14,5 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-    - name: Set up Python
-      uses: actions/setup-python@42375524f9f0f01e6a49ca48b669db2f2cbfcb4f # v5.3.0
-      with:
-        python-version: '3.8'
-
-    - name: Install typos
-      run: |
-        pip install typos
-
-    - name: Run typos check
-      run: |
-        typos .
+    - name: Check spelling with typos
+      uses: crate-ci/typos@b67cb3f3f8b7c0f27568b1e19b8f62f6d8a6b1e4 # v1.28.3

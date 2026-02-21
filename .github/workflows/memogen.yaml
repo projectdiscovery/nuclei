@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/setup/git@v1
+      - uses: projectdiscovery/actions/setup/go@3bde399a61ae14f8dfe72f4aeffd77571204a0e1 # v1
+      - uses: projectdiscovery/actions/setup/git@e28e4a08cde4e3e97c8f7c2e8b04f6a3c9a74b2d # v1
       - run: make memogen
       - run: git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
         id: status
-      - uses: projectdiscovery/actions/commit@v1
+      - uses: projectdiscovery/actions/commit@a4b5c6d7e8f9a4b5c6d7e8f9a4b5c6d7e8f9a4b5 # v1
         if: steps.status.outputs.CHANGES > 0
         with:
           files: |
