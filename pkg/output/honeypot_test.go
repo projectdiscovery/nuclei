@@ -70,6 +70,45 @@ func TestHoneypotDetectorPrunesHostMatchesAfterThreshold(t *testing.T) {
 	require.True(t, flaggedExists)
 }
 
+func TestHoneypotDetectorDeduplicatesSameTemplateID(t *testing.T) {
+	detector := newHoneypotDetector(2, false)
+	require.NotNil(t, detector)
+
+	decision1 := detector.evaluate(&ResultEvent{TemplateID: "tpl-1", Host: "https://example.com", Type: "http"})
+	require.Equal(t, "example.com", decision1.host)
+	require.Equal(t, 1, decision1.count)
+	require.False(t, decision1.newlyFlagged)
+	require.False(t, decision1.suppress)
+
+	decision2 := detector.evaluate(&ResultEvent{TemplateID: "tpl-1", Host: "https://example.com", Type: "http"})
+	require.Equal(t, "example.com", decision2.host)
+	require.Equal(t, 1, decision2.count)
+	require.False(t, decision2.newlyFlagged)
+	require.False(t, decision2.suppress)
+
+	detector.mu.Lock()
+	defer detector.mu.Unlock()
+	_, flaggedExists := detector.flagged["example.com"]
+	require.False(t, flaggedExists)
+}
+
+func TestStandardWriterHoneypotDisabledThresholdZero(t *testing.T) {
+	writer, err := NewStandardWriter(&types.Options{JSONL: true, HoneypotThreshold: 0, HoneypotSuppressResults: true})
+	require.NoError(t, err)
+	writer.DisableStdout = true
+	output := &testWriteCloser{}
+	writer.outputFile = output
+
+	require.NoError(t, writer.Write(&ResultEvent{TemplateID: "tpl-1", Host: "https://example.com", Type: "http"}))
+	require.NoError(t, writer.Write(&ResultEvent{TemplateID: "tpl-2", Host: "https://example.com", Type: "http"}))
+	require.NoError(t, writer.Write(&ResultEvent{TemplateID: "tpl-3", Host: "https://example.com", Type: "http"}))
+
+	require.Equal(t, 3, writer.ResultCount())
+	require.Contains(t, output.String(), `"template-id":"tpl-1"`)
+	require.Contains(t, output.String(), `"template-id":"tpl-2"`)
+	require.Contains(t, output.String(), `"template-id":"tpl-3"`)
+}
+
 func TestStandardWriterHoneypotThresholdWarnOnly(t *testing.T) {
 	writer, err := NewStandardWriter(&types.Options{JSONL: true, HoneypotThreshold: 2})
 	require.NoError(t, err)
