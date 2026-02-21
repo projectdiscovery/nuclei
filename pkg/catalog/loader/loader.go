@@ -722,8 +722,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 		typesOpts.ExecutionId = xid.New().String()
 	}
 
-	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
-	if dialers == nil {
+	if protocolstate.GetDialersWithId(typesOpts.ExecutionId) == nil {
 		return nil, fmt.Errorf("%w for %s", ErrDialersNotInitialized, typesOpts.ExecutionId)
 	}
 
