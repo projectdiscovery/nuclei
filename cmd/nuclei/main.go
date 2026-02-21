@@ -11,6 +11,7 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projectdiscovery/gologger"
@@ -58,6 +59,7 @@ var (
 	memProfile        string // optional profile file path
 	options           = &types.Options{}
 	runtimeCleanupFns []func()
+	runtimeCleanupMu  sync.Mutex
 )
 
 func main() {
@@ -677,7 +679,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 		sanitizedProfilePath, cleanup, err := sanitizeTemplateProfileForMerge(templateProfile, profileData)
 		if err != nil {
-			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+			options.Logger.Fatal().Msgf("Could not sanitize template profile for merge: %s\n", err)
 		}
 		registerRuntimeCleanup(cleanup)
 
@@ -854,23 +856,31 @@ func findProfilePathById(profileId, templatesDir string) string {
 }
 
 func registerRuntimeCleanup(cleanup func()) {
-	if cleanup != nil {
-		runtimeCleanupFns = append(runtimeCleanupFns, cleanup)
+	if cleanup == nil {
+		return
 	}
+
+	runtimeCleanupMu.Lock()
+	runtimeCleanupFns = append(runtimeCleanupFns, cleanup)
+	runtimeCleanupMu.Unlock()
 }
 
 func runRuntimeCleanups() {
-	for i := len(runtimeCleanupFns) - 1; i >= 0; i-- {
+	runtimeCleanupMu.Lock()
+	pendingCleanups := runtimeCleanupFns
+	runtimeCleanupFns = nil
+	runtimeCleanupMu.Unlock()
+
+	for i := len(pendingCleanups) - 1; i >= 0; i-- {
 		func(cleanupIndex int) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
 					options.Logger.Warning().Msgf("runtime cleanup panic recovered at index %d: %v", cleanupIndex, recovered)
 				}
 			}()
-			runtimeCleanupFns[cleanupIndex]()
+			pendingCleanups[cleanupIndex]()
 		}(i)
 	}
-	runtimeCleanupFns = nil
 }
 
 func sanitizeTemplateProfileForMerge(profilePath string, profileData map[string]interface{}) (string, func(), error) {
@@ -884,6 +894,7 @@ func sanitizeTemplateProfileForMerge(profilePath string, profileData map[string]
 		"name":        {},
 		"purpose":     {},
 		"description": {},
+		"list":        {},
 		"secrets":     {},
 	}
 	changed := false

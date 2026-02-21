@@ -10,6 +10,8 @@ import (
 )
 
 func TestSanitizeTemplateProfileForMerge(t *testing.T) {
+	// NOTE: These tests mutate package-level globals (options, runtimeCleanupFns);
+	// keep them non-parallel unless the shared state is refactored.
 	options = &types.Options{}
 	runtimeCleanupFns = nil
 
@@ -47,8 +49,8 @@ tags:
 	require.NotContains(t, text, "purpose:")
 	require.NotContains(t, text, "description:")
 	require.NotContains(t, text, "secrets:")
+	require.NotContains(t, text, "list:")
 	require.Contains(t, text, "tags:")
-	require.Contains(t, text, "list:")
 }
 
 func TestMaterializeInlineListTargets(t *testing.T) {
