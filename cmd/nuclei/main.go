@@ -1086,11 +1086,13 @@ func normalizeInlineSecrets(value interface{}) ([]byte, error) {
 			trimmed += "\n"
 		}
 		return []byte(trimmed), nil
-	default:
+	case map[interface{}]interface{}, map[string]interface{}:
 		secretBytes, err := yaml.Marshal(typed)
 		if err != nil {
 			return nil, fmt.Errorf("could not marshal inline secrets: %w", err)
 		}
 		return secretBytes, nil
+	default:
+		return nil, fmt.Errorf("unsupported inline secrets type: %T", value)
 	}
 }

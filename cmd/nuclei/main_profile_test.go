@@ -155,3 +155,21 @@ func TestMaterializeInlineSecretsFromProfile(t *testing.T) {
 	require.Contains(t, string(data), "static:")
 	require.Contains(t, string(data), "X-API-Key")
 }
+
+func TestMaterializeInlineSecretsRejectsUnsupportedType(t *testing.T) {
+	// NOTE: These tests mutate package-level globals (options, runtimeCleanupFns);
+	// keep them non-parallel unless the shared state is refactored.
+	options = &types.Options{}
+	runtimeCleanupFns = nil
+
+	profilePath := filepath.Join(t.TempDir(), "profile.yaml")
+	require.NoError(t, os.WriteFile(profilePath, []byte("secrets: true\n"), 0o600))
+
+	profileData, err := readTemplateProfileData(profilePath)
+	require.NoError(t, err)
+
+	cleanup, err := materializeInlineSecretsFromProfile(profileData)
+	require.Error(t, err)
+	require.Nil(t, cleanup)
+	require.Contains(t, err.Error(), "unsupported inline secrets type")
+}
