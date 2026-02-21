@@ -6,6 +6,9 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+
+	// Import analyzers
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xsscontext"
 )
 
 // Rule is a single rule which describes how to fuzz the request

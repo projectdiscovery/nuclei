@@ -8,9 +8,6 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/retryablehttp-go"
-
-	// Import XSS context analyzer
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xsscontext"
 )
 
 // Analyzer is an interface for all the analyzers

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	"golang.org/x/net/html"
 )
 
 // xssContextAnalyzer analyzes HTML response to detect XSS context
@@ -15,27 +16,29 @@ func (a *xssContextAnalyzer) Name() string {
 }
 
 // ApplyInitialTransformation applies transformations before analysis
-func (a *xssContextAnalyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
+func (a *xssContextAnalyzer) ApplyInitialTransformation(data string, _ map[string]interface{}) string {
 	return analyzers.ApplyPayloadTransformations(data)
 }
 
 // Analyze determines if payload is reflected in dangerous HTML context
 func (a *xssContextAnalyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	resp := options.FuzzGenerated.Response
-	
+	if resp == nil || resp.Body == nil {
+		return false, "no response body", nil
+	}
+
 	body := string(resp.Body)
-	payload := options.FuzzGenerated.Payload
-	
+	payload := options.FuzzGenerated.Value
+
 	// Check if our payload is reflected
-	transPayload := analyzers.ApplyPayloadTransformations(payload)
-	if !strings.Contains(body, transPayload) {
+	if payload == "" || !strings.Contains(body, payload) {
 		return false, "payload not reflected", nil
 	}
-	
-	// Detect context
-	context := detectContext(body, transPayload)
-	
-	switch context {
+
+	// Detect context using DOM parsing
+	reflectionCtx := detectContext(body, payload)
+
+	switch reflectionCtx {
 	case "script":
 		return true, "reflected in script context - high risk", nil
 	case "attribute":
@@ -52,42 +55,66 @@ func (a *xssContextAnalyzer) Analyze(options *analyzers.Options) (bool, string, 
 }
 
 func detectContext(body, payload string) string {
-	lowerBody := strings.ToLower(body)
-	lowerPayload := strings.ToLower(payload)
-	
-	// Check for script context
-	if strings.Contains(lowerBody, "<script") && strings.Contains(lowerBody, lowerPayload) {
-		return "script"
+	// Parse HTML using golang.org/x/net/html
+	 tokenizer := html.NewTokenizer(strings.NewReader(body))
+	 
+	 var currentAttr string
+	 for {
+		 tt := tokenizer.Next()
+		 switch tt {
+		 case html.StartTagToken:
+			 tagName, _ := tokenizer.TagName()
+			 // Check for event handlers before processing attributes
+			 for _, attr := range tokenizer.Attr() {
+				 if isEventHandler(attr.Key) {
+					 return "event"
+				 }
+				 if attr.Key == "href" {
+					 currentAttr = "href"
+				 }
+			 }
+			 // Check if payload is in script tag
+			 if strings.ToLower(string(tagName)) == "script" {
+				 return "script"
+			 }
+			 
+		 case html.TextToken:
+			 text := tokenizer.Text()
+			 if strings.Contains(text, payload) {
+				 if currentAttr == "href" {
+					 return "url"
+				 }
+				 return "attribute"
+			 }
+			 
+		 case html.CommentToken:
+			 comment := tokenizer.Text()
+			 if strings.Contains(comment, payload) {
+				 return "comment"
+			 }
+			 
+		 case html.EndTagToken:
+			 currentAttr = ""
+			 
+		 case html.ErrorToken:
+			 return "body"
+		 }
+	 }
+}
+
+func isEventHandler(attrName string) bool {
+	handlers := map[string]bool{
+		"onerror":  true,
+		"onload":   true,
+		"onclick":  true,
+		"onmouseover": true,
+		"onfocus":   true,
+		"onblur":    true,
+		"oninput":   true,
+		"onchange":   true,
+		"onsubmit":  true,
 	}
-	
-	// Check for event handlers
-	eventHandlers := []string{"onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"}
-	for _, evt := range eventHandlers {
-		if strings.Contains(lowerBody, evt+"=") && strings.Contains(lowerBody, lowerPayload) {
-			return "event"
-		}
-	}
-	
-	// Check for href attribute (URL context)
-	if strings.Contains(lowerBody, "href=") {
-		if strings.Contains(lowerBody, lowerPayload) {
-			return "url"
-		}
-	}
-	
-	// Check for general attribute
-	if strings.Contains(lowerBody, "="+lowerPayload) || strings.Contains(lowerBody, " "+lowerPayload) {
-		return "attribute"
-	}
-	
-	// Check for HTML comments
-	if strings.Contains(lowerBody, "<!--") && strings.Contains(lowerBody, "-->") {
-		if strings.Contains(lowerBody, lowerPayload) {
-			return "comment"
-		}
-	}
-	
-	return "body"
+	return handlers[strings.ToLower(attrName)]
 }
 
 func init() {
