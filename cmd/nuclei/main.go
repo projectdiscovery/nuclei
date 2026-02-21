@@ -46,11 +46,18 @@ import (
 	updateutils "github.com/projectdiscovery/utils/update"
 )
 
+const (
+	maxTemplateProfileSizeBytes = 5 * 1024 * 1024
+	maxInlineTargetsSizeBytes   = 10 * 1024 * 1024
+	maxInlineSecretsSizeBytes   = 2 * 1024 * 1024
+)
+
 var (
-	cfgFile         string
-	templateProfile string
-	memProfile      string // optional profile file path
-	options         = &types.Options{}
+	cfgFile           string
+	templateProfile   string
+	memProfile        string // optional profile file path
+	options           = &types.Options{}
+	runtimeCleanupFns []func()
 )
 
 func main() {
@@ -63,6 +70,7 @@ func main() {
 		options.Logger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
 	_ = readConfig()
+	defer runRuntimeCleanups()
 
 	if options.ListDslSignatures {
 		options.Logger.Info().Msgf("The available custom DSL functions are:")
@@ -656,8 +664,39 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
+
+		targetsFromCLI := options.TargetsFilePath
+		secretsFromCLI := append(goflags.StringSlice{}, options.SecretsFile...)
+
+		sanitizedProfilePath, cleanup, err := sanitizeTemplateProfileForMerge(templateProfile)
+		if err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		}
+		registerRuntimeCleanup(cleanup)
+
+		if err := flagSet.MergeConfigFile(sanitizedProfilePath); err != nil {
+			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		}
+
+		// Preserve explicit CLI inputs over profile values.
+		if targetsFromCLI != "" {
+			options.TargetsFilePath = targetsFromCLI
+		} else {
+			cleanup, err = materializeInlineListTargets(templateProfile)
+			if err != nil {
+				options.Logger.Fatal().Msgf("Could not process template profile list field: %s\n", err)
+			}
+			registerRuntimeCleanup(cleanup)
+		}
+
+		if len(secretsFromCLI) > 0 {
+			options.SecretsFile = secretsFromCLI
+		} else {
+			cleanup, err = materializeInlineSecretsFromProfile(templateProfile)
+			if err != nil {
+				options.Logger.Fatal().Msgf("Could not process template profile secrets field: %s\n", err)
+			}
+			registerRuntimeCleanup(cleanup)
 		}
 	}
 
@@ -805,4 +844,227 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
+}
+
+func registerRuntimeCleanup(cleanup func()) {
+	if cleanup != nil {
+		runtimeCleanupFns = append(runtimeCleanupFns, cleanup)
+	}
+}
+
+func runRuntimeCleanups() {
+	for i := len(runtimeCleanupFns) - 1; i >= 0; i-- {
+		runtimeCleanupFns[i]()
+	}
+	runtimeCleanupFns = nil
+}
+
+func sanitizeTemplateProfileForMerge(profilePath string) (string, func(), error) {
+	profileData, err := readTemplateProfileData(profilePath)
+	if err != nil {
+		return "", nil, err
+	}
+
+	ignoreFields := map[string]struct{}{
+		"id":          {},
+		"name":        {},
+		"purpose":     {},
+		"description": {},
+		"secrets":     {},
+	}
+	changed := false
+	for field := range ignoreFields {
+		if _, ok := profileData[field]; ok {
+			delete(profileData, field)
+			changed = true
+		}
+	}
+	if !changed {
+		return profilePath, nil, nil
+	}
+
+	sanitizedData, err := yaml.Marshal(profileData)
+	if err != nil {
+		return "", nil, fmt.Errorf("could not marshal sanitized profile: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp("", "nuclei-profile-sanitized-*.yaml")
+	if err != nil {
+		return "", nil, fmt.Errorf("could not create temp profile file: %w", err)
+	}
+
+	cleanup := func() { _ = os.Remove(tmpFile.Name()) }
+	if _, err := tmpFile.Write(sanitizedData); err != nil {
+		_ = tmpFile.Close()
+		cleanup()
+		return "", nil, fmt.Errorf("could not write temp profile file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("could not close temp profile file: %w", err)
+	}
+	return tmpFile.Name(), cleanup, nil
+}
+
+func materializeInlineListTargets(profilePath string) (func(), error) {
+	profileData, err := readTemplateProfileData(profilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	listValue, hasList := profileData["list"]
+	if !hasList {
+		return nil, nil
+	}
+
+	inlineTargets, err := normalizeInlineTargets(listValue)
+	if err != nil {
+		return nil, err
+	}
+	if inlineTargets == "" {
+		return nil, nil
+	}
+
+	if len(inlineTargets) > maxInlineTargetsSizeBytes {
+		return nil, fmt.Errorf("inline target list exceeds %d bytes", maxInlineTargetsSizeBytes)
+	}
+
+	tmpFile, err := os.CreateTemp("", "nuclei-inline-targets-*.txt")
+	if err != nil {
+		return nil, fmt.Errorf("could not create temp targets file: %w", err)
+	}
+
+	cleanup := func() { _ = os.Remove(tmpFile.Name()) }
+	if _, err := tmpFile.WriteString(inlineTargets); err != nil {
+		_ = tmpFile.Close()
+		cleanup()
+		return nil, fmt.Errorf("could not write temp targets file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		cleanup()
+		return nil, fmt.Errorf("could not close temp targets file: %w", err)
+	}
+
+	options.TargetsFilePath = tmpFile.Name()
+	return cleanup, nil
+}
+
+func materializeInlineSecretsFromProfile(profilePath string) (func(), error) {
+	profileData, err := readTemplateProfileData(profilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	secretsValue, hasSecrets := profileData["secrets"]
+	if !hasSecrets {
+		return nil, nil
+	}
+
+	secretsData, err := normalizeInlineSecrets(secretsValue)
+	if err != nil {
+		return nil, err
+	}
+	if len(secretsData) == 0 {
+		return nil, nil
+	}
+
+	if len(secretsData) > maxInlineSecretsSizeBytes {
+		return nil, fmt.Errorf("inline secrets exceed %d bytes", maxInlineSecretsSizeBytes)
+	}
+
+	tmpFile, err := os.CreateTemp("", "nuclei-inline-secrets-*.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("could not create temp secrets file: %w", err)
+	}
+
+	cleanup := func() { _ = os.Remove(tmpFile.Name()) }
+	if _, err := tmpFile.Write(secretsData); err != nil {
+		_ = tmpFile.Close()
+		cleanup()
+		return nil, fmt.Errorf("could not write temp secrets file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		cleanup()
+		return nil, fmt.Errorf("could not close temp secrets file: %w", err)
+	}
+
+	options.SecretsFile = append(options.SecretsFile, tmpFile.Name())
+	return cleanup, nil
+}
+
+func readTemplateProfileData(profilePath string) (map[string]interface{}, error) {
+	fileInfo, err := os.Stat(profilePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not stat template profile %q: %w", profilePath, err)
+	}
+	if fileInfo.Size() > maxTemplateProfileSizeBytes {
+		return nil, fmt.Errorf("template profile exceeds %d bytes", maxTemplateProfileSizeBytes)
+	}
+
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not read template profile %q: %w", profilePath, err)
+	}
+
+	profileData := make(map[string]interface{})
+	if err := yaml.Unmarshal(data, &profileData); err != nil {
+		return nil, fmt.Errorf("could not parse template profile %q: %w", profilePath, err)
+	}
+	return profileData, nil
+}
+
+func normalizeInlineTargets(value interface{}) (string, error) {
+	switch typed := value.(type) {
+	case string:
+		trimmed := strings.TrimSpace(typed)
+		if trimmed == "" || !strings.Contains(trimmed, "\n") {
+			return "", nil
+		}
+		if !strings.HasSuffix(trimmed, "\n") {
+			trimmed += "\n"
+		}
+		return trimmed, nil
+	case []interface{}:
+		if len(typed) == 0 {
+			return "", nil
+		}
+		lines := make([]string, 0, len(typed))
+		for _, item := range typed {
+			str, ok := item.(string)
+			if !ok {
+				return "", fmt.Errorf("inline list contains non-string value: %T", item)
+			}
+			if line := strings.TrimSpace(str); line != "" {
+				lines = append(lines, line)
+			}
+		}
+		if len(lines) == 0 {
+			return "", nil
+		}
+		return strings.Join(lines, "\n") + "\n", nil
+	default:
+		return "", nil
+	}
+}
+
+func normalizeInlineSecrets(value interface{}) ([]byte, error) {
+	switch typed := value.(type) {
+	case nil:
+		return nil, nil
+	case string:
+		trimmed := strings.TrimSpace(typed)
+		if trimmed == "" {
+			return nil, nil
+		}
+		if !strings.HasSuffix(trimmed, "\n") {
+			trimmed += "\n"
+		}
+		return []byte(trimmed), nil
+	default:
+		secretBytes, err := yaml.Marshal(typed)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal inline secrets: %w", err)
+		}
+		return secretBytes, nil
+	}
 }
