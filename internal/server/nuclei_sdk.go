@@ -111,7 +111,7 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 
 	workflowLoader, err := parsers.NewLoader(executorOpts)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not create loader options.")
+		return nil, errors.Wrap(err, "could not create loader options")
 	}
 	executorOpts.WorkflowLoader = workflowLoader
 
@@ -123,10 +123,10 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 	}
 	store, err := loader.New(loaderConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not create loader options.")
+		return nil, errors.Wrap(err, "could not create loader options")
 	}
 	if err := store.Load(); err != nil {
-		return nil, errors.Wrap(err, "Could not load templates.")
+		return nil, errors.Wrap(err, "could not load templates")
 	}
 
 	return &nucleiExecutor{

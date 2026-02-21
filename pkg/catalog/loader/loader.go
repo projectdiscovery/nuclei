@@ -1,6 +1,7 @@
 package loader
 
 import (
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -41,7 +42,8 @@ const (
 )
 
 var (
-	TrustedTemplateDomains = []string{"cloud.projectdiscovery.io"}
+	TrustedTemplateDomains   = []string{"cloud.projectdiscovery.io"}
+	ErrDialersNotInitialized = stderrors.New("dialers not initialized")
 )
 
 // Config contains the configuration options for the loader
@@ -722,7 +724,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", typesOpts.ExecutionId)
+		return nil, fmt.Errorf("%w for %s", ErrDialersNotInitialized, typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {

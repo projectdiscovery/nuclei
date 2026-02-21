@@ -117,5 +117,6 @@ func TestLoadTemplatesWithTags_MissingDialersReturnsError(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.LoadTemplatesWithTags([]string{}, nil)
-	require.ErrorContains(t, err, "dialers not initialized for "+options.ExecutionId)
+	require.ErrorIs(t, err, ErrDialersNotInitialized)
+	require.ErrorContains(t, err, options.ExecutionId)
 }
