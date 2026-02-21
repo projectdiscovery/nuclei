@@ -103,15 +103,17 @@ func (v *Value) SetParsedValue(key, value string) bool {
 	case int, int32, int64, float32, float64:
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return false
+			origValue = value
+		} else {
+			origValue = parsed
 		}
-		origValue = parsed
 	case bool:
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {
-			return false
+			origValue = value
+		} else {
+			origValue = parsed
 		}
-		origValue = parsed
 	default:
 		// explicitly check for typed slice
 		if val, ok := IsTypedSlice(v); ok {

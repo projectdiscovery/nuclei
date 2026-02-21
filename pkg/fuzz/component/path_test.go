@@ -127,3 +127,39 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+func TestPathComponent_NumericSegmentsAndSlashes(t *testing.T) {
+	path := NewPath()
+	// Test a complex path with numeric segments and multiple slashes
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/product/123//details/", nil)
+	require.NoError(t, err)
+	
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	var keys []string
+	var values []string
+	err = path.Iterate(func(key string, value interface{}) error {
+		keys = append(keys, key)
+		values = append(values, value.(string))
+		return nil
+	})
+	require.NoError(t, err)
+	
+	// Should have discovered 3 segments: "product", "123", "details"
+	require.Equal(t, []string{"1", "2", "3"}, keys)
+	require.Equal(t, []string{"product", "123", "details"}, values)
+
+	// Fuzz the numeric segment "123" (key "2")
+	err = path.SetValue("2", "123' OR 1=1")
+	require.NoError(t, err)
+
+	newReq, err := path.Rebuild()
+	require.NoError(t, err)
+	
+	// Should preserve all slashes and inject the payload
+	// Note: Rebuild uses urlutil.PathDecode and then UpdateRelPath might re-encode
+	// but the structure should be preserved.
+	require.Equal(t, "/product/123' OR 1=1//details/", newReq.Path)
+}

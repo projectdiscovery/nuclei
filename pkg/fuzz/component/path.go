@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -36,21 +37,20 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.value = NewValue("")
 
 	splitted := strings.Split(req.Path, "/")
-	values := make(map[string]interface{})
-	for i, segment := range splitted {
-		if segment == "" && i == 0 {
-			// Skip the first empty segment from leading "/"
-			continue
-		}
+	values := mapsutil.NewOrderedMap[string, any]()
+	for _, segment := range splitted {
 		if segment == "" {
-			// Skip any other empty segments
+			// Skip empty segments
 			continue
 		}
 		// Use 1-based indexing and store individual segments
-		key := strconv.Itoa(len(values) + 1)
-		values[key] = segment
+		key := strconv.Itoa(values.Len() + 1)
+		values.Set(key, segment)
 	}
-	q.value.SetParsed(dataformat.KVMap(values), "")
+	if values.Len() == 0 {
+		return false, nil
+	}
+	q.value.SetParsed(dataformat.KVOrderedMap(&values), "")
 	return true, nil
 }
 
@@ -93,24 +93,22 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Create a new slice to hold the rebuilt segments
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
 
-	// Add the first empty segment (from leading "/")
-	if len(originalSplitted) > 0 && originalSplitted[0] == "" {
-		rebuiltSegments = append(rebuiltSegments, "")
-	}
-
 	// Process each segment
 	segmentIndex := 1 // 1-based indexing for our stored values
-	for i := 1; i < len(originalSplitted); i++ {
-		originalSegment := originalSplitted[i]
+	for _, originalSegment := range originalSplitted {
 		if originalSegment == "" {
-			// Skip empty segments
+			rebuiltSegments = append(rebuiltSegments, "")
 			continue
 		}
 
 		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
-		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
-			rebuiltSegments = append(rebuiltSegments, newValue)
+		if val := q.value.parsed.Get(key); val != nil {
+			if newValue, ok := val.(string); ok && newValue != "" {
+				rebuiltSegments = append(rebuiltSegments, newValue)
+			} else {
+				rebuiltSegments = append(rebuiltSegments, originalSegment)
+			}
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
 		}
