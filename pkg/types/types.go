@@ -472,6 +472,12 @@ type Options struct {
 	timeouts *Timeouts
 	// m is a mutex to protect timeouts from concurrent access
 	m sync.Mutex
+	// HoneypotThreshold is the number of distinct templates a host must match before being
+	// flagged as a potential honeypot. Set to 0 to disable honeypot detection. Higher values
+	// track more template IDs per host, increasing memory usage on large scans with many unique hosts.
+	HoneypotThreshold int
+	// HoneypotSuppressResults suppresses output for hosts flagged as honeypots (events after threshold crossing)
+	HoneypotSuppressResults bool
 }
 
 func (options *Options) Copy() *Options {
@@ -684,6 +690,8 @@ func (options *Options) Copy() *Options {
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
 		ExecutionId:                    options.ExecutionId,
 		Parser:                         options.Parser,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotSuppressResults:        options.HoneypotSuppressResults,
 	}
 	optCopy.SetTimeouts(options.timeouts)
 	return optCopy
