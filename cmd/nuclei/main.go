@@ -49,7 +49,7 @@ import (
 
 const (
 	maxTemplateProfileSizeBytes = 5 * 1024 * 1024
-	maxInlineTargetsSizeBytes   = 10 * 1024 * 1024
+	maxInlineTargetsSizeBytes   = 5 * 1024 * 1024
 	maxInlineSecretsSizeBytes   = 2 * 1024 * 1024
 )
 
@@ -179,6 +179,7 @@ func main() {
 
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
+		runRuntimeCleanups()
 		options.Logger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
 	if nucleiRunner == nil {
@@ -237,6 +238,7 @@ func main() {
 	}()
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
+		runRuntimeCleanups()
 		if options.Validate {
 			options.Logger.Fatal().Msgf("Could not validate templates: %s\n", err)
 		} else {
@@ -715,6 +717,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if len(options.SecretsFile) > 0 {
 		for _, secretFile := range options.SecretsFile {
 			if !fileutil.FileExists(secretFile) {
+				runRuntimeCleanups()
 				options.Logger.Fatal().Msgf("given secrets file '%s' does not exist", secretFile)
 			}
 		}
