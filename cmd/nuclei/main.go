@@ -656,8 +656,18 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
+		templateProfileForMerge, cleanupProfile, err := sanitizeTemplateProfileForMerge(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not preprocess template profile: %s\n", err)
+		}
+		if cleanupProfile != nil {
+			defer cleanupProfile()
+		}
+		if err := flagSet.MergeConfigFile(templateProfileForMerge); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		}
+		if err := materializeInlineListTargets(); err != nil {
+			options.Logger.Fatal().Msgf("Could not process inline profile list targets: %s\n", err)
 		}
 	}
 
@@ -805,4 +815,78 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
+}
+
+func sanitizeTemplateProfileForMerge(profilePath string) (string, func(), error) {
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		return "", nil, err
+	}
+
+	var parsed map[string]interface{}
+	if err := yaml.Unmarshal(data, &parsed); err != nil {
+		return profilePath, nil, nil
+	}
+	if len(parsed) == 0 {
+		return profilePath, nil, nil
+	}
+
+	ignoredFields := []string{"id", "name", "purpose", "description"}
+	changed := false
+	for _, field := range ignoredFields {
+		if _, ok := parsed[field]; ok {
+			delete(parsed, field)
+			changed = true
+		}
+	}
+	if !changed {
+		return profilePath, nil, nil
+	}
+
+	normalized, err := yaml.Marshal(parsed)
+	if err != nil {
+		return "", nil, err
+	}
+	tmpFile, err := os.CreateTemp("", "nuclei-profile-*.yaml")
+	if err != nil {
+		return "", nil, err
+	}
+	if _, err := tmpFile.Write(normalized); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
+		return "", nil, err
+	}
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpFile.Name())
+		return "", nil, err
+	}
+
+	cleanup := func() {
+		_ = os.Remove(tmpFile.Name())
+	}
+	return tmpFile.Name(), cleanup, nil
+}
+
+func materializeInlineListTargets() error {
+	if options.TargetsFilePath == "" || !strings.Contains(options.TargetsFilePath, "\n") {
+		return nil
+	}
+	inlineTargets := strings.TrimSpace(options.TargetsFilePath)
+	if inlineTargets == "" {
+		return nil
+	}
+
+	tmpFile, err := os.CreateTemp("", "nuclei-inline-targets-*.txt")
+	if err != nil {
+		return err
+	}
+	if _, err := tmpFile.WriteString(inlineTargets + "\n"); err != nil {
+		_ = tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+	options.TargetsFilePath = tmpFile.Name()
+	return nil
 }
