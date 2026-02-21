@@ -111,7 +111,7 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 		return errkit.Wrap(err, "could not create loader client")
 	}
 	if err := e.store.Load(); err != nil {
-		return errkit.Wrap(err, "Could not load templates")
+		return errkit.Wrap(err, "could not load templates")
 	}
 	e.templatesLoaded = true
 	return nil
@@ -120,7 +120,15 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 // GetTemplates returns all nuclei templates that are loaded
 func (e *NucleiEngine) GetTemplates() []*templates.Template {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			if e.Logger != nil {
+				e.Logger.Warning().Msgf("could not load templates: %s", err)
+			}
+			return []*templates.Template{}
+		}
+	}
+	if e.store == nil {
+		return []*templates.Template{}
 	}
 	return e.store.Templates()
 }
@@ -128,7 +136,15 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 // GetWorkflows returns all nuclei workflows that are loaded
 func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			if e.Logger != nil {
+				e.Logger.Warning().Msgf("could not load templates: %s", err)
+			}
+			return []*templates.Template{}
+		}
+	}
+	if e.store == nil {
+		return []*templates.Template{}
 	}
 	return e.store.Workflows()
 }

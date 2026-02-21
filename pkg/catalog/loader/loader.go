@@ -715,7 +715,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		return nil, errors.Wrap(errWg, "could not create wait group")
+		return nil, fmt.Errorf("could not create wait group: %w", errWg)
 	}
 
 	if typesOpts.ExecutionId == "" {
