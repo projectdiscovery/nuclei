@@ -1,28 +1,6 @@
-name = "Typos Check"
+# typos configuration
+# See https://github.com/crate-ci/typos/blob/master/docs/reference.md
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  typos-check:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-    - name: Set up Python
-      uses: actions/setup-python@42375524f9f0f01e6a49ca48b669db2f2cbfcb4f # v5.3.0
-      with:
-        python-version: '3.8'
-
-    - name: Install typos
-      run: |
-        pip install typos
-
-    - name: Run typos check
-      run: |
-        typos .
+[default]
+# extend-words = {}
+# extend-ignore-words-re = []
