@@ -29,7 +29,10 @@ tags:
   - kev
 `), 0o600))
 
-	sanitizedPath, cleanup, err := sanitizeTemplateProfileForMerge(profilePath)
+	profileData, err := readTemplateProfileData(profilePath)
+	require.NoError(t, err)
+
+	sanitizedPath, cleanup, err := sanitizeTemplateProfileForMerge(profilePath, profileData)
 	require.NoError(t, err)
 	require.NotEmpty(t, sanitizedPath)
 	if cleanup != nil {
@@ -58,7 +61,10 @@ func TestMaterializeInlineListTargets(t *testing.T) {
   https://two.example
 `), 0o600))
 
-	cleanup, err := materializeInlineListTargets(profilePath)
+	profileData, err := readTemplateProfileData(profilePath)
+	require.NoError(t, err)
+
+	cleanup, err := materializeInlineListTargets(profileData)
 	require.NoError(t, err)
 	require.NotEmpty(t, options.TargetsFilePath)
 	if cleanup != nil {
@@ -69,6 +75,28 @@ func TestMaterializeInlineListTargets(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(data), "https://one.example")
 	require.Contains(t, string(data), "https://two.example")
+}
+
+func TestMaterializeSingleLineInlineTarget(t *testing.T) {
+	options = &types.Options{}
+	runtimeCleanupFns = nil
+
+	profilePath := filepath.Join(t.TempDir(), "profile.yaml")
+	require.NoError(t, os.WriteFile(profilePath, []byte("list: https://single.example\n"), 0o600))
+
+	profileData, err := readTemplateProfileData(profilePath)
+	require.NoError(t, err)
+
+	cleanup, err := materializeInlineListTargets(profileData)
+	require.NoError(t, err)
+	require.NotEmpty(t, options.TargetsFilePath)
+	if cleanup != nil {
+		t.Cleanup(cleanup)
+	}
+
+	data, err := os.ReadFile(options.TargetsFilePath)
+	require.NoError(t, err)
+	require.Equal(t, "https://single.example\n", string(data))
 }
 
 func TestMaterializeInlineSecretsFromProfile(t *testing.T) {
@@ -86,7 +114,10 @@ func TestMaterializeInlineSecretsFromProfile(t *testing.T) {
           value: abc
 `), 0o600))
 
-	cleanup, err := materializeInlineSecretsFromProfile(profilePath)
+	profileData, err := readTemplateProfileData(profilePath)
+	require.NoError(t, err)
+
+	cleanup, err := materializeInlineSecretsFromProfile(profileData)
 	require.NoError(t, err)
 	require.Len(t, options.SecretsFile, 1)
 	if cleanup != nil {

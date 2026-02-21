@@ -214,6 +214,7 @@ func main() {
 		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
 		if options.DASTServer {
 			nucleiRunner.Close()
+			runRuntimeCleanups()
 			os.Exit(1)
 		}
 
@@ -229,6 +230,7 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+		runRuntimeCleanups()
 		os.Exit(1)
 	}()
 
@@ -668,7 +670,12 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		targetsFromCLI := options.TargetsFilePath
 		secretsFromCLI := append(goflags.StringSlice{}, options.SecretsFile...)
 
-		sanitizedProfilePath, cleanup, err := sanitizeTemplateProfileForMerge(templateProfile)
+		profileData, err := readTemplateProfileData(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		}
+
+		sanitizedProfilePath, cleanup, err := sanitizeTemplateProfileForMerge(templateProfile, profileData)
 		if err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
@@ -682,7 +689,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if targetsFromCLI != "" {
 			options.TargetsFilePath = targetsFromCLI
 		} else {
-			cleanup, err = materializeInlineListTargets(templateProfile)
+			cleanup, err = materializeInlineListTargets(profileData)
 			if err != nil {
 				options.Logger.Fatal().Msgf("Could not process template profile list field: %s\n", err)
 			}
@@ -692,7 +699,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if len(secretsFromCLI) > 0 {
 			options.SecretsFile = secretsFromCLI
 		} else {
-			cleanup, err = materializeInlineSecretsFromProfile(templateProfile)
+			cleanup, err = materializeInlineSecretsFromProfile(profileData)
 			if err != nil {
 				options.Logger.Fatal().Msgf("Could not process template profile secrets field: %s\n", err)
 			}
@@ -854,15 +861,22 @@ func registerRuntimeCleanup(cleanup func()) {
 
 func runRuntimeCleanups() {
 	for i := len(runtimeCleanupFns) - 1; i >= 0; i-- {
-		runtimeCleanupFns[i]()
+		func(cleanupIndex int) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					options.Logger.Warning().Msgf("runtime cleanup panic recovered at index %d: %v", cleanupIndex, recovered)
+				}
+			}()
+			runtimeCleanupFns[cleanupIndex]()
+		}(i)
 	}
 	runtimeCleanupFns = nil
 }
 
-func sanitizeTemplateProfileForMerge(profilePath string) (string, func(), error) {
-	profileData, err := readTemplateProfileData(profilePath)
-	if err != nil {
-		return "", nil, err
+func sanitizeTemplateProfileForMerge(profilePath string, profileData map[string]interface{}) (string, func(), error) {
+	sanitizedProfileData := make(map[string]interface{}, len(profileData))
+	for key, value := range profileData {
+		sanitizedProfileData[key] = value
 	}
 
 	ignoreFields := map[string]struct{}{
@@ -874,8 +888,8 @@ func sanitizeTemplateProfileForMerge(profilePath string) (string, func(), error)
 	}
 	changed := false
 	for field := range ignoreFields {
-		if _, ok := profileData[field]; ok {
-			delete(profileData, field)
+		if _, ok := sanitizedProfileData[field]; ok {
+			delete(sanitizedProfileData, field)
 			changed = true
 		}
 	}
@@ -883,7 +897,7 @@ func sanitizeTemplateProfileForMerge(profilePath string) (string, func(), error)
 		return profilePath, nil, nil
 	}
 
-	sanitizedData, err := yaml.Marshal(profileData)
+	sanitizedData, err := yaml.Marshal(sanitizedProfileData)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not marshal sanitized profile: %w", err)
 	}
@@ -906,12 +920,7 @@ func sanitizeTemplateProfileForMerge(profilePath string) (string, func(), error)
 	return tmpFile.Name(), cleanup, nil
 }
 
-func materializeInlineListTargets(profilePath string) (func(), error) {
-	profileData, err := readTemplateProfileData(profilePath)
-	if err != nil {
-		return nil, err
-	}
-
+func materializeInlineListTargets(profileData map[string]interface{}) (func(), error) {
 	listValue, hasList := profileData["list"]
 	if !hasList {
 		return nil, nil
@@ -949,12 +958,7 @@ func materializeInlineListTargets(profilePath string) (func(), error) {
 	return cleanup, nil
 }
 
-func materializeInlineSecretsFromProfile(profilePath string) (func(), error) {
-	profileData, err := readTemplateProfileData(profilePath)
-	if err != nil {
-		return nil, err
-	}
-
+func materializeInlineSecretsFromProfile(profileData map[string]interface{}) (func(), error) {
 	secretsValue, hasSecrets := profileData["secrets"]
 	if !hasSecrets {
 		return nil, nil
@@ -993,6 +997,11 @@ func materializeInlineSecretsFromProfile(profilePath string) (func(), error) {
 }
 
 func readTemplateProfileData(profilePath string) (map[string]interface{}, error) {
+	resolvedProfilePath, err := filepath.EvalSymlinks(profilePath)
+	if err == nil {
+		profilePath = resolvedProfilePath
+	}
+
 	fileInfo, err := os.Stat(profilePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not stat template profile %q: %w", profilePath, err)
@@ -1008,7 +1017,7 @@ func readTemplateProfileData(profilePath string) (map[string]interface{}, error)
 
 	profileData := make(map[string]interface{})
 	if err := yaml.Unmarshal(data, &profileData); err != nil {
-		return nil, fmt.Errorf("could not parse template profile %q: %w", profilePath, err)
+		return nil, fmt.Errorf("could not parse template profile %q: invalid yaml syntax", profilePath)
 	}
 	return profileData, nil
 }
@@ -1017,7 +1026,7 @@ func normalizeInlineTargets(value interface{}) (string, error) {
 	switch typed := value.(type) {
 	case string:
 		trimmed := strings.TrimSpace(typed)
-		if trimmed == "" || !strings.Contains(trimmed, "\n") {
+		if trimmed == "" {
 			return "", nil
 		}
 		if !strings.HasSuffix(trimmed, "\n") {
