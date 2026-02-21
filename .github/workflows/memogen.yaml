@@ -26,5 +26,5 @@ jobs:
           files: |
             pkg/js/libs/
           message: 'chore(js): update memoized functions 🤖'
-      - run: git push origin $GITHUB_REF
+      - run: git push origin ${{ github.ref }}
         if: steps.status.outputs.CHANGES > 0
