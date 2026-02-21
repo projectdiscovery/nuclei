@@ -54,14 +54,17 @@ func init() {
 	analyzers.RegisterAnalyzer(analyzerName, &Analyzer{})
 }
 
+// Name returns the registered analyzer name.
 func (a *Analyzer) Name() string {
 	return analyzerName
 }
 
+// ApplyInitialTransformation applies standard fuzz payload transformations (e.g. [RANDNUM]) to the analyzer input.
 func (a *Analyzer) ApplyInitialTransformation(data string, _ map[string]interface{}) string {
 	return analyzers.ApplyPayloadTransformations(data)
 }
 
+// Analyze replays a fuzz-generated request with the transformed payload injected and reports reflection + rough HTML context.
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if options == nil || options.FuzzGenerated.Component == nil || options.HttpClient == nil {
 		return false, "", nil
