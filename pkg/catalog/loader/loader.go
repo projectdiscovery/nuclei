@@ -723,7 +723,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	}
 
 	if protocolstate.GetDialersWithId(typesOpts.ExecutionId) == nil {
-		return nil, fmt.Errorf("%w for %s", ErrDialersNotInitialized, typesOpts.ExecutionId)
+		return nil, fmt.Errorf("%w for execution ID %s", ErrDialersNotInitialized, typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {
