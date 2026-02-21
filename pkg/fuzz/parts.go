@@ -160,9 +160,11 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 		actualParameter = parameterValue
 	}
 	// If the parameter is frequent, skip it if the option is enabled
+	// Use actualParameter (the real value like "55") instead of parameter (the index like "2")
+	// to avoid cross-URL collisions when fuzzing numeric path segments
 	if rule.options.FuzzParamsFrequency != nil {
 		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
-			parameter,
+			actualParameter,
 			httpReq.String(),
 			rule.options.TemplateID,
 		) {
