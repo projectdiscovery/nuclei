@@ -24,6 +24,10 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, "", err
 	}
+	// Restoration: Reset to original value after analysis
+	defer func() {
+		_ = gr.Component.SetValue(gr.Key, gr.Value)
+	}()
 
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {

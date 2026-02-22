@@ -32,7 +32,7 @@ func TestXSSContextAnalyzer_Analyze(t *testing.T) {
 				Request: req,
 				Value:   "orig",
 				Key:     "q",
-				Component: &MockComponent{URL: server.URL, Key: "q"},
+				Component: &MockComponent{URL: server.URL, Key: "q", CurrentValue: "orig"},
 			},
 		}
 
@@ -40,6 +40,8 @@ func TestXSSContextAnalyzer_Analyze(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, matched)
 		require.Contains(t, message, "text node")
+		// Verify restoration
+		require.Equal(t, "orig", opts.FuzzGenerated.Component.(*MockComponent).CurrentValue)
 	})
 }
 
@@ -55,18 +57,11 @@ func (m *MockComponent) SetValue(k, v string) error {
 	return nil
 }
 func (m *MockComponent) Delete(k string) error { return nil }
-func (m *MockComponent) GetValue(k string) (string, bool) {
-	if k == m.Key { return m.CurrentValue, true }
-	return "", false
-}
 func (m *MockComponent) Clone() component.Component {
 	return &MockComponent{URL: m.URL, Key: m.Key, CurrentValue: m.CurrentValue}
 }
-func (m *MockComponent) Value() any { return nil }
 func (m *MockComponent) Rebuild() (*retryablehttp.Request, error) {
 	return retryablehttp.NewRequest("GET", fmt.Sprintf("%s?%s=%s", m.URL, m.Key, m.CurrentValue), nil)
 }
 func (m *MockComponent) Parse(req *retryablehttp.Request) (bool, error) { return true, nil }
 func (m *MockComponent) Iterate(f func(string, any) error) error       { return nil }
-func (m *MockComponent) Fetch(f func(string, any) bool) error          { return nil }
-func (m *MockComponent) Type() any                                     { return nil }
