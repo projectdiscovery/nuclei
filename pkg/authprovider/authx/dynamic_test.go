@@ -178,3 +178,82 @@ func TestDynamicFetchConcurrentWaitsForCompletion(t *testing.T) {
 		require.GreaterOrEqual(t, durations[i], 100*time.Millisecond)
 	}
 }
+
+func TestDynamicFetchRecoverPanics(t *testing.T) {
+	d := &Dynamic{
+		Secret: &Secret{
+			Type:    string(BearerTokenAuth),
+			Domains: []string{"example.com"},
+			Token:   "{{token}}",
+		},
+		TemplatePath: "dynamic-auth-template.yaml",
+		Variables: []KV{
+			{Key: "username", Value: "alice"},
+		},
+		fetched:  &atomic.Bool{},
+		fetching: &atomic.Bool{},
+	}
+
+	d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+		panic("panic while fetching token")
+	})
+
+	err := d.Fetch(false)
+	require.ErrorContains(t, err, "fetch callback panicked")
+	require.Error(t, err)
+}
+
+func TestDynamicFetchTimeoutDoesNotHangConcurrentWaiters(t *testing.T) {
+	previousTimeout := dynamicFetchTimeout
+	dynamicFetchTimeout = 100 * time.Millisecond
+	defer func() {
+		dynamicFetchTimeout = previousTimeout
+	}()
+
+	d := &Dynamic{
+		Secret: &Secret{
+			Type:    string(BearerTokenAuth),
+			Domains: []string{"example.com"},
+			Token:   "{{token}}",
+		},
+		TemplatePath: "dynamic-auth-template.yaml",
+		Variables: []KV{
+			{Key: "username", Value: "alice"},
+		},
+		fetched:  &atomic.Bool{},
+		fetching: &atomic.Bool{},
+	}
+
+	d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+		time.Sleep(5 * time.Second)
+		dynamic.Extracted = map[string]interface{}{"token": "resolved-token"}
+		return nil
+	})
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	durations := make([]time.Duration, 2)
+	for i := 0; i < 2; i++ {
+		i := i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			begin := time.Now()
+			errs[i] = d.Fetch(false)
+			durations[i] = time.Since(begin)
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+
+	for _, err := range errs {
+		require.ErrorContains(t, err, "timeout waiting for fetch callback")
+	}
+	for _, duration := range durations {
+		require.LessOrEqual(t, duration, 200*time.Millisecond)
+		require.Greater(t, duration, 90*time.Millisecond)
+	}
+}

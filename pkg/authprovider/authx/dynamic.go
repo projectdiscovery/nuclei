@@ -19,6 +19,8 @@ var (
 	_ json.Unmarshaler = &Dynamic{}
 )
 
+var dynamicFetchTimeout = 30 * time.Second
+
 // Dynamic is a struct for dynamic secret or credential
 // these are high level secrets that take action to generate the actual secret
 // ex: username and password are dynamic secrets, the actual secret is the token obtained
@@ -213,20 +215,46 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		return d.error
 	}
 
-	// Try to set fetching flag atomically
+	// Try to set fetching flag atomically.
 	if !d.fetching.CompareAndSwap(false, true) {
 		// Another goroutine is fetching this secret. Wait until it finishes so
-		// concurrent template execution can't proceed with unresolved auth values.
+		// concurrent template execution can proceed with resolved auth values.
+		timeout := time.After(dynamicFetchTimeout)
+		ticker := time.NewTicker(5 * time.Millisecond)
+		defer ticker.Stop()
 		for !d.fetched.Load() {
-			time.Sleep(5 * time.Millisecond)
+			select {
+			case <-timeout:
+				d.error = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
+				d.fetched.Store(true)
+				d.fetching.Store(false)
+				return d.error
+			case <-ticker.C:
+			}
 		}
 		return d.error
 	}
 
-	// We're the only one fetching, call the callback
-	d.error = d.fetchCallback(d)
+	result := make(chan error, 1)
+	go func() {
+		var err error
+		defer func() {
+			if r := recover(); r != nil {
+				err = errkit.Newf("fetch callback panicked: %v", r)
+			}
+			result <- err
+		}()
+		err = d.fetchCallback(d)
+	}()
 
-	// Mark as fetched and clear fetching flag
+	var err error
+	select {
+	case err = <-result:
+	case <-time.After(dynamicFetchTimeout):
+		err = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
+	}
+
+	d.error = err
 	d.fetched.Store(true)
 	d.fetching.Store(false)
 

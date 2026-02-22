@@ -65,7 +65,7 @@ So, tests could not be executed in this environment. Code was formatted and revi
   - Path segment ordering and mutation stability improved.
   - Rebuild now tolerates non-string internals safely via `fmt.Sprint`.
 - Potential edge impact:
-  - If a caller intentionally stored non-string typed path segment values, they are now serialized rather than silently dropped/reverted, which is preferable for fuzz mutation behavior.
+  - If a caller intentionally stored non-string-typed path segment values, they are now serialized rather than silently dropped/reverted, which is preferable for fuzz mutation behavior.
 
 ## Files Changed
 - `pkg/fuzz/component/path.go`
