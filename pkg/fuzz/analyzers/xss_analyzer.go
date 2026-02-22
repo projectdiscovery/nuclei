@@ -1,66 +1,63 @@
 package analyzers
 
 import (
-	"io"
-	"strings"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
-	"golang.org/x/net/html"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/stretchr/testify/require"
 )
 
-type XSSContextAnalyzer struct{}
+func TestXSSContextAnalyzer_Analyze(t *testing.T) {
+	analyzer := &XSSContextAnalyzer{}
 
-func (a *XSSContextAnalyzer) Name() string {
-	return "xss-context"
-}
+	t.Run("text-context-detection", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<html><body><div>pd_xss</div></body></html>")
+		}))
+		defer server.Close()
 
-func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
-	return data + "pd_xss"
-}
+		req, _ := retryablehttp.NewRequest(http.MethodGet, server.URL, nil)
+		client := retryablehttp.NewClient(retryablehttp.Options{})
 
-func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
-	gr := options.FuzzGenerated
-	payload := a.ApplyInitialTransformation(gr.OriginalPayload, nil)
-
-	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
-		return false, "", err
-	}
-
-	rebuilt, err := gr.Component.Rebuild()
-	if err != nil {
-		return false, "", err
-	}
-
-	resp, err := options.HttpClient.Do(rebuilt)
-	if err != nil {
-		return false, "", err
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	body := string(bodyBytes)
-
-	if !strings.Contains(body, payload) {
-		return false, "", nil
-	}
-
-	tokenizer := html.NewTokenizer(strings.NewReader(body))
-	for {
-		tokenType := tokenizer.Next()
-		if tokenType == html.ErrorToken {
-			break
+		opts := &Options{
+			HttpClient: client,
+			FuzzGenerated: fuzz.GeneratedRequest{
+				Request:         req,
+				OriginalPayload: "",
+				Key:             "query",
+				Component:       &MockComponent{URL: server.URL},
+			},
 		}
-		token := tokenizer.Token()
-		if tokenType == html.StartTagToken || tokenType == html.SelfClosingTagToken {
-			for _, attr := range token.Attr {
-				if strings.Contains(attr.Val, payload) {
-					return true, "attr:" + attr.Key + ":" + token.Data, nil
-				}
-			}
-		} else if tokenType == html.TextToken {
-			if strings.Contains(token.Data, payload) {
-				return true, "text:" + token.Data, nil
-			}
-		}
-	}
-	return false, "", nil
+
+		matched, message, err := analyzer.Analyze(opts)
+		require.NoError(t, err)
+		require.True(t, matched)
+		require.Contains(t, message, "text:")
+	})
 }
+
+// MockComponent implementa a interface component.Component do Nuclei v3.
+type MockComponent struct {
+	URL string
+}
+
+func (m *MockComponent) Name() string                     { return "mock" }
+func (m *MockComponent) SetValue(key, value string) error { return nil }
+func (m *MockComponent) Delete(key string) error          { return nil }
+func (m *MockComponent) GetValue(key string) (string, bool) { return "", false }
+func (m *MockComponent) Clone() component.Component       { return m }
+func (m *MockComponent) Value() any                      { return nil }
+
+func (m *MockComponent) Rebuild() (*retryablehttp.Request, error) {
+	return retryablehttp.NewRequest("GET", m.URL, nil)
+}
+
+func (m *MockComponent) Parse(req *retryablehttp.Request) (bool, error) { return true, nil }
+func (m *MockComponent) Iterate(f func(string, any) error) error       { return nil }
+func (m *MockComponent) Fetch(f func(string, any) bool) error          { return nil }
+func (m *MockComponent) Type() any                                     { return nil }
