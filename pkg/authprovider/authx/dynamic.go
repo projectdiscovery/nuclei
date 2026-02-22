@@ -219,16 +219,14 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 	if !d.fetching.CompareAndSwap(false, true) {
 		// Another goroutine is fetching this secret. Wait until it finishes so
 		// concurrent template execution can proceed with resolved auth values.
-		timeout := time.After(dynamicFetchTimeout)
+		timeout := time.NewTimer(dynamicFetchTimeout)
+		defer timeout.Stop()
 		ticker := time.NewTicker(5 * time.Millisecond)
 		defer ticker.Stop()
 		for !d.fetched.Load() {
 			select {
-			case <-timeout:
-				d.error = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
-				d.fetched.Store(true)
-				d.fetching.Store(false)
-				return d.error
+			case <-timeout.C:
+				return errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
 			case <-ticker.C:
 			}
 		}
@@ -247,10 +245,17 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		err = d.fetchCallback(d)
 	}()
 
+	fetchTimer := time.NewTimer(dynamicFetchTimeout)
 	var err error
 	select {
 	case err = <-result:
-	case <-time.After(dynamicFetchTimeout):
+		if !fetchTimer.Stop() {
+			select {
+			case <-fetchTimer.C:
+			default:
+			}
+		}
+	case <-fetchTimer.C:
 		err = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
 	}
 

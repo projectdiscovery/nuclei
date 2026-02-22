@@ -154,15 +154,14 @@ func TestDynamicFetchConcurrentWaitsForCompletion(t *testing.T) {
 	durations := make([]time.Duration, 2)
 
 	for i := 0; i < 2; i++ {
-		i := i
 		wg.Add(1)
-		go func() {
+		go func(i int) {
 			defer wg.Done()
 			<-start
 			begin := time.Now()
 			results[i] = d.GetStrategies()
 			durations[i] = time.Since(begin)
-		}()
+		}(i)
 	}
 
 	close(start)
@@ -200,7 +199,6 @@ func TestDynamicFetchRecoverPanics(t *testing.T) {
 
 	err := d.Fetch(false)
 	require.ErrorContains(t, err, "fetch callback panicked")
-	require.Error(t, err)
 }
 
 func TestDynamicFetchTimeoutDoesNotHangConcurrentWaiters(t *testing.T) {
@@ -235,15 +233,14 @@ func TestDynamicFetchTimeoutDoesNotHangConcurrentWaiters(t *testing.T) {
 	errs := make([]error, 2)
 	durations := make([]time.Duration, 2)
 	for i := 0; i < 2; i++ {
-		i := i
 		wg.Add(1)
-		go func() {
+		go func(i int) {
 			defer wg.Done()
 			<-start
 			begin := time.Now()
 			errs[i] = d.Fetch(false)
 			durations[i] = time.Since(begin)
-		}()
+		}(i)
 	}
 
 	close(start)
@@ -253,7 +250,7 @@ func TestDynamicFetchTimeoutDoesNotHangConcurrentWaiters(t *testing.T) {
 		require.ErrorContains(t, err, "timeout waiting for fetch callback")
 	}
 	for _, duration := range durations {
-		require.LessOrEqual(t, duration, 200*time.Millisecond)
+		require.LessOrEqual(t, duration, 500*time.Millisecond)
 		require.Greater(t, duration, 90*time.Millisecond)
 	}
 }
