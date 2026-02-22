@@ -66,7 +66,7 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets
 func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret {
-	return func(d *authx.Dynamic) error {
+	return func(d *authx.Dynamic, done <-chan struct{}) error {
 		tmpls := opts.TemplateStore.LoadTemplates([]string{d.TemplatePath})
 		if len(tmpls) == 0 {
 			return fmt.Errorf("%w for path: %s", disk.ErrNoTemplatesFound, d.TemplatePath)
@@ -144,6 +144,12 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		if err != nil {
 			finalErr = err
 		}
+		select {
+		case <-done:
+			return errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
+		default:
+		}
+
 		// store extracted result in auth context
 		d.Extracted = data
 		if finalErr != nil && opts.OnError != nil {

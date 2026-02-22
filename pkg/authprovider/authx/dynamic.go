@@ -13,7 +13,7 @@ import (
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
-type LazyFetchSecret func(d *Dynamic) error
+type LazyFetchSecret func(d *Dynamic, done <-chan struct{}) error
 
 var (
 	_ json.Unmarshaler = &Dynamic{}
@@ -99,10 +99,15 @@ func (d *Dynamic) Validate() error {
 
 // SetLazyFetchCallback sets the lazy fetch callback for the dynamic secret
 func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
-	d.fetchCallback = func(d *Dynamic) error {
-		err := callback(d)
+	d.fetchCallback = func(d *Dynamic, done <-chan struct{}) error {
+		err := callback(d, done)
 		if err != nil {
 			return err
+		}
+		select {
+		case <-done:
+			return errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
+		default:
 		}
 		if len(d.Extracted) == 0 {
 			return fmt.Errorf("no extracted values found for dynamic secret")
@@ -114,9 +119,21 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 			}
 		}
 
+		select {
+		case <-done:
+			return errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
+		default:
+		}
+
 		for _, secret := range d.Secrets {
 			if err := d.applyValuesToSecret(secret); err != nil {
 				return err
+			}
+
+			select {
+			case <-done:
+				return errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
+			default:
 			}
 		}
 		return nil
@@ -233,6 +250,15 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		return d.error
 	}
 
+	done := make(chan struct{})
+	closeDone := func() {
+		select {
+		case <-done:
+		default:
+			close(done)
+		}
+	}
+
 	result := make(chan error, 1)
 	go func() {
 		var err error
@@ -242,7 +268,8 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 			}
 			result <- err
 		}()
-		err = d.fetchCallback(d)
+		err = d.fetchCallback(d, done)
+		closeDone()
 	}()
 
 	fetchTimer := time.NewTimer(dynamicFetchTimeout)
@@ -252,10 +279,12 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		if !fetchTimer.Stop() {
 			select {
 			case <-fetchTimer.C:
+				err = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
 			default:
 			}
 		}
 	case <-fetchTimer.C:
+		closeDone()
 		err = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
 	}
 

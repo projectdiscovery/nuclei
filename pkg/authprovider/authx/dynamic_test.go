@@ -142,7 +142,7 @@ func TestDynamicFetchConcurrentWaitsForCompletion(t *testing.T) {
 		fetching: &atomic.Bool{},
 	}
 
-	d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+	d.SetLazyFetchCallback(func(dynamic *Dynamic, done <-chan struct{}) error {
 		time.Sleep(120 * time.Millisecond)
 		dynamic.Extracted = map[string]interface{}{"token": "resolved-token"}
 		return nil
@@ -193,7 +193,7 @@ func TestDynamicFetchRecoverPanics(t *testing.T) {
 		fetching: &atomic.Bool{},
 	}
 
-	d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+	d.SetLazyFetchCallback(func(dynamic *Dynamic, done <-chan struct{}) error {
 		panic("panic while fetching token")
 	})
 
@@ -222,7 +222,7 @@ func TestDynamicFetchTimeoutDoesNotHangConcurrentWaiters(t *testing.T) {
 		fetching: &atomic.Bool{},
 	}
 
-	d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+	d.SetLazyFetchCallback(func(dynamic *Dynamic, done <-chan struct{}) error {
 		time.Sleep(5 * time.Second)
 		dynamic.Extracted = map[string]interface{}{"token": "resolved-token"}
 		return nil
