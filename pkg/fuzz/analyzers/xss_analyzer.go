@@ -25,37 +25,36 @@ func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[
 func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	gr := options.FuzzGenerated
 
-	// 1. Gera o payload com o canário "pd_xss"
+	// 1. Gera o payload transformado
 	payload := a.ApplyInitialTransformation(gr.OriginalPayload, options.AnalyzerParameters)
 
-	// 2. Define o valor no componente (URL, Body, etc.) conforme exigido pelo CodeRabbit
+	// 2. Aplica o valor e reconstrói a requisição (Correção da Imagem 3)
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, "", err
 	}
-
-	// 3. Reconstrói a requisição com o payload injetado para não enviar a requisição limpa
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
 		return false, "", err
 	}
 
-	// 4. Executa a requisição reconstruída
+	// 3. Executa a requisição
 	resp, err := options.HttpClient.Do(rebuilt)
 	if err != nil {
 		return false, "", err
 	}
 	defer resp.Body.Close()
 
-	// Tratamento de erro na leitura para evitar falhas silenciosas (exigência do Neo/CodeRabbit)
+	// 4. Lê o corpo com tratamento de erro (Correção da Imagem 4)
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, "", err
 	}
 	
 	body := string(bodyBytes)
-	canary := "pd_xss"
+	
+	// CORREÇÃO FINAL: Usamos o payload real enviado em vez de "pd_xss" fixo
+	canary := payload 
 
-	// Otimização: verifica presença simples antes do parsing de HTML
 	if !strings.Contains(body, canary) {
 		return false, "", nil
 	}
@@ -76,13 +75,11 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 		case html.StartTagToken, html.SelfClosingTagToken:
 			for _, attr := range token.Attr {
 				if strings.Contains(attr.Val, canary) {
-					// Identifica reflexão em atributos
 					return true, "attr:" + attr.Key + ":" + token.Data, nil
 				}
 			}
 		case html.TextToken:
 			if strings.Contains(token.Data, canary) {
-				// Identifica reflexão em nós de texto
 				return true, "text:" + token.Data, nil
 			}
 		}
