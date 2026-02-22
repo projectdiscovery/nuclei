@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -32,6 +33,7 @@ type Dynamic struct {
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
 	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
 	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
+	fetchDone     chan struct{}          `json:"-" yaml:"-"` // closed when fetch finishes (success or error)
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -72,6 +74,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 func (d *Dynamic) Validate() error {
 	d.fetched = &atomic.Bool{}
 	d.fetching = &atomic.Bool{}
+	d.fetchDone = make(chan struct{})
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -212,18 +215,31 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		return d.error
 	}
 
-	// Try to set fetching flag atomically
+	// Try to set fetching flag atomically.
+	// If another goroutine is already fetching, wait for it to finish so we
+	// don't proceed unauthenticated.
 	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
+		// Already fetching: wait.
+		if d.fetchDone != nil {
+			<-d.fetchDone
+			return d.error
+		}
+		// Fallback (should not normally happen): spin with backoff until fetched.
+		for !d.fetched.Load() {
+			time.Sleep(5 * time.Millisecond)
+		}
 		return d.error
 	}
 
-	// We're the only one fetching, call the callback
+	// We're the only one fetching, call the callback.
 	d.error = d.fetchCallback(d)
 
-	// Mark as fetched and clear fetching flag
+	// Mark as fetched and clear fetching flag.
 	d.fetched.Store(true)
 	d.fetching.Store(false)
+	if d.fetchDone != nil {
+		close(d.fetchDone)
+	}
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
