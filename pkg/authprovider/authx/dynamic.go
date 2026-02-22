@@ -3,6 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -251,12 +252,11 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 	}
 
 	done := make(chan struct{})
+	var doneOnce sync.Once
 	closeDone := func() {
-		select {
-		case <-done:
-		default:
+		doneOnce.Do(func() {
 			close(done)
-		}
+		})
 	}
 
 	result := make(chan error, 1)
@@ -275,14 +275,14 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 	fetchTimer := time.NewTimer(dynamicFetchTimeout)
 	var err error
 	select {
-	case err = <-result:
+	case resultErr := <-result:
 		if !fetchTimer.Stop() {
 			select {
 			case <-fetchTimer.C:
-				err = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
 			default:
 			}
 		}
+		err = resultErr
 	case <-fetchTimer.C:
 		closeDone()
 		err = errkit.New("could not fetch dynamic secret: timeout waiting for fetch callback")
