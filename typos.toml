@@ -1,0 +1,30 @@
+[files]
+extend-exclude = [
+    "README_*.md",  # translation files
+    "integration_tests/**",  # test payloads
+    "cmd/integration-test/**",  # integration test code
+    "**/testdata/**",  # test data directories
+    "**/*.json",  # JSON files (mostly data)
+    "**/*.xml",  # XML files (mostly data)
+]
+
+[default.extend-words]
+ot = "ot"
+Mis = "Mis"
+Fo = "Fo"
+hae = "hae"
+ue = "ue"
+BA = "BA"
+Exluded = "Exluded"
+SELEC = "SELEC"
+Allowd = "Allowd"
+alo = "alo"
+Iz = "Iz"
+Iy = "Iy"
+algoritmos = "algoritmos"
+Iif = "Iif"
+Noo = "Noo"
+
+[default.extend-identifiers]
+MisMatched = "MisMatched"
+ExludedDastTmplStats = "ExludedDastTmplStats"
