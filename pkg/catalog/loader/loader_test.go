@@ -1,11 +1,19 @@
 package loader
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/rs/xid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,4 +108,48 @@ func TestRemoteTemplates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoadTemplatesInitializesDialersWhenMissing(t *testing.T) {
+	// Create a minimal template on disk.
+	tmp := t.TempDir()
+	tmplPath := filepath.Join(tmp, "test.yaml")
+	require.NoError(t, os.WriteFile(tmplPath, []byte(`id: test
+info:
+  name: Test
+  author: test
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+    matchers:
+      - type: status
+        status:
+          - 200
+`), 0o644))
+
+	execID := xid.New().String()
+	opts := &types.Options{ExecutionId: execID, Timeout: 5, Retries: 1}
+	defer protocolstate.Close(execID)
+
+	execOpts := &protocols.ExecutorOptions{
+		Options: opts,
+		Catalog: disk.NewCatalog(tmp),
+		Parser:  templates.NewParser(),
+		Logger:  gologger.DefaultLogger,
+	}
+
+	store, err := New(&Config{
+		Templates:       []string{tmplPath},
+		Catalog:         disk.NewCatalog(tmp),
+		ExecutorOptions: execOpts,
+		Logger:          gologger.DefaultLogger,
+	})
+	require.NoError(t, err)
+
+	// Historically this could panic if protocolstate.Init wasn't called by the caller.
+	require.NotPanics(t, func() {
+		_ = store.LoadTemplates([]string{tmplPath})
+	})
 }
