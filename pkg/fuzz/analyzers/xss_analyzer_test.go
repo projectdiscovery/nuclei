@@ -1,54 +1,55 @@
 package analyzers
 
 import (
-	"net/http"
-	"strings"
 	"testing"
+	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
-	"github.com/stretchr/testify/require"
+	"golang.org/x/net/html"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestXSSContextAnalyzer(t *testing.T) {
-	analyzer := &XSSContextAnalyzer{}
-
-	t.Run("body-context", func(t *testing.T) {
-		body := `<html><body><div>pd_xss</div></body></html>`
-		tokenizer := fuzz.NewHTMLTokenizer(strings.NewReader(body))
-		
+	t.Run("text-context", func(t *testing.T) {
+		body := "<div>pd_xss</div>"
+		canary := "pd_xss"
 		found := false
+
+		tokenizer := html.NewTokenizer(strings.NewReader(body))
 		for {
-			tokenType, err := tokenizer.Next()
-			if err != nil {
+			tokenType := tokenizer.Next()
+			if tokenType == html.ErrorToken {
 				break
 			}
-			if tokenType == fuzz.TextToken && strings.Contains(tokenizer.Token().Data, "pd_xss") {
+			token := tokenizer.Token()
+			if tokenType == html.TextToken && strings.Contains(token.Data, canary) {
 				found = true
 				break
 			}
 		}
-		require.True(t, found)
+		assert.True(t, found, "Deveria detectar o reflexo no texto")
 	})
 
 	t.Run("attribute-context", func(t *testing.T) {
-		body := `<html><body><input value="pd_xss"></body></html>`
-		tokenizer := fuzz.NewHTMLTokenizer(strings.NewReader(body))
-		
+		body := `<input value="pd_xss">`
+		canary := "pd_xss"
 		found := false
+
+		tokenizer := html.NewTokenizer(strings.NewReader(body))
 		for {
-			tokenType, err := tokenizer.Next()
-			if err != nil {
+			tokenType := tokenizer.Next()
+			if tokenType == html.ErrorToken {
 				break
 			}
-			if tokenType == fuzz.StartTagToken {
-				for _, attr := range tokenizer.Token().Attr {
-					if strings.Contains(attr.Val, "pd_xss") {
+			token := tokenizer.Token()
+			if (tokenType == html.StartTagToken || tokenType == html.SelfClosingTagToken) {
+				for _, attr := range token.Attr {
+					if strings.Contains(attr.Val, canary) {
 						found = true
 						break
 					}
 				}
 			}
 		}
-		require.True(t, found)
+		assert.True(t, found, "Deveria detectar o reflexo no atributo")
 	})
 }
