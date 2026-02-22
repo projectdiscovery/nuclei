@@ -43,7 +43,6 @@ func TestXSSContextAnalyzer_Analyze(t *testing.T) {
 	})
 }
 
-// MockComponent 100% compatível com a interface component.Component
 type MockComponent struct {
 	URL          string
 	Key          string
