@@ -266,6 +266,7 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 			if r := recover(); r != nil {
 				err = errkit.Newf("fetch callback panicked: %v", r)
 			}
+			closeDone()
 			result <- err
 		}()
 		err = d.fetchCallback(d, done)
