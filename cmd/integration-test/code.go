@@ -64,7 +64,15 @@ func init() {
 		testCase := v.TestCase
 
 		if v.DisableOn != nil && v.DisableOn() {
-			// skip ps1 test case on non-windows platforms
+			// skip cases not applicable to the current platform
+			continue
+		}
+
+		// skip unsigned test cases before doing path resolution for better efficiency
+		if _, ok := testCase.(*unsignedCode); ok {
+			continue
+		}
+		if _, ok := testCase.(*codePyNoSig); ok {
 			continue
 		}
 
@@ -75,13 +83,6 @@ func init() {
 			continue
 		}
 
-		// skip unsigned test cases
-		if _, ok := testCase.(*unsignedCode); ok {
-			continue
-		}
-		if _, ok := testCase.(*codePyNoSig); ok {
-			continue
-		}
 		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
 			log.Printf("Could not sign template %v: %s", templatePath, err)
 			continue
