@@ -10,19 +10,19 @@ extend-exclude = [
 
 [default.extend-words]
 ot = "ot"
-Mis = "Mis"
 Fo = "Fo"
 hae = "hae"
 ue = "ue"
 BA = "BA"
-Exluded = "Exluded"
 SELEC = "SELEC"
-Allowd = "Allowd"
 alo = "alo"
 Iz = "Iz"
 Iy = "Iy"
 algoritmos = "algoritmos"
 Iif = "Iif"
-Noo = "Noo"
 
 [default.extend-identifiers]
+Noo = "Noo"
+Exluded = "Exluded" # needed for deprecated ExludedDastTmplStats alias in parser_stats.go; remove when alias is dropped
+Allowd = "Allowd"
+MisMatched = "MisMatched"
