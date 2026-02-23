@@ -21,8 +21,10 @@ Iy = "Iy"
 algoritmos = "algoritmos"
 Iif = "Iif"
 # The following are parts of code identifiers that typos flags after splitting.
-# Moved back to extend-words because typos checks split parts against this list.
-Noo = "Noo"
+Mis = "Mis"
+
+[default.extend-identifiers]
 Allowd = "Allowd"
 Exluded = "Exluded" # needed for deprecated ExludedDastTmplStats alias in parser_stats.go; remove when alias is dropped
-MisMatched = "MisMatched" # refined from broad 'Mis'
+MisMatched = "MisMatched"
+Noo = "Noo"
