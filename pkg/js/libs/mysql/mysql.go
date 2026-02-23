@@ -16,10 +16,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-type (
-	MySQLClient struct{}
-)
+type MySQLClient struct{}
 
+// executionIdFromCtx extracts the executionId from the context.
+// This is a helper function to avoid code duplication across public methods.
 func executionIdFromCtx(ctx context.Context) (string, error) {
 	executionId, ok := ctx.Value("executionId").(string)
 	if !ok {
@@ -28,6 +28,7 @@ func executionIdFromCtx(ctx context.Context) (string, error) {
 	return executionId, nil
 }
 
+// IsMySQL checks if the given host and port is a MySQL service
 func (c *MySQLClient) IsMySQL(ctx context.Context, host string, port int) (bool, error) {
 	executionId, err := executionIdFromCtx(ctx)
 	if err != nil {
@@ -60,12 +61,14 @@ func isMySQL(ctx context.Context, executionId string, host string, port int) (bo
 	return service != nil, nil
 }
 
+// Connect attempts to connect to a MySQL server
 func (c *MySQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
 	executionId, err := executionIdFromCtx(ctx)
 	if err != nil {
 		return false, err
 	}
 
+	// isMySQL already performs the SSRF check internally
 	isMySQLService, err := c.IsMySQL(ctx, host, port)
 	if err != nil || !isMySQLService {
 		return false, fmt.Errorf("not a mysql service")
@@ -85,20 +88,19 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
-type (
-	MySQLInfo struct {
-		Host      string               `json:"host,omitempty"`
-		IP        string               `json:"ip"`
-		Port      int                  `json:"port"`
-		Protocol  string               `json:"protocol"`
-		TLS       bool                 `json:"tls"`
-		Transport string               `json:"transport"`
-		Version   string               `json:"version,omitempty"`
-		Debug     plugins.ServiceMySQL `json:"debug,omitempty"`
-		Raw       string               `json:"metadata"`
-	}
-)
+type MySQLInfo struct {
+	Host      string               `json:"host,omitempty"`
+	IP        string               `json:"ip"`
+	Port      int                  `json:"port"`
+	Protocol  string               `json:"protocol"`
+	TLS       bool                 `json:"tls"`
+	Transport string               `json:"transport"`
+	Version   string               `json:"version,omitempty"`
+	Debug     plugins.ServiceMySQL `json:"debug,omitempty"`
+	Raw       string               `json:"metadata"`
+}
 
+// FingerprintMySQL attempts to fingerprint a MySQL service
 func (c *MySQLClient) FingerprintMySQL(ctx context.Context, host string, port int) (MySQLInfo, error) {
 	executionId, err := executionIdFromCtx(ctx)
 	if err != nil {
@@ -132,7 +134,7 @@ func fingerprintMySQL(ctx context.Context, executionId string, host string, port
 	if service == nil {
 		return info, fmt.Errorf("fingerprint failed: no service detected")
 	}
-	
+
 	info.Host = service.Host
 	info.IP = service.IP
 	info.Port = service.Port
@@ -146,6 +148,7 @@ func fingerprintMySQL(ctx context.Context, executionId string, host string, port
 	return info, nil
 }
 
+// ConnectWithDSN attempts to connect to a MySQL server using a DSN
 func (c *MySQLClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, error) {
 	executionId, err := executionIdFromCtx(ctx)
 	if err != nil {
@@ -154,7 +157,9 @@ func (c *MySQLClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, err
 	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
+// ExecuteQueryWithOpts executes a query on a MySQL server with options
 func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOptions, query string) (*utils.SQLResult, error) {
+	// SSRF and service check
 	isMySQLService, err := c.IsMySQL(ctx, opts.Host, opts.Port)
 	if err != nil || !isMySQLService {
 		return nil, fmt.Errorf("not a mysql service")
@@ -170,7 +175,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 		return nil, err
 	}
 	defer func() { _ = db.Close() }()
-	
+
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
@@ -181,7 +186,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 
 	data, err := utils.UnmarshalSQLRows(rows)
 	if err != nil {
-		if len(data.Rows) > 0 {
+		if data != nil && len(data.Rows) > 0 {
 			return data, nil
 		}
 		return nil, err
@@ -189,6 +194,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	return data, nil
 }
 
+// ExecuteQuery executes a query on a MySQL server
 func (c *MySQLClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, query string) (*utils.SQLResult, error) {
 	return c.ExecuteQueryWithOpts(ctx, MySQLOptions{
 		Host:     host,
@@ -199,6 +205,7 @@ func (c *MySQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	}, query)
 }
 
+// ExecuteQueryOnDB executes a query on a specific database of a MySQL server
 func (c *MySQLClient) ExecuteQueryOnDB(ctx context.Context, host string, port int, username, password, dbname, query string) (*utils.SQLResult, error) {
 	return c.ExecuteQueryWithOpts(ctx, MySQLOptions{
 		Host:     host,
