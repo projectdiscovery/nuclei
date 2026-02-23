@@ -717,7 +717,18 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
+		if err := protocolstate.Init(typesOpts); err != nil {
+			store.logger.Warning().Msgf("Could not initialize dialers: %s\n", err)
+			// Unable to initialize dialers, but we can still proceed loading templates.
+			// Network-dependent templates may fail later.
+			// Return empty slice to avoid nil pointer dereference in goroutines.
+			return []*templates.Template{}
+		}
+		dialers = protocolstate.GetDialersWithId(typesOpts.ExecutionId)
+		if dialers == nil {
+			store.logger.Warning().Msgf("Dialers still nil after initialization for executionId %s", typesOpts.ExecutionId)
+			return []*templates.Template{}
+		}
 	}
 
 	for _, templatePath := range includedTemplates {

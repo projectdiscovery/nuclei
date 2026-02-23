@@ -89,7 +89,8 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	executionId := c.nj.ExecutionId()
 	dialers := protocolstate.GetDialersWithId(executionId)
 	if dialers == nil {
-		panic("dialers with executionId " + executionId + " not found")
+		c.nj.HandleError(fmt.Errorf("dialers not initialized for execution id %s", executionId), "failed to get dialers")
+		return nil
 	}
 
 	var conn net.Conn

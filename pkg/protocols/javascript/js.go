@@ -637,7 +637,8 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
 	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
 	if dialers == nil {
-		panic(fmt.Sprintf("dialers not initialized for %s", request.options.Options.ExecutionId))
+		// dialers not initialized, cannot get IP for event data
+		gologger.Debug().Msgf("dialers not initialized for execution id %s, IP information will be missing", request.options.Options.ExecutionId)
 	}
 
 	data := make(map[string]interface{})
@@ -656,7 +657,7 @@ func (request *Request) generateEventData(input *contextargs.Context, values map
 	// add ip address to data
 	if input.MetaInput.CustomIP != "" {
 		data["ip"] = input.MetaInput.CustomIP
-	} else {
+	} else if dialers != nil {
 		// context: https://github.com/projectdiscovery/nuclei/issues/5021
 		hostname := input.MetaInput.Input
 		if strings.Contains(hostname, ":") {

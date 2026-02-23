@@ -143,7 +143,30 @@ func (c *Configuration) HasStandardOptions() bool {
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	dialers := protocolstate.GetDialersWithId(options.Options.ExecutionId)
 	if dialers == nil {
-		panic("dialers not initialized for execution id: " + options.Options.ExecutionId)
+		// attempt to initialize dialers
+		if err := protocolstate.Init(options.Options); err != nil {
+			// initialization failed; we'll create rawhttp client without dialer caching
+			rawHttpOptionsCopy := *rawhttp.DefaultOptions
+			if options.Options.AliveHttpProxy != "" {
+				rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
+			} else if options.Options.AliveSocksProxy != "" {
+				rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
+			}
+			rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
+			return rawhttp.NewClient(&rawHttpOptionsCopy)
+		}
+		dialers = protocolstate.GetDialersWithId(options.Options.ExecutionId)
+		if dialers == nil {
+			// still nil, fallback to rawhttp client without caching
+			rawHttpOptionsCopy := *rawhttp.DefaultOptions
+			if options.Options.AliveHttpProxy != "" {
+				rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
+			} else if options.Options.AliveSocksProxy != "" {
+				rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
+			}
+			rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
+			return rawhttp.NewClient(&rawHttpOptionsCopy)
+		}
 	}
 
 	// Lock the dialers to avoid a race when setting RawHTTPClient
