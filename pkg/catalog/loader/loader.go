@@ -720,7 +720,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		if err := protocolstate.Init(typesOpts); err != nil {
 			store.logger.Warning().Msgf("Could not initialize dialers: %s\n", err)
 			// Dialers are not required for template loading; goroutines will resolve dialers via
-			// the global protocolstate registry and store.config.ExecutorOptions.
+			// the global protocolstate registry.
 			// Proceed without dialers; network-dependent templates may fail later.
 		}
 		dialers = protocolstate.GetDialersWithId(typesOpts.ExecutionId)
