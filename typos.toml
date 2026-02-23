@@ -10,21 +10,19 @@ extend-exclude = [
 
 [default.extend-words]
 ot = "ot"
-Fo = "Fo"
+fo = "fo"
 hae = "hae"
 ue = "ue"
-BA = "BA"
-SELEC = "SELEC"
+ba = "ba"
+selec = "selec"
 alo = "alo"
-Iz = "Iz"
-Iy = "Iy"
+iz = "iz"
+iy = "iy"
 algoritmos = "algoritmos"
-Iif = "Iif"
+iif = "iif"
 # The following are parts of code identifiers that typos flags after splitting.
-Mis = "Mis"
-
-[default.extend-identifiers]
-Allowd = "Allowd"
-Exluded = "Exluded" # needed for deprecated ExludedDastTmplStats alias in parser_stats.go; remove when alias is dropped
-MisMatched = "MisMatched"
-Noo = "Noo"
+mis = "mis"
+allowd = "allowd"
+exluded = "exluded" # needed for deprecated ExludedDastTmplStats alias in parser_stats.go; remove when alias is dropped
+noo = "noo"
+mismatched = "mismatched"
