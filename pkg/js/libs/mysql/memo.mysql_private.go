@@ -1,10 +1,7 @@
-// Warning - This is generated code
 package mysql
 
 import (
 	"context"
-	"errors"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -12,17 +9,14 @@ func memoizedconnectWithDSN(ctx context.Context, executionId string, dsn string)
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
+
+	// Optimization: String concatenation is faster than fmt.Sprint for keys
 	hash := "connectWithDSN:" + executionId + ":" + dsn
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connectWithDSN(ctx, executionId, dsn)
+		return connectWithDSN(context.Background(), executionId, dsn)
 	})
-	if err != nil {
-		return false, err
-	}
-	if value, ok := v.(bool); ok {
-		return value, nil
-	}
 
-	return false, errors.New("could not convert cached result")
+	if err != nil { return false, err }
+	return v.(bool), nil
 }
