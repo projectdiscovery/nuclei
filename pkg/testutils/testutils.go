@@ -115,7 +115,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 	return executerOpts
 }
 
-// NoopWriter is a NooP gologger writer.
+// NoopWriter is a Noop gologger writer.
 type NoopWriter struct{}
 
 // Write writes the data to an output writer.

@@ -151,7 +151,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		Expired:           true,
 		SelfSigned:        true,
 		Revoked:           true,
-		MisMatched:        true,
+		MisMatched:        true, // Note: field name from external package; spelling should be "Mismatched" but cannot change.
 		MinVersion:        request.MinVersion,
 		MaxVersion:        request.MaxVersion,
 		Ciphers:           request.CipherSuites,

@@ -26,5 +26,3 @@ Iif = "Iif"
 Noo = "Noo"
 
 [default.extend-identifiers]
-MisMatched = "MisMatched"
-ExludedDastTmplStats = "ExludedDastTmplStats"

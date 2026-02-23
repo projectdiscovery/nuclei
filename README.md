@@ -193,7 +193,7 @@ OUTPUT:
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
-   -j, -jsonl                    write output in JSONL(ines) format
+   -j, -jsonl                    write output in JSONL(lines) format
    -irr, -include-rr -omit-raw   include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use -omit-raw] (default true)
    -or, -omit-raw                omit request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)
    -ot, -omit-template           omit encoded template in the JSON, JSONL output
@@ -204,7 +204,7 @@ OUTPUT:
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
    -je, -json-export string      file to export results in JSON format
-   -jle, -jsonl-export string    file to export results in JSONL(ine) format
+   -jle, -jsonl-export string    file to export results in JSONL(line) format
    -rd, -redact string[]         redact given list of keys from query parameter, request header and body
 
 CONFIGURATIONS:
@@ -340,7 +340,7 @@ UPDATE:
 
 STATISTICS:
    -stats                    display statistics about the running scan
-   -sj, -stats-json          display statistics in JSONL(ines) format
+   -sj, -stats-json          display statistics in JSONL(lines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
    -hps, -http-stats         enable http status capturing (experimental)
