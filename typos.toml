@@ -6,16 +6,6 @@ extend-exclude = [
     "**/testdata/**",  # test data directories
     "**/*.json",  # JSON files (mostly data)
     "**/*.xml",  # XML files (mostly data)
-]
-
-[files]
-extend-exclude = [
-    "README_*.md",  # translation files
-    "integration_tests/**",  # test payloads
-    "cmd/integration-test/**",  # integration test code
-    "**/testdata/**",  # test data directories
-    "**/*.json",  # JSON files (mostly data)
-    "**/*.xml",  # XML files (mostly data)
     "pkg/protocols/ssl/ssl.go", # contains external field names with typos (MisMatched) that tool fails to ignore
 ]
 

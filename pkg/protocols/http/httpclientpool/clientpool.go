@@ -141,31 +141,27 @@ func (c *Configuration) HasStandardOptions() bool {
 
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
+	// newUncachedRawHTTPClient creates a rawhttp client without dialer caching,
+	// used as a fallback when dialers are not initialized.
+	newUncachedRawHTTPClient := func() *rawhttp.Client {
+		rawHttpOptionsCopy := *rawhttp.DefaultOptions
+		if options.Options.AliveHttpProxy != "" {
+			rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
+		} else if options.Options.AliveSocksProxy != "" {
+			rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
+		}
+		rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
+		return rawhttp.NewClient(&rawHttpOptionsCopy)
+	}
+
 	dialers := protocolstate.GetDialersWithId(options.Options.ExecutionId)
 	if dialers == nil {
-		// attempt to initialize dialers
-		if err := protocolstate.Init(options.Options); err != nil {
-			// initialization failed; we'll create rawhttp client without dialer caching
-			rawHttpOptionsCopy := *rawhttp.DefaultOptions
-			if options.Options.AliveHttpProxy != "" {
-				rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
-			} else if options.Options.AliveSocksProxy != "" {
-				rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
-			}
-			rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
-			return rawhttp.NewClient(&rawHttpOptionsCopy)
+		// attempt to initialize dialers; fall back to an uncached client on any failure
+		if err := protocolstate.Init(options.Options); err == nil {
+			dialers = protocolstate.GetDialersWithId(options.Options.ExecutionId)
 		}
-		dialers = protocolstate.GetDialersWithId(options.Options.ExecutionId)
 		if dialers == nil {
-			// still nil, fallback to rawhttp client without caching
-			rawHttpOptionsCopy := *rawhttp.DefaultOptions
-			if options.Options.AliveHttpProxy != "" {
-				rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
-			} else if options.Options.AliveSocksProxy != "" {
-				rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
-			}
-			rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
-			return rawhttp.NewClient(&rawHttpOptionsCopy)
+			return newUncachedRawHTTPClient()
 		}
 	}
 
@@ -189,7 +185,6 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	dialers.RawHTTPClient = rawhttp.NewClient(&rawHttpOptionsCopy)
 	return dialers.RawHTTPClient
 }
-
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	if configuration.HasStandardOptions() {
