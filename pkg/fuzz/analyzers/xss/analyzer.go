@@ -49,12 +49,13 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if payload == "" {
 		return false, "", nil
 	}
+	originalValue := gr.OriginalValue
 
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, "", err
 	}
 	defer func() {
-		_ = gr.Component.SetValue(gr.Key, gr.Value)
+		_ = gr.Component.SetValue(gr.Key, originalValue)
 	}()
 
 	rebuilt, err := gr.Component.Rebuild()

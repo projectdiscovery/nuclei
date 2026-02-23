@@ -107,6 +107,7 @@ func TestAnalyzeUsesFinalValueAndRestoresComponent(t *testing.T) {
 			Component:       fakeComp,
 			Key:             "k",
 			Value:           "final-payload",
+			OriginalValue:   "seed",
 			OriginalPayload: "template-[RANDSTR]",
 		},
 		HttpClient: newTestClient(true, "k"),
@@ -123,8 +124,8 @@ func TestAnalyzeUsesFinalValueAndRestoresComponent(t *testing.T) {
 	if fakeComp.setCalls[0].value != "final-payload" {
 		t.Fatalf("expected first SetValue to use generated final value, got %q", fakeComp.setCalls[0].value)
 	}
-	if fakeComp.setCalls[1].value != "final-payload" {
-		t.Fatalf("expected restore to keep generated final value, got %q", fakeComp.setCalls[1].value)
+	if fakeComp.setCalls[1].value != "seed" {
+		t.Fatalf("expected restore to use original value, got %q", fakeComp.setCalls[1].value)
 	}
 	if fakeComp.rebuildCalls != 1 {
 		t.Fatalf("expected Rebuild to be called once, got %d", fakeComp.rebuildCalls)
@@ -140,6 +141,7 @@ func TestAnalyzeNoReflection(t *testing.T) {
 			Component:       fakeComp,
 			Key:             "k",
 			Value:           "probe",
+			OriginalValue:   "seed",
 			OriginalPayload: "template",
 		},
 		HttpClient: newTestClient(false, "k"),
@@ -152,6 +154,9 @@ func TestAnalyzeNoReflection(t *testing.T) {
 	}
 	if len(fakeComp.setCalls) != 2 {
 		t.Fatalf("expected 2 SetValue calls (set + restore), got %d", len(fakeComp.setCalls))
+	}
+	if fakeComp.setCalls[1].value != "seed" {
+		t.Fatalf("expected restore to use original value, got %q", fakeComp.setCalls[1].value)
 	}
 }
 
