@@ -2066,6 +2066,7 @@ Valid values:
 
 
   - <code>time_delay</code>
+  - <code>xss_context</code>
 </div>
 
 <hr />
@@ -4572,7 +4573,6 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.variables</code>
-
 
 
 
