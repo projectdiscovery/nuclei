@@ -7,22 +7,69 @@ extend-exclude = [
     "go.sum",
     # Binary / non-text test data
     "pkg/protocols/common/helpers/deserialization/testdata/",
-    # Static assets
+    "pkg/input/formats/testdata/",
+    # Static assets & WAF regexes (minified / machine-generated)
     "static/",
+    "pkg/output/stats/waf/",
     # Non-English documentation
     "README_CN.md",
     "README_KR.md",
     "README_ID.md",
     "README_ES.md",
     "README_PT-BR.md",
+    "README_JP.md",
     "README_TR.md",
     # Acknowledgements (contains proper names)
     "THANKS.md",
     "pkg/js/THANKS.md",
+    # Integration test fixtures (YAML templates with intentional payloads)
+    "integration_tests/",
     # Test target lists (URLs / hostnames)
     "cmd/functional-test/targets*.txt",
+    # Encoded keys / tokens in test helpers
+    "cmd/integration-test/generic.go",
+    # Embedded certificates and base64 data
+    "pkg/testutils/integration.go",
+    # Test XML payloads (non-English content)
+    "pkg/operators/matchers/match_test.go",
+    # Embedded expressions test data (base64 tokens)
+    "pkg/protocols/common/expressions/expressions_test.go",
+    # Fuzz playground DB seeds (multi-language content)
+    "pkg/testutils/fuzzplayground/",
 ]
 
 [default.extend-words]
 # Known filename typo that cannot be renamed without a separate refactor
 worflow = "worflow"
+
+# CLI flag short names used throughout the codebase
+ot = "ot"
+ue = "ue"
+hae = "hae"
+fo = "fo"
+
+# Existing identifier / variable names in the codebase
+# (renaming would break API compatibility or require a separate refactor)
+Exluded = "Exluded"
+Reuests = "Reuests"
+Noo = "Noo"
+Splitted = "Splitted"
+splitted = "splitted"
+Formated = "Formated"
+formated = "formated"
+Allowd = "Allowd"
+Inactiv = "Inactiv"
+Mis = "Mis"
+seperate = "seperate"
+fiter = "fiter"
+thant = "thant"
+pannel = "pannel"
+noticable = "noticable"
+
+# Domain-specific terms (security / networking)
+SELEC = "SELEC"
+IST = "IST"
+
+# Partial words inside compound tokens (e.g., JSONL(ines))
+ines = "ines"
+ine = "ine"
