@@ -36,6 +36,9 @@ const (
 
 var testcertpath = ""
 
+// init initializes the integration test environment for the code protocol.
+// It sets up the template signer and processes test cases, logging errors
+// instead of crashing to maintain the robustness of the test suite.
 func init() {
 	if isCodeDisabled() {
 		// skip executing code protocol in CI on windows
@@ -47,7 +50,10 @@ func init() {
 
 	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
 	if err != nil {
+		// log automatically appends a newline, so \n is removed to follow project style
 		log.Printf("Could not create template signer: %s", err)
+		// Set sentinel to prevent downstream cryptic failures when signer is missing
+		testcertpath = "MISSING_SIGNER"
 		return
 	}
 
@@ -61,14 +67,15 @@ func init() {
 			// skip ps1 test case on non-windows platforms
 			continue
 		}
-		templatePath, err = filepath.Abs(templatePath)
-		if err != nil {
-			log.Printf("Could not get absolute path for %s: %s", v.Path, err)
+
+		var absErr error
+		templatePath, absErr = filepath.Abs(templatePath)
+		if absErr != nil {
+			log.Printf("Could not get absolute path for %s: %s", v.Path, absErr)
 			continue
 		}
 
-		// skip
-		// - unsigned test cases
+		// skip unsigned test cases
 		if _, ok := testCase.(*unsignedCode); ok {
 			continue
 		}
@@ -79,7 +86,7 @@ func init() {
 			log.Printf("Could not sign template %v: %s", templatePath, err)
 			continue
 		}
-	}	
+	}
 }
 
 func getEnvValues() []string {
