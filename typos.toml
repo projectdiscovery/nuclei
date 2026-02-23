@@ -8,6 +8,17 @@ extend-exclude = [
     "**/*.xml",  # XML files (mostly data)
 ]
 
+[files]
+extend-exclude = [
+    "README_*.md",  # translation files
+    "integration_tests/**",  # test payloads
+    "cmd/integration-test/**",  # integration test code
+    "**/testdata/**",  # test data directories
+    "**/*.json",  # JSON files (mostly data)
+    "**/*.xml",  # XML files (mostly data)
+    "pkg/protocols/ssl/ssl.go", # contains external field names with typos (MisMatched) that tool fails to ignore
+]
+
 [default.extend-words]
 ot = "ot"
 fo = "fo"
@@ -20,9 +31,8 @@ iz = "iz"
 iy = "iy"
 algoritmos = "algoritmos"
 iif = "iif"
-# The following are parts of code identifiers that typos flags after splitting.
 mis = "mis"
 allowd = "allowd"
-exluded = "exluded" # needed for deprecated ExludedDastTmplStats alias in parser_stats.go; remove when alias is dropped
+exluded = "exluded"
 noo = "noo"
 mismatched = "mismatched"
