@@ -1,0 +1,28 @@
+[files]
+extend-exclude = [
+    # Auto-generated
+    "pkg/js/generated/",
+    "nuclei-jsonschema.json",
+    # Dependencies
+    "go.sum",
+    # Binary / non-text test data
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    # Static assets
+    "static/",
+    # Non-English documentation
+    "README_CN.md",
+    "README_KR.md",
+    "README_ID.md",
+    "README_ES.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Acknowledgements (contains proper names)
+    "THANKS.md",
+    "pkg/js/THANKS.md",
+    # Test target lists (URLs / hostnames)
+    "cmd/functional-test/targets*.txt",
+]
+
+[default.extend-words]
+# Known filename typo that cannot be renamed without a separate refactor
+worflow = "worflow"
