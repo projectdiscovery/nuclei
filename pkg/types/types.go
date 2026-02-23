@@ -174,6 +174,8 @@ type Options struct {
 	// using same matchers/extractors from http protocol without the need
 	// to send a new request, reading responses from a file.
 	OfflineHTTP bool
+	// Honeypot enables honeypot detection to abort scanning known traps.
+	Honeypot bool
 	// Force HTTP2 requests
 	ForceAttemptHTTP2 bool
 	// StatsJSON writes stats output in JSON format

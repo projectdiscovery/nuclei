@@ -982,6 +982,14 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
+		// Honeypot detection: abort before matchers if enabled and detected
+		if request.options.Options.Honeypot {
+			if IsHoneypot(respChain.Response(), []byte(bodyStr)) {
+				gologger.Warning().Msgf("Honeypot detected for %s, aborting scan", formedURL)
+				return nil
+			}
+		}
+
 		// log request stats
 		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), fullResponseStr)
 
