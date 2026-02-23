@@ -48,23 +48,18 @@ ue = "ue"
 hae = "hae"
 fo = "fo"
 
-# Existing identifier / variable names in the codebase
-# (renaming would break API compatibility or require a separate refactor)
+# Words inside compound identifiers — these appear as sub-words after
+# identifier splitting (e.g. NoopWriter → Noo, ExludedDastTmplStats → Exluded)
+# and must stay at the word level.
+Noo = "Noo"
+Mis = "Mis"
 Exluded = "Exluded"
 Reuests = "Reuests"
-Noo = "Noo"
 Splitted = "Splitted"
 splitted = "splitted"
 Formated = "Formated"
 formated = "formated"
 Allowd = "Allowd"
-Inactiv = "Inactiv"
-Mis = "Mis"
-seperate = "seperate"
-fiter = "fiter"
-thant = "thant"
-pannel = "pannel"
-noticable = "noticable"
 
 # Domain-specific terms (security / networking)
 SELEC = "SELEC"
