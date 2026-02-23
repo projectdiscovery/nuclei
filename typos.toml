@@ -21,8 +21,11 @@ Iy = "Iy"
 algoritmos = "algoritmos"
 Iif = "Iif"
 
-[default.extend-identifiers]
-Noo = "Noo"
-Exluded = "Exluded" # needed for deprecated ExludedDastTmplStats alias in parser_stats.go; remove when alias is dropped
-Allowd = "Allowd"
-MisMatched = "MisMatched"
+[default]
+extend-identifiers = [
+    "Allowd",
+    "Exluded",
+    "MisMatched",
+    "Noo",
+]
+# Exluded: needed for deprecated ExludedDastTmplStats alias in parser_stats.go; remove when alias is dropped
