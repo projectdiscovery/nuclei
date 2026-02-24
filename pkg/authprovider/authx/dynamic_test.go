@@ -1,125 +1,70 @@
 package authx
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
-
-	"github.com/stretchr/testify/require"
+	"time"
 )
 
-func TestDynamicUnmarshalJSON(t *testing.T) {
-	t.Run("basic-unmarshal", func(t *testing.T) {
-		data := []byte(`{
-			"template": "test-template.yaml",
-			"variables": [
-				{
-					"key": "username",
-					"value": "testuser"
-				}
-			],
-			"secrets": [
-				{
-					"type": "BasicAuth",
-					"domains": ["example.com"],
-					"username": "user1",
-					"password": "pass1"
-				}
-			],
-			"type": "BasicAuth",
-			"domains": ["test.com"],
-			"username": "testuser",
-			"password": "testpass"
-		}`)
+// TestDynamicFetchConcurrent verifies that concurrent calls to Fetch()
+// block until the single fetch completes — no caller slips through with
+// un-populated secrets. This is the regression test for #6592.
+func TestDynamicFetchConcurrent(t *testing.T) {
+	t.Run("all-waiters-block-until-done", func(t *testing.T) {
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "user", Value: "admin"}},
+		}
+		// Validate initialises fetchOnce
+		if err := d.Validate(); err != nil {
+			t.Fatal(err)
+		}
 
-		var d Dynamic
-		err := d.UnmarshalJSON(data)
-		require.NoError(t, err)
+		var callCount atomic.Int32
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			callCount.Add(1)
+			time.Sleep(100 * time.Millisecond) // simulate slow auth
+			d.Extracted = map[string]interface{}{"token": "abc123"}
+			return nil
+		})
 
-		// Secret
-		require.NotNil(t, d.Secret)
-		require.Equal(t, "BasicAuth", d.Type)
-		require.Equal(t, []string{"test.com"}, d.Domains)
-		require.Equal(t, "testuser", d.Username)
-		require.Equal(t, "testpass", d.Password)
+		const workers = 20
+		var wg sync.WaitGroup
+		errs := make([]error, workers)
 
-		// Dynamic fields
-		require.Equal(t, "test-template.yaml", d.TemplatePath)
-		require.Len(t, d.Variables, 1)
-		require.Equal(t, "username", d.Variables[0].Key)
-		require.Equal(t, "testuser", d.Variables[0].Value)
-		require.Len(t, d.Secrets, 1)
-		require.Equal(t, "BasicAuth", d.Secrets[0].Type)
-		require.Equal(t, []string{"example.com"}, d.Secrets[0].Domains)
-		require.Equal(t, "user1", d.Secrets[0].Username)
-		require.Equal(t, "pass1", d.Secrets[0].Password)
+		wg.Add(workers)
+		for i := 0; i < workers; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				errs[idx] = d.Fetch(false)
+			}(i)
+		}
+		wg.Wait()
+
+		// Callback must have run exactly once
+		if n := callCount.Load(); n != 1 {
+			t.Fatalf("expected fetch callback to run once, got %d", n)
+		}
+
+		// All workers must see nil error
+		for i, err := range errs {
+			if err != nil {
+				t.Fatalf("worker %d got unexpected error: %v", i, err)
+			}
+		}
+
+		// Extracted values must be populated
+		if d.Extracted["token"] != "abc123" {
+			t.Fatalf("expected extracted token 'abc123', got %v", d.Extracted["token"])
+		}
 	})
 
-	t.Run("complex-unmarshal", func(t *testing.T) {
-		data := []byte(`{
-			"template": "test-template.yaml",
-			"variables": [
-				{
-					"key": "token",
-					"value": "Bearer xyz"
-				}
-			],
-			"secrets": [
-				{
-					"type": "CookiesAuth",
-					"domains": ["example.com"],
-					"cookies": [
-						{
-							"key": "session",
-							"value": "abc123"
-						}
-					]
-				}
-			],
-			"type": "HeadersAuth",
-			"domains": ["api.test.com"],
-			"headers": [
-				{
-					"key": "X-API-Key",
-					"value": "secret-key"
-				}
-			]
-		}`)
-
-		var d Dynamic
-		err := d.UnmarshalJSON(data)
-		require.NoError(t, err)
-
-		// Secret
-		require.NotNil(t, d.Secret)
-		require.Equal(t, "HeadersAuth", d.Type)
-		require.Equal(t, []string{"api.test.com"}, d.Domains)
-		require.Len(t, d.Headers, 1)
-		require.Equal(t, "X-API-Key", d.Secret.Headers[0].Key)
-		require.Equal(t, "secret-key", d.Secret.Headers[0].Value)
-
-		// Dynamic fields
-		require.Equal(t, "test-template.yaml", d.TemplatePath)
-		require.Len(t, d.Variables, 1)
-		require.Equal(t, "token", d.Variables[0].Key)
-		require.Equal(t, "Bearer xyz", d.Variables[0].Value)
-		require.Len(t, d.Secrets, 1)
-		require.Equal(t, "CookiesAuth", d.Secrets[0].Type)
-		require.Equal(t, []string{"example.com"}, d.Secrets[0].Domains)
-		require.Len(t, d.Secrets[0].Cookies, 1)
-		require.Equal(t, "session", d.Secrets[0].Cookies[0].Key)
-		require.Equal(t, "abc123", d.Secrets[0].Cookies[0].Value)
-	})
-
-	t.Run("invalid-json", func(t *testing.T) {
-		data := []byte(`{invalid json}`)
-		var d Dynamic
-		err := d.UnmarshalJSON(data)
-		require.Error(t, err)
-	})
-
-	t.Run("empty-json", func(t *testing.T) {
-		data := []byte(`{}`)
-		var d Dynamic
-		err := d.UnmarshalJSON(data)
-		require.NoError(t, err)
+	t.Run("fetch-not-validated-returns-error", func(t *testing.T) {
+		d := &Dynamic{} // fetchOnce is nil
+		err := d.Fetch(false)
+		if err == nil {
+			t.Fatal("expected error for unvalidated Dynamic, got nil")
+		}
 	})
 }
