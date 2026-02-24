@@ -9,52 +9,65 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Constants for standardization and maintenance
+const (
+	XSSAnalyzerName = "xss-context"
+	MaxResponseSize = 4 * 1024 * 1024 // 4MB
+	CanaryLength    = 6
+)
+
 type XSSContextAnalyzer struct{}
 
 func (a *XSSContextAnalyzer) Name() string {
-	return "xss-context"
+	return XSSAnalyzerName
 }
 
 func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
-	// Use randomized canary to avoid false positives (standard in Nuclei)
-	return data + randStringBytesMask(6)
+	// randStringBytesMask is a utility function from the analyzers package
+	return data + randStringBytesMask(CanaryLength)
 }
 
 func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	gr := options.FuzzGenerated
 	payload := a.ApplyInitialTransformation(gr.Value, nil)
 
+	// Inject payload and ensure mandatory state restoration (Component Contract)
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("failed to set fuzz value: %w", err)
 	}
-	// Log error if restoration fails to maintain component integrity
 	defer func() {
 		if err := gr.Component.SetValue(gr.Key, gr.Value); err != nil {
-			log.Printf("[xss-analyzer] failed to restore value for %s: %v", gr.Key, err)
+			log.Printf("[%s] critical: failed to restore component state: %v", XSSAnalyzerName, err)
 		}
 	}()
 
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("failed to rebuild request: %w", err)
 	}
 
-	// Use request directly (removed redundant WithContext)
 	resp, err := options.HttpClient.Do(rebuilt)
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Limit reading to 4MB to prevent OOM
-	const maxBodySize = 4 * 1024 * 1024
-	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
+	// Safety limit reading + 1 byte to detect explicit truncation
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseSize+1))
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("failed to read response body: %w", err)
 	}
-	body := string(bodyBytes)
+	if len(bodyBytes) > MaxResponseSize {
+		return false, "", fmt.Errorf("response body exceeded limit of %d bytes", MaxResponseSize)
+	}
 
-	tokenizer := html.NewTokenizer(strings.NewReader(body))
+	return a.analyzeContent(strings.NewReader(string(bodyBytes)), payload)
+}
+
+// analyzeContent processes HTML via Tokenizer to identify the reflection context
+func (a *XSSContextAnalyzer) analyzeContent(r io.Reader, payload string) (bool, string, error) {
+	tokenizer := html.NewTokenizer(r)
+
 	for {
 		tokenType := tokenizer.Next()
 		if tokenType == html.ErrorToken {
@@ -65,20 +78,25 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 		}
 
 		token := tokenizer.Token()
+		// Raw content of the token (text or comment data)
+		content := token.Data
+
 		switch tokenType {
 		case html.StartTagToken, html.SelfClosingTagToken:
 			for _, attr := range token.Attr {
 				if strings.Contains(attr.Val, payload) {
-					return true, fmt.Sprintf("reflection in attribute: %s of tag: <%s>", attr.Key, token.Data), nil
+					return true, fmt.Sprintf("reflection in attribute: %s (tag: <%s>)", attr.Key, token.Data), nil
 				}
 			}
-		case html.TextToken:
-			if strings.Contains(token.Data, payload) {
-				return true, "reflection in html text node", nil
-			}
-		case html.CommentToken: // Added per Neo/CodeRabbit suggestion
-			if strings.Contains(token.Data, payload) {
+
+		case html.CommentToken:
+			if strings.Contains(content, payload) {
 				return true, "reflection in html comment", nil
+			}
+
+		case html.TextToken:
+			if strings.Contains(content, payload) {
+				return true, "reflection in html text node", nil
 			}
 		}
 	}
