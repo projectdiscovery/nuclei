@@ -3,7 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
-	"sync/atomic"
+	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -18,6 +18,15 @@ var (
 	_ json.Unmarshaler = &Dynamic{}
 )
 
+// ErrNotValidated is returned when Fetch is called before Validate.
+var ErrNotValidated = errkit.New("dynamic secret not validated: call Validate() before Fetch()")
+
+// fetchState bundles sync.Once and error so they are shared across value copies of Dynamic.
+type fetchState struct {
+	once sync.Once
+	err  error
+}
+
 // Dynamic is a struct for dynamic secret or credential
 // these are high level secrets that take action to generate the actual secret
 // ex: username and password are dynamic secrets, the actual secret is the token obtained
@@ -30,9 +39,9 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
-	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
-	error         error                  `json:"-" yaml:"-"` // error if any
+	// fetchState is a pointer so all value copies of Dynamic share the same fetch state.
+	// Initialized by Validate() before Fetch() is called.
+	fetchState *fetchState `json:"-" yaml:"-"`
 }
 
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
@@ -70,8 +79,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.fetched = &atomic.Bool{}
-	d.fetching = &atomic.Bool{}
+	d.fetchState = &fetchState{}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -183,18 +191,10 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // GetStrategy returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
-	if d.fetched.Load() {
-		if d.error != nil {
-			return nil
-		}
-	} else {
-		// Try to fetch if not already fetched
-		_ = d.Fetch(true)
-	}
-
-	if d.error != nil {
+	if err := d.Fetch(true); err != nil {
 		return nil
 	}
+
 	var strategies []AuthStrategy
 	if d.Secret != nil {
 		strategies = append(strategies, d.GetStrategy())
@@ -208,30 +208,32 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
 func (d *Dynamic) Fetch(isFatal bool) error {
-	if d.fetched.Load() {
-		return d.error
+	if d.fetchState == nil {
+		if isFatal {
+			gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", ErrNotValidated)
+		}
+		return ErrNotValidated
 	}
 
-	// Try to set fetching flag atomically
-	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
-		return d.error
+	d.fetchState.once.Do(func() {
+		if d.fetchCallback == nil {
+			d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
+			return
+		}
+		d.fetchState.err = d.fetchCallback(d)
+	})
+
+	if d.fetchState.err != nil && isFatal {
+		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.fetchState.err)
 	}
-
-	// We're the only one fetching, call the callback
-	d.error = d.fetchCallback(d)
-
-	// Mark as fetched and clear fetching flag
-	d.fetched.Store(true)
-	d.fetching.Store(false)
-
-	if d.error != nil && isFatal {
-		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
-	}
-	return d.error
+	return d.fetchState.err
 }
 
 // Error returns the error if any
 func (d *Dynamic) Error() error {
-	return d.error
+	if d.fetchState == nil {
+		return nil
+	}
+	d.fetchState.once.Do(func() {})  // ensure happens-before for err read
+	return d.fetchState.err
 }

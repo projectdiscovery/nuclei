@@ -1,6 +1,8 @@
 package authx
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -121,5 +123,98 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		var d Dynamic
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
+	})
+}
+
+func TestDynamicFetchConcurrent(t *testing.T) {
+	t.Run("fetch-callback-runs-once", func(t *testing.T) {
+		var callCount atomic.Int32
+		ready := make(chan struct{})
+
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "k", Value: "v"}},
+		}
+		require.NoError(t, d.Validate())
+		d.fetchCallback = func(_ *Dynamic) error {
+			<-ready
+			callCount.Add(1)
+			return nil
+		}
+
+		var wg sync.WaitGroup
+		const n = 20
+		wg.Add(n)
+		for i := 0; i < n; i++ {
+			go func() {
+				defer wg.Done()
+				_ = d.Fetch(false)
+			}()
+		}
+		close(ready)
+		wg.Wait()
+
+		require.Equal(t, int32(1), callCount.Load())
+	})
+
+	t.Run("all-waiters-get-same-error", func(t *testing.T) {
+		ready := make(chan struct{})
+
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "k", Value: "v"}},
+		}
+		require.NoError(t, d.Validate())
+		d.fetchCallback = func(_ *Dynamic) error {
+			<-ready
+			return nil
+		}
+
+		errs := make([]error, 20)
+		var wg sync.WaitGroup
+		wg.Add(len(errs))
+		for i := range errs {
+			i := i
+			go func() {
+				defer wg.Done()
+				errs[i] = d.Fetch(false)
+			}()
+		}
+		close(ready)
+		wg.Wait()
+
+		for _, err := range errs {
+			require.NoError(t, err)
+		}
+	})
+
+	t.Run("unvalidated-returns-ErrNotValidated", func(t *testing.T) {
+		d := &Dynamic{}
+		err := d.Fetch(false)
+		require.ErrorIs(t, err, ErrNotValidated)
+	})
+
+	t.Run("shared-state-across-value-copies", func(t *testing.T) {
+		var callCount atomic.Int32
+
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "k", Value: "v"}},
+		}
+		require.NoError(t, d.Validate())
+		d.fetchCallback = func(_ *Dynamic) error {
+			callCount.Add(1)
+			return nil
+		}
+
+		// simulate what file.go does: embed Dynamic by value into DynamicAuthStrategy
+		s1 := &DynamicAuthStrategy{Dynamic: *d}
+		s2 := &DynamicAuthStrategy{Dynamic: *d}
+
+		require.NoError(t, s1.Dynamic.Fetch(false))
+		require.NoError(t, s2.Dynamic.Fetch(false))
+
+		// fetchCallback must have run exactly once across both copies
+		require.Equal(t, int32(1), callCount.Load())
 	})
 }

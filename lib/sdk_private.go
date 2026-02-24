@@ -229,7 +229,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	// prefetch secrets
-	if e.executerOpts.AuthProvider != nil && e.opts.PreFetchSecrets {
+	if e.executerOpts.AuthProvider != nil {
 		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
 			return errors.Wrap(err, "could not prefetch secrets")
 		}
