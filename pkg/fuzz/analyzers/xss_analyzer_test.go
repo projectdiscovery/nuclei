@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -17,55 +18,71 @@ func TestXSSContextAnalyzer_Analyze(t *testing.T) {
 
 	t.Run("reflection-in-text-node", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			val := r.URL.Query().Get("q")
-			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, "<html><body><div>%s</div></body></html>", val)
+			fmt.Fprintf(w, "<div>%s</div>", r.URL.Query().Get("q"))
 		}))
 		defer server.Close()
+		runTest(t, analyzer, server.URL, "text node")
+	})
 
-		client := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
-		req, _ := retryablehttp.NewRequest(http.MethodGet, server.URL+"?q=orig", nil)
+	t.Run("reflection-in-attribute", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<input value='%s'>", r.URL.Query().Get("q"))
+		}))
+		defer server.Close()
+		runTest(t, analyzer, server.URL, "attribute")
+	})
+
+	t.Run("no-reflection", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "<html>safe content</html>")
+		}))
+		defer server.Close()
 		
-		opts := &Options{
-			HttpClient: client,
-			FuzzGenerated: fuzz.GeneratedRequest{
-				Request: req,
-				Value:   "orig",
-				Key:     "q",
-				Component: &MockComponent{URL: server.URL, Key: "q", CurrentValue: "orig"},
-			},
-		}
-
-		matched, message, err := analyzer.Analyze(opts)
+		opts := setupOptions(t, server.URL)
+		matched, _, err := analyzer.Analyze(opts)
 		require.NoError(t, err)
-		require.True(t, matched)
-		require.Contains(t, message, "text node")
-		
-		// Verify that the component value was restored to 'orig'
-		require.Equal(t, "orig", opts.FuzzGenerated.Component.(*MockComponent).CurrentValue)
+		require.False(t, matched)
 	})
 }
 
-// MockComponent implements the minimal component.Component interface required for testing
+func setupOptions(t *testing.T, serverURL string) *Options {
+	client := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	req, err := retryablehttp.NewRequest(http.MethodGet, serverURL+"?q=orig", nil)
+	require.NoError(t, err)
+	
+	return &Options{
+		HttpClient: client,
+		FuzzGenerated: fuzz.GeneratedRequest{
+			Request: req, Value: "orig", Key: "q",
+			Component: &MockComponent{URL: serverURL, Key: "q", CurrentValue: "orig"},
+		},
+	}
+}
+
+func runTest(t *testing.T, analyzer *XSSContextAnalyzer, url string, expectedMsg string) {
+	opts := setupOptions(t, url)
+	matched, message, err := analyzer.Analyze(opts)
+	require.NoError(t, err)
+	require.True(t, matched)
+	require.Contains(t, message, expectedMsg)
+	require.Equal(t, "orig", opts.FuzzGenerated.Component.(*MockComponent).CurrentValue)
+}
+
 type MockComponent struct {
-	URL          string
-	Key          string
-	CurrentValue string
+	URL, Key, CurrentValue string
 }
 
 func (m *MockComponent) Name() string { return "mock" }
 func (m *MockComponent) SetValue(k, v string) error {
-	if k == m.Key {
-		m.CurrentValue = v
-	}
+	if k == m.Key { m.CurrentValue = v }
 	return nil
 }
-func (m *MockComponent) Delete(k string) error { return nil }
-func (m *MockComponent) Clone() component.Component {
-	return &MockComponent{URL: m.URL, Key: m.Key, CurrentValue: m.CurrentValue}
-}
 func (m *MockComponent) Rebuild() (*retryablehttp.Request, error) {
-	return retryablehttp.NewRequest("GET", fmt.Sprintf("%s?%s=%s", m.URL, m.Key, m.CurrentValue), nil)
+	params := url.Values{}
+	params.Set(m.Key, m.CurrentValue)
+	return retryablehttp.NewRequest("GET", m.URL+"?"+params.Encode(), nil)
 }
+func (m *MockComponent) Delete(k string) error { return nil }
+func (m *MockComponent) Clone() component.Component { return &MockComponent{URL: m.URL, Key: m.Key, CurrentValue: m.CurrentValue} }
 func (m *MockComponent) Parse(req *retryablehttp.Request) (bool, error) { return true, nil }
-func (m *MockComponent) Iterate(f func(string, any) error) error       { return nil }
+func (m *MockComponent) Iterate(f func(string, any) error) error { return nil }

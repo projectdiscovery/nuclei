@@ -1,7 +1,9 @@
 package analyzers
 
 import (
+	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -14,20 +16,22 @@ func (a *XSSContextAnalyzer) Name() string {
 }
 
 func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
-	return data + "pd_xss"
+	// Use randomized canary to avoid false positives (standard in Nuclei)
+	return data + randStringBytesMask(6)
 }
 
 func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	gr := options.FuzzGenerated
 	payload := a.ApplyInitialTransformation(gr.Value, nil)
 
-	// Set mutated value
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, "", err
 	}
-	// Restore original value on exit to satisfy the component contract
+	// Log error if restoration fails to maintain component integrity
 	defer func() {
-		_ = gr.Component.SetValue(gr.Key, gr.Value)
+		if err := gr.Component.SetValue(gr.Key, gr.Value); err != nil {
+			log.Printf("[xss-analyzer] failed to restore value for %s: %v", gr.Key, err)
+		}
 	}()
 
 	rebuilt, err := gr.Component.Rebuild()
@@ -35,20 +39,21 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 		return false, "", err
 	}
 
-	// Use the context from the rebuilt request
-	resp, err := options.HttpClient.Do(rebuilt.WithContext(rebuilt.Context()))
+	// Use request directly (removed redundant WithContext)
+	resp, err := options.HttpClient.Do(rebuilt)
 	if err != nil {
 		return false, "", err
 	}
 	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	// Limit reading to 4MB to prevent OOM
+	const maxBodySize = 4 * 1024 * 1024
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
 	if err != nil {
 		return false, "", err
 	}
 	body := string(bodyBytes)
 
-	// Context analysis using HTML tokenization
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
 	for {
 		tokenType := tokenizer.Next()
@@ -64,12 +69,16 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 		case html.StartTagToken, html.SelfClosingTagToken:
 			for _, attr := range token.Attr {
 				if strings.Contains(attr.Val, payload) {
-					return true, "reflection in attribute: " + attr.Key + " of tag: <" + token.Data + ">", nil
+					return true, fmt.Sprintf("reflection in attribute: %s of tag: <%s>", attr.Key, token.Data), nil
 				}
 			}
 		case html.TextToken:
 			if strings.Contains(token.Data, payload) {
 				return true, "reflection in html text node", nil
+			}
+		case html.CommentToken: // Added per Neo/CodeRabbit suggestion
+			if strings.Contains(token.Data, payload) {
+				return true, "reflection in html comment", nil
 			}
 		}
 	}
