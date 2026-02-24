@@ -1,0 +1,20 @@
+# Typos CI — catches spelling mistakes in code, comments, and docs.
+# See: https://github.com/crate-ci/typos
+# Ref: https://github.com/projectdiscovery/nuclei/issues/6532
+name: Typos
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  typos:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.29.10

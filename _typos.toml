@@ -1,0 +1,47 @@
+# Typos configuration for nuclei
+# See: https://github.com/crate-ci/typos/blob/master/docs/reference.md
+
+[files]
+# Exclude non-English README translations (contain valid foreign words)
+extend-exclude = [
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test data / fixtures contain intentional payloads
+    "pkg/input/formats/testdata/**",
+    "pkg/protocols/common/helpers/deserialization/testdata/**",
+    # WAF regex patterns contain partial words by design
+    "pkg/output/stats/waf/regexes.json",
+    # Integration test fuzzing payloads (intentionally malformed SQL etc.)
+    "integration_tests/fuzz/**",
+    # Test integration data with encoded/obfuscated strings
+    "pkg/testutils/integration.go",
+]
+
+[default.extend-words]
+# Identifiers used in the codebase
+splitted = "splitted"
+Splitted = "Splitted"
+# CLI help output uses abbreviated forms
+ines = "ines"     # JSONL(ines) in CLI help text
+ine = "ine"       # JSONL(ine) in CLI help text
+ot = "ot"         # flag abbreviation in CLI help
+ue = "ue"         # flag abbreviation in CLI help
+hae = "hae"       # appears in CLI output
+# Test fixture identifiers
+Noo = "Noo"
+algoritmos = "algoritmos"  # Spanish word in fuzz playground test data
+
+# Test data with intentional non-words
+Iif = "Iif"       # expression test data
+alo = "alo"        # matcher test data
+fo = "fo"          # comment abbreviation in request_generator.go
+Fo = "Fo"          # severity test data
+BA = "BA"          # integration test constant
+Mis = "Mis"        # SSL field prefix (MisMatched)
+
+[default.extend-identifiers]
