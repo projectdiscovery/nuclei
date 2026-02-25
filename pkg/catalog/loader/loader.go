@@ -712,8 +712,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		store.logger.Error().Msgf("dialers with executionId %s not found", typesOpts.ExecutionId)
-		return nil
+		if err := protocolstate.Init(typesOpts); err != nil {
+			store.logger.Error().Msgf("dialers init failed for executionId %s: %s", typesOpts.ExecutionId, err)
+			return []*templates.Template{}
+		}
+		dialers = protocolstate.GetDialersWithId(typesOpts.ExecutionId)
+		if dialers == nil {
+			store.logger.Error().Msgf("dialers with executionId %s not found", typesOpts.ExecutionId)
+			return []*templates.Template{}
+		}
 	}
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
