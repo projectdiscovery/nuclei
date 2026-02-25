@@ -1,6 +1,7 @@
 package xss
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,27 +17,27 @@ func TestDetermineContext(t *testing.T) {
 	}{
 		{
 			name:     "HTML Text Context",
-			htmlBody: "<html><body>Hello pwned_payload world</body></html>",
+			htmlBody: fmt.Sprintf("<html><body>Hello %s world</body></html>", payload),
 			expected: "HTML Text",
 		},
 		{
 			name:     "Script Block Context",
-			htmlBody: "<html><script>var a = 'pwned_payload';</script></html>",
+			htmlBody: fmt.Sprintf("<html><script>var a = '%s';</script></html>", payload),
 			expected: "Script Block",
 		},
 		{
 			name:     "Attribute Value Context",
-			htmlBody: "<input type='text' value='pwned_payload'>",
+			htmlBody: fmt.Sprintf("<input type='text' value='%s'>", payload),
 			expected: "Attribute Value (input[value])",
 		},
 		{
 			name:     "Attribute Name Context",
-			htmlBody: "<svg pwned_payload='1'>",
+			htmlBody: fmt.Sprintf("<svg %s='1'>", payload),
 			expected: "Attribute Name (svg)",
 		},
 		{
 			name:     "HTML Comment Context",
-			htmlBody: "<!-- pwned_payload -->", // ← fix: payload add kiya
+			htmlBody: fmt.Sprintf("<!-- %s -->", payload),
 			expected: "HTML Comment",
 		},
 		{
