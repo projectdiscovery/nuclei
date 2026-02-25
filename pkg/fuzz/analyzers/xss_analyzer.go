@@ -1,105 +1,74 @@
 package analyzers
 
 import (
-	"fmt"
 	"io"
-	"log"
 	"strings"
 
 	"golang.org/x/net/html"
 )
 
-// Constants for standardization and maintenance
-const (
-	XSSAnalyzerName = "xss-context"
-	MaxResponseSize = 4 * 1024 * 1024 // 4MB
-	CanaryLength    = 6
-)
-
 type XSSContextAnalyzer struct{}
 
 func (a *XSSContextAnalyzer) Name() string {
-	return XSSAnalyzerName
+	return "xss-context"
 }
 
 func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
-	// randStringBytesMask is a utility function from the analyzers package
-	return data + randStringBytesMask(CanaryLength)
+	return data + "pd_xss"
 }
 
 func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
-	gr := options.FuzzGenerated
-	payload := a.ApplyInitialTransformation(gr.Value, nil)
-
-	// Inject payload and ensure mandatory state restoration (Component Contract)
-	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
-		return false, "", fmt.Errorf("failed to set fuzz value: %w", err)
-	}
-	defer func() {
-		if err := gr.Component.SetValue(gr.Key, gr.Value); err != nil {
-			log.Printf("[%s] critical: failed to restore component state: %v", XSSAnalyzerName, err)
-		}
-	}()
-
-	rebuilt, err := gr.Component.Rebuild()
-	if err != nil {
-		return false, "", fmt.Errorf("failed to rebuild request: %w", err)
+	if options == nil || options.FuzzGenerated.Request == nil {
+		return false, "", nil
 	}
 
-	resp, err := options.HttpClient.Do(rebuilt)
+	resp, err := options.HttpClient.Do(options.FuzzGenerated.Request)
 	if err != nil {
-		return false, "", fmt.Errorf("http request failed: %w", err)
+		return false, "", err
 	}
 	defer resp.Body.Close()
 
-	// Safety limit reading + 1 byte to detect explicit truncation
-	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseSize+1))
-	if err != nil {
-		return false, "", fmt.Errorf("failed to read response body: %w", err)
-	}
-	if len(bodyBytes) > MaxResponseSize {
-		return false, "", fmt.Errorf("response body exceeded limit of %d bytes", MaxResponseSize)
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	body := string(bodyBytes)
+	canary := "pd_xss"
+
+	if !strings.Contains(body, canary) {
+		return false, "", nil
 	}
 
-	return a.analyzeContent(strings.NewReader(string(bodyBytes)), payload)
-}
-
-// analyzeContent processes HTML via Tokenizer to identify the reflection context
-func (a *XSSContextAnalyzer) analyzeContent(r io.Reader, payload string) (bool, string, error) {
-	tokenizer := html.NewTokenizer(r)
+	tokenizer := html.NewTokenizer(strings.NewReader(body))
+	inTag := false // Tracks if we are inside an actual HTML element
 
 	for {
 		tokenType := tokenizer.Next()
 		if tokenType == html.ErrorToken {
-			if err := tokenizer.Err(); err != io.EOF {
-				return false, "", err
-			}
 			break
 		}
 
 		token := tokenizer.Token()
-		// Raw content of the token (text or comment data)
-		content := token.Data
 
 		switch tokenType {
-		case html.StartTagToken, html.SelfClosingTagToken:
+		case html.StartTagToken:
+			inTag = true
 			for _, attr := range token.Attr {
-				if strings.Contains(attr.Val, payload) {
-					return true, fmt.Sprintf("reflection in attribute: %s (tag: <%s>)", attr.Key, token.Data), nil
+				if strings.Contains(attr.Val, canary) {
+					return true, "attr:" + attr.Key + ":" + token.Data, nil
 				}
 			}
-
-		case html.CommentToken:
-			if strings.Contains(content, payload) {
-				return true, "reflection in html comment", nil
-			}
-
+		case html.EndTagToken:
+			inTag = false
 		case html.TextToken:
-			if strings.Contains(content, payload) {
-				return true, "reflection in html text node", nil
+			// Only report as 'text' context if it's found within an identified tag
+			if inTag && strings.Contains(token.Data, canary) {
+				return true, "text:" + token.Data, nil
 			}
 		}
 	}
 
-	return false, "", nil
+	// Fallback for reflections that don't fit specific tag/attr contexts
+	return true, "reflected:unknown", nil
+}
+
+func init() {
+	RegisterAnalyzer("xss-context", &XSSContextAnalyzer{})
 }
