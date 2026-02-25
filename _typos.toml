@@ -23,25 +23,25 @@ extend-exclude = [
 ]
 
 [default.extend-words]
-# Identifiers used in the codebase
-splitted = "splitted"
-Splitted = "Splitted"
-# CLI help output uses abbreviated forms
+# CLI help output uses abbreviated forms (appear in prose/help text)
 ines = "ines"     # JSONL(ines) in CLI help text
 ine = "ine"       # JSONL(ine) in CLI help text
 ot = "ot"         # flag abbreviation in CLI help
 ue = "ue"         # flag abbreviation in CLI help
 hae = "hae"       # appears in CLI output
-# Test fixture identifiers
-Noo = "Noo"
 algoritmos = "algoritmos"  # Spanish word in fuzz playground test data
 
-# Test data with intentional non-words
+[default.extend-identifiers]
+# Code identifiers that cannot be renamed without breaking changes
+splitted = "splitted"
+Splitted = "Splitted"
+# goflags library exports this misspelled type name — cannot be changed here
+AllowdTypes = "AllowdTypes"
+# Test fixture / constant identifiers
+Noo = "Noo"
 Iif = "Iif"       # expression test data
 alo = "alo"        # matcher test data
 fo = "fo"          # comment abbreviation in request_generator.go
 Fo = "Fo"          # severity test data
 BA = "BA"          # integration test constant
 Mis = "Mis"        # SSL field prefix (MisMatched)
-
-[default.extend-identifiers]

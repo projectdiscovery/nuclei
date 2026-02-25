@@ -427,7 +427,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
 		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
 		flagSet.BoolVar(&options.Stream, "stream", false, "stream mode - start elaborating without sorting the input"),
-		flagSet.EnumVarP(&options.ScanStrategy, "scan-strategy", "ss", goflags.EnumVariable(0), "strategy to use while scanning(auto/host-spray/template-spray)", goflags.AllowedTypes{
+		flagSet.EnumVarP(&options.ScanStrategy, "scan-strategy", "ss", goflags.EnumVariable(0), "strategy to use while scanning(auto/host-spray/template-spray)", goflags.AllowdTypes{
 			scanstrategy.Auto.String():          goflags.EnumVariable(0),
 			scanstrategy.HostSpray.String():     goflags.EnumVariable(1),
 			scanstrategy.TemplateSpray.String(): goflags.EnumVariable(2),
