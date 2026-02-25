@@ -131,6 +131,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 	t.Run("fetch-callback-runs-once", func(t *testing.T) {
 		var callCount atomic.Int32
 		ready := make(chan struct{})
+		entered := make(chan struct{})
 
 		d := &Dynamic{
 			TemplatePath: "test.yaml",
@@ -138,6 +139,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		}
 		require.NoError(t, d.Validate())
 		d.fetchCallback = func(_ *Dynamic) error {
+			close(entered) // signal: winner goroutine is inside the callback
 			<-ready
 			callCount.Add(1)
 			return nil
@@ -152,6 +154,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 				_ = d.Fetch(false)
 			}()
 		}
+		<-entered  // wait until the winning goroutine is blocked inside fetchCallback
 		close(ready)
 		wg.Wait()
 
@@ -160,6 +163,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 
 	t.Run("all-waiters-get-same-error", func(t *testing.T) {
 		ready := make(chan struct{})
+		entered := make(chan struct{})
 
 		d := &Dynamic{
 			TemplatePath: "test.yaml",
@@ -167,6 +171,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		}
 		require.NoError(t, d.Validate())
 		d.fetchCallback = func(_ *Dynamic) error {
+			close(entered)
 			<-ready
 			return nil
 		}
@@ -181,6 +186,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 				errs[i] = d.Fetch(false)
 			}()
 		}
+		<-entered
 		close(ready)
 		wg.Wait()
 
@@ -191,6 +197,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 
 	t.Run("all-waiters-get-same-non-nil-error", func(t *testing.T) {
 		ready := make(chan struct{})
+		entered := make(chan struct{})
 		sentinel := errkit.New("fetch failed")
 
 		d := &Dynamic{
@@ -199,6 +206,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		}
 		require.NoError(t, d.Validate())
 		d.fetchCallback = func(_ *Dynamic) error {
+			close(entered)
 			<-ready
 			return sentinel
 		}
@@ -213,6 +221,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 				errs[i] = d.Fetch(false)
 			}()
 		}
+		<-entered
 		close(ready)
 		wg.Wait()
 
