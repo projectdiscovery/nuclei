@@ -143,7 +143,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 			// log result of template in result file/screen
 			_ = writer.WriteResult(e, opts.ExecOpts.Output, opts.ExecOpts.Progress, opts.ExecOpts.IssuesClient)
 		}
-		_, err := tmpl.Executer.ExecuteWithResults(ctx)
+		_, err = tmpl.Executer.ExecuteWithResults(ctx)
 		if err != nil {
 			finalErr = err
 		}
