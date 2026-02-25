@@ -13,12 +13,14 @@ func (a *XSSContextAnalyzer) Name() string {
 	return "xss-context"
 }
 
+// ApplyInitialTransformation appends a marker to track reflection.
+// Note: CodeRabbit suggested unique canaries, but for now we follow 
+// the existing project pattern using FuzzGenerated.Value in Analyze.
 func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
 	return data + "pd_xss"
 }
 
 func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
-	// Guard: check options, HttpClient, and Request to prevent nil pointer dereference
 	if options == nil || options.HttpClient == nil || options.FuzzGenerated.Request == nil {
 		return false, "", nil
 	}
@@ -29,16 +31,26 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	}
 	defer resp.Body.Close()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
+	// Limit response reading to 4MB to prevent Out Of Memory (OOM) issues
+	const maxBodySize = 4 * 1024 * 1024
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
+	if err != nil {
+		return false, "", err
+	}
+
 	body := string(bodyBytes)
-	canary := "pd_xss"
+	// Use the actual fuzzed value as the canary instead of a hardcoded string
+	canary := options.FuzzGenerated.Value
+	if canary == "" {
+		canary = "pd_xss" // Fallback if Value is not set
+	}
 
 	if !strings.Contains(body, canary) {
 		return false, "", nil
 	}
 
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
-	tagDepth := 0 // Counter to track nested HTML elements correctly
+	tagDepth := 0
 
 	for {
 		tokenType := tokenizer.Next()
@@ -47,7 +59,6 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 		}
 
 		token := tokenizer.Token()
-
 		switch tokenType {
 		case html.StartTagToken:
 			tagDepth++
@@ -57,7 +68,6 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 				}
 			}
 		case html.SelfClosingTagToken:
-			// Self-closing tags don't increase depth but can contain attributes
 			for _, attr := range token.Attr {
 				if strings.Contains(attr.Val, canary) {
 					return true, "attr:" + attr.Key + ":" + token.Data, nil
@@ -68,7 +78,6 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 				tagDepth--
 			}
 		case html.TextToken:
-			// Report as 'text' context only if inside at least one HTML tag
 			if tagDepth > 0 && strings.Contains(token.Data, canary) {
 				return true, "text:" + token.Data, nil
 			}

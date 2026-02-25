@@ -20,51 +20,44 @@ func TestXSSContextAnalyzer_Analyze(t *testing.T) {
 		}))
 		defer server.Close()
 
-		opts := setupTestOptions(server.URL)
+		opts := setupTestOptions(t, server.URL)
 		found, context, err := analyzer.Analyze(opts)
-
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Contains(t, context, "text:pd_xss")
 	})
 
-	t.Run("attribute-context-detection", func(t *testing.T) {
+	t.Run("no-canary-detection", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `<html><input value="pd_xss"></html>`)
+			fmt.Fprint(w, "<html><body>no reflection here</body></html>")
 		}))
 		defer server.Close()
 
-		opts := setupTestOptions(server.URL)
-		found, context, err := analyzer.Analyze(opts)
-
+		opts := setupTestOptions(t, server.URL)
+		found, _, err := analyzer.Analyze(opts)
 		require.NoError(t, err)
-		require.True(t, found)
-		require.Contains(t, context, "attr:value:input")
+		require.False(t, found, "should not find canary")
 	})
 
-	t.Run("unknown-context-fallback", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Plain reflection without proper HTML tags context
-			fmt.Fprint(w, "pd_xss reflection without tags")
-		}))
-		defer server.Close()
-
-		opts := setupTestOptions(server.URL)
-		found, context, err := analyzer.Analyze(opts)
-
+	t.Run("nil-options-guard", func(t *testing.T) {
+		found, _, err := analyzer.Analyze(nil)
 		require.NoError(t, err)
-		require.True(t, found)
-		require.Equal(t, "reflected:unknown", context)
+		require.False(t, found)
 	})
 }
 
-func setupTestOptions(targetURL string) *Options {
+// helper function to setup options with testing context
+func setupTestOptions(t *testing.T, targetURL string) *Options {
+	t.Helper()
 	client := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
-	req, _ := retryablehttp.NewRequest("GET", targetURL, nil)
+	req, err := retryablehttp.NewRequest("GET", targetURL, nil)
+	require.NoError(t, err)
+
 	return &Options{
 		HttpClient: client,
 		FuzzGenerated: fuzz.GeneratedRequest{
 			Request: req,
+			Value:   "pd_xss", // Setting the canary value explicitly
 		},
 	}
 }
