@@ -12,6 +12,7 @@ import (
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
+// LazyFetchSecret is a callback that fetches credentials into the given Dynamic.
 type LazyFetchSecret func(d *Dynamic) error
 
 var (
@@ -44,6 +45,7 @@ type Dynamic struct {
 	fetchState *fetchState `json:"-" yaml:"-"`
 }
 
+// GetDomainAndDomainRegex returns the deduplicated domain and domain-regex lists for this secret.
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 	var domains []string
 	var domainRegex []string
@@ -60,6 +62,7 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 	return uniqueDomains, uniqueDomainRegex
 }
 
+// UnmarshalJSON implements json.Unmarshaler for Dynamic.
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
 	if d == nil {
 		return errkit.New("cannot unmarshal into nil Dynamic struct")
@@ -77,9 +80,11 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Validate validates the dynamic secret
+// Validate validates the dynamic secret and initializes fetch state. Safe to call once.
 func (d *Dynamic) Validate() error {
-	d.fetchState = &fetchState{}
+	if d.fetchState == nil {
+		d.fetchState = &fetchState{}
+	}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
@@ -102,7 +107,7 @@ func (d *Dynamic) Validate() error {
 	return nil
 }
 
-// SetLazyFetchCallback sets the lazy fetch callback for the dynamic secret
+// SetLazyFetchCallback sets the callback used by Fetch to retrieve credentials.
 func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 	d.fetchCallback = func(d *Dynamic) error {
 		err := callback(d)
@@ -189,7 +194,7 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 	return nil
 }
 
-// GetStrategy returns the auth strategies for the dynamic secret
+// GetStrategies returns the auth strategies for the dynamic secret.
 func (d *Dynamic) GetStrategies() []AuthStrategy {
 	if err := d.Fetch(true); err != nil {
 		return nil
@@ -205,12 +210,11 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	return strategies
 }
 
-// Fetch fetches the dynamic secret
-// if isFatal is true, it will stop the execution if the secret could not be fetched
+// Fetch fetches the dynamic secret. If isFatal is true, errors are logged at error level.
 func (d *Dynamic) Fetch(isFatal bool) error {
 	if d.fetchState == nil {
 		if isFatal {
-			gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", ErrNotValidated)
+			gologger.Error().Msgf("Could not fetch dynamic secret: %s\n", ErrNotValidated)
 		}
 		return ErrNotValidated
 	}
@@ -224,16 +228,16 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 	})
 
 	if d.fetchState.err != nil && isFatal {
-		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.fetchState.err)
+		gologger.Error().Msgf("Could not fetch dynamic secret: %s\n", d.fetchState.err)
 	}
 	return d.fetchState.err
 }
 
-// Error returns the error if any
+// Error returns the fetch error, or ErrNotValidated if Validate has not been called.
 func (d *Dynamic) Error() error {
 	if d.fetchState == nil {
-		return nil
+		return ErrNotValidated
 	}
-	d.fetchState.once.Do(func() {})  // ensure happens-before for err read
+	d.fetchState.once.Do(func() {}) // ensure happens-before for err read
 	return d.fetchState.err
 }

@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -188,10 +189,47 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		}
 	})
 
+	t.Run("all-waiters-get-same-non-nil-error", func(t *testing.T) {
+		ready := make(chan struct{})
+		sentinel := errkit.New("fetch failed")
+
+		d := &Dynamic{
+			TemplatePath: "test.yaml",
+			Variables:    []KV{{Key: "k", Value: "v"}},
+		}
+		require.NoError(t, d.Validate())
+		d.fetchCallback = func(_ *Dynamic) error {
+			<-ready
+			return sentinel
+		}
+
+		errs := make([]error, 20)
+		var wg sync.WaitGroup
+		wg.Add(len(errs))
+		for i := range errs {
+			i := i
+			go func() {
+				defer wg.Done()
+				errs[i] = d.Fetch(false)
+			}()
+		}
+		close(ready)
+		wg.Wait()
+
+		for _, err := range errs {
+			require.ErrorIs(t, err, sentinel)
+		}
+	})
+
 	t.Run("unvalidated-returns-ErrNotValidated", func(t *testing.T) {
 		d := &Dynamic{}
 		err := d.Fetch(false)
 		require.ErrorIs(t, err, ErrNotValidated)
+	})
+
+	t.Run("error-returns-ErrNotValidated-before-validate", func(t *testing.T) {
+		d := &Dynamic{}
+		require.ErrorIs(t, d.Error(), ErrNotValidated)
 	})
 
 	t.Run("shared-state-across-value-copies", func(t *testing.T) {
