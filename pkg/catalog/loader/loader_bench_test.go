@@ -71,7 +71,11 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			b.Helper()
+			_, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -89,7 +93,11 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			b.Helper()
+			_, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -107,7 +115,11 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			b.Helper()
+			_, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -125,7 +137,11 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			b.Helper()
+			_, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -143,7 +159,11 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			b.Helper()
+			_, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -161,7 +181,11 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			b.Helper()
+			_, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -181,7 +205,11 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_, _ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			b.Helper()
+			_, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }
@@ -216,7 +244,11 @@ func BenchmarkLoadTemplatesOnlyMetadata(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplatesOnlyMetadata()
+			b.Helper()
+			err := store.LoadTemplatesOnlyMetadata()
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -237,7 +269,11 @@ func BenchmarkLoadTemplatesOnlyMetadata(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplatesOnlyMetadata()
+			b.Helper()
+			err := store.LoadTemplatesOnlyMetadata()
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }
