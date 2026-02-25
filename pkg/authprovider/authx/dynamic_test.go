@@ -130,6 +130,7 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 func TestDynamicFetchConcurrent(t *testing.T) {
 	t.Run("fetch-callback-runs-once", func(t *testing.T) {
 		var callCount atomic.Int32
+		var completed atomic.Int32
 		ready := make(chan struct{})
 		entered := make(chan struct{})
 
@@ -152,13 +153,17 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				_ = d.Fetch(false)
+				completed.Add(1)
 			}()
 		}
-		<-entered  // wait until the winning goroutine is blocked inside fetchCallback
+		<-entered // wait until the winning goroutine is blocked inside fetchCallback
+		// All non-winning goroutines are blocked on once.Do; none should have completed yet.
+		require.Equal(t, int32(0), completed.Load(), "no goroutine should complete while callback blocks")
 		close(ready)
 		wg.Wait()
 
 		require.Equal(t, int32(1), callCount.Load())
+		require.Equal(t, int32(n), completed.Load())
 	})
 
 	t.Run("all-waiters-get-same-error", func(t *testing.T) {

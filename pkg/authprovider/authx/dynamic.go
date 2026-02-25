@@ -23,8 +23,10 @@ var (
 var ErrNotValidated = errkit.New("dynamic secret not validated: call Validate() before Fetch()")
 
 // fetchState bundles sync.Once and error so they are shared across value copies of Dynamic.
+// mu protects err for concurrent reads after once.Do completes.
 type fetchState struct {
 	once sync.Once
+	mu   sync.RWMutex
 	err  error
 }
 
@@ -220,17 +222,24 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 	}
 
 	d.fetchState.once.Do(func() {
+		var err error
 		if d.fetchCallback == nil {
-			d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
-			return
+			err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
+		} else {
+			err = d.fetchCallback(d)
 		}
-		d.fetchState.err = d.fetchCallback(d)
+		d.fetchState.mu.Lock()
+		d.fetchState.err = err
+		d.fetchState.mu.Unlock()
 	})
 
-	if d.fetchState.err != nil && isFatal {
-		gologger.Error().Msgf("Could not fetch dynamic secret: %s\n", d.fetchState.err)
+	d.fetchState.mu.RLock()
+	err := d.fetchState.err
+	d.fetchState.mu.RUnlock()
+	if err != nil && isFatal {
+		gologger.Error().Msgf("Could not fetch dynamic secret: %s\n", err)
 	}
-	return d.fetchState.err
+	return err
 }
 
 // Error returns the fetch error, or ErrNotValidated if Validate has not been called.
@@ -238,6 +247,7 @@ func (d *Dynamic) Error() error {
 	if d.fetchState == nil {
 		return ErrNotValidated
 	}
-	d.fetchState.once.Do(func() {}) // ensure happens-before for err read
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
 	return d.fetchState.err
 }
