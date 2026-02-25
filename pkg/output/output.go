@@ -31,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/honeypot"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
@@ -77,6 +78,10 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+
+	// Honeypot detection
+	detectHoneypot    bool
+	honeypotDetector *honeypot.Detector
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -282,6 +287,12 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		KeysToRedact:     options.Redact,
 	}
 
+	// Initialize honeypot detector if threshold is set
+	if options.HoneypotThreshold > 0 {
+		writer.detectHoneypot = true
+		writer.honeypotDetector = honeypot.NewWithOptions(options.HoneypotThreshold)
+	}
+
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
 		writer.DisableStdout = true
 	}
@@ -312,6 +323,15 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	}
 
 	event.Timestamp = time.Now()
+
+	// Honeypot detection
+	if w.detectHoneypot && w.honeypotDetector != nil {
+		if result := w.honeypotDetector.ProcessResult(event.Host, event.TemplateID, event.Response); result != nil && result.IsHoneypot {
+			// Add honeypot warning to the event
+			event.MatcherName = "[HONEYPOT] " + event.MatcherName
+			gologger.Warning().Msgf("Potential honeypot detected on %s: %s", event.Host, result.Reason)
+		}
+	}
 
 	var data []byte
 	var err error
