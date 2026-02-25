@@ -19,6 +19,7 @@ type Value struct {
 	data       string
 	parsed     dataformat.KV
 	dataFormat string
+	encoder    dataformat.DataFormat
 }
 
 // NewValue returns a new value component
@@ -42,6 +43,7 @@ func (v *Value) Clone() *Value {
 		data:       v.data,
 		parsed:     v.parsed.Clone(),
 		dataFormat: v.dataFormat,
+		encoder:    v.encoder,
 	}
 }
 
@@ -138,9 +140,8 @@ func (v *Value) Delete(key string) bool {
 func (v *Value) Encode() (string, error) {
 	toEncodeStr := v.data
 	if v.parsed.OrderedMap != nil {
-		// flattening orderedmap not supported
 		if v.dataFormat != "" {
-			dataformatStr, err := dataformat.Encode(v.parsed, v.dataFormat)
+			dataformatStr, err := v.encode(v.parsed)
 			if err != nil {
 				return "", err
 			}
@@ -154,13 +155,20 @@ func (v *Value) Encode() (string, error) {
 		return "", err
 	}
 	if v.dataFormat != "" {
-		dataformatStr, err := dataformat.Encode(dataformat.KVMap(nested), v.dataFormat)
+		dataformatStr, err := v.encode(dataformat.KVMap(nested))
 		if err != nil {
 			return "", err
 		}
 		toEncodeStr = dataformatStr
 	}
 	return toEncodeStr, nil
+}
+
+func (v *Value) encode(data dataformat.KV) (string, error) {
+	if v.encoder != nil {
+		return v.encoder.Encode(data)
+	}
+	return dataformat.Encode(data, v.dataFormat)
 }
 
 // In go, []int, []string are not implictily converted to []interface{}

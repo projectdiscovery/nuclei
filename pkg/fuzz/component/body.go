@@ -77,18 +77,27 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 
 // parseBody parses a body with a custom decoder
 func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) (bool, error) {
-	decoder := dataformat.Get(decoderName)
+	var decoder dataformat.DataFormat
 	if decoderName == dataformat.MultiPartFormDataFormat {
-		// set content type to extract boundary
-		if err := decoder.(*dataformat.MultiPartForm).ParseBoundary(req.Header.Get("Content-Type")); err != nil {
+		// MultiPartForm is stateful (boundary, filesMetadata) so a fresh
+		// instance is required to avoid concurrent map writes when multiple
+		// goroutines fuzz in parallel.
+		mpf := dataformat.NewMultiPartForm()
+		if err := mpf.ParseBoundary(req.Header.Get("Content-Type")); err != nil {
 			return false, errors.Wrap(err, "could not parse boundary")
 		}
+		decoder = mpf
+	} else {
+		decoder = dataformat.Get(decoderName)
 	}
 	decoded, err := decoder.Decode(b.value.String())
 	if err != nil {
 		return false, errors.Wrap(err, "could not decode raw")
 	}
 	b.value.SetParsed(decoded, decoder.Name())
+	if decoderName == dataformat.MultiPartFormDataFormat {
+		b.value.encoder = decoder
+	}
 	return true, nil
 }
 

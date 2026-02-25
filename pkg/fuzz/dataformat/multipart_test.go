@@ -1,6 +1,7 @@
 package dataformat
 
 import (
+	"sync"
 	"testing"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -367,4 +368,27 @@ func TestMultiPartForm_GetFileMetadataWithNilMap(t *testing.T) {
 	// GetFileMetadata should handle nil filesMetadata gracefully
 	_, exists := form.GetFileMetadata("anything")
 	assert.False(t, exists)
+}
+
+func TestMultiPartFormDecode_ConcurrentWithSeparateInstances(t *testing.T) {
+	boundary := "boundary123"
+	body := "--" + boundary + "\r\n" +
+		"Content-Disposition: form-data; name=\"file\"; filename=\"test.txt\"\r\n" +
+		"Content-Type: text/plain\r\n\r\n" +
+		"file content\r\n" +
+		"--" + boundary + "--\r\n"
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			mpf := NewMultiPartForm()
+			assert.NoError(t, mpf.ParseBoundary("multipart/form-data; boundary="+boundary))
+			kv, err := mpf.Decode(body)
+			assert.NoError(t, err)
+			assert.NotNil(t, kv)
+		}()
+	}
+	wg.Wait()
 }
