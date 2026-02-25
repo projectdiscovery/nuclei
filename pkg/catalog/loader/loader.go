@@ -706,11 +706,6 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		concurrency = types.DefaultTemplateLoadingConcurrency
 	}
 
-	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
-	if errWg != nil {
-		panic("could not create wait group")
-	}
-
 	if typesOpts.ExecutionId == "" {
 		typesOpts.ExecutionId = xid.New().String()
 	}
@@ -719,6 +714,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	if dialers == nil {
 		store.logger.Error().Msgf("dialers with executionId %s not found", typesOpts.ExecutionId)
 		return nil
+	}
+
+	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
+	if errWg != nil {
+		panic("could not create wait group")
 	}
 
 	for _, templatePath := range includedTemplates {
