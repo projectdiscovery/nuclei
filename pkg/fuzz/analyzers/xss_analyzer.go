@@ -9,15 +9,15 @@ import (
 
 type XSSContextAnalyzer struct{}
 
+const xssCanaryMarker = "pd_xss"
+
 func (a *XSSContextAnalyzer) Name() string {
 	return "xss-context"
 }
 
 // ApplyInitialTransformation appends a marker to track reflection.
-// Note: CodeRabbit suggested unique canaries, but for now we follow 
-// the existing project pattern using FuzzGenerated.Value in Analyze.
 func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
-	return data + "pd_xss"
+	return data + xssCanaryMarker
 }
 
 func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
@@ -31,7 +31,6 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Limit response reading to 4MB to prevent Out Of Memory (OOM) issues
 	const maxBodySize = 4 * 1024 * 1024
 	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
 	if err != nil {
@@ -39,10 +38,13 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	}
 
 	body := string(bodyBytes)
-	// Use the actual fuzzed value as the canary instead of a hardcoded string
-	canary := options.FuzzGenerated.Value
-	if canary == "" {
-		canary = "pd_xss" // Fallback if Value is not set
+	canary := xssCanaryMarker
+	if value := options.FuzzGenerated.Value; value != "" {
+		if strings.Contains(value, xssCanaryMarker) {
+			canary = xssCanaryMarker
+		} else {
+			canary = value
+		}
 	}
 
 	if !strings.Contains(body, canary) {
