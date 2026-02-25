@@ -18,7 +18,8 @@ func (a *XSSContextAnalyzer) ApplyInitialTransformation(data string, params map[
 }
 
 func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
-	if options == nil || options.FuzzGenerated.Request == nil {
+	// Guard: check options, HttpClient, and Request to prevent nil pointer dereference
+	if options == nil || options.HttpClient == nil || options.FuzzGenerated.Request == nil {
 		return false, "", nil
 	}
 
@@ -37,7 +38,7 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	}
 
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
-	inTag := false // Tracks if we are inside an actual HTML element
+	tagDepth := 0 // Counter to track nested HTML elements correctly
 
 	for {
 		tokenType := tokenizer.Next()
@@ -49,23 +50,31 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 
 		switch tokenType {
 		case html.StartTagToken:
-			inTag = true
+			tagDepth++
+			for _, attr := range token.Attr {
+				if strings.Contains(attr.Val, canary) {
+					return true, "attr:" + attr.Key + ":" + token.Data, nil
+				}
+			}
+		case html.SelfClosingTagToken:
+			// Self-closing tags don't increase depth but can contain attributes
 			for _, attr := range token.Attr {
 				if strings.Contains(attr.Val, canary) {
 					return true, "attr:" + attr.Key + ":" + token.Data, nil
 				}
 			}
 		case html.EndTagToken:
-			inTag = false
+			if tagDepth > 0 {
+				tagDepth--
+			}
 		case html.TextToken:
-			// Only report as 'text' context if it's found within an identified tag
-			if inTag && strings.Contains(token.Data, canary) {
+			// Report as 'text' context only if inside at least one HTML tag
+			if tagDepth > 0 && strings.Contains(token.Data, canary) {
 				return true, "text:" + token.Data, nil
 			}
 		}
 	}
 
-	// Fallback for reflections that don't fit specific tag/attr contexts
 	return true, "reflected:unknown", nil
 }
 
