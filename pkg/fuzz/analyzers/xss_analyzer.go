@@ -31,12 +31,13 @@ func (a *XSSContextAnalyzer) Analyze(options *Options) (bool, string, error) {
 	}
 	defer resp.Body.Close()
 
-	const maxBodySize = 4 * 1024 * 1024
-	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
+	// Limit response reading to 4MB to prevent Out Of Memory (OOM) issues
+	const maxResponseBytes = 4 << 20
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return false, "", err
 	}
-
+	
 	body := string(bodyBytes)
 	canary := xssCanaryMarker
 	if value := options.FuzzGenerated.Value; value != "" {
