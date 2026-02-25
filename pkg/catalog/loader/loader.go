@@ -725,7 +725,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
+		store.logger.Error().Msgf("could not create wait group: %s", errWg)
+		return []*templates.Template{}
 	}
 
 	for _, templatePath := range includedTemplates {
