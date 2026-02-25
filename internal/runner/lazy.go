@@ -69,7 +69,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 	return func(d *authx.Dynamic) error {
 		tmpls, err := opts.TemplateStore.LoadTemplates([]string{d.TemplatePath})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to load template %s: %w", d.TemplatePath, err)
 		}
 		if len(tmpls) == 0 {
 			return fmt.Errorf("%w for path: %s", disk.ErrNoTemplatesFound, d.TemplatePath)
