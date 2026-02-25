@@ -36,6 +36,14 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
+	// Set the fuzz value on the component before rebuilding
+	if err := options.FuzzGenerated.Component.SetValue(
+		options.FuzzGenerated.Key,
+		options.FuzzGenerated.Value,
+	); err != nil {
+		return false, "", errors.Wrap(err, "could not set component value")
+	}
+
 	req, err := options.FuzzGenerated.Component.Rebuild()
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not rebuild request")
