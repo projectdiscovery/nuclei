@@ -861,8 +861,8 @@ github.com/projectdiscovery/hmap v0.0.100 h1:DBZ3Req9lWf4P1YC9PRa4eiMvLY0Uxud43N
 github.com/projectdiscovery/hmap v0.0.100/go.mod h1:2O06pR8pHOP9wSmxAoxuM45U7E+UqOqOdlSIeddM0bA=
 github.com/projectdiscovery/httpx v1.8.1 h1:50NTzbgnqCgTJ1uawvusJq8Q6g0HM8TwEcxZgWdq5d4=
 github.com/projectdiscovery/httpx v1.8.1/go.mod h1:ws3cY6c7guy99M1eCYRbyaN57K0pEOguTZymMdxRZzc=
-github.com/projectdiscovery/interactsh v1.3.0 h1:7RF94U6kINRSRk0lEGbKQeDPhh3wnhxVIE9q+96XOVE=
-github.com/projectdiscovery/interactsh v1.3.0/go.mod h1:T/b8tCtWbcAGm/oCsuN9oBr9IUxy0/ib1TTqlQU8kaE=
+github.com/projectdiscovery/interactsh v1.2.3-0.20260226140236-da91f8e592b0 h1:61wmAyQhFXZazzsrAyh4o3nqeR4vWDt7zdabw3O3dAY=
+github.com/projectdiscovery/interactsh v1.2.3-0.20260226140236-da91f8e592b0/go.mod h1:vsZrFRJuDDdira7tXG4hJ128CKP+ipVjTViylzPOqbU=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb h1:MGtI4oE12ruWv11ZlPXXd7hl/uAaQZrFvrIDYDeVMd8=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb/go.mod h1:vmgC0DTFCfoCLp0RAfsfYTZZan0QMVs+cmTbH6blfjk=
 github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 h1:eR+0HE//Ciyfwy3HC7fjRyKShSJHYoX2Pv7pPshjK/Q=
