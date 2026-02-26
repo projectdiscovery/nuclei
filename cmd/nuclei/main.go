@@ -435,6 +435,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
+		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detection", "hd", false, "enable honeypot detection logic"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",

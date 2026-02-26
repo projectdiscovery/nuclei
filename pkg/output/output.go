@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"maps"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -77,6 +78,8 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+	honeypotTracker       *HoneypotTracker
+	HoneypotDetection     bool
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -89,14 +92,128 @@ var _ Writer = &StandardWriter{}
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 
+const maxHostsInTracker = 10000
+
+// HoneypotTracker tracks template executions per host to detect potential honeypots.
+// It implements an LRU (Least Recently Used) eviction strategy to maintain bounded memory usage
+// while preventing silent failures when capacity limits are reached.
+type HoneypotTracker struct {
+	sync.Mutex
+	hostTemplates map[string]map[string]struct{} // Maps hostnames to set of template IDs that have been executed
+	warnedHosts   map[string]struct{}       // Tracks hosts that have already triggered honeypot warnings
+	limitWarned   bool                    // Indicates if capacity limit warning has been logged
+	order         []string                 // LRU order tracking for host eviction (oldest at index 0)
+}
+
+// NewHoneypotTracker creates a new honeypot tracker with initialized data structures.
+// Returns a pointer to the newly created HoneypotTracker ready for use.
+func NewHoneypotTracker() *HoneypotTracker {
+	return &HoneypotTracker{
+		hostTemplates: make(map[string]map[string]struct{}),
+		warnedHosts:   make(map[string]struct{}),
+	}
+}
+
+// AddAndCheck adds a template execution for a host and returns honeypot detection status.
+// 
+// Parameters:
+//   - host: The hostname or URL to track template execution for
+//   - templateID: The unique identifier of the template being executed
+//
+// Returns:
+//   - bool: isHoneypot - True if this host appears to be a honeypot (>10 unique templates)
+//   - bool: isFirstTime - True if this is the first time detecting this host as a honeypot
+//
+// The function implements LRU eviction when capacity limits are reached to prevent silent failures.
+// It safely parses hostnames, strips ports, and maintains thread-safe access to tracking data.
+func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
+	// Check if raw host string contains :// to detect scheme
+	if !strings.Contains(host, "://") {
+		// If no scheme, prepend http:// before parsing
+		host = "http://" + host
+	}
+	
+	// Parse host using net/url to prevent path bypass
+	parsedURL, err := url.Parse(host)
+	
+	if err != nil {
+		// If parsing fails, fall back to splitting by / and strip ports
+		host = strings.TrimSpace(host)
+		if parts := strings.SplitN(host, "/", 2); len(parts) > 0 {
+			host = parts[0]
+		}
+		// Strip port if present
+		if parts := strings.SplitN(host, ":", 2); len(parts) > 1 {
+			host = parts[0]
+		}
+	} else {
+		// Use hostname from the parsed URL to prevent path bypass
+		host = parsedURL.Hostname()
+		if host == "" {
+			return false, false
+		}
+	}
+	
+	ht.Lock()
+	defer ht.Unlock()
+	
+	// Initialize host map if it doesn't exist
+	if ht.hostTemplates[host] == nil {
+		// Check memory limit only for NEW hosts to prevent unbounded growth
+		if len(ht.hostTemplates) >= maxHostsInTracker {
+			// Implement LRU eviction: remove oldest host to make room
+			if len(ht.order) > 0 {
+				oldestHost := ht.order[0]
+				// Remove from all tracking structures
+				delete(ht.hostTemplates, oldestHost)
+				delete(ht.warnedHosts, oldestHost)
+				// Remove from order slice and shift remaining elements
+				ht.order = ht.order[1:]
+				// Log eviction for transparency
+				if !ht.limitWarned {
+					ht.limitWarned = true
+					gologger.Warning().Msgf("Honeypot tracker memory limit reached (%d hosts), evicting oldest host '%s' to make room", maxHostsInTracker, oldestHost)
+				}
+			}
+		}
+		ht.hostTemplates[host] = make(map[string]struct{})
+		// Add to LRU order tracking
+		ht.order = append(ht.order, host)
+	}
+	
+	// Add template ID to host's map
+	ht.hostTemplates[host][templateID] = struct{}{}
+	
+	// Check if this host is a honeypot (more than 10 unique templates)
+	isHoneypot := len(ht.hostTemplates[host]) > 10
+	
+	// Check if we've warned about this host before
+	_, hasWarned := ht.warnedHosts[host]
+	if !hasWarned && isHoneypot {
+		// Mark this host as warned
+		ht.warnedHosts[host] = struct{}{}
+		return true, true // isHoneypot, isFirstTime
+	}
+	
+	return isHoneypot, false
+}
+
 // InternalEvent is an internal output generation structure for nuclei.
+// It provides a map-based interface for storing template execution metadata,
+// results, and other intermediate data during processing.
 type InternalEvent map[string]interface{}
 
+// Set adds or updates a key-value pair in the InternalEvent.
+// Parameters:
+//   - k: The key to set in the event map
+//   - v: The value to associate with the key
 func (ie InternalEvent) Set(k string, v interface{}) {
 	ie[k] = v
 }
 
 // InternalWrappedEvent is a wrapped event with operators result added to it.
+// It provides thread-safe access to internal event data and results during
+// template execution, particularly for interactsh polling and callback synchronization.
 type InternalWrappedEvent struct {
 	// Mutex is internal field which is implicitly used
 	// to synchronize callback(event) and interactsh polling updates
@@ -143,6 +260,8 @@ func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Res
 }
 
 // ResultEvent is a wrapped result event for a single nuclei output.
+// It contains all relevant information about a template match including template details,
+// host information, matched content, and optional request/response data.
 type ResultEvent struct {
 	// Template is the relative filename for the template
 	Template string `json:"template,omitempty"`
@@ -227,7 +346,12 @@ type IssueTrackerMetadata struct {
 	IssueURL string `json:"url,omitempty"`
 }
 
-// NewStandardWriter creates a new output writer based on user configurations
+// NewStandardWriter creates a new output writer based on user configurations.
+// It initializes file writers, colorizers, and honeypot detection as needed.
+// Parameters:
+//   - options: Configuration options containing output settings, file paths, and feature flags
+//
+// Returns a configured StandardWriter ready for use or an error if setup fails.
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	resumeBool := options.Resume != ""
 
@@ -265,21 +389,23 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	}
 
 	writer := &StandardWriter{
-		json:             options.JSONL,
-		jsonReqResp:      !options.OmitRawRequests,
-		noMetadata:       options.NoMeta,
-		matcherStatus:    options.MatcherStatus,
-		timestamp:        options.Timestamp,
-		aurora:           auroraColorizer,
-		mutex:            &sync.Mutex{},
-		outputFile:       outputFile,
-		traceFile:        traceOutput,
-		errorFile:        errorOutput,
-		severityColors:   colorizer.New(auroraColorizer),
-		storeResponse:    options.StoreResponse,
-		storeResponseDir: options.StoreResponseDir,
-		omitTemplate:     options.OmitTemplate,
-		KeysToRedact:     options.Redact,
+		json:              options.JSONL,
+		jsonReqResp:       !options.OmitRawRequests,
+		noMetadata:        options.NoMeta,
+		matcherStatus:     options.MatcherStatus,
+		timestamp:         options.Timestamp,
+		aurora:            auroraColorizer,
+		mutex:             &sync.Mutex{},
+		outputFile:        outputFile,
+		traceFile:         traceOutput,
+		errorFile:         errorOutput,
+		severityColors:    colorizer.New(auroraColorizer),
+		storeResponse:     options.StoreResponse,
+		storeResponseDir:  options.StoreResponseDir,
+		omitTemplate:      options.OmitTemplate,
+		KeysToRedact:      options.Redact,
+		honeypotTracker:   NewHoneypotTracker(),
+		HoneypotDetection: options.HoneypotDetection,
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -294,7 +420,23 @@ func (w *StandardWriter) ResultCount() int {
 }
 
 // Write writes the event to file and/or screen.
+// It performs honeypot detection, formats the output, and writes to configured outputs.
+// Parameters:
+//   - event: The ResultEvent containing the match data to write
+//
+// Returns an error if formatting or writing fails, nil otherwise.
 func (w *StandardWriter) Write(event *ResultEvent) error {
+	// Check for honeypot detection if enabled (moved to top to prevent wasting CPU on formatting)
+	if w.HoneypotDetection {
+		isHoneypot, isFirstTime := w.honeypotTracker.AddAndCheck(event.Host, event.TemplateID)
+		if isHoneypot {
+			if isFirstTime {
+				gologger.Warning().Msgf("Honeypot detected for host %s, skipping further results", event.Host)
+			}
+			return nil
+		}
+	}
+
 	if event.Error != "" && !w.matcherStatus {
 		return nil
 	}

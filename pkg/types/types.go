@@ -43,6 +43,11 @@ type Options struct {
 	Workflows goflags.StringSlice
 	// WorkflowURLs specifies URLs to a list of workflows to use
 	WorkflowURLs goflags.StringSlice
+	// HoneypotDetection enables honeypot detection logic to identify potential
+	// malicious hosts that trigger an unusually high number of different template executions.
+	// When enabled, tracks unique template executions per host and flags hosts that
+	// trigger more than 10 different templates as potential honeypots.
+	HoneypotDetection bool
 	// Templates specifies the template/templates to use
 	Templates goflags.StringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
@@ -480,6 +485,7 @@ func (options *Options) Copy() *Options {
 		ExcludeTags:                    options.ExcludeTags,
 		Workflows:                      options.Workflows,
 		WorkflowURLs:                   options.WorkflowURLs,
+		HoneypotDetection:              options.HoneypotDetection,
 		Templates:                      options.Templates,
 		TemplateURLs:                   options.TemplateURLs,
 		AITemplatePrompt:               options.AITemplatePrompt,
