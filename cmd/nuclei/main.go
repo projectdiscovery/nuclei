@@ -325,6 +325,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.Timestamp, "timestamp", "ts", false, "enables printing timestamp in cli output"),
 		flagSet.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "nuclei reporting database (always use this to persist report data)"),
 		flagSet.BoolVarP(&options.MatcherStatus, "matcher-status", "ms", false, "display match failure status"),
+		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detection", "hd", false, "enable honeypot detection to suppress results from honeypot hosts"),
+		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hdt", 10, "minimum number of unique template matches before a host is flagged as honeypot"),
 		flagSet.StringVarP(&options.MarkdownExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),

@@ -77,6 +77,7 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+	honeypotTracker       *HoneypotTracker
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -282,6 +283,10 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		KeysToRedact:     options.Redact,
 	}
 
+	if options.HoneypotDetection {
+		writer.honeypotTracker = NewHoneypotTracker(options.HoneypotThreshold)
+	}
+
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
 		writer.DisableStdout = true
 	}
@@ -297,6 +302,13 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Honeypot detection: suppress results from hosts with too many unique matches
+	if w.honeypotTracker != nil && event.Error == "" {
+		if w.honeypotTracker.Check(event.Host, event.TemplateID) {
+			return nil
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
