@@ -47,10 +47,11 @@ import (
 )
 
 var (
-	cfgFile         string
-	templateProfile string
-	memProfile      string // optional profile file path
-	options         = &types.Options{}
+	cfgFile            string
+	templateProfile    string
+	memProfile         string // optional profile file path
+	options            = &types.Options{}
+	inlineTargetsFile  string // temp file for inline targets, cleaned up on exit
 )
 
 func main() {
@@ -221,6 +222,9 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+		if inlineTargetsFile != "" {
+			_ = os.Remove(inlineTargetsFile)
+		}
 		os.Exit(1)
 	}()
 
@@ -232,6 +236,10 @@ func main() {
 		}
 	}
 	nucleiRunner.Close()
+	// clean up inline targets temp file if one was created
+	if inlineTargetsFile != "" {
+		_ = os.Remove(inlineTargetsFile)
+	}
 	// on successful execution remove the resume file in case it exists
 	if fileutil.FileExists(resumeFileName) {
 		_ = os.Remove(resumeFileName)
@@ -931,5 +939,6 @@ func materializeInlineTargets(listRaw interface{}) error {
 		return fmt.Errorf("could not close temp targets file: %w", err)
 	}
 	options.TargetsFilePath = tmpFile.Name()
+	inlineTargetsFile = tmpFile.Name()
 	return nil
 }
