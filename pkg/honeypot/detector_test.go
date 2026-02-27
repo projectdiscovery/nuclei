@@ -172,6 +172,9 @@ func TestNormalizeHost(t *testing.T) {
 		{"http:///path", ""},
 		{"https://", ""},
 		{"://", ""},
+		// Bracketed IPv6 with trailing colon but no port
+		{"[::1]:", "[::1]"},
+		{"[fe80::1]:", "[fe80::1]"},
 		// Trailing-colon inputs (host with no port) normalise to host without colon
 		{"host:", "host"},
 		{"example.com:", "example.com"},

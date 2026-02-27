@@ -363,7 +363,11 @@ func normalizeHost(input string) string {
 		if closeBracket := strings.Index(input, "]"); closeBracket != -1 {
 			host := input[1:closeBracket]
 			if closeBracket+1 < len(input) && input[closeBracket+1] == ':' {
-				return "[" + host + "]:" + input[closeBracket+2:]
+				port := input[closeBracket+2:]
+				if port == "" {
+					return "[" + host + "]"
+				}
+				return "[" + host + "]:" + port
 			}
 			return "[" + host + "]"
 		}
