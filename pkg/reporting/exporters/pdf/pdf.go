@@ -203,11 +203,7 @@ func (e *Exporter) writeDetailedFinding(pdf *fpdf.Fpdf, index int, r *output.Res
 			writeCodeBlock(pdf, "Request", r.Request)
 		}
 		if r.Response != "" {
-			resp := r.Response
-			if len(resp) > 5*1024 {
-				resp = resp[:5*1024] + "\n.... Truncated ...."
-			}
-			writeCodeBlock(pdf, "Response", resp)
+			writeCodeBlock(pdf, "Response", r.Response)
 		}
 	}
 }
