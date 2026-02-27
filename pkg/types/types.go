@@ -452,6 +452,11 @@ type Options struct {
 	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
+	// HoneypotThreshold is the percentage threshold for honeypot detection
+	// If a host matches more than this percentage of templates, it is flagged as a potential honeypot
+	HoneypotThreshold int
+	// HoneypotSuppress automatically stops and ignores further matches from a flagged honeypot host
+	HoneypotSuppress bool
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
@@ -678,6 +683,8 @@ func (options *Options) Copy() *Options {
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotSuppress:               options.HoneypotSuppress,
 		ListTemplateProfiles:           options.ListTemplateProfiles,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,

@@ -51,6 +51,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -89,6 +90,7 @@ type Runner struct {
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
 	hostErrors         hosterrorscache.CacheInterface
+	honeypotCache      honeypotcache.CacheInterface
 	resumeCfg          *types.ResumeCfg
 	pprofServer        *pprofutil.PprofServer
 	pdcpUploadErrMsg   string
@@ -418,6 +420,10 @@ func (r *Runner) Close() {
 	if r.hostErrors != nil {
 		r.hostErrors.Close()
 	}
+	// dump honeypot cache
+	if r.honeypotCache != nil {
+		r.honeypotCache.Close()
+	}
 	if r.output != nil {
 		r.output.Close()
 	}
@@ -612,6 +618,14 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.HostErrorsCache = cache
 	}
 
+	// Initialize honeypot detection cache if threshold is set
+	if r.options.HoneypotThreshold > 0 {
+		hpCache := honeypotcache.New(r.options.HoneypotThreshold, r.options.HoneypotSuppress, honeypotcache.DefaultMaxHostsCount)
+		hpCache.SetVerbose(r.options.Verbose)
+		r.honeypotCache = hpCache
+		executorOpts.HoneypotCache = hpCache
+	}
+
 	executorEngine := core.New(r.options)
 	executorEngine.SetExecuterOptions(executorOpts)
 
@@ -661,6 +675,13 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
+
+	// Set total templates count for honeypot detection
+	if r.honeypotCache != nil {
+		totalTemplates := len(store.Templates()) + len(store.Workflows())
+		r.honeypotCache.SetTotalTemplates(totalTemplates)
+	}
+
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 

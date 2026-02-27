@@ -181,11 +181,21 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			// one of the templates has `global-matchers` enabled. This way,
 			// non-`global-matchers` templates can enter the `writeFailureCallback`
 			// func to log failure output.
-			wr := writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient)
-			if wr && !isGlobalMatchers {
-				matched.Store(true)
-			} else {
+			// Check if host is flagged as honeypot and should be suppressed
+			if e.options.HoneypotCache != nil && e.options.HoneypotCache.Check(ctx.Input) {
+				// Host is flagged as honeypot, skip writing results
 				lastMatcherEvent = event
+			} else {
+				wr := writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient)
+				if wr && !isGlobalMatchers {
+					matched.Store(true)
+					// Record match for honeypot detection
+					if e.options.HoneypotCache != nil {
+						e.options.HoneypotCache.MarkMatch(ctx.Input, e.options.TemplateID)
+					}
+				} else {
+					lastMatcherEvent = event
+				}
 			}
 		}
 	}
