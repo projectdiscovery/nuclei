@@ -121,7 +121,7 @@ func addDummyPosts(db *sql.DB) {
 		panic(err)
 	}
 	// Inserting a Spanish dummy post
-	_, err = db.Exec("INSERT INTO posts (id, title, content, lang) VALUES (3, 'La belleza del código', 'Cada función es un poema en un mar de algoritmos.', 'es')")
+	_, err = db.Exec("INSERT INTO posts (id, title, content, lang) VALUES (3, 'La belleza del código', 'Cada función es un poema en un mar de algorithms.', 'es')")
 	if err != nil {
 		panic(err)
 	}

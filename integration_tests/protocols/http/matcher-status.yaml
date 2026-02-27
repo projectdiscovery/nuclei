@@ -14,7 +14,7 @@ http:
   - method: GET
     path:
       - "{{RootURL}}/login?username={{username}}&password={{password}}"
-      - "{{BaseURL}}/admin-pannel"
+      - "{{BaseURL}}/admin-panel"
 
   - method: GET
     path:

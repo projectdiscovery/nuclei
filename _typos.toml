@@ -1,0 +1,48 @@
+[files]
+extend-exclude = [
+    "*.sum",
+    "*.lock",
+    "*.snap",
+    "vendor/",
+    "static/",
+    "pkg/js/generated/**",
+    # Non-English README files contain words that look like English typos
+    "README_PT-BR.md",
+    "README_ES.md",
+    "README_TR.md",
+    "README_KR.md",
+    "README_JP.md",
+    "README_ID.md",
+    "README_CN.md",
+    # Test data files with encoded/binary content
+    "pkg/input/formats/testdata/**",
+    "pkg/protocols/common/helpers/deserialization/testdata/**",
+    # WAF regex patterns contain abbreviations that are not typos
+    "pkg/output/stats/waf/**",
+    # Integration test data with certificates and encoded content
+    "pkg/testutils/integration.go",
+]
+
+[default.extend-words]
+# Not typos - these are valid identifiers, CLI flags, or domain-specific terms
+Noo = "Noo"
+Iif = "Iif"
+alo = "alo"
+Mis = "Mis"
+inFo = "inFo"
+infO = "infO"
+Fo = "Fo"
+# CLI flag shorthands
+ines = "ines"
+ine = "ine"
+ot = "ot"
+hae = "hae"
+ue = "ue"
+UE = "UE"
+nd = "nd"
+ba = "ba"
+
+[default.extend-identifiers]
+# Variable/function names that are not typos
+fo = "fo"
+Fo = "Fo"
