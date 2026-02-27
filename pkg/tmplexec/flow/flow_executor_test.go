@@ -118,7 +118,7 @@ func TestFlowWithConditionNegative(t *testing.T) {
 
 	input := contextargs.NewWithInput(context.Background(), "scanme.sh")
 	ctx := scan.NewScanContext(context.Background(), input)
-	// expect no results and verify than dns request is executed and http is not
+	// expect no results and verify that DNS request is executed and HTTP is not
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.False(t, gotresults)

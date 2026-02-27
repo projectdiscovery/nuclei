@@ -46,3 +46,5 @@ ba = "ba"
 # Variable/function names that are not typos
 fo = "fo"
 Fo = "Fo"
+# Deprecated backward-compatible alias
+ExludedDastTmplStats = "ExludedDastTmplStats"

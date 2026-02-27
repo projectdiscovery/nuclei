@@ -9,6 +9,8 @@ const (
 	TemplatesExcludedStats       = "templates-executed"
 	ExcludedCodeTmplStats        = "code-flag-missing-warnings"
 	ExcludedDastTmplStats         = "fuzz-flag-missing-warnings"
+	// Deprecated: use ExcludedDastTmplStats.
+	ExludedDastTmplStats          = ExcludedDastTmplStats
 	SkippedUnsignedStats         = "skipped-unsigned-stats" // tracks loading of unsigned templates
 	ExcludedSelfContainedStats   = "excluded-self-contained-stats"
 	ExcludedFileStats            = "excluded-file-stats"
