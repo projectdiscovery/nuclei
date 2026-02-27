@@ -330,6 +330,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),
 		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
 		flagSet.StringSliceVarP(&options.Redact, "redact", "rd", nil, "redact given list of keys from query parameter, request header and body", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 0, "minimum number of unique template matches before a host is flagged as honeypot (0 = disabled)"),
+		flagSet.BoolVarP(&options.HoneypotSuppress, "honeypot-suppress", "hpsu", false, "suppress results from hosts flagged as honeypots"),
 	)
 
 	flagSet.CreateGroup("configs", "Configurations",

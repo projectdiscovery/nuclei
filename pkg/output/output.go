@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -81,6 +82,9 @@ type StandardWriter struct {
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
+
+	// HoneypotDetector tracks template matches per host and flags likely honeypots
+	HoneypotDetector *honeypot.Detector
 
 	resultCount atomic.Int32
 }
@@ -264,6 +268,11 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		}
 	}
 
+	var honeypotDetector *honeypot.Detector
+	if options.HoneypotThreshold > 0 {
+		honeypotDetector = honeypot.New(options.HoneypotThreshold, options.HoneypotSuppress)
+	}
+
 	writer := &StandardWriter{
 		json:             options.JSONL,
 		jsonReqResp:      !options.OmitRawRequests,
@@ -280,6 +289,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
 		KeysToRedact:     options.Redact,
+		HoneypotDetector: honeypotDetector,
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -297,6 +307,21 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Honeypot detection: track template matches per host
+	if w.HoneypotDetector != nil && w.HoneypotDetector.IsEnabled() && event.MatcherStatus {
+		host := event.Host
+		if host == "" {
+			host = event.Matched
+		}
+		justFlagged := w.HoneypotDetector.RecordMatch(host, event.TemplateID)
+		if justFlagged {
+			w.HoneypotDetector.WarnOnce(host)
+		}
+		if w.HoneypotDetector.ShouldSuppress(host) {
+			return nil
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -453,6 +478,9 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
+	if w.HoneypotDetector != nil {
+		w.HoneypotDetector.PrintSummary()
+	}
 	if w.outputFile != nil {
 		_ = w.outputFile.Close()
 	}
