@@ -214,6 +214,140 @@ func BenchmarkFindReflections(b *testing.B) {
 	}
 }
 
+// TestRealWorldReflections tests context detection on realistic HTML responses
+// that mirror what you'd encounter during actual web application pentesting.
+func TestRealWorldReflections(t *testing.T) {
+	const canary = "gtssR3alW0rld"
+
+	tests := []struct {
+		name     string
+		html     string
+		expected []XSSContext // one per reflection, in order
+	}{
+		{
+			name: "search results page — reflected query in heading and input",
+			html: fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Search Results</title></head>
+<body>
+  <nav><a href="/">Home</a></nav>
+  <h1>Results for "%s"</h1>
+  <form action="/search" method="GET">
+    <input type="text" name="q" value="%s">
+    <button type="submit">Search</button>
+  </form>
+  <div class="results"><p>No results found.</p></div>
+</body>
+</html>`, canary, canary),
+			expected: []XSSContext{ContextHTMLText, ContextAttrValueDoubleQuoted},
+		},
+		{
+			name: "error page — reflected param in script variable and error message",
+			html: fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Error</title>
+  <script>
+    var errorCode = 404;
+    var requestedPath = "%s";
+    console.log("Not found: " + requestedPath);
+  </script>
+</head>
+<body>
+  <h1>404 Not Found</h1>
+  <p>The page <code>%s</code> could not be found.</p>
+</body>
+</html>`, canary, canary),
+			expected: []XSSContext{ContextScriptStringDouble, ContextHTMLText},
+		},
+		{
+			name: "profile page — reflected username in multiple attribute types",
+			html: fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head><title>Profile</title>
+<style>
+  .avatar { background-image: url(/avatars/%s.jpg); width: 100px; height: 100px; }
+</style>
+</head>
+<body>
+  <div class="avatar"></div>
+  <a href="/user/%s">%s's Profile</a>
+  <img src="/api/photo/%s" alt="Photo of %s" onerror="handleImgError('%s')">
+</body>
+</html>`, canary, canary, canary, canary, canary, canary),
+			expected: []XSSContext{
+				ContextCSSURL,          // url(/avatars/CANARY.jpg)
+				ContextURLAttribute,    // href="/user/CANARY"
+				ContextHTMLText,        // CANARY's Profile
+				ContextURLAttribute,    // src="/api/photo/CANARY"
+				ContextAttrValueDoubleQuoted, // alt="Photo of CANARY"
+				ContextEventHandler,    // onerror="handleImgError('CANARY')"
+			},
+		},
+		{
+			name: "SPA boot page — reflected config in JSON init script",
+			html: fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>App</title>
+  <script>
+    window.__CONFIG__ = {
+      apiBase: "/api/v1",
+      userName: "%s",
+      locale: "en-US"
+    };
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/static/bundle.js"></script>
+</body>
+</html>`, canary),
+			expected: []XSSContext{ContextScriptStringDouble},
+		},
+		{
+			name: "comment form — reflected input in textarea and hidden field",
+			html: fmt.Sprintf(`<!DOCTYPE html>
+<html><body>
+  <form method="POST" action="/comment">
+    <input type="hidden" name="redirect" value="%s">
+    <textarea name="body">%s</textarea>
+    <button>Submit</button>
+  </form>
+</body></html>`, canary, canary),
+			expected: []XSSContext{ContextAttrValueDoubleQuoted, ContextHTMLText},
+		},
+		{
+			name: "inline event handler with template literal in script",
+			html: fmt.Sprintf(`<!DOCTYPE html>
+<html><body>
+  <div id="output"></div>
+  <script>
+    const name = `+"`%s`"+`;
+    document.getElementById('output').innerHTML = name;
+  </script>
+  <button onclick="alert('%s')">Click</button>
+</body></html>`, canary, canary),
+			expected: []XSSContext{ContextScriptTemplateLiteral, ContextEventHandler},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			points := findReflections([]byte(tt.html), canary)
+			if len(points) != len(tt.expected) {
+				t.Fatalf("expected %d reflections, got %d", len(tt.expected), len(points))
+			}
+			for i, pt := range points {
+				if pt.Context != tt.expected[i] {
+					t.Errorf("reflection[%d]: got %s, want %s", i, pt.Context.String(), tt.expected[i].String())
+				}
+			}
+		})
+	}
+}
+
 func TestContextStrings(t *testing.T) {
 	tests := []struct {
 		ctx      XSSContext
