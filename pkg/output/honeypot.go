@@ -3,12 +3,16 @@ package output
 import (
 	"net"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
 )
 
-const defaultHoneypotThreshold = 10
+const (
+	defaultHoneypotThreshold = 10
+	maxTrackedHosts          = 100000 // cap to prevent unbounded memory growth
+)
 
 // HoneypotTracker tracks unique template matches per host to detect honeypots.
 // Hosts that match at least the configured threshold of unique templates are
@@ -47,6 +51,10 @@ func (h *HoneypotTracker) Check(host, templateID string) bool {
 
 	templates, ok := h.hosts[normalized]
 	if !ok {
+		// Cap tracked hosts to prevent unbounded memory growth
+		if len(h.hosts) >= maxTrackedHosts {
+			return false
+		}
 		templates = make(map[string]struct{})
 		h.hosts[normalized] = templates
 	}
@@ -64,17 +72,18 @@ func (h *HoneypotTracker) Check(host, templateID string) bool {
 }
 
 // normalizeHost extracts a consistent host identifier from various input formats.
+// Hostnames are lowercased since DNS is case-insensitive.
 func normalizeHost(raw string) string {
 	if parsed, err := url.Parse(raw); err == nil && parsed.Host != "" {
 		host := parsed.Hostname() // strips brackets from IPv6, strips port
 		if host != "" {
-			return host
+			return strings.ToLower(host)
 		}
 	}
 	// Fallback: try as host:port
 	host, _, err := net.SplitHostPort(raw)
 	if err == nil && host != "" {
-		return host
+		return strings.ToLower(host)
 	}
-	return raw
+	return strings.ToLower(raw)
 }

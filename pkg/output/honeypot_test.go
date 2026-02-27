@@ -61,6 +61,15 @@ func TestHoneypotTracker_HostNormalization(t *testing.T) {
 	}
 }
 
+func TestHoneypotTracker_CaseInsensitive(t *testing.T) {
+	tracker := NewHoneypotTracker(2)
+
+	tracker.Check("http://EXAMPLE.COM", "t1")
+	if !tracker.Check("http://example.com", "t2") {
+		t.Fatal("expected case-insensitive host matching")
+	}
+}
+
 func TestHoneypotTracker_Concurrent(t *testing.T) {
 	tracker := NewHoneypotTracker(100)
 
@@ -92,6 +101,8 @@ func TestNormalizeHost(t *testing.T) {
 		{"http://[::1]:8080/test", "::1"},
 		{"192.168.1.1:80", "192.168.1.1"},
 		{"example.com", "example.com"},
+		{"http://EXAMPLE.COM", "example.com"},
+		{"https://Example.Com:443/Path", "example.com"},
 	}
 
 	for _, tt := range tests {
