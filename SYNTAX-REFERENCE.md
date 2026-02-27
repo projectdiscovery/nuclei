@@ -2066,6 +2066,7 @@ Valid values:
 
 
   - <code>time_delay</code>
+  - <code>xss_context</code>
 </div>
 
 <hr />
@@ -2080,7 +2081,8 @@ Valid values:
 Parameters is the parameters for the analyzer
 
 Parameters are different for each analyzer. For example, you can customize
-time_delay analyzer with sleep_duration, time_slope_error_range, etc. Refer
+time_delay analyzer with sleep_duration, time_slope_error_range, etc.
+The xss_context analyzer accepts an optional "canary" parameter. Refer
 to the docs for each analyzer to get an idea about parameters.
 
 </div>

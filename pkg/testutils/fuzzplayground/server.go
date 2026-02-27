@@ -34,6 +34,14 @@ func GetPlaygroundServer() *echo.Echo {
 	e.GET("/user/:id/profile", userProfileHandler)
 	e.POST("/user", patchUnsanitizedUserHandler)
 	e.GET("/blog/posts", getPostsHandler)
+
+	// XSS context analyzer test endpoints
+	e.GET("/xss/body", xssBodyHandler)
+	e.GET("/xss/attribute", xssAttributeHandler)
+	e.GET("/xss/script", xssScriptHandler)
+	e.GET("/xss/comment", xssCommentHandler)
+	e.GET("/xss/event", xssEventHandler)
+	e.GET("/xss/encoded", xssEncodedHandler)
 	return e
 }
 
@@ -223,4 +231,50 @@ func getPostsHandler(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(http.StatusOK, posts)
+}
+
+// --- XSS context analyzer test endpoints ---
+
+// xssBodyHandler reflects the input directly inside an HTML body (text context).
+func xssBodyHandler(ctx echo.Context) error {
+	input := ctx.QueryParam("input")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("<p>Welcome %s</p>", input)))
+}
+
+// xssAttributeHandler reflects the input inside a quoted attribute value.
+func xssAttributeHandler(ctx echo.Context) error {
+	input := ctx.QueryParam("input")
+	page := fmt.Sprintf(`<input type="text" value="%s">`, input)
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, page))
+}
+
+// xssScriptHandler reflects the input inside a <script> block.
+func xssScriptHandler(ctx echo.Context) error {
+	input := ctx.QueryParam("input")
+	page := fmt.Sprintf(`<script>var data = "%s";</script>`, input)
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, page))
+}
+
+// xssCommentHandler reflects the input inside an HTML comment.
+func xssCommentHandler(ctx echo.Context) error {
+	input := ctx.QueryParam("input")
+	page := fmt.Sprintf(`<!-- debug: %s -->`, input)
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, page))
+}
+
+// xssEventHandler reflects the input inside an event handler attribute.
+func xssEventHandler(ctx echo.Context) error {
+	input := ctx.QueryParam("input")
+	page := fmt.Sprintf(`<button onclick="doSomething('%s')">Click</button>`, input)
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, page))
+}
+
+// xssEncodedHandler applies entity encoding on angle brackets but
+// passes other characters through, useful for testing character
+// survival detection.
+func xssEncodedHandler(ctx echo.Context) error {
+	input := ctx.QueryParam("input")
+	safe := strings.ReplaceAll(input, "<", "&lt;")
+	safe = strings.ReplaceAll(safe, ">", "&gt;")
+	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("<p>%s</p>", safe)))
 }

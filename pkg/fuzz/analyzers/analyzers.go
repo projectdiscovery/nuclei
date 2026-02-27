@@ -27,12 +27,14 @@ type AnalyzerTemplate struct {
 	//   Name is the name of the analyzer to use
 	// values:
 	//   - time_delay
+	//   - xss_context
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
 	//
 	//   Parameters are different for each analyzer. For example, you can customize
-	//   time_delay analyzer with sleep_duration, time_slope_error_range, etc. Refer
+	//   time_delay analyzer with sleep_duration, time_slope_error_range, etc.
+	//   The xss_context analyzer accepts an optional "canary" parameter. Refer
 	//   to the docs for each analyzer to get an idea about parameters.
 	Parameters map[string]interface{} `json:"parameters" yaml:"parameters"`
 }
@@ -61,6 +63,14 @@ type Options struct {
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
 	AnalyzerParameters map[string]interface{}
+
+	// ResponseBody is the raw response body from the fuzz request.
+	// Used by analyzers that need to inspect response content (e.g. xss_context).
+	ResponseBody string
+	// ResponseHeaders contains the response headers keyed by header name.
+	ResponseHeaders map[string][]string
+	// ResponseStatusCode is the HTTP status code from the fuzz response.
+	ResponseStatusCode int
 }
 
 var (
