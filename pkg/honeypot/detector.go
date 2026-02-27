@@ -1,14 +1,30 @@
 package honeypot
 
 import (
+	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 )
+
+// hostState tracks per-host match metadata for confidence scoring and reporting.
+type hostState struct {
+	// templates is the set of unique template IDs matched.
+	templates map[string]struct{}
+	// firstSeen is the timestamp of the first match recorded for this host.
+	firstSeen time.Time
+	// sampleTemplates stores up to maxSampleTemplates IDs for reporting.
+	sampleTemplates []string
+}
+
+const maxSampleTemplates = 10
 
 // Detector tracks unique template matches per host to identify potential honeypots.
 // Honeypots are hosts that respond positively to an unusually high number of vulnerability
@@ -19,26 +35,37 @@ type Detector struct {
 	threshold int
 	// suppress controls whether results from flagged hosts are suppressed (true) or only warned (false).
 	suppress bool
-	// matches tracks unique template IDs matched per normalized host.
-	// Each host's set is naturally bounded at threshold entries: once the set
-	// reaches threshold, the host is flagged and the entry is pruned entirely.
-	// Total memory is therefore O(uniqueHosts × threshold).
-	matches map[string]map[string]struct{}
-	// flagged tracks hosts that have been flagged as honeypots, storing the match count
-	// at the time of flagging. This allows matches to be pruned while preserving counts.
-	flagged map[string]int
-	// mu protects concurrent access to matches and flagged maps.
+	// hosts tracks per-host match state. Once flagged, the entry is moved to flaggedState
+	// and removed from hosts to bound memory.
+	hosts map[string]*hostState
+	// flaggedState stores metadata for flagged hosts, used for scoring and reporting.
+	flaggedState map[string]*flaggedHost
+	// totalHosts tracks the number of distinct hosts seen (for report summary).
+	totalHosts map[string]struct{}
+	// suppressedCount tracks the number of results suppressed due to honeypot flagging.
+	suppressedCount int
+	// mu protects concurrent access to all maps.
 	mu sync.RWMutex
+}
+
+// flaggedHost stores metadata about a host that has been flagged as a honeypot.
+type flaggedHost struct {
+	matchCount      int
+	score           float64
+	firstSeen       time.Time
+	flaggedAt       time.Time
+	sampleTemplates []string
 }
 
 // New creates a new honeypot Detector with the given threshold and suppression mode.
 // A threshold of 0 disables detection entirely.
 func New(threshold int, suppress bool) *Detector {
 	return &Detector{
-		threshold: threshold,
-		suppress:  suppress,
-		matches:   make(map[string]map[string]struct{}),
-		flagged:   make(map[string]int),
+		threshold:    threshold,
+		suppress:     suppress,
+		hosts:        make(map[string]*hostState),
+		flaggedState: make(map[string]*flaggedHost),
+		totalHosts:   make(map[string]struct{}),
 	}
 }
 
@@ -67,38 +94,85 @@ func (d *Detector) Record(host, templateID string) (isFlagged, shouldSuppress bo
 
 	d.mu.Lock()
 
+	// Track total unique hosts for reporting
+	d.totalHosts[normalizedHost] = struct{}{}
+
 	// If already flagged, skip counting
-	if _, ok := d.flagged[normalizedHost]; ok {
+	if _, ok := d.flaggedState[normalizedHost]; ok {
+		if d.suppress {
+			d.suppressedCount++
+		}
 		d.mu.Unlock()
 		return true, d.suppress
 	}
 
-	templates, ok := d.matches[normalizedHost]
+	hs, ok := d.hosts[normalizedHost]
 	if !ok {
-		templates = make(map[string]struct{})
-		d.matches[normalizedHost] = templates
+		hs = &hostState{
+			templates: make(map[string]struct{}),
+			firstSeen: time.Now(),
+		}
+		d.hosts[normalizedHost] = hs
 	}
-	templates[templateID] = struct{}{}
+
+	// Check if this is a new template before adding to the set
+	_, alreadySeen := hs.templates[templateID]
+	hs.templates[templateID] = struct{}{}
+
+	// Track sample templates for reporting (up to maxSampleTemplates).
+	// Dedup is guaranteed by the alreadySeen check above — no linear scan needed.
+	if !alreadySeen && len(hs.sampleTemplates) < maxSampleTemplates {
+		hs.sampleTemplates = append(hs.sampleTemplates, templateID)
+	}
 
 	// Cap check: once the per-host set reaches threshold, flag and prune.
 	// This bounds each host's set to at most threshold entries; combined
 	// with pruning on flag, total memory is O(uniqueHosts × threshold).
-	if len(templates) >= d.threshold {
-		matchCount := len(templates)
-		// Store the match count in flagged map and prune the per-template set:
-		// once flagged, Record() short-circuits on the flagged check above,
-		// so these entries would never be read again. This bounds memory growth
-		// for scans with many flagged hosts.
-		d.flagged[normalizedHost] = matchCount
-		delete(d.matches, normalizedHost)
+	if len(hs.templates) >= d.threshold {
+		matchCount := len(hs.templates)
+		score := d.computeScore(matchCount)
+		d.flaggedState[normalizedHost] = &flaggedHost{
+			matchCount:      matchCount,
+			score:           score,
+			firstSeen:       hs.firstSeen,
+			flaggedAt:       time.Now(),
+			sampleTemplates: hs.sampleTemplates,
+		}
+		delete(d.hosts, normalizedHost)
+		if d.suppress {
+			d.suppressedCount++
+		}
 		d.mu.Unlock()
-		// Log outside the lock to avoid stalling concurrent writers
-		gologger.Warning().Msgf("[honeypot] %s matched %d unique templates (threshold: %d) — likely honeypot", normalizedHost, matchCount, d.threshold)
+		gologger.Warning().Msgf("[honeypot] %s matched %d unique templates (threshold: %d, score: %.2f) — likely honeypot", normalizedHost, matchCount, d.threshold, score)
 		return true, d.suppress
 	}
 
 	d.mu.Unlock()
 	return false, false
+}
+
+// computeScore calculates a confidence score (0.0-1.0) based on how far the match
+// count exceeds the threshold. At exactly the threshold the score is 0.5; it
+// approaches 1.0 asymptotically as matches increase. Must be called under lock.
+func (d *Detector) computeScore(matchCount int) float64 {
+	// Ratio of matches to a saturation point of 2× threshold.
+	// At threshold: 0.5, at 2× threshold: ~0.8, capped at 1.0.
+	ratio := float64(matchCount) / float64(d.threshold*2)
+	return math.Min(ratio, 1.0)
+}
+
+// Score returns the honeypot confidence score for a host (0.0-1.0).
+// Returns 0.0 for hosts that are not flagged.
+func (d *Detector) Score(host string) float64 {
+	if !d.Enabled() {
+		return 0.0
+	}
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if fh, ok := d.flaggedState[normalizeHost(host)]; ok {
+		return fh.score
+	}
+	return 0.0
 }
 
 // IsFlagged returns whether a host has been flagged as a honeypot.
@@ -108,7 +182,7 @@ func (d *Detector) IsFlagged(host string) bool {
 	}
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	_, ok := d.flagged[normalizeHost(host)]
+	_, ok := d.flaggedState[normalizeHost(host)]
 	return ok
 }
 
@@ -120,33 +194,126 @@ func (d *Detector) FlaggedHosts() map[string]int {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	result := make(map[string]int, len(d.flagged))
-	for host, count := range d.flagged {
-		result[host] = count
+	result := make(map[string]int, len(d.flaggedState))
+	for host, fh := range d.flaggedState {
+		result[host] = fh.matchCount
 	}
 	return result
 }
 
 // Summary returns a human-readable summary of flagged hosts, or an empty string if none.
 func (d *Detector) Summary() string {
-	flagged := d.FlaggedHosts()
-	if len(flagged) == 0 {
+	if !d.Enabled() {
+		return ""
+	}
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if len(d.flaggedState) == 0 {
 		return ""
 	}
 
 	// Sort hosts for deterministic output across runs
-	hosts := make([]string, 0, len(flagged))
-	for host := range flagged {
+	hosts := make([]string, 0, len(d.flaggedState))
+	for host := range d.flaggedState {
 		hosts = append(hosts, host)
 	}
 	sort.Strings(hosts)
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("[honeypot] %d host(s) flagged as potential honeypot(s):\n", len(flagged)))
+	sb.WriteString(fmt.Sprintf("[honeypot] %d host(s) flagged as potential honeypot(s):\n", len(d.flaggedState)))
 	for _, host := range hosts {
-		sb.WriteString(fmt.Sprintf("  - %s (%d unique template matches)\n", host, flagged[host]))
+		fh := d.flaggedState[host]
+		sb.WriteString(fmt.Sprintf("  - %s (%d unique template matches, score: %.2f)\n", host, fh.matchCount, fh.score))
 	}
 	return sb.String()
+}
+
+// ReportEntry represents a single flagged host in the honeypot JSON report.
+type ReportEntry struct {
+	Host                   string   `json:"host"`
+	Score                  float64  `json:"score"`
+	UniqueTemplatesMatched int      `json:"unique_templates_matched"`
+	FirstSeen              string   `json:"first_seen"`
+	FlaggedAt              string   `json:"flagged_at"`
+	SampleTemplates        []string `json:"sample_templates"`
+}
+
+// ReportSummary contains aggregate scan statistics for the honeypot report.
+type ReportSummary struct {
+	TotalHosts        int `json:"total_hosts"`
+	FlaggedHosts      int `json:"flagged_hosts"`
+	SuppressedResults int `json:"suppressed_results"`
+}
+
+// Report is the top-level JSON structure for the honeypot report output.
+type Report struct {
+	FlaggedHosts []ReportEntry `json:"flagged_hosts"`
+	ScanSummary  ReportSummary `json:"scan_summary"`
+}
+
+// WriteReport writes a JSON honeypot report to the specified file path.
+// Returns nil if detection is disabled or no hosts were flagged.
+func (d *Detector) WriteReport(filePath string) error {
+	if !d.Enabled() || filePath == "" {
+		return nil
+	}
+
+	d.mu.RLock()
+	report := d.buildReport()
+	d.mu.RUnlock()
+
+	if len(report.FlaggedHosts) == 0 {
+		return nil
+	}
+
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal honeypot report: %w", err)
+	}
+
+	f, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create honeypot report file %s: %w", filePath, err)
+	}
+	defer f.Close()
+	if _, err := f.Write(data); err != nil {
+		return fmt.Errorf("failed to write honeypot report to %s: %w", filePath, err)
+	}
+
+	gologger.Info().Msgf("[honeypot] report written to %s", filePath)
+	return nil
+}
+
+// buildReport constructs the report structure. Must be called under at least RLock.
+func (d *Detector) buildReport() Report {
+	entries := make([]ReportEntry, 0, len(d.flaggedState))
+	for host, fh := range d.flaggedState {
+		entries = append(entries, ReportEntry{
+			Host:                   host,
+			Score:                  fh.score,
+			UniqueTemplatesMatched: fh.matchCount,
+			FirstSeen:              fh.firstSeen.UTC().Format(time.RFC3339),
+			FlaggedAt:              fh.flaggedAt.UTC().Format(time.RFC3339),
+			SampleTemplates:        fh.sampleTemplates,
+		})
+	}
+	// Sort by score descending, then by host ascending for deterministic output
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Score != entries[j].Score {
+			return entries[i].Score > entries[j].Score
+		}
+		return entries[i].Host < entries[j].Host
+	})
+
+	return Report{
+		FlaggedHosts: entries,
+		ScanSummary: ReportSummary{
+			TotalHosts:        len(d.totalHosts),
+			FlaggedHosts:      len(d.flaggedState),
+			SuppressedResults: d.suppressedCount,
+		},
+	}
 }
 
 // normalizeHost extracts a consistent host identifier from various URL/host formats.

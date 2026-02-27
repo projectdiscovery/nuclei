@@ -1,7 +1,10 @@
 package honeypot
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -29,6 +32,7 @@ func TestDetectorNilSafe(t *testing.T) {
 	require.False(t, d.IsFlagged("host1"))
 	require.Nil(t, d.FlaggedHosts())
 	require.Empty(t, d.Summary())
+	require.Equal(t, 0.0, d.Score("host1"))
 }
 
 // TestDetectorThresholdTriggered verifies that a host is flagged once its unique template
@@ -119,8 +123,6 @@ func TestDetectorEmptyInputs(t *testing.T) {
 func TestDetectorEmptyHostURLs(t *testing.T) {
 	d := New(2, false)
 
-	// URLs that are syntactically valid but have empty hosts should not
-	// accumulate under a phantom "" key in the matches map.
 	emptyHostInputs := []string{
 		"http://",
 		"http:///path",
@@ -135,9 +137,9 @@ func TestDetectorEmptyHostURLs(t *testing.T) {
 
 	// Verify no phantom entries were created
 	d.mu.RLock()
-	_, hasEmpty := d.matches[""]
+	_, hasEmpty := d.hosts[""]
 	d.mu.RUnlock()
-	require.False(t, hasEmpty, "matches map should not contain an empty-string key")
+	require.False(t, hasEmpty, "hosts map should not contain an empty-string key")
 }
 
 // TestNormalizeHost exercises the normalizeHost helper with a table of URL formats,
@@ -214,6 +216,7 @@ func TestDetectorSummary(t *testing.T) {
 	summary := d.Summary()
 	require.Contains(t, summary, "1 host(s) flagged")
 	require.Contains(t, summary, "host1")
+	require.Contains(t, summary, "score:")
 }
 
 // TestDetectorHostNormalization verifies that different URL representations of the
@@ -247,10 +250,180 @@ func TestDetectorConcurrentAccess(t *testing.T) {
 
 	// Should not panic and flagged hosts should be consistent
 	flagged := d.FlaggedHosts()
-	// All 5 hosts (host0-host4) should be flagged: 100 goroutines / 5 hosts = 20 templates each > threshold 10
 	require.Len(t, flagged, 5)
 	for _, count := range flagged {
-		// Due to mutex serialisation, the flag fires exactly at threshold (10 unique templates)
 		require.Equal(t, count, 10)
 	}
+}
+
+// --- Confidence scoring tests ---
+
+// TestConfidenceScoreBasic verifies that flagged hosts receive a non-zero confidence score.
+func TestConfidenceScoreBasic(t *testing.T) {
+	d := New(3, false)
+
+	d.Record("host1", "t1")
+	d.Record("host1", "t2")
+	d.Record("host1", "t3")
+
+	require.True(t, d.IsFlagged("host1"))
+	score := d.Score("host1")
+	require.Greater(t, score, 0.0)
+	require.LessOrEqual(t, score, 1.0)
+}
+
+// TestConfidenceScoreUnflaggedHost verifies that unflagged hosts return a score of 0.
+func TestConfidenceScoreUnflaggedHost(t *testing.T) {
+	d := New(10, false)
+	d.Record("host1", "t1")
+	require.Equal(t, 0.0, d.Score("host1"))
+}
+
+// TestConfidenceScoreAtThreshold verifies the score at exactly the threshold.
+func TestConfidenceScoreAtThreshold(t *testing.T) {
+	d := New(10, false)
+	for i := 0; i < 10; i++ {
+		d.Record("host1", fmt.Sprintf("t%d", i))
+	}
+	// At threshold, score = threshold / (2*threshold) = 0.5
+	score := d.Score("host1")
+	require.InDelta(t, 0.5, score, 0.01)
+}
+
+// --- Suppressed count tests ---
+
+// TestSuppressedCountTracking verifies that suppressed results are counted.
+func TestSuppressedCountTracking(t *testing.T) {
+	d := New(2, true)
+
+	d.Record("host1", "t1")
+	d.Record("host1", "t2") // flags + suppresses (1)
+	d.Record("host1", "t3") // suppressed (2)
+	d.Record("host1", "t4") // suppressed (3)
+
+	d.mu.RLock()
+	count := d.suppressedCount
+	d.mu.RUnlock()
+	require.Equal(t, 3, count)
+}
+
+// --- Report tests ---
+
+// TestWriteReportCreatesValidJSON verifies that WriteReport produces valid JSON with expected fields.
+func TestWriteReportCreatesValidJSON(t *testing.T) {
+	d := New(3, true)
+
+	for i := 0; i < 3; i++ {
+		d.Record("host1", fmt.Sprintf("t%d", i))
+	}
+	d.Record("host2", "t1") // not flagged
+
+	tmpDir := t.TempDir()
+	reportPath := filepath.Join(tmpDir, "honeypot-report.json")
+
+	err := d.WriteReport(reportPath)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(reportPath)
+	require.NoError(t, err)
+
+	var report Report
+	err = json.Unmarshal(data, &report)
+	require.NoError(t, err)
+
+	require.Len(t, report.FlaggedHosts, 1)
+	require.Equal(t, "host1", report.FlaggedHosts[0].Host)
+	require.Greater(t, report.FlaggedHosts[0].Score, 0.0)
+	require.Equal(t, 3, report.FlaggedHosts[0].UniqueTemplatesMatched)
+	require.NotEmpty(t, report.FlaggedHosts[0].FirstSeen)
+	require.NotEmpty(t, report.FlaggedHosts[0].FlaggedAt)
+	require.NotEmpty(t, report.FlaggedHosts[0].SampleTemplates)
+
+	require.Equal(t, 2, report.ScanSummary.TotalHosts)
+	require.Equal(t, 1, report.ScanSummary.FlaggedHosts)
+}
+
+// TestWriteReportNoFlaggedHosts verifies that no report file is created when no hosts are flagged.
+func TestWriteReportNoFlaggedHosts(t *testing.T) {
+	d := New(10, false)
+	d.Record("host1", "t1")
+
+	tmpDir := t.TempDir()
+	reportPath := filepath.Join(tmpDir, "honeypot-report.json")
+
+	err := d.WriteReport(reportPath)
+	require.NoError(t, err)
+
+	_, err = os.Stat(reportPath)
+	require.True(t, os.IsNotExist(err), "report file should not be created when no hosts are flagged")
+}
+
+// TestWriteReportDisabled verifies that WriteReport is a no-op when detection is disabled.
+func TestWriteReportDisabled(t *testing.T) {
+	d := New(0, false)
+	err := d.WriteReport("/tmp/should-not-exist.json")
+	require.NoError(t, err)
+}
+
+// TestWriteReportEmptyPath verifies that WriteReport with an empty path is a no-op.
+func TestWriteReportEmptyPath(t *testing.T) {
+	d := New(3, false)
+	for i := 0; i < 3; i++ {
+		d.Record("host1", fmt.Sprintf("t%d", i))
+	}
+	err := d.WriteReport("")
+	require.NoError(t, err)
+}
+
+// TestSampleTemplatesCapped verifies that sample templates are capped at maxSampleTemplates.
+func TestSampleTemplatesCapped(t *testing.T) {
+	d := New(20, false)
+	for i := 0; i < 20; i++ {
+		d.Record("host1", fmt.Sprintf("template-%d", i))
+	}
+
+	d.mu.RLock()
+	fh := d.flaggedState["host1"]
+	d.mu.RUnlock()
+
+	require.NotNil(t, fh)
+	require.LessOrEqual(t, len(fh.sampleTemplates), maxSampleTemplates)
+	require.Equal(t, maxSampleTemplates, len(fh.sampleTemplates))
+}
+
+// TestTotalHostsTracked verifies that the detector tracks all unique hosts seen.
+func TestTotalHostsTracked(t *testing.T) {
+	d := New(100, false)
+	d.Record("host1", "t1")
+	d.Record("host2", "t1")
+	d.Record("host3", "t1")
+	d.Record("host1", "t2") // duplicate host
+
+	d.mu.RLock()
+	total := len(d.totalHosts)
+	d.mu.RUnlock()
+
+	require.Equal(t, 3, total)
+}
+
+// TestReportSortOrder verifies that report entries are sorted by score descending,
+// then by host ascending for deterministic output.
+func TestReportSortOrder(t *testing.T) {
+	// Use different thresholds via separate detectors to get different scores
+	d := New(2, false)
+
+	// Flag multiple hosts with same threshold — all get same score
+	d.Record("zebra", "t1")
+	d.Record("zebra", "t2")
+	d.Record("alpha", "t1")
+	d.Record("alpha", "t2")
+
+	d.mu.RLock()
+	report := d.buildReport()
+	d.mu.RUnlock()
+
+	require.Len(t, report.FlaggedHosts, 2)
+	// Same score, so secondary sort by host name ascending
+	require.Equal(t, "alpha", report.FlaggedHosts[0].Host)
+	require.Equal(t, "zebra", report.FlaggedHosts[1].Host)
 }

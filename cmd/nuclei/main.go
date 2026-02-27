@@ -425,6 +425,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 0, "minimum unique template matches before flagging a host as honeypot (0 = disabled)"),
 		flagSet.BoolVarP(&options.HoneypotSuppressResults, "honeypot-suppress", "hpq", false, "suppress results from hosts flagged as honeypots (default: warn only)"),
+		flagSet.StringVarP(&options.HoneypotReportFile, "honeypot-report", "hpr", "", "write a JSON honeypot report to the given file path"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
 		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),

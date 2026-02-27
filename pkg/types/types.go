@@ -139,6 +139,9 @@ type Options struct {
 	// HoneypotSuppressResults controls whether results from honeypot-flagged hosts
 	// are suppressed (true) or only warned about (false).
 	HoneypotSuppressResults bool
+	// HoneypotReportFile is the path to write a dedicated JSON honeypot report at end of scan.
+	// An empty string disables report output.
+	HoneypotReportFile string
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
@@ -533,6 +536,7 @@ func (options *Options) Copy() *Options {
 		NoHostErrors:                   options.NoHostErrors,
 		HoneypotThreshold:              options.HoneypotThreshold,
 		HoneypotSuppressResults:        options.HoneypotSuppressResults,
+		HoneypotReportFile:             options.HoneypotReportFile,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
 		HeadlessBulkSize:               options.HeadlessBulkSize,

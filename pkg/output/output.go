@@ -85,6 +85,8 @@ type StandardWriter struct {
 
 	// honeypotDetector tracks template match density per host to identify honeypots.
 	honeypotDetector *honeypot.Detector
+	// honeypotReportFile is the path to write a dedicated JSON honeypot report.
+	honeypotReportFile string
 
 	resultCount atomic.Int32
 }
@@ -224,7 +226,8 @@ type ResultEvent struct {
 	Error               string         `json:"error,omitempty"`
 	// HoneypotDetected indicates the host was flagged as a potential honeypot
 	// due to an unusually high number of unique template matches.
-	HoneypotDetected bool `json:"honeypot_detected,omitempty"`
+	HoneypotDetected bool    `json:"honeypot_detected,omitempty"`
+	HoneypotScore    float64 `json:"honeypot_score,omitempty"`
 }
 
 type IssueTrackerMetadata struct {
@@ -287,7 +290,8 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
 		KeysToRedact:     options.Redact,
-		honeypotDetector: honeypot.New(options.HoneypotThreshold, options.HoneypotSuppressResults),
+		honeypotDetector:   honeypot.New(options.HoneypotThreshold, options.HoneypotSuppressResults),
+		honeypotReportFile: options.HoneypotReportFile,
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -324,6 +328,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		isFlagged, shouldSuppress := w.honeypotDetector.Record(host, event.TemplateID)
 		if isFlagged {
 			event.HoneypotDetected = true
+			event.HoneypotScore = w.honeypotDetector.Score(host)
 			if shouldSuppress {
 				return nil
 			}
@@ -492,6 +497,11 @@ func (w *StandardWriter) Close() {
 	// Print honeypot detection summary if any hosts were flagged
 	if summary := w.honeypotDetector.Summary(); summary != "" {
 		gologger.Warning().Msgf("\n%s", strings.TrimRight(summary, "\n"))
+	}
+
+	// Write honeypot report if configured
+	if err := w.honeypotDetector.WriteReport(w.honeypotReportFile); err != nil {
+		gologger.Warning().Msgf("[honeypot] failed to write report: %v", err)
 	}
 
 	if w.outputFile != nil {
