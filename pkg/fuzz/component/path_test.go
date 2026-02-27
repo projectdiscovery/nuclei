@@ -142,3 +142,28 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+func TestPathComponent_TrailingSlash(t *testing.T) {
+	// Regression: Rebuild must preserve a trailing slash, because some servers
+	// treat /resource/ and /resource differently.
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	err = path.Iterate(func(key string, value interface{}) error {
+		if value.(string) == "55" {
+			return path.SetValue(key, "55 OR True")
+		}
+		return nil
+	})
+	require.NoError(t, err)
+
+	newReq, err := path.Rebuild()
+	require.NoError(t, err)
+
+	require.Equal(t, "/user/55 OR True/", newReq.Path, "trailing slash must be preserved after Rebuild")
+}

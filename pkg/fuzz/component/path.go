@@ -107,7 +107,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	for i := 1; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
-			// Skip empty segments
+			// Skip empty segments (trailing slash is handled separately below)
 			continue
 		}
 
@@ -123,6 +123,13 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
 		}
 		segmentIndex++
+	}
+
+	// Preserve trailing slash: if the original path ended with "/" the last
+	// split segment is "". Re-append an empty string so the joined path also
+	// ends with "/".
+	if len(originalSplitted) > 1 && originalSplitted[len(originalSplitted)-1] == "" {
+		rebuiltSegments = append(rebuiltSegments, "")
 	}
 
 	// Join the segments back into a path
