@@ -57,3 +57,33 @@ func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
 	}
 	return NewMultiAuthProvider(providers...), nil
 }
+
+// NewAuthProviderFromData creates a new auth provider directly from already-parsed
+// authx data. This avoids writing secrets to temp files and is used for inline
+// secrets embedded in template profile YAML.
+func NewAuthProviderFromData(data *authx.Authx, callback authx.LazyFetchSecret) (AuthProvider, error) {
+	if data == nil {
+		return nil, ErrNoSecrets
+	}
+	if len(data.Secrets) == 0 && len(data.Dynamic) == 0 {
+		return nil, ErrNoSecrets
+	}
+	if len(data.Dynamic) > 0 && callback == nil {
+		return nil, fmt.Errorf("lazy fetch callback is required for dynamic secrets")
+	}
+	for _, secret := range data.Secrets {
+		if err := secret.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid inline secret: %w", err)
+		}
+	}
+	for i, dynamic := range data.Dynamic {
+		if err := dynamic.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid inline dynamic secret: %w", err)
+		}
+		dynamic.SetLazyFetchCallback(callback)
+		data.Dynamic[i] = dynamic
+	}
+	f := &FileAuthProvider{Path: "<inline>", store: data}
+	f.init()
+	return f, nil
+}

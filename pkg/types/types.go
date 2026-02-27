@@ -422,6 +422,10 @@ type Options struct {
 	SecretsFile goflags.StringSlice
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
+	// InlineSecrets holds parsed secrets data from a template profile's
+	// embedded secrets section. Used instead of SecretsFile when secrets
+	// are defined inline in the profile YAML.
+	InlineSecrets interface{}
 	// FormatUseRequiredOnly only uses required fields when generating requests
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
@@ -666,6 +670,7 @@ func (options *Options) Copy() *Options {
 		JsConcurrency:                  options.JsConcurrency,
 		SecretsFile:                    options.SecretsFile,
 		PreFetchSecrets:                options.PreFetchSecrets,
+		InlineSecrets:                  options.InlineSecrets,
 		FormatUseRequiredOnly:          options.FormatUseRequiredOnly,
 		SkipFormatValidation:           options.SkipFormatValidation,
 		PayloadConcurrency:             options.PayloadConcurrency,

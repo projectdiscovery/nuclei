@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
@@ -67,6 +68,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	ptrutil "github.com/projectdiscovery/utils/ptr"
+	yamlv2 "gopkg.in/yaml.v2"
 )
 
 var (
@@ -576,24 +578,51 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
+	hasSecretsFile := len(r.options.SecretsFile) > 0
+	hasInlineSecrets := r.options.InlineSecrets != nil
+	if (hasSecretsFile || hasInlineSecrets) && !r.options.Validate {
 		// Clone options so GetAuthTmplStore can modify them without affecting the original
 		authOptions := r.options.Copy()
 		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
-		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
-		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
+		lazyFetchCallback := GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,
 		})
-		// initialize auth provider
-		provider, err := authprovider.NewAuthProvider(authOpts)
-		if err != nil {
-			return errors.Wrap(err, "could not create auth provider")
+
+		var providers []authprovider.AuthProvider
+
+		// File-based secrets
+		if hasSecretsFile {
+			authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
+			authOpts.LazyFetchSecret = lazyFetchCallback
+			fileProvider, err := authprovider.NewAuthProvider(authOpts)
+			if err != nil {
+				return errors.Wrap(err, "could not create file auth provider")
+			}
+			providers = append(providers, fileProvider)
 		}
-		executorOpts.AuthProvider = provider
+
+		// Inline secrets from template profile
+		if hasInlineSecrets {
+			secretsBytes, err := yamlv2.Marshal(r.options.InlineSecrets)
+			if err != nil {
+				return errors.Wrap(err, "could not marshal inline secrets")
+			}
+			authData, err := authx.GetAuthDataFromYAML(secretsBytes)
+			if err != nil {
+				return errors.Wrap(err, "could not parse inline secrets")
+			}
+			inlineProvider, err := authprovider.NewAuthProviderFromData(authData, lazyFetchCallback)
+			if err != nil {
+				return errors.Wrap(err, "could not create inline auth provider")
+			}
+			providers = append(providers, inlineProvider)
+		}
+
+		executorOpts.AuthProvider = authprovider.NewMultiAuthProvider(providers...)
 	}
 
 	if r.options.ShouldUseHostError() {

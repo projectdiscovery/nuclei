@@ -656,8 +656,15 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
-			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		sanitizedProfile, err := processTemplateProfile(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not process template profile: %s\n", err)
+		}
+		if sanitizedProfile != "" {
+			defer os.Remove(sanitizedProfile)
+			if err := flagSet.MergeConfigFile(sanitizedProfile); err != nil {
+				options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+			}
 		}
 	}
 
@@ -805,4 +812,124 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
+}
+
+// profileMetadataKeys are extra informational fields allowed in template profiles
+// that are not nuclei flags. These are stripped before passing to goflags merge.
+var profileMetadataKeys = map[string]bool{
+	"id":          true,
+	"name":        true,
+	"purpose":     true,
+	"description": true,
+}
+
+// processTemplateProfile reads a template profile YAML, extracts inline secrets
+// and inline targets, stores them in options, and writes a sanitized copy of the
+// profile (with metadata and special keys removed) for goflags to merge.
+// Returns the path to the sanitized temp file, or empty string if nothing to merge.
+func processTemplateProfile(profilePath string) (string, error) {
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		return "", fmt.Errorf("could not read template profile: %w", err)
+	}
+
+	var profileData map[string]interface{}
+	if err := yaml.Unmarshal(data, &profileData); err != nil {
+		return "", fmt.Errorf("could not parse template profile: %w", err)
+	}
+
+	// Extract and handle inline secrets
+	if secretsRaw, ok := profileData["secrets"]; ok && secretsRaw != nil {
+		options.InlineSecrets = secretsRaw
+		delete(profileData, "secrets")
+	}
+
+	// Extract and handle inline target list
+	if listRaw, ok := profileData["list"]; ok && listRaw != nil {
+		if err := materializeInlineTargets(listRaw); err != nil {
+			return "", fmt.Errorf("could not process inline targets: %w", err)
+		}
+		delete(profileData, "list")
+	}
+
+	// Remove metadata keys that are not nuclei flags
+	for key := range profileMetadataKeys {
+		delete(profileData, key)
+	}
+
+	// If nothing left after stripping, no need to create a temp file
+	if len(profileData) == 0 {
+		return "", nil
+	}
+
+	// Write sanitized profile to temp file for goflags merge
+	sanitizedData, err := yaml.Marshal(profileData)
+	if err != nil {
+		return "", fmt.Errorf("could not marshal sanitized profile: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp("", "nuclei-profile-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("could not create temp profile file: %w", err)
+	}
+	if _, err := tmpFile.Write(sanitizedData); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("could not write temp profile file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("could not close temp profile file: %w", err)
+	}
+	return tmpFile.Name(), nil
+}
+
+// materializeInlineTargets takes inline target list data from a template profile
+// and writes it to a temporary file, setting options.TargetsFilePath if not already
+// set via CLI flags. Supports both multiline string and string array formats.
+func materializeInlineTargets(listRaw interface{}) error {
+	var targets string
+
+	switch v := listRaw.(type) {
+	case string:
+		targets = strings.TrimSpace(v)
+	case []interface{}:
+		var lines []string
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				lines = append(lines, strings.TrimSpace(s))
+			}
+		}
+		targets = strings.Join(lines, "\n")
+	default:
+		return fmt.Errorf("unsupported list value type: %T", listRaw)
+	}
+
+	if targets == "" {
+		return nil
+	}
+
+	// Only set inline targets if no explicit -l flag was given
+	if options.TargetsFilePath != "" {
+		return nil
+	}
+
+	tmpFile, err := os.CreateTemp("", "nuclei-targets-*.txt")
+	if err != nil {
+		return fmt.Errorf("could not create temp targets file: %w", err)
+	}
+	if !strings.HasSuffix(targets, "\n") {
+		targets += "\n"
+	}
+	if _, err := tmpFile.WriteString(targets); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		return fmt.Errorf("could not write temp targets file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpFile.Name())
+		return fmt.Errorf("could not close temp targets file: %w", err)
+	}
+	options.TargetsFilePath = tmpFile.Name()
+	return nil
 }
