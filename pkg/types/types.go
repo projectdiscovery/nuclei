@@ -597,6 +597,8 @@ func (options *Options) Copy() *Options {
 		NoInteractsh:                   options.NoInteractsh,
 		EnvironmentVariables:           options.EnvironmentVariables,
 		MatcherStatus:                  options.MatcherStatus,
+		HoneypotDetection:             options.HoneypotDetection,
+		HoneypotThreshold:             options.HoneypotThreshold,
 		ClientCertFile:                 options.ClientCertFile,
 		ClientKeyFile:                  options.ClientKeyFile,
 		ClientCAFile:                   options.ClientCAFile,

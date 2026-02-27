@@ -11,7 +11,7 @@ import (
 const defaultHoneypotThreshold = 10
 
 // HoneypotTracker tracks unique template matches per host to detect honeypots.
-// Hosts that match more than the configured threshold of unique templates are
+// Hosts that match at least the configured threshold of unique templates are
 // flagged as honeypots and their results are suppressed.
 type HoneypotTracker struct {
 	mu        sync.Mutex

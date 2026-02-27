@@ -304,8 +304,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		return nil
 	}
 
-	// Honeypot detection: suppress results from hosts with too many unique matches
-	if w.honeypotTracker != nil && event.Error == "" {
+	// Honeypot detection: suppress results from hosts with too many unique matches.
+	// Only count actual matches, not failure events from -matcher-status.
+	if w.honeypotTracker != nil && event.Error == "" && event.MatcherStatus {
 		if w.honeypotTracker.Check(event.Host, event.TemplateID) {
 			return nil
 		}
