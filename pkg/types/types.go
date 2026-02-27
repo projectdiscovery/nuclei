@@ -470,8 +470,10 @@ type Options struct {
 	// This is internally managed and does not need to be set by user by explicitly setting
 	// this overrides the default/derived one
 	timeouts *Timeouts
-	// m is a mutex to protect timeouts from concurrent access
+	// tm is a mutex to protect timeouts from concurrent access
 	m sync.Mutex
+	// DetectHoneypot is a flag to enable honeypot detection to reduce noise
+	DetectHoneypot bool
 }
 
 func (options *Options) Copy() *Options {
@@ -684,6 +686,7 @@ func (options *Options) Copy() *Options {
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
 		ExecutionId:                    options.ExecutionId,
 		Parser:                         options.Parser,
+		DetectHoneypot:                 options.DetectHoneypot,
 	}
 	optCopy.SetTimeouts(options.timeouts)
 	return optCopy

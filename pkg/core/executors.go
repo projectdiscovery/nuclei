@@ -114,6 +114,11 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 					if err != nil {
 						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, t.value.Input, err)
 					}
+					if match {
+						if e.CheckHoneypot(t.value.Input) {
+							e.options.Logger.Info().Msgf("[INF] Target %s appears to be a honeypot, skipping further scans\n", t.value.Input)
+						}
+					}
 					results.CompareAndSwap(false, match)
 				}()
 			}
@@ -170,6 +175,14 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			return true
 		}
 
+		// Skip if the host is a honeypot
+		if e.options.DetectHoneypot {
+			v, ok := e.honeypotTracker.Load(scannedValue.Input)
+			if ok && v.(*atomic.Uint32).Load() > 15 {
+				return true
+			}
+		}
+
 		tasks <- task{index: index, skip: skip, value: scannedValue}
 		index++
 		return true
@@ -201,6 +214,13 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		default:
 		}
 
+		if e.options.DetectHoneypot {
+			v, ok := e.honeypotTracker.Load(target.Input)
+			if ok && v.(*atomic.Uint32).Load() > 15 {
+				return
+			}
+		}
+
 		// resize check point - nop if there are no changes
 		wp.RefreshWithConfig(e.GetWorkPoolConfig())
 
@@ -217,6 +237,11 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, value.Input, err)
+			}
+			if match {
+				if e.CheckHoneypot(value.Input) {
+					e.options.Logger.Info().Msgf("[INF] Target %s appears to be a honeypot, skipping further scans\n", value.Input)
+				}
 			}
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)

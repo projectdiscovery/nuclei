@@ -1,6 +1,9 @@
 package core
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -21,6 +24,9 @@ type Engine struct {
 	executerOpts *protocols.ExecutorOptions
 	Callback     func(*output.ResultEvent) // Executed on results
 	Logger       *gologger.Logger
+
+	// Track honeypot detection per host
+	honeypotTracker sync.Map // map[string]*atomic.Uint32
 }
 
 // New returns a new Engine instance
@@ -64,4 +70,15 @@ func (e *Engine) WorkPool() *WorkPool {
 	// resize check point - nop if there are no changes
 	e.workPool.RefreshWithConfig(e.GetWorkPoolConfig())
 	return e.workPool
+}
+
+// CheckHoneypot checks if a host is a honeypot and increments its hit count
+// Returns true when the hit count first exceeds the threshold (15) to log exactly once
+func (e *Engine) CheckHoneypot(host string) bool {
+	if !e.options.DetectHoneypot {
+		return false
+	}
+	v, _ := e.honeypotTracker.LoadOrStore(host, &atomic.Uint32{})
+	hits := v.(*atomic.Uint32).Add(1)
+	return hits == 16
 }
