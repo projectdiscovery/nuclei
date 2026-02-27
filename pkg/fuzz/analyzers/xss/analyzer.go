@@ -16,6 +16,8 @@ type Analyzer struct{}
 
 var _ analyzers.Analyzer = &Analyzer{}
 
+const defaultMaxResponseBodySize = 10 * 1024 * 1024 // 10 MB
+
 func init() {
 	analyzers.RegisterAnalyzer("xss_context", &Analyzer{})
 }
@@ -51,8 +53,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not send canary request")
 	}
+	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, defaultMaxResponseBodySize))
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not read response body")
 	}

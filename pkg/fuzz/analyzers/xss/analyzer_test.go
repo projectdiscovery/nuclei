@@ -2,6 +2,7 @@ package xss
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -46,6 +47,16 @@ func TestDetermineContext(t *testing.T) {
 		{
 			name:     "unquoted attribute",
 			html:     fmt.Sprintf(`<input value=%s>`, testCanary),
+			expected: ContextAttrValueUnquoted,
+		},
+		{
+			name:     "attribute key repeated uses canary-bearing occurrence",
+			html:     fmt.Sprintf(`<input value="safe"><input value='%s'>`, testCanary),
+			expected: ContextAttrValueSingleQuoted,
+		},
+		{
+			name:     "attribute key boundary match",
+			html:     fmt.Sprintf(`<input data-value="safe" value=%s>`, testCanary),
 			expected: ContextAttrValueUnquoted,
 		},
 
@@ -157,6 +168,24 @@ func TestNoReflection(t *testing.T) {
 	}
 }
 
+func TestEncodedCanaryNotMatched(t *testing.T) {
+	var (
+		htmlEntity     strings.Builder
+		percentEncoded strings.Builder
+	)
+	for i := 0; i < len(testCanary); i++ {
+		ch := testCanary[i]
+		fmt.Fprintf(&htmlEntity, "&#x%02x;", ch)
+		fmt.Fprintf(&percentEncoded, "%%%02X", ch)
+	}
+
+	html := fmt.Sprintf(`<div>%s</div><script>var x="%s"</script>`, htmlEntity.String(), percentEncoded.String())
+	points := findReflections([]byte(html), testCanary)
+	if len(points) != 0 {
+		t.Fatalf("expected no reflections for encoded canary, got %d", len(points))
+	}
+}
+
 func TestMultipleReflections(t *testing.T) {
 	html := fmt.Sprintf(`<div>%s</div><script>var x = "%s";</script>`, testCanary, testCanary)
 	points := findReflections([]byte(html), testCanary)
@@ -187,8 +216,8 @@ func TestGenerateCanary(t *testing.T) {
 	if len(c1) != 12 { // "gtss" + 8 chars
 		t.Errorf("canary length should be 12, got %d: %q", len(c1), c1)
 	}
-	if c1[:4] != "gtss" {
-		t.Errorf("canary should start with 'gtss', got %q", c1[:4])
+	if !strings.HasPrefix(c1, "gtss") {
+		t.Errorf("canary should start with 'gtss', got %q", c1)
 	}
 }
 
@@ -276,12 +305,12 @@ func TestRealWorldReflections(t *testing.T) {
 </body>
 </html>`, canary, canary, canary, canary, canary, canary),
 			expected: []XSSContext{
-				ContextCSSURL,          // url(/avatars/CANARY.jpg)
-				ContextURLAttribute,    // href="/user/CANARY"
-				ContextHTMLText,        // CANARY's Profile
-				ContextURLAttribute,    // src="/api/photo/CANARY"
+				ContextCSSURL,                // url(/avatars/CANARY.jpg)
+				ContextURLAttribute,          // href="/user/CANARY"
+				ContextHTMLText,              // CANARY's Profile
+				ContextURLAttribute,          // src="/api/photo/CANARY"
 				ContextAttrValueDoubleQuoted, // alt="Photo of CANARY"
-				ContextEventHandler,    // onerror="handleImgError('CANARY')"
+				ContextEventHandler,          // onerror="handleImgError('CANARY')"
 			},
 		},
 		{

@@ -43,6 +43,7 @@ var contextStrings = map[XSSContext]string{
 	ContextUnknown:               "xss_context:unknown",
 }
 
+// String returns the normalized identifier for this XSS context.
 func (c XSSContext) String() string {
 	if s, ok := contextStrings[c]; ok {
 		return s

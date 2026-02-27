@@ -60,7 +60,7 @@ func findReflections(body []byte, canary string) []reflectionPoint {
 
 			switch currentTag {
 			case "script":
-				ctx := classifyJSContext([]byte(text), canary, 0)
+				ctx := classifyJSContext([]byte(text), canary)
 				points = append(points, reflectionPoint{Context: ctx})
 			case "style":
 				ctx := classifyCSSContext([]byte(text), canary)
@@ -162,39 +162,103 @@ func classifyAttribute(attr html.Attribute, bodyStr string) XSSContext {
 // findQuoteContext determines the quoting style of an attribute value by inspecting
 // the raw HTML around the attribute assignment.
 func findQuoteContext(attr html.Attribute, bodyStr string) XSSContext {
-	// Search for key= followed by quote character or raw value in the original HTML.
-	// We search case-insensitively for the attribute name, then check what follows '='.
 	lower := strings.ToLower(bodyStr)
 	key := strings.ToLower(attr.Key)
 	searchFrom := 0
-	for {
-		idx := strings.Index(lower[searchFrom:], key+"=")
+	for searchFrom < len(lower) {
+		idx := strings.Index(lower[searchFrom:], key)
 		if idx < 0 {
 			break
 		}
-		pos := searchFrom + idx + len(key) + 1 // position after '='
+
+		keyStart := searchFrom + idx
+		keyEnd := keyStart + len(key)
+
+		// Match whole attribute names only.
+		if keyStart > 0 && isAttrIdentifierChar(lower[keyStart-1]) {
+			searchFrom = keyEnd
+			continue
+		}
+		if keyEnd < len(lower) && isAttrIdentifierChar(lower[keyEnd]) {
+			searchFrom = keyEnd
+			continue
+		}
+
+		pos := keyEnd
+		for pos < len(bodyStr) && isHTMLSpace(bodyStr[pos]) {
+			pos++
+		}
+		if pos >= len(bodyStr) || bodyStr[pos] != '=' {
+			searchFrom = keyEnd
+			continue
+		}
+		pos++ // position after '='
+		for pos < len(bodyStr) && isHTMLSpace(bodyStr[pos]) {
+			pos++
+		}
 		if pos >= len(bodyStr) {
 			break
 		}
-		ch := bodyStr[pos]
-		switch ch {
+
+		valueEnd := pos
+		switch bodyStr[pos] {
 		case '"':
-			return ContextAttrValueDoubleQuoted
+			valueStart := pos + 1
+			endRel := strings.IndexByte(bodyStr[valueStart:], '"')
+			rawVal := bodyStr[valueStart:]
+			valueEnd = len(bodyStr)
+			if endRel >= 0 {
+				valueEnd = valueStart + endRel + 1
+				rawVal = bodyStr[valueStart : valueEnd-1]
+			}
+			if strings.Contains(rawVal, attr.Val) {
+				return ContextAttrValueDoubleQuoted
+			}
 		case '\'':
-			return ContextAttrValueSingleQuoted
+			valueStart := pos + 1
+			endRel := strings.IndexByte(bodyStr[valueStart:], '\'')
+			rawVal := bodyStr[valueStart:]
+			valueEnd = len(bodyStr)
+			if endRel >= 0 {
+				valueEnd = valueStart + endRel + 1
+				rawVal = bodyStr[valueStart : valueEnd-1]
+			}
+			if strings.Contains(rawVal, attr.Val) {
+				return ContextAttrValueSingleQuoted
+			}
 		default:
-			// Verify this is actually our attribute value (not some random substring)
 			valEnd := strings.IndexAny(bodyStr[pos:], " \t\n\r>")
 			if valEnd < 0 {
-				valEnd = len(bodyStr) - pos
+				valueEnd = len(bodyStr)
+			} else {
+				valueEnd = pos + valEnd
 			}
-			rawVal := bodyStr[pos : pos+valEnd]
+			rawVal := bodyStr[pos:valueEnd]
 			if strings.Contains(rawVal, attr.Val) {
 				return ContextAttrValueUnquoted
 			}
 		}
-		searchFrom = pos
+
+		if valueEnd <= pos {
+			searchFrom = pos + 1
+			continue
+		}
+		searchFrom = valueEnd
 	}
 
 	return ContextAttrValueDoubleQuoted
+}
+
+// isAttrIdentifierChar reports whether ch can appear in an HTML attribute name.
+func isAttrIdentifierChar(ch byte) bool {
+	return (ch >= 'a' && ch <= 'z') ||
+		(ch >= '0' && ch <= '9') ||
+		ch == '-' ||
+		ch == '_' ||
+		ch == ':'
+}
+
+// isHTMLSpace reports whether ch is HTML attribute-list whitespace.
+func isHTMLSpace(ch byte) bool {
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\f'
 }

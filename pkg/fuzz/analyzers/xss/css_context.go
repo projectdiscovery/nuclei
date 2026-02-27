@@ -7,13 +7,36 @@ import (
 	"github.com/odvcencio/gotreesitter/grammars"
 )
 
+const maxCSSSourceBytes = 100 * 1024
+
 // classifyCSSContext parses CSS source and determines whether the canary is
 // inside a url() function call or a generic CSS value.
 func classifyCSSContext(cssSource []byte, canary string) XSSContext {
+	if len(cssSource) > maxCSSSourceBytes {
+		return ContextCSSValue
+	}
+	if exceedsNestingDepth(cssSource, maxParseNestingDepth) {
+		return ContextCSSValue
+	}
+
 	lang := grammars.CssLanguage()
 	parser := gotreesitter.NewParser(lang)
-	tree, err := parser.Parse(cssSource)
+	var (
+		tree *gotreesitter.Tree
+		err  error
+	)
+	func() {
+		defer func() {
+			if recover() != nil {
+				tree = nil
+			}
+		}()
+		tree, err = parser.Parse(cssSource)
+	}()
 	if err != nil {
+		return ContextCSSValue
+	}
+	if tree == nil {
 		return ContextCSSValue
 	}
 	defer tree.Release()

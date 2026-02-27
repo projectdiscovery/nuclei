@@ -7,14 +7,37 @@ import (
 	"github.com/odvcencio/gotreesitter/grammars"
 )
 
+const maxScriptSourceBytes = 100 * 1024
+const maxParseNestingDepth = 500
+
 // classifyJSContext parses JavaScript source and determines the sub-context
-// of a canary reflection. scriptOffset is the byte offset of the script content
-// within the original HTML document (used for error context, not currently needed).
-func classifyJSContext(jsSource []byte, canary string, scriptOffset uint32) XSSContext {
+// of a canary reflection.
+func classifyJSContext(jsSource []byte, canary string) XSSContext {
+	if len(jsSource) > maxScriptSourceBytes {
+		return ContextScriptExpression
+	}
+	if exceedsNestingDepth(jsSource, maxParseNestingDepth) {
+		return ContextScriptExpression
+	}
+
 	lang := grammars.JavascriptLanguage()
 	parser := gotreesitter.NewParser(lang)
-	tree, err := parser.Parse(jsSource)
+	var (
+		tree *gotreesitter.Tree
+		err  error
+	)
+	func() {
+		defer func() {
+			if recover() != nil {
+				tree = nil
+			}
+		}()
+		tree, err = parser.Parse(jsSource)
+	}()
 	if err != nil {
+		return ContextScriptExpression
+	}
+	if tree == nil {
 		return ContextScriptExpression
 	}
 	defer tree.Release()
@@ -71,4 +94,24 @@ func classifyJSContext(jsSource []byte, canary string, scriptOffset uint32) XSSC
 	}
 
 	return ContextScriptExpression
+}
+
+// exceedsNestingDepth returns true when bracket nesting exceeds maxDepth.
+// This is a lightweight pre-parse guard against extremely deep parser inputs.
+func exceedsNestingDepth(source []byte, maxDepth int) bool {
+	depth := 0
+	for _, ch := range source {
+		switch ch {
+		case '{', '[', '(':
+			depth++
+			if depth > maxDepth {
+				return true
+			}
+		case '}', ']', ')':
+			if depth > 0 {
+				depth--
+			}
+		}
+	}
+	return false
 }
