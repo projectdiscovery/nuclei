@@ -113,7 +113,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
 		if val := q.value.parsed.Get(key); val != nil {
-			if newValue, ok := val.(string); ok && newValue != "" {
+			if newValue, ok := val.(string); ok {
 				rebuiltSegments = append(rebuiltSegments, newValue)
 			} else {
 				rebuiltSegments = append(rebuiltSegments, originalSegment)
