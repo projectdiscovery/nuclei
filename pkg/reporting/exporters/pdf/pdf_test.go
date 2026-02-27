@@ -1,0 +1,149 @@
+package pdf
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/model"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewDefaultsAndCreatesOutputDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "reports", "scan-report.pdf")
+
+	exporter, err := New(&Options{File: outputFile})
+	require.NoError(t, err)
+	require.NotNil(t, exporter)
+	require.Equal(t, outputFile, exporter.options.File)
+
+	info, err := os.Stat(filepath.Dir(outputFile))
+	require.NoError(t, err)
+	require.True(t, info.IsDir())
+
+	defaultExporter, err := New(nil)
+	require.NoError(t, err)
+	require.Equal(t, defaultFileName, defaultExporter.options.File)
+}
+
+func TestExportIgnoresNilEvent(t *testing.T) {
+	tmpDir := t.TempDir()
+	exporter, err := New(&Options{File: filepath.Join(tmpDir, "report.pdf")})
+	require.NoError(t, err)
+
+	require.NoError(t, exporter.Export(nil))
+	require.Empty(t, exporter.results)
+}
+
+func TestCloseWithoutResultsDoesNotCreateFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "empty.pdf")
+
+	exporter, err := New(&Options{File: outputFile})
+	require.NoError(t, err)
+	require.NoError(t, exporter.Close())
+
+	_, statErr := os.Stat(outputFile)
+	require.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestCloseWritesPDFAndRespectsOmitRaw(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "findings.pdf")
+
+	exporter, err := New(&Options{File: outputFile, OmitRaw: true})
+	require.NoError(t, err)
+
+	event := buildEvent("example.com", severity.High)
+	event.Request = "GET /secret HTTP/1.1"
+	event.Response = "secret-response-body"
+
+	require.NoError(t, exporter.Export(event))
+	require.NoError(t, exporter.Close())
+
+	pdfData, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+	require.NotEmpty(t, pdfData)
+
+	content := string(pdfData)
+	require.Contains(t, content, "Nuclei Scan Report")
+	require.Contains(t, content, "Severity Summary")
+	require.NotContains(t, content, "secret-response-body")
+	require.NotContains(t, content, "GET /secret HTTP/1.1")
+}
+
+func TestCloseTruncatesLargeRawBlocks(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "large-raw.pdf")
+
+	exporter, err := New(&Options{File: outputFile, OmitRaw: false})
+	require.NoError(t, err)
+
+	event := buildEvent("raw.example.com", severity.Medium)
+	event.Response = "START-" + strings.Repeat("A", maxRawBlockRunes+500) + "-END-MARKER"
+
+	require.NoError(t, exporter.Export(event))
+	require.NoError(t, exporter.Close())
+
+	pdfData, err := os.ReadFile(outputFile)
+	require.NoError(t, err)
+
+	content := string(pdfData)
+	require.Contains(t, content, "START-")
+	require.Contains(t, content, strings.TrimSpace(rawBlockTruncatedSuffix))
+	require.NotContains(t, content, "END-MARKER")
+}
+
+func TestConcurrentExportAndClose(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "concurrent.pdf")
+
+	exporter, err := New(&Options{File: outputFile})
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 30; i++ {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			event := buildEvent("concurrent.example.com", severity.Low)
+			event.TemplateID = "tmpl-concurrent-" + time.Unix(int64(index), 0).UTC().Format("150405")
+			_ = exporter.Export(event)
+		}(i)
+	}
+	wg.Wait()
+
+	require.Len(t, exporter.results, 30)
+	require.NoError(t, exporter.Close())
+
+	info, err := os.Stat(outputFile)
+	require.NoError(t, err)
+	require.True(t, info.Size() > 0)
+}
+
+func buildEvent(host string, sev severity.Severity) *output.ResultEvent {
+	return &output.ResultEvent{
+		TemplateID: "test-template",
+		Template:   "http/test-template.yaml",
+		Type:       "http",
+		Host:       host,
+		Matched:    "https://" + host + "/login",
+		Path:       "/login",
+		Request:    "GET /login HTTP/1.1",
+		Response:   "HTTP/1.1 200 OK",
+		Timestamp:  time.Date(2026, time.February, 27, 23, 0, 0, 0, time.UTC),
+		Info: model.Info{
+			Name:           "Test finding",
+			Description:    "A reproducible test finding",
+			SeverityHolder: severity.Holder{Severity: sev},
+			Reference:      stringslice.NewRawStringSlice("https://docs.example.com/finding"),
+		},
+	}
+}
