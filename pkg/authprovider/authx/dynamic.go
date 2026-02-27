@@ -202,6 +202,10 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // Uses sync.Once to ensure the fetch callback is called exactly once,
 // and all concurrent callers block until it completes.
 func (d *Dynamic) Fetch(isFatal bool) error {
+	if d.fetchOnce == nil {
+		return fmt.Errorf("dynamic secret not validated: call Validate() first")
+	}
+
 	d.fetchOnce.Do(func() {
 		d.error = d.fetchCallback(d)
 	})
