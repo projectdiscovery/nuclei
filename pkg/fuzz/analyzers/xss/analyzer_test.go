@@ -192,6 +192,28 @@ func TestGenerateCanary(t *testing.T) {
 	}
 }
 
+// BenchmarkFindReflections measures context detection across all context types.
+func BenchmarkFindReflections(b *testing.B) {
+	bodies := map[string][]byte{
+		"html_text":       []byte(fmt.Sprintf(`<html><body><div>%s</div></body></html>`, testCanary)),
+		"attribute":       []byte(fmt.Sprintf(`<html><body><input value="%s"></body></html>`, testCanary)),
+		"event_handler":   []byte(fmt.Sprintf(`<html><body><div onclick="%s"></div></body></html>`, testCanary)),
+		"script_string":   []byte(fmt.Sprintf(`<html><head><script>var x = "%s";</script></head></html>`, testCanary)),
+		"script_template": []byte(fmt.Sprintf("<html><head><script>var x = `%s`;</script></head></html>", testCanary)),
+		"css_value":       []byte(fmt.Sprintf(`<html><head><style>.x { color: %s }</style></head></html>`, testCanary)),
+		"css_url":         []byte(fmt.Sprintf(`<html><head><style>div { background: url(%s) }</style></head></html>`, testCanary)),
+		"multi_reflect":   []byte(fmt.Sprintf(`<html><body><div>%s</div><script>var x = "%s";</script><style>.x{color:%s}</style></body></html>`, testCanary, testCanary, testCanary)),
+	}
+
+	for name, body := range bodies {
+		b.Run(name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				findReflections(body, testCanary)
+			}
+		})
+	}
+}
+
 func TestContextStrings(t *testing.T) {
 	tests := []struct {
 		ctx      XSSContext
