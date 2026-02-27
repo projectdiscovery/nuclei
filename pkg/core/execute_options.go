@@ -84,6 +84,8 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 
 	// Execute All SelfContained in parallel
 	e.executeAllSelfContained(ctx, selfContained, results, selfcontainedWg)
+	// Wait for self-contained templates (including auth) to complete before executing target-bound templates
+	selfcontainedWg.Wait()
 
 	strategyResult := &atomic.Bool{}
 	switch e.options.ScanStrategy {
@@ -94,8 +96,6 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	}
 
 	results.CompareAndSwap(false, strategyResult.Load())
-
-	selfcontainedWg.Wait()
 	return results
 }
 
