@@ -250,9 +250,13 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		return nil, errkit.Newf("failed to parse url %v while creating http request", reqData)
 	}
 	// while merging parameters first preference is given to target params
-	finalparams := parsed.Params
-	finalparams.Merge(reqURL.Params.Encode())
-	reqURL.Params = finalparams
+	// only merge target params when the evaluated request host matches input host
+	// absolute cross-domain URLs should not inherit query params from the original input
+	if reqURL.Host == parsed.Host {
+		finalparams := parsed.Params
+		finalparams.Merge(reqURL.Params.Encode())
+		reqURL.Params = finalparams
+	}
 	return r.generateHttpRequest(ctx, reqURL, finalVars, payloads)
 }
 
