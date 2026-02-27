@@ -783,6 +783,12 @@ github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 h1:G7ERwszslrBzRxj//J
 github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037/go.mod h1:2bpvgLBZEtENV5scfDFEtB/5+1M4hkQhDQrccEJ/qGw=
 github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 h1:bQx3WeLcUWy+RletIKwUIt4x3t8n2SxavmoclizMb8c=
 github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90/go.mod h1:y5+oSEHCPT/DGrS++Wc/479ERge0zTFxaF8PbGKcg2o=
+github.com/odvcencio/gotreesitter v0.5.2 h1:t3rlN8w9kWxHS9IZbMhE8ItO/IkCLQn9755RLAC49VI=
+github.com/odvcencio/gotreesitter v0.5.2/go.mod h1:CEjhRXmfP38AHqxwWxNcLaMsLQ3YoGMrwNGle1huZdU=
+github.com/odvcencio/gotreesitter v0.5.3-0.20260227072035-f76cb0d8aa95 h1:lMZGc05VRFVD5LU6CIzx3Rpn6clywgN7r76oVntUcnA=
+github.com/odvcencio/gotreesitter v0.5.3-0.20260227072035-f76cb0d8aa95/go.mod h1:CEjhRXmfP38AHqxwWxNcLaMsLQ3YoGMrwNGle1huZdU=
+github.com/odvcencio/gotreesitter v0.5.3-0.20260227083844-016686287e7c h1:93JqddF+SdRjfiYqef+/z3Bo1NCB8s1llaHVc9JdnKM=
+github.com/odvcencio/gotreesitter v0.5.3-0.20260227083844-016686287e7c/go.mod h1:CEjhRXmfP38AHqxwWxNcLaMsLQ3YoGMrwNGle1huZdU=
 github.com/olekukonko/errors v1.1.0 h1:RNuGIh15QdDenh+hNvKrJkmxxjV4hcS50Db478Ou5sM=
 github.com/olekukonko/errors v1.1.0/go.mod h1:ppzxA5jBKcO1vIpCXQ9ZqgDh8iwODz6OXIGKU8r5m4Y=
 github.com/olekukonko/ll v0.0.9 h1:Y+1YqDfVkqMWuEQMclsF9HUR5+a82+dxJuL1HHSRpxI=
