@@ -203,7 +203,8 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // and all concurrent callers block until it completes.
 func (d *Dynamic) Fetch(isFatal bool) error {
 	if d.fetchOnce == nil {
-		return fmt.Errorf("dynamic secret not validated: call Validate() first")
+		d.error = fmt.Errorf("dynamic secret not validated: call Validate() first")
+		return d.error
 	}
 
 	d.fetchOnce.Do(func() {
