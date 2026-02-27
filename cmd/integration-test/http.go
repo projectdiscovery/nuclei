@@ -86,6 +86,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/disable-path-automerge.yaml", TestCase: &httpDisablePathAutomerge{}},
 	{Path: "protocols/http/http-preprocessor.yaml", TestCase: &httpPreprocessor{}},
 	{Path: "protocols/http/multi-request.yaml", TestCase: &httpMultiRequest{}},
+	{Path: "protocols/http/multi-request-host-variable-scope.yaml", TestCase: &httpMultiRequestHostVariableScope{}},
 	{Path: "protocols/http/http-matcher-extractor-dy-extractor.yaml", TestCase: &httpMatcherExtractorDynamicExtractor{}},
 	{Path: "protocols/http/multi-http-var-sharing.yaml", TestCase: &httpMultiVarSharing{}},
 	{Path: "protocols/http/raw-path-single-slash.yaml", TestCase: &httpRawPathSingleSlash{}},
@@ -1700,6 +1701,18 @@ func (h *httpMultiRequest) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type httpMultiRequestHostVariableScope struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpMultiRequestHostVariableScope) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "http://scanme.sh/?foo=bar", debug)
 	if err != nil {
 		return err
 	}
