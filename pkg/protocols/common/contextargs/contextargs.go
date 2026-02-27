@@ -183,6 +183,12 @@ func (ctx *Context) Clone() *Context {
 	}
 	return newCtx
 }
+func (ctx *Context) CloneWithIP(ip string) *Context {
+	newCtx := ctx.Clone()
+	newCtx.MetaInput.CustomIP = ip
+	return newCtx
+}
+
 
 // GetCopyIfHostOutdated returns a new contextargs if the host is outdated
 func GetCopyIfHostOutdated(ctx *Context, url string) *Context {

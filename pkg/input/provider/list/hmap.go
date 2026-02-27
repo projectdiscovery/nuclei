@@ -184,15 +184,18 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 				if i.ipOptions.IPV6 {
 					ips = append(ips, dnsData.AAAA...)
 				}
-				for _, ip := range ips {
-					if ip == "" {
-						continue
-					}
-					metaInput := contextargs.NewMetaInput()
-					metaInput.Input = URL
-					metaInput.CustomIP = ip
-					i.setItem(metaInput)
-				}
+for _, ip := range ips {
+    if ip == "" {
+        continue
+    }
+    // সরাসরি MetaInput তৈরি না করে contextargs এর মাধ্যমে হ্যান্ডেল করা ভালো
+    newInput := &contextargs.MetaInput{
+        Input:    URL,
+        CustomIP: ip,
+    }
+    i.setItem(newInput)
+}
+
 				return
 			} else {
 				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
