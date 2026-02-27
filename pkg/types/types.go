@@ -406,6 +406,11 @@ type Options struct {
 	EnableGlobalMatchersTemplates bool
 	// EnableFileTemplates enables file templates
 	EnableFileTemplates bool
+	// HoneypotThreshold is the number of unique template matches per host
+	// before that host is flagged as a likely honeypot. 0 disables detection.
+	HoneypotThreshold int
+	// HoneypotSuppress suppresses output for hosts flagged as honeypots
+	HoneypotSuppress bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
@@ -658,6 +663,8 @@ func (options *Options) Copy() *Options {
 		EnableSelfContainedTemplates:   options.EnableSelfContainedTemplates,
 		EnableGlobalMatchersTemplates:  options.EnableGlobalMatchersTemplates,
 		EnableFileTemplates:            options.EnableFileTemplates,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotSuppress:               options.HoneypotSuppress,
 		EnableCloudUpload:              options.EnableCloudUpload,
 		ScanID:                         options.ScanID,
 		ScanName:                       options.ScanName,
