@@ -71,7 +71,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if _, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory}); err != nil {
+				b.Fatalf("could not load templates: %s", err)
+			}
 		}
 	})
 
@@ -89,7 +91,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if _, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory}); err != nil {
+				b.Fatalf("could not load templates: %s", err)
+			}
 		}
 	})
 
@@ -107,7 +111,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if _, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory}); err != nil {
+				b.Fatalf("could not load templates: %s", err)
+			}
 		}
 	})
 
@@ -125,7 +131,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if _, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory}); err != nil {
+				b.Fatalf("could not load templates: %s", err)
+			}
 		}
 	})
 
@@ -143,7 +151,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if _, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory}); err != nil {
+				b.Fatalf("could not load templates: %s", err)
+			}
 		}
 	})
 
@@ -161,7 +171,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if _, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory}); err != nil {
+				b.Fatalf("could not load templates: %s", err)
+			}
 		}
 	})
 
@@ -181,7 +193,9 @@ func BenchmarkLoadTemplates(b *testing.B) {
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory})
+			if _, err := store.LoadTemplates([]string{config.DefaultConfig.TemplatesDirectory}); err != nil {
+				b.Fatalf("could not load templates: %s", err)
+			}
 		}
 	})
 }

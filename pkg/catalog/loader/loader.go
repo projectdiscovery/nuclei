@@ -333,9 +333,15 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
-func (store *Store) Load() {
-	store.templates = store.LoadTemplates(store.finalTemplates)
+// It returns an error if template loading fails (e.g., missing dialers).
+func (store *Store) Load() error {
+	var err error
+	store.templates, err = store.LoadTemplates(store.finalTemplates)
+	if err != nil {
+		return fmt.Errorf("could not load templates: %w", err)
+	}
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+	return nil
 }
 
 var templateIDPathMap map[string]string
@@ -636,8 +642,9 @@ func isParsingError(store *Store, message string, template string, err error) bo
 	return true
 }
 
-// LoadTemplates takes a list of templates and returns paths for them
-func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+// LoadTemplates takes a list of templates and returns paths for them.
+// It returns an error if the underlying loading infrastructure is not initialized.
+func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
@@ -667,8 +674,9 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 }
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
-// returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+// returning templates that match. It returns an error if dialers are
+// not initialized or the wait group cannot be created.
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
@@ -701,6 +709,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	}
 
 	typesOpts := store.config.ExecutorOptions.Options
+
+	if typesOpts.ExecutionId == "" {
+		typesOpts.ExecutionId = xid.New().String()
+	}
+
+	if protocolstate.GetDialersWithId(typesOpts.ExecutionId) == nil {
+		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
+	}
+
 	concurrency := typesOpts.TemplateLoadingConcurrency
 	if concurrency <= 0 {
 		concurrency = types.DefaultTemplateLoadingConcurrency
@@ -708,16 +725,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
-	}
-
-	if typesOpts.ExecutionId == "" {
-		typesOpts.ExecutionId = xid.New().String()
-	}
-
-	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
-	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
+		return nil, fmt.Errorf("could not create template loading wait group: %w", errWg)
 	}
 
 	for _, templatePath := range includedTemplates {
@@ -852,7 +860,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates.Slice
+	return loadedTemplates.Slice, nil
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
