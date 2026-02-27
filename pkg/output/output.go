@@ -313,6 +313,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if w.HoneypotDetector != nil && w.HoneypotDetector.IsEnabled() && event.MatcherStatus {
 		host := event.Host
 		if host == "" {
+			host = event.URL
+		}
+		if host == "" {
 			host = event.Matched
 		}
 		justFlagged := w.HoneypotDetector.RecordMatch(host, event.TemplateID)

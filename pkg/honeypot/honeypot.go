@@ -200,6 +200,11 @@ func NormalizeHost(raw string) string {
 		}
 	}
 
+	// Handle schemeless URL-like inputs (example.com/path, example.com:443/path)
+	if parsed, err := url.Parse("//" + raw); err == nil && parsed.Hostname() != "" {
+		return strings.ToLower(parsed.Hostname())
+	}
+
 	// Try host:port format
 	// Handle IPv6 with brackets: [::1]:8080
 	if strings.HasPrefix(raw, "[") {

@@ -16,6 +16,7 @@ func TestNormalizeHost(t *testing.T) {
 		expected string
 	}{
 		{"URL with scheme", "https://example.com/path?q=1", "example.com"},
+		{"Host with path (no scheme)", "example.com/path?q=1", "example.com"},
 		{"URL with port", "http://example.com:8080/admin", "example.com"},
 		{"Host:port", "example.com:443", "example.com"},
 		{"Bare host", "example.com", "example.com"},
