@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-pdf/fpdf"
@@ -21,7 +22,7 @@ type Options struct {
 // Exporter is a PDF exporter for nuclei scan results
 type Exporter struct {
 	options *Options
-	pdf     *fpdf.Fpdf
+	mu      sync.Mutex
 	results []*output.ResultEvent
 }
 
@@ -32,13 +33,17 @@ func New(options *Options) (*Exporter, error) {
 	}
 	dir := filepath.Dir(options.File)
 	if dir != "" && dir != "." {
-		_ = os.MkdirAll(dir, 0755)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("could not create directory for PDF report: %w", err)
+		}
 	}
 	return &Exporter{options: options}, nil
 }
 
 // Export collects a result event for later PDF generation
 func (e *Exporter) Export(event *output.ResultEvent) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.results = append(e.results, event)
 	return nil
 }
