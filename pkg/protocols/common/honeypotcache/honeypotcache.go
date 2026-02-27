@@ -79,7 +79,14 @@ var honeypotSignatures = []struct {
 
 // New returns a new honeypot detection cache
 func New(threshold int, suppress bool, maxHostsCount int) *Cache {
-	gc := gcache.New[string, *hostMatches](maxHostsCount).ARC().Build()
+	gc := gcache.New[string, *hostMatches](maxHostsCount).
+		ARC().
+		LoaderFunc(func(key string) (*hostMatches, error) {
+			return &hostMatches{
+				matches: make(map[string]bool),
+			}, nil
+		}).
+		Build()
 
 	return &Cache{
 		matchedHosts: gc,
@@ -184,11 +191,10 @@ func (c *Cache) MarkMatch(ctx *contextargs.Context, templateID string) {
 	}
 
 	cacheKey := c.GetKeyFromContext(ctx)
-	cache, err := c.matchedHosts.GetIFPresent(cacheKey)
+	// Use Get() which triggers LoaderFunc for atomic initialization
+	cache, err := c.matchedHosts.Get(cacheKey)
 	if err != nil {
-		cache = &hostMatches{
-			matches: make(map[string]bool),
-		}
+		return
 	}
 
 	cache.mu.Lock()
@@ -199,8 +205,6 @@ func (c *Cache) MarkMatch(ctx *contextargs.Context, templateID string) {
 		cache.matches[templateID] = true
 		cache.matchCount.Add(1)
 	}
-
-	_ = c.matchedHosts.Set(cacheKey, cache)
 
 	// Check if we should emit a warning
 	percentage := c.calculatePercentage(int(cache.matchCount.Load()))

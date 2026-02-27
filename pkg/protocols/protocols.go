@@ -290,6 +290,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Browser:             e.Browser,
 		Interactsh:          e.Interactsh,
 		HostErrorsCache:     e.HostErrorsCache,
+		HoneypotCache:       e.HoneypotCache,
 		StopAtFirstMatch:    e.StopAtFirstMatch,
 		Variables:           e.Variables,
 		Constants:           e.Constants,
@@ -470,6 +471,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
 	e.HostErrorsCache = n.HostErrorsCache
+	e.HoneypotCache = n.HoneypotCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB
