@@ -127,3 +127,29 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+// TestPathComponent_DeterministicOrder verifies that path segments are always
+// iterated in insertion order, even when keys are numeric strings.
+// This is a regression test for https://github.com/projectdiscovery/nuclei/issues/6398
+func TestPathComponent_DeterministicOrder(t *testing.T) {
+	expectedValues := []string{"user", "55", "profile", "settings", "12345"}
+	url := "https://example.com/" + "user/55/profile/settings/12345"
+
+	for run := 0; run < 50; run++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var values []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, expectedValues, values, "iteration %d: path segments not in deterministic order", run)
+	}
+}
