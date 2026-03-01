@@ -717,14 +717,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		gologger.Warning().Msgf("dialers with executionId %s not found, attempting late initialization", typesOpts.ExecutionId)
+		store.logger.Warning().Msgf("dialers with executionId %s not found, attempting late initialization", typesOpts.ExecutionId)
 		if err := protocolstate.Init(typesOpts); err != nil {
-			gologger.Error().Msgf("could not initialize dialers for executionId %s: %v", typesOpts.ExecutionId, err)
+			store.logger.Error().Msgf("could not initialize dialers for executionId %s: %v", typesOpts.ExecutionId, err)
 			return nil
 		}
 		dialers = protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 		if dialers == nil {
-			gologger.Error().Msgf("dialers still not available after init for executionId %s, skipping template loading", typesOpts.ExecutionId)
+			store.logger.Error().Msgf("dialers still not available after init for executionId %s, skipping template loading", typesOpts.ExecutionId)
 			return nil
 		}
 	}
