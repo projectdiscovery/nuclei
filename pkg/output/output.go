@@ -90,7 +90,7 @@ type StandardWriter struct {
 
 var _ Writer = &StandardWriter{}
 
-var decolorizerRegex = regexp.MustCompile(`\x10B\[[0-9;]*[a-zA-Z]`)
+var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 
 const maxHostsInTracker = 10000
 
@@ -127,10 +127,20 @@ func NewHoneypotTracker() *HoneypotTracker {
 // The function implements LRU eviction when capacity limits are reached to prevent silent failures.
 // It safely parses hostnames, strips ports, and maintains thread-safe access to tracking data.
 func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return false, false
+	}
+	
 	// Check if raw host string contains :// to detect scheme
 	if !strings.Contains(host, "://") {
+		// If no scheme, check if it's bare IPv6 and wrap in brackets
+		rawHost := strings.TrimSpace(host)
+		if strings.Count(rawHost, ":") >= 2 && !strings.HasPrefix(rawHost, "[") {
+			rawHost = "[" + rawHost + "]"
+		}
 		// If no scheme, prepend http:// before parsing
-		host = "http://" + host
+		host = "http://" + rawHost
 	}
 	
 	// Parse host using net/url to prevent path bypass
@@ -150,8 +160,11 @@ func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
 	ht.Lock()
 	defer ht.Unlock()
 	
+	// Check if this is a new host
+	isNewHost := ht.hostTemplates[host] == nil
+	
 	// Initialize host map if it doesn't exist
-	if ht.hostTemplates[host] == nil {
+	if isNewHost {
 		// Check memory limit only for NEW hosts to prevent unbounded growth
 		if len(ht.hostTemplates) >= maxHostsInTracker {
 			// Implement LRU eviction: remove oldest host to make room
@@ -170,12 +183,24 @@ func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
 			}
 		}
 		ht.hostTemplates[host] = make(map[string]struct{})
-		// Add to LRU order tracking
-		ht.order = append(ht.order, host)
 	}
 	
 	// Add template ID to host's map
 	ht.hostTemplates[host][templateID] = struct{}{}
+	
+	// Handle LRU update for existing hosts
+	if !isNewHost {
+		for i, existingHost := range ht.order {
+			if existingHost == host {
+				// Remove from current position
+				ht.order = append(ht.order[:i], ht.order[i+1:]...)
+				break
+			}
+		}
+	}
+	
+	// Always append to end (most recently used)
+	ht.order = append(ht.order, host)
 	
 	// Check if this host is a honeypot (more than 10 unique templates)
 	isHoneypot := len(ht.hostTemplates[host]) > 10
@@ -414,7 +439,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		HoneypotDetection: options.HoneypotDetection,
 	}
 
-	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "10" {
+	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
 		writer.DisableStdout = true
 	}
 
@@ -432,7 +457,11 @@ func (w *StandardWriter) ResultCount() int {
 //
 // Returns an error if formatting or writing fails, nil otherwise.
 func (w *StandardWriter) Write(event *ResultEvent) error {
-	// Check for honeypot detection if enabled (moved to top to prevent wasting CPU on formatting)
+	if event.Error != "" && !w.matcherStatus {
+		return nil
+	}
+
+	// THEN check honeypot
 	if w.HoneypotDetection {
 		isHoneypot, isFirstTime := w.honeypotTracker.AddAndCheck(event.Host, event.TemplateID)
 		if isHoneypot {
@@ -441,10 +470,6 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 			}
 			return nil
 		}
-	}
-
-	if event.Error != "" && !w.matcherStatus {
-		return nil
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -501,7 +526,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 func redactKeys(data string, keysToRedact []string) string {
 	for _, key := range keysToRedact {
 		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
-		data = keyPattern.ReplaceAllString(data, `$10***$2`)
+		data = keyPattern.ReplaceAllString(data, `${1}***$2`)
 	}
 	return data
 }
@@ -580,7 +605,7 @@ func getJSONLogRequestFromError(templatePath, input, requestType string, request
 	} else {
 		request.Kind = errkit.ErrKindUnknown.String()
 		var cause error
-		if len(errX.Errors()) > 10 {
+		if len(errX.Errors()) > 0 {
 			cause = errX.Errors()[0]
 		}
 		if cause == nil {
@@ -711,6 +736,12 @@ func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "\\", "_")
 	fileName = strings.ReplaceAll(fileName, "-", "_")
 	fileName = strings.ReplaceAll(fileName, ".", "_")
+	fileName = strings.ReplaceAll(fileName, "?", "_")
+	fileName = strings.ReplaceAll(fileName, "*", "_")
+	fileName = strings.ReplaceAll(fileName, "<", "_")
+	fileName = strings.ReplaceAll(fileName, ">", "_")
+	fileName = strings.ReplaceAll(fileName, "|", "_")
+	fileName = strings.ReplaceAll(fileName, "\"", "_")
 	if osutils.IsWindows() {
 		fileName = strings.ReplaceAll(fileName, ":", "_")
 	}
@@ -763,12 +794,12 @@ func tryParseCause(err error) error {
 	if strings.HasPrefix(msg, "ReadStatusLine:") {
 		// last index is actual error (from rawhttp)
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-10]))
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
 	}
 	if strings.Contains(msg, "read ") {
 		// same here
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-10]))
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
 	}
 	return err
 }
