@@ -4,8 +4,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,6 +47,33 @@ func TestLoadTemplates(t *testing.T) {
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
 	})
+}
+
+// TestLoadTemplatesWithTagsNilDialers verifies that LoadTemplatesWithTags
+// does not panic when dialers are not initialized for the given execution ID.
+// Before the fix, calling LoadTemplatesWithTags without prior dialer
+// initialization would panic with "dialers with executionId ... not found".
+// The fix attempts late initialization and falls back to a graceful nil return.
+func TestLoadTemplatesWithTagsNilDialers(t *testing.T) {
+
+	catalog := disk.NewCatalog("")
+	opts := &types.Options{
+		ExecutionId: "nonexistent-test-id",
+	}
+	store, err := New(&Config{
+		Templates: []string{"cves/CVE-2021-21315.yaml"},
+		Catalog:   catalog,
+		Logger:    gologger.DefaultLogger,
+		ExecutorOptions: &protocols.ExecutorOptions{
+			Options: opts,
+		},
+	})
+	require.Nil(t, err, "could not create store")
+
+	// Before the fix, this would panic. Now it should return nil gracefully.
+	require.NotPanics(t, func() {
+		store.LoadTemplatesWithTags([]string{}, nil)
+	}, "LoadTemplatesWithTags should not panic when dialers are not found")
 }
 
 func TestRemoteTemplates(t *testing.T) {
