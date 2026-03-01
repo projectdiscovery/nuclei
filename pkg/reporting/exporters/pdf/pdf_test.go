@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phpdave11/gofpdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
@@ -55,6 +56,9 @@ func TestCloseWithoutResultsDoesNotCreateFile(t *testing.T) {
 }
 
 func TestCloseWritesPDFAndRespectsOmitRaw(t *testing.T) {
+	reset := setDefaultCompression(t, false)
+	defer reset()
+
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "findings.pdf")
 
@@ -80,6 +84,9 @@ func TestCloseWritesPDFAndRespectsOmitRaw(t *testing.T) {
 }
 
 func TestCloseTruncatesLargeRawBlocks(t *testing.T) {
+	reset := setDefaultCompression(t, false)
+	defer reset()
+
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "large-raw.pdf")
 
@@ -109,16 +116,21 @@ func TestConcurrentExportAndClose(t *testing.T) {
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
+	errCh := make(chan error, 30)
 	for i := 0; i < 30; i++ {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
 			event := buildEvent("concurrent.example.com", severity.Low)
 			event.TemplateID = "tmpl-concurrent-" + time.Unix(int64(index), 0).UTC().Format("150405")
-			_ = exporter.Export(event)
+			errCh <- exporter.Export(event)
 		}(i)
 	}
 	wg.Wait()
+	close(errCh)
+	for exportErr := range errCh {
+		require.NoError(t, exportErr)
+	}
 
 	require.Len(t, exporter.results, 30)
 	require.NoError(t, exporter.Close())
@@ -126,6 +138,23 @@ func TestConcurrentExportAndClose(t *testing.T) {
 	info, err := os.Stat(outputFile)
 	require.NoError(t, err)
 	require.True(t, info.Size() > 0)
+}
+
+func TestNewRejectsParentTraversalPath(t *testing.T) {
+	_, err := New(&Options{File: "../outside/report.pdf"})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "parent directory traversal")
+}
+
+func setDefaultCompression(t *testing.T, enabled bool) func() {
+	t.Helper()
+
+	gofpdf.SetDefaultCompression(enabled)
+
+	return func() {
+		gofpdf.SetDefaultCompression(true)
+	}
 }
 
 func buildEvent(host string, sev severity.Severity) *output.ResultEvent {

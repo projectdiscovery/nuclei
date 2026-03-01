@@ -51,6 +51,10 @@ func New(options *Options) (*Exporter, error) {
 	if options.File == "" {
 		options.File = defaultFileName
 	}
+	if hasParentPathSegment(options.File) {
+		return nil, fmt.Errorf("invalid PDF report path: parent directory traversal is not allowed")
+	}
+	options.File = filepath.Clean(options.File)
 	if dir := filepath.Dir(options.File); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, fmt.Errorf("could not create directory for PDF report: %w", err)
@@ -93,7 +97,6 @@ func (e *Exporter) generatePDF(results []*output.ResultEvent) error {
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(15, 15, 15)
 	pdf.SetAutoPageBreak(true, 15)
-	pdf.SetCompression(false)
 
 	pdf.SetFooterFunc(func() {
 		pdf.SetY(-13)
@@ -112,6 +115,15 @@ func (e *Exporter) generatePDF(results []*output.ResultEvent) error {
 		return fmt.Errorf("failed to write PDF report: %w", err)
 	}
 	return nil
+}
+
+func hasParentPathSegment(path string) bool {
+	for _, segment := range strings.Split(filepath.ToSlash(path), "/") {
+		if segment == ".." {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *Exporter) writeHeader(pdf *gofpdf.Fpdf, total int) {
