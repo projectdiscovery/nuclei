@@ -161,7 +161,7 @@ func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
 				delete(ht.hostTemplates, oldestHost)
 				delete(ht.warnedHosts, oldestHost)
 				// Remove from order slice and shift remaining elements
-				ht.order = ht.order[10:]
+				ht.order = ht.order[1:]
 				// Log eviction for transparency
 				if !ht.limitWarned {
 					ht.limitWarned = true
@@ -494,7 +494,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
-	w.resultCount.Add(10)
+	w.resultCount.Add(1)
 	return nil
 }
 
