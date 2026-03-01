@@ -28,6 +28,9 @@ type Exporter struct {
 
 // New creates a new PDF exporter integration client based on options.
 func New(options *Options) (*Exporter, error) {
+	if options == nil {
+		options = &Options{}
+	}
 	if options.File == "" {
 		options.File = "nuclei-report.pdf"
 	}
@@ -50,13 +53,19 @@ func (e *Exporter) Export(event *output.ResultEvent) error {
 
 // Close generates the PDF report and writes it to disk
 func (e *Exporter) Close() error {
+	e.mu.Lock()
 	if len(e.results) == 0 {
+		e.mu.Unlock()
 		return nil
 	}
-	return e.generatePDF()
+	// Snapshot results under lock to avoid race with concurrent Export calls
+	results := append([]*output.ResultEvent(nil), e.results...)
+	e.mu.Unlock()
+	return e.generatePDF(results)
 }
 
-func (e *Exporter) generatePDF() error {
+
+func (e *Exporter) generatePDF(results []*output.ResultEvent) error {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetAutoPageBreak(true, 15)
 
@@ -66,12 +75,12 @@ func (e *Exporter) generatePDF() error {
 	pdf.CellFormat(0, 20, "Nuclei Scan Report", "", 1, "C", false, 0, "")
 	pdf.SetFont("Helvetica", "", 12)
 	pdf.CellFormat(0, 10, fmt.Sprintf("Generated: %s", time.Now().Format("2006-01-02 15:04:05")), "", 1, "C", false, 0, "")
-	pdf.CellFormat(0, 10, fmt.Sprintf("Total Findings: %d", len(e.results)), "", 1, "C", false, 0, "")
+	pdf.CellFormat(0, 10, fmt.Sprintf("Total Findings: %d", len(results)), "", 1, "C", false, 0, "")
 	pdf.Ln(10)
 
 	// Severity summary
 	severityCounts := map[string]int{}
-	for _, r := range e.results {
+	for _, r := range results {
 		sev := r.Info.SeverityHolder.Severity.String()
 		severityCounts[sev]++
 	}
@@ -79,7 +88,7 @@ func (e *Exporter) generatePDF() error {
 	pdf.Ln(10)
 
 	// Findings table
-	e.writeFindingsTable(pdf)
+	e.writeFindingsTable(pdf, results)
 
 	// Detailed findings
 	for i, r := range e.results {
@@ -116,7 +125,7 @@ func (e *Exporter) writeSeveritySummary(pdf *fpdf.Fpdf, counts map[string]int) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func (e *Exporter) writeFindingsTable(pdf *fpdf.Fpdf) {
+func (e *Exporter) writeFindingsTable(pdf *fpdf.Fpdf, results []*output.ResultEvent) {
 	pdf.SetFont("Helvetica", "B", 14)
 	pdf.CellFormat(0, 10, "Findings Overview", "", 1, "L", false, 0, "")
 
@@ -132,7 +141,7 @@ func (e *Exporter) writeFindingsTable(pdf *fpdf.Fpdf) {
 
 	// Table rows
 	pdf.SetFont("Helvetica", "", 8)
-	for _, r := range e.results {
+	for _, r := range results {
 		host := truncate(r.Host, 35)
 		tmpl := truncate(r.TemplateID, 28)
 		name := truncate(r.Info.Name, 28)
