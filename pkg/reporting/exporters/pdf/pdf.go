@@ -91,7 +91,7 @@ func (e *Exporter) generatePDF(results []*output.ResultEvent) error {
 	e.writeFindingsTable(pdf, results)
 
 	// Detailed findings
-	for i, r := range e.results {
+	for i, r := range results {
 		pdf.AddPage()
 		e.writeDetailedFinding(pdf, i+1, r)
 	}
