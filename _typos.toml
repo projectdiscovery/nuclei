@@ -1,0 +1,79 @@
+[files]
+# Non-English READMEs contain words flagged as typos
+extend-exclude = [
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test data with encoded payloads, SQL injection strings, etc.
+    "pkg/testutils/integration.go",
+    "pkg/input/formats/testdata/",
+    "integration_tests/fuzz/",
+    "integration_tests/protocols/",
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    "pkg/protocols/common/expressions/expressions_test.go",
+    "pkg/output/stats/waf/regexes.json",
+    # Vendor/generated
+    "vendor/",
+]
+
+[default.extend-words]
+# CLI flag names shown in help output (README)
+ines = "ines"
+ine = "ine"
+ot = "ot"
+ue = "ue"
+hae = "hae"
+ser = "ser"
+ba = "ba"
+nd = "nd"
+fo = "fo"
+
+# Existing identifiers in the codebase
+# NooP is an intentional stylization
+Noo = "Noo"
+
+# "Exluded" is used as an exported Go identifier (ExludedDastTmplStats)
+Exluded = "Exluded"
+
+# "splitted" used as variable name
+splitted = "splitted"
+Splitted = "Splitted"
+
+# "formated/isFormated" used as variable names
+formated = "formated"
+Formated = "Formated"
+
+# "seperate" in comments
+seperate = "seperate"
+
+# "worflow" in filename (worflow_loader.go) - existing identifier
+worflow = "worflow"
+
+# Test data identifiers
+SELEC = "SELEC"
+IST = "IST"
+templat = "templat"
+erros = "erros"
+erro = "erro"
+
+# Base64/encoded content fragments
+Iy = "Iy"
+Iz = "Iz"
+Fo = "Fo"
+UE = "UE"
+Ue = "Ue"
+ABD = "ABD"
+
+# Spanish text in test database seed data
+algoritmos = "algoritmos"
+
+# Go exported identifiers that can't be renamed without breaking API
+Allowd = "Allowd"
+Mis = "Mis"
+
+# Non-English XML test data
+alo = "alo"
