@@ -41,22 +41,23 @@ func New(options *Options) (*Exporter, error) {
 		return nil, fmt.Errorf("invalid file path: %w", err)
 	}
 	
-	// Ensure the path is within the current working directory or an absolute path the user explicitly controls
+	// Reject absolute paths to prevent arbitrary file writes
+	if filepath.IsAbs(options.File) {
+		return nil, fmt.Errorf("absolute paths not permitted for security: %s", options.File)
+	}
+	
+	// Ensure relative paths stay within the current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("could not get working directory: %w", err)
 	}
 	
-	// If it's a relative path, ensure it stays within cwd
-	if !filepath.IsAbs(options.File) {
-		expectedPrefix := filepath.Join(cwd, "")
-		if !strings.HasPrefix(absPath+string(filepath.Separator), expectedPrefix) {
-			return nil, fmt.Errorf("file path escapes working directory: %s", options.File)
-		}
+	expectedPrefix := filepath.Join(cwd, "")
+	if !strings.HasPrefix(absPath+string(filepath.Separator), expectedPrefix) {
+		return nil, fmt.Errorf("file path escapes working directory: %s", options.File)
 	}
 	
 	options.File = absPath
-
 	dir := filepath.Dir(options.File)
 	if dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0755); err != nil {
