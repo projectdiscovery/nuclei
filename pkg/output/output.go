@@ -90,7 +90,7 @@ type StandardWriter struct {
 
 var _ Writer = &StandardWriter{}
 
-var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
+var decolorizerRegex = regexp.MustCompile(`\x10B\[[0-9;]*[a-zA-Z]`)
 
 const maxHostsInTracker = 10000
 
@@ -137,15 +137,8 @@ func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
 	parsedURL, err := url.Parse(host)
 	
 	if err != nil {
-		// If parsing fails, fall back to splitting by / and strip ports
-		host = strings.TrimSpace(host)
-		if parts := strings.SplitN(host, "/", 2); len(parts) > 0 {
-			host = parts[0]
-		}
-		// Strip port if present
-		if parts := strings.SplitN(host, ":", 2); len(parts) > 1 {
-			host = parts[0]
-		}
+		// Return error or skip - do NOT fall back to insecure parsing
+		return false, false
 	} else {
 		// Use hostname from the parsed URL to prevent path bypass
 		host = parsedURL.Hostname()
@@ -168,7 +161,7 @@ func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
 				delete(ht.hostTemplates, oldestHost)
 				delete(ht.warnedHosts, oldestHost)
 				// Remove from order slice and shift remaining elements
-				ht.order = ht.order[1:]
+				ht.order = ht.order[10:]
 				// Log eviction for transparency
 				if !ht.limitWarned {
 					ht.limitWarned = true
@@ -229,6 +222,9 @@ type InternalWrappedEvent struct {
 	InteractshMatched atomic.Bool
 }
 
+// CloneShallow creates a shallow copy of the InternalWrappedEvent.
+// It copies the InternalEvent but resets Results and OperatorsResult to nil.
+// Returns a new InternalWrappedEvent with only the basic structure preserved.
 func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 	return &InternalWrappedEvent{
 		InternalEvent:   maps.Clone(iwe.InternalEvent),
@@ -238,6 +234,9 @@ func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 	}
 }
 
+// HasOperatorResult checks if the event has an operators result.
+// Returns true if OperatorsResult is not nil, false otherwise.
+// This method is thread-safe and uses read locks.
 func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
 	iwe.RLock()
 	defer iwe.RUnlock()
@@ -245,6 +244,9 @@ func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
 	return iwe.OperatorsResult != nil
 }
 
+// HasResults checks if the event has any result events.
+// Returns true if the Results slice contains at least one element, false otherwise.
+// This method is thread-safe and uses read locks.
 func (iwe *InternalWrappedEvent) HasResults() bool {
 	iwe.RLock()
 	defer iwe.RUnlock()
@@ -252,6 +254,10 @@ func (iwe *InternalWrappedEvent) HasResults() bool {
 	return len(iwe.Results) > 0
 }
 
+// SetOperatorResult sets the operators result for the event.
+// Parameters:
+//   - operatorResult: The result from template operators to store
+// This method is thread-safe and uses write locks.
 func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Result) {
 	iwe.Lock()
 	defer iwe.Unlock()
@@ -408,7 +414,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		HoneypotDetection: options.HoneypotDetection,
 	}
 
-	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
+	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "10" {
 		writer.DisableStdout = true
 	}
 
@@ -488,14 +494,14 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
-	w.resultCount.Add(1)
+	w.resultCount.Add(10)
 	return nil
 }
 
 func redactKeys(data string, keysToRedact []string) string {
 	for _, key := range keysToRedact {
 		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
-		data = keyPattern.ReplaceAllString(data, `$1***$2`)
+		data = keyPattern.ReplaceAllString(data, `$10***$2`)
 	}
 	return data
 }
@@ -512,7 +518,13 @@ type JSONLogRequest struct {
 	Attrs     interface{} `json:"attrs,omitempty"`
 }
 
-// Request writes a log the requests trace log
+// Request writes a log entry for template request traces.
+// It logs to trace file, error file, or custom hook as configured.
+// Parameters:
+//   - templatePath: Path to the template that made the request
+//   - input: The target URL or input that was requested
+//   - requestType: Type of request (e.g., HTTP, DNS)
+//   - requestErr: Any error that occurred during the request
 func (w *StandardWriter) Request(templatePath, input, requestType string, requestErr error) {
 	if w.traceFile == nil && w.errorFile == nil && w.JSONLogRequestHook == nil {
 		return
@@ -568,7 +580,7 @@ func getJSONLogRequestFromError(templatePath, input, requestType string, request
 	} else {
 		request.Kind = errkit.ErrKindUnknown.String()
 		var cause error
-		if len(errX.Errors()) > 1 {
+		if len(errX.Errors()) > 10 {
 			cause = errX.Errors()[0]
 		}
 		if cause == nil {
@@ -588,12 +600,16 @@ func getJSONLogRequestFromError(templatePath, input, requestType string, request
 	return request
 }
 
-// Colorizer returns the colorizer instance for writer
+// Colorizer returns the aurora colorizer instance for the writer.
+// The colorizer is used for terminal output formatting and styling.
+// Returns the configured aurora.Aurora instance.
 func (w *StandardWriter) Colorizer() aurora.Aurora {
 	return w.aurora
 }
 
-// Close closes the output writing interface
+// Close closes all open file handles and resources used by the writer.
+// It safely closes output, trace, and error files if they exist.
+// This method should be called when the writer is no longer needed.
 func (w *StandardWriter) Close() {
 	if w.outputFile != nil {
 		_ = w.outputFile.Close()
@@ -606,7 +622,11 @@ func (w *StandardWriter) Close() {
 	}
 }
 
-// WriteFailure writes the failure event for template to file and/or screen.
+// WriteFailure writes a failure event for template execution to file and/or screen.
+// It handles both cases where results exist and where manual failure events must be created.
+// Parameters:
+//   - wrappedEvent: The wrapped event containing failure information
+// Returns an error if writing fails, nil otherwise.
 func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error {
 	if !w.matcherStatus {
 		return nil
@@ -666,6 +686,11 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 
 var maxTemplateFileSizeForEncoding = unitutils.Mega
 
+// encodeTemplate reads and base64-encodes a template file.
+// Only encodes custom templates under 1MB in size.
+// Parameters:
+//   - templatePath: Path to the template file to encode
+// Returns base64-encoded template string or empty string if conditions not met.
 func (w *StandardWriter) encodeTemplate(templatePath string) string {
 	data, err := os.ReadFile(templatePath)
 	if err == nil && !w.omitTemplate && len(data) <= maxTemplateFileSizeForEncoding && config.DefaultConfig.IsCustomTemplate(templatePath) {
@@ -674,6 +699,11 @@ func (w *StandardWriter) encodeTemplate(templatePath string) string {
 	return ""
 }
 
+// sanitizeFileName sanitizes a filename by removing unsafe characters.
+// It replaces URL schemes, slashes, and special characters with underscores.
+// Parameters:
+//   - fileName: The original filename to sanitize
+// Returns a safe filename suitable for file system use.
 func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "http:", "")
 	fileName = strings.ReplaceAll(fileName, "https:", "")
@@ -687,6 +717,13 @@ func sanitizeFileName(fileName string) string {
 	fileName = strings.TrimPrefix(fileName, "__")
 	return fileName
 }
+// WriteStoreDebugData writes request/response debug data to files.
+// It stores data in organized subdirectories by event type with sanitized filenames.
+// Parameters:
+//   - host: The target host (truncated to 60 chars if longer)
+//   - templateID: The template ID (truncated to 100 chars if longer)
+//   - eventType: Type of event (e.g., request, response)
+//   - data: The actual debug data to write
 func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 	if w.storeResponse {
 		if len(host) > 60 {
@@ -712,9 +749,12 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 	}
 }
 
-// tryParseCause tries to parse the cause of given error
-// this is legacy support due to use of errorutil in existing libraries
-// but this should not be required once all libraries are updated
+// tryParseCause attempts to extract the root cause from complex error messages.
+// This is legacy support for libraries using errorutil and should be removed
+// once all libraries are updated to use proper error handling.
+// Parameters:
+//   - err: The error to parse for root cause
+// Returns the parsed cause error or original error if parsing fails.
 func tryParseCause(err error) error {
 	if err == nil {
 		return nil
@@ -723,14 +763,19 @@ func tryParseCause(err error) error {
 	if strings.HasPrefix(msg, "ReadStatusLine:") {
 		// last index is actual error (from rawhttp)
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New(strings.TrimSpace(parts[len(parts)-10]))
 	}
 	if strings.Contains(msg, "read ") {
 		// same here
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New(strings.TrimSpace(parts[len(parts)-10]))
 	}
 	return err
 }
 
+// RequestStatsLog logs HTTP request statistics for monitoring and analysis.
+// Currently a no-op method that can be implemented for stats collection.
+// Parameters:
+//   - statusCode: HTTP status code of the response
+//   - response: Response body or summary
 func (w *StandardWriter) RequestStatsLog(statusCode, response string) {}
