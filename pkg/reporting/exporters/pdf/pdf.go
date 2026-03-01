@@ -34,6 +34,29 @@ func New(options *Options) (*Exporter, error) {
 	if options.File == "" {
 		options.File = "nuclei-report.pdf"
 	}
+	// Validate file path to prevent directory traversal (CWE-22)
+	cleanPath := filepath.Clean(options.File)
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid file path: %w", err)
+	}
+	
+	// Ensure the path is within the current working directory or an absolute path the user explicitly controls
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("could not get working directory: %w", err)
+	}
+	
+	// If it's a relative path, ensure it stays within cwd
+	if !filepath.IsAbs(options.File) {
+		expectedPrefix := filepath.Join(cwd, "")
+		if !strings.HasPrefix(absPath+string(filepath.Separator), expectedPrefix) {
+			return nil, fmt.Errorf("file path escapes working directory: %s", options.File)
+		}
+	}
+	
+	options.File = absPath
+
 	dir := filepath.Dir(options.File)
 	if dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0755); err != nil {
