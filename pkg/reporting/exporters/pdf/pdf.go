@@ -52,7 +52,7 @@ func New(options *Options) (*Exporter, error) {
 		return nil, fmt.Errorf("could not get working directory: %w", err)
 	}
 	
-	expectedPrefix := filepath.Join(cwd, "")
+	expectedPrefix := cwd + string(filepath.Separator)
 	if !strings.HasPrefix(absPath+string(filepath.Separator), expectedPrefix) {
 		return nil, fmt.Errorf("file path escapes working directory: %s", options.File)
 	}
