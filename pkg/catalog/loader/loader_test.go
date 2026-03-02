@@ -126,7 +126,6 @@ func TestLoadTemplates_NoDialers(t *testing.T) {
 		t.Fatalf("unexpected loader creation error: %v", err)
 	}
 
-	// This should now return an error instead of panicking.
 	_, err = store.LoadTemplatesWithTags([]string{"test"}, []string{"test"})
 	if err == nil {
 		t.Fatal("expected error when dialers are missing, got nil")
