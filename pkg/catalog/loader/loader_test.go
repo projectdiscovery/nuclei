@@ -2,10 +2,14 @@ package loader
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,5 +103,35 @@ func TestRemoteTemplates(t *testing.T) {
 				t.Errorf("New() = %v, want %v", got.finalTemplates, tt.want.finalTemplates)
 			}
 		})
+	}
+}
+
+func TestLoadTemplates_NoDialers(t *testing.T) {
+	catalog := disk.NewCatalog("")
+
+	options := &protocols.ExecutorOptions{
+		Options: &types.Options{
+			ExecutionId: "non-existent-id",
+			Logger:      gologger.DefaultLogger,
+		},
+	}
+
+	store, err := New(&Config{
+		Templates:       []string{"test"},
+		Catalog:         catalog,
+		ExecutorOptions: options,
+		Logger:          gologger.DefaultLogger,
+	})
+	if err != nil {
+		t.Fatalf("unexpected loader creation error: %v", err)
+	}
+
+	// This should now return an error instead of panicking.
+	_, err = store.LoadTemplatesWithTags([]string{"test"}, []string{"test"})
+	if err == nil {
+		t.Fatal("expected error when dialers are missing, got nil")
+	}
+	if !strings.Contains(err.Error(), "dialers with executionId") {
+		t.Errorf("unexpected error message: %v", err)
 	}
 }
