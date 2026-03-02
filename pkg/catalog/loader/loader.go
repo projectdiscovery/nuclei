@@ -641,7 +641,8 @@ func isParsingError(store *Store, message string, template string, err error) bo
 	return true
 }
 
-// LoadTemplates takes a list of templates and returns paths for them
+// LoadTemplates takes a list of templates and returns parsed templates.
+// It returns an error if loading fails (for example, missing dialers for execution ID).
 func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
@@ -671,8 +672,9 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 	return loadedWorkflows
 }
 
-// LoadTemplatesWithTags takes a list of templates and extra tags
-// returning templates that match.
+// LoadTemplatesWithTags takes a list of templates and extra tags,
+// returning parsed templates that match.
+// It returns an error when template loading cannot proceed.
 func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
