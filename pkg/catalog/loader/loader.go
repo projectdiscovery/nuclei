@@ -334,12 +334,18 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
 func (store *Store) Load() error {
-	templates, err := store.LoadTemplates(store.finalTemplates)
+	tmpls, err := store.LoadTemplates(store.finalTemplates)
 	if err != nil {
 		return err
 	}
-	store.templates = templates
-	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+	store.templates = tmpls
+
+	wrks, err := store.LoadWorkflows(store.finalWorkflows)
+	if err != nil {
+		return err
+	}
+	store.workflows = wrks
+
 	return nil
 }
 
@@ -648,7 +654,7 @@ func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template
 }
 
 // LoadWorkflows takes a list of workflows and returns paths for them
-func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
+func (store *Store) LoadWorkflows(workflowsList []string) ([]*templates.Template, error) {
 	includedWorkflows, errs := store.config.Catalog.GetTemplatesPath(workflowsList)
 	store.logErroredTemplates(errs)
 
@@ -669,7 +675,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 		}
 	}
 
-	return loadedWorkflows
+	return loadedWorkflows, nil
 }
 
 // LoadTemplatesWithTags takes a list of templates and extra tags,
@@ -715,7 +721,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
+		return nil, fmt.Errorf("could not create wait group: %w", errWg)
 	}
 
 	if typesOpts.ExecutionId == "" {
