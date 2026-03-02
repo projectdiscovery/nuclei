@@ -37,11 +37,14 @@ import (
 const (
 	httpPrefix  = "http://"
 	httpsPrefix = "https://"
+	// AuthStoreId is the store identifier used for dynamic auth template loading.
 	AuthStoreId = "auth_store"
 )
 
 var (
+	// TrustedTemplateDomains contains domains that are allowed for remote templates.
 	TrustedTemplateDomains = []string{"cloud.projectdiscovery.io"}
+	// ErrDialersNotFound indicates no protocol-state dialers were found for an execution id.
 	ErrDialersNotFound     = errors.New("dialers not found")
 )
 
