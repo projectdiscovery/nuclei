@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"maps"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -93,128 +92,6 @@ var _ Writer = &StandardWriter{}
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 
 const maxHostsInTracker = 10000
-
-// HoneypotTracker tracks template executions per host to detect potential honeypots.
-// It implements an LRU (Least Recently Used) eviction strategy to maintain bounded memory usage
-// while preventing silent failures when capacity limits are reached.
-type HoneypotTracker struct {
-	sync.Mutex
-	hostTemplates map[string]map[string]struct{} // Maps hostnames to set of template IDs that have been executed
-	warnedHosts   map[string]struct{}       // Tracks hosts that have already triggered honeypot warnings
-	limitWarned   bool                    // Indicates if capacity limit warning has been logged
-	order         []string                 // LRU order tracking for host eviction (oldest at index 0)
-}
-
-// NewHoneypotTracker creates a new honeypot tracker with initialized data structures.
-// Returns a pointer to the newly created HoneypotTracker ready for use.
-func NewHoneypotTracker() *HoneypotTracker {
-	return &HoneypotTracker{
-		hostTemplates: make(map[string]map[string]struct{}),
-		warnedHosts:   make(map[string]struct{}),
-	}
-}
-
-// AddAndCheck adds a template execution for a host and returns honeypot detection status.
-// 
-// Parameters:
-//   - host: The hostname or URL to track template execution for
-//   - templateID: The unique identifier of the template being executed
-//
-// Returns:
-//   - bool: isHoneypot - True if this host appears to be a honeypot (>10 unique templates)
-//   - bool: isFirstTime - True if this is the first time detecting this host as a honeypot
-//
-// The function implements LRU eviction when capacity limits are reached to prevent silent failures.
-// It safely parses hostnames, strips ports, and maintains thread-safe access to tracking data.
-func (ht *HoneypotTracker) AddAndCheck(host, templateID string) (bool, bool) {
-	host = strings.TrimSpace(host)
-	if host == "" {
-		return false, false
-	}
-	
-	// Check if raw host string contains :// to detect scheme
-	if !strings.Contains(host, "://") {
-		// If no scheme, check if it's bare IPv6 and wrap in brackets
-		rawHost := strings.TrimSpace(host)
-		if strings.Count(rawHost, ":") >= 2 && !strings.HasPrefix(rawHost, "[") {
-			rawHost = "[" + rawHost + "]"
-		}
-		// If no scheme, prepend http:// before parsing
-		host = "http://" + rawHost
-	}
-	
-	// Parse host using net/url to prevent path bypass
-	parsedURL, err := url.Parse(host)
-	
-	if err != nil {
-		// Return error or skip - do NOT fall back to insecure parsing
-		return false, false
-	} else {
-		// Use hostname from the parsed URL to prevent path bypass
-		host = parsedURL.Hostname()
-		if host == "" {
-			return false, false
-		}
-	}
-	
-	ht.Lock()
-	defer ht.Unlock()
-	
-	// Check if this is a new host
-	isNewHost := ht.hostTemplates[host] == nil
-	
-	// Initialize host map if it doesn't exist
-	if isNewHost {
-		// Check memory limit only for NEW hosts to prevent unbounded growth
-		if len(ht.hostTemplates) >= maxHostsInTracker {
-			// Implement LRU eviction: remove oldest host to make room
-			if len(ht.order) > 0 {
-				oldestHost := ht.order[0]
-				// Remove from all tracking structures
-				delete(ht.hostTemplates, oldestHost)
-				delete(ht.warnedHosts, oldestHost)
-				// Remove from order slice and shift remaining elements
-				ht.order = ht.order[1:]
-				// Log eviction for transparency
-				if !ht.limitWarned {
-					ht.limitWarned = true
-					gologger.Warning().Msgf("Honeypot tracker memory limit reached (%d hosts), evicting oldest host '%s' to make room", maxHostsInTracker, oldestHost)
-				}
-			}
-		}
-		ht.hostTemplates[host] = make(map[string]struct{})
-	}
-	
-	// Add template ID to host's map
-	ht.hostTemplates[host][templateID] = struct{}{}
-	
-	// Handle LRU update for existing hosts
-	if !isNewHost {
-		for i, existingHost := range ht.order {
-			if existingHost == host {
-				// Remove from current position
-				ht.order = append(ht.order[:i], ht.order[i+1:]...)
-				break
-			}
-		}
-	}
-	
-	// Always append to end (most recently used)
-	ht.order = append(ht.order, host)
-	
-	// Check if this host is a honeypot (more than 10 unique templates)
-	isHoneypot := len(ht.hostTemplates[host]) > 10
-	
-	// Check if we've warned about this host before
-	_, hasWarned := ht.warnedHosts[host]
-	if !hasWarned && isHoneypot {
-		// Mark this host as warned
-		ht.warnedHosts[host] = struct{}{}
-		return true, true // isHoneypot, isFirstTime
-	}
-	
-	return isHoneypot, false
-}
 
 // InternalEvent is an internal output generation structure for nuclei.
 // It provides a map-based interface for storing template execution metadata,
@@ -435,7 +312,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir:  options.StoreResponseDir,
 		omitTemplate:      options.OmitTemplate,
 		KeysToRedact:      options.Redact,
-		honeypotTracker:   NewHoneypotTracker(),
+		honeypotTracker:   NewHoneypotTracker(maxHostsInTracker),
 		HoneypotDetection: options.HoneypotDetection,
 	}
 
@@ -463,7 +340,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 
 	// THEN check honeypot
 	if w.HoneypotDetection {
-		isHoneypot, isFirstTime := w.honeypotTracker.AddAndCheck(event.Host, event.TemplateID)
+		isHoneypot, isFirstTime := w.honeypotTracker.AddSession(event.Host, event.TemplateID)
 		if isHoneypot {
 			if isFirstTime {
 				gologger.Warning().Msgf("Honeypot detected for host %s, skipping further results", event.Host)
