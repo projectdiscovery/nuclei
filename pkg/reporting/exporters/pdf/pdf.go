@@ -51,6 +51,9 @@ func New(options *Options) (*Exporter, error) {
 	if options.File == "" {
 		options.File = defaultFileName
 	}
+	if filepath.IsAbs(options.File) {
+		return nil, fmt.Errorf("invalid PDF report path: absolute path is not allowed")
+	}
 	if hasParentPathSegment(options.File) {
 		return nil, fmt.Errorf("invalid PDF report path: parent directory traversal is not allowed")
 	}

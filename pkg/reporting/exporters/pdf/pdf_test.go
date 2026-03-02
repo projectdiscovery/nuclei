@@ -17,8 +17,8 @@ import (
 )
 
 func TestNewDefaultsAndCreatesOutputDirectory(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "reports", "scan-report.pdf")
+	chdirTemp(t)
+	outputFile := filepath.Join("reports", "scan-report.pdf")
 
 	exporter, err := New(&Options{File: outputFile})
 	require.NoError(t, err)
@@ -35,8 +35,8 @@ func TestNewDefaultsAndCreatesOutputDirectory(t *testing.T) {
 }
 
 func TestExportIgnoresNilEvent(t *testing.T) {
-	tmpDir := t.TempDir()
-	exporter, err := New(&Options{File: filepath.Join(tmpDir, "report.pdf")})
+	chdirTemp(t)
+	exporter, err := New(&Options{File: "report.pdf"})
 	require.NoError(t, err)
 
 	require.NoError(t, exporter.Export(nil))
@@ -44,8 +44,8 @@ func TestExportIgnoresNilEvent(t *testing.T) {
 }
 
 func TestCloseWithoutResultsDoesNotCreateFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "empty.pdf")
+	chdirTemp(t)
+	outputFile := "empty.pdf"
 
 	exporter, err := New(&Options{File: outputFile})
 	require.NoError(t, err)
@@ -59,8 +59,8 @@ func TestCloseWritesPDFAndRespectsOmitRaw(t *testing.T) {
 	reset := setDefaultCompression(t, false)
 	defer reset()
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "findings.pdf")
+	chdirTemp(t)
+	outputFile := "findings.pdf"
 
 	exporter, err := New(&Options{File: outputFile, OmitRaw: true})
 	require.NoError(t, err)
@@ -87,8 +87,8 @@ func TestCloseTruncatesLargeRawBlocks(t *testing.T) {
 	reset := setDefaultCompression(t, false)
 	defer reset()
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "large-raw.pdf")
+	chdirTemp(t)
+	outputFile := "large-raw.pdf"
 
 	exporter, err := New(&Options{File: outputFile, OmitRaw: false})
 	require.NoError(t, err)
@@ -109,8 +109,8 @@ func TestCloseTruncatesLargeRawBlocks(t *testing.T) {
 }
 
 func TestConcurrentExportAndClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "concurrent.pdf")
+	chdirTemp(t)
+	outputFile := "concurrent.pdf"
 
 	exporter, err := New(&Options{File: outputFile})
 	require.NoError(t, err)
@@ -147,6 +147,15 @@ func TestNewRejectsParentTraversalPath(t *testing.T) {
 	require.Contains(t, err.Error(), "parent directory traversal")
 }
 
+func TestNewRejectsAbsolutePath(t *testing.T) {
+	absolutePath := filepath.Join(string(os.PathSeparator), "tmp", "outside", "report.pdf")
+
+	_, err := New(&Options{File: absolutePath})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "absolute path")
+}
+
 func setDefaultCompression(t *testing.T, enabled bool) func() {
 	t.Helper()
 
@@ -155,6 +164,19 @@ func setDefaultCompression(t *testing.T, enabled bool) func() {
 	return func() {
 		gofpdf.SetDefaultCompression(true)
 	}
+}
+
+func chdirTemp(t *testing.T) {
+	t.Helper()
+
+	oldWD, err := os.Getwd()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(oldWD))
+	})
 }
 
 func buildEvent(host string, sev severity.Severity) *output.ResultEvent {
