@@ -1,0 +1,73 @@
+[files]
+extend-exclude = [
+    "README_ES.md",
+    "README_PT-BR.md",
+    "README_CN.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_TR.md",
+    "README_ID.md",
+    "README.md",
+    "pkg/output/stats/waf/regexes.json",
+    "pkg/input/formats/testdata/",
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    "integration_tests/",
+    "go.sum",
+    "go.mod",
+    "*.pem",
+    "*.xml",
+]
+
+[default.extend-words]
+# Variable/field names that are not typos
+fo = "fo"
+# MisMatched is a valid camelCase field name (mis + matched)
+MisMatched = "MisMatched"
+Mis = "Mis"
+# NoopWriter uses "Noop" (no-operation) which is a common abbreviation
+Noo = "Noo"
+# Splitted is used as an exported method name; renaming would break API
+Splitted = "Splitted"
+splitted = "splitted"
+# IIF is a valid DSL function name (Immediate If)
+Iif = "Iif"
+# Test data
+alo = "alo"
+# Base64-encoded certificate data fragments
+ba = "ba"
+nd = "nd"
+# CLI help output fragments (partial words from flag descriptions)
+ines = "ines"
+ine = "ine"
+ot = "ot"
+hae = "hae"
+ue = "ue"
+UE = "UE"
+Iz = "Iz"
+Iy = "Iy"
+Fo = "Fo"
+BA = "BA"
+# SQL injection test patterns
+SELEC = "SELEC"
+# WAF regex patterns
+aas = "aas"
+Inactiv = "Inactiv"
+ded = "ded"
+Nin = "Nin"
+# "pannel" appears in integration test template matchers
+pannel = "pannel"
+# "noticable" in test template
+noticable = "noticable"
+# AllowdTypes is from the external goflags package
+Allowd = "Allowd"
+# Spanish test data in fuzz playground
+algoritmos = "algoritmos"
+# "brower" and "inerval" in Chinese README (excluded but also in code)
+brower = "brower"
+inerval = "inerval"
+# "worflow" in README
+worflow = "worflow"
+# "ser" appears in foreign language and deserialization context
+ser = "ser"
+# IST is a timezone abbreviation in test data
+IST = "IST"
