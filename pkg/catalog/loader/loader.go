@@ -333,9 +333,20 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
-func (store *Store) Load() {
-	store.templates = store.LoadTemplates(store.finalTemplates)
-	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+func (store *Store) Load() error {
+	tmpls, err := store.LoadTemplates(store.finalTemplates)
+	if err != nil {
+		return err
+	}
+	store.templates = tmpls
+
+	wrks, err := store.LoadWorkflows(store.finalWorkflows)
+	if err != nil {
+		return err
+	}
+	store.workflows = wrks
+
+	return nil
 }
 
 var templateIDPathMap map[string]string
@@ -636,39 +647,49 @@ func isParsingError(store *Store, message string, template string, err error) bo
 	return true
 }
 
-// LoadTemplates takes a list of templates and returns paths for them
-func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+// LoadTemplates takes a list of templates and returns parsed templates.
+// It returns an error if loading fails (for example, missing dialers for execution ID).
+func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
-// LoadWorkflows takes a list of workflows and returns paths for them
-func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
+// LoadWorkflows takes a list of workflows and returns parsed templates.
+// It returns an error if any workflow fails to load or parse.
+func (store *Store) LoadWorkflows(workflowsList []string) ([]*templates.Template, error) {
 	includedWorkflows, errs := store.config.Catalog.GetTemplatesPath(workflowsList)
 	store.logErroredTemplates(errs)
 
 	loadedWorkflows := make([]*templates.Template, 0, len(includedWorkflows))
+	var firstErr error
 	for _, workflowPath := range includedWorkflows {
 		loaded, err := store.config.ExecutorOptions.Parser.LoadWorkflow(workflowPath, store.config.Catalog)
 		if err != nil {
 			store.logger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
+			if firstErr == nil {
+				firstErr = fmt.Errorf("could not load workflow %s: %w", workflowPath, err)
+			}
 		}
 
 		if loaded {
 			parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				store.logger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
+				if firstErr == nil {
+					firstErr = fmt.Errorf("could not parse workflow %s: %w", workflowPath, err)
+				}
 			} else if parsed != nil {
 				loadedWorkflows = append(loadedWorkflows, parsed)
 			}
 		}
 	}
 
-	return loadedWorkflows
+	return loadedWorkflows, firstErr
 }
 
-// LoadTemplatesWithTags takes a list of templates and extra tags
-// returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+// LoadTemplatesWithTags takes a list of templates and extra tags,
+// returning parsed templates that match.
+// It returns an error when template loading cannot proceed.
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
@@ -708,7 +729,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
+		return nil, fmt.Errorf("could not create wait group: %w", errWg)
 	}
 
 	if typesOpts.ExecutionId == "" {
@@ -717,7 +738,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
+		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {
@@ -852,7 +873,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates.Slice
+	return loadedTemplates.Slice, nil
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
