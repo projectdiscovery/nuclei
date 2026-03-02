@@ -42,6 +42,7 @@ const (
 
 var (
 	TrustedTemplateDomains = []string{"cloud.projectdiscovery.io"}
+	ErrDialersNotFound     = errors.New("dialers not found")
 )
 
 // Config contains the configuration options for the loader
@@ -722,7 +723,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
+		return nil, fmt.Errorf("%w: dialers with executionId %s not found", ErrDialersNotFound, typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {

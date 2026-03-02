@@ -111,7 +111,7 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	if err := e.store.Load(); err != nil {
-		return errkit.Wrapf(err, "Could not load templates: %s", err)
+		return errkit.Wrapf(err, "Could not load templates")
 	}
 	e.templatesLoaded = true
 	return nil
@@ -120,7 +120,15 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 // GetTemplates returns all nuclei templates that are loaded
 func (e *NucleiEngine) GetTemplates() []*templates.Template {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			if e.Logger != nil {
+				e.Logger.Error().Msgf("Could not load templates: %s", err)
+			}
+			return nil
+		}
+	}
+	if e.store == nil {
+		return nil
 	}
 	return e.store.Templates()
 }
@@ -128,7 +136,15 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 // GetWorkflows returns all nuclei workflows that are loaded
 func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			if e.Logger != nil {
+				e.Logger.Error().Msgf("Could not load workflows: %s", err)
+			}
+			return nil
+		}
+	}
+	if e.store == nil {
+		return nil
 	}
 	return e.store.Workflows()
 }
@@ -255,7 +271,12 @@ func (e *NucleiEngine) Close() {
 // enable matcher-status option if you expect this callback to be called for all results regardless if it matched or not
 func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...func(event *output.ResultEvent)) error {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			return err
+		}
+	}
+	if e.store == nil {
+		return ErrNoTemplatesAvailable
 	}
 	if len(e.store.Templates()) == 0 && len(e.store.Workflows()) == 0 {
 		return ErrNoTemplatesAvailable

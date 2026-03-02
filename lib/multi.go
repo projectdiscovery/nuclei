@@ -151,7 +151,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	if err := store.Load(); err != nil {
-		return errkit.Wrapf(err, "Could not load templates: %s", err)
+		return errkit.Wrapf(err, "Could not load templates")
 	}
 
 	inputProvider := provider.NewSimpleInputProviderWithUrls(e.eng.opts.ExecutionId, targets...)

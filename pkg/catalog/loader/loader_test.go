@@ -122,14 +122,13 @@ func TestLoadTemplates_NoDialers(t *testing.T) {
 		ExecutorOptions: options,
 		Logger:          gologger.DefaultLogger,
 	})
-	if err != nil {
-		t.Fatalf("unexpected loader creation error: %v", err)
-	}
+	require.Nil(t, err, "unexpected loader creation error")
 
 	_, err = store.LoadTemplatesWithTags([]string{"test"}, []string{"test"})
 	if err == nil {
 		t.Fatal("expected error when dialers are missing, got nil")
 	}
+	require.ErrorIs(t, err, ErrDialersNotFound)
 	if !strings.Contains(err.Error(), "dialers with executionId") {
 		t.Errorf("unexpected error message: %v", err)
 	}
