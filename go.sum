@@ -833,8 +833,8 @@ github.com/projectdiscovery/asnmap v1.1.1 h1:ImJiKIaACOT7HPx4Pabb5dksolzaFYsD1kI
 github.com/projectdiscovery/asnmap v1.1.1/go.mod h1:QT7jt9nQanj+Ucjr9BqGr1Q2veCCKSAVyUzLXfEcQ60=
 github.com/projectdiscovery/blackrock v0.0.1 h1:lHQqhaaEFjgf5WkuItbpeCZv2DUIE45k0VbGJyft6LQ=
 github.com/projectdiscovery/blackrock v0.0.1/go.mod h1:ANUtjDfaVrqB453bzToU+YB4cUbvBRpLvEwoWIwlTss=
-github.com/projectdiscovery/cdncheck v1.2.24 h1:S+WMy2hQMpiX3TiRtngyrOy58fTKde+VGz2dF41o8tk=
-github.com/projectdiscovery/cdncheck v1.2.24/go.mod h1:Y1KQmACY+AifbuPX/W7o8lWssiWmAZ5d/KG8qkmFm9I=
+github.com/projectdiscovery/cdncheck v1.2.25 h1:LtsH1nmJP7yJNYURszutVWTbyKeSLPS2O6HhiaBKP/Y=
+github.com/projectdiscovery/cdncheck v1.2.25/go.mod h1:Y1KQmACY+AifbuPX/W7o8lWssiWmAZ5d/KG8qkmFm9I=
 github.com/projectdiscovery/clistats v0.1.1 h1:8mwbdbwTU4aT88TJvwIzTpiNeow3XnAB72JIg66c8wE=
 github.com/projectdiscovery/clistats v0.1.1/go.mod h1:4LtTC9Oy//RiuT1+76MfTg8Hqs7FQp1JIGBM3nHK6a0=
 github.com/projectdiscovery/dsl v0.8.13 h1:HjjHta7c02saH2tUGs8CN5vDeE2MyWvCV32koT8ZCWs=
@@ -895,8 +895,8 @@ github.com/projectdiscovery/useragent v0.0.107 h1:45gSBda052fv2Gtxtnpx7cu2rWtUpZ
 github.com/projectdiscovery/useragent v0.0.107/go.mod h1:yv5ZZLDT/kq6P+NvBcCPq6sjEVQtZGgO+OvvHzZ+WtY=
 github.com/projectdiscovery/utils v0.9.0 h1:eu9vdbP0VYXI9nGSLfnOpUqBeW9/B/iSli7U8gPKZw8=
 github.com/projectdiscovery/utils v0.9.0/go.mod h1:zcVu1QTlMi5763qCol/L3ROnbd/UPSBP8fI5PmcnF6s=
-github.com/projectdiscovery/wappalyzergo v0.2.69 h1:F2Qi+baeVSvy+eTpC+/aP9AbOiPOlzphtJdDgtS6sVA=
-github.com/projectdiscovery/wappalyzergo v0.2.69/go.mod h1:Oc+U2RPJObmpi6LW5lTMEDiKagcKZNkEfZfwrVMURa0=
+github.com/projectdiscovery/wappalyzergo v0.2.70 h1:rnTC75F0NKGkfWX6XdMHVVQvu/TydVdHpUzYrRuIxM0=
+github.com/projectdiscovery/wappalyzergo v0.2.70/go.mod h1:Oc+U2RPJObmpi6LW5lTMEDiKagcKZNkEfZfwrVMURa0=
 github.com/projectdiscovery/yamldoc-go v1.0.6 h1:GCEdIRlQjDux28xTXKszM7n3jlMf152d5nqVpVoetas=
 github.com/projectdiscovery/yamldoc-go v1.0.6/go.mod h1:R5lWrNzP+7Oyn77NDVPnBsxx2/FyQZBBkIAaSaCQFxw=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
