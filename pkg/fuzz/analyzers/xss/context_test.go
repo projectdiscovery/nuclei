@@ -494,3 +494,238 @@ func BenchmarkDetectReflections_LargeBody(b *testing.B) {
 		DetectReflections(body, testMarker)
 	}
 }
+
+// Tests for issue #7086 fixes
+
+func TestDetectReflections_JavaScriptURI(t *testing.T) {
+	// Issue #7086 point 1: javascript: URIs should be ContextScript
+	body := `<html><body><a href="javascript:alert(nucleiXSScanary)">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in javascript: URI")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "href" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_JavaScriptURI_CaseInsensitive(t *testing.T) {
+	// javascript: URI detection should be case-insensitive
+	body := `<html><body><a href="JavaScript:alert(nucleiXSScanary)">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in JavaScript: URI (mixed case)")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for JavaScript: URI (mixed case), got %v", reflections)
+	}
+}
+
+func TestDetectReflections_JavaScriptURI_WithWhitespace(t *testing.T) {
+	// javascript: URI with leading whitespace
+	body := `<html><body><a href="  javascript:alert(nucleiXSScanary)">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in javascript: URI with whitespace")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI with whitespace, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_JavaScriptURI_SrcAttr(t *testing.T) {
+	// javascript: in src attribute (e.g., iframe)
+	body := `<html><body><iframe src="javascript:alert(nucleiXSScanary)"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in javascript: src")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "src" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: src, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_ScriptTypeJSON(t *testing.T) {
+	// Issue #7086 point 2: script type="application/json" should NOT be executable
+	body := `<html><body><script type="application/json">{"data": "nucleiXSScanary"}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in JSON script")
+	}
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("JSON script should not be classified as executable script context, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_ScriptTypeLdJSON(t *testing.T) {
+	// ld+json should also not be executable
+	body := `<html><head><script type="application/ld+json">{"@context": "nucleiXSScanary"}</script></head></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in ld+json script")
+	}
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("ld+json script should not be classified as executable, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_ScriptTypeTemplate(t *testing.T) {
+	// text/template should not be executable
+	body := `<html><body><script type="text/template"><div>nucleiXSScanary</div></script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in template script")
+	}
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("template script should not be classified as executable, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_ScriptTypeModule(t *testing.T) {
+	// type="module" IS executable
+	body := `<html><body><script type="module">var x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in module script")
+	}
+	if reflections[0].Context != ContextScript {
+		t.Fatalf("module script should be executable, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ScriptNoType(t *testing.T) {
+	// No type attribute = default JavaScript (executable)
+	body := `<html><body><script>var x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in script without type")
+	}
+	if reflections[0].Context != ContextScript {
+		t.Fatalf("script without type should be executable, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_CaseInsensitiveMarker(t *testing.T) {
+	// Issue #7086 point 3: case-insensitive marker detection
+	body := `<html><body><p>NUCLEIXSSCANARY</p></body></html>`
+	reflections := DetectReflections(body, "nucleiXSScanary")
+	if len(reflections) == 0 {
+		t.Fatal("expected case-insensitive marker detection (uppercase body)")
+	}
+}
+
+func TestDetectReflections_CaseInsensitiveMarker_Mixed(t *testing.T) {
+	// Mixed case in body should still be detected
+	body := `<html><body><p>NuClEiXsScAnArY</p></body></html>`
+	reflections := DetectReflections(body, "nucleiXSScanary")
+	if len(reflections) == 0 {
+		t.Fatal("expected case-insensitive marker detection (mixed case body)")
+	}
+}
+
+func TestDetectReflections_Srcdoc(t *testing.T) {
+	// Issue #7086 point 4: srcdoc allows HTML injection
+	body := `<html><body><iframe srcdoc="<script>nucleiXSScanary</script>"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in srcdoc")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.AttrName == "srcdoc" && r.Context == ContextHTMLText {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextHTMLText for srcdoc attribute, got %v", reflections)
+	}
+}
+
+func TestIsJavaScriptURI(t *testing.T) {
+	tests := []struct {
+		attrName string
+		attrVal  string
+		expected bool
+	}{
+		{"href", "javascript:alert(1)", true},
+		{"href", "JavaScript:alert(1)", true},
+		{"href", "  javascript:alert(1)", true},
+		{"href", "http://example.com", false},
+		{"src", "javascript:void(0)", true},
+		{"action", "javascript:submit()", true},
+		{"class", "javascript:foo", false}, // not a URI attribute
+		{"href", "/path/to/page", false},
+		{"href", "data:text/html,<script>", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s=%s", tt.attrName, tt.attrVal), func(t *testing.T) {
+			got := isJavaScriptURI(tt.attrName, tt.attrVal)
+			if got != tt.expected {
+				t.Errorf("isJavaScriptURI(%q, %q) = %v, want %v", tt.attrName, tt.attrVal, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsExecutableScript(t *testing.T) {
+	tests := []struct {
+		rawToken string
+		expected bool
+	}{
+		{`<script>`, true},
+		{`<script type="text/javascript">`, true},
+		{`<script type="module">`, true},
+		{`<script type="application/json">`, false},
+		{`<script type="application/ld+json">`, false},
+		{`<script type='text/template'>`, false},
+		{`<script type="text/x-handlebars-template">`, false},
+		{`<script type="importmap">`, false},
+		{`<script type="speculationrules">`, false},
+		{`<script type="APPLICATION/JSON">`, false}, // case insensitive
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.rawToken, func(t *testing.T) {
+			got := isExecutableScript(tt.rawToken)
+			if got != tt.expected {
+				t.Errorf("isExecutableScript(%q) = %v, want %v", tt.rawToken, got, tt.expected)
+			}
+		})
+	}
+}

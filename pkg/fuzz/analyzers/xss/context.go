@@ -9,7 +9,8 @@ import (
 // DetectReflections parses the HTML body and returns all reflection contexts
 // where the marker is found.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	// Case-insensitive check for marker presence (fixes issue #7086 point 3)
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(marker)) {
 		return nil
 	}
 
@@ -20,6 +21,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 	var tagStack []string
 	inScript := false
+	inExecutableScript := false // true if script is executable (not JSON/template)
 	inStyle := false
 	inRCDATA := false
 
@@ -45,6 +47,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = true
+				// Check script type attribute to determine if executable (fixes issue #7086 point 2)
+				inExecutableScript = isExecutableScript(rawToken)
 			case "style":
 				inStyle = true
 			default:
@@ -81,6 +85,12 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						if isEventHandler(attrName) {
 							// Event handler attributes contain JavaScript
 							ctx = ContextScript
+						} else if isJavaScriptURI(attrName, attrVal) {
+							// javascript: URIs in href/src/etc are executable (fixes issue #7086 point 1)
+							ctx = ContextScript
+						} else if isSrcdocAttr(attrName) {
+							// srcdoc allows full HTML injection (fixes issue #7086 point 4)
+							ctx = ContextHTMLText
 						}
 
 						reflections = append(reflections, ReflectionInfo{
@@ -112,6 +122,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = false
+				inExecutableScript = false
 			case "style":
 				inStyle = false
 			default:
@@ -135,15 +146,23 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			}
 
 			if inScript {
-				ctx := detectScriptStringContext(text, marker)
 				parentTag := "script"
 				if len(tagStack) > 0 {
 					parentTag = tagStack[len(tagStack)-1]
 				}
-				reflections = append(reflections, ReflectionInfo{
-					Context: ctx,
-					TagName: parentTag,
-				})
+				// Non-executable scripts (JSON, templates) are not XSS contexts (fixes issue #7086 point 2)
+				if !inExecutableScript {
+					reflections = append(reflections, ReflectionInfo{
+						Context: ContextNone,
+						TagName: parentTag,
+					})
+				} else {
+					ctx := detectScriptStringContext(text, marker)
+					reflections = append(reflections, ReflectionInfo{
+						Context: ctx,
+						TagName: parentTag,
+					})
+				}
 			} else if inStyle {
 				reflections = append(reflections, ReflectionInfo{
 					Context: ContextStyle,
@@ -267,4 +286,98 @@ func BestReflection(reflections []ReflectionInfo) *ReflectionInfo {
 		}
 	}
 	return best
+}
+
+// javascriptURIAttrs are attributes that can contain javascript: URIs
+var javascriptURIAttrs = map[string]struct{}{
+	"href":       {},
+	"src":        {},
+	"action":     {},
+	"formaction": {},
+	"xlink:href": {},
+	"data":       {},
+	"poster":     {},
+}
+
+// isJavaScriptURI returns true if the attribute contains a javascript: URI
+func isJavaScriptURI(attrName, attrVal string) bool {
+	if _, ok := javascriptURIAttrs[attrName]; !ok {
+		return false
+	}
+	// Trim whitespace and check for javascript: protocol (case-insensitive)
+	trimmed := strings.TrimSpace(attrVal)
+	return strings.HasPrefix(strings.ToLower(trimmed), "javascript:")
+}
+
+// isSrcdocAttr returns true if the attribute is srcdoc (allows HTML injection)
+func isSrcdocAttr(attrName string) bool {
+	return attrName == "srcdoc"
+}
+
+// nonExecutableScriptTypes are MIME types that are not JavaScript-executable
+var nonExecutableScriptTypes = map[string]struct{}{
+	"application/json":          {},
+	"application/ld+json":       {},
+	"application/json+ld":       {},
+	"text/template":             {},
+	"text/x-template":           {},
+	"text/html":                 {},
+	"text/x-handlebars-template": {},
+	"text/x-mustache-template":  {},
+}
+
+// isExecutableScript checks if a script tag is executable JavaScript
+// by examining its type attribute. Returns true if executable.
+func isExecutableScript(rawToken string) bool {
+	rawLower := strings.ToLower(rawToken)
+	
+	// Look for type attribute
+	typeIdx := strings.Index(rawLower, "type=")
+	if typeIdx < 0 {
+		// No type attribute means default JavaScript (executable)
+		return true
+	}
+	
+	// Extract the type value
+	afterEq := typeIdx + len("type=")
+	if afterEq >= len(rawToken) {
+		return true
+	}
+	
+	var typeVal string
+	switch rawToken[afterEq] {
+	case '"':
+		endIdx := strings.Index(rawToken[afterEq+1:], "\"")
+		if endIdx >= 0 {
+			typeVal = rawToken[afterEq+1 : afterEq+1+endIdx]
+		}
+	case '\'':
+		endIdx := strings.Index(rawToken[afterEq+1:], "'")
+		if endIdx >= 0 {
+			typeVal = rawToken[afterEq+1 : afterEq+1+endIdx]
+		}
+	default:
+		// Unquoted - take until space or >
+		rest := rawToken[afterEq:]
+		endIdx := strings.IndexAny(rest, " \t\n\r>")
+		if endIdx >= 0 {
+			typeVal = rest[:endIdx]
+		} else {
+			typeVal = rest
+		}
+	}
+	
+	typeVal = strings.TrimSpace(strings.ToLower(typeVal))
+	
+	// Check if it's a non-executable type
+	if _, ok := nonExecutableScriptTypes[typeVal]; ok {
+		return false
+	}
+	
+	// Also check for module (executable) vs importmap (not executable)
+	if typeVal == "importmap" || typeVal == "speculationrules" {
+		return false
+	}
+	
+	return true
 }
