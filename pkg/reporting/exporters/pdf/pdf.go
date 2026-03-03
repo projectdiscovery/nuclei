@@ -10,6 +10,7 @@ import (
 
 	"github.com/phpdave11/gofpdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 )
 
@@ -75,9 +76,9 @@ func (e *Exporter) Export(event *output.ResultEvent) error {
 		return nil
 	}
 
-	eventCopy := *event
+	eventCopy := cloneResultEvent(event)
 	e.mu.Lock()
-	e.results = append(e.results, &eventCopy)
+	e.results = append(e.results, eventCopy)
 	e.mu.Unlock()
 
 	return nil
@@ -344,4 +345,76 @@ func formatFullTimestamp(value time.Time) string {
 		return "-"
 	}
 	return value.UTC().Format("2006-01-02 15:04:05 UTC")
+}
+
+func cloneResultEvent(event *output.ResultEvent) *output.ResultEvent {
+	if event == nil {
+		return nil
+	}
+
+	eventCopy := *event
+	eventCopy.Info = cloneInfo(event.Info)
+	eventCopy.ExtractedResults = append([]string(nil), event.ExtractedResults...)
+	eventCopy.Lines = append([]int(nil), event.Lines...)
+	eventCopy.Metadata = cloneMetadataMap(event.Metadata)
+	eventCopy.IssueTrackers = cloneIssueTrackers(event.IssueTrackers)
+	eventCopy.FileToIndexPosition = cloneFileIndexMap(event.FileToIndexPosition)
+	if event.Interaction != nil {
+		interactionCopy := *event.Interaction
+		eventCopy.Interaction = &interactionCopy
+	}
+
+	return &eventCopy
+}
+
+func cloneInfo(info model.Info) model.Info {
+	infoCopy := info
+	infoCopy.Authors.Value = append([]string(nil), info.Authors.ToSlice()...)
+	infoCopy.Tags.Value = append([]string(nil), info.Tags.ToSlice()...)
+	if info.Reference != nil {
+		referenceCopy := *info.Reference
+		referenceCopy.Value = append([]string(nil), info.Reference.ToSlice()...)
+		infoCopy.Reference = &referenceCopy
+	}
+	infoCopy.Metadata = cloneMetadataMap(info.Metadata)
+	if info.Classification != nil {
+		classificationCopy := *info.Classification
+		classificationCopy.CVEID.Value = append([]string(nil), info.Classification.CVEID.ToSlice()...)
+		classificationCopy.CWEID.Value = append([]string(nil), info.Classification.CWEID.ToSlice()...)
+		infoCopy.Classification = &classificationCopy
+	}
+	return infoCopy
+}
+
+func cloneMetadataMap(values map[string]interface{}) map[string]interface{} {
+	if values == nil {
+		return nil
+	}
+	cloned := make(map[string]interface{}, len(values))
+	for key, value := range values {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func cloneIssueTrackers(values map[string]output.IssueTrackerMetadata) map[string]output.IssueTrackerMetadata {
+	if values == nil {
+		return nil
+	}
+	cloned := make(map[string]output.IssueTrackerMetadata, len(values))
+	for key, value := range values {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func cloneFileIndexMap(values map[string]int) map[string]int {
+	if values == nil {
+		return nil
+	}
+	cloned := make(map[string]int, len(values))
+	for key, value := range values {
+		cloned[key] = value
+	}
+	return cloned
 }

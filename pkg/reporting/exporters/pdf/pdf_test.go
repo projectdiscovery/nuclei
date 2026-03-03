@@ -43,6 +43,43 @@ func TestExportIgnoresNilEvent(t *testing.T) {
 	require.Empty(t, exporter.results)
 }
 
+func TestExportDeepCopiesMutableFields(t *testing.T) {
+	chdirTemp(t)
+	exporter, err := New(&Options{File: "report.pdf"})
+	require.NoError(t, err)
+
+	event := buildEvent("copy.example.com", severity.Critical)
+	event.ExtractedResults = []string{"alpha"}
+	event.Metadata = map[string]interface{}{"source": "initial"}
+	event.Lines = []int{7, 8}
+	event.IssueTrackers = map[string]output.IssueTrackerMetadata{
+		"jira": {IssueID: "ISSUE-1", IssueURL: "https://tracker.local/ISSUE-1"},
+	}
+	event.FileToIndexPosition = map[string]int{"req.txt": 3}
+
+	require.NoError(t, exporter.Export(event))
+	require.Len(t, exporter.results, 1)
+	stored := exporter.results[0]
+
+	event.ExtractedResults[0] = "mutated"
+	event.Metadata["source"] = "changed"
+	event.Lines[0] = 99
+	event.IssueTrackers["jira"] = output.IssueTrackerMetadata{IssueID: "ISSUE-2", IssueURL: "https://tracker.local/ISSUE-2"}
+	event.FileToIndexPosition["req.txt"] = 11
+	event.Info.Reference = stringslice.NewRawStringSlice("https://changed.local")
+	event.Info.Authors.Value = []string{"mutated-author"}
+	event.Info.Tags.Value = []string{"mutated-tag"}
+
+	require.Equal(t, []string{"alpha"}, stored.ExtractedResults)
+	require.Equal(t, "initial", stored.Metadata["source"])
+	require.Equal(t, []int{7, 8}, stored.Lines)
+	require.Equal(t, "ISSUE-1", stored.IssueTrackers["jira"].IssueID)
+	require.Equal(t, 3, stored.FileToIndexPosition["req.txt"])
+	require.Equal(t, []string{"https://docs.example.com/finding"}, stored.Info.Reference.ToSlice())
+	require.Empty(t, stored.Info.Authors.ToSlice())
+	require.Empty(t, stored.Info.Tags.ToSlice())
+}
+
 func TestCloseWithoutResultsDoesNotCreateFile(t *testing.T) {
 	chdirTemp(t)
 	outputFile := "empty.pdf"
