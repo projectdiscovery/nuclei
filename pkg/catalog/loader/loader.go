@@ -708,7 +708,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
+	   store.logger.Error().Msgf("could not create wait group: %s", errWg)
+           return nil
 	}
 
 	if typesOpts.ExecutionId == "" {
@@ -717,8 +718,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
-	}
+           store.logger.Error().Msgf("dialers with executionId %s not found", typesOpts.ExecutionId)
+           return nil
+}
 
 	for _, templatePath := range includedTemplates {
 		wgLoadTemplates.Add()
