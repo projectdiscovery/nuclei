@@ -9,7 +9,7 @@ import (
 // DetectReflections parses the HTML body and returns all reflection contexts
 // where the marker is found.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(marker)) {
 		return nil
 	}
 
@@ -44,7 +44,10 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 			switch tagNameLower {
 			case "script":
-				inScript = true
+				scriptType := extractAttrFromRaw(rawToken, "type")
+				if isExecutableScriptType(scriptType) {
+					inScript = true
+				}
 			case "style":
 				inStyle = true
 			default:
@@ -81,6 +84,10 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						if isEventHandler(attrName) {
 							// Event handler attributes contain JavaScript
 							ctx = ContextScript
+						} else if isJavascriptURI(attrVal) && isURLAttribute(attrName) {
+							ctx = ContextScript
+						} else if attrName == "srcdoc" {
+							ctx = ContextHTMLText
 						}
 
 						reflections = append(reflections, ReflectionInfo{
@@ -180,6 +187,47 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 	}
 
 	return reflections
+}
+
+// extractAttrFromRaw extracts an attribute value from raw HTML token text.
+// It ensures a word boundary before the attribute name to avoid matching
+// attributes like "data-type" when searching for "type".
+func extractAttrFromRaw(rawToken, attrName string) string {
+	rawLower := strings.ToLower(rawToken)
+	search := strings.ToLower(attrName) + "="
+	idx := strings.Index(rawLower, search)
+	for idx >= 0 {
+		// Check word boundary: must be preceded by whitespace or start of tag
+		if idx == 0 || rawLower[idx-1] == ' ' || rawLower[idx-1] == '\t' || rawLower[idx-1] == '\n' || rawLower[idx-1] == '\r' || rawLower[idx-1] == '<' {
+			break
+		}
+		// Try next occurrence
+		next := strings.Index(rawLower[idx+1:], search)
+		if next < 0 {
+			return ""
+		}
+		idx = idx + 1 + next
+	}
+	if idx < 0 {
+		return ""
+	}
+	rest := rawToken[idx+len(search):]
+	if len(rest) == 0 {
+		return ""
+	}
+	if rest[0] == '"' || rest[0] == '\'' {
+		quote := rest[0]
+		end := strings.IndexByte(rest[1:], quote)
+		if end < 0 {
+			return rest[1:]
+		}
+		return rest[1 : end+1]
+	}
+	end := strings.IndexAny(rest, " \t\n\r>")
+	if end < 0 {
+		return rest
+	}
+	return rest[:end]
 }
 
 // detectScriptStringContext determines if the marker is inside a JS string literal

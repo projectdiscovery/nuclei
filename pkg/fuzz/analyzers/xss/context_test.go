@@ -463,6 +463,127 @@ func TestHasCSP(t *testing.T) {
 	}
 }
 
+func TestDetectReflections_JavascriptURI(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"href", `<a href="javascript:nucleiXSScanary">click</a>`},
+		{"src", `<iframe src="javascript:nucleiXSScanary"></iframe>`},
+		{"formaction", `<button formaction="javascript:nucleiXSScanary">go</button>`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reflections := DetectReflections(tt.body, testMarker)
+			found := false
+			for _, r := range reflections {
+				if r.Context == ContextScript {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("expected ContextScript for javascript: URI, got %v", reflections)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_ScriptTypeJSON(t *testing.T) {
+	body := `<html><body><script type="application/json">{"key": "nucleiXSScanary"}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection (as HTMLText), got none")
+	}
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("application/json script should NOT be ContextScript, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_ScriptTypeLDJSON(t *testing.T) {
+	body := `<html><body><script type="application/ld+json">{"name": "nucleiXSScanary"}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection (as HTMLText), got none")
+	}
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("application/ld+json script should NOT be ContextScript, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_ScriptTypeExecutable(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"text/javascript", `<script type="text/javascript">var x = nucleiXSScanary;</script>`},
+		{"module", `<script type="module">var x = nucleiXSScanary;</script>`},
+		{"no type", `<script>var x = nucleiXSScanary;</script>`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reflections := DetectReflections(tt.body, testMarker)
+			if len(reflections) == 0 {
+				t.Fatal("expected at least one reflection")
+			}
+			if reflections[0].Context != ContextScript {
+				t.Fatalf("expected ContextScript, got %s", reflections[0].Context)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_CaseInsensitiveMarker(t *testing.T) {
+	body := `<html><body><p>NUCLEIXSSCANARY</p></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected case-insensitive marker detection")
+	}
+}
+
+func TestDetectReflections_SrcdocAttribute(t *testing.T) {
+	body := `<iframe srcdoc="<b>nucleiXSScanary</b>"></iframe>`
+	reflections := DetectReflections(body, testMarker)
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextHTMLText && r.AttrName == "srcdoc" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextHTMLText for srcdoc attribute, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_ScriptTypeWithParams(t *testing.T) {
+	// MIME type with parameters should still be treated as executable
+	body := `<script type="text/javascript; charset=utf-8">var x = nucleiXSScanary;</script>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in executable script with MIME params")
+	}
+	if reflections[0].Context != ContextScript {
+		t.Fatalf("expected ContextScript, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_DataTypeCollision(t *testing.T) {
+	// data-type attribute should NOT affect script detection
+	body := `<script data-type="application/json" type="text/javascript">var x = nucleiXSScanary;</script>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in script with data-type attr")
+	}
+	if reflections[0].Context != ContextScript {
+		t.Fatalf("expected ContextScript (data-type should not interfere), got %s", reflections[0].Context)
+	}
+}
+
 func BenchmarkDetectReflections(b *testing.B) {
 	var sb strings.Builder
 	sb.WriteString("<html><body>")

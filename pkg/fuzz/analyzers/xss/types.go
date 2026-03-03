@@ -197,6 +197,44 @@ func isEventHandler(name string) bool {
 	return ok
 }
 
+// urlAttributes is a set of HTML attributes that can contain URLs
+var urlAttributes = map[string]struct{}{
+	"href": {}, "src": {}, "action": {}, "formaction": {},
+	"data": {}, "poster": {}, "codebase": {}, "cite": {},
+	"background": {}, "dynsrc": {}, "lowsrc": {}, "ping": {},
+}
+
+// isURLAttribute returns true if the attribute can contain a URL
+func isURLAttribute(name string) bool {
+	_, ok := urlAttributes[strings.ToLower(name)]
+	return ok
+}
+
+// isJavascriptURI returns true if the value starts with "javascript:"
+func isJavascriptURI(val string) bool {
+	trimmed := strings.TrimSpace(val)
+	return len(trimmed) >= 11 && strings.EqualFold(trimmed[:11], "javascript:")
+}
+
+// executableScriptTypes is a set of script types that execute JavaScript
+var executableScriptTypes = map[string]struct{}{
+	"": {}, "text/javascript": {}, "application/javascript": {},
+	"text/ecmascript": {}, "application/ecmascript": {},
+	"module": {}, "text/jscript": {}, "text/livescript": {},
+}
+
+// isExecutableScriptType returns true if the script type executes JavaScript.
+// It strips MIME parameters (e.g., "; charset=utf-8") before matching.
+func isExecutableScriptType(scriptType string) bool {
+	cleaned := strings.ToLower(strings.TrimSpace(scriptType))
+	// Strip MIME parameters: "text/javascript; charset=utf-8" → "text/javascript"
+	if idx := strings.IndexByte(cleaned, ';'); idx >= 0 {
+		cleaned = strings.TrimSpace(cleaned[:idx])
+	}
+	_, ok := executableScriptTypes[cleaned]
+	return ok
+}
+
 // rcdataElements are HTML elements whose content is treated as RCDATA (no tag parsing)
 var rcdataElements = map[string]struct{}{
 	"textarea": {},
