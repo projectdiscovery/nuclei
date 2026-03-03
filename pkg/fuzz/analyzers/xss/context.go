@@ -22,6 +22,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 	inScript := false
 	inStyle := false
 	inRCDATA := false
+	scriptType := "" // Track script type to handle application/json
 
 	for {
 		tt := tokenizer.Next()
@@ -42,9 +43,35 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				tagStack = append(tagStack, tagNameLower)
 			}
 
+			// Check for script type attribute before setting inScript flag
+			isScriptTag := tagNameLower == "script"
+			currentScriptType := ""
+			
+			if hasAttr && isScriptTag {
+				// Look for type attribute
+				for {
+					key, val, moreAttr := tokenizer.TagAttr()
+					attrName := strings.ToLower(string(key))
+					if attrName == "type" {
+						currentScriptType = strings.ToLower(string(val))
+						break
+					}
+					if !moreAttr {
+						break
+					}
+				}
+			}
+
 			switch tagNameLower {
 			case "script":
-				inScript = true
+				// FIX #2: Don't treat application/json as executable script
+				if currentScriptType == "application/json" || currentScriptType == "application/ld+json" {
+					inScript = false
+					scriptType = currentScriptType
+				} else {
+					inScript = true
+					scriptType = ""
+				}
 			case "style":
 				inStyle = true
 			default:
@@ -76,6 +103,16 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						quote, unquoted := detectAttrQuoting(rawToken, attrName)
 						if unquoted {
 							ctx = ContextAttributeUnquoted
+						}
+
+						// FIX #1: javascript: URIs should be treated as executable script context
+						if isJavaScriptURI(attrVal) {
+							ctx = ContextScript
+						}
+
+						// FIX #4: srcdoc should be treated as HTML injection context
+						if attrName == "srcdoc" {
+							ctx = ContextHTMLText
 						}
 
 						if isEventHandler(attrName) {
@@ -112,6 +149,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = false
+				scriptType = ""
 			case "style":
 				inStyle = false
 			default:
@@ -252,6 +290,13 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	default:
 		return 0, true
 	}
+}
+
+// isJavaScriptURI checks if an attribute value is a javascript: URI
+// FIX #1: These should be treated as executable script context
+func isJavaScriptURI(attrVal string) bool {
+	trimmed := strings.TrimSpace(strings.ToLower(attrVal))
+	return strings.HasPrefix(trimmed, "javascript:")
 }
 
 // BestReflection returns the highest-priority reflection from the list
