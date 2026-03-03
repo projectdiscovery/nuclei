@@ -1,0 +1,4 @@
+{
+  "before": "body {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 0;\n}\n\n.container {\n    width: 960px;\n    margin: 0 auto;\n}",
+  "after": "body {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 0;\n}\n\n.container {\n    width: 960px;\n    margin: 0 auto;\n}\n\n/* 添加移动端适配，防止小屏幕溢出 */\n@media (max-width: 768px) {\n    .container {\n        width: 100%;\n        padding: 0 15px;\n        box-sizing: border-box;\n    }\n}"
+}
