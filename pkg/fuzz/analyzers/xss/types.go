@@ -79,10 +79,10 @@ type ReflectionInfo struct {
 
 // CharacterSet tracks which XSS-critical characters survived encoding
 type CharacterSet struct {
-	LessThan    bool // <
-	GreaterThan bool // >
-	DoubleQuote bool // "
-	SingleQuote bool // '
+	LessThan     bool // <
+	GreaterThan  bool // >
+	DoubleQuote  bool // "
+	SingleQuote  bool // '
 	ForwardSlash bool // /
 }
 
@@ -91,104 +91,104 @@ const canaryChars = `<>"'/`
 
 // eventHandlers is a set of known HTML event handler attribute names
 var eventHandlers = map[string]struct{}{
-	"onabort":             {},
-	"onafterprint":        {},
-	"onanimationend":      {},
+	"onabort":              {},
+	"onafterprint":         {},
+	"onanimationend":       {},
 	"onanimationiteration": {},
-	"onanimationstart":    {},
-	"onauxclick":          {},
-	"onbeforecopy":        {},
-	"onbeforecut":         {},
-	"onbeforeinput":       {},
-	"onbeforepaste":       {},
-	"onbeforeprint":       {},
-	"onbeforeunload":      {},
-	"onblur":              {},
-	"oncanplay":           {},
-	"oncanplaythrough":    {},
-	"onchange":            {},
-	"onclick":             {},
-	"onclose":             {},
-	"oncontextmenu":       {},
-	"oncopy":              {},
-	"oncuechange":         {},
-	"oncut":               {},
-	"ondblclick":          {},
-	"ondrag":              {},
-	"ondragend":           {},
-	"ondragenter":         {},
-	"ondragleave":         {},
-	"ondragover":          {},
-	"ondragstart":         {},
-	"ondrop":              {},
-	"ondurationchange":    {},
-	"onemptied":           {},
-	"onended":             {},
-	"onerror":             {},
-	"onfocus":             {},
-	"onfocusin":           {},
-	"onfocusout":          {},
-	"onfullscreenchange":  {},
-	"ongotpointercapture": {},
-	"onhashchange":        {},
-	"oninput":             {},
-	"oninvalid":           {},
-	"onkeydown":           {},
-	"onkeypress":          {},
-	"onkeyup":             {},
-	"onload":              {},
-	"onloadeddata":        {},
-	"onloadedmetadata":    {},
-	"onloadstart":         {},
-	"onmessage":           {},
-	"onmousedown":         {},
-	"onmouseenter":        {},
-	"onmouseleave":        {},
-	"onmousemove":         {},
-	"onmouseout":          {},
-	"onmouseover":         {},
-	"onmouseup":           {},
-	"onmousewheel":        {},
-	"onoffline":           {},
-	"ononline":            {},
-	"onpagehide":          {},
-	"onpageshow":          {},
-	"onpaste":             {},
-	"onpause":             {},
-	"onplay":              {},
-	"onplaying":           {},
-	"onpointerdown":       {},
-	"onpointerenter":      {},
-	"onpointerleave":      {},
-	"onpointermove":       {},
-	"onpointerout":        {},
-	"onpointerover":       {},
-	"onpointerup":         {},
-	"onpopstate":          {},
-	"onprogress":          {},
-	"onratechange":        {},
-	"onreset":             {},
-	"onresize":            {},
-	"onscroll":            {},
-	"onsearch":            {},
-	"onseeked":            {},
-	"onseeking":           {},
-	"onselect":            {},
-	"onstalled":           {},
-	"onstorage":           {},
-	"onsubmit":            {},
-	"onsuspend":           {},
-	"ontimeupdate":        {},
-	"ontoggle":            {},
-	"ontouchcancel":       {},
-	"ontouchend":          {},
-	"ontouchmove":         {},
-	"ontouchstart":        {},
-	"ontransitionend":     {},
-	"onunload":            {},
-	"onvolumechange":      {},
-	"onwaiting":           {},
-	"onwheel":             {},
+	"onanimationstart":     {},
+	"onauxclick":           {},
+	"onbeforecopy":         {},
+	"onbeforecut":          {},
+	"onbeforeinput":        {},
+	"onbeforepaste":        {},
+	"onbeforeprint":        {},
+	"onbeforeunload":       {},
+	"onblur":               {},
+	"oncanplay":            {},
+	"oncanplaythrough":     {},
+	"onchange":             {},
+	"onclick":              {},
+	"onclose":              {},
+	"oncontextmenu":        {},
+	"oncopy":               {},
+	"oncuechange":          {},
+	"oncut":                {},
+	"ondblclick":           {},
+	"ondrag":               {},
+	"ondragend":            {},
+	"ondragenter":          {},
+	"ondragleave":          {},
+	"ondragover":           {},
+	"ondragstart":          {},
+	"ondrop":               {},
+	"ondurationchange":     {},
+	"onemptied":            {},
+	"onended":              {},
+	"onerror":              {},
+	"onfocus":              {},
+	"onfocusin":            {},
+	"onfocusout":           {},
+	"onfullscreenchange":   {},
+	"ongotpointercapture":  {},
+	"onhashchange":         {},
+	"oninput":              {},
+	"oninvalid":            {},
+	"onkeydown":            {},
+	"onkeypress":           {},
+	"onkeyup":              {},
+	"onload":               {},
+	"onloadeddata":         {},
+	"onloadedmetadata":     {},
+	"onloadstart":          {},
+	"onmessage":            {},
+	"onmousedown":          {},
+	"onmouseenter":         {},
+	"onmouseleave":         {},
+	"onmousemove":          {},
+	"onmouseout":           {},
+	"onmouseover":          {},
+	"onmouseup":            {},
+	"onmousewheel":         {},
+	"onoffline":            {},
+	"ononline":             {},
+	"onpagehide":           {},
+	"onpageshow":           {},
+	"onpaste":              {},
+	"onpause":              {},
+	"onplay":               {},
+	"onplaying":            {},
+	"onpointerdown":        {},
+	"onpointerenter":       {},
+	"onpointerleave":       {},
+	"onpointermove":        {},
+	"onpointerout":         {},
+	"onpointerover":        {},
+	"onpointerup":          {},
+	"onpopstate":           {},
+	"onprogress":           {},
+	"onratechange":         {},
+	"onreset":              {},
+	"onresize":             {},
+	"onscroll":             {},
+	"onsearch":             {},
+	"onseeked":             {},
+	"onseeking":            {},
+	"onselect":             {},
+	"onstalled":            {},
+	"onstorage":            {},
+	"onsubmit":             {},
+	"onsuspend":            {},
+	"ontimeupdate":         {},
+	"ontoggle":             {},
+	"ontouchcancel":        {},
+	"ontouchend":           {},
+	"ontouchmove":          {},
+	"ontouchstart":         {},
+	"ontransitionend":      {},
+	"onunload":             {},
+	"onvolumechange":       {},
+	"onwaiting":            {},
+	"onwheel":              {},
 }
 
 // isEventHandler returns true if the attribute name is a known event handler
@@ -203,4 +203,53 @@ var rcdataElements = map[string]struct{}{
 	"title":    {},
 	"xmp":      {},
 	"noscript": {},
+}
+
+// isExecutableScriptType returns true if script type resolves to executable JavaScript.
+// Empty type defaults to classic JavaScript behavior in browsers.
+func isExecutableScriptType(scriptType string) bool {
+	normalized := strings.TrimSpace(strings.ToLower(scriptType))
+	if normalized == "" {
+		return true
+	}
+	if idx := strings.IndexByte(normalized, ';'); idx >= 0 {
+		normalized = strings.TrimSpace(normalized[:idx])
+	}
+	if normalized == "module" {
+		return true
+	}
+	return strings.Contains(normalized, "javascript") ||
+		strings.Contains(normalized, "ecmascript") ||
+		strings.Contains(normalized, "jscript") ||
+		strings.Contains(normalized, "livescript")
+}
+
+var htmlInjectionAttrs = map[string]struct{}{
+	"srcdoc": {},
+}
+
+func isHTMLInjectionAttr(name string) bool {
+	_, ok := htmlInjectionAttrs[strings.ToLower(name)]
+	return ok
+}
+
+var javaScriptURLAttrs = map[string]struct{}{
+	"action":     {},
+	"cite":       {},
+	"data":       {},
+	"formaction": {},
+	"href":       {},
+	"poster":     {},
+	"src":        {},
+	"xlink:href": {},
+}
+
+func isJavaScriptURLAttribute(name string) bool {
+	_, ok := javaScriptURLAttrs[strings.ToLower(name)]
+	return ok
+}
+
+func isJavascriptURI(value string) bool {
+	normalized := strings.TrimSpace(strings.ToLower(value))
+	return strings.HasPrefix(normalized, "javascript:")
 }

@@ -9,12 +9,12 @@ import (
 // DetectReflections parses the HTML body and returns all reflection contexts
 // where the marker is found.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	markerLower := strings.ToLower(marker)
+	if !strings.Contains(strings.ToLower(body), markerLower) {
 		return nil
 	}
 
 	var reflections []ReflectionInfo
-	markerLower := strings.ToLower(marker)
 
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
 
@@ -44,6 +44,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 			switch tagNameLower {
 			case "script":
+				// Empty type means executable JS for script tags.
 				inScript = true
 			case "style":
 				inStyle = true
@@ -52,6 +53,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					inRCDATA = true
 				}
 			}
+
+			scriptType := ""
 
 			// Check if marker is reflected in the tag name itself
 			if strings.Contains(strings.ToLower(tagName), markerLower) {
@@ -67,6 +70,9 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					key, val, moreAttr := tokenizer.TagAttr()
 					attrName := strings.ToLower(string(key))
 					attrVal := string(val)
+					if tagNameLower == "script" && attrName == "type" {
+						scriptType = attrVal
+					}
 
 					// Check if marker is in the attribute value
 					if strings.Contains(strings.ToLower(attrVal), markerLower) {
@@ -76,6 +82,14 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						quote, unquoted := detectAttrQuoting(rawToken, attrName)
 						if unquoted {
 							ctx = ContextAttributeUnquoted
+						}
+
+						if isJavaScriptURLAttribute(attrName) && isJavascriptURI(attrVal) {
+							ctx = ContextScript
+						}
+
+						if isHTMLInjectionAttr(attrName) {
+							ctx = ContextHTMLText
 						}
 
 						if isEventHandler(attrName) {
@@ -103,6 +117,10 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						break
 					}
 				}
+			}
+
+			if tagNameLower == "script" {
+				inScript = isExecutableScriptType(scriptType)
 			}
 
 		case html.EndTagToken:

@@ -139,6 +139,72 @@ func TestDetectReflections_EventHandler(t *testing.T) {
 	}
 }
 
+func TestDetectReflections_JavascriptURI(t *testing.T) {
+	body := `<html><body><a href="javascript:alert(nucleiXSScanary)">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in javascript: URI")
+	}
+
+	found := false
+	for _, r := range reflections {
+		if r.AttrName == "href" {
+			if r.Context != ContextScript {
+				t.Fatalf("expected ContextScript for javascript: URI, got %s", r.Context)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected reflection for href attribute, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_ScriptTypeApplicationJSON(t *testing.T) {
+	body := `<html><body><script type="application/json">{"x":"nucleiXSScanary"}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in non-executable script block")
+	}
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("expected non-script context for application/json script, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_ScriptTypeModule(t *testing.T) {
+	body := `<html><body><script type="module">const x = "nucleiXSScanary";</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in module script block")
+	}
+	if reflections[0].Context != ContextScriptString {
+		t.Fatalf("expected ContextScriptString, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_Srcdoc(t *testing.T) {
+	body := `<html><body><iframe srcdoc="<img src=x onerror=alert(nucleiXSScanary)>"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in srcdoc attribute")
+	}
+
+	found := false
+	for _, r := range reflections {
+		if r.AttrName == "srcdoc" {
+			if r.Context != ContextHTMLText {
+				t.Fatalf("expected ContextHTMLText for srcdoc, got %s", r.Context)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected reflection for srcdoc attribute, got %v", reflections)
+	}
+}
+
 func TestDetectReflections_NoReflection(t *testing.T) {
 	body := `<html><body><p>Hello world</p></body></html>`
 	reflections := DetectReflections(body, testMarker)
@@ -291,6 +357,85 @@ func TestIsEventHandler(t *testing.T) {
 				t.Errorf("isEventHandler(%q) = %v, want %v", tt.name, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestIsExecutableScriptType(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"", true},
+		{"text/javascript", true},
+		{"application/javascript", true},
+		{"application/ecmascript", true},
+		{"module", true},
+		{"application/json", false},
+		{"application/ld+json", false},
+		{"text/plain", false},
+		{"application/json; charset=utf-8", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := isExecutableScriptType(tt.input); got != tt.expected {
+				t.Errorf("isExecutableScriptType(%q) = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsJavaScriptURLAttribute(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{"href", true},
+		{"src", true},
+		{"formaction", true},
+		{"xlink:href", true},
+		{"data-href", false},
+		{"class", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isJavaScriptURLAttribute(tt.name); got != tt.expected {
+				t.Errorf("isJavaScriptURLAttribute(%q) = %v, want %v", tt.name, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsJavascriptURI(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"javascript:alert(1)", true},
+		{" JAVASCRIPT:void(0)", true},
+		{"https://example.com", false},
+		{"data:text/html,<h1>x</h1>", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := isJavascriptURI(tt.input); got != tt.expected {
+				t.Errorf("isJavascriptURI(%q) = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsHTMLInjectionAttr(t *testing.T) {
+	if !isHTMLInjectionAttr("srcdoc") {
+		t.Fatal("expected srcdoc to be treated as HTML injection attribute")
+	}
+	if !isHTMLInjectionAttr("SRCDOC") {
+		t.Fatal("expected case-insensitive srcdoc match")
+	}
+	if isHTMLInjectionAttr("href") {
+		t.Fatal("expected href not to be treated as HTML injection attribute")
 	}
 }
 
