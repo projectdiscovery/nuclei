@@ -164,7 +164,7 @@ func TestMatcher_MatchXPath_HTML(t *testing.T) {
 
 func TestMatcher_MatchXPath_XML(t *testing.T) {
 	body := `<?xml version="1.0" encoding="utf-8"?><foo>bar</foo><wibble id="1" /><parent><child>baz</child></parent>`
-	body2 := `<?xml version="1.0" encoding="utf-8"?><test>bar</test><wibble2 id="1" /><roditelj><dijete>alo</dijete></roditelj>`
+	body2 := `<?xml version="1.0" encoding="utf-8"?><test>bar</test><wibble2 id="1" /><roditelj><dijete>also</dijete></roditelj>`
 
 	// single match
 	m := &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//foo[contains(text(), 'bar')]"}}

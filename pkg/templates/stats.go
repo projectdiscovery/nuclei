@@ -12,7 +12,7 @@ func init() {
 	stats.NewEntry(ExcludedSelfContainedStats, "Excluded %d self-contained template[s] (disabled as default), use -esc option to run self-contained templates.")
 	stats.NewEntry(ExcludedFileStats, "Excluded %d file template[s] (disabled as default), use -file option to run file templates.")
 	stats.NewEntry(TemplatesExcludedStats, "Excluded %d template[s] with known weak matchers / tags excluded from default run using .nuclei-ignore")
-	stats.NewEntry(ExludedDastTmplStats, "Excluded %d dast template[s] (disabled as default), use -dast option to run dast templates.")
+	stats.NewEntry(ExcludedDastTmplStats, "Excluded %d dast template[s] (disabled as default), use -dast option to run dast templates.")
 	stats.NewEntry(SkippedUnsignedStats, "Skipping %d unsigned template[s]")
 	stats.NewEntry(SkippedRequestSignatureStats, "Skipping %d templates, HTTP Request signatures can only be used in Signed & Verified templates.")
 }

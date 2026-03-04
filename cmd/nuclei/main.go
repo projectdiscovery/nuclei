@@ -317,7 +317,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
 		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
-		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),
+		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(lines) format"),
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", true, "include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use `-omit-raw`]"),
 		flagSet.BoolVarP(&options.OmitRawRequests, "omit-raw", "or", false, "omit request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)"),
 		flagSet.BoolVarP(&options.OmitTemplate, "omit-template", "ot", false, "omit encoded template in the JSON, JSONL output"),
@@ -365,7 +365,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", unitutils.Mega, "max response size to read in bytes"),
 		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
-		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),
+		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "have", "", "experimental http api endpoint"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -477,7 +477,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("stats", "Statistics",
 		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
-		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "display statistics in JSONL(ines) format"),
+		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "display statistics in JSONL(lines) format"),
 		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
 		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
 		flagSet.BoolVarP(&options.HTTPStats, "http-stats", "hps", false, "enable http status capturing (experimental)"),

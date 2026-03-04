@@ -910,7 +910,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 							store.logger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
 					} else if parsed.IsFuzzableRequest() && !typesOpts.DAST {
-						stats.Increment(templates.ExludedDastTmplStats)
+						stats.Increment(templates.ExcludedDastTmplStats)
 						if config.DefaultConfig.LogAllEvents {
 							store.logger.Print().Msgf("[%v] -dast flag is required for DAST template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 						}

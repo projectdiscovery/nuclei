@@ -1,0 +1,74 @@
+# Typos configuration for nuclei
+# https://github.com/crate-ci/typos
+
+[files]
+# Exclude generated/dependency files
+extend-exclude = [
+    "go.sum",
+    "vendor/**",
+    "**/*.sum",
+    # Exclude test data files
+    "**/testdata/**",
+    "**/testdata/**/*",
+    # Exclude integration tests (contain test payloads)
+    "integration_tests/**",
+    "**/integration/**/*.yaml",
+    # Exclude json test data (WAF regexes, samples)
+    "**/*.json",
+    # Exclude README translations - these are intentional translations with false positives
+    "README_CN.md",
+    "README_ES.md",
+    "README_TR.md",
+    "README_KR.md",
+    "README_JP.md",
+    "README_ID.md",
+    "README_PT-BR.md",
+    # Exclude main README.md for now (has encoded strings)
+    "README.md",
+    # Exclude the typo in filename (requires git rename handling)
+    "**/worflow_loader.go",
+]
+
+# Ignore common false positives in security/tooling context
+[default.extend-words]
+# Security tool names
+nuclei = "nuclei"
+fofa = "fofa"
+shodan = "shodan"
+# Common technical terms that may be flagged incorrectly
+paranoid = "paranoid"
+
+# Ignore words in specific file types
+[type.yaml.extend-words]
+# SQL injection test payloads - intentional non-English text
+SELEC = "SELEC"
+
+[type.go.extend-words]
+# Go code - short identifiers that are false positives
+# Allow 'BA' - base64 related abbreviations in test code
+BA = "BA"
+# Test utilities with encoded strings
+Fo = "Fo"
+Iz = "Iz"
+Iy = "Iy"
+UE = "UE"
+Noo = "Noo"
+Iif = "Iif"
+# Flag short names - intentional abbreviations
+ot = "ot"
+ine = "ine"
+# Common false positives in code
+hae = "hae"
+ines = "ines"
+thant = "thant"
+alo = "alo"
+formated = "formated"
+Formated = "Formated"
+# External library typos we can't fix
+AllowdTypes = "AllowdTypes"
+Allowd = "Allowd"
+# These look like typos but are valid technical terms
+MisMatched = "MisMatched"
+Mis = "Mis"
+# These look like typos but need verification
+Exluded = "Exluded"
