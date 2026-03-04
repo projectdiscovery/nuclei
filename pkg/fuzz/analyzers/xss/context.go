@@ -79,6 +79,16 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						}
 
 						if isEventHandler(attrName) {
+						// Check for javascript: URI - treat as script context
+						if strings.HasPrefix(strings.ToLower(strings.TrimSpace(attrVal)), "javascript:") {
+							ctx = ContextScript
+						}
+
+						// Check for srcdoc attribute - allows HTML injection
+						if attrName == "srcdoc" {
+							ctx = ContextHTMLText // srcdoc allows HTML injection
+						}
+
 							// Event handler attributes contain JavaScript
 							ctx = ContextScript
 						}
