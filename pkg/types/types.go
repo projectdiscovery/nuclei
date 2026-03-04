@@ -33,6 +33,11 @@ type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalo
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
+    // Honeypot detection: max unique template matches per host before flagging (0 = disabled)
+    HoneypotThreshold int  `yaml:"honeypot-threshold,omitempty"`
+    // Suppress all results from hosts flagged as honeypots
+    HoneypotSuppress  bool `yaml:"honeypot-suppress,omitempty"`
+
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
