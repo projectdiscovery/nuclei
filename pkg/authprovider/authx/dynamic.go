@@ -31,9 +31,25 @@ type Dynamic struct {
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	once          *sync.Once             `json:"-" yaml:"-"` // ensures fetch is called only once and blocks all callers until complete
+	once          atomic.Value           `json:"-" yaml:"-"` // stores *sync.Once, allows retry on failure
 	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
 	error         error                  `json:"-" yaml:"-"` // error if any
+}
+
+// getOnce returns the current sync.Once instance, creating a new one if needed
+func (d *Dynamic) getOnce() *sync.Once {
+	if v := d.once.Load(); v != nil {
+		return v.(*sync.Once)
+	}
+	once := &sync.Once{}
+	d.once.Store(once)
+	return once
+}
+
+// resetOnce resets the sync.Once, allowing retry on next fetch call
+// this is called when fetch fails to enable retry
+func (d *Dynamic) resetOnce() {
+	d.once.Store(&sync.Once{})
 }
 
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
@@ -71,7 +87,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.once = &sync.Once{}
+	d.once.Store(&sync.Once{})
 	d.fetched = &atomic.Bool{}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
@@ -163,19 +179,26 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // fetchAndHydrate executes the fetch callback and hydrates all secrets with extracted values
 // this MUST be called under sync.Once guard to ensure atomic fetch-and-hydrate
+// On error, the once guard is reset to allow retry on next call
 func (d *Dynamic) fetchAndHydrate() {
 	d.error = d.fetchCallback(d)
 	if d.error != nil {
+		// Reset once to allow retry on next call
+		d.resetOnce()
 		return
 	}
 	if len(d.Extracted) == 0 {
 		d.error = fmt.Errorf("no extracted values found for dynamic secret")
+		// Reset once to allow retry on next call
+		d.resetOnce()
 		return
 	}
 
 	if d.Secret != nil {
 		if err := d.applyValuesToSecret(d.Secret); err != nil {
 			d.error = err
+			// Reset once to allow retry on next call
+			d.resetOnce()
 			return
 		}
 	}
@@ -183,23 +206,27 @@ func (d *Dynamic) fetchAndHydrate() {
 	for _, secret := range d.Secrets {
 		if err := d.applyValuesToSecret(secret); err != nil {
 			d.error = err
+			// Reset once to allow retry on next call
+			d.resetOnce()
 			return
 		}
 	}
+
+	// Mark as fetched successfully (only after successful fetch and hydration)
+	d.fetched.Store(true)
 }
 
-// GetStrategy returns the auth strategies for the dynamic secret
+// GetStrategies returns the auth strategies for the dynamic secret
+// It ensures fetch and hydrate are called exactly once and all callers block until complete
+// If fetch fails, the once guard is reset to allow retry on next call
 func (d *Dynamic) GetStrategies() []AuthStrategy {
 	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
-	d.once.Do(d.fetchAndHydrate)
+	d.getOnce().Do(d.fetchAndHydrate)
 
 	// If fetch failed, return nil strategies
 	if d.error != nil {
 		return nil
 	}
-
-	// Mark as fetched
-	d.fetched.Store(true)
 
 	var strategies []AuthStrategy
 	if d.Secret != nil {
@@ -213,9 +240,10 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
+// If fetch fails, the once guard is reset to allow retry on next call
 func (d *Dynamic) Fetch(isFatal bool) error {
 	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
-	d.once.Do(d.fetchAndHydrate)
+	d.getOnce().Do(d.fetchAndHydrate)
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
@@ -226,4 +254,22 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 // Error returns the error if any
 func (d *Dynamic) Error() error {
 	return d.error
+}
+
+// Reset resets the fetch state, allowing a fresh fetch on next call
+// This is useful when you want to force a re-fetch of the dynamic secret
+// Call Validate() again after Reset() if you want to ensure the secret is still valid
+func (d *Dynamic) Reset() {
+	d.once.Store(&sync.Once{})
+	d.fetched.Store(false)
+	d.error = nil
+	d.Extracted = nil
+}
+
+// IsFetched returns true if the dynamic secret has been successfully fetched
+func (d *Dynamic) IsFetched() bool {
+	if d.fetched == nil {
+		return false
+	}
+	return d.fetched.Load()
 }
