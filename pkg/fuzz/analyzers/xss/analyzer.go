@@ -63,7 +63,15 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		canary, _ = v.(string)
 	}
 	if canary == "" {
-		return false, "", nil
+		// Attempt to extract from FuzzGenerated value if missing from parameters
+		if options.FuzzGenerated.Value != "" {
+			canary = options.FuzzGenerated.Value
+			// Remove the canary chars if present at the end
+			canary = strings.TrimSuffix(canary, canaryChars)
+		}
+		if canary == "" {
+			return false, "", nil
+		}
 	}
 
 	body := options.ResponseBody
@@ -76,8 +84,8 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if canary is reflected at all
-	if !strings.Contains(body, canary) {
+	// Check if canary is reflected at all (case-insensitive)
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(canary)) {
 		return false, "", nil
 	}
 
@@ -131,16 +139,16 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, "", errors.Wrap(err, "could not set value in component")
 	}
+	// Restore original value after rebuild so subsequent replays start from clean state
+	// Register defer immediately after SetValue to ensure restoration even if Rebuild fails
+	defer func() {
+		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
+	}()
 
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not rebuild request")
 	}
-
-	// Restore original value after rebuild so subsequent replays start from clean state
-	defer func() {
-		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
-	}()
 
 	gologger.Verbose().Msgf("[%s] Replaying with payload for %s context: %s", a.Name(), reflection.Context, rebuilt.String())
 
@@ -168,7 +176,7 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 			origPayload,
 		)
 
-		if hasCSP(options.ResponseHeaders) {
+		if hasCSP(resp.Header) {
 			details += " [note: CSP header present, may limit exploitability]"
 		}
 
@@ -219,10 +227,10 @@ func getHeader(headers map[string][]string, name string) string {
 func detectCharacterSurvival(body string, canary string) CharacterSet {
 	return CharacterSet{
 		LessThan:     strings.Contains(body, canary+"<"),
-		GreaterThan:  strings.Contains(body, canary+"<>") || strings.Contains(body, canary+">"),
-		DoubleQuote:  strings.Contains(body, canary+`<>"`),
-		SingleQuote:  strings.Contains(body, canary+`<>"'`),
-		ForwardSlash: strings.Contains(body, canary+canaryChars), // full canary+chars survived
+		GreaterThan:  strings.Contains(body, canary+">"),
+		DoubleQuote:  strings.Contains(body, canary+`"`),
+		SingleQuote:  strings.Contains(body, canary+"'"),
+		ForwardSlash: strings.Contains(body, canary+"/"),
 	}
 }
 
