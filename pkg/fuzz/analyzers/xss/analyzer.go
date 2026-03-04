@@ -323,8 +323,8 @@ func selectPayloads(reflection *ReflectionInfo, chars CharacterSet) []string {
 	case ContextScript:
 		candidates = []string{
 			`</script><img src=x onerror=alert(1)>`,
-			`;alert(1)//`,
-			`\nalert(1)//`,
+			";alert(1)//",
+			"\nalert(1)//",
 		}
 
 	case ContextScriptString:
