@@ -65,9 +65,12 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if canary == "" {
 		// Attempt to extract from FuzzGenerated value if missing from parameters
 		if options.FuzzGenerated.Value != "" {
-			canary = options.FuzzGenerated.Value
-			// Remove the canary chars if present at the end
-			canary = strings.TrimSuffix(canary, canaryChars)
+			const prefix = "nuclei"
+			val := options.FuzzGenerated.Value
+			lower := strings.ToLower(val)
+			if idx := strings.Index(lower, prefix); idx >= 0 && idx+len(prefix)+8 <= len(val) {
+				canary = val[idx : idx+len(prefix)+8]
+			}
 		}
 		if canary == "" {
 			return false, "", nil
@@ -225,13 +228,51 @@ func getHeader(headers map[string][]string, name string) string {
 
 // detectCharacterSurvival checks which XSS-critical characters survived server-side encoding
 func detectCharacterSurvival(body string, canary string) CharacterSet {
-	return CharacterSet{
-		LessThan:     strings.Contains(body, canary+"<"),
-		GreaterThan:  strings.Contains(body, canary+">"),
-		DoubleQuote:  strings.Contains(body, canary+`"`),
-		SingleQuote:  strings.Contains(body, canary+"'"),
-		ForwardSlash: strings.Contains(body, canary+"/"),
+	var cs CharacterSet
+
+	// Find all occurrences of canary (case-insensitive)
+	lowerBody := strings.ToLower(body)
+	lowerCanary := strings.ToLower(canary)
+
+	start := 0
+	for {
+		idx := strings.Index(lowerBody[start:], lowerCanary)
+		if idx == -1 {
+			break
+		}
+		currIdx := start + idx
+		// Check a window after the canary for the survival of special characters
+		endIdx := currIdx + len(canary) + 30
+		if endIdx > len(body) {
+			endIdx = len(body)
+		}
+
+		window := body[currIdx+len(canary) : endIdx]
+
+		if !cs.LessThan && strings.Contains(window, "<") {
+			cs.LessThan = true
+		}
+		if !cs.GreaterThan && strings.Contains(window, ">") {
+			cs.GreaterThan = true
+		}
+		if !cs.DoubleQuote && strings.Contains(window, `"`) {
+			cs.DoubleQuote = true
+		}
+		if !cs.SingleQuote && strings.Contains(window, "'") {
+			cs.SingleQuote = true
+		}
+		if !cs.ForwardSlash && strings.Contains(window, "/") {
+			cs.ForwardSlash = true
+		}
+
+		if cs.LessThan && cs.GreaterThan && cs.DoubleQuote && cs.SingleQuote && cs.ForwardSlash {
+			break
+		}
+
+		start = currIdx + 1
 	}
+
+	return cs
 }
 
 // selectPayloads returns context-appropriate XSS payloads filtered by character availability
