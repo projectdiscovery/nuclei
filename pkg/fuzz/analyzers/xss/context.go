@@ -259,8 +259,15 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 		return '"', false // default to double-quoted
 	}
 	afterEq := idx + len(attrAssign)
+	for afterEq < len(rawToken) {
+		ch := rawToken[afterEq]
+		if ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' {
+			break
+		}
+		afterEq++
+	}
 	if afterEq >= len(rawToken) {
-		return '"', false
+		return 0, true
 	}
 	switch rawToken[afterEq] {
 	case '"':
