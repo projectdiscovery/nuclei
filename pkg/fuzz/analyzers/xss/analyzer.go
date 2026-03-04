@@ -171,7 +171,7 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 	// Check if the payload is reflected unencoded
 	if strings.Contains(respBodyStr, payload) {
 		details := fmt.Sprintf(
-			"[xss_context] XSS confirmed in %s context (tag: %s, param: %s). Payload reflected unencoded: %s (original: %s)",
+			"[xss_context] XSS confirmed in %s context (tag: %s, param: %s). Payload reflected unencoded: %q (original: %q)",
 			reflection.Context,
 			reflection.TagName,
 			gr.Key,
@@ -229,6 +229,9 @@ func getHeader(headers map[string][]string, name string) string {
 // detectCharacterSurvival checks which XSS-critical characters survived server-side encoding
 func detectCharacterSurvival(body string, canary string) CharacterSet {
 	var cs CharacterSet
+	if body == "" || canary == "" {
+		return cs
+	}
 
 	// Find all occurrences of canary (case-insensitive)
 	lowerBody := strings.ToLower(body)
