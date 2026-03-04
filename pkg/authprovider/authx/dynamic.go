@@ -161,33 +161,37 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 	return nil
 }
 
+// fetchAndHydrate executes the fetch callback and hydrates all secrets with extracted values
+// this MUST be called under sync.Once guard to ensure atomic fetch-and-hydrate
+func (d *Dynamic) fetchAndHydrate() {
+	d.error = d.fetchCallback(d)
+	if d.error != nil {
+		return
+	}
+	if len(d.Extracted) == 0 {
+		d.error = fmt.Errorf("no extracted values found for dynamic secret")
+		return
+	}
+
+	if d.Secret != nil {
+		if err := d.applyValuesToSecret(d.Secret); err != nil {
+			d.error = err
+			return
+		}
+	}
+
+	for _, secret := range d.Secrets {
+		if err := d.applyValuesToSecret(secret); err != nil {
+			d.error = err
+			return
+		}
+	}
+}
+
 // GetStrategy returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
-	// Use sync.Once to ensure fetch is called exactly once and all callers block until complete
-	d.once.Do(func() {
-		d.error = d.fetchCallback(d)
-		if d.error != nil {
-			return
-		}
-		if len(d.Extracted) == 0 {
-			d.error = fmt.Errorf("no extracted values found for dynamic secret")
-			return
-		}
-
-		if d.Secret != nil {
-			if err := d.applyValuesToSecret(d.Secret); err != nil {
-				d.error = err
-				return
-			}
-		}
-
-		for _, secret := range d.Secrets {
-			if err := d.applyValuesToSecret(secret); err != nil {
-				d.error = err
-				return
-			}
-		}
-	})
+	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
+	d.once.Do(d.fetchAndHydrate)
 
 	// If fetch failed, return nil strategies
 	if d.error != nil {
@@ -210,10 +214,8 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // Fetch fetches the dynamic secret
 // if isFatal is true, it will stop the execution if the secret could not be fetched
 func (d *Dynamic) Fetch(isFatal bool) error {
-	// Use sync.Once to ensure fetch is called exactly once and all callers block until complete
-	d.once.Do(func() {
-		d.error = d.fetchCallback(d)
-	})
+	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
+	d.once.Do(d.fetchAndHydrate)
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
