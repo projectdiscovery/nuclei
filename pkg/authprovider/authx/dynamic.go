@@ -23,32 +23,43 @@ var (
 // ex: username and password are dynamic secrets, the actual secret is the token obtained
 // after authenticating with the username and password
 type Dynamic struct {
-	*Secret       `yaml:",inline"`       // this is a static secret that will be generated after the dynamic secret is resolved
-	Secrets       []*Secret              `yaml:"secrets"`
-	TemplatePath  string                 `json:"template" yaml:"template"`
-	Variables     []KV                   `json:"variables" yaml:"variables"`
-	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
-	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
-	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
-	once          atomic.Value           `json:"-" yaml:"-"` // stores *sync.Once, allows retry on failure
-	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
-	error         error                  `json:"-" yaml:"-"` // error if any
+	*Secret       `yaml:",inline"` // this is a static secret that will be generated after the dynamic secret is resolved
+	Secrets       []*Secret        `yaml:"secrets"`
+	TemplatePath  string           `json:"template" yaml:"template"`
+	Variables     []KV             `json:"variables" yaml:"variables"`
+	Input         string           `json:"input" yaml:"input"` // (optional) target for the dynamic secret
+	Extracted     map[string]interface{} `json:"-" yaml:"-"`   // extracted values from the dynamic secret
+	fetchCallback LazyFetchSecret  `json:"-" yaml:"-"`
+	once          *atomic.Pointer[*sync.Once] `json:"-" yaml:"-"` // stores *sync.Once, allows retry on failure
+	fetched       *atomic.Bool                `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
+	mu            sync.RWMutex                `json:"-" yaml:"-"` // protects err field
+	err           error                       `json:"-" yaml:"-"` // error if any
 }
 
 // getOnce returns the current sync.Once instance, creating a new one if needed
+// Uses double-checked locking pattern for thread-safe lazy initialization
 func (d *Dynamic) getOnce() *sync.Once {
-	if v := d.once.Load(); v != nil {
-		return v.(*sync.Once)
+	// Fast path - check if already initialized
+	ptr := d.once.Load()
+	if ptr != nil {
+		return *ptr
 	}
+	// Slow path - create new sync.Once
 	once := &sync.Once{}
-	d.once.Store(once)
+	// Try to store - if another goroutine beat us, use theirs
+	if !d.once.CompareAndSwap(nil, &once) {
+		// Someone else stored, use their value
+		return *d.once.Load()
+	}
 	return once
 }
 
 // resetOnce resets the sync.Once, allowing retry on next fetch call
 // this is called when fetch fails to enable retry
 func (d *Dynamic) resetOnce() {
-	d.once.Store(&sync.Once{})
+	// Atomically swap with a new sync.Once
+	once := &sync.Once{}
+	d.once.Store(&once)
 }
 
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
@@ -86,7 +97,9 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
-	d.once.Store(&sync.Once{})
+	d.once = &atomic.Pointer[*sync.Once]{}
+	once := &sync.Once{}
+	d.once.Store(&once)
 	d.fetched = &atomic.Bool{}
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
@@ -180,14 +193,17 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 // this MUST be called under sync.Once guard to ensure atomic fetch-and-hydrate
 // On error, the once guard is reset to allow retry on next call
 func (d *Dynamic) fetchAndHydrate() {
-	d.error = d.fetchCallback(d)
-	if d.error != nil {
+	d.mu.Lock()
+	d.err = d.fetchCallback(d)
+	if d.err != nil {
+		d.mu.Unlock()
 		// Reset once to allow retry on next call
 		d.resetOnce()
 		return
 	}
 	if len(d.Extracted) == 0 {
-		d.error = fmt.Errorf("no extracted values found for dynamic secret")
+		d.err = fmt.Errorf("no extracted values found for dynamic secret")
+		d.mu.Unlock()
 		// Reset once to allow retry on next call
 		d.resetOnce()
 		return
@@ -195,7 +211,8 @@ func (d *Dynamic) fetchAndHydrate() {
 
 	if d.Secret != nil {
 		if err := d.applyValuesToSecret(d.Secret); err != nil {
-			d.error = err
+			d.mu.Unlock()
+			d.err = err
 			// Reset once to allow retry on next call
 			d.resetOnce()
 			return
@@ -204,12 +221,14 @@ func (d *Dynamic) fetchAndHydrate() {
 
 	for _, secret := range d.Secrets {
 		if err := d.applyValuesToSecret(secret); err != nil {
-			d.error = err
+			d.mu.Unlock()
+			d.err = err
 			// Reset once to allow retry on next call
 			d.resetOnce()
 			return
 		}
 	}
+	d.mu.Unlock()
 
 	// Mark as fetched successfully (only after successful fetch and hydration)
 	d.fetched.Store(true)
@@ -223,7 +242,10 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	d.getOnce().Do(d.fetchAndHydrate)
 
 	// If fetch failed, return nil strategies
-	if d.error != nil {
+	d.mu.RLock()
+	hasError := d.err != nil
+	d.mu.RUnlock()
+	if hasError {
 		return nil
 	}
 
@@ -243,21 +265,30 @@ func (d *Dynamic) Fetch() error {
 	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
 	d.getOnce().Do(d.fetchAndHydrate)
 
-	return d.error
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.err
 }
 
 // Error returns the error if any
 func (d *Dynamic) Error() error {
-	return d.error
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.err
 }
 
 // Reset resets the fetch state, allowing a fresh fetch on next call
 // This is useful when you want to force a re-fetch of the dynamic secret
 // Call Validate() again after Reset() if you want to ensure the secret is still valid
 func (d *Dynamic) Reset() {
-	d.once.Store(&sync.Once{})
-	d.fetched.Store(false)
-	d.error = nil
+	once := &sync.Once{}
+	d.once.Store(&once)
+	if d.fetched != nil {
+		d.fetched.Store(false)
+	}
+	d.mu.Lock()
+	d.err = nil
+	d.mu.Unlock()
 	d.Extracted = nil
 }
 

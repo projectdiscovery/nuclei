@@ -155,10 +155,11 @@ func TestDynamicFetchRaceCondition(t *testing.T) {
 		fetchCompleted := atomic.Int32{}
 
 		// Set a slow fetch callback that simulates network delay
+		fetchDone := make(chan struct{})
 		d.SetLazyFetchCallback(func(d *Dynamic) error {
 			fetchCalled.Add(1)
-			// Simulate slow network request
-			time.Sleep(100 * time.Millisecond)
+			// Simulate slow network request - use channel for deterministic sync
+			<-fetchDone
 			d.Extracted = map[string]interface{}{"token": "extracted-token"}
 			d.Token = "extracted-token"
 			fetchCompleted.Add(1)
@@ -178,6 +179,9 @@ func TestDynamicFetchRaceCondition(t *testing.T) {
 			}(i)
 		}
 
+		// Let all goroutines block on GetStrategies, then complete fetch
+		time.Sleep(10 * time.Millisecond)
+		close(fetchDone)
 		wg.Wait()
 
 		// Verify fetch was called exactly once
@@ -213,9 +217,10 @@ func TestDynamicFetchRaceCondition(t *testing.T) {
 		fetchCalled := atomic.Int32{}
 
 		// Set a fetch callback that returns an error
+		fetchDone := make(chan struct{})
 		d.SetLazyFetchCallback(func(d *Dynamic) error {
 			fetchCalled.Add(1)
-			time.Sleep(50 * time.Millisecond)
+			<-fetchDone
 			return errkit.New("fetch failed intentionally")
 		})
 
@@ -231,6 +236,9 @@ func TestDynamicFetchRaceCondition(t *testing.T) {
 			}(i)
 		}
 
+		// Let all goroutines block, then complete fetch
+		time.Sleep(10 * time.Millisecond)
+		close(fetchDone)
 		wg.Wait()
 
 		// Verify fetch was called exactly once
@@ -263,11 +271,12 @@ func TestDynamicFetchRaceCondition(t *testing.T) {
 
 		var fetchStarted sync.WaitGroup
 		fetchStarted.Add(1)
+		fetchCompleted := make(chan struct{})
 
 		d.SetLazyFetchCallback(func(d *Dynamic) error {
 			fetchStarted.Done() // Signal that fetch has started
-			// Wait until all callers are blocked
-			time.Sleep(100 * time.Millisecond)
+			// Wait for signal to complete fetch (deterministic sync)
+			<-fetchCompleted
 			d.Extracted = map[string]interface{}{"token": "extracted"}
 			d.Token = "extracted"
 			return nil
@@ -302,6 +311,9 @@ func TestDynamicFetchRaceCondition(t *testing.T) {
 			}(i)
 		}
 
+		// Let all goroutines block, then complete fetch
+		time.Sleep(10 * time.Millisecond)
+		close(fetchCompleted)
 		wg.Wait()
 
 		// All goroutines should have received results after fetch completed
@@ -458,9 +470,9 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 
 		d.SetLazyFetchCallback(func(d *Dynamic) error {
 			close(fetchStarted)
-			time.Sleep(50 * time.Millisecond) // Simulate network delay
+			// Wait for deterministic sync signal instead of sleeping
+			<-fetchCompleted
 			d.Extracted = map[string]interface{}{"token": "concurrent-token"}
-			close(fetchCompleted)
 			return nil
 		})
 
@@ -482,11 +494,11 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 			}(i)
 		}
 
+		// Wait for fetch to start, then let it complete
+		<-fetchStarted
+		time.Sleep(10 * time.Millisecond) // Let all goroutines block
+		close(fetchCompleted)
 		wg.Wait()
-
-		// Wait for fetch to complete
-		<-fetchCompleted
-		<-time.After(10 * time.Millisecond)
 
 		// Verify ALL goroutines got hydrated values
 		for i, result := range results {
