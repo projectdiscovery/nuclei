@@ -36,8 +36,9 @@ type Dynamic struct {
 	err           error                       `json:"-" yaml:"-"` // error if any
 }
 
-// getOnce returns the current sync.Once instance, creating a new one if needed
-// Uses double-checked locking pattern for thread-safe lazy initialization
+// getOnce returns the current sync.Once instance, creating a new one if needed.
+// It uses double-checked locking pattern for thread-safe lazy initialization
+// and is safe for concurrent use.
 func (d *Dynamic) getOnce() *sync.Once {
 	// Fast path - check if already initialized
 	ptr := d.once.Load()
@@ -54,14 +55,17 @@ func (d *Dynamic) getOnce() *sync.Once {
 	return once
 }
 
-// resetOnce resets the sync.Once, allowing retry on next fetch call
-// this is called when fetch fails to enable retry
+// resetOnce atomically replaces the sync.Once with a new instance,
+// allowing the fetch operation to be retried. This is called when
+// fetch fails to enable retry on the next call.
 func (d *Dynamic) resetOnce() {
 	// Atomically swap with a new sync.Once
 	once := &sync.Once{}
 	d.once.Store(&once)
 }
 
+// GetDomainAndDomainRegex returns all domains and domain regexes from the dynamic
+// secret and its embedded secrets. It deduplicates the results before returning.
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 	var domains []string
 	var domainRegex []string
@@ -78,6 +82,8 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 	return uniqueDomains, uniqueDomainRegex
 }
 
+// UnmarshalJSON implements json.Unmarshaler for Dynamic.
+// It handles the inline Secret embedding correctly during JSON unmarshalling.
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
 	if d == nil {
 		return errkit.New("cannot unmarshal into nil Dynamic struct")
@@ -123,11 +129,16 @@ func (d *Dynamic) Validate() error {
 	return nil
 }
 
-// SetLazyFetchCallback sets the lazy fetch callback for the dynamic secret
+// SetLazyFetchCallback sets the lazy fetch callback for the dynamic secret.
+// The callback will be invoked when Fetch() or GetStrategies() is first called.
 func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 	d.fetchCallback = callback
 }
 
+// applyValuesToSecret replaces template variables (e.g., {{token}}) in the
+// secret's headers, cookies, params, username, password, and token fields
+// with the corresponding values from the Dynamic's Extracted map.
+// It also parses raw cookies after template replacement.
 func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 	// evaluate headers
 	for i, header := range secret.Headers {
@@ -189,9 +200,10 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 	return nil
 }
 
-// fetchAndHydrate executes the fetch callback and hydrates all secrets with extracted values
-// this MUST be called under sync.Once guard to ensure atomic fetch-and-hydrate
-// On error, the once guard is reset to allow retry on next call
+// fetchAndHydrate executes the fetch callback and hydrates all secrets with
+// the extracted values in a single atomic operation. This method MUST be called
+// under sync.Once guard to ensure thread-safe fetch-and-hydrate semantics.
+// On error, the once guard is reset to allow retry on the next call.
 func (d *Dynamic) fetchAndHydrate() {
 	d.mu.Lock()
 	d.err = d.fetchCallback(d)
@@ -234,9 +246,10 @@ func (d *Dynamic) fetchAndHydrate() {
 	d.fetched.Store(true)
 }
 
-// GetStrategies returns the auth strategies for the dynamic secret
-// It ensures fetch and hydrate are called exactly once and all callers block until complete
-// If fetch fails, the once guard is reset to allow retry on next call
+// GetStrategies returns the auth strategies for the dynamic secret.
+// It ensures that fetch and hydrate are called exactly once, and all concurrent
+// callers block until the operation completes. If the fetch fails, it returns nil.
+// The once guard is reset on failure to allow retry on the next call.
 func (d *Dynamic) GetStrategies() []AuthStrategy {
 	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
 	d.getOnce().Do(d.fetchAndHydrate)
@@ -259,8 +272,10 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	return strategies
 }
 
-// Fetch fetches the dynamic secret
-// If fetch fails, the once guard is reset to allow retry on next call
+// Fetch triggers the lazy fetch of the dynamic secret and returns any error.
+// It ensures fetch and hydrate are called exactly once, and all concurrent
+// callers block until the operation completes. On error, the once guard is
+// reset to allow retry on the next call.
 func (d *Dynamic) Fetch() error {
 	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
 	d.getOnce().Do(d.fetchAndHydrate)
@@ -270,7 +285,8 @@ func (d *Dynamic) Fetch() error {
 	return d.err
 }
 
-// Error returns the error if any
+// Error returns the error from the last fetch operation, if any.
+// It is safe for concurrent use.
 func (d *Dynamic) Error() error {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
