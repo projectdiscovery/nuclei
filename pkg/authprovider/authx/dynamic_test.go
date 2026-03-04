@@ -378,7 +378,7 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 		})
 
 		// Call Fetch first (simulating pre-fetch scenario)
-		err := d.Fetch(false)
+		err := d.Fetch()
 		require.NoError(t, err)
 
 		// Now call GetStrategies - should return hydrated secret
@@ -426,7 +426,7 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 		require.Equal(t, "Bearer hydrated-value", d.Secret.Headers[0].Value)
 
 		// Call Fetch again - should NOT call callback again (sync.Once)
-		err := d.Fetch(false)
+		err := d.Fetch()
 		require.NoError(t, err)
 
 		// Verify callback was only called once
@@ -535,13 +535,13 @@ func TestDynamicFetchRetryOnError(t *testing.T) {
 		})
 
 		// First call should fail
-		err := d.Fetch(false)
+		err := d.Fetch()
 		require.Error(t, err)
 		require.ErrorIs(t, err, fetchErr)
 		require.Equal(t, int32(1), callCount.Load())
 
 		// Second call should succeed (retry allowed)
-		err = d.Fetch(false)
+		err = d.Fetch()
 		require.NoError(t, err)
 		require.Equal(t, int32(2), callCount.Load())
 

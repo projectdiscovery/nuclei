@@ -175,7 +175,7 @@ func (f *FileAuthProvider) PreFetchSecrets() error {
 	for _, ss := range f.domains {
 		for _, s := range ss {
 			if val, ok := s.(*authx.DynamicAuthStrategy); ok {
-				if err := val.Dynamic.Fetch(false); err != nil {
+				if err := val.Dynamic.Fetch(); err != nil {
 					return err
 				}
 			}
@@ -184,7 +184,7 @@ func (f *FileAuthProvider) PreFetchSecrets() error {
 	for _, ss := range f.compiled {
 		for _, s := range ss {
 			if val, ok := s.(*authx.DynamicAuthStrategy); ok {
-				if err := val.Dynamic.Fetch(false); err != nil {
+				if err := val.Dynamic.Fetch(); err != nil {
 					return err
 				}
 			}

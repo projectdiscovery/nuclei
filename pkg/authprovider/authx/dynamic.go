@@ -6,7 +6,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/errkit"
@@ -239,15 +238,11 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 }
 
 // Fetch fetches the dynamic secret
-// if isFatal is true, it will stop the execution if the secret could not be fetched
 // If fetch fails, the once guard is reset to allow retry on next call
-func (d *Dynamic) Fetch(isFatal bool) error {
+func (d *Dynamic) Fetch() error {
 	// Use sync.Once to ensure fetch and hydrate are called exactly once and all callers block until complete
 	d.getOnce().Do(d.fetchAndHydrate)
 
-	if d.error != nil && isFatal {
-		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
-	}
 	return d.error
 }
 
