@@ -1,0 +1,28 @@
+[files]
+extend-exclude = [
+    "*.min.js",
+    "vendor/",
+    "node_modules/",
+    "pkg/templates/",
+    "integration_tests/"
+]
+
+[default]
+extend-ignore-identifiers-re = [
+    # nuclei specific terms
+    "\\bpd\\b",
+    "\\bhttpx\\b",
+    "\\bnuclei\\b",
+    "\\binteractsh\\b",
+    "\\bflowql\\b",
+    # Technical terms
+    "\\bstruct\\b",
+    "\\bvar\\b",
+    "\\bfunc\\b",
+]
+
+[default.extend-words]
+# Common false positives
+"nd" = "nd"  # and
+"fo" = "fo"   # for
+"ba" = "ba"   # ba

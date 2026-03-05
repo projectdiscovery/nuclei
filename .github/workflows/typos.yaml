@@ -1,0 +1,32 @@
+name: Typos Check
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  typos:
+    name: Check for typos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for typos
+        uses: crate-ci/typos@v1.29.0
+        with:
+          config: .typos.toml
+          isolated: true
+      
+      - name: Typos check summary
+        run: |
+          echo "✅ Typos check completed"
+          echo "📝 Config: .typos.toml"
+          echo "🔗 Docs: https://github.com/crate-ci/typos"
