@@ -1,0 +1,828 @@
+package xss
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+)
+
+const testMarker = "nucleiXSScanary"
+
+func TestDetectReflections_HTMLText(t *testing.T) {
+	body := `<html><body><p>Hello nucleiXSScanary world</p></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in HTML text")
+	}
+	if reflections[0].Context != ContextHTMLText {
+		t.Fatalf("expected ContextHTMLText, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_AttributeDoubleQuoted(t *testing.T) {
+	body := `<html><body><input value="nucleiXSScanary"></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextAttribute && r.AttrName == "value" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextAttribute for value attr, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_AttributeSingleQuoted(t *testing.T) {
+	body := `<html><body><input value='nucleiXSScanary'></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in single-quoted attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextAttribute && r.QuoteChar == '\'' {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected single-quoted ContextAttribute, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_ScriptBlock(t *testing.T) {
+	body := `<html><body><script>var x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in script")
+	}
+	if reflections[0].Context != ContextScript {
+		t.Fatalf("expected ContextScript, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ScriptStringDouble(t *testing.T) {
+	body := `<html><body><script>var x = "nucleiXSScanary";</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in script string")
+	}
+	if reflections[0].Context != ContextScriptString {
+		t.Fatalf("expected ContextScriptString, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ScriptStringSingle(t *testing.T) {
+	body := `<html><body><script>var x = 'nucleiXSScanary';</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in script string")
+	}
+	if reflections[0].Context != ContextScriptString {
+		t.Fatalf("expected ContextScriptString, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ScriptStringBacktick(t *testing.T) {
+	body := "<html><body><script>var x = `nucleiXSScanary`;</script></body></html>"
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in template literal")
+	}
+	if reflections[0].Context != ContextScriptString {
+		t.Fatalf("expected ContextScriptString, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_HTMLComment(t *testing.T) {
+	body := `<html><body><!-- nucleiXSScanary --></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in HTML comment")
+	}
+	if reflections[0].Context != ContextHTMLComment {
+		t.Fatalf("expected ContextHTMLComment, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_StyleBlock(t *testing.T) {
+	body := `<html><head><style>.x { background: url(nucleiXSScanary); }</style></head></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in style")
+	}
+	if reflections[0].Context != ContextStyle {
+		t.Fatalf("expected ContextStyle, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_EventHandler(t *testing.T) {
+	body := `<html><body><div onmouseover="nucleiXSScanary">test</div></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in event handler")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "onmouseover" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for event handler, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_NoReflection(t *testing.T) {
+	body := `<html><body><p>Hello world</p></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) != 0 {
+		t.Fatalf("expected no reflections, got %d", len(reflections))
+	}
+}
+
+func TestDetectReflections_MultipleContexts(t *testing.T) {
+	body := `<html><body>
+		<p>nucleiXSScanary</p>
+		<input value="nucleiXSScanary">
+		<script>var x = "nucleiXSScanary";</script>
+	</body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) < 3 {
+		t.Fatalf("expected at least 3 reflections, got %d", len(reflections))
+	}
+
+	contexts := make(map[Context]bool)
+	for _, r := range reflections {
+		contexts[r.Context] = true
+	}
+	if !contexts[ContextHTMLText] {
+		t.Error("expected ContextHTMLText in multiple reflections")
+	}
+	if !contexts[ContextAttribute] {
+		t.Error("expected ContextAttribute in multiple reflections")
+	}
+	if !contexts[ContextScriptString] {
+		t.Error("expected ContextScriptString in multiple reflections")
+	}
+}
+
+func TestDetectReflections_Textarea(t *testing.T) {
+	body := `<html><body><textarea>nucleiXSScanary</textarea></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in textarea (RCDATA element)")
+	}
+	if reflections[0].Context != ContextHTMLText {
+		t.Fatalf("expected ContextHTMLText for RCDATA element, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_Title(t *testing.T) {
+	body := `<html><head><title>nucleiXSScanary</title></head></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in title element")
+	}
+}
+
+func TestDetectReflections_CaseInsensitive(t *testing.T) {
+	body := `<html><body><p>NUCLEIxssCANARY</p></body></html>`
+	reflections := DetectReflections(body, "nucleixsscanary")
+	if len(reflections) == 0 {
+		t.Fatal("expected case-insensitive reflection detection")
+	}
+}
+
+func TestDetectReflections_TagNameReflection(t *testing.T) {
+	body := `<html><body><nucleiXSScanary>test</nucleiXSScanary></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in tag name")
+	}
+}
+
+func TestBestReflection_Priority(t *testing.T) {
+	reflections := []ReflectionInfo{
+		{Context: ContextHTMLComment},
+		{Context: ContextHTMLText},
+		{Context: ContextAttribute},
+		{Context: ContextScript},
+	}
+	best := BestReflection(reflections)
+	if best == nil || best.Context != ContextScript {
+		t.Fatal("expected ContextScript as highest priority")
+	}
+}
+
+func TestBestReflection_Empty(t *testing.T) {
+	best := BestReflection(nil)
+	if best != nil {
+		t.Fatal("expected nil for empty reflections")
+	}
+}
+
+func TestDetectScriptStringContext_NotInString(t *testing.T) {
+	content := `var x = nucleiXSScanary;`
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScript {
+		t.Fatalf("expected ContextScript, got %s", ctx)
+	}
+}
+
+func TestDetectScriptStringContext_InDoubleQuote(t *testing.T) {
+	content := `var x = "nucleiXSScanary";`
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScriptString {
+		t.Fatalf("expected ContextScriptString, got %s", ctx)
+	}
+}
+
+func TestDetectScriptStringContext_InSingleQuote(t *testing.T) {
+	content := `var x = 'nucleiXSScanary';`
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScriptString {
+		t.Fatalf("expected ContextScriptString, got %s", ctx)
+	}
+}
+
+func TestDetectScriptStringContext_EscapedQuote(t *testing.T) {
+	content := `var x = "test\"nucleiXSScanary";`
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScriptString {
+		t.Fatalf("expected ContextScriptString for escaped quote, got %s", ctx)
+	}
+}
+
+func TestDetectScriptStringContext_AfterClosedString(t *testing.T) {
+	content := `var x = "test"; var y = nucleiXSScanary;`
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScript {
+		t.Fatalf("expected ContextScript after closed string, got %s", ctx)
+	}
+}
+
+func TestIsEventHandler(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{"onclick", true},
+		{"onload", true},
+		{"onerror", true},
+		{"onmouseover", true},
+		{"ONCLICK", true},
+		{"OnClick", true},
+		{"class", false},
+		{"href", false},
+		{"style", false},
+		{"data-onclick", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isEventHandler(tt.name); got != tt.expected {
+				t.Errorf("isEventHandler(%q) = %v, want %v", tt.name, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestContextString(t *testing.T) {
+	tests := []struct {
+		ctx      Context
+		expected string
+	}{
+		{ContextNone, "none"},
+		{ContextHTMLComment, "html_comment"},
+		{ContextHTMLText, "html_text"},
+		{ContextAttribute, "attribute"},
+		{ContextAttributeUnquoted, "attribute_unquoted"},
+		{ContextScript, "script"},
+		{ContextScriptString, "script_string"},
+		{ContextStyle, "style"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			if got := tt.ctx.String(); got != tt.expected {
+				t.Errorf("Context.String() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSelectPayloads(t *testing.T) {
+	tests := []struct {
+		name       string
+		reflection ReflectionInfo
+		chars      CharacterSet
+		wantEmpty  bool
+	}{
+		{
+			name:       "HTML text with angle brackets",
+			reflection: ReflectionInfo{Context: ContextHTMLText},
+			chars:      CharacterSet{LessThan: true, GreaterThan: true},
+			wantEmpty:  false,
+		},
+		{
+			name:       "HTML text without angle brackets",
+			reflection: ReflectionInfo{Context: ContextHTMLText},
+			chars:      CharacterSet{},
+			wantEmpty:  true,
+		},
+		{
+			name:       "Double-quoted attribute with quotes",
+			reflection: ReflectionInfo{Context: ContextAttribute, QuoteChar: '"'},
+			chars:      CharacterSet{DoubleQuote: true},
+			wantEmpty:  false,
+		},
+		{
+			name:       "Script context",
+			reflection: ReflectionInfo{Context: ContextScript},
+			chars:      CharacterSet{},
+			wantEmpty:  false,
+		},
+		{
+			name:       "Script string with single quote",
+			reflection: ReflectionInfo{Context: ContextScriptString},
+			chars:      CharacterSet{SingleQuote: true},
+			wantEmpty:  false,
+		},
+		{
+			name:       "Comment context",
+			reflection: ReflectionInfo{Context: ContextHTMLComment},
+			chars:      CharacterSet{},
+			wantEmpty:  false,
+		},
+		{
+			name:       "Style context",
+			reflection: ReflectionInfo{Context: ContextStyle},
+			chars:      CharacterSet{},
+			wantEmpty:  false,
+		},
+		{
+			name:       "Unquoted attribute",
+			reflection: ReflectionInfo{Context: ContextAttributeUnquoted},
+			chars:      CharacterSet{},
+			wantEmpty:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payloads := selectPayloads(&tt.reflection, tt.chars)
+			if tt.wantEmpty && len(payloads) > 0 {
+				t.Errorf("expected no payloads, got %d", len(payloads))
+			}
+			if !tt.wantEmpty && len(payloads) == 0 {
+				t.Error("expected payloads but got none")
+			}
+		})
+	}
+}
+
+func TestDetectCharacterSurvival(t *testing.T) {
+	canary := "testcanary"
+	body := canary + `<>"'/`
+	chars := detectCharacterSurvival(body, canary)
+	if !chars.LessThan {
+		t.Error("expected LessThan to survive")
+	}
+	if !chars.GreaterThan {
+		t.Error("expected GreaterThan to survive")
+	}
+	if !chars.DoubleQuote {
+		t.Error("expected DoubleQuote to survive")
+	}
+	if !chars.SingleQuote {
+		t.Error("expected SingleQuote to survive")
+	}
+	if !chars.ForwardSlash {
+		t.Error("expected ForwardSlash to survive")
+	}
+}
+
+func TestDetectCharacterSurvival_Encoded(t *testing.T) {
+	canary := "testcanary"
+	body := canary + `&lt;&gt;&quot;&#39;/`
+	chars := detectCharacterSurvival(body, canary)
+	if chars.LessThan {
+		t.Error("expected LessThan to be encoded")
+	}
+	if chars.GreaterThan {
+		t.Error("expected GreaterThan to be encoded")
+	}
+}
+
+func TestIsHTMLResponse(t *testing.T) {
+	tests := []struct {
+		name     string
+		headers  map[string][]string
+		expected bool
+	}{
+		{"nil headers", nil, true},
+		{"empty headers", map[string][]string{}, true},
+		{"text/html", map[string][]string{"Content-Type": {"text/html; charset=utf-8"}}, true},
+		{"application/xhtml", map[string][]string{"Content-Type": {"application/xhtml+xml"}}, true},
+		{"application/json", map[string][]string{"Content-Type": {"application/json"}}, false},
+		{"text/plain", map[string][]string{"Content-Type": {"text/plain"}}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isHTMLResponse(tt.headers); got != tt.expected {
+				t.Errorf("isHTMLResponse() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestHasCSP(t *testing.T) {
+	tests := []struct {
+		name     string
+		headers  map[string][]string
+		expected bool
+	}{
+		{"no CSP", map[string][]string{}, false},
+		{"has CSP", map[string][]string{"Content-Security-Policy": {"default-src 'self'"}}, true},
+		{"nil headers", nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hasCSP(tt.headers); got != tt.expected {
+				t.Errorf("hasCSP() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// --- Tests for bug fixes (issue #7086) ---
+
+func TestDetectReflections_JavascriptURI(t *testing.T) {
+	// Bug 1: javascript: URIs in attributes should be classified as ContextScript
+	body := `<html><body><a href="javascript:alert(nucleiXSScanary)">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection for javascript: URI")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "href" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI in href, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_JavascriptURI_CaseVariants(t *testing.T) {
+	// javascript: URI detection should be case-insensitive
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			"lowercase",
+			`<a href="javascript:void(nucleiXSScanary)">x</a>`,
+		},
+		{
+			"mixed case",
+			`<a href="JavaScript:void(nucleiXSScanary)">x</a>`,
+		},
+		{
+			"uppercase",
+			`<a href="JAVASCRIPT:void(nucleiXSScanary)">x</a>`,
+		},
+		{
+			"with leading spaces",
+			`<a href="  javascript:void(nucleiXSScanary)">x</a>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reflections := DetectReflections(tt.body, testMarker)
+			found := false
+			for _, r := range reflections {
+				if r.Context == ContextScript && r.AttrName == "href" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected ContextScript for javascript: URI, got %v", reflections)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_JSONScriptBlock(t *testing.T) {
+	// Bug 2: <script type="application/json"> should NOT be ContextScript
+	body := `<html><body><script type="application/json">{"key":"nucleiXSScanary"}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in JSON script block")
+	}
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("JSON script block should not be classified as executable script context, got %s", r.Context)
+		}
+	}
+	// Should be classified as ContextHTMLText (data context)
+	if reflections[0].Context != ContextHTMLText {
+		t.Fatalf("expected ContextHTMLText for JSON script block, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_JSONLDScriptBlock(t *testing.T) {
+	// application/ld+json is also non-executable
+	body := `<html><head><script type="application/ld+json">{"name":"nucleiXSScanary"}</script></head></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in LD+JSON script block")
+	}
+	if reflections[0].Context != ContextHTMLText {
+		t.Fatalf("expected ContextHTMLText for LD+JSON script block, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ImportmapScriptBlock(t *testing.T) {
+	body := `<html><head><script type="importmap">{"imports":{"nucleiXSScanary":"./mod.js"}}</script></head></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in importmap script block")
+	}
+	if reflections[0].Context != ContextHTMLText {
+		t.Fatalf("expected ContextHTMLText for importmap script block, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ExecutableScriptWithType(t *testing.T) {
+	// Regular JS with explicit type should still be ContextScript
+	body := `<html><body><script type="text/javascript">var x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in executable script block")
+	}
+	if reflections[0].Context != ContextScript {
+		t.Fatalf("expected ContextScript for text/javascript script block, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ModuleScriptBlock(t *testing.T) {
+	// <script type="module"> is executable
+	body := `<html><body><script type="module">const x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in module script block")
+	}
+	if reflections[0].Context != ContextScript {
+		t.Fatalf("expected ContextScript for module script block, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_CaseTransformed(t *testing.T) {
+	// Bug 3: Case-insensitive reflection detection should catch server-transformed reflections
+	tests := []struct {
+		name   string
+		body   string
+		marker string
+	}{
+		{
+			"uppercased by server",
+			`<html><body><p>NUCLEIXSSCANARY</p></body></html>`,
+			"nucleiXSScanary",
+		},
+		{
+			"lowercased by server",
+			`<html><body><p>nucleixsscanary</p></body></html>`,
+			"nucleiXSScanary",
+		},
+		{
+			"mixed case transform",
+			`<html><body><p>NuClEiXsSCaNaRy</p></body></html>`,
+			"nucleiXSScanary",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reflections := DetectReflections(tt.body, tt.marker)
+			if len(reflections) == 0 {
+				t.Errorf("expected case-insensitive reflection detection for %q", tt.name)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_SrcdocAttribute(t *testing.T) {
+	// Bug 4: srcdoc attribute should be classified as HTML injection context
+	body := `<html><body><iframe srcdoc="<p>nucleiXSScanary</p>"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in srcdoc attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.AttrName == "srcdoc" && r.Context == ContextHTMLText {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextHTMLText for srcdoc attribute (HTML injection), got %v", reflections)
+	}
+}
+
+func TestDetectReflections_SrcdocAttribute_NotAttribute(t *testing.T) {
+	// Verify srcdoc is NOT classified as simple ContextAttribute
+	body := `<html><body><iframe srcdoc="<img src=x onerror=nucleiXSScanary>"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	for _, r := range reflections {
+		if r.AttrName == "srcdoc" && r.Context == ContextAttribute {
+			t.Fatal("srcdoc should NOT be classified as simple ContextAttribute")
+		}
+	}
+}
+
+func TestHasJavascriptURI(t *testing.T) {
+	tests := []struct {
+		val      string
+		expected bool
+	}{
+		{"javascript:alert(1)", true},
+		{"JavaScript:alert(1)", true},
+		{"  javascript:void(0)", true},
+		{"JAVASCRIPT:ALERT(1)", true},
+		{"http://example.com", false},
+		{"javscript:alert(1)", false}, // typo
+		{"data:text/html,test", true}, // data: URIs can embed executable HTML/JS
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.val, func(t *testing.T) {
+			if got := hasJavascriptURI(tt.val); got != tt.expected {
+				t.Errorf("hasJavascriptURI(%q) = %v, want %v", tt.val, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsSrcdocAttr(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{"srcdoc", true},
+		{"SRCDOC", true},
+		{"SrcDoc", true},
+		{"src", false},
+		{"href", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isSrcdocAttr(tt.name); got != tt.expected {
+				t.Errorf("isSrcdocAttr(%q) = %v, want %v", tt.name, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsExecutableScriptType(t *testing.T) {
+	tests := []struct {
+		scriptType string
+		expected   bool
+	}{
+		{"", true},
+		{"text/javascript", true},
+		{"application/javascript", true},
+		{"module", true},
+		{"text/ecmascript", true},
+		{"application/json", false},
+		{"application/ld+json", false},
+		{"importmap", false},
+		{"text/plain", false},
+		{"text/html", false},
+		{"text/javascript; charset=utf-8", true}, // MIME parameters should be stripped
+		{"application/javascript; charset=utf-8", true},
+		{"application/json; charset=utf-8", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.scriptType, func(t *testing.T) {
+			if got := isExecutableScriptType(tt.scriptType); got != tt.expected {
+				t.Errorf("isExecutableScriptType(%q) = %v, want %v", tt.scriptType, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestDetectCharacterSurvival_CaseInsensitive(t *testing.T) {
+	// Server uppercases the canary but special chars survive
+	canary := "testcanary"
+	body := "TESTCANARY" + `<>"'/`
+	chars := detectCharacterSurvival(body, canary)
+	if !chars.LessThan {
+		t.Error("expected LessThan to survive with uppercased canary")
+	}
+	if !chars.GreaterThan {
+		t.Error("expected GreaterThan to survive with uppercased canary")
+	}
+	if !chars.ForwardSlash {
+		t.Error("expected ForwardSlash to survive with uppercased canary")
+	}
+}
+
+func TestIsExecutableURIAttr(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{"href", true},
+		{"action", true},
+		{"formaction", true},
+		{"xlink:href", true},
+		{"src", true},
+		{"HREF", true},
+		{"title", false},
+		{"data-url", false},
+		{"alt", false},
+		{"class", false},
+		{"value", false},
+		{"placeholder", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isExecutableURIAttr(tt.name); got != tt.expected {
+				t.Errorf("isExecutableURIAttr(%q) = %v, want %v", tt.name, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_JavascriptURI_NonExecutableAttr(t *testing.T) {
+	// javascript: URI in a non-executable attribute (title) should NOT be ContextScript
+	body := `<html><body><div title="javascript:nucleiXSScanary">test</div></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	for _, r := range reflections {
+		if r.AttrName == "title" && r.Context == ContextScript {
+			t.Fatal("title attribute with javascript: URI should NOT be classified as ContextScript")
+		}
+	}
+}
+
+func TestDetectReflections_JavascriptURI_ActionAttr(t *testing.T) {
+	// javascript: URI in form action should be ContextScript
+	body := `<html><body><form action="javascript:nucleiXSScanary"><input></form></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	found := false
+	for _, r := range reflections {
+		if r.AttrName == "action" && r.Context == ContextScript {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI in action attr, got %v", reflections)
+	}
+}
+
+func BenchmarkDetectReflections(b *testing.B) {
+	var sb strings.Builder
+	sb.WriteString("<html><body>")
+	for i := 0; i < 100; i++ {
+		sb.WriteString(fmt.Sprintf("<div class='item-%d'>Content %d</div>", i, i))
+	}
+	sb.WriteString("<p>nucleiXSScanary</p>")
+	sb.WriteString("</body></html>")
+	body := sb.String()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		DetectReflections(body, testMarker)
+	}
+}
+
+func BenchmarkDetectReflections_LargeBody(b *testing.B) {
+	var sb strings.Builder
+	sb.WriteString("<html><body>")
+	for i := 0; i < 1000; i++ {
+		sb.WriteString(fmt.Sprintf(`<div id="item-%d"><a href="/page/%d">Link %d</a><span class="data">Data %d</span></div>`, i, i, i, i))
+	}
+	sb.WriteString(`<input value="nucleiXSScanary">`)
+	sb.WriteString("</body></html>")
+	body := sb.String()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		DetectReflections(body, testMarker)
+	}
+}
