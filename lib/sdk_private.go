@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -67,6 +68,12 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.customWriter = output.NewMultiWriter(e.customWriter, mockoutput)
 	} else {
 		e.customWriter = mockoutput
+	}
+
+	// Wrap with honeypot detection if configured (mirrors CLI runner behavior)
+	if e.opts.HoneypotThreshold > 0 {
+		hpDetector := honeypot.New(e.opts.HoneypotThreshold)
+		e.customWriter = output.NewHoneypotWriter(e.customWriter, hpDetector)
 	}
 
 	if e.customProgress == nil {

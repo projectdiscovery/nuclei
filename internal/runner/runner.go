@@ -42,6 +42,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -275,6 +276,12 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	// setup a proxy writer to automatically upload results to PDCP
 	runner.output = runner.setupPDCPUpload(outputWriter)
+	// Wrap with honeypot detection if configured
+	if options.HoneypotThreshold > 0 {
+		hpDetector := honeypot.New(options.HoneypotThreshold)
+		runner.output = output.NewHoneypotWriter(runner.output, hpDetector)
+		runner.Logger.Info().Msgf("Honeypot detection enabled (threshold: %d template matches)", options.HoneypotThreshold)
+	}
 	if options.HTTPStats {
 		runner.httpStats = outputstats.NewTracker()
 		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))
