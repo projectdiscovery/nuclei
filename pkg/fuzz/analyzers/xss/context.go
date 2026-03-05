@@ -13,6 +13,8 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+const maxResponseSize = 10 * 1024 * 1024 // 10MB limit to prevent memory exhaustion
+
 // Analyzer is an XSS context analyzer for the fuzzer
 type Analyzer struct {
 }
@@ -59,7 +61,7 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 }
 
 // javascriptURIRegex matches javascript: and vbscript: URIs
-var javascriptURIRegex = regexp.MustCompile(`(?i)^(javascript|vbscript):`)
+var javascriptURIRegex = regexp.MustCompile(`(?i)(javascript|vbscript):`)
 
 // srcdocAttrRegex matches srcdoc attributes
 var srcdocAttrRegex = regexp.MustCompile(`(?i)\bsrcdoc\s*=`)
@@ -83,7 +85,6 @@ var eventHandlerAttrs = map[string]bool{
 	"onmouseup":    true,
 	"onmouseout":   true,
 	"onmousemove":  true,
-	"onhover":      true,
 	"onabort":      true,
 	"oncanplay":    true,
 	"oncanplaythrough": true,
@@ -168,8 +169,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Read the response body
-	bodyBytes, err := io.ReadAll(resp.Body)
+	// Read the response body with size limit to prevent memory exhaustion (CWE-400)
+	limitedReader := &io.LimitedReader{R: resp.Body, N: maxResponseSize}
+	bodyBytes, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return false, "", err
 	}
@@ -266,7 +268,7 @@ func (a *Analyzer) analyzeHTMLContext(body, payload string) ContextType {
 		// Check if this is a text node containing the payload
 		if n.Type == html.TextNode {
 			text := n.Data
-			if strings.Contains(text, payload) {
+			if strings.Contains(strings.ToLower(text), strings.ToLower(payload)) {
 				// Check parent element context
 				if n.Parent != nil {
 					return a.getContextFromParent(n.Parent)
@@ -276,7 +278,7 @@ func (a *Analyzer) analyzeHTMLContext(body, payload string) ContextType {
 
 		// Check attributes containing the payload
 		for _, attr := range n.Attr {
-			if strings.Contains(attr.Val, payload) {
+			if strings.Contains(strings.ToLower(attr.Val), strings.ToLower(payload)) {
 				if eventHandlerAttrs[strings.ToLower(attr.Key)] {
 					return ContextTypeEventHandler
 				}
