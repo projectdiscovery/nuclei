@@ -1,6 +1,8 @@
 package output
 
 import (
+	"sync"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
@@ -15,7 +17,8 @@ type HoneypotWriter struct {
 	detector *honeypot.Detector
 	// warned tracks hosts for which we already printed a warning,
 	// to avoid flooding the user with repeated messages.
-	warned map[string]bool
+	warned   map[string]bool
+	warnedMu sync.Mutex
 }
 
 var _ Writer = &HoneypotWriter{}
@@ -49,8 +52,13 @@ func (hw *HoneypotWriter) Write(event *ResultEvent) error {
 
 	flagged := hw.detector.Record(host, event.TemplateID)
 	if flagged {
-		if !hw.warned[host] {
+		hw.warnedMu.Lock()
+		alreadyWarned := hw.warned[host]
+		if !alreadyWarned {
 			hw.warned[host] = true
+		}
+		hw.warnedMu.Unlock()
+		if !alreadyWarned {
 			count := hw.detector.MatchCount(host)
 			gologger.Warning().Msgf(
 				"[honeypot] Host %s matched %d templates, exceeding threshold -- likely honeypot, suppressing results",

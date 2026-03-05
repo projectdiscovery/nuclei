@@ -2,6 +2,7 @@ package honeypot
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -224,10 +225,10 @@ func TestSummary(t *testing.T) {
 	if summary == "" {
 		t.Fatal("expected non-empty summary after flagging")
 	}
-	if !containsSubstring(summary, "example.com") {
+	if !strings.Contains(summary, "example.com") {
 		t.Fatal("summary should contain the flagged host")
 	}
-	if !containsSubstring(summary, "1 host(s)") {
+	if !strings.Contains(summary, "1 host(s)") {
 		t.Fatal("summary should contain the count")
 	}
 }
@@ -286,15 +287,3 @@ func TestNormalizeHostTrailingColon(t *testing.T) {
 	}
 }
 
-func containsSubstring(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsCheck(s, substr))
-}
-
-func containsCheck(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
