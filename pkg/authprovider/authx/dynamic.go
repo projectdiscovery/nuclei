@@ -256,7 +256,10 @@ func (d *Dynamic) fetchAndHydrate() {
 	d.mu.Unlock()
 
 	// Mark as fetched successfully (only after successful fetch and hydration)
-	d.fetched.Store(true)
+	// Check for nil to handle case where Validate() was not called
+	if d.fetched != nil {
+		d.fetched.Store(true)
+	}
 }
 
 // GetStrategies returns the auth strategies for the dynamic secret.
