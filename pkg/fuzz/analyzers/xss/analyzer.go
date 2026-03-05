@@ -76,8 +76,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if canary is reflected at all
-	if !strings.Contains(body, canary) {
+	// Check if canary is reflected at all (case-insensitive to catch
+	// server-transformed reflections, e.g. uppercased by the backend)
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(canary)) {
 		return false, "", nil
 	}
 

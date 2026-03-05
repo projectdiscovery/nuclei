@@ -204,3 +204,37 @@ var rcdataElements = map[string]struct{}{
 	"xmp":      {},
 	"noscript": {},
 }
+
+// hasJavascriptURI returns true if the attribute value starts with a javascript: URI.
+// These are executable contexts even though they appear in attribute values.
+func hasJavascriptURI(attrVal string) bool {
+	trimmed := strings.TrimSpace(attrVal)
+	return strings.HasPrefix(strings.ToLower(trimmed), "javascript:")
+}
+
+// isSrcdocAttr returns true if the attribute name is "srcdoc".
+// The srcdoc attribute on iframe elements accepts full HTML content,
+// making it an HTML injection context rather than a simple attribute.
+func isSrcdocAttr(name string) bool {
+	return strings.ToLower(name) == "srcdoc"
+}
+
+// isExecutableScriptType returns true if the given script type attribute value
+// indicates executable JavaScript. Empty type or standard JS types are executable.
+// Data types like application/json, application/ld+json, importmap, etc. are NOT.
+func isExecutableScriptType(scriptType string) bool {
+	t := strings.TrimSpace(strings.ToLower(scriptType))
+	if t == "" {
+		return true // no type means JavaScript
+	}
+	// Standard executable JavaScript MIME types
+	switch t {
+	case "text/javascript",
+		"application/javascript",
+		"text/ecmascript",
+		"application/ecmascript",
+		"module":
+		return true
+	}
+	return false
+}

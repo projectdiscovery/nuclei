@@ -7,19 +7,22 @@ import (
 )
 
 // DetectReflections parses the HTML body and returns all reflection contexts
-// where the marker is found.
+// where the marker is found. The check is case-insensitive so that
+// server-transformed reflections (e.g. uppercased by the backend) are still
+// detected.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	markerLower := strings.ToLower(marker)
+	if !strings.Contains(strings.ToLower(body), markerLower) {
 		return nil
 	}
 
 	var reflections []ReflectionInfo
-	markerLower := strings.ToLower(marker)
 
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
 
 	var tagStack []string
 	inScript := false
+	inDataScript := false // true when inside <script type="application/json"> or similar non-JS type
 	inStyle := false
 	inRCDATA := false
 
@@ -42,9 +45,35 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				tagStack = append(tagStack, tagNameLower)
 			}
 
+			// Consume all attributes first so we can inspect them
+			var attrs []html.Attribute
+			if hasAttr {
+				for {
+					key, val, moreAttr := tokenizer.TagAttr()
+					attrs = append(attrs, html.Attribute{
+						Key: string(key),
+						Val: string(val),
+					})
+					if !moreAttr {
+						break
+					}
+				}
+			}
+
 			switch tagNameLower {
 			case "script":
 				inScript = true
+				// Check if the script has a non-JavaScript type (e.g. application/json,
+				// application/ld+json, importmap). Such blocks are data, not executable.
+				inDataScript = false
+				for _, a := range attrs {
+					if strings.ToLower(a.Key) == "type" {
+						if !isExecutableScriptType(a.Val) {
+							inDataScript = true
+						}
+						break
+					}
+				}
 			case "style":
 				inStyle = true
 			default:
@@ -62,46 +91,45 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			}
 
 			// Check attributes
-			if hasAttr {
-				for {
-					key, val, moreAttr := tokenizer.TagAttr()
-					attrName := strings.ToLower(string(key))
-					attrVal := string(val)
+			for _, a := range attrs {
+				attrName := strings.ToLower(a.Key)
+				attrVal := a.Val
 
-					// Check if marker is in the attribute value
-					if strings.Contains(strings.ToLower(attrVal), markerLower) {
-						ctx := ContextAttribute
+				// Check if marker is in the attribute value
+				if strings.Contains(strings.ToLower(attrVal), markerLower) {
+					ctx := ContextAttribute
 
-						// Detect quoting style by looking at raw token text
-						quote, unquoted := detectAttrQuoting(rawToken, attrName)
-						if unquoted {
-							ctx = ContextAttributeUnquoted
-						}
-
-						if isEventHandler(attrName) {
-							// Event handler attributes contain JavaScript
-							ctx = ContextScript
-						}
-
-						reflections = append(reflections, ReflectionInfo{
-							Context:   ctx,
-							AttrName:  attrName,
-							QuoteChar: quote,
-							TagName:   tagNameLower,
-						})
+					// Detect quoting style by looking at raw token text
+					quote, unquoted := detectAttrQuoting(rawToken, attrName)
+					if unquoted {
+						ctx = ContextAttributeUnquoted
 					}
 
-					// Check if marker is in the attribute name
-					if strings.Contains(attrName, markerLower) {
-						reflections = append(reflections, ReflectionInfo{
-							Context: ContextHTMLText,
-							TagName: tagNameLower,
-						})
+					if isEventHandler(attrName) {
+						// Event handler attributes contain JavaScript
+						ctx = ContextScript
+					} else if hasJavascriptURI(attrVal) {
+						// javascript: URIs are executable script context
+						ctx = ContextScript
+					} else if isSrcdocAttr(attrName) {
+						// srcdoc attribute allows full HTML injection
+						ctx = ContextHTMLText
 					}
 
-					if !moreAttr {
-						break
-					}
+					reflections = append(reflections, ReflectionInfo{
+						Context:   ctx,
+						AttrName:  attrName,
+						QuoteChar: quote,
+						TagName:   tagNameLower,
+					})
+				}
+
+				// Check if marker is in the attribute name
+				if strings.Contains(attrName, markerLower) {
+					reflections = append(reflections, ReflectionInfo{
+						Context: ContextHTMLText,
+						TagName: tagNameLower,
+					})
 				}
 			}
 
@@ -112,6 +140,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = false
+				inDataScript = false
 			case "style":
 				inStyle = false
 			default:
@@ -135,15 +164,24 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			}
 
 			if inScript {
-				ctx := detectScriptStringContext(text, marker)
 				parentTag := "script"
 				if len(tagStack) > 0 {
 					parentTag = tagStack[len(tagStack)-1]
 				}
-				reflections = append(reflections, ReflectionInfo{
-					Context: ctx,
-					TagName: parentTag,
-				})
+				if inDataScript {
+					// Non-executable script blocks (e.g. application/json, importmap)
+					// are data context, not executable script context
+					reflections = append(reflections, ReflectionInfo{
+						Context: ContextHTMLText,
+						TagName: parentTag,
+					})
+				} else {
+					ctx := detectScriptStringContext(text, marker)
+					reflections = append(reflections, ReflectionInfo{
+						Context: ctx,
+						TagName: parentTag,
+					})
+				}
 			} else if inStyle {
 				reflections = append(reflections, ReflectionInfo{
 					Context: ContextStyle,
