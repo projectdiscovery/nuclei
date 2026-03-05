@@ -1,6 +1,7 @@
 package expressions
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/Knetic/govaluate"
@@ -11,6 +12,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+// unresolvedVarRe matches complete {{identifier}} variable markers.
+// It is used to detect cases where a nested variable inside a helper-function
+// call was not substituted before evaluation (issue #7032).
+// The pattern deliberately excludes non-identifier characters after {{ so that
+// literal strings like `hex_encode('{{')` do not trigger a false positive.
+var unresolvedVarRe = regexp.MustCompile(`\{\{[a-zA-Z_][a-zA-Z0-9_.]*\}\}`)
 
 // Eval compiles the given expression and evaluate it with the given values preserving the return type
 func Eval(expression string, values map[string]interface{}) (interface{}, error) {
@@ -54,6 +62,21 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
+
+		// Guard: if after variable substitution the expression still contains a
+		// complete {{identifier}} marker, at least one nested variable was not
+		// resolved (e.g. {{base64(rawhash)}} where rawhash itself contains
+		// {{contact_id}}).  Evaluating such an expression would silently encode
+		// the raw marker string, producing an opaque blob that the downstream
+		// ContainsUnresolvedVariables check cannot detect (issue #7032).
+		//
+		// Note: we use a regex that requires an identifier character after {{
+		// so that legitimate literals like hex_encode('{{') are not blocked.
+		if unresolvedVarRe.MatchString(expression) {
+			gologger.Warning().Msgf("Skipping expression with unresolved variables: %s", expression)
+			continue
+		}
+
 		// turns expressions (either helper functions+base values or base values)
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
 		if err != nil {
