@@ -307,3 +307,45 @@ func TestNormalizeHostTrailingColon(t *testing.T) {
 	}
 }
 
+// TestNormalizeHostBareDefaultPort verifies that default ports are
+// stripped from bare host:port inputs (not just URLs).
+func TestNormalizeHostBareDefaultPort(t *testing.T) {
+	d := New(2)
+
+	d.Record("example.com:443", "tmpl-1")
+	d.Record("example.com", "tmpl-2")
+	d.Record("example.com:80", "tmpl-3") // exceeds threshold
+
+	if !d.IsFlagged("example.com") {
+		t.Fatal("bare host:443 and host:80 should normalize to host without port")
+	}
+	if d.MatchCount("example.com") != 3 {
+		t.Fatalf("expected 3 matches, got %d", d.MatchCount("example.com"))
+	}
+}
+
+// TestSummaryDeterministic verifies that Summary output is sorted.
+func TestSummaryDeterministic(t *testing.T) {
+	d := New(1)
+
+	// Flag multiple hosts
+	d.Record("zebra.com", "tmpl-1")
+	d.Record("zebra.com", "tmpl-2")
+	d.Record("alpha.com", "tmpl-1")
+	d.Record("alpha.com", "tmpl-2")
+	d.Record("middle.com", "tmpl-1")
+	d.Record("middle.com", "tmpl-2")
+
+	summary := d.Summary()
+	alphaIdx := strings.Index(summary, "alpha.com")
+	middleIdx := strings.Index(summary, "middle.com")
+	zebraIdx := strings.Index(summary, "zebra.com")
+
+	if alphaIdx == -1 || middleIdx == -1 || zebraIdx == -1 {
+		t.Fatal("summary should contain all flagged hosts")
+	}
+	if !(alphaIdx < middleIdx && middleIdx < zebraIdx) {
+		t.Fatal("summary hosts should be sorted alphabetically")
+	}
+}
+

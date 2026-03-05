@@ -3,6 +3,7 @@ package honeypot
 import (
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -126,16 +127,23 @@ func (d *Detector) FlaggedHosts() map[string]int {
 
 // Summary returns a human-readable summary of honeypot detection
 // results. If no hosts were flagged, an empty string is returned.
+// Hosts are sorted alphabetically for deterministic output.
 func (d *Detector) Summary() string {
 	flagged := d.FlaggedHosts()
 	if len(flagged) == 0 {
 		return ""
 	}
 
+	hosts := make([]string, 0, len(flagged))
+	for host := range flagged {
+		hosts = append(hosts, host)
+	}
+	sort.Strings(hosts)
+
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("[honeypot] %d host(s) flagged as likely honeypot:\n", len(flagged)))
-	for host, count := range flagged {
-		sb.WriteString(fmt.Sprintf("  - %s (%d template matches)\n", host, count))
+	for _, host := range hosts {
+		sb.WriteString(fmt.Sprintf("  - %s (%d template matches)\n", host, flagged[host]))
 	}
 	return sb.String()
 }
@@ -187,6 +195,13 @@ func NormalizeHost(input string) string {
 	// Strip trailing colon (e.g. "host:")
 	input = strings.TrimRight(input, ":")
 
-	// For bare host or host:port, just lowercase
+	// For bare host:port, strip default ports to match URL normalization
+	if idx := strings.LastIndex(input, ":"); idx != -1 {
+		port := input[idx+1:]
+		if port == "80" || port == "443" {
+			return strings.ToLower(input[:idx])
+		}
+	}
+
 	return strings.ToLower(input)
 }

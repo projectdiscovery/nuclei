@@ -1,6 +1,8 @@
 package output
 
 import (
+	"sync"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
@@ -17,6 +19,9 @@ type HoneypotWriter struct {
 	// warned tracks hosts for which we already printed a warning,
 	// to avoid flooding the user with repeated messages.
 	warned *mapsutil.SyncLockMap[string, struct{}]
+	// warnMu serializes the check+set+log sequence to prevent
+	// duplicate warnings from concurrent Write calls.
+	warnMu sync.Mutex
 }
 
 var _ Writer = &HoneypotWriter{}
@@ -54,10 +59,16 @@ func (hw *HoneypotWriter) Write(event *ResultEvent) error {
 		// that different representations of the same host (scheme, case,
 		// default-port URLs) share a single warned-map entry.
 		normalizedHost := honeypot.NormalizeHost(host)
+
+		// Serialize check+set to prevent duplicate warnings from
+		// concurrent Write calls on the same host.
+		hw.warnMu.Lock()
 		alreadyWarned := hw.warned.Has(normalizedHost)
 		if !alreadyWarned {
 			_ = hw.warned.Set(normalizedHost, struct{}{})
 		}
+		hw.warnMu.Unlock()
+
 		if !alreadyWarned {
 			count := hw.detector.MatchCount(host)
 			gologger.Warning().Msgf(
