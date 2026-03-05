@@ -218,6 +218,10 @@ type ResultEvent struct {
 	FileToIndexPosition map[string]int `json:"-"`
 	TemplateVerifier    string         `json:"-"`
 	Error               string         `json:"error,omitempty"`
+
+	// Honeypot detection fields
+	Honeypot      bool `json:"honeypot,omitempty"`
+	HoneypotScore int  `json:"honeypot_score,omitempty"`
 }
 
 type IssueTrackerMetadata struct {

@@ -132,6 +132,9 @@ type Options struct {
 	// TrackError contains additional error messages that count towards the maximum number of errors allowed for a host
 	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
+	// HoneypotThreshold is the number of vulnerabilities on a single host
+	// that triggers honeypot detection (default: 10)
+	HoneypotThreshold int
 	NoHostErrors bool
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
