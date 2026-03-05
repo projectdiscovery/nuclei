@@ -63,7 +63,7 @@ func (d *Detector) Record(host, templateID string) bool {
 
 	templates[templateID] = struct{}{}
 
-	if len(templates) >= d.threshold {
+	if len(templates) > d.threshold {
 		d.flagged[normalized] = true
 		return true
 	}

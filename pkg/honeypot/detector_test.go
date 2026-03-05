@@ -59,30 +59,33 @@ func TestNilDetector(t *testing.T) {
 }
 
 // TestThresholdTriggering verifies that a host is flagged when it
-// reaches the configured threshold.
+// exceeds the configured threshold (strictly greater than).
 func TestThresholdTriggering(t *testing.T) {
 	d := New(3)
 
-	// First two matches should not trigger
+	// First three matches should not trigger (at threshold, not exceeding)
 	if d.Record("example.com", "tmpl-1") {
 		t.Fatal("should not be flagged after 1 match")
 	}
 	if d.Record("example.com", "tmpl-2") {
 		t.Fatal("should not be flagged after 2 matches")
 	}
+	if d.Record("example.com", "tmpl-3") {
+		t.Fatal("should not be flagged at threshold (3 matches)")
+	}
 	if d.IsFlagged("example.com") {
-		t.Fatal("should not be flagged before threshold")
+		t.Fatal("should not be flagged at threshold")
 	}
 
-	// Third match should trigger
-	if !d.Record("example.com", "tmpl-3") {
-		t.Fatal("should be flagged after 3 matches (threshold)")
+	// Fourth match exceeds threshold -- should trigger
+	if !d.Record("example.com", "tmpl-4") {
+		t.Fatal("should be flagged after exceeding threshold (4 > 3)")
 	}
 	if !d.IsFlagged("example.com") {
-		t.Fatal("should be flagged after threshold")
+		t.Fatal("should be flagged after exceeding threshold")
 	}
-	if d.MatchCount("example.com") != 3 {
-		t.Fatalf("expected 3 matches, got %d", d.MatchCount("example.com"))
+	if d.MatchCount("example.com") != 4 {
+		t.Fatalf("expected 4 matches, got %d", d.MatchCount("example.com"))
 	}
 }
 
@@ -117,8 +120,14 @@ func TestMultiHostIsolation(t *testing.T) {
 	}
 
 	d.Record("host-a.com", "tmpl-2")
+	if d.IsFlagged("host-a.com") {
+		t.Fatal("host-a should not be flagged at threshold (2 matches = threshold)")
+	}
+
+	// Exceeding threshold triggers flagging
+	d.Record("host-a.com", "tmpl-3")
 	if !d.IsFlagged("host-a.com") {
-		t.Fatal("host-a should be flagged after 2 matches")
+		t.Fatal("host-a should be flagged after exceeding threshold (3 > 2)")
 	}
 	if d.IsFlagged("host-b.com") {
 		t.Fatal("host-b should not be flagged")
@@ -133,9 +142,10 @@ func TestHostNormalizationURLs(t *testing.T) {
 	// These should all normalize to the same host
 	d.Record("http://example.com/path", "tmpl-1")
 	d.Record("https://example.com:443/other", "tmpl-2")
+	d.Record("example.com", "tmpl-3")
 
 	if !d.IsFlagged("example.com") {
-		t.Fatal("normalized host should be flagged")
+		t.Fatal("normalized host should be flagged after exceeding threshold")
 	}
 }
 
@@ -146,9 +156,10 @@ func TestHostNormalizationNonStandardPort(t *testing.T) {
 
 	d.Record("http://example.com:8080/path", "tmpl-1")
 	d.Record("http://example.com:8080/other", "tmpl-2")
+	d.Record("http://example.com:8080/third", "tmpl-3")
 
 	if !d.IsFlagged("example.com:8080") {
-		t.Fatal("host with non-standard port should be flagged")
+		t.Fatal("host with non-standard port should be flagged after exceeding threshold")
 	}
 	// Standard port host should NOT be flagged
 	if d.IsFlagged("example.com") {
@@ -163,9 +174,10 @@ func TestHostNormalizationIPv6(t *testing.T) {
 
 	d.Record("http://[::1]:8080/test", "tmpl-1")
 	d.Record("[::1]:8080", "tmpl-2")
+	d.Record("http://[::1]:8080/other", "tmpl-3")
 
 	if !d.IsFlagged("[::1]:8080") {
-		t.Fatal("IPv6 host should be flagged")
+		t.Fatal("IPv6 host should be flagged after exceeding threshold")
 	}
 }
 
@@ -176,6 +188,7 @@ func TestHostNormalizationCaseInsensitive(t *testing.T) {
 
 	d.Record("EXAMPLE.COM", "tmpl-1")
 	d.Record("example.com", "tmpl-2")
+	d.Record("Example.Com", "tmpl-3")
 
 	if !d.IsFlagged("Example.Com") {
 		t.Fatal("host matching should be case-insensitive")
@@ -200,14 +213,15 @@ func TestFlaggedHosts(t *testing.T) {
 
 	d.Record("host-a.com", "tmpl-1")
 	d.Record("host-a.com", "tmpl-2")
+	d.Record("host-a.com", "tmpl-3") // exceeds threshold
 	d.Record("host-b.com", "tmpl-1")
 
 	flagged := d.FlaggedHosts()
 	if len(flagged) != 1 {
 		t.Fatalf("expected 1 flagged host, got %d", len(flagged))
 	}
-	if count, ok := flagged["host-a.com"]; !ok || count != 2 {
-		t.Fatalf("expected host-a.com with 2 matches, got %v", flagged)
+	if count, ok := flagged["host-a.com"]; !ok || count != 3 {
+		t.Fatalf("expected host-a.com with 3 matches, got %v", flagged)
 	}
 }
 
@@ -221,6 +235,7 @@ func TestSummary(t *testing.T) {
 	}
 
 	d.Record("example.com", "tmpl-1")
+	d.Record("example.com", "tmpl-2") // exceeds threshold of 1
 	summary := d.Summary()
 	if summary == "" {
 		t.Fatal("expected non-empty summary after flagging")
@@ -266,11 +281,15 @@ func TestConcurrentAccess(t *testing.T) {
 func TestRecordReturnsTrueAfterFlagging(t *testing.T) {
 	d := New(1)
 
-	if !d.Record("host.com", "tmpl-1") {
-		t.Fatal("should be flagged on first record with threshold 1")
+	if d.Record("host.com", "tmpl-1") {
+		t.Fatal("should not be flagged at threshold (1 match = threshold 1)")
+	}
+	// Second record exceeds threshold -- should flag
+	if !d.Record("host.com", "tmpl-2") {
+		t.Fatal("should be flagged after exceeding threshold")
 	}
 	// Additional records should still return true
-	if !d.Record("host.com", "tmpl-2") {
+	if !d.Record("host.com", "tmpl-3") {
 		t.Fatal("should remain flagged")
 	}
 }
@@ -281,6 +300,7 @@ func TestNormalizeHostTrailingColon(t *testing.T) {
 
 	d.Record("example.com:", "tmpl-1")
 	d.Record("example.com", "tmpl-2")
+	d.Record("example.com:", "tmpl-3") // exceeds threshold
 
 	if !d.IsFlagged("example.com") {
 		t.Fatal("trailing colon should normalize to same host")

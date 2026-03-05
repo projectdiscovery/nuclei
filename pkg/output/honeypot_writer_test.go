@@ -52,8 +52,8 @@ func TestHoneypotWriterSuppression(t *testing.T) {
 	detector := honeypot.New(3)
 	writer := NewHoneypotWriter(mock, detector)
 
-	// Send 3 different template matches for the same host
-	for i := 0; i < 3; i++ {
+	// Send 4 different template matches for the same host
+	for i := 0; i < 4; i++ {
 		event := &ResultEvent{
 			Host:       "honeypot.example.com",
 			TemplateID: "tmpl-" + string(rune('a'+i)),
@@ -61,19 +61,19 @@ func TestHoneypotWriterSuppression(t *testing.T) {
 		_ = writer.Write(event)
 	}
 
-	// First 2 should pass through, 3rd triggers flagging and is suppressed
-	if len(mock.writtenEvents) != 2 {
-		t.Fatalf("expected 2 events passed through (3rd suppressed), got %d", len(mock.writtenEvents))
+	// First 3 pass through (at threshold), 4th exceeds and is suppressed
+	if len(mock.writtenEvents) != 3 {
+		t.Fatalf("expected 3 events passed through (4th suppressed), got %d", len(mock.writtenEvents))
 	}
 
 	// Additional events should also be suppressed
 	event := &ResultEvent{
 		Host:       "honeypot.example.com",
-		TemplateID: "tmpl-d",
+		TemplateID: "tmpl-e",
 	}
 	_ = writer.Write(event)
-	if len(mock.writtenEvents) != 2 {
-		t.Fatalf("expected still 2 events after additional write, got %d", len(mock.writtenEvents))
+	if len(mock.writtenEvents) != 3 {
+		t.Fatalf("expected still 3 events after additional write, got %d", len(mock.writtenEvents))
 	}
 }
 
@@ -97,8 +97,8 @@ func TestHoneypotWriterUsesURLFallback(t *testing.T) {
 	detector := honeypot.New(2)
 	writer := NewHoneypotWriter(mock, detector)
 
-	// Use URL instead of Host
-	for i := 0; i < 3; i++ {
+	// Use URL instead of Host — send 4 events to exceed threshold of 2
+	for i := 0; i < 4; i++ {
 		event := &ResultEvent{
 			URL:        "http://fallback-host.com/path",
 			TemplateID: "tmpl-" + string(rune('a'+i)),
@@ -106,9 +106,9 @@ func TestHoneypotWriterUsesURLFallback(t *testing.T) {
 		_ = writer.Write(event)
 	}
 
-	// First event passes, second triggers flagging
-	if len(mock.writtenEvents) != 1 {
-		t.Fatalf("expected 1 event passed through with URL fallback, got %d", len(mock.writtenEvents))
+	// First 2 pass (at threshold), 3rd exceeds and is suppressed
+	if len(mock.writtenEvents) != 2 {
+		t.Fatalf("expected 2 events passed through with URL fallback, got %d", len(mock.writtenEvents))
 	}
 }
 
