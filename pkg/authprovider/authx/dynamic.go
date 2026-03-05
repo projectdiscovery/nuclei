@@ -223,8 +223,8 @@ func (d *Dynamic) fetchAndHydrate() {
 
 	if d.Secret != nil {
 		if err := d.applyValuesToSecret(d.Secret); err != nil {
-			d.mu.Unlock()
 			d.err = err
+			d.mu.Unlock()
 			// Reset once to allow retry on next call
 			d.resetOnce()
 			return
@@ -233,8 +233,8 @@ func (d *Dynamic) fetchAndHydrate() {
 
 	for _, secret := range d.Secrets {
 		if err := d.applyValuesToSecret(secret); err != nil {
-			d.mu.Unlock()
 			d.err = err
+			d.mu.Unlock()
 			// Reset once to allow retry on next call
 			d.resetOnce()
 			return
