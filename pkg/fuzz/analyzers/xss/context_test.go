@@ -139,6 +139,42 @@ func TestDetectReflections_EventHandler(t *testing.T) {
 	}
 }
 
+func TestDetectReflections_JavascriptURI(t *testing.T) {
+	body := `<html><body><a href="javascript:nucleiXSScanary">x</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in javascript: URI")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "href" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: href, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_Srcdoc(t *testing.T) {
+	body := `<html><body><iframe srcdoc="<p>nucleiXSScanary</p>"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in srcdoc attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextHTMLText && r.AttrName == "srcdoc" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextHTMLText for srcdoc, got %v", reflections)
+	}
+}
+
 func TestDetectReflections_NoReflection(t *testing.T) {
 	body := `<html><body><p>Hello world</p></body></html>`
 	reflections := DetectReflections(body, testMarker)

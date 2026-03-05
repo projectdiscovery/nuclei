@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -52,16 +53,23 @@ func generateCanary() string {
 	return "nuclei" + analyzers.RandStringBytesMask(8)
 }
 
+var canaryRegexp = regexp.MustCompile(`nuclei[a-zA-Z]{8}`)
+
+// extractCanary extracts the analyzer canary from the final fuzzed value.
+func extractCanary(value string) string {
+	if value == "" {
+		return ""
+	}
+	return canaryRegexp.FindString(value)
+}
+
 // Analyze detects XSS vulnerabilities by:
 // 1. Checking for canary reflection in the initial response
 // 2. Detecting the HTML context of the reflection
 // 3. Replaying context-appropriate payloads to verify exploitability
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
-	// Determine the canary from parameters
-	canary := ""
-	if v, ok := options.AnalyzerParameters["xss_canary"]; ok {
-		canary, _ = v.(string)
-	}
+	// Extract canary from the final fuzzed request value to avoid shared-param desync.
+	canary := extractCanary(options.FuzzGenerated.Value)
 	if canary == "" {
 		return false, "", nil
 	}
@@ -131,16 +139,15 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
 		return false, "", errors.Wrap(err, "could not set value in component")
 	}
+	// Always restore original value, even when rebuild fails.
+	defer func() {
+		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
+	}()
 
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not rebuild request")
 	}
-
-	// Restore original value after rebuild so subsequent replays start from clean state
-	defer func() {
-		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
-	}()
 
 	gologger.Verbose().Msgf("[%s] Replaying with payload for %s context: %s", a.Name(), reflection.Context, rebuilt.String())
 
