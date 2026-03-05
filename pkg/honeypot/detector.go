@@ -47,7 +47,7 @@ func (d *Detector) Record(host, templateID string) bool {
 		return false
 	}
 
-	normalized := normalizeHost(host)
+	normalized := NormalizeHost(host)
 	if normalized == "" {
 		return false
 	}
@@ -78,7 +78,7 @@ func (d *Detector) IsFlagged(host string) bool {
 		return false
 	}
 
-	normalized := normalizeHost(host)
+	normalized := NormalizeHost(host)
 	if normalized == "" {
 		return false
 	}
@@ -96,7 +96,7 @@ func (d *Detector) MatchCount(host string) int {
 		return 0
 	}
 
-	normalized := normalizeHost(host)
+	normalized := NormalizeHost(host)
 	if normalized == "" {
 		return 0
 	}
@@ -140,10 +140,10 @@ func (d *Detector) Summary() string {
 	return sb.String()
 }
 
-// normalizeHost extracts a canonical host (host:port or just host)
+// NormalizeHost extracts a canonical host (host:port or just host)
 // from various input formats: bare hosts, URLs, host:port, etc.
 // IPv6 addresses are unwrapped from brackets.
-func normalizeHost(input string) string {
+func NormalizeHost(input string) string {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return ""

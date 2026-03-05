@@ -50,9 +50,13 @@ func (hw *HoneypotWriter) Write(event *ResultEvent) error {
 
 	flagged := hw.detector.Record(host, event.TemplateID)
 	if flagged {
-		alreadyWarned := hw.warned.Has(host)
+		// Use the same normalization the detector applies internally so
+		// that different representations of the same host (scheme, case,
+		// default-port URLs) share a single warned-map entry.
+		normalizedHost := honeypot.NormalizeHost(host)
+		alreadyWarned := hw.warned.Has(normalizedHost)
 		if !alreadyWarned {
-			_ = hw.warned.Set(host, struct{}{})
+			_ = hw.warned.Set(normalizedHost, struct{}{})
 		}
 		if !alreadyWarned {
 			count := hw.detector.MatchCount(host)
