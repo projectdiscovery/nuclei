@@ -38,8 +38,13 @@ type Dynamic struct {
 
 // getOnce returns the current sync.Once instance, creating a new one if needed.
 // It uses double-checked locking pattern for thread-safe lazy initialization
-// and is safe for concurrent use.
+// and is safe for concurrent use. It also handles the case where Validate()
+// was not called by lazily initializing the atomic.Pointer.
 func (d *Dynamic) getOnce() *sync.Once {
+	// Handle case where Validate() was not called
+	if d.once == nil {
+		d.once = &atomic.Pointer[*sync.Once]{}
+	}
 	// Fast path - check if already initialized
 	ptr := d.once.Load()
 	if ptr != nil {
@@ -206,6 +211,14 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 // On error, the once guard is reset to allow retry on the next call.
 func (d *Dynamic) fetchAndHydrate() {
 	d.mu.Lock()
+	// Check if fetchCallback is nil before calling
+	if d.fetchCallback == nil {
+		d.err = fmt.Errorf("fetchCallback is not set for dynamic secret")
+		d.mu.Unlock()
+		// Reset once to allow retry on next call
+		d.resetOnce()
+		return
+	}
 	d.err = d.fetchCallback(d)
 	if d.err != nil {
 		d.mu.Unlock()
@@ -304,8 +317,8 @@ func (d *Dynamic) Reset() {
 	}
 	d.mu.Lock()
 	d.err = nil
-	d.mu.Unlock()
 	d.Extracted = nil
+	d.mu.Unlock()
 }
 
 // IsFetched returns true if the dynamic secret has been successfully fetched
