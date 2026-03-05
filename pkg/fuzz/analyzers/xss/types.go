@@ -205,11 +205,12 @@ var rcdataElements = map[string]struct{}{
 	"noscript": {},
 }
 
-// hasJavascriptURI returns true if the attribute value starts with a javascript: URI.
-// These are executable contexts even though they appear in attribute values.
+// hasJavascriptURI returns true if the attribute value starts with a javascript: or
+// data: URI. Both are executable contexts even though they appear in attribute values.
+// data: URIs can embed HTML/JS (e.g. data:text/html,<script>alert(1)</script>).
 func hasJavascriptURI(attrVal string) bool {
-	trimmed := strings.TrimSpace(attrVal)
-	return strings.HasPrefix(strings.ToLower(trimmed), "javascript:")
+	trimmed := strings.ToLower(strings.TrimSpace(attrVal))
+	return strings.HasPrefix(trimmed, "javascript:") || strings.HasPrefix(trimmed, "data:")
 }
 
 // isSrcdocAttr returns true if the attribute name is "srcdoc".
@@ -222,10 +223,15 @@ func isSrcdocAttr(name string) bool {
 // isExecutableScriptType returns true if the given script type attribute value
 // indicates executable JavaScript. Empty type or standard JS types are executable.
 // Data types like application/json, application/ld+json, importmap, etc. are NOT.
+// MIME type parameters (e.g. "text/javascript; charset=utf-8") are stripped before matching.
 func isExecutableScriptType(scriptType string) bool {
 	t := strings.TrimSpace(strings.ToLower(scriptType))
 	if t == "" {
 		return true // no type means JavaScript
+	}
+	// Strip MIME parameters (e.g. "text/javascript; charset=utf-8" -> "text/javascript")
+	if semi := strings.IndexByte(t, ';'); semi != -1 {
+		t = strings.TrimSpace(t[:semi])
 	}
 	// Standard executable JavaScript MIME types
 	switch t {

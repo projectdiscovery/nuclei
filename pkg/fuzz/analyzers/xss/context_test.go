@@ -665,7 +665,7 @@ func TestHasJavascriptURI(t *testing.T) {
 		{"JAVASCRIPT:ALERT(1)", true},
 		{"http://example.com", false},
 		{"javscript:alert(1)", false}, // typo
-		{"data:text/html,test", false},
+		{"data:text/html,test", true}, // data: URIs can embed executable HTML/JS
 		{"", false},
 	}
 	for _, tt := range tests {
@@ -712,6 +712,9 @@ func TestIsExecutableScriptType(t *testing.T) {
 		{"importmap", false},
 		{"text/plain", false},
 		{"text/html", false},
+		{"text/javascript; charset=utf-8", true}, // MIME parameters should be stripped
+		{"application/javascript; charset=utf-8", true},
+		{"application/json; charset=utf-8", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.scriptType, func(t *testing.T) {

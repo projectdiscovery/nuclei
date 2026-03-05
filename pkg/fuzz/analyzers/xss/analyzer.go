@@ -158,8 +158,9 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 
 	respBodyStr := string(respBody)
 
-	// Check if the payload is reflected unencoded
-	if strings.Contains(respBodyStr, payload) {
+	// Check if the payload is reflected unencoded (case-insensitive to
+	// catch server-transformed reflections, e.g. uppercased by the backend)
+	if strings.Contains(strings.ToLower(respBodyStr), strings.ToLower(payload)) {
 		details := fmt.Sprintf(
 			"[xss_context] XSS confirmed in %s context (tag: %s, param: %s). Payload reflected unencoded: %s (original: %s)",
 			reflection.Context,
