@@ -158,6 +158,7 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 	return nil
 }
 
+// fuzzPathNumericSegment validates fuzzing behavior for numeric path segments.
 type fuzzPathNumericSegment struct{}
 
 // Execute verifies that numeric path segments are fuzzed and not skipped.
