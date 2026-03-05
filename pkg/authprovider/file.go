@@ -88,8 +88,15 @@ func (f *FileAuthProvider) init() {
 			}
 		}
 	}
-	for _, dynamic := range f.store.Dynamic {
-		domain, domainsRegex := dynamic.GetDomainAndDomainRegex()
+	for i := range f.store.Dynamic {
+		// Use &f.store.Dynamic[i] (pointer into the slice) so that every
+		// DynamicAuthStrategy that references this credential shares the
+		// same underlying Dynamic value and therefore the same sync.Once
+		// fetch state.  A for-range value copy would give each strategy its
+		// own independent sync.Once, silently breaking the once-guarantee
+		// that prevents concurrent unauthenticated requests.
+		dp := &f.store.Dynamic[i]
+		domain, domainsRegex := dp.GetDomainAndDomainRegex()
 
 		if len(domainsRegex) > 0 {
 			for _, domain := range domainsRegex {
@@ -101,9 +108,9 @@ func (f *FileAuthProvider) init() {
 					continue
 				}
 				if ss, ok := f.compiled[compiled]; !ok {
-					f.compiled[compiled] = []authx.AuthStrategy{&authx.DynamicAuthStrategy{Dynamic: dynamic}}
+					f.compiled[compiled] = []authx.AuthStrategy{&authx.DynamicAuthStrategy{Dynamic: dp}}
 				} else {
-					f.compiled[compiled] = append(ss, &authx.DynamicAuthStrategy{Dynamic: dynamic})
+					f.compiled[compiled] = append(ss, &authx.DynamicAuthStrategy{Dynamic: dp})
 				}
 			}
 		}
@@ -116,9 +123,9 @@ func (f *FileAuthProvider) init() {
 			domain = strings.TrimSuffix(domain, ":443")
 
 			if ss, ok := f.domains[domain]; !ok {
-				f.domains[domain] = []authx.AuthStrategy{&authx.DynamicAuthStrategy{Dynamic: dynamic}}
+				f.domains[domain] = []authx.AuthStrategy{&authx.DynamicAuthStrategy{Dynamic: dp}}
 			} else {
-				f.domains[domain] = append(ss, &authx.DynamicAuthStrategy{Dynamic: dynamic})
+				f.domains[domain] = append(ss, &authx.DynamicAuthStrategy{Dynamic: dp})
 			}
 		}
 	}
