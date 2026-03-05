@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -27,6 +28,7 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-query-num-replace.yaml", TestCase: &genericFuzzTestCase{expectedResults: 2}},
 	{Path: "fuzz/fuzz-host-header-injection.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-path-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-path-numeric-segment.yaml", TestCase: &fuzzPathNumericSegment{}},
 	{Path: "fuzz/fuzz-cookie-error-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-json-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-multipart-form-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
@@ -154,6 +156,31 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 		return fmt.Errorf("expected id to be fuzz-word, got %s", values.Get("id"))
 	}
 	return nil
+}
+
+type fuzzPathNumericSegment struct{}
+
+// Execute verifies that numeric path segments are fuzzed and not skipped.
+func (h *fuzzPathNumericSegment) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/*path", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		escapedPath := r.URL.EscapedPath()
+		if strings.Contains(escapedPath, "/456%20OR%20True/") || strings.Contains(r.URL.Path, "/456 OR True/") {
+			w.WriteHeader(http.StatusTeapot)
+			_, _ = fmt.Fprint(w, "numeric-segment-fuzzed")
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, "ok")
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/api/v1/456/data", debug, "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }
 
 // HeadlessFuzzingQuery tests fuzzing is working not in headless mode

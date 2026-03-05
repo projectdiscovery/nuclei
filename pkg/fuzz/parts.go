@@ -2,7 +2,6 @@ package fuzz
 
 import (
 	"io"
-	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
@@ -152,11 +151,10 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 
 // execWithInput executes a rule with input via callback
 func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter, parameterValue, originalPayload, originalValue, key, value string) error {
-	// If the parameter is a number, replace it with the parameter value
-	// or if the parameter is empty and the parameter value is not empty
-	// replace it with the parameter value
+	// Keep positional parameters (for example path segment keys "1", "2", "3")
+	// unchanged. Replacing them with values causes incorrect frequency tracking.
 	actualParameter := parameter
-	if _, err := strconv.Atoi(parameter); err == nil || (parameter == "" && parameterValue != "") {
+	if parameter == "" && parameterValue != "" {
 		actualParameter = parameterValue
 	}
 	// If the parameter is frequent, skip it if the option is enabled

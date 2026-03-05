@@ -1,0 +1,28 @@
+id: fuzz-path-numeric-segment
+
+info:
+  name: Fuzz Numeric Path Segment
+  author: pdteam
+  severity: info
+  description: Ensure numeric URL path segments are not skipped during path fuzzing.
+
+http:
+  - payloads:
+      suffix:
+        - "%20OR%20True"
+
+    fuzzing:
+      - part: path
+        type: postfix
+        mode: single
+        fuzz:
+          - "{{suffix}}"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 418
+      - type: word
+        words:
+          - "numeric-segment-fuzzed"

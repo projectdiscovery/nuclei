@@ -127,3 +127,33 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+// TestPathComponent_NumericSegmentsAllFuzzed is a regression test for #6398.
+func TestPathComponent_NumericSegmentsAllFuzzed(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/api/v1/456/data", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	seen := make(map[string]string)
+	err = path.Iterate(func(key string, value interface{}) error {
+		seen[key] = value.(string)
+		return nil
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]string{
+		"1": "api",
+		"2": "v1",
+		"3": "456",
+		"4": "data",
+	}, seen)
+
+	require.NoError(t, path.SetValue("3", "456 OR 1=1"))
+	rebuilt, err := path.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/api/v1/456 OR 1=1/data", rebuilt.Path)
+}
