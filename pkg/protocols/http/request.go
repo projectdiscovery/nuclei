@@ -900,7 +900,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// In case of interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
 		// Also, to log failed use-cases.
-		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+		// Use formedURL (the actual request URL) as host so that http_N_host
+		// variables reflect the correct domain on error paths too (issue #7062).
+		outputEvent := request.responseToDSLMap(&http.Response{}, formedURL, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -1024,7 +1026,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
+		// Use matchedURL (the actual request URL) as the host argument so that
+		// the "host" field in the event — and consequently the prefixed
+		// http_N_host variables populated by FillPreviousEvent — reflect the
+		// URL of *this* request rather than the original scan target
+		// (input.MetaInput.Input).  In multi-request templates where subsequent
+		// requests target a different domain the two values diverge and using
+		// the original target was causing http_2_host to inherit the value of
+		// http_1_host (issue #7062).
+		outputEvent := request.responseToDSLMap(respChain.Response(), matchedURL, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
