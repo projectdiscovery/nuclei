@@ -304,6 +304,44 @@ func TestDetectScriptStringContext_AfterClosedString(t *testing.T) {
 	}
 }
 
+func TestDetectScriptStringContext_TemplateLiteralText(t *testing.T) {
+	content := "const t = `hello nucleiXSScanary`;"
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScriptString {
+		t.Fatalf("expected ContextScriptString in template text, got %s", ctx)
+	}
+}
+
+func TestDetectScriptStringContext_TemplateInterpolation(t *testing.T) {
+	content := "const t = `prefix ${nucleiXSScanary}`;"
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScript {
+		t.Fatalf("expected ContextScript in template interpolation, got %s", ctx)
+	}
+}
+
+func TestDetectScriptStringContext_TemplateInterpolationNested(t *testing.T) {
+	content := "const t = `prefix ${fn({a: nucleiXSScanary})}`;"
+	ctx := detectScriptStringContext(content, testMarker)
+	if ctx != ContextScript {
+		t.Fatalf("expected ContextScript in nested template interpolation, got %s", ctx)
+	}
+}
+
+func TestDetectAttrQuoting_WithWhitespace(t *testing.T) {
+	quote, unquoted := detectAttrQuoting(`<input class = "nucleiXSScanary">`, "class")
+	if unquoted || quote != '"' {
+		t.Fatalf("expected double-quoted attr with whitespace, got quote=%q unquoted=%v", quote, unquoted)
+	}
+}
+
+func TestDetectAttrQuoting_UnquotedWithWhitespace(t *testing.T) {
+	quote, unquoted := detectAttrQuoting(`<input class = nucleiXSScanary>`, "class")
+	if !unquoted || quote != 0 {
+		t.Fatalf("expected unquoted attr with whitespace, got quote=%q unquoted=%v", quote, unquoted)
+	}
+}
+
 func TestIsEventHandler(t *testing.T) {
 	tests := []struct {
 		name     string

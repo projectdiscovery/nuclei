@@ -205,39 +205,95 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 		return ContextScript
 	}
 
-	// Walk through the script content tracking quote state
+	// Walk through the script content tracking quote state.
+	// For template literals, track ${...} expression blocks separately, because
+	// marker inside ${...} is JS expression context, not string-literal context.
 	inSingleQuote := false
 	inDoubleQuote := false
 	inBacktick := false
+	inTemplateExpr := false
+	templateExprDepth := 0
 	escaped := false
 
 	for i := 0; i < idx; i++ {
 		ch := scriptContent[i]
+
 		if escaped {
 			escaped = false
 			continue
 		}
-		if ch == '\\' {
-			escaped = true
+
+		if inSingleQuote {
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '\'' {
+				inSingleQuote = false
+			}
 			continue
 		}
+
+		if inDoubleQuote {
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inDoubleQuote = false
+			}
+			continue
+		}
+
+		if inBacktick {
+			if inTemplateExpr {
+				switch ch {
+				case '{':
+					templateExprDepth++
+				case '}':
+					templateExprDepth--
+					if templateExprDepth == 0 {
+						inTemplateExpr = false
+					}
+				case '\'':
+					inSingleQuote = true
+				case '"':
+					inDoubleQuote = true
+				case '`':
+					inBacktick = true
+				}
+				continue
+			}
+
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+
+			if ch == '$' && i+1 < idx && scriptContent[i+1] == '{' {
+				inTemplateExpr = true
+				templateExprDepth = 1
+				i++
+				continue
+			}
+
+			if ch == '`' {
+				inBacktick = false
+			}
+			continue
+		}
+
 		switch ch {
 		case '\'':
-			if !inDoubleQuote && !inBacktick {
-				inSingleQuote = !inSingleQuote
-			}
+			inSingleQuote = true
 		case '"':
-			if !inSingleQuote && !inBacktick {
-				inDoubleQuote = !inDoubleQuote
-			}
+			inDoubleQuote = true
 		case '`':
-			if !inSingleQuote && !inDoubleQuote {
-				inBacktick = !inBacktick
-			}
+			inBacktick = true
 		}
 	}
 
-	if inSingleQuote || inDoubleQuote || inBacktick {
+	if inSingleQuote || inDoubleQuote || (inBacktick && !inTemplateExpr) {
 		return ContextScriptString
 	}
 	return ContextScript
@@ -246,23 +302,71 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 // detectAttrQuoting detects the quoting style of an attribute from raw HTML.
 // Returns the quote character and whether the attribute is unquoted.
 func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
-	attrAssign := attrName + "="
 	rawLower := strings.ToLower(rawToken)
-	idx := strings.Index(rawLower, attrAssign)
-	if idx < 0 {
-		return '"', false // default to double-quoted
+	attrLower := strings.ToLower(attrName)
+
+	searchFrom := 0
+	for {
+		rel := strings.Index(rawLower[searchFrom:], attrLower)
+		if rel < 0 {
+			return '"', false // default to double-quoted
+		}
+		idx := searchFrom + rel
+
+		// Ensure we matched a full attribute name boundary (not a suffix/prefix of another token)
+		if idx > 0 {
+			prev := rawLower[idx-1]
+			if isAttrNameChar(prev) {
+				searchFrom = idx + len(attrLower)
+				continue
+			}
+		}
+		afterName := idx + len(attrLower)
+		if afterName < len(rawLower) {
+			next := rawLower[afterName]
+			if isAttrNameChar(next) {
+				searchFrom = idx + len(attrLower)
+				continue
+			}
+		}
+
+		pos := afterName
+		for pos < len(rawToken) && isHTMLSpace(rawToken[pos]) {
+			pos++
+		}
+		if pos >= len(rawToken) || rawToken[pos] != '=' {
+			searchFrom = idx + len(attrLower)
+			continue
+		}
+		pos++
+		for pos < len(rawToken) && isHTMLSpace(rawToken[pos]) {
+			pos++
+		}
+		if pos >= len(rawToken) {
+			return '"', false
+		}
+
+		switch rawToken[pos] {
+		case '"':
+			return '"', false
+		case '\'':
+			return '\'', false
+		default:
+			return 0, true
+		}
 	}
-	afterEq := idx + len(attrAssign)
-	if afterEq >= len(rawToken) {
-		return '"', false
-	}
-	switch rawToken[afterEq] {
-	case '"':
-		return '"', false
-	case '\'':
-		return '\'', false
+}
+
+func isAttrNameChar(ch byte) bool {
+	return (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == ':'
+}
+
+func isHTMLSpace(ch byte) bool {
+	switch ch {
+	case ' ', '\t', '\n', '\r', '\f':
+		return true
 	default:
-		return 0, true
+		return false
 	}
 }
 
