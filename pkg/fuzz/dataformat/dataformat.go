@@ -5,8 +5,14 @@ import (
 	"fmt"
 )
 
-// dataformats is a list of dataformats
+// dataformats is a list of stateless dataformat singletons.
+// Stateful formats (MultiPartForm) must NOT be stored here — see Get().
 var dataformats map[string]DataFormat
+
+// dataformatFactories maps format names to constructor functions.
+// Get() uses a factory when one is registered, so each caller receives an
+// independent instance and concurrent goroutines never share mutable state.
+var dataformatFactories map[string]func() DataFormat
 
 const (
 	// DefaultKey is the key i.e used when given
@@ -16,13 +22,18 @@ const (
 
 func init() {
 	dataformats = make(map[string]DataFormat)
+	dataformatFactories = make(map[string]func() DataFormat)
 
 	// register the default data formats
 	RegisterDataFormat(NewJSON())
 	RegisterDataFormat(NewXML())
 	RegisterDataFormat(NewRaw())
 	RegisterDataFormat(NewForm())
-	RegisterDataFormat(NewMultiPartForm())
+	// MultiPartForm is stateful (boundary + filesMetadata fields mutated per
+	// request) — register it as a factory so each Get() call returns a fresh
+	// instance, preventing the fatal concurrent-map-write crash that occurs
+	// when multiple goroutines share the singleton (issue #7028).
+	RegisterDataFormatFactory(MultiPartFormDataFormat, func() DataFormat { return NewMultiPartForm() })
 }
 
 const (
@@ -38,14 +49,28 @@ const (
 	MultiPartFormDataFormat = "multipart/form-data"
 )
 
-// Get returns the dataformat by name
+// Get returns the dataformat by name.
+//
+// For formats registered via RegisterDataFormatFactory a new instance is
+// created on every call, so concurrent goroutines each get their own copy and
+// never race on shared mutable state.
 func Get(name string) DataFormat {
+	if factory, ok := dataformatFactories[name]; ok {
+		return factory()
+	}
 	return dataformats[name]
 }
 
-// RegisterEncoder registers an encoder
+// RegisterDataFormat registers a stateless dataformat singleton.
 func RegisterDataFormat(dataformat DataFormat) {
 	dataformats[dataformat.Name()] = dataformat
+}
+
+// RegisterDataFormatFactory registers a constructor for a stateful dataformat.
+// Each call to Get() will invoke the factory and return a fresh instance,
+// preventing data races between concurrent goroutines.
+func RegisterDataFormatFactory(name string, factory func() DataFormat) {
+	dataformatFactories[name] = factory
 }
 
 // DataFormat is an interface for encoding and decoding
