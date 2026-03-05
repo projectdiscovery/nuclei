@@ -725,6 +725,76 @@ func TestIsExecutableScriptType(t *testing.T) {
 	}
 }
 
+func TestDetectCharacterSurvival_CaseInsensitive(t *testing.T) {
+	// Server uppercases the canary but special chars survive
+	canary := "testcanary"
+	body := "TESTCANARY" + `<>"'/`
+	chars := detectCharacterSurvival(body, canary)
+	if !chars.LessThan {
+		t.Error("expected LessThan to survive with uppercased canary")
+	}
+	if !chars.GreaterThan {
+		t.Error("expected GreaterThan to survive with uppercased canary")
+	}
+	if !chars.ForwardSlash {
+		t.Error("expected ForwardSlash to survive with uppercased canary")
+	}
+}
+
+func TestIsExecutableURIAttr(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected bool
+	}{
+		{"href", true},
+		{"action", true},
+		{"formaction", true},
+		{"xlink:href", true},
+		{"src", true},
+		{"HREF", true},
+		{"title", false},
+		{"data-url", false},
+		{"alt", false},
+		{"class", false},
+		{"value", false},
+		{"placeholder", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isExecutableURIAttr(tt.name); got != tt.expected {
+				t.Errorf("isExecutableURIAttr(%q) = %v, want %v", tt.name, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_JavascriptURI_NonExecutableAttr(t *testing.T) {
+	// javascript: URI in a non-executable attribute (title) should NOT be ContextScript
+	body := `<html><body><div title="javascript:nucleiXSScanary">test</div></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	for _, r := range reflections {
+		if r.AttrName == "title" && r.Context == ContextScript {
+			t.Fatal("title attribute with javascript: URI should NOT be classified as ContextScript")
+		}
+	}
+}
+
+func TestDetectReflections_JavascriptURI_ActionAttr(t *testing.T) {
+	// javascript: URI in form action should be ContextScript
+	body := `<html><body><form action="javascript:nucleiXSScanary"><input></form></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	found := false
+	for _, r := range reflections {
+		if r.AttrName == "action" && r.Context == ContextScript {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI in action attr, got %v", reflections)
+	}
+}
+
 func BenchmarkDetectReflections(b *testing.B) {
 	var sb strings.Builder
 	sb.WriteString("<html><body>")

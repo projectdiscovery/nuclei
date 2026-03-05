@@ -108,8 +108,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					if isEventHandler(attrName) {
 						// Event handler attributes contain JavaScript
 						ctx = ContextScript
-					} else if hasJavascriptURI(attrVal) {
-						// javascript: URIs are executable script context
+					} else if hasJavascriptURI(attrVal) && isExecutableURIAttr(attrName) {
+						// javascript:/data: URIs are only executable in navigation attributes
 						ctx = ContextScript
 					} else if isSrcdocAttr(attrName) {
 						// srcdoc attribute allows full HTML injection

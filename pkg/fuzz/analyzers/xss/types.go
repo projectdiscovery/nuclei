@@ -213,6 +213,24 @@ func hasJavascriptURI(attrVal string) bool {
 	return strings.HasPrefix(trimmed, "javascript:") || strings.HasPrefix(trimmed, "data:")
 }
 
+// executableURIAttrs are HTML attributes that navigate to a URL and can thus
+// execute javascript: or data: URIs. Non-navigation attributes (title, data-*,
+// alt, etc.) are excluded because they don't trigger URL resolution.
+var executableURIAttrs = map[string]struct{}{
+	"href":       {}, // <a>, <area>, <link>
+	"xlink:href": {}, // SVG linking elements
+	"action":     {}, // <form>
+	"formaction": {}, // <button>, <input type="submit">
+	"src":        {}, // <iframe>, <embed>, <object>
+	"srcdoc":     {}, // handled separately but included for completeness
+}
+
+// isExecutableURIAttr returns true if the attribute can execute javascript: or data: URIs
+func isExecutableURIAttr(name string) bool {
+	_, ok := executableURIAttrs[strings.ToLower(name)]
+	return ok
+}
+
 // isSrcdocAttr returns true if the attribute name is "srcdoc".
 // The srcdoc attribute on iframe elements accepts full HTML content,
 // making it an HTML injection context rather than a simple attribute.

@@ -217,14 +217,18 @@ func getHeader(headers map[string][]string, name string) string {
 	return ""
 }
 
-// detectCharacterSurvival checks which XSS-critical characters survived server-side encoding
+// detectCharacterSurvival checks which XSS-critical characters survived server-side encoding.
+// Uses case-insensitive matching so server-transformed reflections (e.g. uppercased canary)
+// are still detected correctly.
 func detectCharacterSurvival(body string, canary string) CharacterSet {
+	bodyLower := strings.ToLower(body)
+	canaryLower := strings.ToLower(canary)
 	return CharacterSet{
-		LessThan:     strings.Contains(body, canary+"<"),
-		GreaterThan:  strings.Contains(body, canary+"<>") || strings.Contains(body, canary+">"),
-		DoubleQuote:  strings.Contains(body, canary+`<>"`),
-		SingleQuote:  strings.Contains(body, canary+`<>"'`),
-		ForwardSlash: strings.Contains(body, canary+canaryChars), // full canary+chars survived
+		LessThan:     strings.Contains(bodyLower, canaryLower+"<"),
+		GreaterThan:  strings.Contains(bodyLower, canaryLower+"<>") || strings.Contains(bodyLower, canaryLower+">"),
+		DoubleQuote:  strings.Contains(bodyLower, canaryLower+`<>"`),
+		SingleQuote:  strings.Contains(bodyLower, canaryLower+`<>"'`),
+		ForwardSlash: strings.Contains(bodyLower, canaryLower+canaryChars), // full canary+chars survived
 	}
 }
 
