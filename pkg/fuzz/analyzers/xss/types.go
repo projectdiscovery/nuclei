@@ -222,8 +222,10 @@ var executableURIAttrs = map[string]struct{}{
 	"action":     {}, // <form>
 	"formaction": {}, // <button>, <input type="submit">
 	"src":        {}, // <iframe>, <embed>, <object>
-	"srcdoc":     {}, // handled separately but included for completeness
 }
+// Note: srcdoc is intentionally excluded — it contains HTML content, not a URL.
+// It's handled by isSrcdocAttr() in context.go which correctly classifies it
+// as ContextHTMLText regardless of whether the value starts with "javascript:".
 
 // isExecutableURIAttr returns true if the attribute can execute javascript: or data: URIs
 func isExecutableURIAttr(name string) bool {
