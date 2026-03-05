@@ -98,8 +98,8 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		require.Equal(t, "HeadersAuth", d.Type)
 		require.Equal(t, []string{"api.test.com"}, d.Domains)
 		require.Len(t, d.Headers, 1)
-		require.Equal(t, "X-API-Key", d.Secret.Headers[0].Key)
-		require.Equal(t, "secret-key", d.Secret.Headers[0].Value)
+		require.Equal(t, "X-API-Key", d.Headers[0].Key)
+		require.Equal(t, "secret-key", d.Headers[0].Value)
 
 		// Dynamic fields
 		require.Equal(t, "test-template.yaml", d.TemplatePath)
@@ -435,7 +435,7 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 		require.NotNil(t, strategies1)
 
 		// Verify hydration
-		require.Equal(t, "Bearer hydrated-value", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer hydrated-value", d.Headers[0].Value)
 
 		// Call Fetch again - should NOT call callback again (sync.Once)
 		err := d.Fetch()
@@ -445,7 +445,7 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 		require.Equal(t, int32(1), callCount.Load(), "fetch callback should only be called once")
 
 		// Verify hydration still correct
-		require.Equal(t, "Bearer hydrated-value", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer hydrated-value", d.Headers[0].Value)
 	})
 
 	t.Run("concurrent-fetch-and-getstrategies-all-hydrated", func(t *testing.T) {
@@ -488,8 +488,8 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 			go func(idx int) {
 				defer wg.Done()
 				results[idx].strategies = d.GetStrategies()
-				if d.Secret != nil && len(d.Secret.Headers) > 0 {
-					results[idx].headerVal = d.Secret.Headers[0].Value
+				if len(d.Headers) > 0 {
+					results[idx].headerVal = d.Headers[0].Value
 				}
 			}(i)
 		}
@@ -508,7 +508,7 @@ func TestDynamicFetchAndHydrateIntegration(t *testing.T) {
 		}
 
 		// Final verification
-		require.Equal(t, "Bearer concurrent-token", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer concurrent-token", d.Headers[0].Value)
 	})
 }
 
@@ -558,7 +558,7 @@ func TestDynamicFetchRetryOnError(t *testing.T) {
 		require.Equal(t, int32(2), callCount.Load())
 
 		// Verify hydration occurred
-		require.Equal(t, "Bearer success-token", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer success-token", d.Headers[0].Value)
 	})
 
 	t.Run("manual-reset-allows-refetch", func(t *testing.T) {
@@ -591,7 +591,7 @@ func TestDynamicFetchRetryOnError(t *testing.T) {
 		// First fetch
 		strategies1 := d.GetStrategies()
 		require.NotNil(t, strategies1)
-		require.Equal(t, "Bearer token-1", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer token-1", d.Headers[0].Value)
 		require.Equal(t, int32(1), callCount.Load())
 
 		// Reset and fetch again - note that Headers[0].Value is now "Bearer token-1"
@@ -600,11 +600,11 @@ func TestDynamicFetchRetryOnError(t *testing.T) {
 		require.False(t, d.IsFetched(), "should not be fetched after reset")
 
 		// For proper re-fetch, we need to restore the template value
-		d.Secret.Headers[0] = KV{Key: "Authorization", Value: "Bearer {{token}}"}
+		d.Headers[0] = KV{Key: "Authorization", Value: "Bearer {{token}}"}
 
 		strategies2 := d.GetStrategies()
 		require.NotNil(t, strategies2)
-		require.Equal(t, "Bearer token-2", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer token-2", d.Headers[0].Value)
 		require.Equal(t, int32(2), callCount.Load())
 	})
 
@@ -643,6 +643,6 @@ func TestDynamicFetchRetryOnError(t *testing.T) {
 		require.Equal(t, int32(1), callCount.Load(), "callback should only be called once on success")
 
 		// Verify same result
-		require.Equal(t, "Bearer success-token", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer success-token", d.Headers[0].Value)
 	})
 }
