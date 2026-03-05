@@ -3,6 +3,7 @@ package authx
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -31,7 +32,8 @@ type Dynamic struct {
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
 	fetched       *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to check if the secret has been fetched
-	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls
+	fetching      *atomic.Bool           `json:"-" yaml:"-"` // atomic flag to prevent recursive fetch calls (kept for compat)
+	fetchOnce     sync.Once              `json:"-" yaml:"-"` // ensures exactly one fetch and blocks concurrent callers
 	error         error                  `json:"-" yaml:"-"` // error if any
 }
 
@@ -205,25 +207,30 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	return strategies
 }
 
-// Fetch fetches the dynamic secret
-// if isFatal is true, it will stop the execution if the secret could not be fetched
+// Fetch fetches the dynamic secret.
+// If isFatal is true, it will stop the execution if the secret could not be fetched.
+//
+// Previously this used a pair of atomic.Bool flags (fetched/fetching) which had a
+// race condition: a second concurrent goroutine would see fetching==true and return
+// d.error immediately while it was still nil, causing unauthenticated requests to be
+// sent before credentials were established (issue #6592).
+//
+// Fixed by using sync.Once: all concurrent callers block inside Do() until the first
+// fetch completes, then all receive the same error value.
 func (d *Dynamic) Fetch(isFatal bool) error {
+	// Fast path: already fetched (avoids contending on the Once mutex).
 	if d.fetched.Load() {
 		return d.error
 	}
 
-	// Try to set fetching flag atomically
-	if !d.fetching.CompareAndSwap(false, true) {
-		// Already fetching, return current error
-		return d.error
-	}
-
-	// We're the only one fetching, call the callback
-	d.error = d.fetchCallback(d)
-
-	// Mark as fetched and clear fetching flag
-	d.fetched.Store(true)
-	d.fetching.Store(false)
+	// Blocking path: only one goroutine executes the callback;
+	// all others wait here until it finishes.
+	d.fetchOnce.Do(func() {
+		d.error = d.fetchCallback(d)
+		// Mark as fetched *after* error is written so the fast-path
+		// above never returns a stale nil error.
+		d.fetched.Store(true)
+	})
 
 	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
