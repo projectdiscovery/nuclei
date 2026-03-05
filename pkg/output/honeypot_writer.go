@@ -1,11 +1,10 @@
 package output
 
 import (
-	"sync"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // HoneypotWriter wraps a Writer and intercepts results to track
@@ -17,8 +16,7 @@ type HoneypotWriter struct {
 	detector *honeypot.Detector
 	// warned tracks hosts for which we already printed a warning,
 	// to avoid flooding the user with repeated messages.
-	warned   map[string]bool
-	warnedMu sync.Mutex
+	warned *mapsutil.SyncLockMap[string, struct{}]
 }
 
 var _ Writer = &HoneypotWriter{}
@@ -33,7 +31,7 @@ func NewHoneypotWriter(inner Writer, detector *honeypot.Detector) Writer {
 	return &HoneypotWriter{
 		inner:    inner,
 		detector: detector,
-		warned:   make(map[string]bool),
+		warned:   mapsutil.NewSyncLockMap[string, struct{}](),
 	}
 }
 
@@ -52,12 +50,10 @@ func (hw *HoneypotWriter) Write(event *ResultEvent) error {
 
 	flagged := hw.detector.Record(host, event.TemplateID)
 	if flagged {
-		hw.warnedMu.Lock()
-		alreadyWarned := hw.warned[host]
+		alreadyWarned := hw.warned.Has(host)
 		if !alreadyWarned {
-			hw.warned[host] = true
+			_ = hw.warned.Set(host, struct{}{})
 		}
-		hw.warnedMu.Unlock()
 		if !alreadyWarned {
 			count := hw.detector.MatchCount(host)
 			gologger.Warning().Msgf(
