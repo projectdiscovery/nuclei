@@ -127,3 +127,59 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+// TestPathComponent_DeterministicOrder verifies that path segments are always
+// iterated in insertion order (the order they appear in the URL). This is a
+// regression test for https://github.com/projectdiscovery/nuclei/issues/6398
+// where using a plain Go map caused non-deterministic iteration, randomly
+// skipping numeric path segments during fuzzing.
+func TestPathComponent_DeterministicOrder(t *testing.T) {
+	expectedKeys := []string{"1", "2", "3"}
+	expectedValues := []string{"user", "55", "profile"}
+
+	for i := 0; i < 50; i++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var keys []string
+		var values []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+
+		require.Equal(t, expectedKeys, keys, "iteration %d: keys out of order", i)
+		require.Equal(t, expectedValues, values, "iteration %d: values out of order", i)
+	}
+}
+
+// TestPathComponent_AllSegmentsFuzzed verifies that every path segment
+// (including numeric ones) is fuzzed in single mode.
+func TestPathComponent_AllSegmentsFuzzed(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	// Collect all segments that can be iterated (i.e., fuzzed)
+	fuzzedSegments := make(map[string]bool)
+	err = path.Iterate(func(key string, value interface{}) error {
+		fuzzedSegments[value.(string)] = true
+		return nil
+	})
+	require.NoError(t, err)
+
+	require.True(t, fuzzedSegments["user"], "segment 'user' should be fuzzable")
+	require.True(t, fuzzedSegments["55"], "numeric segment '55' should be fuzzable")
+	require.True(t, fuzzedSegments["profile"], "segment 'profile' should be fuzzable")
+}
