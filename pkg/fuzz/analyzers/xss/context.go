@@ -9,12 +9,16 @@ import (
 // DetectReflections parses the HTML body and returns all reflection contexts
 // where the marker is found.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	markerLower := strings.ToLower(marker)
+
+	// Bug fix #3: use case-insensitive check for the early-exit guard so that
+	// server-side case transformations (e.g. uppercasing the canary) are still
+	// detected instead of silently returning nil.
+	if !strings.Contains(strings.ToLower(body), markerLower) {
 		return nil
 	}
 
 	var reflections []ReflectionInfo
-	markerLower := strings.ToLower(marker)
 
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
 
@@ -44,7 +48,14 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 			switch tagNameLower {
 			case "script":
-				inScript = true
+				// Bug fix #2: only treat a <script> tag as executable JavaScript
+				// when its type attribute is absent or set to a JS MIME type.
+				// Non-executable types (application/json, text/template, etc.)
+				// must NOT set inScript so their text content is not classified
+				// as an exploitable script context.
+				if isExecutableScriptTag(rawToken) {
+					inScript = true
+				}
 			case "style":
 				inStyle = true
 			default:
@@ -79,8 +90,20 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						}
 
 						if isEventHandler(attrName) {
-							// Event handler attributes contain JavaScript
+							// Event handler attributes (onclick, onerror, …) contain JavaScript
 							ctx = ContextScript
+						} else if isURLAttribute(attrName) && hasJavaScriptScheme(attrVal) {
+							// Bug fix #1: a javascript: URI inside a URL attribute (href,
+							// src, action, formaction, …) is executable JavaScript, not a
+							// plain attribute injection.  Classify it as ContextScript so
+							// the analyser selects JS-specific payloads instead of HTML
+							// attribute break-out payloads.
+							ctx = ContextScript
+						} else if attrName == "srcdoc" {
+							// Bug fix #4: the srcdoc attribute value is parsed as a full
+							// HTML document by the browser.  Injection here is equivalent
+							// to HTML text injection and warrants HTML-break-out payloads.
+							ctx = ContextHTMLText
 						}
 
 						reflections = append(reflections, ReflectionInfo{
@@ -267,4 +290,117 @@ func BestReflection(reflections []ReflectionInfo) *ReflectionInfo {
 		}
 	}
 	return best
+}
+
+// isURLAttribute returns true for HTML attributes whose values are treated as
+// URLs by browsers.  Injection of a javascript: URI into these attributes
+// constitutes a JavaScript execution context.
+func isURLAttribute(name string) bool {
+	_, ok := urlAttributes[name]
+	return ok
+}
+
+// urlAttributes lists HTML attributes whose values are treated as URLs.
+var urlAttributes = map[string]struct{}{
+	"href":       {},
+	"src":        {},
+	"action":     {},
+	"formaction": {},
+	"data":       {},
+	"poster":     {},
+	"ping":       {},
+	"manifest":   {},
+	"codebase":   {},
+	"cite":       {},
+	"longdesc":   {},
+	"profile":    {},
+	"usemap":     {},
+	"classid":    {},
+	"background": {},
+}
+
+// hasJavaScriptScheme reports whether the attribute value begins with the
+// javascript: URI scheme (case-insensitive, with optional whitespace/control
+// chars that browsers strip before interpreting the scheme).
+func hasJavaScriptScheme(val string) bool {
+	// Browsers strip leading whitespace and C0 control characters
+	trimmed := strings.TrimLeftFunc(val, func(r rune) bool {
+		return r <= 0x20
+	})
+	return strings.HasPrefix(strings.ToLower(trimmed), "javascript:")
+}
+
+// isExecutableScriptTag returns true if the <script> tag's type attribute
+// indicates executable JavaScript (or is absent, which defaults to JS).
+//
+// Non-executable types that should NOT set inScript:
+//   - application/json
+//   - application/ld+json
+//   - text/template  (used by many template frameworks)
+//   - text/x-template
+//   - text/html
+//   - text/plain
+//   - Any other type not in the executable set
+func isExecutableScriptTag(rawToken string) bool {
+	rawLower := strings.ToLower(rawToken)
+
+	typeIdx := strings.Index(rawLower, "type=")
+	if typeIdx < 0 {
+		// No type attribute → defaults to text/javascript → executable
+		return true
+	}
+
+	afterType := rawLower[typeIdx+5:]
+	var typeVal string
+
+	switch {
+	case strings.HasPrefix(afterType, `"`):
+		end := strings.Index(afterType[1:], `"`)
+		if end >= 0 {
+			typeVal = afterType[1 : end+1]
+		}
+	case strings.HasPrefix(afterType, `'`):
+		end := strings.Index(afterType[1:], `'`)
+		if end >= 0 {
+			typeVal = afterType[1 : end+1]
+		}
+	default:
+		// Unquoted attribute value ends at whitespace or >
+		fields := strings.FieldsFunc(afterType, func(r rune) bool {
+			return r == ' ' || r == '\t' || r == '>' || r == '/'
+		})
+		if len(fields) > 0 {
+			typeVal = fields[0]
+		}
+	}
+
+	return isExecutableScriptType(strings.TrimSpace(typeVal))
+}
+
+// isExecutableScriptType returns true for MIME types that cause a browser to
+// execute the script contents as JavaScript.
+func isExecutableScriptType(t string) bool {
+	switch t {
+	case "",
+		"text/javascript",
+		"text/ecmascript",
+		"text/javascript1.0",
+		"text/javascript1.1",
+		"text/javascript1.2",
+		"text/javascript1.3",
+		"text/javascript1.4",
+		"text/javascript1.5",
+		"text/jscript",
+		"text/livescript",
+		"text/x-javascript",
+		"text/x-ecmascript",
+		"application/javascript",
+		"application/ecmascript",
+		"application/x-javascript",
+		"application/x-ecmascript",
+		"module":
+		return true
+	default:
+		return false
+	}
 }
