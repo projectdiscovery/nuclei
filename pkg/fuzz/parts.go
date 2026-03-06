@@ -162,7 +162,7 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 	// If the parameter is frequent, skip it if the option is enabled
 	if rule.options.FuzzParamsFrequency != nil {
 		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
-			parameter,
+			actualParameter,
 			httpReq.String(),
 			rule.options.TemplateID,
 		) {
