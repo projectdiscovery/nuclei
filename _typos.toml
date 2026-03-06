@@ -13,8 +13,14 @@ extend-exclude = [
     # Exclude integration tests (contain test payloads)
     "integration_tests/**",
     "**/integration/**/*.yaml",
-    # Exclude json test data (WAF regexes, samples)
-    "**/*.json",
+    # Exclude specific JSON files with false positives (WAF rules, payloads)
+    "**/*waf*.json",
+    "**/*payload*.json",
+    "**/*fuzz*.json",
+    # Exclude JSON files under pkg/templates/ (template data with encoded strings)
+    "pkg/templates/**/*.json",
+    # Exclude WAF regexes JSON (contains base64 encoded strings)
+    "pkg/output/stats/waf/**",
     # Exclude README translations - these are intentional translations with false positives
     "README_CN.md",
     "README_ES.md",
@@ -70,8 +76,11 @@ Allowd = "Allowd"
 # These look like typos but are valid technical terms
 MisMatched = "MisMatched"
 Mis = "Mis"
+<<<<<<< HEAD
 # These look like typos but need verification
 
 [type.go.extend-words]
+=======
+>>>>>>> 5e3e60a1 (fix: address Neo bot and Mzack9999 review)
 # Exclude deprecated constant name in parser_stats.go for backward compatibility
 Exluded = "Exluded"
