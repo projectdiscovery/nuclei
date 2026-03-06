@@ -14,7 +14,11 @@ import (
 type Path struct {
 	value *Value
 
-	req *retryablehttp.Request
+	req          *retryablehttp.Request
+	originalPath string // stored at Parse time; Rebuild must not use q.req.Path
+	// because retryablehttp.Request.Clone() performs a shallow copy of the
+	// embedded *urlutil.URL pointer, so UpdateRelPath on a cloned request
+	// mutates the shared URL and corrupts q.req.Path for subsequent Rebuild calls.
 }
 
 var _ Component = &Path{}
@@ -33,6 +37,7 @@ func (q *Path) Name() string {
 // parsed component
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
+	q.originalPath = req.Path // snapshot before any Clone/UpdateRelPath can corrupt req.Path
 	q.value = NewValue("")
 
 	splitted := strings.Split(req.Path, "/")
@@ -87,8 +92,12 @@ func (q *Path) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	// Get the original path segments
-	originalSplitted := strings.Split(q.req.Path, "/")
+	// Use the path snapshot taken at Parse time rather than q.req.Path.
+	// retryablehttp.Request.Clone() shallow-copies the *urlutil.URL pointer,
+	// so UpdateRelPath on a previous cloned request mutates the shared URL
+	// and would silently corrupt q.req.Path for subsequent Rebuild calls if
+	// we read it here (see https://github.com/projectdiscovery/nuclei/issues/6398).
+	originalSplitted := strings.Split(q.originalPath, "/")
 
 	// Create a new slice to hold the rebuilt segments
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
@@ -141,7 +150,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 // Clones current state to a new component
 func (q *Path) Clone() Component {
 	return &Path{
-		value: q.value.Clone(),
-		req:   q.req.Clone(context.Background()),
+		value:        q.value.Clone(),
+		req:          q.req.Clone(context.Background()),
+		originalPath: q.originalPath,
 	}
 }
