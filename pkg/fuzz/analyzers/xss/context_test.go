@@ -145,15 +145,21 @@ func TestDetectReflections_JavascriptURI(t *testing.T) {
 	if len(reflections) == 0 {
 		t.Fatal("expected at least one reflection in javascript: URI")
 	}
-	found := false
+	foundScript := false
+	foundLegacyAttr := false
 	for _, r := range reflections {
 		if r.Context == ContextScript && r.AttrName == "href" {
-			found = true
-			break
+			foundScript = true
+		}
+		if r.Context == ContextAttribute && r.AttrName == "href" {
+			foundLegacyAttr = true
 		}
 	}
-	if !found {
+	if !foundScript {
 		t.Fatalf("expected ContextScript for javascript: href, got %v", reflections)
+	}
+	if foundLegacyAttr {
+		t.Fatalf("unexpected ContextAttribute for javascript: href, got %v", reflections)
 	}
 }
 
@@ -163,15 +169,21 @@ func TestDetectReflections_Srcdoc(t *testing.T) {
 	if len(reflections) == 0 {
 		t.Fatal("expected at least one reflection in srcdoc attribute")
 	}
-	found := false
+	foundHTMLText := false
+	foundLegacyAttr := false
 	for _, r := range reflections {
 		if r.Context == ContextHTMLText && r.AttrName == "srcdoc" {
-			found = true
-			break
+			foundHTMLText = true
+		}
+		if r.Context == ContextAttribute && r.AttrName == "srcdoc" {
+			foundLegacyAttr = true
 		}
 	}
-	if !found {
+	if !foundHTMLText {
 		t.Fatalf("expected ContextHTMLText for srcdoc, got %v", reflections)
+	}
+	if foundLegacyAttr {
+		t.Fatalf("unexpected ContextAttribute for srcdoc, got %v", reflections)
 	}
 }
 
@@ -180,6 +192,14 @@ func TestDetectReflections_NoReflection(t *testing.T) {
 	reflections := DetectReflections(body, testMarker)
 	if len(reflections) != 0 {
 		t.Fatalf("expected no reflections, got %d", len(reflections))
+	}
+}
+
+func TestDetectReflections_NoReflection_EncodedMarker(t *testing.T) {
+	body := `<html><body><p>%6e%75%63%6c%65%69%58%53%53%63%61%6e%61%72%79 &#110;&#117;&#99;&#108;&#101;&#105;&#88;&#83;&#83;&#99;&#97;&#110;&#97;&#114;&#121;</p></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) != 0 {
+		t.Fatalf("expected no reflections for encoded marker, got %d", len(reflections))
 	}
 }
 
