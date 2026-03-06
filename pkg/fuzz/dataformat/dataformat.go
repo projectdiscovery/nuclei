@@ -38,8 +38,14 @@ const (
 	MultiPartFormDataFormat = "multipart/form-data"
 )
 
-// Get returns the dataformat by name
+// Get returns the dataformat by name.
+// For stateful formats like multipart/form-data, returns a fresh instance to avoid
+// concurrent map writes when multiple goroutines process different targets.
 func Get(name string) DataFormat {
+	// MultiPartForm is stateful (boundary + filesMetadata map) — return new instance
+	if name == MultiPartFormDataFormat {
+		return NewMultiPartForm()
+	}
 	return dataformats[name]
 }
 
