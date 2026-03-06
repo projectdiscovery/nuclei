@@ -435,6 +435,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
+		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 0, "threshold of unique template matches before flagging a host as honeypot (0 = disabled)"),
+		flagSet.BoolVarP(&options.HoneypotSuppress, "honeypot-suppress", "hpsu", false, "suppress results from hosts flagged as honeypots"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",

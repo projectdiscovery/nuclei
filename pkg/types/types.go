@@ -436,6 +436,13 @@ type Options struct {
 	ProbeConcurrency int
 	// TemplateLoadingConcurrency is the number of concurrent template loading operations
 	TemplateLoadingConcurrency int
+	// HoneypotThreshold is the number of distinct template matches per host
+	// above which the host is flagged as a potential honeypot. 0 disables detection.
+	HoneypotThreshold int
+	// HoneypotSuppress silently drops results from hosts flagged as honeypots
+	// instead of only printing a warning.
+	HoneypotSuppress bool
+
 	// Dast only runs DAST templates
 	DAST bool
 	// DASTServer is the flag to start nuclei as a DAST server
@@ -670,6 +677,8 @@ func (options *Options) Copy() *Options {
 		SkipFormatValidation:           options.SkipFormatValidation,
 		PayloadConcurrency:             options.PayloadConcurrency,
 		ProbeConcurrency:               options.ProbeConcurrency,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotSuppress:               options.HoneypotSuppress,
 		DAST:                           options.DAST,
 		DASTServer:                     options.DASTServer,
 		DASTServerToken:                options.DASTServerToken,

@@ -52,6 +52,12 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString(w.severityColors(output.Info.SeverityHolder.Severity))
 		builder.WriteString("] ")
 	}
+	if output.HoneypotDetected {
+		builder.WriteString("[")
+		builder.WriteString(w.aurora.Red("HONEYPOT").Bold().String())
+		builder.WriteString("] ")
+	}
+
 	if output.Matched != "" {
 		builder.WriteString(output.Matched)
 	} else {

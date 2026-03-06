@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -81,6 +82,10 @@ type StandardWriter struct {
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
+
+	// HoneypotDetector tracks template match density per host and flags
+	// potential honeypots. Nil when honeypot detection is disabled.
+	HoneypotDetector *honeypot.Detector
 
 	resultCount atomic.Int32
 }
@@ -215,6 +220,10 @@ type ResultEvent struct {
 	FuzzingPosition  string `json:"fuzzing_position,omitempty"`
 	AnalyzerDetails  string `json:"analyzer_details,omitempty"`
 
+	// HoneypotDetected indicates the host was flagged as a potential honeypot
+	// due to an unusually high number of distinct template matches.
+	HoneypotDetected bool `json:"honeypot_detected,omitempty"`
+
 	FileToIndexPosition map[string]int `json:"-"`
 	TemplateVerifier    string         `json:"-"`
 	Error               string         `json:"error,omitempty"`
@@ -286,6 +295,17 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		writer.DisableStdout = true
 	}
 
+	// Initialize honeypot detector if threshold is set
+	if options.HoneypotThreshold > 0 {
+		writer.HoneypotDetector = honeypot.New(honeypot.Options{
+			Threshold: options.HoneypotThreshold,
+			Suppress:  options.HoneypotSuppress,
+		})
+		writer.HoneypotDetector.SetWarnFunc(func(host string, matchCount int) {
+			gologger.Warning().Msgf("[HONEYPOT] %s flagged as potential honeypot (%d template matches exceeded threshold)", host, matchCount)
+		})
+	}
+
 	return writer, nil
 }
 
@@ -297,6 +317,33 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Honeypot detection: track matches and optionally suppress output
+	if w.HoneypotDetector != nil && w.HoneypotDetector.Enabled() {
+		host := event.Host
+		if host == "" {
+			host = event.URL
+		}
+		if host != "" && event.TemplateID != "" {
+			flagged := w.HoneypotDetector.RecordMatch(host, event.TemplateID)
+			if flagged {
+				event.HoneypotDetected = true
+				if w.HoneypotDetector.ShouldSuppress(host) {
+					return nil
+				}
+			}
+		}
+		// Also check response for known honeypot software signatures
+		if event.Response != "" {
+			if found, sig := honeypot.ContainsKnownSignature(event.Response); found {
+				event.HoneypotDetected = true
+				if event.Metadata == nil {
+					event.Metadata = make(map[string]interface{})
+				}
+				event.Metadata["honeypot_signature"] = sig
+			}
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -453,6 +500,15 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
+	// Print honeypot detection summary
+	if w.HoneypotDetector != nil && w.HoneypotDetector.FlaggedCount() > 0 {
+		flagged := w.HoneypotDetector.FlaggedHosts()
+		gologger.Info().Msgf("Honeypot detection summary: %d host(s) flagged", len(flagged))
+		for _, fh := range flagged {
+			gologger.Info().Msgf("  [HONEYPOT] %s (%d unique template matches)", fh.Host, fh.MatchCount)
+		}
+	}
+
 	if w.outputFile != nil {
 		_ = w.outputFile.Close()
 	}
