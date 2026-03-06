@@ -163,7 +163,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 
 			go func(template *workflows.WorkflowTemplate) {
 				// create a new context with the same input but with unset callbacks
-				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
+				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
 				if err := e.runWorkflowStep(template, subCtx, results, swg, w); err != nil {
 					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
