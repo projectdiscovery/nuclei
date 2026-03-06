@@ -24,6 +24,16 @@ import (
 	updateutils "github.com/projectdiscovery/utils/update"
 )
 
+
+// isRateLimitError checks if the error is related to GitHub API rate limiting
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "rate limit") || strings.Contains(errStr, "403")
+}
+
 const (
 	checkSumFilePerm = 0644
 )
@@ -81,6 +91,11 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 	}
 	gologger.Info().Msgf("nuclei-templates are not installed, installing...")
 	if err := t.installTemplatesAt(config.DefaultConfig.TemplatesDirectory); err != nil {
+		if isRateLimitError(err) {
+			gologger.Warning().Msgf("GitHub API rate limit hit while installing templates: %v", err)
+			gologger.Warning().Msgf("Run again later or set GITHUB_TOKEN env variable for higher rate limits")
+			return nil
+		}
 		return errkit.Wrapf(err, "failed to install templates at %s", config.DefaultConfig.TemplatesDirectory)
 	}
 	if t.CustomTemplates != nil {
@@ -103,7 +118,9 @@ func (t *TemplateManager) UpdateIfOutdated() error {
 	// version, so we MUST verify against GitHub directly.
 	if !needsUpdate && config.DefaultConfig.LatestNucleiTemplatesVersion == "" && config.DefaultConfig.TemplateVersion != "" {
 		ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
-		if err == nil {
+		if isRateLimitError(err) {
+			gologger.Debug().Msgf("GitHub API rate limit hit during update check, skipping: %v", err)
+		} else if err == nil {
 			latestVersion := ghrd.Latest.GetTagName()
 			if config.IsOutdatedVersion(config.DefaultConfig.TemplateVersion, latestVersion) {
 				needsUpdate = true
