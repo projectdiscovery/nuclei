@@ -213,6 +213,19 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
+	// Check for unresolved template variables BEFORE they get encoded by helper
+	// functions (e.g. base64). Once encoded, ContainsUnresolvedVariables cannot
+	// detect them in the final dumped request. See: github.com/projectdiscovery/nuclei/issues/7032
+	if !r.request.SkipVariablesCheck {
+		for varName, varValue := range variablesMap {
+			varStr := types.ToString(varValue)
+			if varErr := expressions.ContainsUnresolvedVariables(varStr); varErr != nil {
+				gologger.Warning().Msgf("[%s] Template variable \"%s\" has unresolved references: %v (use -var %s=<value>)\n",
+					r.request.options.TemplateID, varName, varErr, varName)
+				return nil, ErrMissingVars
+			}
+		}
+	}
 	// allVars contains all variables from all sources
 	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars, variablesMap, r.options.Constants)
 
