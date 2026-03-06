@@ -71,4 +71,7 @@ Allowd = "Allowd"
 MisMatched = "MisMatched"
 Mis = "Mis"
 # These look like typos but need verification
+
+[type.go.extend-words]
+# Exclude deprecated constant name in parser_stats.go for backward compatibility
 Exluded = "Exluded"
