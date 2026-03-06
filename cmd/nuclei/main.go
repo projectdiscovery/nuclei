@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
@@ -51,6 +52,9 @@ var (
 	templateProfile string
 	memProfile      string // optional profile file path
 	options         = &types.Options{}
+	// cleanupFiles holds temp files created for inline content (e.g. inline target lists)
+	// that should be removed after the scan completes.
+	cleanupFiles []string
 )
 
 func main() {
@@ -167,6 +171,9 @@ func main() {
 		return
 	}
 
+	defer cleanupTempFiles()
+
+
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
 		options.Logger.Fatal().Msgf("Could not create runner: %s\n", err)
@@ -206,6 +213,7 @@ func main() {
 		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
 		if options.DASTServer {
 			nucleiRunner.Close()
+			cleanupTempFiles()
 			os.Exit(1)
 		}
 
@@ -221,6 +229,7 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+		cleanupTempFiles()
 		os.Exit(1)
 	}()
 
@@ -589,6 +598,15 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
 
+		// extract inline secrets from the config file if present
+		if configData, err := os.ReadFile(cfgFile); err == nil {
+			if secretsBytes, err := authx.ExtractSecretsYAMLFromConfig(configData); err != nil {
+				gologger.Warning().Msgf("Could not extract inline secrets from config file: %s", err)
+			} else if len(secretsBytes) > 0 {
+				options.InlineSecretsYAML = append(options.InlineSecretsYAML, secretsBytes)
+			}
+		}
+
 		if !options.Vars.IsEmpty() {
 			// Maybe we should add vars to the config file as well even if they are set via flags?
 			file, err := os.Open(cfgFile)
@@ -658,6 +676,24 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		}
 		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		}
+
+		// extract inline secrets from the template profile if present
+		if profileData, err := os.ReadFile(templateProfile); err == nil {
+			if secretsBytes, err := authx.ExtractSecretsYAMLFromConfig(profileData); err != nil {
+				gologger.Warning().Msgf("Could not extract inline secrets from template profile: %s", err)
+			} else if len(secretsBytes) > 0 {
+				options.InlineSecretsYAML = append(options.InlineSecretsYAML, secretsBytes)
+			}
+		}
+	}
+
+	// If the -list value contains newlines it was set from an inline block scalar
+	// in a config/profile file. Materialise it to a temp file so the rest of
+	// the pipeline can treat it as a normal list file.
+	if strings.Contains(options.TargetsFilePath, "\n") {
+		if err := materializeInlineList(); err != nil {
+			options.Logger.Fatal().Msgf("could not write inline target list: %s", err)
 		}
 	}
 
@@ -805,4 +841,44 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
+}
+
+// cleanupTempFiles removes all temporary files registered in cleanupFiles.
+func cleanupTempFiles() {
+	for _, f := range cleanupFiles {
+		_ = os.Remove(f)
+	}
+}
+
+// materializeInlineList writes options.TargetsFilePath (which contains a
+// newline-separated list of targets embedded in a config/profile YAML) to a
+// temporary file and updates options.TargetsFilePath to that file's path.
+// The temp file is registered in cleanupFiles for removal after the scan.
+func materializeInlineList() error {
+	content := options.TargetsFilePath
+	// Reject unreasonably large inline lists to prevent memory exhaustion.
+	const maxInlineListSize = 10 * 1024 * 1024 // 10 MB
+	if len(content) > maxInlineListSize {
+		return fmt.Errorf("inline target list too large (max 10 MB)")
+	}
+	// Normalise: trim leading/trailing whitespace, ensure trailing newline.
+	content = strings.TrimSpace(content) + "\n"
+
+	f, err := os.CreateTemp("", "nuclei-targets-*.txt")
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteString(content); err != nil {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+		return err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(f.Name())
+		return err
+	}
+
+	cleanupFiles = append(cleanupFiles, f.Name())
+	options.TargetsFilePath = f.Name()
+	return nil
 }

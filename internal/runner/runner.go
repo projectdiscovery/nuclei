@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
@@ -576,7 +577,7 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
+	if (len(r.options.SecretsFile) > 0 || len(r.options.InlineSecretsYAML) > 0) && !r.options.Validate {
 		// Clone options so GetAuthTmplStore can modify them without affecting the original
 		authOptions := r.options.Copy()
 		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
@@ -584,6 +585,14 @@ func (r *Runner) RunEnumeration() error {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
 		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
+		// Parse and attach inline secrets from YAML blobs stored in options
+		for _, secretsYAML := range r.options.InlineSecretsYAML {
+			inlineAuth, err := authx.GetAuthDataFromYAML(secretsYAML)
+			if err != nil {
+				return errors.Wrap(err, "could not parse inline secrets")
+			}
+			authOpts.InlineSecrets = append(authOpts.InlineSecrets, inlineAuth)
+		}
 		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,

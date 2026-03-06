@@ -90,9 +90,8 @@ func (s *Secret) Validate() error {
 	}
 	if len(s.DomainsRegex) > 0 {
 		for _, domain := range s.DomainsRegex {
-			_, err := regexp.Compile(domain)
-			if err != nil {
-				return fmt.Errorf("invalid domain regex: %s", domain)
+			if err := validateDomainRegex(domain); err != nil {
+				return err
 			}
 		}
 	}
@@ -254,4 +253,77 @@ func GetAuthDataFromJSON(data []byte) (*Authx, error) {
 		return nil, errorErr
 	}
 	return &auth, nil
+}
+
+// ExtractAuthDataFromConfig extracts auth data from a YAML config or profile file
+// by reading the top-level "secrets" key. Returns nil, nil if no "secrets" key
+// is present. Extra/unknown fields in the config file are silently ignored.
+func ExtractAuthDataFromConfig(configBytes []byte) (*Authx, error) {
+	secretsBytes, err := ExtractSecretsYAMLFromConfig(configBytes)
+	if err != nil || secretsBytes == nil {
+		return nil, err
+	}
+	return GetAuthDataFromYAML(secretsBytes)
+}
+
+const (
+	// maxDomainRegexLen is the maximum allowed length for a domain regex pattern.
+	maxDomainRegexLen = 200
+	// maxSecretsBlockSize is the maximum allowed size (in bytes) of the secrets block.
+	maxSecretsBlockSize = 1 * 1024 * 1024 // 1 MB
+)
+
+// reNestedQuantifier detects regex patterns with nested quantifiers that can cause ReDoS
+// (e.g., (a+)+, (.*)*, (a+)*).
+var reNestedQuantifier = regexp.MustCompile(`\([^)]*[+*][^)]*\)[+*?{]`)
+
+// validateDomainRegex checks a user-supplied domain regex pattern for safety
+// before compilation: enforces a length cap and rejects nested quantifiers.
+func validateDomainRegex(pattern string) error {
+	if len(pattern) > maxDomainRegexLen {
+		return fmt.Errorf("domain regex pattern too long (max %d chars): %s", maxDomainRegexLen, pattern)
+	}
+	if reNestedQuantifier.MatchString(pattern) {
+		return fmt.Errorf("domain regex pattern contains nested quantifiers which may cause ReDoS: %s", pattern)
+	}
+	if _, err := regexp.Compile(pattern); err != nil {
+		return fmt.Errorf("invalid domain regex: %s", err)
+	}
+	return nil
+}
+
+// ExtractSecretsYAMLFromConfig extracts the raw YAML bytes of the "secrets"
+// top-level key from a config or template profile file.
+// Returns nil, nil if no "secrets" key is present.
+func ExtractSecretsYAMLFromConfig(configBytes []byte) ([]byte, error) {
+	if len(configBytes) > maxSecretsBlockSize {
+		return nil, fmt.Errorf("config file too large (max %d bytes)", maxSecretsBlockSize)
+	}
+	var rawConfig map[string]interface{}
+	if err := yaml.Unmarshal(configBytes, &rawConfig); err != nil {
+		return nil, errkit.Wrap(err, "could not unmarshal config yaml")
+	}
+	secretsRaw, ok := rawConfig["secrets"]
+	if !ok || secretsRaw == nil {
+		return nil, nil
+	}
+	switch v := secretsRaw.(type) {
+	case map[string]interface{}:
+		if len(v) == 0 {
+			return nil, nil
+		}
+	case []interface{}:
+		if len(v) == 0 {
+			return nil, nil
+		}
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil, nil
+		}
+	}
+	secretsBytes, err := yaml.Marshal(secretsRaw)
+	if err != nil {
+		return nil, errkit.Wrap(err, "could not re-marshal secrets block")
+	}
+	return secretsBytes, nil
 }

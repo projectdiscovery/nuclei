@@ -37,6 +37,18 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 		}
 		tmpls = append(tmpls, data...)
 	}
+	// Collect template paths from inline secrets (embedded in config/profile files)
+	for _, secretsYAML := range opts.InlineSecretsYAML {
+		inlineAuth, err := authx.GetAuthDataFromYAML(secretsYAML)
+		if err != nil {
+			return nil, errkit.Wrap(err, "failed to parse inline secrets")
+		}
+		for _, dynamic := range inlineAuth.Dynamic {
+			if dynamic.TemplatePath != "" {
+				tmpls = append(tmpls, dynamic.TemplatePath)
+			}
+		}
+	}
 	opts.Templates = tmpls
 	opts.Workflows = nil
 	opts.RemoteTemplateDomainList = nil

@@ -420,6 +420,11 @@ type Options struct {
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
+	// InlineSecretsYAML holds raw YAML bytes of secrets blocks extracted from
+	// config or template profile files (under the "secrets" top-level key).
+	// These are parsed at runtime by the runner/authprovider rather than read
+	// from separate files on disk.
+	InlineSecretsYAML [][]byte
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
@@ -665,6 +670,7 @@ func (options *Options) Copy() *Options {
 		TeamID:                         options.TeamID,
 		JsConcurrency:                  options.JsConcurrency,
 		SecretsFile:                    options.SecretsFile,
+		InlineSecretsYAML:              options.InlineSecretsYAML,
 		PreFetchSecrets:                options.PreFetchSecrets,
 		FormatUseRequiredOnly:          options.FormatUseRequiredOnly,
 		SkipFormatValidation:           options.SkipFormatValidation,

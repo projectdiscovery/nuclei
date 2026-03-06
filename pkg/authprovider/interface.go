@@ -41,6 +41,9 @@ type AuthProvider interface {
 type AuthProviderOptions struct {
 	// File based auth provider options
 	SecretsFiles []string
+	// InlineSecrets are secrets provided directly as parsed Authx structs
+	// (e.g. embedded in a config or template profile file under the "secrets" key)
+	InlineSecrets []*authx.Authx
 	// LazyFetchSecret is a callback for lazy fetching of dynamic secrets
 	LazyFetchSecret authx.LazyFetchSecret
 }
@@ -50,6 +53,16 @@ func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
 	var providers []AuthProvider
 	for _, file := range options.SecretsFiles {
 		provider, err := NewFileAuthProvider(file, options.LazyFetchSecret)
+		if err != nil {
+			return nil, err
+		}
+		providers = append(providers, provider)
+	}
+	for _, inline := range options.InlineSecrets {
+		if inline == nil {
+			continue
+		}
+		provider, err := NewInlineAuthProvider(inline, options.LazyFetchSecret)
 		if err != nil {
 			return nil, err
 		}

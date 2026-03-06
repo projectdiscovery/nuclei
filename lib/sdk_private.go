@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
@@ -207,16 +208,31 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.opts.ShouldUseHostError() && e.hostErrCache != nil {
 		e.executerOpts.HostErrorsCache = e.hostErrCache
 	}
-	if len(e.opts.SecretsFile) > 0 {
-		authTmplStore, err := runner.GetAuthTmplStore(e.opts, e.catalog, e.executerOpts)
-		if err != nil {
-			return errors.Wrap(err, "failed to load dynamic auth templates")
-		}
+	if len(e.opts.SecretsFile) > 0 || len(e.opts.InlineSecretsYAML) > 0 {
 		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: e.opts.SecretsFile}
-		authOpts.LazyFetchSecret = runner.GetLazyAuthFetchCallback(&runner.AuthLazyFetchOptions{
-			TemplateStore: authTmplStore,
-			ExecOpts:      e.executerOpts,
-		})
+		// Parse inline secrets first so we know whether dynamic (template-based) auth is needed
+		hasDynamic := false
+		for _, secretsYAML := range e.opts.InlineSecretsYAML {
+			inlineAuth, err := authx.GetAuthDataFromYAML(secretsYAML)
+			if err != nil {
+				return errors.Wrap(err, "could not parse inline secrets")
+			}
+			authOpts.InlineSecrets = append(authOpts.InlineSecrets, inlineAuth)
+			if len(inlineAuth.Dynamic) > 0 {
+				hasDynamic = true
+			}
+		}
+		// Only load the auth-template store when secrets files or dynamic inline secrets are present
+		if len(e.opts.SecretsFile) > 0 || hasDynamic {
+			authTmplStore, err := runner.GetAuthTmplStore(e.opts, e.catalog, e.executerOpts)
+			if err != nil {
+				return errors.Wrap(err, "failed to load dynamic auth templates")
+			}
+			authOpts.LazyFetchSecret = runner.GetLazyAuthFetchCallback(&runner.AuthLazyFetchOptions{
+				TemplateStore: authTmplStore,
+				ExecOpts:      e.executerOpts,
+			})
+		}
 		// initialize auth provider
 		provider, err := authprovider.NewAuthProvider(authOpts)
 		if err != nil {
