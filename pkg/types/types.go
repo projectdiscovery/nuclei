@@ -260,6 +260,10 @@ type Options struct {
 	Stream bool
 	// NoMeta disables display of metadata for the matches
 	NoMeta bool
+	// DetectHoneypot enables honeypot detection
+	DetectHoneypot bool
+	// HoneypotThreshold is the threshold for honeypot detection
+	HoneypotThreshold int
 	// Timestamp enables display of timestamp for the matcher
 	Timestamp bool
 	// Project is used to avoid sending same HTTP request multiple times
@@ -585,6 +589,8 @@ func (options *Options) Copy() *Options {
 		StopAtFirstMatch:               options.StopAtFirstMatch,
 		Stream:                         options.Stream,
 		NoMeta:                         options.NoMeta,
+		DetectHoneypot:                 options.DetectHoneypot,
+		HoneypotThreshold:              options.HoneypotThreshold,
 		Timestamp:                      options.Timestamp,
 		Project:                        options.Project,
 		NewTemplates:                   options.NewTemplates,
@@ -794,6 +800,7 @@ func DefaultOptions() *Options {
 		Timeout:                    5,
 		Retries:                    1,
 		MaxHostError:               30,
+		HoneypotThreshold:          20,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
 		ExecutionId:                xid.New().String(),
