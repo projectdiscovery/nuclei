@@ -341,3 +341,4 @@ func handleInlineSecrets(rawConfig map[string]interface{}, result *ProfilePrepro
 
 	return nil
 }
+ 
