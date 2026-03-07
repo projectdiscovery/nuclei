@@ -51,10 +51,24 @@ var (
 	templateProfile string
 	memProfile      string // optional profile file path
 	options         = &types.Options{}
+
+	// profilePreprocessResults tracks preprocessing results from config/profile
+	// files so that temporary files (inline targets, inline secrets) can be
+	// cleaned up at program exit.
+	profilePreprocessResults []*types.ProfilePreprocessResult
 )
 
 func main() {
 	options.Logger = gologger.DefaultLogger
+
+	// Cleanup temporary files created by profile preprocessing (inline targets/secrets)
+	defer func() {
+		for _, r := range profilePreprocessResults {
+			if r != nil {
+				r.Cleanup()
+			}
+		}
+	}()
 
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
@@ -584,8 +598,17 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(cfgFile) {
 			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
 		}
-		// merge config file with flags
-		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
+
+		// Preprocess config file to handle extra fields, inline targets, and inline secrets (#5567)
+		ppResult, ppErr := types.PreprocessProfileFile(cfgFile)
+		if ppErr != nil {
+			options.Logger.Fatal().Msgf("Could not preprocess config file: %s\n", ppErr)
+		}
+		profilePreprocessResults = append(profilePreprocessResults, ppResult)
+		mergeConfigPath := ppResult.CleanedConfigPath
+
+		// merge cleaned config file with flags
+		if err := flagSet.MergeConfigFile(mergeConfigPath); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
 
@@ -656,7 +679,15 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
+
+		// Preprocess template profile to handle extra fields, inline targets, and inline secrets (#5567)
+		ppResult, ppErr := types.PreprocessProfileFile(templateProfile)
+		if ppErr != nil {
+			options.Logger.Fatal().Msgf("Could not preprocess template profile: %s\n", ppErr)
+		}
+		profilePreprocessResults = append(profilePreprocessResults, ppResult)
+
+		if err := flagSet.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
 	}
