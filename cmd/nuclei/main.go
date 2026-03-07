@@ -51,24 +51,10 @@ var (
 	templateProfile string
 	memProfile      string // optional profile file path
 	options         = &types.Options{}
-
-	// profilePreprocessResults tracks preprocessing results from config/profile
-	// files so that temporary files (inline targets, inline secrets) can be
-	// cleaned up at program exit.
-	profilePreprocessResults []*types.ProfilePreprocessResult
 )
 
 func main() {
 	options.Logger = gologger.DefaultLogger
-
-	// Cleanup temporary files created by profile preprocessing (inline targets/secrets)
-	defer func() {
-		for _, r := range profilePreprocessResults {
-			if r != nil {
-				r.Cleanup()
-			}
-		}
-	}()
 
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
@@ -76,7 +62,12 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		options.Logger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	_ = readConfig()
+
+	// readConfig returns a cleanup function that removes any temporary files
+	// created during profile preprocessing (inline targets / inline secrets).
+	// The cleanup is deferred here so it runs on every exit path from main().
+	_, profileCleanup := readConfig()
+	defer profileCleanup()
 
 	if options.ListDslSignatures {
 		options.Logger.Info().Msgf("The available custom DSL functions are:")
@@ -252,7 +243,24 @@ func main() {
 	}
 }
 
-func readConfig() *goflags.FlagSet {
+// readConfig parses all CLI flags and merges config/profile files.
+// It returns the parsed FlagSet and a cleanup function. The cleanup function
+// removes any temporary files that were created during profile preprocessing
+// (e.g. materialized inline targets or inline secrets). The caller MUST defer
+// the cleanup function.
+func readConfig() (*goflags.FlagSet, func()) {
+
+	// preprocessResults is local to this function. We capture it in the
+	// returned cleanup closure — no global state required.
+	var preprocessResults []*types.ProfilePreprocessResult
+
+	cleanupFn := func() {
+		for _, r := range preprocessResults {
+			if r != nil {
+				r.Cleanup()
+			}
+		}
+	}
 
 	// when true updates nuclei binary to latest version
 	var updateNucleiBinary bool
@@ -599,16 +607,16 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
 		}
 
-		// Preprocess config file to handle extra fields, inline targets, and inline secrets (#5567)
+		// Preprocess config file: strip extra metadata fields, materialize
+		// inline targets and inline secrets to temp files. (#5567)
 		ppResult, ppErr := types.PreprocessProfileFile(cfgFile)
 		if ppErr != nil {
 			options.Logger.Fatal().Msgf("Could not preprocess config file: %s\n", ppErr)
 		}
-		profilePreprocessResults = append(profilePreprocessResults, ppResult)
-		mergeConfigPath := ppResult.CleanedConfigPath
+		preprocessResults = append(preprocessResults, ppResult)
 
-		// merge cleaned config file with flags
-		if err := flagSet.MergeConfigFile(mergeConfigPath); err != nil {
+		// merge the cleaned config with flags
+		if err := flagSet.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
 
@@ -680,12 +688,13 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
 
-		// Preprocess template profile to handle extra fields, inline targets, and inline secrets (#5567)
+		// Preprocess template profile: strip extra metadata fields, materialize
+		// inline targets and inline secrets to temp files. (#5567)
 		ppResult, ppErr := types.PreprocessProfileFile(templateProfile)
 		if ppErr != nil {
 			options.Logger.Fatal().Msgf("Could not preprocess template profile: %s\n", ppErr)
 		}
-		profilePreprocessResults = append(profilePreprocessResults, ppResult)
+		preprocessResults = append(preprocessResults, ppResult)
 
 		if err := flagSet.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
@@ -701,7 +710,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	}
 
 	cleanupOldResumeFiles()
-	return flagSet
+	return flagSet, cleanupFn
 }
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.
