@@ -2,7 +2,6 @@ package xss
 
 import (
 	"bytes"
-	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -46,24 +45,23 @@ func (ca *ContextAnalyzer) Analyze() (Context, string) {
 }
 
 func (ca *ContextAnalyzer) analyzeDocument() {
-	ca.doc.Find("*")
-		.EachWithBreak(func(i int, s *goquery.Selection) bool {
-			if ca.context != ContextUnknown {
-				return false
-			}
+	ca.doc.Find("*").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		if ca.context != ContextUnknown {
+			return false
+		}
 
-			// Check text nodes
-			if ca.checkTextNodes(s) {
-				return false
-			}
+		// Check text nodes
+		if ca.checkTextNodes(s) {
+			return false
+		}
 
-			// Check attributes
-			if ca.checkAttributes(s) {
-				return false
-			}
+		// Check attributes
+		if ca.checkAttributes(s) {
+			return false
+		}
 
-			return true
-		})
+		return true
+	})
 }
 
 func (ca *ContextAnalyzer) checkTextNodes(s *goquery.Selection) bool {
@@ -102,9 +100,14 @@ func (ca *ContextAnalyzer) isNonExecutableScript(s *goquery.Selection) bool {
 	}
 	// Check for non-executable script types (case-insensitive)
 	typeAttr = strings.ToLower(typeAttr)
+	// Executable types to exclude
+	if strings.Contains(typeAttr, "javascript") || strings.Contains(typeAttr, "ecmascript") {
+		return false
+	}
+	// Non-executable data types
 	return typeAttr == "application/json" || typeAttr == "text/json" ||
-		typeAttr == "application/ld+json" || strings.HasPrefix(typeAttr, "application/") ||
-		strings.HasPrefix(typeAttr, "text/") && !strings.Contains(typeAttr, "javascript")
+		typeAttr == "application/ld+json" || typeAttr == "text/plain" ||
+		typeAttr == "text/html" || typeAttr == "text/xml"
 }
 
 func (ca *ContextAnalyzer) checkAttributes(s *goquery.Selection) bool {
