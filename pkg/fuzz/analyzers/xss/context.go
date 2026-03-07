@@ -72,10 +72,14 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					if strings.Contains(strings.ToLower(attrVal), markerLower) {
 						ctx := ContextAttribute
 
-						// Detect quoting style by looking at raw token text
+						// Detect quoting style by looking at raw token text.
+						// If we can't resolve it precisely, keep analyzer behavior conservative
+						// by defaulting to double-quoted attribute handling at the call site.
 						quote, unquoted := detectAttrQuoting(rawToken, attrName)
 						if unquoted {
 							ctx = ContextAttributeUnquoted
+						} else if quote == 0 {
+							quote = '"'
 						}
 
 						// Check for javascript: URI in URL-context attributes - treat as script context
@@ -301,6 +305,7 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 
 // detectAttrQuoting detects the quoting style of an attribute from raw HTML.
 // Returns the quote character and whether the attribute is unquoted.
+// If the exact attribute assignment cannot be resolved, it returns (0, false).
 func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	rawLower := strings.ToLower(rawToken)
 	attrLower := strings.ToLower(attrName)
@@ -309,7 +314,7 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	for {
 		rel := strings.Index(rawLower[searchFrom:], attrLower)
 		if rel < 0 {
-			return '"', false // default to double-quoted
+			return 0, false
 		}
 		idx := searchFrom + rel
 
@@ -343,7 +348,7 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 			pos++
 		}
 		if pos >= len(rawToken) {
-			return '"', false
+			return 0, false
 		}
 
 		switch rawToken[pos] {

@@ -248,11 +248,11 @@ func TestDetectReflections_Title(t *testing.T) {
 	}
 }
 
-func TestDetectReflections_CaseInsensitive(t *testing.T) {
+func TestDetectReflections_Helper_CaseInsensitive(t *testing.T) {
 	body := `<html><body><p>NUCLEIxssCANARY</p></body></html>`
 	reflections := DetectReflections(body, "nucleixsscanary")
 	if len(reflections) == 0 {
-		t.Fatal("expected case-insensitive reflection detection")
+		t.Fatal("expected helper-level case-insensitive reflection detection")
 	}
 }
 
@@ -359,6 +359,20 @@ func TestDetectAttrQuoting_UnquotedWithWhitespace(t *testing.T) {
 	quote, unquoted := detectAttrQuoting(`<input class = nucleiXSScanary>`, "class")
 	if !unquoted || quote != 0 {
 		t.Fatalf("expected unquoted attr with whitespace, got quote=%q unquoted=%v", quote, unquoted)
+	}
+}
+
+func TestDetectAttrQuoting_PartialMatch_DataClass(t *testing.T) {
+	quote, unquoted := detectAttrQuoting(`<input data-class="nucleiXSScanary">`, "class")
+	if quote == '"' || unquoted {
+		t.Fatalf("expected no match for data-class partial name, got quote=%q unquoted=%v", quote, unquoted)
+	}
+}
+
+func TestDetectAttrQuoting_PartialMatch_Classname(t *testing.T) {
+	quote, unquoted := detectAttrQuoting(`<input classname="nucleiXSScanary">`, "class")
+	if quote == '"' || unquoted {
+		t.Fatalf("expected no match for classname partial name, got quote=%q unquoted=%v", quote, unquoted)
 	}
 }
 
