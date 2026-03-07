@@ -528,6 +528,7 @@ func (options *Options) Copy() *Options {
 		MaxHostError:                   options.MaxHostError,
 		TrackError:                     options.TrackError,
 		NoHostErrors:                   options.NoHostErrors,
+		HoneypotThreshold:              options.HoneypotThreshold, // FIX: Preserve HoneypotThreshold in Copy()
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
 		HeadlessBulkSize:               options.HeadlessBulkSize,

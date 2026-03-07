@@ -12,10 +12,15 @@ type Integration struct {
 }
 
 // NewIntegration creates a new honeypot integration
+// FIX: Add nil check for options and options.Options to prevent panic
 func NewIntegration(options *protocols.ExecutorOptions) *Integration {
 	threshold := 10 // Default threshold
-	if options.Options.HoneypotThreshold > 0 {
-		threshold = options.Options.HoneypotThreshold
+
+	// FIX: Guard against nil options to prevent panic
+	if options != nil && options.Options != nil {
+		if options.Options.HoneypotThreshold > 0 {
+			threshold = options.Options.HoneypotThreshold
+		}
 	}
 
 	return &Integration{
@@ -37,14 +42,15 @@ func (i *Integration) OnEvent(event *output.ResultEvent) {
 	if i.detector.IsHoneypot(event.Host) {
 		event.Honeypot = true
 		event.HoneypotScore = i.detector.GetHoneypotScore(event.Host)
-		
+		event.HoneypotVulnCount = i.detector.GetVulnerabilityCount(event.Host) // FIX: Set the field for JSON output
+
 		// Add warning to event
 		if event.Metadata == nil {
 			event.Metadata = make(map[string]interface{})
 		}
 		event.Metadata["honeypot_detected"] = true
 		event.Metadata["honeypot_score"] = event.HoneypotScore
-		event.Metadata["honeypot_vuln_count"] = i.detector.GetVulnerabilityCount(event.Host)
+		event.Metadata["honeypot_vuln_count"] = event.HoneypotVulnCount
 	}
 }
 

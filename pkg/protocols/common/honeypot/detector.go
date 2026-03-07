@@ -7,7 +7,7 @@ import (
 // HoneypotDetector tracks potential honeypot indicators
 type HoneypotDetector struct {
 	hostVulnCount map[string]int
-	hostPatterns  map[string][]string
+	hostPatterns  map[string]map[string]struct{} // FIX: Use map instead of slice to prevent duplicates
 	mu            sync.RWMutex
 	threshold     int // Default: 10 vulnerabilities per host
 }
@@ -19,18 +19,27 @@ func NewHoneypotDetector(threshold int) *HoneypotDetector {
 	}
 	return &HoneypotDetector{
 		hostVulnCount: make(map[string]int),
-		hostPatterns:  make(map[string][]string),
+		hostPatterns:  make(map[string]map[string]struct{}), // FIX: Initialize as map of maps
 		threshold:     threshold,
 	}
 }
 
 // AddVulnerability records a vulnerability match for a host
+// FIX: Only increment count if template ID is new for this host
 func (h *HoneypotDetector) AddVulnerability(host string, templateID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	h.hostVulnCount[host]++
-	h.hostPatterns[host] = append(h.hostPatterns[host], templateID)
+	// Initialize pattern set for host if needed
+	if h.hostPatterns[host] == nil {
+		h.hostPatterns[host] = make(map[string]struct{})
+	}
+
+	// Only increment count if this is a new template ID (prevent duplicates)
+	if _, exists := h.hostPatterns[host][templateID]; !exists {
+		h.hostPatterns[host][templateID] = struct{}{}
+		h.hostVulnCount[host]++
+	}
 }
 
 // IsHoneypot checks if a host exhibits honeypot characteristics
@@ -86,9 +95,11 @@ func (h *HoneypotDetector) GetPatterns(host string) []string {
 		return []string{}
 	}
 
-	// Return a copy to prevent external modification
-	result := make([]string, len(patterns))
-	copy(result, patterns)
+	// Convert map keys to slice
+	result := make([]string, 0, len(patterns))
+	for pattern := range patterns {
+		result = append(result, pattern)
+	}
 	return result
 }
 
@@ -107,7 +118,7 @@ func (h *HoneypotDetector) ResetAll() {
 	defer h.mu.Unlock()
 
 	h.hostVulnCount = make(map[string]int)
-	h.hostPatterns = make(map[string][]string)
+	h.hostPatterns = make(map[string]map[string]struct{}) // FIX: Initialize as map of maps
 }
 
 // GetStats returns detector statistics

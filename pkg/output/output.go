@@ -220,8 +220,9 @@ type ResultEvent struct {
 	Error               string         `json:"error,omitempty"`
 
 	// Honeypot detection fields
-	Honeypot      bool `json:"honeypot,omitempty"`
-	HoneypotScore int  `json:"honeypot_score,omitempty"`
+	Honeypot           bool `json:"honeypot,omitempty"`
+	HoneypotScore      int  `json:"honeypot_score,omitempty"`
+	HoneypotVulnCount  int  `json:"honeypot_vuln_count,omitempty"` // FIX: Add missing field for JSON output
 }
 
 type IssueTrackerMetadata struct {
