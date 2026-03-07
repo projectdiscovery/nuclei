@@ -56,7 +56,7 @@ func TestAnalyzeContext(t *testing.T) {
 		},
 		{
 			name:      "case-insensitive reflection detection",
-			html:      `<div>NUCLEXSSCANARY</div>`,
+			html:      `<div>NUCLEIXSSCANARY</div>`,
 			reflection: "nucleiXSScanary",
 			expected:  ContextText,
 			expectedAttr: "",
@@ -109,7 +109,7 @@ func TestIsReflected(t *testing.T) {
 	}{
 		{
 			name:       "case-insensitive reflection",
-			body:       []byte(`<div>NUCLEXSSCANARY</div>`),
+			body:       []byte(`<div>NUCLEIXSSCANARY</div>`),
 			reflection: "nucleiXSScanary",
 			expected:   true,
 		},
