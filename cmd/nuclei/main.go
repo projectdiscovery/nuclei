@@ -611,7 +611,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		h := &pdcp.PDCPCredHandler{}
 		_, err := h.GetCreds()
 		if err != nil {
-			options.Logger.Fatal().Msg("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
+			fatalWithCleanup("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
 		}
 	}
 
