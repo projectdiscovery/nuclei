@@ -33,12 +33,6 @@ type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalo
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
-	// Template Profile Metadata (Issue #5567)
-	ProfileID          string `yaml:"id,omitempty" json:"id,omitempty" description:"ID of the template profile"`
-	ProfileName        string `yaml:"name,omitempty" json:"name,omitempty" description:"Name of the template profile"`
-	ProfilePurpose     string `yaml:"purpose,omitempty" json:"purpose,omitempty" description:"Purpose of the template profile"`
-	ProfileDescription string `yaml:"description,omitempty" json:"description,omitempty" description:"Description of the template profile"`
-
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
@@ -344,7 +338,7 @@ type Options struct {
 	IPVersion goflags.StringSlice
 	// PublicTemplateDisableDownload disables downloading templates from the nuclei-templates public repository
 	PublicTemplateDisableDownload bool
-	// GitHubToken used to clone/pull from private repos for custom templates
+	// GitHub token used to clone/pull from private repos for custom templates
 	GitHubToken string
 	// GitHubTemplateRepo is the list of custom public/private templates GitHub repos
 	GitHubTemplateRepo []string
@@ -409,81 +403,79 @@ type Options struct {
 	// EnableSelfContainedTemplates enables processing of self-contained templates
 	EnableSelfContainedTemplates bool
 	// EnableGlobalMatchersTemplates enables processing of global-matchers templates
-	EnableFileTemplates           bool
+	EnableGlobalMatchersTemplates bool
+	// EnableFileTemplates enables file templates
+	EnableFileTemplates bool
 	// Disables cloud upload
-	EnableCloudUpload             bool
+	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
-	ScanID                        string
+	ScanID string
 	// ScanName is the name of the scan to be uploaded
-	ScanName                      string
+	ScanName string
 	// ScanUploadFile is the jsonl file to upload scan results to cloud
-	ScanUploadFile                string
+	ScanUploadFile string
 	// TeamID is the team ID to use for cloud upload
-	TeamID                        string
+	TeamID string
 	// JsConcurrency is the number of concurrent js routines to run
-	JsConcurrency                 int
+	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
-	SecretsFile                   goflags.StringSlice
+	SecretsFile goflags.StringSlice
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
-	PreFetchSecrets               bool
+	PreFetchSecrets bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
-	FormatUseRequiredOnly         bool
+	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
-	SkipFormatValidation          bool
+	SkipFormatValidation bool
 	// VarsTextTemplating is used to inject variables into yaml input files
-	VarsTextTemplating            bool
+	VarsTextTemplating bool
 	// VarsFilePaths is  used to inject variables into yaml input files from a file
-	VarsFilePaths                 goflags.StringSlice
+	VarsFilePaths goflags.StringSlice
 	// PayloadConcurrency is the number of concurrent payloads to run per template
-	PayloadConcurrency            int
+	PayloadConcurrency int
 	// ProbeConcurrency is the number of concurrent http probes to run with httpx
-	ProbeConcurrency              int
+	ProbeConcurrency int
 	// TemplateLoadingConcurrency is the number of concurrent template loading operations
-	TemplateLoadingConcurrency    int
+	TemplateLoadingConcurrency int
 	// Dast only runs DAST templates
-	DAST                          bool
+	DAST bool
 	// DASTServer is the flag to start nuclei as a DAST server
-	DASTServer                    bool
+	DASTServer bool
 	// DASTServerToken is the token optional for the dast server
-	DASTServerToken               string
+	DASTServerToken string
 	// DASTServerAddress is the address for the dast server
-	DASTServerAddress             string
+	DASTServerAddress string
 	// DASTReport enables dast report server & final report generation
-	DASTReport                    bool
+	DASTReport bool
 	// Scope contains a list of regexes for in-scope URLS
-	Scope                         goflags.StringSlice
+	Scope goflags.StringSlice
 	// OutOfScope contains a list of regexes for out-scope URLS
-	OutOfScope                    goflags.StringSlice
+	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
-	HttpApiEndpoint               string
+	HttpApiEndpoint string
 	// ListTemplateProfiles lists all available template profiles
-	ListTemplateProfiles          bool
+	ListTemplateProfiles bool
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
-	LoadHelperFileFunction        LoadHelperFileFunction
+	LoadHelperFileFunction LoadHelperFileFunction
 	// Logger is the gologger instance for this optionset
-	Logger                        *gologger.Logger
+	Logger *gologger.Logger
 	// NoCacheTemplates disables caching of templates
-	DoNotCacheTemplates           bool
+	DoNotCacheTemplates bool
 	// Unique identifier of the execution session
-	ExecutionId                   string
+	ExecutionId string
 	// Parser is a cached parser for the template store
-	Parser                        any
+	Parser any
 	// timeouts contains various types of timeouts used in nuclei
 	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
 	// This is internally managed and does not need to be set by user by explicitly setting
 	// this overrides the default/derived one
-	timeouts                      *Timeouts
+	timeouts *Timeouts
 	// m is a mutex to protect timeouts from concurrent access
-	m                             sync.Mutex
+	m sync.Mutex
 }
 
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
-		ProfileID:                      options.ProfileID,
-		ProfileName:                    options.ProfileName,
-		ProfilePurpose:                 options.ProfilePurpose,
-		ProfileDescription:             options.ProfileDescription,
 		Tags:                           options.Tags,
 		ExcludeTags:                    options.ExcludeTags,
 		Workflows:                      options.Workflows,
@@ -676,11 +668,8 @@ func (options *Options) Copy() *Options {
 		PreFetchSecrets:                options.PreFetchSecrets,
 		FormatUseRequiredOnly:          options.FormatUseRequiredOnly,
 		SkipFormatValidation:           options.SkipFormatValidation,
-		VarsTextTemplating:             options.VarsTextTemplating,
-		VarsFilePaths:                  options.VarsFilePaths,
 		PayloadConcurrency:             options.PayloadConcurrency,
 		ProbeConcurrency:               options.ProbeConcurrency,
-		TemplateLoadingConcurrency:     options.TemplateLoadingConcurrency,
 		DAST:                           options.DAST,
 		DASTServer:                     options.DASTServer,
 		DASTServerToken:                options.DASTServerToken,
