@@ -129,9 +129,13 @@ func main() {
 		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile))
 
 		createProfileFile := func(ext, profileType string) *os.File {
-			f, err := os.Create(memProfile + ext)
+			// Compute the path before os.Create so we can safely reference it
+			// in the error message. os.Create returns a nil *os.File on failure;
+			// calling f.Name() on nil would panic before fatalWithCleanup runs.
+			filePath := memProfile + ext
+			f, err := os.Create(filePath)
 			if err != nil {
-				fatalWithCleanup("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+				fatalWithCleanup("profile: could not create %s profile %q file: %v", profileType, filePath, err)
 			}
 			return f
 		}
