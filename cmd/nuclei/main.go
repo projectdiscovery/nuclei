@@ -69,6 +69,17 @@ func main() {
 	_, profileCleanup := readConfig()
 	defer profileCleanup()
 
+	// fatalWithCleanup invokes profileCleanup() before terminating the process.
+	// All calls to options.Logger.Fatal() after this point must go through this
+	// helper, because Fatal() calls os.Exit internally which skips every deferred
+	// function — including the defer profileCleanup() above. Without this, any
+	// temp files materialized for inline secrets/targets would be left on disk.
+	fatalWithCleanup := func(format string, args ...interface{}) {
+		profileCleanup()
+		options.Logger.Error().Msgf(format, args...)
+		os.Exit(1)
+	}
+
 	if options.ListDslSignatures {
 		options.Logger.Info().Msgf("The available custom DSL functions are:")
 		fmt.Println(dsl.GetPrintableDslFunctionSignatures(options.NoColor))
@@ -81,7 +92,7 @@ func main() {
 		templates.UseOptionsForSigner(options)
 		tsigner, err := signer.NewTemplateSigner(nil, nil) // will read from env , config or generate new keys
 		if err != nil {
-			options.Logger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
+			fatalWithCleanup("couldn't initialize signer crypto engine: %s\n", err)
 		}
 
 		successCounter := 0
@@ -120,7 +131,7 @@ func main() {
 		createProfileFile := func(ext, profileType string) *os.File {
 			f, err := os.Create(memProfile + ext)
 			if err != nil {
-				options.Logger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+				fatalWithCleanup("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
 			}
 			return f
 		}
@@ -134,18 +145,18 @@ func main() {
 
 		// Start tracing
 		if err := trace.Start(traceFile); err != nil {
-			options.Logger.Fatal().Msgf("profile: could not start trace: %v", err)
+			fatalWithCleanup("profile: could not start trace: %v", err)
 		}
 
 		// Start CPU profiling
 		if err := pprof.StartCPUProfile(cpuProfileFile); err != nil {
-			options.Logger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+			fatalWithCleanup("profile: could not start CPU profile: %v", err)
 		}
 
 		defer func() {
 			// Start heap memory snapshot
 			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
-				options.Logger.Fatal().Msgf("profile: could not write memory profile: %v", err)
+				fatalWithCleanup("profile: could not write memory profile: %v", err)
 			}
 
 			pprof.StopCPUProfile()
@@ -167,14 +178,14 @@ func main() {
 
 	if options.ScanUploadFile != "" {
 		if err := runner.UploadResultsToCloud(options); err != nil {
-			options.Logger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
+			fatalWithCleanup("could not upload scan results to cloud dashboard: %s\n", err)
 		}
 		return
 	}
 
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
-		options.Logger.Fatal().Msgf("Could not create runner: %s\n", err)
+		fatalWithCleanup("Could not create runner: %s\n", err)
 	}
 	if nucleiRunner == nil {
 		return
@@ -241,9 +252,9 @@ func main() {
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
 		if options.Validate {
-			options.Logger.Fatal().Msgf("Could not validate templates: %s\n", err)
+			fatalWithCleanup("Could not validate templates: %s\n", err)
 		} else {
-			options.Logger.Fatal().Msgf("Could not run nuclei: %s\n", err)
+			fatalWithCleanup("Could not run nuclei: %s\n", err)
 		}
 	}
 	nucleiRunner.Close()
@@ -270,6 +281,17 @@ func readConfig() (*goflags.FlagSet, func()) {
 				r.Cleanup()
 			}
 		}
+	}
+
+	// fatalWithCleanup calls cleanupFn to remove any materialized temp files
+	// (inline secrets, inline targets) and then terminates the process.
+	// Use this instead of options.Logger.Fatal() for every fatal exit inside
+	// readConfig that is reachable after the first preprocessResults append,
+	// because Fatal() calls os.Exit which bypasses all deferred functions and
+	// the returned cleanupFn would never be invoked by the caller.
+	fatalWithCleanup := func(format string, args ...interface{}) {
+		cleanupFn()
+		options.Logger.Fatal().Msgf(format, args...)
 	}
 
 	// when true updates nuclei binary to latest version
@@ -619,21 +641,20 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 	if cfgFile != "" {
 		if !fileutil.FileExists(cfgFile) {
-			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
+			fatalWithCleanup("given config file '%s' does not exist", cfgFile)
 		}
 
 		// Preprocess config file: strip extra metadata fields, materialize
 		// inline targets and inline secrets to temp files. (#5567)
 		ppResult, ppErr := types.PreprocessProfileFile(cfgFile)
 		if ppErr != nil {
-			options.Logger.Fatal().Msgf("Could not preprocess config file: %s\n", ppErr)
+			fatalWithCleanup("Could not preprocess config file: %s\n", ppErr)
 		}
 		preprocessResults = append(preprocessResults, ppResult)
 
 		// merge the cleaned config with flags
 		if err := flagSet.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
-			cleanupFn() // remove any temp files already accumulated before fatal exit
-			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
+			fatalWithCleanup("Could not read config: %s\n", err)
 		}
 
 		if !options.Vars.IsEmpty() {
@@ -642,7 +663,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			// yaml.Decoder does not encounter unknown keys like id/name/purpose.
 			file, err := os.Open(ppResult.CleanedConfigPath)
 			if err != nil {
-				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
+				fatalWithCleanup("Could not open config file: %s\n", err)
 			}
 			defer func() {
 				_ = file.Close()
@@ -650,7 +671,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			data := make(map[string]interface{})
 			err = yaml.NewDecoder(file).Decode(&data)
 			if err != nil {
-				gologger.Fatal().Msgf("Could not decode config file: %s\n", err)
+				fatalWithCleanup("Could not decode config file: %s\n", err)
 			}
 
 			variables := data["var"]
@@ -688,7 +709,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			if tp := findProfilePathById(templateProfile, defaultProfilesPath); tp != "" {
 				templateProfile = tp
 			} else {
-				options.Logger.Fatal().Msgf("'%s' is not a profile-id or profile path", templateProfile)
+				fatalWithCleanup("'%s' is not a profile-id or profile path", templateProfile)
 			}
 		}
 		if !filepath.IsAbs(templateProfile) {
@@ -703,27 +724,26 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			}
 		}
 		if !fileutil.FileExists(templateProfile) {
-			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
+			fatalWithCleanup("given template profile file '%s' does not exist", templateProfile)
 		}
 
 		// Preprocess template profile: strip extra metadata fields, materialize
 		// inline targets and inline secrets to temp files. (#5567)
 		ppResult, ppErr := types.PreprocessProfileFile(templateProfile)
 		if ppErr != nil {
-			options.Logger.Fatal().Msgf("Could not preprocess template profile: %s\n", ppErr)
+			fatalWithCleanup("Could not preprocess template profile: %s\n", ppErr)
 		}
 		preprocessResults = append(preprocessResults, ppResult)
 
 		if err := flagSet.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
-			cleanupFn() // remove any temp files already accumulated before fatal exit
-			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+			fatalWithCleanup("Could not read template profile: %s\n", err)
 		}
 	}
 
 	if len(options.SecretsFile) > 0 {
 		for _, secretFile := range options.SecretsFile {
 			if !fileutil.FileExists(secretFile) {
-				options.Logger.Fatal().Msgf("given secrets file '%s' does not exist", secretFile)
+				fatalWithCleanup("given secrets file '%s' does not exist", secretFile)
 			}
 		}
 	}
