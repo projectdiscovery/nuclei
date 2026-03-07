@@ -770,6 +770,13 @@ func (options *Options) ShouldSaveResume() bool {
 }
 
 // ShouldFollowHTTPRedirects determines if http redirects should be followed
+
+// ShouldPrefetchSecrets returns true when secrets should be prefetched before execution.
+// This is enabled explicitly with -prefetch-secrets, and also by default whenever
+// a secret-file is provided for authenticated scans.
+func (options *Options) ShouldPrefetchSecrets() bool {
+	return options.PreFetchSecrets || len(options.SecretsFile) > 0
+}
 func (options *Options) ShouldFollowHTTPRedirects() bool {
 	return options.FollowRedirects || options.FollowHostRedirects
 }
@@ -907,3 +914,5 @@ func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
 	return strings.HasPrefix(path, homeDir)
 }
+
+
