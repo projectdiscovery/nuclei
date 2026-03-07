@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -43,14 +44,23 @@ type ProfilePreprocessResult struct {
 	// generated from inline target list data, or empty if no inline
 	// targets were present.
 	InlineTargetsFile string
+
+	// cleanupOnce ensures Cleanup() is idempotent and safe to call
+	// concurrently — e.g. from a signal handler goroutine and a deferred
+	// call in main() at the same time.
+	cleanupOnce sync.Once
 }
 
 // Cleanup removes all temporary files created during preprocessing.
-// It is safe to call multiple times; errors from os.Remove are ignored.
+// It is idempotent and safe to call concurrently from multiple goroutines;
+// the actual removal is performed at most once regardless of how many
+// times Cleanup is invoked.
 func (p *ProfilePreprocessResult) Cleanup() {
-	for _, f := range p.TempFiles {
-		_ = os.Remove(f)
-	}
+	p.cleanupOnce.Do(func() {
+		for _, f := range p.TempFiles {
+			_ = os.Remove(f)
+		}
+	})
 }
 
 // PreprocessProfileFile reads a template profile or config YAML file and
@@ -341,4 +351,3 @@ func handleInlineSecrets(rawConfig map[string]interface{}, result *ProfilePrepro
 
 	return nil
 }
- 
