@@ -78,18 +78,13 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	}
 }
 
-func (r *Runner) listAvailableStoreTags(store *loader.Store) {
+func (r *Runner) listAvailableTags(tagsMap map[string]int) {
 	r.Logger.Print().Msgf(
 		"\nListing available %v nuclei tags for %v",
 		config.DefaultConfig.TemplateVersion,
 		config.DefaultConfig.TemplatesDirectory,
 	)
-	tagsMap := make(map[string]int)
-	for _, tpl := range store.Templates() {
-		for _, tag := range tpl.Info.Tags.ToSlice() {
-			tagsMap[tag]++
-		}
-	}
+
 	type kv struct {
 		Key   string `json:"tag"`
 		Value int    `json:"count"`
