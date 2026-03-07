@@ -211,6 +211,11 @@ func main() {
 		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
 		if options.DASTServer {
 			nucleiRunner.Close()
+			// profileCleanup must be called explicitly here because os.Exit
+			// bypasses all deferred functions registered in main(). Without this
+			// call, any temporary files created during profile preprocessing
+			// (inline targets, inline secrets) would be left on disk after Ctrl+C.
+			profileCleanup()
 			os.Exit(1)
 		}
 
@@ -226,6 +231,11 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+		// profileCleanup must be called explicitly here because os.Exit
+		// bypasses all deferred functions registered in main(). Without this
+		// call, any temporary files created during profile preprocessing
+		// (inline targets, inline secrets) would be left on disk after Ctrl+C.
+		profileCleanup()
 		os.Exit(1)
 	}()
 
@@ -622,7 +632,9 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 		if !options.Vars.IsEmpty() {
 			// Maybe we should add vars to the config file as well even if they are set via flags?
-			file, err := os.Open(cfgFile)
+			// Open the cleaned config path (extra fields already stripped) so
+			// yaml.Decoder does not encounter unknown keys like id/name/purpose.
+			file, err := os.Open(ppResult.CleanedConfigPath)
 			if err != nil {
 				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
 			}
@@ -746,8 +758,16 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 		}
 		return
 	}
-	// if config file exists, merge it with the default config
-	if err = flagset.MergeConfigFile(cfgFile); err != nil {
+	// if config file exists, merge it with the default config.
+	// Preprocess first to strip extra metadata fields and materialize
+	// any inline targets/secrets to temp files. (#5567)
+	ppResult, ppErr := types.PreprocessProfileFile(cfgFile)
+	if ppErr != nil {
+		options.Logger.Warning().Msgf("Could not preprocess flags config file: %s\n", ppErr)
+		return
+	}
+	defer ppResult.Cleanup()
+	if err = flagset.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
 		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
 	}
 }
