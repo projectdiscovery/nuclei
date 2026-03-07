@@ -327,26 +327,41 @@ func handleInlineSecrets(rawConfig map[string]interface{}, result *ProfilePrepro
 	}
 	_ = tmpFile.Close()
 
-	// Add the temp secrets file to the "secret-file" list in the config.
-	// We always write a YAML sequence ([]interface{}) so that goflags'
-	// CommaSeparatedStringSliceOptions can parse it reliably, regardless of
-	// spacing or quoting that might exist in an existing "secret-file" value.
+	// Add the temp secrets file to the "secret-file" entry in the config.
+	// We store the value as a plain string (or comma-separated string when
+	// appending to an existing value) so that goflags' CommaSeparatedStringSliceOptions
+	// can parse it reliably after a YAML round-trip. Using a []interface{} list would
+	// survive yaml.Marshal but fail string type-assertions when the cleaned config is
+	// read back as a map[string]interface{}.
 	secretFilePath := filepath.ToSlash(tmpFile.Name())
 	if existing, ok := rawConfig["secret-file"]; ok {
 		switch v := existing.(type) {
 		case string:
 			if v != "" {
-				rawConfig["secret-file"] = []interface{}{v, secretFilePath}
+				rawConfig["secret-file"] = v + "," + secretFilePath
 			} else {
-				rawConfig["secret-file"] = []interface{}{secretFilePath}
+				rawConfig["secret-file"] = secretFilePath
 			}
 		case []interface{}:
-			rawConfig["secret-file"] = append(v, secretFilePath)
+			// Convert existing YAML list to a comma-separated string and append
+			// the new inline secrets path. goflags parses comma-separated values
+			// for FileCommaSeparatedStringSliceOptions, so a flat string is the
+			// safest representation after a YAML round-trip (a []interface{} would
+			// survive marshal but type-assert to string would fail in tests and in
+			// any code that reads the cleaned config as a plain map).
+			parts := make([]string, 0, len(v)+1)
+			for _, item := range v {
+				if s, ok := item.(string); ok && s != "" {
+					parts = append(parts, s)
+				}
+			}
+			parts = append(parts, secretFilePath)
+			rawConfig["secret-file"] = strings.Join(parts, ",")
 		default:
-			rawConfig["secret-file"] = []interface{}{secretFilePath}
+			rawConfig["secret-file"] = secretFilePath
 		}
 	} else {
-		rawConfig["secret-file"] = []interface{}{secretFilePath}
+		rawConfig["secret-file"] = secretFilePath
 	}
 
 	return nil
