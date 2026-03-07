@@ -1,0 +1,81 @@
+# Typos configuration for Nuclei
+# Reference: https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = [
+    "go.sum",
+    "go.mod", 
+    "*.lock",
+    "vendor/",
+    "node_modules/",
+    "*.min.js",
+    "integration-tests/",
+    "templates/",
+]
+
+[default]
+extend-ignore-re = [
+    # SHA hashes and hex strings
+    "[0-9a-fA-F]{7,}",
+    # Base64 encoded strings
+    "[A-Za-z0-9+/]{20,}={0,2}",
+    # URLs
+    "https?://[^\\s]+",
+    # Email addresses
+    "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+]
+
+[default.extend-identifiers]
+# Nuclei specific terms
+pd = "pd"
+nuclei = "nuclei"
+httpx = "httpx"
+nuclei-templates = "nuclei-templates"
+
+[default.extend-words]
+# Security/research terms that look like typos
+fofa = "fofa"
+shodan = "shodan"
+censys = "censys"
+chaos = "chaos"
+akamai = "akamai"
+palo = "palo"
+fortinet = "fortinet"
+citrix = "citrix"
+f5 = "f5"
+bigip = "bigip"
+netscaler = "netscaler"
+checkpoint = "checkpoint"
+sophos = "sophos"
+kubernetes = "kubernetes"
+docker = "docker"
+
+# Technical terms
+config = "config"
+regex = "regex"
+boolean = "boolean"
+serializer = "serializer"
+deserializer = "deserializer"
+ba = "ba"
+nd = "nd"
+ot = "ot"
+
+# Common false positives
+afe = "afe"
+ans = "ans"
+datas = "datas"
+fir = "fir"
+fo = "fo"
+hes = "hes"
+inout = "inout"
+kms = "kms"
+meme = "meme"
+nes = "nes"
+notIn = "notIn"
+offsets = "offsets"
+ot = "ot"
+pres = "pres"
+ser = "ser"
+sing = "sing"
+ter = "ter"
+validat = "validat"
