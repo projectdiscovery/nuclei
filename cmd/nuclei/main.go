@@ -609,7 +609,12 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	}
 	if customConfigDir := os.Getenv(config.NucleiConfigDirEnv); customConfigDir != "" {
 		config.DefaultConfig.SetConfigDir(customConfigDir)
-		readFlagsConfig(flagSet)
+		// Accumulate the preprocessing result so temp files (inline secrets,
+		// inline targets) survive until program exit — readFlagsConfig no longer
+		// defers cleanup internally for this reason.
+		if ppResult := readFlagsConfig(flagSet); ppResult != nil {
+			preprocessResults = append(preprocessResults, ppResult)
+		}
 	}
 
 	if cfgFile != "" {
@@ -627,6 +632,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 		// merge the cleaned config with flags
 		if err := flagSet.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
+			cleanupFn() // remove any temp files already accumulated before fatal exit
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
 
@@ -709,6 +715,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		preprocessResults = append(preprocessResults, ppResult)
 
 		if err := flagSet.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
+			cleanupFn() // remove any temp files already accumulated before fatal exit
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
 	}
@@ -736,40 +743,50 @@ func cleanupOldResumeFiles() {
 }
 
 // readFlagsConfig reads the config file from the default config dir and copies it to the current config dir.
-func readFlagsConfig(flagset *goflags.FlagSet) {
+// It returns the ProfilePreprocessResult if preprocessing was performed so the caller can accumulate it
+// into preprocessResults for deferred cleanup at program exit. The caller MUST NOT call Cleanup() early —
+// the returned result (if non-nil) must stay alive until the scan finishes.
+func readFlagsConfig(flagset *goflags.FlagSet) *types.ProfilePreprocessResult {
 	// check if config.yaml file exists
 	defaultCfgFile, err := flagset.GetConfigFilePath()
 	if err != nil {
 		// something went wrong either dir is not readable or something else went wrong upstream in `goflags`
 		// warn and exit in this case
 		options.Logger.Warning().Msgf("Could not read config file: %s\n", err)
-		return
+		return nil
 	}
 	cfgFile := config.DefaultConfig.GetFlagsConfigFilePath()
 	if !fileutil.FileExists(cfgFile) {
 		if !fileutil.FileExists(defaultCfgFile) {
 			// if default config does not exist, warn and exit
 			options.Logger.Warning().Msgf("missing default config file : %s", defaultCfgFile)
-			return
+			return nil
 		}
 		// if does not exist copy it from the default config
 		if err = fileutil.CopyFile(defaultCfgFile, cfgFile); err != nil {
 			options.Logger.Warning().Msgf("Could not copy config file: %s\n", err)
 		}
-		return
+		return nil
 	}
 	// if config file exists, merge it with the default config.
 	// Preprocess first to strip extra metadata fields and materialize
 	// any inline targets/secrets to temp files. (#5567)
+	// NOTE: do NOT defer ppResult.Cleanup() here — that would delete the temp
+	// files (inline secrets, inline targets) as soon as this function returns,
+	// which is long before the scan actually reads them. Instead return the
+	// result so the caller can accumulate it in preprocessResults and clean up
+	// at program exit via the top-level cleanupFn / profileCleanup().
 	ppResult, ppErr := types.PreprocessProfileFile(cfgFile)
 	if ppErr != nil {
 		options.Logger.Warning().Msgf("Could not preprocess flags config file: %s\n", ppErr)
-		return
+		return nil
 	}
-	defer ppResult.Cleanup()
 	if err = flagset.MergeConfigFile(ppResult.CleanedConfigPath); err != nil {
+		ppResult.Cleanup() // preprocessing succeeded but merge failed — safe to clean up now
 		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
+		return nil
 	}
+	return ppResult
 }
 
 // disableUpdatesCallback disables the update check.
