@@ -736,6 +736,35 @@ func TestHasSpecialKeys(t *testing.T) {
 
 // --- helpers ---
 
+// TestPreprocessProfileFile_CleanupIdempotent verifies that calling Cleanup()
+// multiple times on the same result does not panic and only removes files once.
+// This is important because main() defers profileCleanup() while signal handlers
+// also call profileCleanup() explicitly — both paths may run near-simultaneously.
+func TestPreprocessProfileFile_CleanupIdempotent(t *testing.T) {
+	content := `name: idempotent-test
+list: |
+  example.com
+  test.com
+`
+	tmpFile := writeTempYAML(t, content)
+	defer os.Remove(tmpFile)
+
+	result, err := PreprocessProfileFile(tmpFile)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotEmpty(t, result.TempFiles)
+
+	// First cleanup removes the files.
+	result.Cleanup()
+	for _, f := range result.TempFiles {
+		_, statErr := os.Stat(f)
+		require.True(t, os.IsNotExist(statErr), "temp file %q should be removed after first Cleanup()", f)
+	}
+
+	// Second cleanup must not panic even though files are already gone.
+	require.NotPanics(t, result.Cleanup, "Cleanup() must be idempotent — second call must not panic")
+}
+
 // writeTempYAML creates a temporary YAML file with the given content
 // and returns its path. The caller is responsible for removing it.
 func writeTempYAML(t *testing.T, content string) string {
@@ -759,4 +788,3 @@ func parseLines(text string) []string {
 	}
 	return lines
 }
- 
