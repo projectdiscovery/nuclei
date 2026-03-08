@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -14,7 +15,8 @@ import (
 type Path struct {
 	value *Value
 
-	req *retryablehttp.Request
+	req          *retryablehttp.Request
+	originalPath string
 }
 
 var _ Component = &Path{}
@@ -33,10 +35,12 @@ func (q *Path) Name() string {
 // parsed component
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
+	q.originalPath = req.Path
 	q.value = NewValue("")
 
 	splitted := strings.Split(req.Path, "/")
-	values := make(map[string]interface{})
+	values := mapsutil.NewOrderedMap[string, any]()
+	segmentIndex := 1
 	for i, segment := range splitted {
 		if segment == "" && i == 0 {
 			// Skip the first empty segment from leading "/"
@@ -46,11 +50,12 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 			// Skip any other empty segments
 			continue
 		}
-		// Use 1-based indexing and store individual segments
-		key := strconv.Itoa(len(values) + 1)
-		values[key] = segment
+		// Use 1-based indexing and store individual segments in insertion order.
+		key := strconv.Itoa(segmentIndex)
+		values.Set(key, segment)
+		segmentIndex++
 	}
-	q.value.SetParsed(dataformat.KVMap(values), "")
+	q.value.SetParsed(dataformat.KVOrderedMap(&values), "")
 	return true, nil
 }
 
@@ -87,8 +92,8 @@ func (q *Path) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	// Get the original path segments
-	originalSplitted := strings.Split(q.req.Path, "/")
+	// Get the original path segments from the immutable snapshot captured at parse time.
+	originalSplitted := strings.Split(q.originalPath, "/")
 
 	// Create a new slice to hold the rebuilt segments
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
@@ -109,7 +114,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 
 		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
-		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
+		if newValue, ok := q.value.parsed.Get(key).(string); ok && newValue != "" {
 			rebuiltSegments = append(rebuiltSegments, newValue)
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
@@ -141,7 +146,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 // Clones current state to a new component
 func (q *Path) Clone() Component {
 	return &Path{
-		value: q.value.Clone(),
-		req:   q.req.Clone(context.Background()),
+		value:        q.value.Clone(),
+		req:          q.req.Clone(context.Background()),
+		originalPath: q.originalPath,
 	}
 }

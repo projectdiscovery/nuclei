@@ -127,3 +127,45 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+func TestPathComponent_DeterministicOrder(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		path := NewPath()
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var values []string
+		err = path.Iterate(func(_ string, value interface{}) error {
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"user", "55", "profile"}, values)
+	}
+}
+
+func TestPathComponent_RebuildUsesOriginalPathSnapshot(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	require.NoError(t, path.SetValue("3", "profile OR True"))
+	newReq, err := path.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/user/55/profile OR True", newReq.Path)
+
+	// Rebuilding after a prior mutation should still use the original path layout.
+	require.NoError(t, path.SetValue("3", "profile"))
+	require.NoError(t, path.SetValue("2", "55 OR True"))
+	newReq, err = path.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/user/55 OR True/profile", newReq.Path)
+}
