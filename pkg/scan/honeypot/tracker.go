@@ -170,8 +170,12 @@ func (t *Tracker) GetFlaggedHosts() []FlaggedHost {
 		}
 	}
 
-	// Sort for deterministic output.
+	// Sort for deterministic output: by match count descending,
+	// then by host name ascending to break ties.
 	sort.Slice(flagged, func(i, j int) bool {
+		if flagged[i].MatchCount == flagged[j].MatchCount {
+			return flagged[i].Host < flagged[j].Host
+		}
 		return flagged[i].MatchCount > flagged[j].MatchCount
 	})
 	return flagged
@@ -244,7 +248,16 @@ func normalizeHost(input string) string {
 
 // stripDefaultPort removes :80 and :443 from host:port strings only when
 // they are actual port suffixes (not part of an IPv6 address).
+// It also unwraps bare bracketed IPv6 literals (e.g. "[::1]" → "::1")
+// so that http://[::1]/ and http://[::1]:80/ normalize to the same key.
 func stripDefaultPort(hostport string) string {
+	// Handle bare bracketed IPv6 without port (e.g. "[2001:db8::1]").
+	// net.SplitHostPort won't parse these, but they should normalize
+	// to the same form as "[2001:db8::1]:80" → "2001:db8::1".
+	if strings.HasPrefix(hostport, "[") && strings.HasSuffix(hostport, "]") {
+		return hostport[1 : len(hostport)-1]
+	}
+
 	host, port, err := net.SplitHostPort(hostport)
 	if err != nil {
 		// No port present or invalid format; return as-is.

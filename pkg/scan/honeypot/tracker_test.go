@@ -272,6 +272,8 @@ func TestNormalizeHostIPv6Safety(t *testing.T) {
 		{"http://[::1]:443/path", "::1"},
 		// IPv6 with non-default port should be preserved.
 		{"http://[::1]:8080/path", "[::1]:8080"},
+		// IPv6 without port should unwrap brackets for consistency.
+		{"http://[2001:db8::1]/path", "2001:db8::1"},
 	}
 
 	for _, tt := range tests {
@@ -323,6 +325,9 @@ func TestStripDefaultPort(t *testing.T) {
 		{"[::1]:443", "::1"},
 		// IPv6 with brackets and non-default port.
 		{"[::1]:8080", "[::1]:8080"},
+		// Bare bracketed IPv6 without port — brackets should be unwrapped.
+		{"[::1]", "::1"},
+		{"[2001:db8::1]", "2001:db8::1"},
 	}
 
 	for _, tt := range tests {
