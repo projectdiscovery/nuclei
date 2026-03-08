@@ -117,7 +117,9 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					}
 
 					// FIX #1: javascript: URIs should be treated as executable script context
-					if isJavaScriptURI(attrVal) {
+					// Only for executable URL sinks (href, formaction, src, etc.)
+					// Inert attributes like title, data-x should remain as ContextHTMLText
+					if isExecutableURLSink(attrName) && isJavaScriptURI(attrVal) {
 						ctx = ContextScript
 					}
 
@@ -295,6 +297,18 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 		return '\'', false
 	default:
 		return 0, true
+	}
+}
+
+// isExecutableURLSink checks if an attribute is an executable URL sink
+// that can execute JavaScript when containing javascript: URIs
+// Inert attributes like title, data-*, alt, etc. should NOT be in this list
+func isExecutableURLSink(attrName string) bool {
+	switch strings.ToLower(attrName) {
+	case "href", "xlink:href", "formaction", "src", "action", "data", "poster", "srcset":
+		return true
+	default:
+		return false
 	}
 }
 
