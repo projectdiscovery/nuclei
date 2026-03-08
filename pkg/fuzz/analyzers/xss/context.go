@@ -95,22 +95,26 @@ func (ca *ContextAnalyzer) checkTextNodes(s *goquery.Selection) bool {
 
 func (ca *ContextAnalyzer) isNonExecutableScript(s *goquery.Selection) bool {
 	typeAttr, exists := s.Attr("type")
-	if !exists {
+	// Default to executable if no type attribute or empty
+	if !exists || strings.TrimSpace(typeAttr) == "" {
 		return false
 	}
+	
 	typeAttr = strings.ToLower(typeAttr)
+	
 	// Executable script types
-	if strings.Contains(typeAttr, "javascript") || strings.Contains(typeAttr, "ecmascript") {
+	if strings.Contains(typeAttr, "javascript") || 
+		strings.Contains(typeAttr, "ecmascript") ||
+		typeAttr == "module" ||
+		typeAttr == "importmap" {
 		return false
 	}
-	// ES6 modules are executable
-	if typeAttr == "module" {
-		return false
-	}
+	
 	// Non-executable data types
 	return typeAttr == "application/json" || typeAttr == "text/json" ||
 		typeAttr == "application/ld+json" || typeAttr == "text/plain" ||
-		typeAttr == "text/html" || typeAttr == "text/xml"
+		typeAttr == "text/html" || typeAttr == "text/xml" ||
+		typeAttr == "application/xml" || typeAttr == "text/template"
 }
 
 func (ca *ContextAnalyzer) checkAttributes(s *goquery.Selection) bool {
@@ -123,7 +127,7 @@ func (ca *ContextAnalyzer) checkAttributes(s *goquery.Selection) bool {
 		if ca.containsReflection(attr.Val) {
 			ca.attribute = attr.Key
 
-			// Special handling for javascript:, vbscript:, and data: URIs
+			// Special handling for executable URIs
 			if ca.isExecutableURI(attr.Val) {
 				ca.context = ContextScript
 				return true
@@ -132,6 +136,12 @@ func (ca *ContextAnalyzer) checkAttributes(s *goquery.Selection) bool {
 			// Special handling for srcdoc attribute
 			if strings.EqualFold(attr.Key, "srcdoc") {
 				ca.context = ContextHTML
+				return true
+			}
+
+			// Special handling for style attribute (CSS injection context)
+			if strings.EqualFold(attr.Key, "style") {
+				ca.context = ContextScript
 				return true
 			}
 
@@ -164,6 +174,8 @@ func (ca *ContextAnalyzer) isExecutableURI(value string) bool {
 	lowerValue := strings.ToLower(strings.TrimSpace(value))
 	return strings.HasPrefix(lowerValue, "javascript:") ||
 		strings.HasPrefix(lowerValue, "vbscript:") ||
+		strings.HasPrefix(lowerValue, "data:text/html") ||
+		strings.HasPrefix(lowerValue, "data:application/javascript") ||
 		strings.HasPrefix(lowerValue, "data:")
 }
 
