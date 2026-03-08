@@ -45,19 +45,38 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				tagStack = append(tagStack, tagNameLower)
 			}
 
-			// Check for script type attribute before setting inScript flag
+			// Check if marker is reflected in the tag name itself
+			if strings.Contains(strings.ToLower(tagName), markerLower) {
+				reflections = append(reflections, ReflectionInfo{
+					Context: ContextHTMLText,
+					TagName: tagNameLower,
+				})
+			}
+
+			// Check for script type attribute and collect all attributes for marker checking
 			isScriptTag := tagNameLower == "script"
 			currentScriptType := ""
 			
-			if hasAttr && isScriptTag {
-				// Look for type attribute
+			// Collect all attributes first to avoid missing marker checks
+			type attrInfo struct {
+				name  string
+				value string
+				raw   string
+			}
+			var attrs []attrInfo
+			
+			if hasAttr {
 				for {
 					key, val, moreAttr := tokenizer.TagAttr()
 					attrName := strings.ToLower(string(key))
-					if attrName == "type" {
-						currentScriptType = strings.ToLower(string(val))
-						break
+					attrVal := string(val)
+					attrs = append(attrs, attrInfo{name: attrName, value: attrVal, raw: rawToken})
+					
+					// Check for type attribute on script tags
+					if isScriptTag && attrName == "type" {
+						currentScriptType = strings.ToLower(attrVal)
 					}
+					
 					if !moreAttr {
 						break
 					}
@@ -82,65 +101,50 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				}
 			}
 
-			// Check if marker is reflected in the tag name itself
-			if strings.Contains(strings.ToLower(tagName), markerLower) {
-				reflections = append(reflections, ReflectionInfo{
-					Context: ContextHTMLText,
-					TagName: tagNameLower,
-				})
-			}
+			// Check all collected attributes for marker
+			for _, attr := range attrs {
+				attrName := attr.name
+				attrVal := attr.value
 
-			// Check attributes
-			if hasAttr {
-				for {
-					key, val, moreAttr := tokenizer.TagAttr()
-					attrName := strings.ToLower(string(key))
-					attrVal := string(val)
+				// Check if marker is in the attribute value
+				if strings.Contains(strings.ToLower(attrVal), markerLower) {
+					ctx := ContextAttribute
 
-					// Check if marker is in the attribute value
-					if strings.Contains(strings.ToLower(attrVal), markerLower) {
-						ctx := ContextAttribute
-
-						// Detect quoting style by looking at raw token text
-						quote, unquoted := detectAttrQuoting(rawToken, attrName)
-						if unquoted {
-							ctx = ContextAttributeUnquoted
-						}
-
-						// FIX #1: javascript: URIs should be treated as executable script context
-						if isJavaScriptURI(attrVal) {
-							ctx = ContextScript
-						}
-
-						// FIX #4: srcdoc should be treated as HTML injection context
-						if attrName == "srcdoc" {
-							ctx = ContextHTMLText
-						}
-
-						if isEventHandler(attrName) {
-							// Event handler attributes contain JavaScript
-							ctx = ContextScript
-						}
-
-						reflections = append(reflections, ReflectionInfo{
-							Context:   ctx,
-							AttrName:  attrName,
-							QuoteChar: quote,
-							TagName:   tagNameLower,
-						})
+					// Detect quoting style by looking at raw token text
+					quote, unquoted := detectAttrQuoting(attr.raw, attrName)
+					if unquoted {
+						ctx = ContextAttributeUnquoted
 					}
 
-					// Check if marker is in the attribute name
-					if strings.Contains(attrName, markerLower) {
-						reflections = append(reflections, ReflectionInfo{
-							Context: ContextHTMLText,
-							TagName: tagNameLower,
-						})
+					// FIX #1: javascript: URIs should be treated as executable script context
+					if isJavaScriptURI(attrVal) {
+						ctx = ContextScript
 					}
 
-					if !moreAttr {
-						break
+					// FIX #4: srcdoc should be treated as HTML injection context
+					if attrName == "srcdoc" {
+						ctx = ContextHTMLText
 					}
+
+					if isEventHandler(attrName) {
+						// Event handler attributes contain JavaScript
+						ctx = ContextScript
+					}
+
+					reflections = append(reflections, ReflectionInfo{
+						Context:   ctx,
+						AttrName:  attrName,
+						QuoteChar: quote,
+						TagName:   tagNameLower,
+					})
+				}
+
+				// Check if marker is in the attribute name
+				if strings.Contains(attrName, markerLower) {
+					reflections = append(reflections, ReflectionInfo{
+						Context: ContextHTMLText,
+						TagName: tagNameLower,
+					})
 				}
 			}
 
