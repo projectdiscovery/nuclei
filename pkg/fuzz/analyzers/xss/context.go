@@ -98,10 +98,13 @@ func (ca *ContextAnalyzer) isNonExecutableScript(s *goquery.Selection) bool {
 	if !exists {
 		return false
 	}
-	// Check for non-executable script types (case-insensitive)
 	typeAttr = strings.ToLower(typeAttr)
-	// Executable types to exclude
+	// Executable script types
 	if strings.Contains(typeAttr, "javascript") || strings.Contains(typeAttr, "ecmascript") {
+		return false
+	}
+	// ES6 modules are executable
+	if typeAttr == "module" {
 		return false
 	}
 	// Non-executable data types
@@ -119,25 +122,34 @@ func (ca *ContextAnalyzer) checkAttributes(s *goquery.Selection) bool {
 	for _, attr := range node.Attr {
 		if ca.containsReflection(attr.Val) {
 			ca.attribute = attr.Key
-			
-			// Special handling for javascript: URIs
-			if ca.isJavaScriptURI(attr.Val) {
+
+			// Special handling for javascript:, vbscript:, and data: URIs
+			if ca.isExecutableURI(attr.Val) {
 				ca.context = ContextScript
 				return true
 			}
-			
+
 			// Special handling for srcdoc attribute
 			if strings.EqualFold(attr.Key, "srcdoc") {
 				ca.context = ContextHTML
 				return true
 			}
-			
-			// Check for event handlers
-			if strings.HasPrefix(attr.Key, "on") && len(attr.Key) > 2 {
+
+			// Check for event handlers (case-insensitive)
+			lowerKey := strings.ToLower(attr.Key)
+			if strings.HasPrefix(lowerKey, "on") && len(lowerKey) > 2 {
 				ca.context = ContextScript
 				return true
 			}
-			
+
+			// Check formaction attribute for executable URIs
+			if strings.EqualFold(attr.Key, "formaction") {
+				if ca.isExecutableURI(attr.Val) {
+					ca.context = ContextScript
+					return true
+				}
+			}
+
 			// Default to attribute context
 			ca.context = ContextAttribute
 			return true
@@ -146,20 +158,26 @@ func (ca *ContextAnalyzer) checkAttributes(s *goquery.Selection) bool {
 	return false
 }
 
-func (ca *ContextAnalyzer) isJavaScriptURI(value string) bool {
-	// Case-insensitive check for javascript: URI
+// isExecutableURI checks for executable URI schemes including javascript:,
+// vbscript: (legacy IE), and data: URIs which can execute code.
+func (ca *ContextAnalyzer) isExecutableURI(value string) bool {
 	lowerValue := strings.ToLower(strings.TrimSpace(value))
-	return strings.HasPrefix(lowerValue, "javascript:")
+	return strings.HasPrefix(lowerValue, "javascript:") ||
+		strings.HasPrefix(lowerValue, "vbscript:") ||
+		strings.HasPrefix(lowerValue, "data:")
+}
+
+// isJavaScriptURI is kept for backward compatibility.
+func (ca *ContextAnalyzer) isJavaScriptURI(value string) bool {
+	return ca.isExecutableURI(value)
 }
 
 func (ca *ContextAnalyzer) containsReflection(text string) bool {
-	// Case-insensitive check for reflection
 	return strings.Contains(strings.ToLower(text), strings.ToLower(ca.reflection))
 }
 
 // IsReflected checks if the reflection appears in the HTML document.
 func IsReflected(reflection string, body []byte) bool {
-	// Case-insensitive check
 	return bytes.Contains(bytes.ToLower(body), bytes.ToLower([]byte(reflection)))
 }
 
