@@ -139,6 +139,78 @@ func TestDetectReflections_EventHandler(t *testing.T) {
 	}
 }
 
+func TestDetectReflections_DataURIAttribute(t *testing.T) {
+	body := `<html><body><iframe src="data:text/html,nucleiXSScanary"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in data URI attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "src" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for data URI attribute, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_AttributeUnquotedWithSpacesAroundEquals(t *testing.T) {
+	body := `<html><body><input value = nucleiXSScanary></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in unquoted attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextAttributeUnquoted && r.AttrName == "value" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextAttributeUnquoted for spaced assignment, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_AttributeBoundaryAvoidsSuffixCollision(t *testing.T) {
+	body := `<html><body><input data-value="safe" value=nucleiXSScanary></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in value attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextAttributeUnquoted && r.AttrName == "value" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected suffix-safe ContextAttributeUnquoted for value attr, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_ScriptBlockLegacyTypeWithSpacing(t *testing.T) {
+	body := `<html><body><script data-type="text/plain" type = application/x-javascript>var x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in legacy script block")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.TagName == "script" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for legacy script type, got %v", reflections)
+	}
+}
+
 func TestDetectReflections_NoReflection(t *testing.T) {
 	body := `<html><body><p>Hello world</p></body></html>`
 	reflections := DetectReflections(body, testMarker)
@@ -225,6 +297,14 @@ func TestBestReflection_Empty(t *testing.T) {
 	best := BestReflection(nil)
 	if best != nil {
 		t.Fatal("expected nil for empty reflections")
+	}
+}
+
+func TestIsExecutableScriptType_LegacyJavascriptMIMEs(t *testing.T) {
+	for _, scriptType := range []string{"application/x-javascript", "text/x-javascript"} {
+		if !isExecutableScriptType(scriptType) {
+			t.Fatalf("expected %q to be treated as executable JavaScript", scriptType)
+		}
 	}
 }
 

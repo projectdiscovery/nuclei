@@ -190,28 +190,14 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 }
 
 // extractAttrFromRaw extracts an attribute value from raw HTML token text.
-// It ensures a word boundary before the attribute name to avoid matching
-// attributes like "data-type" when searching for "type".
+// It supports optional whitespace around "=" and avoids partial matches such as
+// matching "value" inside "data-value".
 func extractAttrFromRaw(rawToken, attrName string) string {
-	rawLower := strings.ToLower(rawToken)
-	search := strings.ToLower(attrName) + "="
-	idx := strings.Index(rawLower, search)
-	for idx >= 0 {
-		// Check word boundary: must be preceded by whitespace or start of tag
-		if idx == 0 || rawLower[idx-1] == ' ' || rawLower[idx-1] == '\t' || rawLower[idx-1] == '\n' || rawLower[idx-1] == '\r' || rawLower[idx-1] == '<' {
-			break
-		}
-		// Try next occurrence
-		next := strings.Index(rawLower[idx+1:], search)
-		if next < 0 {
-			return ""
-		}
-		idx = idx + 1 + next
-	}
-	if idx < 0 {
+	valueStart, ok := findAttrValueStart(rawToken, attrName)
+	if !ok || valueStart >= len(rawToken) {
 		return ""
 	}
-	rest := rawToken[idx+len(search):]
+	rest := rawToken[valueStart:]
 	if len(rest) == 0 {
 		return ""
 	}
@@ -228,6 +214,66 @@ func extractAttrFromRaw(rawToken, attrName string) string {
 		return rest
 	}
 	return rest[:end]
+}
+
+func findAttrValueStart(rawToken, attrName string) (int, bool) {
+	rawLower := strings.ToLower(rawToken)
+	attrLower := strings.ToLower(attrName)
+	searchFrom := 0
+
+	for searchFrom < len(rawLower) {
+		relIdx := strings.Index(rawLower[searchFrom:], attrLower)
+		if relIdx < 0 {
+			return 0, false
+		}
+
+		idx := searchFrom + relIdx
+		if idx > 0 {
+			prev := rawLower[idx-1]
+			if !isAttrBoundary(prev) {
+				searchFrom = idx + 1
+				continue
+			}
+		}
+
+		pos := idx + len(attrLower)
+		if pos >= len(rawLower) {
+			return 0, false
+		}
+		if !isHTMLSpace(rawLower[pos]) && rawLower[pos] != '=' {
+			searchFrom = idx + 1
+			continue
+		}
+
+		for pos < len(rawLower) && isHTMLSpace(rawLower[pos]) {
+			pos++
+		}
+		if pos >= len(rawLower) || rawLower[pos] != '=' {
+			searchFrom = idx + 1
+			continue
+		}
+		pos++
+		for pos < len(rawLower) && isHTMLSpace(rawLower[pos]) {
+			pos++
+		}
+
+		return pos, true
+	}
+
+	return 0, false
+}
+
+func isHTMLSpace(ch byte) bool {
+	switch ch {
+	case ' ', '\t', '\n', '\r', '\f':
+		return true
+	default:
+		return false
+	}
+}
+
+func isAttrBoundary(ch byte) bool {
+	return ch == '<' || isHTMLSpace(ch)
 }
 
 // detectScriptStringContext determines if the marker is inside a JS string literal
@@ -280,19 +326,14 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 }
 
 // detectAttrQuoting detects the quoting style of an attribute from raw HTML.
+// It supports optional whitespace around "=" and skips partial suffix matches.
 // Returns the quote character and whether the attribute is unquoted.
 func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
-	attrAssign := attrName + "="
-	rawLower := strings.ToLower(rawToken)
-	idx := strings.Index(rawLower, attrAssign)
-	if idx < 0 {
+	valueStart, ok := findAttrValueStart(rawToken, attrName)
+	if !ok || valueStart >= len(rawToken) {
 		return '"', false // default to double-quoted
 	}
-	afterEq := idx + len(attrAssign)
-	if afterEq >= len(rawToken) {
-		return '"', false
-	}
-	switch rawToken[afterEq] {
+	switch rawToken[valueStart] {
 	case '"':
 		return '"', false
 	case '\'':
