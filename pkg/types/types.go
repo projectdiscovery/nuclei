@@ -426,8 +426,9 @@ type Options struct {
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
-	// InlineSecretsYAML contains raw YAML bytes for inline secrets in profile
-	InlineSecretsYAML []byte
+	// InlineSecretsYAML contains raw YAML bytes for inline secrets in profile.
+	// Excluded from marshaling to prevent accidental secret leakage in dumps.
+	InlineSecretsYAML []byte `json:"-" yaml:"-"`
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
 	// FormatUseRequiredOnly only uses required fields when generating requests

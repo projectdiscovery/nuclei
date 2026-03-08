@@ -212,6 +212,7 @@ func main() {
 		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
 		if options.DASTServer {
 			nucleiRunner.Close()
+			cleanupTempFiles()
 			os.Exit(1)
 		}
 
@@ -227,6 +228,7 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+		cleanupTempFiles()
 		os.Exit(1)
 	}()
 
@@ -766,7 +768,7 @@ func processProfileExtras(profilePath string) {
 		}
 		_ = tmpFile.Close()
 
-		options.Logger.Info().Msgf("Extracted inline secrets from profile to: %s", tmpFile.Name())
+		options.Logger.Debug().Msg("Extracted inline secrets from profile to temp file")
 		options.SecretsFile = append(options.SecretsFile, tmpFile.Name())
 		// Track for cleanup on exit
 		tempFiles = append(tempFiles, tmpFile.Name())
@@ -813,7 +815,11 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 		}
 		return
 	}
-	// if config file exists, merge it with the default config
+	// if config file exists, merge it with the default config.
+	// Note: processProfileExtras is intentionally NOT called here because
+	// this is the nuclei settings config file, not a user profile. Profile
+	// extras (id, name, purpose, description, inline secrets) are only
+	// processed for explicit --config and --profile inputs.
 	if err = flagset.MergeConfigFile(cfgFile); err != nil {
 		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
 	}
