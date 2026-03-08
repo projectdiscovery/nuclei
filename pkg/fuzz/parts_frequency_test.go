@@ -31,14 +31,12 @@ func TestExecWithInputUsesActualParameterForFrequency(t *testing.T) {
 		Progress:            &testutils.MockProgressClient{},
 	}
 
-	// Mark a different numeric path segment as frequent on the same target.
-	// With the old code, both values collided on the raw index key "2".
-	targetReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/blog/99/post", nil)
-	require.NoError(t, err)
-	rule.options.FuzzParamsFrequency.MarkParameter("99", targetReq.String(), rule.options.TemplateID)
-
 	baseReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
 	require.NoError(t, err)
+
+	// Mark a different numeric path segment as frequent on the same target.
+	// With the old code, both values collided on the raw index key "2".
+	rule.options.FuzzParamsFrequency.MarkParameter("99", baseReq.String(), rule.options.TemplateID)
 
 	input := &ExecuteRuleInput{
 		Input:       &contextargs.Context{},

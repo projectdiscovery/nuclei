@@ -161,11 +161,14 @@ func TestPathComponent_RebuildUsesOriginalPathSnapshot(t *testing.T) {
 	newReq, err := path.Rebuild()
 	require.NoError(t, err)
 	require.Equal(t, "/user/55/profile OR True", newReq.Path)
+	require.Equal(t, "/user/55/profile", req.Path)
 
-	// Rebuilding after a prior mutation should still use the original path layout.
+	// Rebuilding after a prior mutation should still use the original path layout
+	// without mutating the original request.
 	require.NoError(t, path.SetValue("3", "profile"))
 	require.NoError(t, path.SetValue("2", "55 OR True"))
 	newReq, err = path.Rebuild()
 	require.NoError(t, err)
 	require.Equal(t, "/user/55 OR True/profile", newReq.Path)
+	require.Equal(t, "/user/55/profile", req.Path)
 }

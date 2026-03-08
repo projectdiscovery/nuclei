@@ -135,8 +135,12 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		rebuiltPath = unescaped
 	}
 
-	// Clone the request and update the path
+	// Clone the request and deep-copy the underlying URL before mutating it.
+	// retryablehttp.Request.Clone() reuses the wrapped URL pointer, so updating the
+	// cloned path directly would also mutate q.req.
 	cloned := q.req.Clone(context.Background())
+	cloned.URL = cloned.URL.Clone()
+	cloned.Request.URL = cloned.URL.URL
 	if err := cloned.UpdateRelPath(rebuiltPath, true); err != nil {
 		cloned.RawPath = rebuiltPath
 	}
