@@ -9,12 +9,14 @@ import (
 // DetectReflections parses the HTML body and returns all reflection contexts
 // where the marker is found.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	// Use case-insensitive check to avoid short-circuiting on mixed-case reflections
+	markerLower := strings.ToLower(marker)
+	bodyLower := strings.ToLower(body)
+	if !strings.Contains(bodyLower, markerLower) {
 		return nil
 	}
 
 	var reflections []ReflectionInfo
-	markerLower := strings.ToLower(marker)
 
 	tokenizer := html.NewTokenizer(strings.NewReader(body))
 

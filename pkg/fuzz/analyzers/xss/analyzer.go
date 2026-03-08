@@ -52,16 +52,45 @@ func generateCanary() string {
 	return "nuclei" + analyzers.RandStringBytesMask(8)
 }
 
+// extractCanaryFromPayload extracts the canary string from the original payload.
+// The canary format is "nuclei" + 8 random chars + special chars (canaryChars).
+// This avoids depending on mutable analyzer params.
+func extractCanaryFromPayload(payload string) string {
+	// Look for the canary pattern: "nuclei" followed by alphanumeric chars
+	idx := strings.Index(payload, "nuclei")
+	if idx == -1 {
+		return ""
+	}
+	// Extract from "nuclei" to the end of the canary+chars sequence
+	// The canary is "nuclei" + 8 random chars, followed by canaryChars
+	remaining := payload[idx:]
+	// Find where the canary+chars ends (look for the special chars pattern)
+	for i := len("nuclei"); i < len(remaining) && i < len("nuclei")+8+len(canaryChars); i++ {
+		ch := remaining[i]
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') {
+			continue
+		}
+		// Check if we've reached the special chars
+		if i >= len("nuclei")+8 {
+			// We've extracted the full canary+chars
+			return remaining[:i]
+		}
+	}
+	// Fallback: extract "nuclei" + up to 20 chars
+	if len(remaining) > 20 {
+		return remaining[:20]
+	}
+	return remaining
+}
+
 // Analyze detects XSS vulnerabilities by:
 // 1. Checking for canary reflection in the initial response
 // 2. Detecting the HTML context of the reflection
 // 3. Replaying context-appropriate payloads to verify exploitability
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
-	// Determine the canary from parameters
-	canary := ""
-	if v, ok := options.AnalyzerParameters["xss_canary"]; ok {
-		canary, _ = v.(string)
-	}
+	// Extract the canary from the original payload (FuzzGenerated.Value)
+	// This avoids depending on mutable analyzer params which can drift across parallel fuzz execution
+	canary := extractCanaryFromPayload(options.FuzzGenerated.OriginalPayload)
 	if canary == "" {
 		return false, "", nil
 	}
@@ -76,8 +105,10 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if canary is reflected at all
-	if !strings.Contains(body, canary) {
+	// Check if canary is reflected at all (case-insensitive)
+	canaryLower := strings.ToLower(canary)
+	bodyLower := strings.ToLower(body)
+	if !strings.Contains(bodyLower, canaryLower) {
 		return false, "", nil
 	}
 
@@ -216,13 +247,16 @@ func getHeader(headers map[string][]string, name string) string {
 }
 
 // detectCharacterSurvival checks which XSS-critical characters survived server-side encoding
+// Uses case-insensitive comparisons to handle server-side case normalization
 func detectCharacterSurvival(body string, canary string) CharacterSet {
+	bodyLower := strings.ToLower(body)
+	canaryLower := strings.ToLower(canary)
 	return CharacterSet{
-		LessThan:     strings.Contains(body, canary+"<"),
-		GreaterThan:  strings.Contains(body, canary+"<>") || strings.Contains(body, canary+">"),
-		DoubleQuote:  strings.Contains(body, canary+`<>"`),
-		SingleQuote:  strings.Contains(body, canary+`<>"'`),
-		ForwardSlash: strings.Contains(body, canary+canaryChars), // full canary+chars survived
+		LessThan:     strings.Contains(bodyLower, canaryLower+"<"),
+		GreaterThan:  strings.Contains(bodyLower, canaryLower+"<>") || strings.Contains(bodyLower, canaryLower+">"),
+		DoubleQuote:  strings.Contains(bodyLower, canaryLower+`<>"`),
+		SingleQuote:  strings.Contains(bodyLower, canaryLower+`<>"'`),
+		ForwardSlash: strings.Contains(bodyLower, canaryLower+strings.ToLower(canaryChars)), // full canary+chars survived
 	}
 }
 
