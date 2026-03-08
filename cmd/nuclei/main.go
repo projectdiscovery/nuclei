@@ -51,6 +51,9 @@ var (
 	templateProfile string
 	memProfile      string // optional profile file path
 	options         = &types.Options{}
+	// tempFiles tracks temporary files created during profile processing
+	// that should be cleaned up on exit.
+	tempFiles []string
 )
 
 func main() {
@@ -63,6 +66,9 @@ func main() {
 		options.Logger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
 	_ = readConfig()
+
+	// Clean up any temp files created during profile processing on exit
+	defer cleanupTempFiles()
 
 	if options.ListDslSignatures {
 		options.Logger.Info().Msgf("The available custom DSL functions are:")
@@ -584,10 +590,14 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(cfgFile) {
 			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
 		}
-		// merge config file with flags
+		// MergeConfigFile only processes known flags and silently ignores
+		// extra fields. This allows users to add metadata or other custom
+		// fields to their config YAML without causing errors.
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
+		// Extract metadata and inline secrets from the config file
+		processProfileExtras(cfgFile)
 
 		if !options.Vars.IsEmpty() {
 			// Maybe we should add vars to the config file as well even if they are set via flags?
@@ -656,9 +666,15 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
+		// MergeConfigFile only processes known flags and silently ignores
+		// extra fields like id, name, purpose, description. This allows
+		// users to add metadata to their profile YAML without errors.
 		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
+		// Read the profile YAML to extract metadata fields and inline secrets
+		// that goflags does not handle (since they are not registered CLI flags).
+		processProfileExtras(templateProfile)
 	}
 
 	if len(options.SecretsFile) > 0 {
@@ -671,6 +687,97 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 	cleanupOldResumeFiles()
 	return flagSet
+}
+
+// processProfileExtras reads the profile YAML file to extract extra fields
+// that are not registered as goflags CLI flags. This includes:
+//   - Profile metadata (id, name, purpose, description) which are stored
+//     in options for informational purposes.
+//   - Inline secrets (secrets key) which are extracted and written to a
+//     temporary file so the auth provider can consume them.
+func processProfileExtras(profilePath string) {
+	profileData, err := os.ReadFile(profilePath)
+	if err != nil {
+		options.Logger.Warning().Msgf("Could not read profile for extras: %s", err)
+		return
+	}
+
+	var profileMap map[string]interface{}
+	if err := yaml.Unmarshal(profileData, &profileMap); err != nil {
+		// The YAML was already successfully parsed by MergeConfigFile,
+		// so this error is unexpected. Log and continue.
+		options.Logger.Warning().Msgf("Could not parse profile extras: %s", err)
+		return
+	}
+
+	// Feature A: Extract profile metadata fields.
+	// These allow users to document their profiles with descriptive fields.
+	if id, ok := profileMap["id"]; ok {
+		if s, ok := id.(string); ok {
+			options.ProfileID = s
+		}
+	}
+	if name, ok := profileMap["name"]; ok {
+		if s, ok := name.(string); ok {
+			options.ProfileName = s
+		}
+	}
+	if purpose, ok := profileMap["purpose"]; ok {
+		if s, ok := purpose.(string); ok {
+			options.ProfilePurpose = s
+		}
+	}
+	if description, ok := profileMap["description"]; ok {
+		if s, ok := description.(string); ok {
+			options.ProfileDescription = s
+		}
+	}
+
+	if options.ProfileName != "" {
+		options.Logger.Info().Msgf("Loaded profile: %s", options.ProfileName)
+	}
+
+	// Feature B: Extract inline secrets and create a temp file for the auth provider.
+	// When a profile YAML contains a "secrets" key with embedded auth configuration,
+	// we extract it, write it to a temp file, and add that file to SecretsFile
+	// so the existing auth provider pipeline can process it.
+	if secrets, ok := profileMap["secrets"]; ok && secrets != nil {
+		secretsYAML, err := yaml.Marshal(secrets)
+		if err != nil {
+			options.Logger.Warning().Msgf("Could not marshal inline secrets: %s", err)
+			return
+		}
+
+		// Store the raw YAML for potential programmatic use
+		options.InlineSecretsYAML = secretsYAML
+
+		// Write to a temp file so the file-based auth provider can consume it
+		tmpFile, err := os.CreateTemp("", "nuclei-inline-secrets-*.yaml")
+		if err != nil {
+			options.Logger.Warning().Msgf("Could not create temp file for inline secrets: %s", err)
+			return
+		}
+
+		if _, err := tmpFile.Write(secretsYAML); err != nil {
+			_ = tmpFile.Close()
+			_ = os.Remove(tmpFile.Name())
+			options.Logger.Warning().Msgf("Could not write inline secrets to temp file: %s", err)
+			return
+		}
+		_ = tmpFile.Close()
+
+		options.Logger.Info().Msgf("Extracted inline secrets from profile to: %s", tmpFile.Name())
+		options.SecretsFile = append(options.SecretsFile, tmpFile.Name())
+		// Track for cleanup on exit
+		tempFiles = append(tempFiles, tmpFile.Name())
+	}
+}
+
+// cleanupTempFiles removes temporary files created during profile processing.
+func cleanupTempFiles() {
+	for _, f := range tempFiles {
+		_ = os.Remove(f)
+	}
 }
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.

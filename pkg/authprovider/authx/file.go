@@ -255,3 +255,34 @@ func GetAuthDataFromJSON(data []byte) (*Authx, error) {
 	}
 	return &auth, nil
 }
+
+// ExtractSecretsYAMLFromConfig extracts the secrets section from config YAML
+func ExtractSecretsYAMLFromConfig(configData []byte) ([]byte, error) {
+	var configMap map[string]interface{}
+	if err := yaml.Unmarshal(configData, &configMap); err != nil {
+		return nil, errkit.Wrapf(err, "failed to parse config YAML")
+	}
+
+	secrets, exists := configMap["secrets"]
+	if !exists {
+		return nil, fmt.Errorf("no secrets section found in config")
+	}
+
+	// Re-marshal just the secrets section
+	secretsYAML, err := yaml.Marshal(secrets)
+	if err != nil {
+		return nil, errkit.Wrapf(err, "failed to marshal secrets section")
+	}
+
+	return secretsYAML, nil
+}
+
+// ExtractAuthDataFromConfig extracts and parses auth data from config YAML
+func ExtractAuthDataFromConfig(configData []byte) (*Authx, error) {
+	secretsYAML, err := ExtractSecretsYAMLFromConfig(configData)
+	if err != nil {
+		return nil, errkit.Wrapf(err, "failed to extract secrets from config")
+	}
+
+	return GetAuthDataFromYAML(secretsYAML)
+}

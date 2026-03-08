@@ -1,0 +1,8 @@
+# Profile with extra metadata fields - should not cause errors
+id: test-extras
+name: Test Profile With Extras
+purpose: Integration test for extra fields tolerance
+description: This profile has metadata fields that should be silently handled
+
+tags:
+  - kev

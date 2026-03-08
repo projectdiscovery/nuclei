@@ -11,6 +11,7 @@ var profileLoaderTestcases = []TestCaseInfo{
 	{Path: "profile-loader/load-with-filename", TestCase: &profileLoaderByRelFile{}},
 	{Path: "profile-loader/load-with-id", TestCase: &profileLoaderById{}},
 	{Path: "profile-loader/basic.yml", TestCase: &customProfileLoader{}},
+	{Path: "profile-loader/with-extras.yml", TestCase: &profileWithExtrasLoader{}},
 }
 
 type profileLoaderByRelFile struct{}
@@ -46,6 +47,21 @@ func (h *customProfileLoader) Execute(filepath string) error {
 	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", filepath)
 	if err != nil {
 		return errkit.Wrap(err, "failed to load template with id")
+	}
+	if len(results) < 1 {
+		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 1, len(results))
+	}
+	return nil
+}
+
+// profileWithExtrasLoader tests that profiles with extra metadata fields
+// (id, name, purpose, description) are loaded without errors
+type profileWithExtrasLoader struct{}
+
+func (h *profileWithExtrasLoader) Execute(filepath string) error {
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", filepath)
+	if err != nil {
+		return errkit.Wrap(err, "failed to load profile with extra metadata fields")
 	}
 	if len(results) < 1 {
 		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 1, len(results))

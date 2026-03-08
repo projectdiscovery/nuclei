@@ -1,0 +1,35 @@
+# Test profile with metadata fields and inline secrets
+id: test-profile
+name: Test Profile
+purpose: Testing profile improvements
+description: This profile demonstrates metadata fields and inline secrets
+
+# Standard nuclei flags
+tags:
+  - cve
+  - default-login
+exclude-tags:
+  - dos
+  - fuzz
+timeout: 30
+stats: true
+
+# Inline secrets
+secrets:
+  static:
+    - type: header
+      domains:
+        - api.example.com
+      headers:
+        - key: x-api-key
+          value: test-api-key-12345
+  dynamic:
+    - template: /path/to/oauth-flow.yaml
+      variables:
+        - name: username
+          value: testuser
+      type: Cookie
+      domains:
+        - example.com
+      cookies:
+        - raw: "{{session-cookie}}"

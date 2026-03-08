@@ -33,6 +33,12 @@ type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalo
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
+	// Profile metadata fields (allows additional info without errors)
+	ProfileID          string `yaml:"id,omitempty" json:"id,omitempty"`
+	ProfileName        string `yaml:"name,omitempty" json:"name,omitempty"`
+	ProfilePurpose     string `yaml:"purpose,omitempty" json:"purpose,omitempty"`
+	ProfileDescription string `yaml:"description,omitempty" json:"description,omitempty"`
+	
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
@@ -420,6 +426,8 @@ type Options struct {
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
+	// InlineSecretsYAML contains raw YAML bytes for inline secrets in profile
+	InlineSecretsYAML []byte
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
@@ -476,6 +484,10 @@ type Options struct {
 
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
+		ProfileID:                      options.ProfileID,
+		ProfileName:                    options.ProfileName,
+		ProfilePurpose:                 options.ProfilePurpose,
+		ProfileDescription:             options.ProfileDescription,
 		Tags:                           options.Tags,
 		ExcludeTags:                    options.ExcludeTags,
 		Workflows:                      options.Workflows,
@@ -665,6 +677,7 @@ func (options *Options) Copy() *Options {
 		TeamID:                         options.TeamID,
 		JsConcurrency:                  options.JsConcurrency,
 		SecretsFile:                    options.SecretsFile,
+		InlineSecretsYAML:              options.InlineSecretsYAML,
 		PreFetchSecrets:                options.PreFetchSecrets,
 		FormatUseRequiredOnly:          options.FormatUseRequiredOnly,
 		SkipFormatValidation:           options.SkipFormatValidation,
