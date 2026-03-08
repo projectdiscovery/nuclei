@@ -1012,11 +1012,22 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
+
+			var respHeaders map[string][]string
+			var respStatusCode int
+			if resp := respChain.Response(); resp != nil {
+				respHeaders = resp.Header
+				respStatusCode = resp.StatusCode
+			}
+
 			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
 				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
 				HttpClient:         request.httpClient,
 				ResponseTimeDelay:  duration,
 				AnalyzerParameters: request.Analyzer.Parameters,
+				ResponseBody:       bodyStr,
+				ResponseHeaders:    respHeaders,
+				ResponseStatusCode: respStatusCode,
 			})
 			if err != nil {
 				gologger.Warning().Msgf("Could not analyze response: %v\n", err)
