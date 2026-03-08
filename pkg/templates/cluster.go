@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -11,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	cryptoutil "github.com/projectdiscovery/utils/crypto"
@@ -255,9 +258,13 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	}
 	previous := make(map[string]interface{})
 	dynamicValues := make(map[string]interface{})
+
+	// Track if callback was invoked
+	callbackCalled := &atomic.Bool{}
+
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		callbackCalled.Store(true)
 		if event == nil {
-			// unlikely but just in case
 			return
 		}
 		if event.InternalEvent == nil {
@@ -271,21 +278,56 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			clonedEvent.InternalEvent["template-path"] = operator.templatePath
 			clonedEvent.InternalEvent["template-info"] = operator.templateInfo
 
-			if result == nil && !matched && e.options.Options.MatcherStatus {
-				if err := e.options.Output.WriteFailure(clonedEvent); err != nil {
-					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
-				}
-				continue
-			}
 			if matched && result != nil {
 				clonedEvent.OperatorsResult = result
 				clonedEvent.Results = e.requests.MakeResultEvent(clonedEvent)
 				results = true
 
 				_ = writer.WriteResult(clonedEvent, e.options.Output, e.options.Progress, e.options.IssuesClient)
+			} else if !matched && e.options.Options.MatcherStatus {
+				if err := e.options.Output.WriteFailure(clonedEvent); err != nil {
+					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+				}
 			}
 		}
 	})
+
+	// Fallback: if callback was never called and matcher-status is enabled,
+	// write failure events for each operator in the cluster
+	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
+		// Parse URL fields from the input
+		fields := protocolUtils.GetJsonFieldsFromURL(ctx.Input.MetaInput.Input)
+		for _, operator := range e.operators {
+			errMsg := ""
+			if err != nil {
+				errMsg = err.Error()
+			}
+			fakeEvent := &output.InternalWrappedEvent{
+				Results: []*output.ResultEvent{
+					{
+						TemplateID:   operator.templateID,
+						TemplatePath: operator.templatePath,
+						Info:         operator.templateInfo,
+						Type:         e.templateType.String(),
+						Host:         fields.Host,
+						Port:         fields.Port,
+						Scheme:       fields.Scheme,
+						URL:          fields.URL,
+						Path:         fields.Path,
+						Timestamp:    time.Now(),
+						Error:        errMsg,
+					},
+				},
+				OperatorsResult: &operators.Result{
+					Matched: false,
+				},
+			}
+			if err := e.options.Output.WriteFailure(fakeEvent); err != nil {
+				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+			}
+		}
+	}
+
 	if e.options.HostErrorsCache != nil {
 		e.options.HostErrorsCache.MarkFailedOrRemove(e.options.ProtocolType.String(), ctx.Input, err)
 	}

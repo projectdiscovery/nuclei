@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -16,6 +19,7 @@ var matcherStatusTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNoAccess{}},
 	{Path: "protocols/websocket/basic.yaml", TestCase: &websocketNoAccess{}},
 	{Path: "protocols/dns/a.yaml", TestCase: &dnsNoAccess{}},
+	{Path: "protocols/http/matcher-status-and.yaml,protocols/http/matcher-status-and-cluster.yaml", TestCase: &httpMatcherStatusAnd{}},
 }
 
 type httpNoAccess struct{}
@@ -115,6 +119,29 @@ func (h *dnsNoAccess) Execute(filePath string) error {
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
+	}
+	return nil
+}
+
+type httpMatcherStatusAnd struct{}
+
+// Execute verifies that clustered templates with matchers-condition: and
+// produce failure events when -matcher-status is enabled.
+func (h *httpMatcherStatusAnd) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("ok"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	files := strings.Split(filePath, ",")
+	results, err := testutils.RunNucleiTemplateAndGetResults(files[0], ts.URL, debug, "-t", files[1], "-ms", "-j")
+	if err != nil {
+		return err
+	}
+	if len(results) != 2 {
+		return fmt.Errorf("unexpected number of results: %d (expected 2)", len(results))
 	}
 	return nil
 }

@@ -43,7 +43,7 @@ jobs:
         env:
           DISABLE_STDOUT: "1"
       - run: mv "${PROFILE_MEM}.cpu" "${PGO_FILE}"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: "pgo"
           path: "${{ env.PGO_FILE }}"

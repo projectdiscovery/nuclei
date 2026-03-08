@@ -37,7 +37,10 @@ func getTemplateDirs(opts Options) ([]string, error) {
 
 // LoadTemplatesWithTags loads and returns templates with given tags
 func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, logInfo bool) ([]*templates.Template, error) {
-	finalTemplates := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
+	finalTemplates, err := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not load templates")
+	}
 	if len(finalTemplates) == 0 {
 		return nil, errors.New("could not find any templates with tech tag")
 	}
