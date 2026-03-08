@@ -465,6 +465,10 @@ type Options struct {
 	ExecutionId string
 	// Parser is a cached parser for the template store
 	Parser any
+	// HoneypotDetection enables honeypot detection to identify hosts matching too many templates
+	HoneypotDetection bool
+	// HoneypotThreshold is the number of template matches per host that triggers honeypot detection
+	HoneypotThreshold int
 	// timeouts contains various types of timeouts used in nuclei
 	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
 	// This is internally managed and does not need to be set by user by explicitly setting
@@ -684,6 +688,8 @@ func (options *Options) Copy() *Options {
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
 		ExecutionId:                    options.ExecutionId,
 		Parser:                         options.Parser,
+		HoneypotDetection:             options.HoneypotDetection,
+		HoneypotThreshold:             options.HoneypotThreshold,
 	}
 	optCopy.SetTimeouts(options.timeouts)
 	return optCopy

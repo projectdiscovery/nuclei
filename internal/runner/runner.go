@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	outputstats "github.com/projectdiscovery/nuclei/v3/pkg/output/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
@@ -98,11 +99,12 @@ type Runner struct {
 	Logger             *gologger.Logger
 
 	//general purpose temporary directory
-	tmpDir          string
-	parser          parser.Parser
-	httpApiEndpoint *httpapi.Server
-	fuzzStats       *fuzzStats.Tracker
-	dastServer      *server.DASTServer
+	tmpDir           string
+	parser           parser.Parser
+	httpApiEndpoint  *httpapi.Server
+	fuzzStats        *fuzzStats.Tracker
+	dastServer       *server.DASTServer
+	honeypotTracker  *honeypot.Tracker
 }
 
 // New creates a new client for running the enumeration process.
@@ -278,6 +280,11 @@ func New(options *types.Options) (*Runner, error) {
 	if options.HTTPStats {
 		runner.httpStats = outputstats.NewTracker()
 		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))
+	}
+	// setup honeypot detection writer if enabled
+	if options.HoneypotDetection {
+		runner.honeypotTracker = honeypot.NewTracker(options.HoneypotThreshold, runner.Logger)
+		runner.output = output.NewHoneypotWriter(runner.output, runner.honeypotTracker, runner.colorizer, runner.Logger)
 	}
 
 	if options.JSONL && options.EnableProgressBar {
@@ -680,6 +687,11 @@ func (r *Runner) RunEnumeration() error {
 			_ = r.inputProvider.SetWithExclusions(r.options.ExecutionId, host)
 		}
 	}
+	// set total template count for honeypot percentage-based detection
+	if r.honeypotTracker != nil {
+		r.honeypotTracker.SetTotalTemplates(len(store.Templates()) + len(store.Workflows()))
+	}
+
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
@@ -750,6 +762,15 @@ func (r *Runner) RunEnumeration() error {
 
 	r.progress.Stop()
 	timeTaken := time.Since(now)
+
+	// display honeypot detection summary if enabled
+	if r.honeypotTracker != nil {
+		if summary := r.honeypotTracker.Summary(); summary != "" {
+			r.Logger.Warning().Msgf(summary)
+			r.Logger.Warning().Msgf("[honeypot] Results from flagged hosts may be unreliable. Consider excluding these hosts from your scan.")
+		}
+	}
+
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
@@ -917,6 +938,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	if r.inputProvider.Count() > 0 {
 		r.Logger.Info().Msgf("Targets loaded for current scan: %d", r.inputProvider.Count())
+	}
+	if r.options.HoneypotDetection {
+		r.Logger.Info().Msgf("Honeypot detection enabled (threshold: %d unique template matches per host)", r.options.HoneypotThreshold)
 	}
 }
 
