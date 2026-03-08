@@ -2,6 +2,7 @@ package honeypot
 
 import (
 	"fmt"
+	"net"
 	"sort"
 	"strings"
 	"sync"
@@ -19,6 +20,10 @@ const (
 	// that must match before a host is considered a honeypot.
 	// This is used as a secondary check when total templates count is known.
 	DefaultMatchPercentage = 75.0
+
+	// DefaultMaxHosts is the maximum number of unique hosts tracked
+	// to prevent unbounded memory growth.
+	DefaultMaxHosts = 100000
 )
 
 // hostStats tracks match statistics for a single host.
@@ -47,6 +52,10 @@ type Tracker struct {
 	// When set, allows percentage-based detection as well.
 	totalTemplates int
 
+	// maxHosts is the maximum number of hosts to track to prevent
+	// unbounded memory growth from crafted target lists.
+	maxHosts int
+
 	// logger is used for warning/info messages.
 	logger *gologger.Logger
 }
@@ -59,6 +68,7 @@ func NewTracker(threshold int, logger *gologger.Logger) *Tracker {
 	return &Tracker{
 		hosts:     make(map[string]*hostStats),
 		threshold: threshold,
+		maxHosts:  DefaultMaxHosts,
 		logger:    logger,
 	}
 }
@@ -83,6 +93,10 @@ func (t *Tracker) RecordMatch(host, templateID string) bool {
 
 	stats, ok := t.hosts[normalizedHost]
 	if !ok {
+		// Prevent unbounded memory growth from very large target lists.
+		if len(t.hosts) >= t.maxHosts {
+			return false
+		}
 		stats = &hostStats{
 			templateIDs: make(map[string]struct{}),
 		}
@@ -216,15 +230,28 @@ func normalizeHost(input string) string {
 	parsed, err := urlutil.Parse(input)
 	if err == nil && parsed.Host != "" {
 		host := parsed.Host
-		// Strip default ports for normalization.
-		host = strings.TrimSuffix(host, ":80")
-		host = strings.TrimSuffix(host, ":443")
+		// Strip default ports safely using net.SplitHostPort to avoid
+		// corrupting IPv6 addresses like 2001:db8::80.
+		host = stripDefaultPort(host)
 		return strings.ToLower(host)
 	}
 
 	// Fall back to treating it as a plain host.
 	input = strings.ToLower(strings.TrimSpace(input))
-	input = strings.TrimSuffix(input, ":80")
-	input = strings.TrimSuffix(input, ":443")
+	input = stripDefaultPort(input)
 	return input
+}
+
+// stripDefaultPort removes :80 and :443 from host:port strings only when
+// they are actual port suffixes (not part of an IPv6 address).
+func stripDefaultPort(hostport string) string {
+	host, port, err := net.SplitHostPort(hostport)
+	if err != nil {
+		// No port present or invalid format; return as-is.
+		return hostport
+	}
+	if port == "80" || port == "443" {
+		return host
+	}
+	return hostport
 }

@@ -1,9 +1,6 @@
 package output
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/honeypot"
@@ -61,6 +58,7 @@ func (hw *HoneypotWriter) Write(event *ResultEvent) error {
 
 	// Only track successful matches (MatcherStatus true or non-error results).
 	if event.MatcherStatus || event.Error == "" {
+		// Resolve the effective host, falling back to IP for IP-only results.
 		host := event.Host
 		if host == "" {
 			host = event.IP
@@ -69,16 +67,15 @@ func (hw *HoneypotWriter) Write(event *ResultEvent) error {
 		templateID := event.TemplateID
 
 		if host != "" && templateID != "" {
-			// Record the match and check if this just triggered honeypot detection.
-			justFlagged := hw.tracker.RecordMatch(host, templateID)
-			if justFlagged {
-				hw.logHoneypotWarning(host)
-			}
+			// Record the match. The tracker handles first-flag logging
+			// internally, so no additional logging is needed here.
+			hw.tracker.RecordMatch(host, templateID)
 		}
 
 		// Annotate the result if the host is a known honeypot.
+		// Use the resolved host for consistent lookup.
 		if host != "" && hw.tracker.IsHoneypot(host) {
-			hw.annotateResult(event)
+			hw.annotateResult(event, host)
 		}
 	}
 
@@ -116,28 +113,16 @@ func (hw *HoneypotWriter) Tracker() *honeypot.Tracker {
 }
 
 // annotateResult adds honeypot warning metadata to the result event.
-func (hw *HoneypotWriter) annotateResult(event *ResultEvent) {
+// It uses the resolved host (which may be event.IP when event.Host is empty)
+// to look up the correct match count. The TemplateID is left unmodified
+// to avoid breaking JSONL, SARIF, or cloud consumers that key on it.
+func (hw *HoneypotWriter) annotateResult(event *ResultEvent, resolvedHost string) {
 	if event.Metadata == nil {
 		event.Metadata = make(map[string]interface{})
 	}
 
-	matchCount := hw.tracker.GetMatchCount(event.Host)
+	matchCount := hw.tracker.GetMatchCount(resolvedHost)
 	event.Metadata["honeypot_warning"] = true
 	event.Metadata["honeypot_match_count"] = matchCount
-
-	// Prepend warning to the template ID for screen output visibility.
-	if !strings.HasPrefix(event.TemplateID, "[HONEYPOT?] ") {
-		event.TemplateID = fmt.Sprintf("[HONEYPOT?] %s", event.TemplateID)
-	}
-}
-
-// logHoneypotWarning emits a visible warning when a host is first flagged.
-func (hw *HoneypotWriter) logHoneypotWarning(host string) {
-	matchCount := hw.tracker.GetMatchCount(host)
-	if hw.logger != nil {
-		hw.logger.Warning().Msgf(
-			"[honeypot] %s has matched %d unique templates and appears to be a honeypot - results may be unreliable",
-			host, matchCount,
-		)
-	}
+	event.Metadata["honeypot_host"] = resolvedHost
 }

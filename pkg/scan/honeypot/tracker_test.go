@@ -236,6 +236,52 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 }
 
+func TestMaxHostsLimit(t *testing.T) {
+	tracker := NewTracker(100, nil)
+	// Override maxHosts to a small value for testing.
+	tracker.maxHosts = 3
+
+	tracker.RecordMatch("http://host1.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://host2.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://host3.com", "CVE-2021-0001")
+
+	// Fourth host should be silently dropped.
+	tracker.RecordMatch("http://host4.com", "CVE-2021-0001")
+	if tracker.GetMatchCount("http://host4.com") != 0 {
+		t.Error("expected host4 to be dropped due to max hosts limit")
+	}
+
+	// Existing hosts should still accept new matches.
+	tracker.RecordMatch("http://host1.com", "CVE-2021-0002")
+	if tracker.GetMatchCount("http://host1.com") != 2 {
+		t.Errorf("expected 2 matches for host1, got %d", tracker.GetMatchCount("http://host1.com"))
+	}
+}
+
+func TestNormalizeHostIPv6Safety(t *testing.T) {
+	// Ensure IPv6 addresses ending in :80 are not corrupted.
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		// IPv6 address that ends with ::80 should NOT be stripped.
+		{"2001:db8::80", "2001:db8::80"},
+		// IPv6 with explicit port 80 in brackets should be stripped.
+		{"http://[::1]:80/path", "::1"},
+		// IPv6 with explicit port 443 in brackets should be stripped.
+		{"http://[::1]:443/path", "::1"},
+		// IPv6 with non-default port should be preserved.
+		{"http://[::1]:8080/path", "[::1]:8080"},
+	}
+
+	for _, tt := range tests {
+		result := normalizeHost(tt.input)
+		if result != tt.expected {
+			t.Errorf("normalizeHost(%q) = %q, expected %q", tt.input, result, tt.expected)
+		}
+	}
+}
+
 func TestNormalizeHost(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -257,6 +303,32 @@ func TestNormalizeHost(t *testing.T) {
 		result := normalizeHost(tt.input)
 		if result != tt.expected {
 			t.Errorf("normalizeHost(%q) = %q, expected %q", tt.input, result, tt.expected)
+		}
+	}
+}
+
+func TestStripDefaultPort(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"example.com:80", "example.com"},
+		{"example.com:443", "example.com"},
+		{"example.com:8080", "example.com:8080"},
+		{"example.com", "example.com"},
+		// IPv6 without brackets — no valid host:port split, returned as-is.
+		{"2001:db8::80", "2001:db8::80"},
+		// IPv6 with brackets and default port.
+		{"[::1]:80", "::1"},
+		{"[::1]:443", "::1"},
+		// IPv6 with brackets and non-default port.
+		{"[::1]:8080", "[::1]:8080"},
+	}
+
+	for _, tt := range tests {
+		result := stripDefaultPort(tt.input)
+		if result != tt.expected {
+			t.Errorf("stripDefaultPort(%q) = %q, expected %q", tt.input, result, tt.expected)
 		}
 	}
 }
