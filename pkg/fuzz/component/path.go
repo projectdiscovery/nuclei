@@ -115,7 +115,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 
 		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
-		if newValue, ok := q.value.parsed.Get(key).(string); ok && newValue != "" {
+		if newValue, ok := q.value.parsed.Get(key).(string); ok {
+			// Use the replacement even if it's an empty string (explicit empty replacement)
 			rebuiltSegments = append(rebuiltSegments, newValue)
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
@@ -140,8 +141,10 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// retryablehttp.Request.Clone() reuses the wrapped URL pointer, so updating the
 	// cloned path directly would also mutate q.req.
 	cloned := q.req.Clone(context.Background())
-	cloned.URL = cloned.URL.Clone()
-	cloned.Request.URL = cloned.URL.URL
+	// Deep-copy the URL to ensure UpdateRelPath cannot mutate the original request
+	newURL := cloned.URL.Clone()
+	cloned.URL = newURL
+	cloned.Request.URL = newURL.URL
 	if err := cloned.UpdateRelPath(rebuiltPath, true); err != nil {
 		cloned.RawPath = rebuiltPath
 	}

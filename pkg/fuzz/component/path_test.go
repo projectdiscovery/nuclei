@@ -157,11 +157,14 @@ func TestPathComponent_RebuildUsesOriginalPathSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 
+	// Capture original path before any mutations
+	originalPath := req.Path
+
 	require.NoError(t, path.SetValue("3", "profile OR True"))
 	newReq, err := path.Rebuild()
 	require.NoError(t, err)
 	require.Equal(t, "/user/55/profile OR True", newReq.Path)
-	require.Equal(t, "/user/55/profile", req.Path)
+	require.Equal(t, originalPath, req.Path, "original request path should remain unchanged after Rebuild")
 
 	// Rebuilding after a prior mutation should still use the original path layout
 	// without mutating the original request.
@@ -170,7 +173,7 @@ func TestPathComponent_RebuildUsesOriginalPathSnapshot(t *testing.T) {
 	newReq, err = path.Rebuild()
 	require.NoError(t, err)
 	require.Equal(t, "/user/55 OR True/profile", newReq.Path)
-	require.Equal(t, "/user/55/profile", req.Path)
+	require.Equal(t, originalPath, req.Path, "original request path should remain unchanged after multiple Rebuilds")
 }
 
 func TestPathComponent_RebuildPreservesEmptySegments(t *testing.T) {
@@ -182,9 +185,12 @@ func TestPathComponent_RebuildPreservesEmptySegments(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 
+	// Capture original path before mutation
+	originalPath := req.Path
+
 	require.NoError(t, path.SetValue("2", "mutated"))
 	newReq, err := path.Rebuild()
 	require.NoError(t, err)
 	require.Equal(t, "/a//mutated/", newReq.Path)
-	require.Equal(t, "/a//b/", req.Path)
+	require.Equal(t, originalPath, req.Path, "original request path should remain unchanged")
 }
