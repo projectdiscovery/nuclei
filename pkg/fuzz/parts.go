@@ -60,7 +60,16 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		var evaluated, originalEvaluated string
 		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
 		if input.ApplyPayloadInitialTransformation != nil {
-			evaluated = input.ApplyPayloadInitialTransformation(evaluated, input.AnalyzerParams)
+			// Clone AnalyzerParams before passing to the transformer: the XSS analyzer
+			// writes xss_canary into this map; if the same Parameters map is shared
+			// across concurrent fuzzing goroutines, that write would be a data race.
+			analyzerParamsCopy := make(map[string]interface{}, len(input.AnalyzerParams))
+			for k, v := range input.AnalyzerParams {
+				analyzerParamsCopy[k] = v
+			}
+			// Store back so Analyze() sees the canary written by the transformer.
+			input.AnalyzerParams = analyzerParamsCopy
+			evaluated = input.ApplyPayloadInitialTransformation(evaluated, analyzerParamsCopy)
 			originalEvaluated, _ = rule.executeEvaluate(input, key, valueStr, originalPayload, input.InteractURLs)
 		}
 

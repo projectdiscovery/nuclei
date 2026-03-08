@@ -150,7 +150,15 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
 			input.ApplyPayloadInitialTransformation = analyzer.ApplyInitialTransformation
-			input.AnalyzerParams = request.Analyzer.Parameters
+			if request.Analyzer.Parameters == nil {
+				request.Analyzer.Parameters = make(map[string]interface{})
+			}
+			// Clone parameters to prevent concurrent race condition
+			clonedParams := make(map[string]interface{}, len(request.Analyzer.Parameters))
+			for k, v := range request.Analyzer.Parameters {
+				clonedParams[k] = v
+			}
+			input.AnalyzerParams = clonedParams
 		}
 		err := rule.Execute(input)
 		if err == nil {
