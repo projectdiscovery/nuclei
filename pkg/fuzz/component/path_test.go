@@ -172,3 +172,19 @@ func TestPathComponent_RebuildUsesOriginalPathSnapshot(t *testing.T) {
 	require.Equal(t, "/user/55 OR True/profile", newReq.Path)
 	require.Equal(t, "/user/55/profile", req.Path)
 }
+
+func TestPathComponent_RebuildPreservesEmptySegments(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/a//b/", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	require.NoError(t, path.SetValue("2", "mutated"))
+	newReq, err := path.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/a//mutated/", newReq.Path)
+	require.Equal(t, "/a//b/", req.Path)
+}

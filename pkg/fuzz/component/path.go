@@ -108,7 +108,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	for i := 1; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
-			// Skip empty segments
+			// Preserve empty segments so repeated or trailing slashes survive rebuilds.
+			rebuiltSegments = append(rebuiltSegments, "")
 			continue
 		}
 
