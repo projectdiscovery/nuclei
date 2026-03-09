@@ -224,14 +224,29 @@ func isJavascriptURI(val string) bool {
 	return false
 }
 
+// executableDataMIMETypes lists MIME types that can execute scripts inside data: URIs.
+var executableDataMIMETypes = []string{
+	"text/html",
+	"application/xhtml+xml",
+	"image/svg+xml",
+}
+
 // isExecutableDataURI checks whether a data: URI has an executable MIME type.
-// Only data:text/html and data:application/xhtml+xml can execute scripts.
+// It matches the MIME type exactly, requiring a delimiter (;, ,, or end-of-string)
+// after the type to avoid false positives like "text/htmlx".
 func isExecutableDataURI(uri string) bool {
 	// Strip "data:" prefix (case-insensitive, already confirmed by caller)
-	rest := uri[5:]
-	lower := strings.ToLower(rest)
-	return strings.HasPrefix(lower, "text/html") ||
-		strings.HasPrefix(lower, "application/xhtml+xml")
+	rest := strings.ToLower(uri[5:])
+	for _, mime := range executableDataMIMETypes {
+		if strings.HasPrefix(rest, mime) {
+			// Ensure exact match: next char must be ;, , or end-of-string
+			afterLen := len(mime)
+			if len(rest) == afterLen || rest[afterLen] == ';' || rest[afterLen] == ',' {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func hasSchemePrefix(val, prefix string) bool {

@@ -310,11 +310,16 @@ func TestIsJavascriptURI_DataURIs(t *testing.T) {
 		{"data:text/html;base64,PHNjcmlwdD4=", true},
 		{"DATA:TEXT/HTML,<img onerror=alert(1)>", true},
 		{"data:application/xhtml+xml,<x></x>", true},
+		{"data:image/svg+xml,<svg onload=alert(1)>", true},
+		{"data:image/svg+xml;base64,PHN2Zz4=", true},
 		// Non-executable data URIs (should NOT be flagged)
 		{"data:image/png;base64,iVBOR...", false},
 		{"data:text/plain,hello", false},
 		{"data:application/json,{}", false},
 		{"data:text/css,body{}", false},
+		// Suffix collision: text/htmlx should NOT match text/html
+		{"data:text/htmlx,something", false},
+		{"data:application/xhtml+xmlfoo,bar", false},
 		// javascript: URIs (always true)
 		{"javascript:alert(1)", true},
 		{"JAVASCRIPT:void(0)", true},
