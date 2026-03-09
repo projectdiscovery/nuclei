@@ -300,6 +300,34 @@ func TestBestReflection_Empty(t *testing.T) {
 	}
 }
 
+func TestIsJavascriptURI_DataURIs(t *testing.T) {
+	tests := []struct {
+		val      string
+		expected bool
+	}{
+		// Executable data URIs
+		{"data:text/html,<script>alert(1)</script>", true},
+		{"data:text/html;base64,PHNjcmlwdD4=", true},
+		{"DATA:TEXT/HTML,<img onerror=alert(1)>", true},
+		{"data:application/xhtml+xml,<x></x>", true},
+		// Non-executable data URIs (should NOT be flagged)
+		{"data:image/png;base64,iVBOR...", false},
+		{"data:text/plain,hello", false},
+		{"data:application/json,{}", false},
+		{"data:text/css,body{}", false},
+		// javascript: URIs (always true)
+		{"javascript:alert(1)", true},
+		{"JAVASCRIPT:void(0)", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.val[:min(30, len(tt.val))], func(t *testing.T) {
+			if got := isJavascriptURI(tt.val); got != tt.expected {
+				t.Errorf("isJavascriptURI(%q) = %v, want %v", tt.val, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestIsExecutableScriptType_LegacyJavascriptMIMEs(t *testing.T) {
 	for _, scriptType := range []string{"application/x-javascript", "text/x-javascript"} {
 		if !isExecutableScriptType(scriptType) {

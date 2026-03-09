@@ -211,9 +211,27 @@ func isURLAttribute(name string) bool {
 }
 
 // isJavascriptURI returns true if the value starts with a scriptable URI scheme.
+// For data: URIs, only executable MIME types (text/html, application/xhtml+xml)
+// are considered dangerous — benign types like data:image/png are ignored.
 func isJavascriptURI(val string) bool {
 	trimmed := strings.TrimSpace(val)
-	return hasSchemePrefix(trimmed, "javascript:") || hasSchemePrefix(trimmed, "data:")
+	if hasSchemePrefix(trimmed, "javascript:") {
+		return true
+	}
+	if hasSchemePrefix(trimmed, "data:") {
+		return isExecutableDataURI(trimmed)
+	}
+	return false
+}
+
+// isExecutableDataURI checks whether a data: URI has an executable MIME type.
+// Only data:text/html and data:application/xhtml+xml can execute scripts.
+func isExecutableDataURI(uri string) bool {
+	// Strip "data:" prefix (case-insensitive, already confirmed by caller)
+	rest := uri[5:]
+	lower := strings.ToLower(rest)
+	return strings.HasPrefix(lower, "text/html") ||
+		strings.HasPrefix(lower, "application/xhtml+xml")
 }
 
 func hasSchemePrefix(val, prefix string) bool {
