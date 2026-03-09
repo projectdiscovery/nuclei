@@ -113,12 +113,11 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		if val := q.value.parsed.Get(key); val != nil {
 			if newValue, ok := val.(string); ok && newValue != "" {
 				rebuiltSegments = append(rebuiltSegments, newValue)
-			} else {
-				rebuiltSegments = append(rebuiltSegments, originalSegment)
+				segmentIndex++
+				continue
 			}
-		} else {
-			rebuiltSegments = append(rebuiltSegments, originalSegment)
 		}
+		rebuiltSegments = append(rebuiltSegments, originalSegment)
 		segmentIndex++
 	}
 
