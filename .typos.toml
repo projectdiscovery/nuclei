@@ -1,0 +1,30 @@
+[files]
+extend-exclude = [
+  "README*.md",
+  "integration_tests/**",
+  "pkg/input/formats/testdata/**",
+  "pkg/output/stats/waf/regexes.json",
+  "pkg/protocols/common/helpers/deserialization/testdata/**",
+  "pkg/testutils/fuzzplayground/db.go",
+  "pkg/testutils/integration.go",
+]
+
+[default.extend-words]
+Allowd = "Allowd"
+Exluded = "Exluded"
+Iif = "Iif"
+Mis = "Mis"
+MisMatched = "MisMatched"
+SELEC = "SELEC"
+abd = "abd"
+alo = "alo"
+ba = "ba"
+fo = "fo"
+hae = "hae"
+ine = "ine"
+ines = "ines"
+ot = "ot"
+splitted = "splitted"
+ue = "ue"
+up = "up"
+worflow = "worflow"

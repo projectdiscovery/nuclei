@@ -1,0 +1,31 @@
+name: Typos
+
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - "**.go"
+      - "**.md"
+      - "**.json"
+      - "**.yaml"
+      - "**.yml"
+      - ".typos.toml"
+      - ".github/workflows/typos.yaml"
+  pull_request:
+    paths:
+      - "**.go"
+      - "**.md"
+      - "**.json"
+      - "**.yaml"
+      - "**.yml"
+      - ".typos.toml"
+      - ".github/workflows/typos.yaml"
+  workflow_dispatch:
+
+jobs:
+  typos:
+    name: Typos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crate-ci/typos@v1.38.1
