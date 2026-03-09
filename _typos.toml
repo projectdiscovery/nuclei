@@ -76,7 +76,5 @@ Allowd = "Allowd"
 # These look like typos but are valid technical terms
 MisMatched = "MisMatched"
 Mis = "Mis"
-# These look like typos but need verification
-
-# Exclude deprecated constant name in parser_stats.go for backward compatibility
-Exluded = "Exluded"
+# Remove deprecated constant allow-list - using file-specific exclusion instead
+# The deprecated alias ExludedDastTmplStats in parser_stats.go is handled via type.go.extend-words
