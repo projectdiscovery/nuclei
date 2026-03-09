@@ -1,6 +1,7 @@
 package component
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -126,4 +127,89 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
+}
+
+// TestPathComponent_DeterministicIteration verifies that path segments are
+// always iterated in their original order, not in random map order.
+// This is a regression test for https://github.com/projectdiscovery/nuclei/issues/6398
+func TestPathComponent_DeterministicIteration(t *testing.T) {
+	// Run multiple iterations to catch non-deterministic behavior.
+	// With a regular Go map, the order is randomized and this test
+	// would fail intermittently (~50% of runs with 3+ segments).
+	for run := 0; run < 50; run++ {
+		path := NewPath()
+		req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+		require.NoError(t, err)
+
+		found, err := path.Parse(req)
+		require.NoError(t, err)
+		require.True(t, found)
+
+		var keys []string
+		var values []string
+		err = path.Iterate(func(key string, value interface{}) error {
+			keys = append(keys, key)
+			values = append(values, value.(string))
+			return nil
+		})
+		require.NoError(t, err)
+
+		require.Equal(t, []string{"1", "2", "3"}, keys,
+			"run %d: path segment keys must be in insertion order", run)
+		require.Equal(t, []string{"user", "55", "profile"}, values,
+			"run %d: path segment values must match original path order", run)
+	}
+}
+
+// TestPathComponent_NumericSegmentFuzzing verifies that every path segment
+// (including numeric ones like "55") is visited and can be fuzzed.
+// Regression test for https://github.com/projectdiscovery/nuclei/issues/6398
+func TestPathComponent_NumericSegmentFuzzing(t *testing.T) {
+	testCases := []struct {
+		name     string
+		url      string
+		segments []string
+	}{
+		{"simple numeric", "https://example.com/user/55/profile", []string{"user", "55", "profile"}},
+		{"multiple numeric", "https://example.com/api/v2/users/123/posts/456", []string{"api", "v2", "users", "123", "posts", "456"}},
+		{"all numeric", "https://example.com/1/2/3/4/5", []string{"1", "2", "3", "4", "5"}},
+		{"single segment", "https://example.com/test", []string{"test"}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for run := 0; run < 20; run++ {
+				path := NewPath()
+				req, err := retryablehttp.NewRequest(http.MethodGet, tc.url, nil)
+				require.NoError(t, err)
+
+				found, err := path.Parse(req)
+				require.NoError(t, err)
+				require.True(t, found)
+
+				// Verify all segments are present and in order
+				var values []string
+				err = path.Iterate(func(key string, value interface{}) error {
+					values = append(values, value.(string))
+					return nil
+				})
+				require.NoError(t, err)
+				require.Equal(t, tc.segments, values,
+					"run %d: segments must be in original path order", run)
+
+				// Verify each segment can be individually fuzzed
+				for i, seg := range tc.segments {
+					fuzzPath := path.Clone().(*Path)
+					key := fmt.Sprintf("%d", i+1)
+					err := fuzzPath.SetValue(key, seg+"'")
+					require.NoError(t, err)
+
+					rebuilt, err := fuzzPath.Rebuild()
+					require.NoError(t, err)
+					require.Contains(t, rebuilt.Path, seg+"'",
+						"fuzzed segment %q (key %s) must appear in rebuilt path", seg, key)
+				}
+			}
+		})
+	}
 }
