@@ -76,11 +76,7 @@ Allowd = "Allowd"
 # These look like typos but are valid technical terms
 MisMatched = "MisMatched"
 Mis = "Mis"
-<<<<<<< HEAD
 # These look like typos but need verification
 
-[type.go.extend-words]
-=======
->>>>>>> 5e3e60a1 (fix: address Neo bot and Mzack9999 review)
 # Exclude deprecated constant name in parser_stats.go for backward compatibility
 Exluded = "Exluded"
