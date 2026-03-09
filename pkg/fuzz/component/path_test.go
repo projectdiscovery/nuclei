@@ -213,3 +213,24 @@ func TestPathComponent_NumericSegmentFuzzing(t *testing.T) {
 		})
 	}
 }
+
+func TestURLComponent_EmptySegmentReplacement(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/profile", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	// SetValue with empty string should replace the segment (not silently fall back to original)
+	err = path.SetValue("1", "")
+	require.NoError(t, err)
+
+	rebuilt, err := path.Rebuild()
+	require.NoError(t, err)
+	// Segment "user" should be replaced with "" resulting in "//profile" (empty segment preserved)
+	require.NotContains(t, rebuilt.Path, "user",
+		"empty replacement should overwrite original segment, not fall back to it")
+}
