@@ -57,7 +57,10 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			isScriptTag := tagNameLower == "script"
 			currentScriptType := ""
 			
-			// Collect all attributes first to avoid missing marker checks
+			// FIX #1: Collect ALL attributes first before checking any of them for the marker.
+			// tokenizer.TagAttr() advances an internal cursor and does not reset, so we cannot
+			// have separate loops for type checking and marker checking - all attributes must
+			// be collected in a single pass, then checked in a separate loop.
 			type attrInfo struct {
 				name  string
 				value string
@@ -85,12 +88,12 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 			switch tagNameLower {
 			case "script":
-				// FIX #2: Don't treat application/json as executable script
-				if currentScriptType == "application/json" || currentScriptType == "application/ld+json" {
-					inScript = false
+				// FIX #2: Only treat actual JavaScript MIME types as executable script
+				// Non-JavaScript types (JSON, JSON-LD, etc.) are treated as data blocks
+				inScript = isJavaScriptMIMEType(currentScriptType)
+				if !inScript {
 					scriptType = currentScriptType
 				} else {
-					inScript = true
 					scriptType = ""
 				}
 			case "style":
@@ -116,10 +119,10 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						ctx = ContextAttributeUnquoted
 					}
 
-					// FIX #1: javascript: URIs should be treated as executable script context
-					// Only for executable URL sinks (href, formaction, src, etc.)
+					// FIX #1 & #3: javascript: URIs should be treated as executable script context
+					// Only for executable URL sinks in appropriate tag contexts
 					// Inert attributes like title, data-x should remain as ContextHTMLText
-					if isExecutableURLSink(attrName) && isJavaScriptURI(attrVal) {
+					if isJavaScriptURI(attrVal) && isExecutableURLSink(tagNameLower, attrName) {
 						ctx = ContextScript
 					}
 
@@ -279,18 +282,39 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 
 // detectAttrQuoting detects the quoting style of an attribute from raw HTML.
 // Returns the quote character and whether the attribute is unquoted.
+// FIX #4: Now handles optional whitespace around = (e.g., href = "value" or href= value)
 func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
-	attrAssign := attrName + "="
+	attrNameLower := strings.ToLower(attrName)
 	rawLower := strings.ToLower(rawToken)
-	idx := strings.Index(rawLower, attrAssign)
+	
+	// Find the attribute name in the raw token
+	idx := strings.Index(rawLower, attrNameLower)
 	if idx < 0 {
 		return '"', false // default to double-quoted
 	}
-	afterEq := idx + len(attrAssign)
-	if afterEq >= len(rawToken) {
+	
+	// Look for = after the attribute name, skipping whitespace
+	pos := idx + len(attrNameLower)
+	for pos < len(rawToken) && (rawToken[pos] == ' ' || rawToken[pos] == '\t' || rawToken[pos] == '\n' || rawToken[pos] == '\r') {
+		pos++
+	}
+	
+	// Check if we found =
+	if pos >= len(rawToken) || rawToken[pos] != '=' {
+		return '"', false // default to double-quoted
+	}
+	pos++ // skip the =
+	
+	// Skip whitespace after =
+	for pos < len(rawToken) && (rawToken[pos] == ' ' || rawToken[pos] == '\t' || rawToken[pos] == '\n' || rawToken[pos] == '\r') {
+		pos++
+	}
+	
+	if pos >= len(rawToken) {
 		return '"', false
 	}
-	switch rawToken[afterEq] {
+	
+	switch rawToken[pos] {
 	case '"':
 		return '"', false
 	case '\'':
@@ -300,13 +324,34 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	}
 }
 
-// isExecutableURLSink checks if an attribute is an executable URL sink
+// isExecutableURLSink checks if a tag+attribute pair is an executable URL sink
 // that can execute JavaScript when containing javascript: URIs
+// FIX #3: Now considers both tag and attribute context, not just attribute name
 // Inert attributes like title, data-*, alt, etc. should NOT be in this list
-func isExecutableURLSink(attrName string) bool {
-	switch strings.ToLower(attrName) {
-	case "href", "xlink:href", "formaction", "src", "action", "data", "poster", "srcset":
-		return true
+func isExecutableURLSink(tagName, attrName string) bool {
+	tagLower := strings.ToLower(tagName)
+	attrLower := strings.ToLower(attrName)
+	
+	// Check tag-specific executable sinks
+	switch tagLower {
+	case "a", "area":
+		return attrLower == "href"
+	case "form":
+		return attrLower == "action"
+	case "button", "input":
+		return attrLower == "formaction"
+	case "iframe", "script", "img", "audio", "video", "embed", "object", "source", "track":
+		return attrLower == "src"
+	case "object", "embed":
+		return attrLower == "data"
+	case "img", "video":
+		return attrLower == "poster"
+	case "img", "source":
+		return attrLower == "srcset"
+	case "link":
+		return attrLower == "href" || attrLower == "xlink:href"
+	case "base":
+		return attrLower == "href"
 	default:
 		return false
 	}
@@ -317,6 +362,25 @@ func isExecutableURLSink(attrName string) bool {
 func isJavaScriptURI(attrVal string) bool {
 	trimmed := strings.TrimSpace(strings.ToLower(attrVal))
 	return strings.HasPrefix(trimmed, "javascript:")
+}
+
+// isJavaScriptMIMEType checks if a script type attribute is a JavaScript MIME type
+// FIX #2: Only actual JavaScript MIME types should be treated as executable
+// Non-JavaScript types like application/json, application/ld+json, text/vbscript, etc. are data blocks
+func isJavaScriptMIMEType(mimeType string) bool {
+	if mimeType == "" {
+		// No type attribute defaults to JavaScript (executable)
+		return true
+	}
+	mimeTypeLower := strings.ToLower(mimeType)
+	// JavaScript MIME types (executable)
+	switch mimeTypeLower {
+	case "text/javascript", "application/javascript", "application/x-javascript", "text/ecmascript", "application/ecmascript":
+		return true
+	default:
+		// All other types (application/json, application/ld+json, text/vbscript, etc.) are non-executable
+		return false
+	}
 }
 
 // BestReflection returns the highest-priority reflection from the list
