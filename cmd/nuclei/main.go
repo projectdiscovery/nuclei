@@ -65,10 +65,14 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		options.Logger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	_ = readConfig()
 
-	// Clean up any temp files created during profile processing on exit
+	// Register temp file cleanup before readConfig, which may create
+	// inline-secrets temp files via processProfileExtras. Note: defer
+	// only runs on normal return; Fatal()/os.Exit() paths have explicit
+	// cleanupTempFiles() calls to ensure secrets are never left on disk.
 	defer cleanupTempFiles()
+
+	_ = readConfig()
 
 	if options.ListDslSignatures {
 		options.Logger.Info().Msgf("The available custom DSL functions are:")
@@ -605,6 +609,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			// Maybe we should add vars to the config file as well even if they are set via flags?
 			file, err := os.Open(cfgFile)
 			if err != nil {
+				cleanupTempFiles() // Fatal calls os.Exit which skips defers
 				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
 			}
 			defer func() {
@@ -613,6 +618,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			data := make(map[string]interface{})
 			err = yaml.NewDecoder(file).Decode(&data)
 			if err != nil {
+				cleanupTempFiles() // Fatal calls os.Exit which skips defers
 				gologger.Fatal().Msgf("Could not decode config file: %s\n", err)
 			}
 
@@ -682,6 +688,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if len(options.SecretsFile) > 0 {
 		for _, secretFile := range options.SecretsFile {
 			if !fileutil.FileExists(secretFile) {
+				cleanupTempFiles() // Fatal calls os.Exit which skips defers
 				options.Logger.Fatal().Msgf("given secrets file '%s' does not exist", secretFile)
 			}
 		}
