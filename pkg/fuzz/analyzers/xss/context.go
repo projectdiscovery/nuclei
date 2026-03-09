@@ -24,7 +24,6 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 	inScript := false
 	inStyle := false
 	inRCDATA := false
-	scriptType := "" // Track script type to handle application/json
 
 	for {
 		tt := tokenizer.Next()
@@ -91,11 +90,6 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				// FIX #2: Only treat actual JavaScript MIME types as executable script
 				// Non-JavaScript types (JSON, JSON-LD, etc.) are treated as data blocks
 				inScript = isJavaScriptMIMEType(currentScriptType)
-				if !inScript {
-					scriptType = currentScriptType
-				} else {
-					scriptType = ""
-				}
 			case "style":
 				inStyle = true
 			default:
@@ -160,7 +154,6 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = false
-				scriptType = ""
 			case "style":
 				inStyle = false
 			default:
@@ -295,7 +288,7 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	
 	// Look for = after the attribute name, skipping whitespace
 	pos := idx + len(attrNameLower)
-	for pos < len(rawToken) && (rawToken[pos] == ' ' || rawToken[pos] == '\t' || rawToken[pos] == '\n' || rawToken[pos] == '\r') {
+	for pos < len(rawToken) && (rawToken[pos] == ' ' || rawToken[pos] == '\t' || rawToken[pos] == '\n' || rawToken[pos] == '\r' || rawToken[pos] == '\f') {
 		pos++
 	}
 	
@@ -306,7 +299,7 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	pos++ // skip the =
 	
 	// Skip whitespace after =
-	for pos < len(rawToken) && (rawToken[pos] == ' ' || rawToken[pos] == '\t' || rawToken[pos] == '\n' || rawToken[pos] == '\r') {
+	for pos < len(rawToken) && (rawToken[pos] == ' ' || rawToken[pos] == '\t' || rawToken[pos] == '\n' || rawToken[pos] == '\r' || rawToken[pos] == '\f') {
 		pos++
 	}
 	
@@ -340,14 +333,16 @@ func isExecutableURLSink(tagName, attrName string) bool {
 		return attrLower == "action"
 	case "button", "input":
 		return attrLower == "formaction"
-	case "iframe", "script", "img", "audio", "video", "embed", "object", "source", "track":
+	case "iframe", "script", "audio", "track":
 		return attrLower == "src"
-	case "object", "embed":
-		return attrLower == "data"
-	case "img", "video":
-		return attrLower == "poster"
-	case "img", "source":
-		return attrLower == "srcset"
+	case "img":
+		return attrLower == "src" || attrLower == "poster" || attrLower == "srcset"
+	case "video":
+		return attrLower == "src" || attrLower == "poster"
+	case "embed", "object":
+		return attrLower == "src" || attrLower == "data"
+	case "source":
+		return attrLower == "src" || attrLower == "srcset"
 	case "link":
 		return attrLower == "href" || attrLower == "xlink:href"
 	case "base":
@@ -375,7 +370,7 @@ func isJavaScriptMIMEType(mimeType string) bool {
 	mimeTypeLower := strings.ToLower(mimeType)
 	// JavaScript MIME types (executable)
 	switch mimeTypeLower {
-	case "text/javascript", "application/javascript", "application/x-javascript", "text/ecmascript", "application/ecmascript":
+	case "text/javascript", "application/javascript", "application/x-javascript", "text/ecmascript", "application/ecmascript", "module":
 		return true
 	default:
 		// All other types (application/json, application/ld+json, text/vbscript, etc.) are non-executable

@@ -36,9 +36,6 @@ func (a *Analyzer) Name() string {
 func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
 	if strings.Contains(data, "[XSS_CANARY]") {
 		canary := generateCanary()
-		if params != nil {
-			params["xss_canary"] = canary
-		}
 		// The canary includes special chars for character survival detection
 		canaryWithChars := canary + canaryChars
 		data = strings.ReplaceAll(data, "[XSS_CANARY]", canaryWithChars)
@@ -88,9 +85,9 @@ func extractCanaryFromPayload(payload string) string {
 // 2. Detecting the HTML context of the reflection
 // 3. Replaying context-appropriate payloads to verify exploitability
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
-	// Extract the canary from the original payload (FuzzGenerated.Value)
+	// Extract the canary from the final reflected string (FuzzGenerated.Value)
 	// This avoids depending on mutable analyzer params which can drift across parallel fuzz execution
-	canary := extractCanaryFromPayload(options.FuzzGenerated.OriginalPayload)
+	canary := extractCanaryFromPayload(options.FuzzGenerated.Value)
 	if canary == "" {
 		return false, "", nil
 	}
