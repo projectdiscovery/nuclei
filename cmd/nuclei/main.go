@@ -783,10 +783,12 @@ func writeGeneratedFile(pattern string, data []byte) (string, error) {
 		return "", err
 	}
 	if _, err := bytes.NewReader(data).WriteTo(file); err != nil {
+		_ = os.Remove(file.Name())
 		_ = file.Close()
 		return "", err
 	}
 	if err := file.Close(); err != nil {
+		_ = os.Remove(file.Name())
 		return "", err
 	}
 	generatedFiles = append(generatedFiles, file.Name())
@@ -834,9 +836,15 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 		return
 	}
 	// if config file exists, merge it with the default config
-	if err = flagset.MergeConfigFile(cfgFile); err != nil {
+	preparedCfg, err := prepareConfigFileForMerge(cfgFile)
+	if err != nil {
+		options.Logger.Warning().Msgf("failed to prepare configfile for merge: %s\n", err)
+		return
+	}
+	if err = flagset.MergeConfigFile(preparedCfg.Path); err != nil {
 		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
 	}
+	options.SecretsFile = append(options.SecretsFile, preparedCfg.SecretsFiles...)
 }
 
 // disableUpdatesCallback disables the update check.
