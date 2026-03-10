@@ -1,7 +1,6 @@
 package xss
 
 import (
-	"bytes"
 	"strings"
 	"unicode"
 
