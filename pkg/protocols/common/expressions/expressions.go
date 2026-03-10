@@ -1,6 +1,7 @@
 package expressions
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -73,8 +74,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		// Note: we use a regex that requires an identifier character after {{
 		// so that legitimate literals like hex_encode('{{') are not blocked.
 		if unresolvedVarRe.MatchString(expression) {
-			gologger.Warning().Msgf("Skipping expression with unresolved variables: %s", expression)
-			continue
+			return "", fmt.Errorf("expression contains unresolved variables: %s", expression)
 		}
 
 		// turns expressions (either helper functions+base values or base values)
