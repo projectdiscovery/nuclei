@@ -58,75 +58,115 @@ func IsEnabled() bool {
 // Record records a template match for a host if detection is enabled
 // Returns true if this match triggered honeypot detection
 func Record(host, templateID string) bool {
-	if !IsEnabled() {
+	// Atomically snapshot both enabled state and detector reference
+	// This prevents TOCTOU race between IsEnabled() and detector access
+	mu.RLock()
+	isEnabled := enabled
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if !isEnabled {
 		return false
 	}
 	
-	if globalDetector == nil {
+	if detector == nil {
 		Initialize(20) // use default threshold
+		detector = globalDetector
 	}
 	
-	return globalDetector.RecordMatch(host, templateID)
+	return detector.RecordMatch(host, templateID)
 }
 
 // Check checks if a host is flagged as a honeypot
 func Check(host string) bool {
-	if !IsEnabled() || globalDetector == nil {
+	mu.RLock()
+	isEnabled := enabled
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if !isEnabled || detector == nil {
 		return false
 	}
 	
-	return globalDetector.IsHoneypot(host)
+	return detector.IsHoneypot(host)
 }
 
 // GetMatchCount returns the number of template matches for a host
 func GetMatchCount(host string) int {
-	if globalDetector == nil {
+	mu.RLock()
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if detector == nil {
 		return 0
 	}
 	
-	return globalDetector.GetMatchCount(host)
+	return detector.GetMatchCount(host)
 }
 
 // GetScore returns the honeypot score for a host
 func GetScore(host string) int {
-	if globalDetector == nil {
+	mu.RLock()
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if detector == nil {
 		return 0
 	}
 	
-	return globalDetector.GetScore(host)
+	return detector.GetScore(host)
 }
 
 // SetCallback sets a custom callback for honeypot detection
 func SetCallback(callback func(host string, matchCount int)) {
-	if globalDetector == nil {
+	mu.RLock()
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if detector == nil {
 		Initialize(20)
+		mu.RLock()
+		detector = globalDetector
+		mu.RUnlock()
 	}
 	
-	globalDetector.onHoneypotDetected = callback
+	detector.onHoneypotDetected = callback
 }
 
 // SetThreshold updates the detection threshold
 func SetThreshold(threshold int) {
-	if globalDetector == nil {
+	mu.RLock()
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if detector == nil {
 		Initialize(threshold)
 		return
 	}
 	
-	globalDetector.SetThreshold(threshold)
+	detector.SetThreshold(threshold)
 }
 
 // GetStats returns detection statistics
 func GetStats() Stats {
-	if globalDetector == nil {
+	mu.RLock()
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if detector == nil {
 		return Stats{}
 	}
 	
-	return globalDetector.GetStats()
+	return detector.GetStats()
 }
 
 // Reset clears all tracked data
 func Reset() {
-	if globalDetector != nil {
-		globalDetector.Reset()
+	mu.RLock()
+	detector := globalDetector
+	mu.RUnlock()
+	
+	if detector != nil {
+		detector.Reset()
 	}
 }
