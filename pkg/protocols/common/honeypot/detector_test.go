@@ -1,6 +1,7 @@
 package honeypot
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 )
@@ -15,7 +16,7 @@ func TestDetectorNormalHost(t *testing.T) {
 	
 	// Record a few matches (below threshold)
 	for i := 0; i < 10; i++ {
-		triggered := detector.RecordMatch(host, "template-"+string(rune(i)))
+		triggered := detector.RecordMatch(host, "template-"+fmt.Sprintf("%d", i))
 		if triggered {
 			t.Errorf("Expected no honeypot detection for normal host, but was triggered at %d matches", i+1)
 		}
@@ -58,7 +59,7 @@ func TestDetectorHoneypotTriggered(t *testing.T) {
 	
 	// Record matches up to threshold
 	for i := 0; i < 19; i++ {
-		triggered := detector.RecordMatch(host, "template-"+string(rune(i)))
+		triggered := detector.RecordMatch(host, "template-"+fmt.Sprintf("%d", i))
 		if triggered {
 			t.Errorf("Should not trigger before reaching threshold at match %d", i+1)
 		}
@@ -154,7 +155,7 @@ func TestDetectorThresholdEdgeCase(t *testing.T) {
 	
 	// Add matches up to threshold - 1
 	for i := 0; i < threshold-1; i++ {
-		triggered := detector.RecordMatch(host, "template-"+string(rune(i)))
+		triggered := detector.RecordMatch(host, "template-"+fmt.Sprintf("%d", i))
 		if triggered {
 			t.Errorf("Should not trigger at match %d (threshold is %d)", i+1, threshold)
 		}
@@ -226,7 +227,7 @@ func TestDetectorReset(t *testing.T) {
 	
 	// Record matches and flag as honeypot
 	for i := 0; i < 15; i++ {
-		detector.RecordMatch(host, "template-"+string(rune(i)))
+		detector.RecordMatch(host, "template-"+fmt.Sprintf("%d", i))
 	}
 	
 	if !detector.IsHoneypot(host) {
@@ -347,7 +348,7 @@ func TestDetectorGetStats(t *testing.T) {
 	
 	for host, count := range hosts {
 		for i := 0; i < count; i++ {
-			detector.RecordMatch(host, "template-"+string(rune(i)))
+			detector.RecordMatch(host, "template-"+fmt.Sprintf("%d", i))
 		}
 	}
 	
@@ -397,7 +398,7 @@ func BenchmarkDetectorIsHoneypot(b *testing.B) {
 	
 	// Pre-populate with some data
 	for i := 0; i < 100; i++ {
-		detector.RecordMatch("test-host.com", "template-"+string(rune(i)))
+		detector.RecordMatch("test-host.com", "template-"+fmt.Sprintf("%d", i))
 	}
 	
 	b.ResetTimer()
