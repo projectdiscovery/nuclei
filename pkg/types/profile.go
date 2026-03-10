@@ -337,6 +337,9 @@ func handleInlineSecrets(rawConfig map[string]interface{}, result *ProfilePrepro
 	if existing, ok := rawConfig["secret-file"]; ok {
 		switch v := existing.(type) {
 		case string:
+			// Trim trailing commas and whitespace to prevent double-comma
+			// artifacts from malformed user input (e.g. "file1.yaml,").
+			v = strings.TrimRight(v, ", ")
 			if v != "" {
 				rawConfig["secret-file"] = v + "," + secretFilePath
 			} else {
