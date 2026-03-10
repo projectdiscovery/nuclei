@@ -25,7 +25,8 @@ func TestProcessProfileExtras_MetadataFields(t *testing.T) {
 	options = &types.Options{Logger: gologger.DefaultLogger}
 	tempFiles = nil
 
-	processProfileExtras("testdata/test-profile-with-extras.yaml")
+	err := processProfileExtras("testdata/test-profile-with-extras.yaml")
+	require.NoError(t, err, "processProfileExtras should not return an error for a valid profile")
 
 	require.Equal(t, "test-profile", options.ProfileID, "ProfileID should be extracted")
 	require.Equal(t, "Test Profile", options.ProfileName, "ProfileName should be extracted")
@@ -44,7 +45,8 @@ func TestProcessProfileExtras_InlineSecrets(t *testing.T) {
 	options = &types.Options{Logger: gologger.DefaultLogger}
 	tempFiles = nil
 
-	processProfileExtras("testdata/test-profile-with-extras.yaml")
+	err := processProfileExtras("testdata/test-profile-with-extras.yaml")
+	require.NoError(t, err, "processProfileExtras should not return an error for valid inline secrets")
 
 	// InlineSecretsYAML should be populated
 	require.NotEmpty(t, options.InlineSecretsYAML, "InlineSecretsYAML should be populated")
@@ -54,7 +56,7 @@ func TestProcessProfileExtras_InlineSecrets(t *testing.T) {
 
 	// Verify the temp file exists and contains valid YAML
 	tmpPath := string(options.SecretsFile[0])
-	_, err := os.Stat(tmpPath)
+	_, err = os.Stat(tmpPath)
 	require.NoError(t, err, "temp secrets file should exist")
 
 	// The temp file should also be tracked for cleanup
@@ -86,7 +88,8 @@ timeout: 30
 
 	options = &types.Options{Logger: gologger.DefaultLogger}
 
-	processProfileExtras(tmpFile.Name())
+	err = processProfileExtras(tmpFile.Name())
+	require.NoError(t, err, "processProfileExtras should not return an error for a profile without secrets")
 
 	require.Equal(t, "simple-profile", options.ProfileID)
 	require.Equal(t, "Simple Profile", options.ProfileName)
@@ -100,8 +103,10 @@ func TestProcessProfileExtras_InvalidFile(t *testing.T) {
 
 	options = &types.Options{Logger: gologger.DefaultLogger}
 
-	// Should not panic on non-existent file
-	processProfileExtras("/nonexistent/path/profile.yaml")
+	// Should not panic or return error on non-existent file
+	// (file read failure is a warning, not an error — no secrets to silently drop)
+	err := processProfileExtras("/nonexistent/path/profile.yaml")
+	require.NoError(t, err, "non-existent file should not return an error (only warns)")
 
 	require.Empty(t, options.ProfileID)
 	require.Empty(t, options.ProfileName)
@@ -134,7 +139,8 @@ tags:
 
 	options = &types.Options{Logger: gologger.DefaultLogger}
 
-	processProfileExtras(tmpFile.Name())
+	err = processProfileExtras(tmpFile.Name())
+	require.NoError(t, err, "processProfileExtras should not return an error for a profile with extra unknown fields")
 
 	// Known metadata fields should be extracted
 	require.Equal(t, "extras-profile", options.ProfileID)

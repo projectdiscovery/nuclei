@@ -603,7 +603,10 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
 		// Extract metadata and inline secrets from the config file
-		processProfileExtras(cfgFile)
+		if err := processProfileExtras(cfgFile); err != nil {
+			cleanupTempFiles() // Fatal calls os.Exit which skips defers
+			options.Logger.Fatal().Msgf("Could not process profile extras from config: %s\n", err)
+		}
 
 		if !options.Vars.IsEmpty() {
 			// Maybe we should add vars to the config file as well even if they are set via flags?
@@ -682,7 +685,10 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		}
 		// Read the profile YAML to extract metadata fields and inline secrets
 		// that goflags does not handle (since they are not registered CLI flags).
-		processProfileExtras(templateProfile)
+		if err := processProfileExtras(templateProfile); err != nil {
+			cleanupTempFiles() // Fatal calls os.Exit which skips defers
+			options.Logger.Fatal().Msgf("Could not process profile extras: %s\n", err)
+		}
 	}
 
 	if len(options.SecretsFile) > 0 {
@@ -704,11 +710,15 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 //     in options for informational purposes.
 //   - Inline secrets (secrets key) which are extracted and written to a
 //     temporary file so the auth provider can consume them.
-func processProfileExtras(profilePath string) {
+//
+// Returns an error if inline secrets are present but cannot be processed,
+// since silently dropping authentication would cause the user to believe
+// their secrets are being used when they are not.
+func processProfileExtras(profilePath string) error {
 	profileData, err := os.ReadFile(profilePath)
 	if err != nil {
 		options.Logger.Warning().Msgf("Could not read profile for extras: %s", err)
-		return
+		return nil
 	}
 
 	var profileMap map[string]interface{}
@@ -716,7 +726,7 @@ func processProfileExtras(profilePath string) {
 		// The YAML was already successfully parsed by MergeConfigFile,
 		// so this error is unexpected. Log and continue.
 		options.Logger.Warning().Msgf("Could not parse profile extras: %s", err)
-		return
+		return nil
 	}
 
 	// Feature A: Extract profile metadata fields.
@@ -750,11 +760,14 @@ func processProfileExtras(profilePath string) {
 	// When a profile YAML contains a "secrets" key with embedded auth configuration,
 	// we extract it, write it to a temp file, and add that file to SecretsFile
 	// so the existing auth provider pipeline can process it.
+	//
+	// Errors in this section are returned (not just logged) because silently
+	// dropping secrets would cause scans to run without authentication,
+	// which the user would not expect.
 	if secrets, ok := profileMap["secrets"]; ok && secrets != nil {
 		secretsYAML, err := yaml.Marshal(secrets)
 		if err != nil {
-			options.Logger.Warning().Msgf("Could not marshal inline secrets: %s", err)
-			return
+			return fmt.Errorf("could not marshal inline secrets: %w", err)
 		}
 
 		// Store the raw YAML for potential programmatic use
@@ -763,23 +776,27 @@ func processProfileExtras(profilePath string) {
 		// Write to a temp file so the file-based auth provider can consume it
 		tmpFile, err := os.CreateTemp("", "nuclei-inline-secrets-*.yaml")
 		if err != nil {
-			options.Logger.Warning().Msgf("Could not create temp file for inline secrets: %s", err)
-			return
+			return fmt.Errorf("could not create temp file for inline secrets: %w", err)
 		}
 
 		if _, err := tmpFile.Write(secretsYAML); err != nil {
 			_ = tmpFile.Close()
 			_ = os.Remove(tmpFile.Name())
-			options.Logger.Warning().Msgf("Could not write inline secrets to temp file: %s", err)
-			return
+			return fmt.Errorf("could not write inline secrets to temp file: %w", err)
 		}
-		_ = tmpFile.Close()
+
+		if err := tmpFile.Close(); err != nil {
+			_ = os.Remove(tmpFile.Name())
+			return fmt.Errorf("could not close inline secrets temp file: %w", err)
+		}
 
 		options.Logger.Debug().Msg("Extracted inline secrets from profile to temp file")
 		options.SecretsFile = append(options.SecretsFile, tmpFile.Name())
 		// Track for cleanup on exit
 		tempFiles = append(tempFiles, tmpFile.Name())
 	}
+
+	return nil
 }
 
 // cleanupTempFiles removes temporary files created during profile processing.
