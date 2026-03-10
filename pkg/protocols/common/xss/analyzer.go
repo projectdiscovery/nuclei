@@ -84,7 +84,15 @@ func (a *XSSContextAnalyzer) Analyze(htmlContent string) []ContextAnalysis {
 	return contexts
 }
 
-// analyzeHTMLContext analyzes HTML text and tag contexts
+// analyzeHTMLContext analyzes HTML text and tag contexts to detect XSS injection points.
+// It tokenizes the HTML content and checks for payload presence in text nodes,
+// attributes, script blocks, and style blocks. Returns a ContextAnalysis if found.
+// 
+// The function handles:
+// - Text content within HTML elements
+// - Attribute values (including URL and event handler attributes)
+// - Script block content
+// - Style block content
 func (a *XSSContextAnalyzer) analyzeHTMLContext(content string) *ContextAnalysis {
 	tokenizer := html.NewTokenizer(strings.NewReader(content))
 	
@@ -164,7 +172,14 @@ func (a *XSSContextAnalyzer) analyzeHTMLContext(content string) *ContextAnalysis
 	return nil
 }
 
-// analyzeJavaScriptContext analyzes JavaScript contexts
+// analyzeJavaScriptContext analyzes JavaScript contexts to detect XSS injection points.
+// It checks for payload presence in JavaScript string literals (double quotes, backticks, single quotes).
+// Returns a ContextAnalysis if the payload is found within a JavaScript context.
+// 
+// This function detects:
+// - Payloads in double-quoted strings
+// - Payloads in template literals (backticks)
+// - Payloads in single-quoted strings
 func (a *XSSContextAnalyzer) analyzeJavaScriptContext(content string) *ContextAnalysis {
 	// Check for payload in JavaScript contexts
 	jsPatterns := []string{
@@ -189,7 +204,11 @@ func (a *XSSContextAnalyzer) analyzeJavaScriptContext(content string) *ContextAn
 	return nil
 }
 
-// analyzeURLContext analyzes URL contexts
+// analyzeURLContext analyzes URL contexts to detect XSS injection points.
+// It checks for payload presence in URL schemes like javascript:, data:, and vbscript:.
+// Returns a ContextAnalysis if the payload is found within a URL context.
+//
+// This function detects dangerous URL schemes that could lead to XSS execution.
 func (a *XSSContextAnalyzer) analyzeURLContext(content string) *ContextAnalysis {
 	urlSchemes := []string{"javascript:", "data:", "vbscript:"}
 	
@@ -210,7 +229,9 @@ func (a *XSSContextAnalyzer) analyzeURLContext(content string) *ContextAnalysis 
 	return nil
 }
 
-// analyzeScriptBlock analyzes script block contexts
+// analyzeScriptBlock analyzes script block contexts to detect XSS injection points.
+// It extracts the text content within <script> tags and checks for payload presence.
+// Returns a ContextAnalysis if the payload is found within a script block.
 func (a *XSSContextAnalyzer) analyzeScriptBlock(tokenizer *html.Tokenizer, content string) *ContextAnalysis {
 	tokenType := tokenizer.Next()
 	if tokenType == html.TextToken {
@@ -230,7 +251,9 @@ func (a *XSSContextAnalyzer) analyzeScriptBlock(tokenizer *html.Tokenizer, conte
 	return nil
 }
 
-// analyzeStyleBlock analyzes style block contexts
+// analyzeStyleBlock analyzes style block contexts to detect XSS injection points.
+// It extracts the text content within <style> tags and checks for payload presence.
+// Returns a ContextAnalysis if the payload is found within a style block.
 func (a *XSSContextAnalyzer) analyzeStyleBlock(tokenizer *html.Tokenizer, content string) *ContextAnalysis {
 	tokenType := tokenizer.Next()
 	if tokenType == html.TextToken {
