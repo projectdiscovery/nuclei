@@ -16,6 +16,8 @@ var ContextSrcdoc    = 'ContextSrcdoc';  // NEW: full HTML injection via srcdoc
 // NON_EXECUTABLE_SCRIPT_TYPES lists MIME types for <script> tags that browsers
 // do NOT execute. Content inside these blocks is data, not code.
 // Reference: https://html.spec.whatwg.org/multipage/scripting.html#attr-script-type
+// NOTE: 'module' is intentionally excluded — <script type="module"> IS executable
+// in all modern browsers (deferred, strict mode, but still runs JS).
 var NON_EXECUTABLE_SCRIPT_TYPES = [
   'application/json',
   'application/ld+json',
@@ -24,16 +26,16 @@ var NON_EXECUTABLE_SCRIPT_TYPES = [
   'text/x-template',
   'text/x-handlebars-template',
   'text/ng-template',
-  'module',  // treated as module, not classic script — keep for completeness
 ];
 
-// JAVASCRIPT_URI_SCHEMES lists URI scheme prefixes that result in script execution
+// EXECUTABLE_URI_SCHEMES lists URI scheme prefixes that result in script execution
 // when used in href/src/action/etc. attributes.
-// Normalized to lowercase before comparison to handle case variations like
-// "JavaScript:" or "jAvAsCrIpT:" which browsers treat identically.
-var JAVASCRIPT_URI_SCHEMES = [
+// Also includes data: URIs that embed HTML documents.
+var EXECUTABLE_URI_SCHEMES = [
   'javascript:',
-  'vbscript:',  // IE legacy, still relevant for completeness
+  'vbscript:',      // IE legacy, still relevant for completeness
+  'data:text/html', // <iframe src="data:text/html,..."> executes embedded scripts
+  'data:application/xhtml+xml', // same as above, XHTML variant
 ];
 
 /**
@@ -57,8 +59,13 @@ function normalizeForReflection(str) {
     .replace(/&#39;/gi, "'")
     .replace(/&#x2F;/gi, '/')
     .replace(/&#47;/gi, '/')
-    // Decode decimal numeric entities like &#97; -> 'a'
+    // Decode decimal numeric entities WITH semicolon: &#97; -> 'a'
     .replace(/&#(\d+);/gi, function(_, dec) {
+      return String.fromCharCode(parseInt(dec, 10));
+    })
+    // Decode decimal numeric entities WITHOUT semicolon: &#97 -> 'a'
+    // Browsers accept these in certain contexts (e.g. &#110ucleXSS)
+    .replace(/&#(\d+)(?=[^;0-9]|$)/gi, function(_, dec) {
       return String.fromCharCode(parseInt(dec, 10));
     })
     // Decode hex numeric entities like &#x61; -> 'a'
@@ -94,7 +101,7 @@ function isNonExecutableScriptType(typeAttr) {
 
 /**
  * isJavaScriptURI returns true if the given attribute value is a
- * javascript: or vbscript: URI — both of which cause script execution
+ * javascript:, vbscript:, or data: URI that causes script execution
  * when the browser navigates to the href/src/action value.
  *
  * WHY: href="javascript:alert(1)" is a classic XSS vector. If the context
@@ -102,21 +109,31 @@ function isNonExecutableScriptType(typeAttr) {
  * value, it will classify this as ContextAttribute. But the attribute VALUE
  * is itself executable, so the correct classification is ContextScript.
  *
- * Normalization handles protocol variations:
- *   JavaScript:   -> javascript:
- *   jAvAsCrIpT:   -> javascript:
- *   \tjavascript:  -> javascript:  (leading whitespace is stripped by browsers)
+ * Normalization handles:
+ *   - Case variations:     JavaScript: -> javascript:
+ *   - Leading whitespace:  \tjavascript: -> javascript:
+ *   - URL encoding:        %6aavascript: -> javascript: (browsers decode before scheme check)
  *
  * @param {string} attrValue - the raw attribute value string
  * @returns {boolean}
  */
 function isJavaScriptURI(attrValue) {
   if (!attrValue) return false;
-  // Browsers strip leading whitespace and some control characters before
-  // parsing the URI scheme, so we do the same here.
-  var normalized = attrValue.replace(/^[\s\t\n\r\0]+/, '').toLowerCase();
-  for (var i = 0; i < JAVASCRIPT_URI_SCHEMES.length; i++) {
-    if (normalized.indexOf(JAVASCRIPT_URI_SCHEMES[i]) === 0) {
+  // Browsers strip leading whitespace/control chars before parsing the URI scheme
+  var trimmed = attrValue.replace(/^[\s\t\n\r\0]+/, '');
+  // Decode URL percent-encoding so %6aavascript: is caught
+  var decoded = trimmed;
+  try {
+    decoded = decodeURIComponent(trimmed);
+  } catch (_) {
+    // decodeURIComponent throws on malformed sequences — fall back to trimmed
+    decoded = trimmed.replace(/%([0-9a-f]{2})/gi, function(_, hex) {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+  }
+  var normalized = decoded.toLowerCase();
+  for (var i = 0; i < EXECUTABLE_URI_SCHEMES.length; i++) {
+    if (normalized.indexOf(EXECUTABLE_URI_SCHEMES[i]) === 0) {
       return true;
     }
   }
@@ -160,43 +177,36 @@ function isSrcdocAttribute(attrName) {
 function classifyContext(fragment, canary, attrName, attrValue, scriptType) {
   // --- 1. JSON / non-executable script blocks ---
   // Must be checked BEFORE the generic ContextScript check.
-  // If the canary is inside a <script type="application/json"> block,
-  // the content is never executed, so this is NOT an exploitable XSS context.
   if (scriptType !== undefined && scriptType !== null) {
     if (isNonExecutableScriptType(scriptType)) {
-      // Return ContextUnknown: the reflection exists but is not exploitable
-      // as a script injection. Callers should treat this as low/informational.
       return ContextUnknown;
     }
-    // Any other (or empty) script type is treated as executable JavaScript.
     return ContextScript;
   }
 
-  // --- 2. javascript: / vbscript: URI in attribute value ---
-  // If the canary appears inside an attribute whose value starts with a
-  // JavaScript URI scheme, the attribute value is executable code.
-  // Upgrade the context from ContextAttribute to ContextScript.
+  // --- 2. Attribute context ---
   if (attrValue !== undefined && attrValue !== null) {
-    if (isJavaScriptURI(attrValue)) {
-      return ContextScript;
-    }
-    // --- 3. srcdoc attribute -> HTML injection context ---
+    // 2a. srcdoc attribute -> HTML injection context
+    // Check BEFORE javascript: URI check — srcdoc content is HTML, not a URL.
+    // "javascript:alert(1)" inside srcdoc is literal text, not an executable URI.
     if (isSrcdocAttribute(attrName)) {
       return ContextSrcdoc;
+    }
+    // 2b. javascript:/vbscript:/data: URI in attribute value -> executable context
+    if (isJavaScriptURI(attrValue)) {
+      return ContextScript;
     }
     // Generic attribute context
     return ContextAttribute;
   }
 
-  // --- 4. Fallback: scan the fragment for contextual clues ---
-  // This path is used when structured attribute info is not available.
+  // --- 3. Fallback: scan the fragment for contextual clues ---
   if (!fragment) return ContextUnknown;
 
   var frag = fragment.toLowerCase();
 
-  // Inside an executable <script> block (no type, or type="text/javascript")
+  // Inside an executable <script> block
   if (frag.indexOf('<script') !== -1) {
-    // Check for non-executable type within the fragment
     var typeMatch = fragment.match(/<script[^>]+type\s*=\s*["']?([^"'\s>]+)["']?/i);
     if (typeMatch && isNonExecutableScriptType(typeMatch[1])) {
       return ContextUnknown;
@@ -209,16 +219,15 @@ function classifyContext(fragment, canary, attrName, attrValue, scriptType) {
     return ContextStyle;
   }
 
-  // Inside a tag attribute (heuristic: look for open tag before canary)
-  if (frag.match(/=["'][^"']*$/) || frag.match(/=["'][^"']*$/)) {
+  // Inside a tag attribute — match both quoted and unquoted attribute values
+  if (frag.match(/=["'][^"']*$/) || frag.match(/=\S*$/)) {
     // Check for javascript: in the attribute value portion
-    var attrValMatch = fragment.match(/=\s*["']([^"']*)/i);
+    var attrValMatch = fragment.match(/=\s*["']?([^"'\s>]*)/i);
     if (attrValMatch && isJavaScriptURI(attrValMatch[1])) {
       return ContextScript;
     }
     // Check for srcdoc
-    var srcdocMatch = fragment.match(/srcdoc\s*=\s*["'][^"']*/i);
-    if (srcdocMatch) {
+    if (/srcdoc\s*=/i.test(fragment)) {
       return ContextSrcdoc;
     }
     return ContextAttribute;
@@ -232,17 +241,12 @@ function classifyContext(fragment, canary, attrName, attrValue, scriptType) {
  * isReflected returns true if the canary string appears in the response body,
  * using case-insensitive, entity-normalized comparison.
  *
- * WHY: Servers may transform reflected input (e.g., uppercase it, entity-encode
- * parts of it). A case-sensitive indexOf would miss these transformed reflections,
- * leading to false negatives.
- *
  * @param {string} responseBody - full HTTP response body
  * @param {string} canary       - the injected canary string to search for
  * @returns {boolean}
  */
 function isReflected(responseBody, canary) {
   if (!responseBody || !canary) return false;
-  // Normalize both sides: decode entities then lowercase
   var normBody   = normalizeForReflection(responseBody);
   var normCanary = normalizeForReflection(canary);
   return normBody.indexOf(normCanary) !== -1;
