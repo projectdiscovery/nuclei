@@ -3,12 +3,19 @@ package honeypot
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
+
+// hostData holds both match tracking and count for O(1) access
+type hostData struct {
+	matches sync.Map     // map[string]struct{} - unique template IDs
+	count   atomic.Int64 // atomic counter for O(1) reads
+}
 
 // Detector tracks template matches per host to identify potential honeypots
 type Detector struct {
 	// hostMatches tracks unique template matches per host
-	hostMatches sync.Map // map[string]map[string]struct{}
+	hostMatches sync.Map // map[string]*hostData
 	
 	// threshold is the number of unique template matches that triggers honeypot detection
 	threshold int
@@ -48,22 +55,20 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 		return false
 	}
 	
-	// Get or create the match set for this host
-	matchesInterface, _ := d.hostMatches.LoadOrStore(host, &sync.Map{})
-	matches := matchesInterface.(*sync.Map)
+	// Get or create the host data
+	dataInterface, _ := d.hostMatches.LoadOrStore(host, &hostData{})
+	data := dataInterface.(*hostData)
 	
 	// Check if this template was already recorded (avoid double counting)
-	if _, exists := matches.Load(templateID); exists {
+	if _, exists := data.matches.Load(templateID); exists {
 		return false
 	}
 	
-	// Add the template to the set
-	matches.Store(templateID, struct{}{})
+	// Add the template to the set and increment atomic counter
+	data.matches.Store(templateID, struct{}{})
+	matchCount := int(data.count.Add(1))
 	
-	// Count unique matches
-	matchCount := d.countMatches(matches)
-	
-	// Check if threshold exceeded
+	// Snapshot threshold atomically
 	d.mu.RLock()
 	threshold := d.threshold
 	d.mu.RUnlock()
@@ -90,13 +95,13 @@ func (d *Detector) IsHoneypot(host string) bool {
 
 // GetMatchCount returns the number of unique template matches for a host
 func (d *Detector) GetMatchCount(host string) int {
-	matchesInterface, exists := d.hostMatches.Load(host)
+	dataInterface, exists := d.hostMatches.Load(host)
 	if !exists {
 		return 0
 	}
 	
-	matches := matchesInterface.(*sync.Map)
-	return d.countMatches(matches)
+	data := dataInterface.(*hostData)
+	return int(data.count.Load())
 }
 
 // GetScore returns a honeypot score (0-100) for a host
@@ -154,8 +159,8 @@ func (d *Detector) GetStats() Stats {
 	
 	d.hostMatches.Range(func(key, value interface{}) bool {
 		host := key.(string)
-		matches := value.(*sync.Map)
-		count := d.countMatches(matches)
+		data := value.(*hostData)
+		count := int(data.count.Load())
 		stats.Hosts[host] = count
 		stats.TotalHosts++
 		return true
@@ -179,14 +184,4 @@ type Stats struct {
 // String returns a human-readable representation of the stats
 func (s Stats) String() string {
 	return fmt.Sprintf("Total hosts: %d, Flagged as honeypots: %d", s.TotalHosts, s.FlaggedHosts)
-}
-
-// countMatches counts the number of entries in a sync.Map
-func (d *Detector) countMatches(m *sync.Map) int {
-	count := 0
-	m.Range(func(key, value interface{}) bool {
-		count++
-		return true
-	})
-	return count
 }
