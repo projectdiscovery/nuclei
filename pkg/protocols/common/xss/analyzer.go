@@ -10,7 +10,6 @@ import (
 // ContextType represents the type of XSS injection context.
 // It defines the various contexts where XSS payloads can be injected in HTML content.
 type ContextType int
-type ContextType int
 
 // Context type constants define the specific injection contexts that can be detected.
 const (
@@ -49,12 +48,7 @@ func (c ContextType) String() string {
 // XSSContextAnalyzer analyzes HTML content to detect XSS injection contexts.
 // It provides methods to scan HTML documents and identify where XSS payloads
 // can be injected and executed.
-type XSSContextAnalyzer struct {
-	payload string // The XSS payload string to search for
-}
-type XSSContextAnalyzer struct {
-	payload string
-}
+type XSSContextAnalyzer struct {\n\tpayload string // The XSS payload string to search for\n}
 
 // NewXSSContextAnalyzer creates a new XSS context analyzer
 func NewXSSContextAnalyzer(payload string) *XSSContextAnalyzer {
@@ -64,22 +58,7 @@ func NewXSSContextAnalyzer(payload string) *XSSContextAnalyzer {
 // ContextAnalysis represents the analysis result for a specific context.
 // It contains metadata about where and how an XSS payload was found,
 // including the context type, location, and suggested payloads.
-type ContextAnalysis struct {
-	Type        ContextType // The type of XSS context detected
-	Location    int         // Byte offset where payload was found
-	Escaped     bool        // Whether the payload is HTML escaped
-	Executable  bool        // Whether the payload can execute
-	Confidence  float64     // Confidence score (0.0-1.0)
-	Suggestions []string    // Recommended payloads for this context
-}
-type ContextAnalysis struct {
-	Type        ContextType
-	Location    int
-	Escaped     bool
-	Executable  bool
-	Confidence  float64
-	Suggestions []string
-}
+type ContextAnalysis struct {\n\tType        ContextType // The type of XSS context detected\n\tLocation    int         // Byte offset where payload was found\n\tEscaped     bool        // Whether the payload is HTML escaped\n\tExecutable  bool        // Whether the payload can execute\n\tConfidence  float64     // Confidence score (0.0-1.0)\n\tSuggestions []string    // Recommended payloads for this context\n}
 
 // Analyze analyzes the HTML content and returns the detected contexts.
 // It scans the provided HTML document for the configured payload and returns
@@ -94,7 +73,6 @@ type ContextAnalysis struct {
 // - Style block content
 //
 // Returns an empty slice if no contexts are detected.
-func (a *XSSContextAnalyzer) Analyze(htmlContent string) []ContextAnalysis {
 func (a *XSSContextAnalyzer) Analyze(htmlContent string) []ContextAnalysis {
 	var contexts []ContextAnalysis
 	
