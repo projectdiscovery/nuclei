@@ -76,9 +76,6 @@ func (a *XSSContextAnalyzer) Analyze(htmlContent string) []ContextAnalysis {
 		contexts = append(contexts, *ctx)
 	}
 	
-	if ctx := a.analyzeCSSContext(htmlContent); ctx != nil {
-		contexts = append(contexts, *ctx)
-	}
 	
 	if ctx := a.analyzeURLContext(htmlContent); ctx != nil {
 		contexts = append(contexts, *ctx)
@@ -186,23 +183,6 @@ func (a *XSSContextAnalyzer) analyzeJavaScriptContext(content string) *ContextAn
 				Confidence: 0.95,
 				Suggestions: a.getJavaScriptPayloads(),
 			}
-		}
-	}
-	
-	return nil
-}
-
-// analyzeCSSContext analyzes CSS contexts
-func (a *XSSContextAnalyzer) analyzeCSSContext(content string) *ContextAnalysis {
-	if strings.Contains(content, "<style>") && strings.Contains(content, a.payload) {
-		idx := strings.Index(content, a.payload)
-		return &ContextAnalysis{
-			Type:       ContextCSS,
-			Location:   idx,
-			Escaped:    false,
-			Executable: true,
-			Confidence: 0.8,
-			Suggestions: a.getCSSPayloads(),
 		}
 	}
 	
