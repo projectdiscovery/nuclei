@@ -7,9 +7,12 @@ import (
 	"golang.org/x/net/html"
 )
 
-// ContextType represents the type of XSS injection context
+// ContextType represents the type of XSS injection context.
+// It defines the various contexts where XSS payloads can be injected in HTML content.
+type ContextType int
 type ContextType int
 
+// Context type constants define the specific injection contexts that can be detected.
 const (
 	ContextUnknown ContextType = iota
 	ContextHTMLText
@@ -43,7 +46,12 @@ func (c ContextType) String() string {
 	}
 }
 
-// XSSContextAnalyzer analyzes HTML content to detect XSS injection contexts
+// XSSContextAnalyzer analyzes HTML content to detect XSS injection contexts.
+// It provides methods to scan HTML documents and identify where XSS payloads
+// can be injected and executed.
+type XSSContextAnalyzer struct {
+	payload string // The XSS payload string to search for
+}
 type XSSContextAnalyzer struct {
 	payload string
 }
@@ -53,7 +61,17 @@ func NewXSSContextAnalyzer(payload string) *XSSContextAnalyzer {
 	return &XSSContextAnalyzer{payload: payload}
 }
 
-// ContextAnalysis represents the analysis result for a specific context
+// ContextAnalysis represents the analysis result for a specific context.
+// It contains metadata about where and how an XSS payload was found,
+// including the context type, location, and suggested payloads.
+type ContextAnalysis struct {
+	Type        ContextType // The type of XSS context detected
+	Location    int         // Byte offset where payload was found
+	Escaped     bool        // Whether the payload is HTML escaped
+	Executable  bool        // Whether the payload can execute
+	Confidence  float64     // Confidence score (0.0-1.0)
+	Suggestions []string    // Recommended payloads for this context
+}
 type ContextAnalysis struct {
 	Type        ContextType
 	Location    int
@@ -63,7 +81,20 @@ type ContextAnalysis struct {
 	Suggestions []string
 }
 
-// Analyze analyzes the HTML content and returns the detected contexts
+// Analyze analyzes the HTML content and returns the detected contexts.
+// It scans the provided HTML document for the configured payload and returns
+// a slice of ContextAnalysis structs describing all injection points found.
+//
+// The analysis covers:
+// - HTML text content
+// - HTML attributes (including URLs and event handlers)
+// - JavaScript contexts
+// - URL contexts with dangerous schemes
+// - Script block content
+// - Style block content
+//
+// Returns an empty slice if no contexts are detected.
+func (a *XSSContextAnalyzer) Analyze(htmlContent string) []ContextAnalysis {
 func (a *XSSContextAnalyzer) Analyze(htmlContent string) []ContextAnalysis {
 	var contexts []ContextAnalysis
 	
@@ -273,7 +304,12 @@ func (a *XSSContextAnalyzer) analyzeStyleBlock(tokenizer *html.Tokenizer, conten
 	return nil
 }
 
-// Helper functions
+// Helper functions provide utility methods for context detection and payload generation.
+
+// isEscaped checks if the payload in the given text is HTML escaped.
+// It looks for common HTML escape sequences like &lt;, &gt;, &quot;, and &#xx;.
+// Returns true if the payload appears to be escaped, false otherwise.
+func (a *XSSContextAnalyzer) isEscaped(text, payload string) bool {
 
 func (a *XSSContextAnalyzer) isEscaped(text, payload string) bool {
 	if strings.Contains(text, "&lt;") || strings.Contains(text, "&gt;") ||
@@ -355,7 +391,14 @@ func (a *XSSContextAnalyzer) getStyleBlockPayloads() []string {
 	}
 }
 
-// GetSmartPayload returns the most appropriate payload based on context
+// GetSmartPayload returns the most appropriate payload based on context.
+// It analyzes the provided context analyses and selects the payload with
+// the highest confidence score. If multiple contexts have the same confidence,
+// it returns the first suggestion from the highest confidence context.
+//
+// Returns the original payload if no contexts are provided or if no suggestions
+// are available.
+func (a *XSSContextAnalyzer) GetSmartPayload(contexts []ContextAnalysis) string {
 func (a *XSSContextAnalyzer) GetSmartPayload(contexts []ContextAnalysis) string {
 	if len(contexts) == 0 {
 		return a.payload
