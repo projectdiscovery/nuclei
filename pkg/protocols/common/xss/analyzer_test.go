@@ -14,32 +14,32 @@ func TestXSSContextAnalyzer(t *testing.T) {
 	}{
 		{
 			name:     "HTML text context",
-			payload:  "<script>alert(1)</script>",
-			content:  "<div>" + "<script>alert(1)</script>" + "</div>",
+			payload:  "alert(1)",
+			content:  "<div>alert(1)</div>",
 			expected: ContextHTMLText,
 		},
 		{
 			name:     "HTML attribute context",
 			payload:  "javascript:alert(1)",
-			content:  <a href=" + "javascript:alert(1)" + ">link</a>,
+			content:  `<a href="javascript:alert(1)">link</a>`,
 			expected: ContextURL,
 		},
 		{
 			name:     "JavaScript event handler",
 			payload:  "alert(1)",
-			content:  <img src="x" onerror=" + "alert(1)" + " />,
+			content:  `<img src="x" onerror="alert(1)" />`,
 			expected: ContextJavaScript,
 		},
 		{
 			name:     "Script block context",
 			payload:  "alert(1)",
-			content:  "<script>" + "alert(1)" + "</script>",
+			content:  "<script>alert(1)</script>",
 			expected: ContextScriptBlock,
 		},
 		{
 			name:     "Style block context",
 			payload:  "body{background:red}",
-			content:  "<style>" + "body{background:red}" + "</style>",
+			content:  "<style>body{background:red}</style>",
 			expected: ContextStyleBlock,
 		},
 	}
