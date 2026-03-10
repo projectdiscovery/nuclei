@@ -26,6 +26,27 @@ const (
 	DefaultMaxHosts = 100000
 )
 
+// flagReason describes why a host was flagged as a potential honeypot.
+type flagReason int
+
+const (
+	notFlagged        flagReason = iota
+	flagAbsolute                         // absolute threshold exceeded
+	flagPercentage                       // percentage-of-templates threshold exceeded
+)
+
+// String returns a human-readable description of the flag reason.
+func (r flagReason) String() string {
+	switch r {
+	case flagAbsolute:
+		return "absolute threshold"
+	case flagPercentage:
+		return "percentage-of-templates threshold"
+	default:
+		return ""
+	}
+}
+
 // hostStats tracks match statistics for a single host.
 type hostStats struct {
 	// templateIDs stores unique template IDs that matched this host.
@@ -55,6 +76,13 @@ type Tracker struct {
 	// maxHosts is the maximum number of hosts to track to prevent
 	// unbounded memory growth from crafted target lists.
 	maxHosts int
+
+	// droppedHosts counts how many unique hosts were excluded because
+	// the maxHosts limit was reached.
+	droppedHosts int
+
+	// maxHostsWarned ensures the maxHosts warning is emitted only once.
+	maxHostsWarned bool
 
 	// logger is used for warning/info messages.
 	logger *gologger.Logger
@@ -95,6 +123,16 @@ func (t *Tracker) RecordMatch(host, templateID string) bool {
 	if !ok {
 		// Prevent unbounded memory growth from very large target lists.
 		if len(t.hosts) >= t.maxHosts {
+			t.droppedHosts++
+			if !t.maxHostsWarned {
+				t.maxHostsWarned = true
+				if t.logger != nil {
+					t.logger.Warning().Msgf(
+						"[honeypot] Maximum tracked hosts limit reached (%d); new hosts will be excluded from honeypot detection",
+						t.maxHosts,
+					)
+				}
+			}
 			return false
 		}
 		stats = &hostStats{
@@ -108,12 +146,20 @@ func (t *Tracker) RecordMatch(host, templateID string) bool {
 	matchCount := len(stats.templateIDs)
 
 	// Check if the host should be flagged.
-	if !stats.flagged && t.shouldFlag(matchCount) {
+	if reason := t.shouldFlag(matchCount); !stats.flagged && reason != notFlagged {
 		stats.flagged = true
 		if t.logger != nil {
+			var detail string
+			switch reason {
+			case flagAbsolute:
+				detail = fmt.Sprintf("threshold: %d", t.threshold)
+			case flagPercentage:
+				pct := (float64(matchCount) / float64(t.totalTemplates)) * 100
+				detail = fmt.Sprintf("%.0f%% of %d templates", pct, t.totalTemplates)
+			}
 			t.logger.Warning().Msgf(
-				"[honeypot] Host %s matched %d unique templates (threshold: %d) - potential honeypot detected",
-				normalizedHost, matchCount, t.threshold,
+				"[honeypot] Host %s matched %d unique templates (%s) - potential honeypot detected",
+				normalizedHost, matchCount, detail,
 			)
 		}
 		return true
@@ -181,17 +227,32 @@ func (t *Tracker) GetFlaggedHosts() []FlaggedHost {
 	return flagged
 }
 
+// DroppedHosts returns the number of unique hosts that were excluded from
+// honeypot tracking because the maxHosts limit was reached.
+func (t *Tracker) DroppedHosts() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.droppedHosts
+}
+
 // Summary returns a human-readable summary of honeypot detection results.
 func (t *Tracker) Summary() string {
 	flagged := t.GetFlaggedHosts()
-	if len(flagged) == 0 {
+	dropped := t.DroppedHosts()
+
+	if len(flagged) == 0 && dropped == 0 {
 		return ""
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("[honeypot] %d potential honeypot(s) detected:\n", len(flagged)))
-	for _, h := range flagged {
-		sb.WriteString(fmt.Sprintf("  - %s (%d unique template matches)\n", h.Host, h.MatchCount))
+	if len(flagged) > 0 {
+		sb.WriteString(fmt.Sprintf("[honeypot] %d potential honeypot(s) detected:\n", len(flagged)))
+		for _, h := range flagged {
+			sb.WriteString(fmt.Sprintf("  - %s (%d unique template matches)\n", h.Host, h.MatchCount))
+		}
+	}
+	if dropped > 0 {
+		sb.WriteString(fmt.Sprintf("[honeypot] %d host(s) excluded from tracking (max hosts limit: %d)\n", dropped, t.maxHosts))
 	}
 	return sb.String()
 }
@@ -202,12 +263,13 @@ type FlaggedHost struct {
 	MatchCount int    `json:"match_count"`
 }
 
-// shouldFlag determines if a host should be flagged based on match count.
-// Called with lock held.
-func (t *Tracker) shouldFlag(matchCount int) bool {
+// shouldFlag determines if a host should be flagged based on match count
+// and returns the reason for flagging (or notFlagged if the host should not
+// be flagged). Called with lock held.
+func (t *Tracker) shouldFlag(matchCount int) flagReason {
 	// Primary check: absolute threshold.
 	if matchCount >= t.threshold {
-		return true
+		return flagAbsolute
 	}
 
 	// Secondary check: percentage of total templates (if known).
@@ -216,11 +278,11 @@ func (t *Tracker) shouldFlag(matchCount int) bool {
 		if percentage >= DefaultMatchPercentage && matchCount >= 10 {
 			// Only trigger percentage-based detection if at least 10 templates matched.
 			// This avoids false positives when scanning with very few templates.
-			return true
+			return flagPercentage
 		}
 	}
 
-	return false
+	return notFlagged
 }
 
 // normalizeHost extracts a consistent host identifier from various input formats.

@@ -2,6 +2,7 @@ package honeypot
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -245,7 +246,7 @@ func TestMaxHostsLimit(t *testing.T) {
 	tracker.RecordMatch("http://host2.com", "CVE-2021-0001")
 	tracker.RecordMatch("http://host3.com", "CVE-2021-0001")
 
-	// Fourth host should be silently dropped.
+	// Fourth host should be dropped.
 	tracker.RecordMatch("http://host4.com", "CVE-2021-0001")
 	if tracker.GetMatchCount("http://host4.com") != 0 {
 		t.Error("expected host4 to be dropped due to max hosts limit")
@@ -255,6 +256,132 @@ func TestMaxHostsLimit(t *testing.T) {
 	tracker.RecordMatch("http://host1.com", "CVE-2021-0002")
 	if tracker.GetMatchCount("http://host1.com") != 2 {
 		t.Errorf("expected 2 matches for host1, got %d", tracker.GetMatchCount("http://host1.com"))
+	}
+}
+
+func TestMaxHostsDroppedCounter(t *testing.T) {
+	tracker := NewTracker(100, nil)
+	tracker.maxHosts = 2
+
+	tracker.RecordMatch("http://host1.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://host2.com", "CVE-2021-0001")
+
+	// These should be dropped and counted.
+	tracker.RecordMatch("http://host3.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://host4.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://host5.com", "CVE-2021-0001")
+
+	dropped := tracker.DroppedHosts()
+	if dropped != 3 {
+		t.Errorf("expected 3 dropped hosts, got %d", dropped)
+	}
+
+	// Summary should include the dropped hosts count.
+	summary := tracker.Summary()
+	if summary == "" {
+		t.Error("expected non-empty summary when hosts are dropped")
+	}
+	if !strings.Contains(summary, "3 host(s) excluded") {
+		t.Errorf("expected summary to mention 3 excluded hosts, got: %s", summary)
+	}
+	if !strings.Contains(summary, "max hosts limit: 2") {
+		t.Errorf("expected summary to mention max hosts limit of 2, got: %s", summary)
+	}
+}
+
+func TestSummaryDroppedHostsOnly(t *testing.T) {
+	// Verify Summary returns content when there are dropped hosts but no flagged hosts.
+	tracker := NewTracker(1000, nil) // High threshold so nothing gets flagged.
+	tracker.maxHosts = 1
+
+	tracker.RecordMatch("http://host1.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://host2.com", "CVE-2021-0001") // Dropped.
+
+	if tracker.DroppedHosts() != 1 {
+		t.Errorf("expected 1 dropped host, got %d", tracker.DroppedHosts())
+	}
+
+	summary := tracker.Summary()
+	if summary == "" {
+		t.Error("expected non-empty summary when hosts are dropped (even with no flagged hosts)")
+	}
+	if !strings.Contains(summary, "1 host(s) excluded") {
+		t.Errorf("expected summary to mention excluded hosts, got: %s", summary)
+	}
+}
+
+func TestShouldFlagReason(t *testing.T) {
+	// Test that shouldFlag returns the correct reason.
+	tracker := NewTracker(5, nil)
+
+	// Below threshold: not flagged.
+	reason := tracker.shouldFlag(3)
+	if reason != notFlagged {
+		t.Errorf("expected notFlagged for 3 matches, got %v", reason)
+	}
+
+	// At absolute threshold: flagAbsolute.
+	reason = tracker.shouldFlag(5)
+	if reason != flagAbsolute {
+		t.Errorf("expected flagAbsolute for 5 matches, got %v", reason)
+	}
+
+	// Test percentage-based detection.
+	tracker2 := NewTracker(1000, nil) // High absolute threshold.
+	tracker2.SetTotalTemplates(20)
+
+	// 14/20 = 70% -- below 75%.
+	reason = tracker2.shouldFlag(14)
+	if reason != notFlagged {
+		t.Errorf("expected notFlagged for 14/20 (70%%), got %v", reason)
+	}
+
+	// 15/20 = 75% -- should trigger percentage.
+	reason = tracker2.shouldFlag(15)
+	if reason != flagPercentage {
+		t.Errorf("expected flagPercentage for 15/20 (75%%), got %v", reason)
+	}
+}
+
+func TestFlagReasonString(t *testing.T) {
+	tests := []struct {
+		reason   flagReason
+		expected string
+	}{
+		{notFlagged, ""},
+		{flagAbsolute, "absolute threshold"},
+		{flagPercentage, "percentage-of-templates threshold"},
+	}
+	for _, tt := range tests {
+		got := tt.reason.String()
+		if got != tt.expected {
+			t.Errorf("flagReason(%d).String() = %q, expected %q", tt.reason, got, tt.expected)
+		}
+	}
+}
+
+func TestGetFlaggedHostsSortTieBreaker(t *testing.T) {
+	tracker := NewTracker(2, nil)
+
+	// Create multiple hosts with the same match count.
+	tracker.RecordMatch("http://charlie.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://charlie.com", "CVE-2021-0002")
+	tracker.RecordMatch("http://alpha.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://alpha.com", "CVE-2021-0002")
+	tracker.RecordMatch("http://bravo.com", "CVE-2021-0001")
+	tracker.RecordMatch("http://bravo.com", "CVE-2021-0002")
+
+	flagged := tracker.GetFlaggedHosts()
+	if len(flagged) != 3 {
+		t.Fatalf("expected 3 flagged hosts, got %d", len(flagged))
+	}
+
+	// All have same match count, so should be sorted by host name ascending.
+	expectedOrder := []string{"alpha.com", "bravo.com", "charlie.com"}
+	for i, expected := range expectedOrder {
+		if flagged[i].Host != expected {
+			t.Errorf("flagged[%d].Host = %q, expected %q", i, flagged[i].Host, expected)
+		}
 	}
 }
 
