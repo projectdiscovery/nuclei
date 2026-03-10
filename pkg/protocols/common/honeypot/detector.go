@@ -52,6 +52,11 @@ func (d *Detector) RecordMatch(host, templateID string) bool {
 	matchesInterface, _ := d.hostMatches.LoadOrStore(host, &sync.Map{})
 	matches := matchesInterface.(*sync.Map)
 	
+	// Check if this template was already recorded (avoid double counting)
+	if _, exists := matches.Load(templateID); exists {
+		return false
+	}
+	
 	// Add the template to the set
 	matches.Store(templateID, struct{}{})
 	
@@ -135,6 +140,8 @@ func (d *Detector) GetThreshold() int {
 
 // Reset clears all tracked data
 func (d *Detector) Reset() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	d.hostMatches = sync.Map{}
 	d.flaggedHosts = sync.Map{}
 }
