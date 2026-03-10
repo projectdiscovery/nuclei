@@ -14,17 +14,12 @@ type ContextType int
 const (
 	ContextUnknown ContextType = iota
 	ContextHTMLText
-	ContextHTMLTag
 	ContextHTMLAttribute
 	ContextJavaScript
-	ContextJavaScriptTemplate
 	ContextCSS
 	ContextURL
-	ContextComment
 	ContextScriptBlock
 	ContextStyleBlock
-	ContextSrcdoc
-	ContextTemplate
 )
 
 // String returns the string representation of the context type
@@ -32,28 +27,18 @@ func (c ContextType) String() string {
 	switch c {
 	case ContextHTMLText:
 		return "html-text"
-	case ContextHTMLTag:
-		return "html-tag"
 	case ContextHTMLAttribute:
 		return "html-attribute"
 	case ContextJavaScript:
 		return "javascript"
-	case ContextJavaScriptTemplate:
-		return "javascript-template"
 	case ContextCSS:
 		return "css"
 	case ContextURL:
 		return "url"
-	case ContextComment:
-		return "comment"
 	case ContextScriptBlock:
 		return "script-block"
 	case ContextStyleBlock:
 		return "style-block"
-	case ContextSrcdoc:
-		return "srcdoc"
-	case ContextTemplate:
-		return "template"
 	default:
 		return "unknown"
 	}
@@ -67,6 +52,16 @@ type XSSContextAnalyzer struct {
 // NewXSSContextAnalyzer creates a new XSS context analyzer
 func NewXSSContextAnalyzer(payload string) *XSSContextAnalyzer {
 	return &XSSContextAnalyzer{payload: payload}
+}
+
+// ContextAnalysis represents the analysis result for a specific context
+type ContextAnalysis struct {
+	Type        ContextType
+	Location    int
+	Escaped     bool
+	Executable  bool
+	Confidence  float64
+	Suggestions []string
 }
 
 // Analyze analyzes the HTML content and returns the detected contexts
@@ -93,19 +88,8 @@ func (a *XSSContextAnalyzer) Analyze(htmlContent string) []ContextAnalysis {
 	return contexts
 }
 
-// ContextAnalysis represents the analysis result for a specific context
-type ContextAnalysis struct {
-	Type        ContextType
-	Location    int
-	Escaped     bool
-	Executable  bool
-	Confidence  float64
-	Suggestions []string
-}
-
 // analyzeHTMLContext analyzes HTML text and tag contexts
 func (a *XSSContextAnalyzer) analyzeHTMLContext(content string) *ContextAnalysis {
-	// Use HTML tokenizer for robust parsing
 	tokenizer := html.NewTokenizer(strings.NewReader(content))
 	
 	for {
@@ -137,7 +121,6 @@ func (a *XSSContextAnalyzer) analyzeHTMLContext(content string) *ContextAnalysis
 					
 					if idx := strings.Index(attrValue, a.payload); idx != -1 {
 						ctx := &ContextAnalysis{
-							Type:       ContextHTMLAttribute,
 							Location:   tokenizer.Offset(),
 							Confidence: 0.85,
 						}
@@ -145,11 +128,15 @@ func (a *XSSContextAnalyzer) analyzeHTMLContext(content string) *ContextAnalysis
 						// Check for URL contexts
 						if a.isURLAttribute(string(key)) {
 							ctx.Type = ContextURL
+							ctx.Executable = true
 							ctx.Suggestions = a.getURLPayloads()
 						} else if a.isEventHandler(string(key)) {
 							ctx.Type = ContextJavaScript
+							ctx.Executable = true
 							ctx.Suggestions = a.getJavaScriptPayloads()
 						} else {
+							ctx.Type = ContextHTMLAttribute
+							ctx.Executable = false
 							ctx.Suggestions = a.getAttributePayloads()
 						}
 						
@@ -162,14 +149,18 @@ func (a *XSSContextAnalyzer) analyzeHTMLContext(content string) *ContextAnalysis
 				}
 			}
 			
-			// Check for script blocks
+			// Check for script blocks - don't return early, continue scanning
 			if string(tagName) == "script" {
-				return a.analyzeScriptBlock(tokenizer, content)
+				if ctx := a.analyzeScriptBlock(tokenizer, content); ctx != nil {
+					return ctx
+				}
 			}
 			
-			// Check for style blocks
+			// Check for style blocks - don't return early, continue scanning
 			if string(tagName) == "style" {
-				return a.analyzeStyleBlock(tokenizer, content)
+				if ctx := a.analyzeStyleBlock(tokenizer, content); ctx != nil {
+					return ctx
+				}
 			}
 		}
 	}
@@ -181,8 +172,8 @@ func (a *XSSContextAnalyzer) analyzeHTMLContext(content string) *ContextAnalysis
 func (a *XSSContextAnalyzer) analyzeJavaScriptContext(content string) *ContextAnalysis {
 	// Check for payload in JavaScript contexts
 	jsPatterns := []string{
-		" + a.payload + ",
-		"" + a.payload + "",
+		`"` + a.payload + `"`,
+		"`" + a.payload + "`",
 		"'" + a.payload + "'",
 	}
 	
@@ -204,11 +195,11 @@ func (a *XSSContextAnalyzer) analyzeJavaScriptContext(content string) *ContextAn
 
 // analyzeCSSContext analyzes CSS contexts
 func (a *XSSContextAnalyzer) analyzeCSSContext(content string) *ContextAnalysis {
-	// Check for payload in CSS style blocks
 	if strings.Contains(content, "<style>") && strings.Contains(content, a.payload) {
+		idx := strings.Index(content, a.payload)
 		return &ContextAnalysis{
 			Type:       ContextCSS,
-			Location:   strings.Index(content, a.payload),
+			Location:   idx,
 			Escaped:    false,
 			Executable: true,
 			Confidence: 0.8,
@@ -225,9 +216,10 @@ func (a *XSSContextAnalyzer) analyzeURLContext(content string) *ContextAnalysis 
 	
 	for _, scheme := range urlSchemes {
 		if strings.Contains(content, scheme+a.payload) {
+			idx := strings.Index(content, scheme+a.payload)
 			return &ContextAnalysis{
 				Type:       ContextURL,
-				Location:   strings.Index(content, scheme+a.payload),
+				Location:   idx,
 				Escaped:    false,
 				Executable: true,
 				Confidence: 0.95,
@@ -241,7 +233,6 @@ func (a *XSSContextAnalyzer) analyzeURLContext(content string) *ContextAnalysis 
 
 // analyzeScriptBlock analyzes script block contexts
 func (a *XSSContextAnalyzer) analyzeScriptBlock(tokenizer *html.Tokenizer, content string) *ContextAnalysis {
-	// Get the text content of the script block
 	tokenType := tokenizer.Next()
 	if tokenType == html.TextToken {
 		text := string(tokenizer.Text())
@@ -283,7 +274,6 @@ func (a *XSSContextAnalyzer) analyzeStyleBlock(tokenizer *html.Tokenizer, conten
 // Helper functions
 
 func (a *XSSContextAnalyzer) isEscaped(text, payload string) bool {
-	// Check if special characters are escaped
 	if strings.Contains(text, "&lt;") || strings.Contains(text, "&gt;") ||
 		strings.Contains(text, "&quot;") || strings.Contains(text, "&#") {
 		return true
@@ -369,7 +359,6 @@ func (a *XSSContextAnalyzer) GetSmartPayload(contexts []ContextAnalysis) string 
 		return a.payload
 	}
 	
-	// Find the context with highest confidence
 	var bestContext *ContextAnalysis
 	for i := range contexts {
 		if bestContext == nil || contexts[i].Confidence > bestContext.Confidence {
