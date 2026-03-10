@@ -401,7 +401,10 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			results := map[string]interface{}(result)
 			results["error"] = outError.Error()
 			// generate and return failed event
-			data := request.generateEventData(input, results, hostPort)
+			data, eventErr := request.generateEventData(input, results, hostPort)
+			if eventErr != nil {
+				return eventErr
+			}
 			data = generators.MergeMaps(data, payloadValues)
 			event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 				allVars := argsCopy.Map()
@@ -586,7 +589,10 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
-	data := request.generateEventData(input, values, hostPort)
+	data, eventErr := request.generateEventData(input, values, hostPort)
+	if eventErr != nil {
+		return eventErr
+	}
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)
@@ -634,10 +640,10 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 }
 
 // generateEventData generates event data for the request
-func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
+func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) (map[string]interface{}, error) {
 	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
 	if dialers == nil {
-		panic(fmt.Sprintf("dialers not initialized for %s", request.options.Options.ExecutionId))
+		return nil, fmt.Errorf("dialers not initialized for %s", request.options.Options.ExecutionId)
 	}
 
 	data := make(map[string]interface{})
@@ -692,7 +698,7 @@ func (request *Request) generateEventData(input *contextargs.Context, values map
 			}
 		}
 	}
-	return data
+	return data, nil
 }
 
 func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, error) {

@@ -171,7 +171,8 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -208,7 +209,8 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -415,7 +417,8 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -452,7 +455,8 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
