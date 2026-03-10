@@ -117,6 +117,34 @@ func TestAnalyzeContext(t *testing.T) {
 			expected:     ContextText,
 			expectedAttr: "",
 		},
+		{
+			name:         "importmap script block is non-executable",
+			html:         `<script type="importmap">{"imports":{"nucleiXSScanary":"./mod.js"}}</script>`,
+			reflection:   "nucleiXSScanary",
+			expected:     ContextText,
+			expectedAttr: "",
+		},
+		{
+			name:         "style attribute is script context",
+			html:         `<div style="background:url('nucleiXSScanary')">test</div>`,
+			reflection:   "nucleiXSScanary",
+			expected:     ContextScript,
+			expectedAttr: "style",
+		},
+		{
+			name:         "formaction with javascript URI",
+			html:         `<button formaction="javascript:nucleiXSScanary">submit</button>`,
+			reflection:   "nucleiXSScanary",
+			expected:     ContextScript,
+			expectedAttr: "formaction",
+		},
+		{
+			name:         "svg data URI in img src",
+			html:         `<img src="data:image/svg+xml,<svg onload=nucleiXSScanary>">`,
+			reflection:   "nucleiXSScanary",
+			expected:     ContextScript,
+			expectedAttr: "src",
+		},
 	}
 
 	for _, tt := range tests {

@@ -103,18 +103,18 @@ func (ca *ContextAnalyzer) isNonExecutableScript(s *goquery.Selection) bool {
 	typeAttr = strings.ToLower(typeAttr)
 	
 	// Executable script types
-	if strings.Contains(typeAttr, "javascript") || 
+	if strings.Contains(typeAttr, "javascript") ||
 		strings.Contains(typeAttr, "ecmascript") ||
-		typeAttr == "module" ||
-		typeAttr == "importmap" {
+		typeAttr == "module" {
 		return false
 	}
-	
-	// Non-executable data types
+
+	// Non-executable data types (importmap contains JSON for ES module resolution)
 	return typeAttr == "application/json" || typeAttr == "text/json" ||
-		typeAttr == "application/ld+json" || typeAttr == "text/plain" ||
-		typeAttr == "text/html" || typeAttr == "text/xml" ||
-		typeAttr == "application/xml" || typeAttr == "text/template"
+		typeAttr == "application/ld+json" || typeAttr == "importmap" ||
+		typeAttr == "text/plain" || typeAttr == "text/html" ||
+		typeAttr == "text/xml" || typeAttr == "application/xml" ||
+		typeAttr == "text/template"
 }
 
 func (ca *ContextAnalyzer) checkAttributes(s *goquery.Selection) bool {
@@ -176,7 +176,7 @@ func (ca *ContextAnalyzer) isExecutableURI(value string) bool {
 		strings.HasPrefix(lowerValue, "vbscript:") ||
 		strings.HasPrefix(lowerValue, "data:text/html") ||
 		strings.HasPrefix(lowerValue, "data:application/javascript") ||
-		strings.HasPrefix(lowerValue, "data:")
+		strings.HasPrefix(lowerValue, "data:image/svg+xml")
 }
 
 // isJavaScriptURI is kept for backward compatibility.
