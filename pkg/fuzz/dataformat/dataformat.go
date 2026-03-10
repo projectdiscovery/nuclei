@@ -116,7 +116,8 @@ func Encode(data KV, dataformat string) (string, error) {
 	if dataformat == "" {
 		return "", errors.New("dataformat is required")
 	}
-	if encoder, ok := dataformats[dataformat]; ok {
+	encoder := Get(dataformat)
+	if encoder != nil {
 		return encoder.Encode(data)
 	}
 	return "", fmt.Errorf("dataformat %s is not supported", dataformat)
