@@ -688,7 +688,9 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	// prefetch secrets if enabled
-	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
+	// Always prefetch secrets when auth provider is configured to ensure
+	// authentication completes before template execution begins (#6592).
+	if executorOpts.AuthProvider != nil {
 		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
 		if err := executorOpts.AuthProvider.PreFetchSecrets(); err != nil {
 			return errors.Wrap(err, "could not pre-fetch secrets")
