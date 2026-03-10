@@ -2,6 +2,7 @@ package honeypot
 
 import (
 	"fmt"
+	"os"
 	"sync"
 )
 
@@ -26,8 +27,8 @@ func Initialize(threshold int) {
 		globalDetector = New(Config{
 			Threshold: threshold,
 			OnHoneypotDetected: func(host string, matchCount int) {
-				// Default warning callback
-				fmt.Printf("[WARN] %s matched %d templates → possible honeypot.\n", host, matchCount)
+				// Default warning callback - use stderr to avoid polluting stdout/JSON output
+				fmt.Fprintf(os.Stderr, "[WARN] %s matched %d templates → possible honeypot.\n", host, matchCount)
 			},
 		})
 	})
