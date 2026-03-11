@@ -122,10 +122,16 @@ func (h *HoneypotDetector) Check(ctx context.Context, target string) HoneypotRes
 
 	// Require high confidence AND near-constant body length.
 	// High variance implies different content per path → real wildcard app, not honeypot.
+	//
+	// Guard: if we have fewer than 2 positive responses the variance is undefined
+	// (contentLengthVariance returns 0 for <2 samples), which would make the
+	// low-variance gate a free pass.  We require at least 2 positive probes before
+	// the variance signal is meaningful; with only 1 positive we cannot distinguish
+	// a honeypot from a wildcard app by body length alone, so we refuse to classify.
 	stdDev := math.Sqrt(contentLengthVariance(bodyLengths))
-	isHoneypot := confidence >= h.threshold && stdDev < contentLenStdDevThreshold
+	isHoneypot := confidence >= h.threshold && len(bodyLengths) >= 2 && stdDev < contentLenStdDevThreshold
 
-	reason := fmt.Sprintf("%d/%d canary requests returned 200 OK (body-length stddev=%.1f)", positives, h.probes, stdDev)
+	reason := fmt.Sprintf("%d/%d canary requests returned 200 OK (body-length stddev=%.1f, samples=%d)", positives, h.probes, stdDev, len(bodyLengths))
 
 	if isHoneypot {
 		gologger.Warning().Msgf("[honeypot] %s appears to be a honeypot (%.0f%% of canary requests returned 200, body stddev=%.1f)", target, confidence*100, stdDev)
