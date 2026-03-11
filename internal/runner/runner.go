@@ -687,9 +687,13 @@ func (r *Runner) RunEnumeration() error {
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
-	// prefetch secrets if enabled
 	// Always prefetch secrets when auth provider is configured to ensure
 	// authentication completes before template execution begins (#6592).
+	// The --prefetch-secrets / PreFetchSecrets flag is now a no-op: secrets
+	// are always fetched eagerly when an auth provider is present.
+	if r.options.PreFetchSecrets {
+		r.Logger.Warning().Msgf("[deprecated] --prefetch-secrets flag is no longer needed; secrets are always pre-fetched when an auth provider is configured")
+	}
 	if executorOpts.AuthProvider != nil {
 		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
 		if err := executorOpts.AuthProvider.PreFetchSecrets(); err != nil {
