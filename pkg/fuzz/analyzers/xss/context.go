@@ -2,6 +2,7 @@ package xss
 
 import (
 	"strings"
+	"unicode"
 
 	"golang.org/x/net/html"
 )
@@ -9,7 +10,8 @@ import (
 // DetectReflections parses the HTML body and returns all reflection contexts
 // where the marker is found.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	// Case-insensitive check for marker reflection
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(marker)) {
 		return nil
 	}
 
@@ -20,6 +22,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 	var tagStack []string
 	inScript := false
+	scriptType := "" // Track script type to detect non-executable scripts
 	inStyle := false
 	inRCDATA := false
 
@@ -45,6 +48,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = true
+				scriptType = "" // Reset script type
 			case "style":
 				inStyle = true
 			default:
@@ -68,6 +72,11 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					attrName := strings.ToLower(string(key))
 					attrVal := string(val)
 
+					// Track script type attribute
+					if tagNameLower == "script" && attrName == "type" {
+						scriptType = strings.ToLower(strings.TrimSpace(attrVal))
+					}
+
 					// Check if marker is in the attribute value
 					if strings.Contains(strings.ToLower(attrVal), markerLower) {
 						ctx := ContextAttribute
@@ -81,6 +90,16 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						if isEventHandler(attrName) {
 							// Event handler attributes contain JavaScript
 							ctx = ContextScript
+						}
+
+						// Check for javascript: URI scheme (case-insensitive)
+						if isJavaScriptURI(attrVal) {
+							ctx = ContextScript
+						}
+
+						// srcdoc attribute allows full HTML injection
+						if attrName == "srcdoc" {
+							ctx = ContextHTMLText
 						}
 
 						reflections = append(reflections, ReflectionInfo{
@@ -105,6 +124,11 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				}
 			}
 
+			// For script tags, check if it's a non-executable script type
+			if tagNameLower == "script" && !isExecutableScriptType(scriptType) {
+				inScript = false // Don't treat as executable script context
+			}
+
 		case html.EndTagToken:
 			tn, _ := tokenizer.TagName()
 			tagNameLower := strings.ToLower(string(tn))
@@ -112,6 +136,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = false
+				scriptType = ""
 			case "style":
 				inStyle = false
 			default:
@@ -252,6 +277,55 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	default:
 		return 0, true
 	}
+}
+
+// isJavaScriptURI checks if the attribute value is a javascript: URI scheme
+// Handles case-insensitive matching and leading whitespace per URL spec
+func isJavaScriptURI(value string) bool {
+	// Strip leading whitespace and C0 control characters (per URL spec)
+	trimmed := strings.TrimLeftFunc(value, func(r rune) bool {
+		return r <= 0x20 // C0 control chars and space
+	})
+
+	// Case-insensitive check for "javascript:"
+	prefix := "javascript:"
+	if len(trimmed) < len(prefix) {
+		return false
+	}
+	return strings.EqualFold(trimmed[:len(prefix)], prefix)
+}
+
+// isExecutableScriptType checks if a script type attribute indicates executable JavaScript
+// Non-executable types include application/json, application/ld+json, importmap, etc.
+func isExecutableScriptType(scriptType string) bool {
+	if scriptType == "" {
+		return true // Empty type defaults to JavaScript
+	}
+
+	// List of known JavaScript MIME types (WHATWG spec)
+	// https://html.spec.whatwg.org/multipage/scripting.html#javascript-mime-type
+	jsTypes := map[string]struct{}{
+		"application/ecmascript":          {},
+		"application/javascript":          {},
+		"application/x-ecmascript":        {},
+		"application/x-javascript":        {},
+		"text/ecmascript":                 {},
+		"text/javascript":                 {},
+		"text/javascript1.0":              {},
+		"text/javascript1.1":              {},
+		"text/javascript1.2":              {},
+		"text/javascript1.3":              {},
+		"text/javascript1.4":              {},
+		"text/javascript1.5":              {},
+		"text/jscript":                    {},
+		"text/livescript":                 {},
+		"text/x-ecmascript":               {},
+		"text/x-javascript":               {},
+		"module":                          {},
+	}
+
+	_, isJS := jsTypes[scriptType]
+	return isJS
 }
 
 // BestReflection returns the highest-priority reflection from the list

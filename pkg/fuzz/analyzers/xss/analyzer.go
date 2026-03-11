@@ -76,8 +76,8 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if canary is reflected at all
-	if !strings.Contains(body, canary) {
+	// Check if canary is reflected at all (case-insensitive)
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(canary)) {
 		return false, "", nil
 	}
 
@@ -216,13 +216,16 @@ func getHeader(headers map[string][]string, name string) string {
 }
 
 // detectCharacterSurvival checks which XSS-critical characters survived server-side encoding
+// Uses case-insensitive matching for the canary
 func detectCharacterSurvival(body string, canary string) CharacterSet {
+	bodyLower := strings.ToLower(body)
+	canaryLower := strings.ToLower(canary)
 	return CharacterSet{
-		LessThan:     strings.Contains(body, canary+"<"),
-		GreaterThan:  strings.Contains(body, canary+"<>") || strings.Contains(body, canary+">"),
-		DoubleQuote:  strings.Contains(body, canary+`<>"`),
-		SingleQuote:  strings.Contains(body, canary+`<>"'`),
-		ForwardSlash: strings.Contains(body, canary+canaryChars), // full canary+chars survived
+		LessThan:     strings.Contains(bodyLower, canaryLower+"<"),
+		GreaterThan:  strings.Contains(bodyLower, canaryLower+"<>") || strings.Contains(bodyLower, canaryLower+">"),
+		DoubleQuote:  strings.Contains(bodyLower, canaryLower+`<>"`),
+		SingleQuote:  strings.Contains(bodyLower, canaryLower+`<>"'`),
+		ForwardSlash: strings.Contains(bodyLower, canaryLower+strings.ToLower(canaryChars)), // full canary+chars survived
 	}
 }
 
