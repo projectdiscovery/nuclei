@@ -17,6 +17,8 @@ type MultiPartForm struct {
 	filesMetadata map[string]FileMetadata
 	// mu protects filesMetadata from concurrent map access
 	mu sync.RWMutex
+	// boundaryMu protects boundary from concurrent access
+	boundaryMu sync.Mutex
 }
 
 type FileMetadata struct {
@@ -69,6 +71,9 @@ func (m *MultiPartForm) IsType(data string) bool {
 
 // Encode encodes the data into MultiPartForm format
 func (m *MultiPartForm) Encode(data KV) (string, error) {
+	m.boundaryMu.Lock()
+	defer m.boundaryMu.Unlock()
+
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	if err := w.SetBoundary(m.boundary); err != nil {
@@ -148,6 +153,9 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 
 // ParseBoundary parses the boundary from the content type
 func (m *MultiPartForm) ParseBoundary(contentType string) error {
+	m.boundaryMu.Lock()
+	defer m.boundaryMu.Unlock()
+
 	_, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return err
@@ -168,6 +176,9 @@ func (m *MultiPartForm) ParseBoundary(contentType string) error {
 
 // Decode decodes the data from MultiPartForm format
 func (m *MultiPartForm) Decode(data string) (KV, error) {
+	m.boundaryMu.Lock()
+	defer m.boundaryMu.Unlock()
+
 	if m.boundary == "" {
 		return KV{}, fmt.Errorf("boundary not set, call ParseBoundary first")
 	}
