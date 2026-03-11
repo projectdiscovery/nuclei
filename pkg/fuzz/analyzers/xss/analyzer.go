@@ -346,16 +346,29 @@ func scanHTML(body, markerLower, markerOriginal string) []reflectionFinding {
 		case html.TextToken:
 			tok := tokenizer.Token()
 			data := tok.Data
-			if containsMarkerStr(data, markerLower) {
+			dataLower := strings.ToLower(data)
+			// Iterate every occurrence of the marker in this text token so that
+			// multiple reflections inside a single token are all captured.
+			// e.g. `var a="FUZZ"; var b=\`FUZZ\`` contains two distinct contexts.
+			searchOffset := 0
+			for {
+				idx := strings.Index(dataLower[searchOffset:], markerLower)
+				if idx < 0 {
+					break
+				}
+				absIdx := searchOffset + idx
+				// Extract the segment up to (and including) this occurrence for
+				// per-reflection helpers that inspect "what comes before the marker".
+				segment := data[:absIdx+len(markerLower)]
 				_ = currentTag
 				if inScript {
 					ctx := ContextScriptData
 					if scriptIsExec {
 						ctx = ContextScript
 						// Refine: is it inside a template literal?
-						if isInTemplateLiteral(data, markerLower) {
+						if isInTemplateLiteral(segment, markerLower) {
 							ctx = ContextTemplate
-						} else if isJSONContext(data, markerLower) {
+						} else if isJSONContext(segment, markerLower) {
 							ctx = ContextJSON
 						}
 					}
@@ -368,6 +381,7 @@ func scanHTML(body, markerLower, markerOriginal string) []reflectionFinding {
 				} else {
 					findings = append(findings, reflectionFinding{ctx: ContextHTMLBody})
 				}
+				searchOffset = absIdx + len(markerLower)
 			}
 
 		case html.DoctypeToken:
@@ -674,12 +688,25 @@ func buildResult(f reflectionFinding) XSSResult {
 
 	case ContextAttributeURL:
 		r.Confidence = 0.85
-		r.Payloads = []string{
-			`javascript:alert(1)`,
-			`javascript:alert(document.domain)`,
-			`javascript:void(0);alert(1)`,
-			// If not directly executable, offer relative-path payloads
-			`//attacker.com/evil.js`,
+		// Only advertise javascript: URI payloads for tag+attr combos that are
+		// known executable sinks (e.g. a[href], area[href], form[action]).
+		// Inert URL sinks like img[src] and script[src] do not execute javascript:
+		// URIs in modern browsers; surfacing those payloads is misleading.
+		if f.isExecutable {
+			r.IsExecutableSink = true
+			r.Payloads = []string{
+				`javascript:alert(1)`,
+				`javascript:alert(document.domain)`,
+				`javascript:void(0);alert(1)`,
+			}
+			r.Explanation = "Marker is in an executable URL attribute (e.g. a[href]). Try javascript: scheme."
+		} else {
+			// Non-executable URL sink: offer attribute break-out and open-redirect payloads.
+			r.Payloads = []string{
+				`//attacker.com/`,
+				`https://attacker.com/`,
+			}
+			r.Explanation = "Marker is in a URL attribute (non-executable sink). Try open-redirect or attribute break-out."
 		}
 		if f.quoteChar == '"' {
 			r.BreakoutSeq = `"`
@@ -693,7 +720,6 @@ func buildResult(f reflectionFinding) XSSResult {
 				`' onmouseover='alert(1)`,
 			)
 		}
-		r.Explanation = "Marker is in a URL attribute. Try javascript: scheme or break out of the attribute."
 
 	case ContextAttributeStyle:
 		r.Confidence = 0.82
