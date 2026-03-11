@@ -320,7 +320,7 @@ UNCOVER引擎:
 
 ```
 
-更多信息请参考文档: https://docs.nuclei.sh/getting-started/running
+更多信息请参考文档: https://docs.projectdiscovery.io/getting-started/running
 
 
 ### 运行Nuclei
