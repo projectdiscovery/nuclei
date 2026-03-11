@@ -133,6 +133,13 @@ type Options struct {
 	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
+	// HoneypotCheck enables honeypot detection before scanning targets.
+	// Hosts that return 200 OK for all random canary requests are flagged and skipped.
+	HoneypotCheck bool `yaml:"honeypot-check,omitempty" json:"honeypot-check,omitempty"`
+	// HoneypotThreshold is the fraction of positive canary responses that triggers honeypot flag (default 0.8).
+	HoneypotThreshold float64 `yaml:"honeypot-threshold,omitempty" json:"honeypot-threshold,omitempty"`
+	// HoneypotProbes is the number of canary requests sent per target (default 3).
+	HoneypotProbes int `yaml:"honeypot-probes,omitempty" json:"honeypot-probes,omitempty"`
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
