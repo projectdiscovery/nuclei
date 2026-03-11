@@ -116,8 +116,14 @@ func Parse(data []byte, path string) (*Profile, error) {
 	}
 
 	// Extract inline target list.
-	if v, ok := rawString(raw, "list"); ok {
-		p.InlineTargets = v
+	// Reject non-string values (e.g. YAML sequences) so targets do not
+	// silently disappear when the profile is misformatted.
+	if v, ok := raw["list"]; ok {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("profile field %q must be a string (got %T); use a YAML block scalar (|) for multi-line targets", "list", v)
+		}
+		p.InlineTargets = s
 	}
 
 	// Extract inline secrets block (preserve as-is for re-serialization).
@@ -284,7 +290,12 @@ func ListProfiles(profilesDir, templatesRootDir string) ([]ListEntry, error) {
 	var entries []ListEntry
 	err := filepath.WalkDir(profilesDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil // skip unreadable entries
+			if path == profilesDir {
+				// Root directory is missing or unreadable — surface the error so
+				// callers can distinguish "no profiles" from "bad profiles path".
+				return err
+			}
+			return nil // skip individual unreadable sub-entries
 		}
 		if d.IsDir() {
 			return nil

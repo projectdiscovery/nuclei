@@ -680,7 +680,23 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			options.Logger.Fatal().Msgf("Could not materialize inline targets from profile %q: %s", templateProfile, err)
 		} else if targetsFile != "" {
 			options.Logger.Debug().Msgf("Profile inline targets written to %s", targetsFile)
-			options.Targets = append(options.Targets, targetsFile)
+			// Use TargetsFilePath so the file is opened and read as a target list.
+			// options.Targets holds literal host strings; appending a filename there
+			// would attempt to scan the path itself rather than its contents.
+			if options.TargetsFilePath == "" {
+				options.TargetsFilePath = targetsFile
+			} else {
+				// TargetsFilePath already set — expand the materialized file into Targets.
+				data, readErr := os.ReadFile(targetsFile)
+				if readErr != nil {
+					options.Logger.Fatal().Msgf("Could not read materialized targets file %q: %s", targetsFile, readErr)
+				}
+				for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+					if line = strings.TrimSpace(line); line != "" {
+						options.Targets = append(options.Targets, line)
+					}
+				}
+			}
 		}
 
 		// Materialize inline secrets if present.

@@ -89,15 +89,15 @@ func ParseOptions(options *types.Options) {
 		entries, err := profile.ListProfiles(defaultProfilesPath, templatesRootDir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				options.Logger.Silent().Msgf("No profiles found in %s\n", defaultProfilesPath)
-				options.Logger.Silent().Msgf("Tip: run 'nuclei -update-templates' to download community profiles\n")
+				options.Logger.Print().Msgf("No profiles found in %s\n", defaultProfilesPath)
+				options.Logger.Print().Msgf("Tip: run 'nuclei -update-templates' to download community profiles\n")
 				os.Exit(0)
 			}
 			options.Logger.Fatal().Msgf("could not list profiles: %s\n", err)
 		}
 		if len(entries) == 0 {
-			options.Logger.Silent().Msgf("No profiles found in %s\n", defaultProfilesPath)
-			options.Logger.Silent().Msgf("Tip: run 'nuclei -update-templates' to download community profiles\n")
+			options.Logger.Print().Msgf("No profiles found in %s\n", defaultProfilesPath)
+			options.Logger.Print().Msgf("Tip: run 'nuclei -update-templates' to download community profiles\n")
 		}
 		for _, e := range entries {
 			if e.Metadata.Name != "" || e.Metadata.Purpose != "" {
@@ -109,9 +109,9 @@ func ParseOptions(options *types.Options) {
 						desc = e.Metadata.Purpose
 					}
 				}
-				options.Logger.Silent().Msgf("%-50s %-20s  %s\n", e.RelPath, "("+e.ProfileID+")", desc)
+				options.Logger.Print().Msgf("%-50s %-20s  %s\n", e.RelPath, "("+e.ProfileID+")", desc)
 			} else {
-				options.Logger.Silent().Msgf("%-50s %-20s\n", e.RelPath, "("+e.ProfileID+")")
+				options.Logger.Print().Msgf("%-50s %-20s\n", e.RelPath, "("+e.ProfileID+")")
 			}
 		}
 		os.Exit(0)
