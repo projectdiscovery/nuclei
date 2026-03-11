@@ -40,6 +40,12 @@ const (
 
 // Get returns the dataformat by name
 func Get(name string) DataFormat {
+	// MultiPartForm is stateful (contains boundary and filesMetadata)
+	// and cannot be shared across concurrent goroutines.
+	// Return a new instance for each call to avoid race conditions.
+	if name == MultiPartFormDataFormat {
+		return NewMultiPartForm()
+	}
 	return dataformats[name]
 }
 
