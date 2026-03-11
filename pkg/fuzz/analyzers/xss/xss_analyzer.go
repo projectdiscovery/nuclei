@@ -78,9 +78,20 @@ func (a *XSSAnalyzer) Analyze(options *analyzers.Options) (bool, string, error) 
 	// skip straight to AnalyzeReflectionContext which will classify as
 	// ContextJSON when appropriate. For all non-HTML content types we still
 	// run the lightweight reflection check but skip the HTML tokenizer path.
-	contentType := resp.Header.Get("Content-Type")
-	isHTML := strings.Contains(strings.ToLower(contentType), "text/html") ||
-		contentType == "" // empty CT: assume HTML for safety
+	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+	isHTML := strings.Contains(contentType, "text/html") ||
+		strings.Contains(contentType, "application/xhtml+xml")
+	if !isHTML && contentType == "" {
+		sniff := strings.ToLower(string(bodyBytes))
+		if len(sniff) > 512 {
+			sniff = sniff[:512]
+		}
+		isHTML = strings.Contains(sniff, "<!doctype") ||
+			strings.Contains(sniff, "<html") ||
+			strings.Contains(sniff, "<head") ||
+			strings.Contains(sniff, "<body") ||
+			strings.Contains(sniff, "<script")
+	}
 
 	if !isHTML {
 		// For non-HTML responses (e.g. application/json), only check JSON context.

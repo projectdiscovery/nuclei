@@ -285,7 +285,6 @@ func scanHTML(body, markerLower, markerOriginal string) []reflectionFinding {
 		inScript     bool
 		inStyle      bool
 		scriptIsExec bool
-		currentTag   string
 	)
 
 	for {
@@ -309,7 +308,6 @@ func scanHTML(body, markerLower, markerOriginal string) []reflectionFinding {
 		case html.StartTagToken, html.SelfClosingTagToken:
 			tn, hasAttr := tokenizer.TagName()
 			tagName := strings.ToLower(string(tn))
-			currentTag = tagName
 
 			if hasAttr {
 				tagFindings, scriptType := scanAttributes(tokenizer, markerLower, tagName, body, markerOriginal)
@@ -341,7 +339,6 @@ func scanHTML(body, markerLower, markerOriginal string) []reflectionFinding {
 			case "style":
 				inStyle = false
 			}
-			currentTag = ""
 
 		case html.TextToken:
 			tok := tokenizer.Token()
@@ -360,7 +357,6 @@ func scanHTML(body, markerLower, markerOriginal string) []reflectionFinding {
 				// Extract the segment up to (and including) this occurrence for
 				// per-reflection helpers that inspect "what comes before the marker".
 				segment := data[:absIdx+len(markerLower)]
-				_ = currentTag
 				if inScript {
 					ctx := ContextScriptData
 					if scriptIsExec {
@@ -577,11 +573,12 @@ func isJSONContext(text, markerLower string) bool {
 	}
 	// Additional check: must see a colon (JSON key separator) in the context
 	// Avoids matching JS: var x = "MARKER"
-	if last == '"' || last == '\'' {
+	// JSON (RFC 8259) only uses double quotes for strings
+	if last == '"' {
 		// Look for a colon before the quote that opened the value
 		// We search backwards for the opening quote and check there's a : before it
-		// Simplified: check for `: "` or `: '` pattern
-		if !strings.Contains(trimmed, ": \"") && !strings.Contains(trimmed, ": '") &&
+		// Simplified: check for `: "` pattern (JSON only uses double quotes)
+		if !strings.Contains(trimmed, ": \"") &&
 			!strings.Contains(trimmed, ":{\"") && !strings.Contains(trimmed, ":\"") {
 			return false
 		}
@@ -817,11 +814,5 @@ func buildResult(f reflectionFinding) XSSResult {
 	}
 
 	// Refine quote-specific context after building the base result
-	if f.ctx == ContextAttributeDouble || f.ctx == ContextAttributeSingle || f.ctx == ContextAttributeUnquoted {
-		// already handled above — nothing to do
-	} else if (f.ctx == ContextAttributeURL || f.ctx == ContextAttributeStyle) && f.quoteChar != 0 {
-		// Refine the context name based on quote char (already set QuoteChar above)
-	}
-
 	return r
 }
