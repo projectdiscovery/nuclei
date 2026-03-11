@@ -123,6 +123,13 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		if err != nil {
 			return 0, errors.Wrap(err, "could not rebuild request")
 		}
+
+		// Preserve cookies from the original request
+		// This fixes the issue where cookies set via -H flag are lost
+		// when the time_delay analyzer sends requests with modified payloads
+		for _, cookie := range gr.Request.Cookies() {
+			rebuilt.AddCookie(cookie)
+		}
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())
 
 		timeTaken, err := doHTTPRequestWithTimeTracing(rebuilt, options.HttpClient)

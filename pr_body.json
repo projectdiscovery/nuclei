@@ -1,0 +1,6 @@
+{
+  "title": "fix(fuzz): properly handle errors in executeEvaluate function",
+  "body": "## Description\n\nThis PR fixes a bug in the executeEvaluate function where errors returned by expressions.Evaluate() were being ignored.\n\n### Changes:\n- Properly handle errors from expressions.Evaluate() in executeEvaluate function\n- Return empty string when expression evaluation fails\n- Removes the TODO comment about handling errors\n\n### Related Issue:\n- Fixes potential bug where invalid expressions would silently pass through",
+  "head": "dev",
+  "base": "dev"
+}
