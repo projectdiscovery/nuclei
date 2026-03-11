@@ -479,11 +479,24 @@ func classifyAttrValueContext(attrName, attrValue, tagName string) (XSSContext, 
 // detectAttrQuoteChar probes the raw HTML source around the marker to determine
 // which quote character wraps the attribute value. Returns '"', '\'' or 0 (unquoted).
 //
-// This is a heuristic — it searches for attrName= before the first occurrence
-// of the marker in the raw body and reads the delimiter byte.
+// It searches backward from the reflection position (first occurrence of markerOriginal)
+// to find the nearest preceding attrName= and reads its delimiter byte.
+// This avoids false positives from other occurrences of the same attribute elsewhere
+// in the document.
 func detectAttrQuoteChar(rawBody, markerOriginal, attrName string) byte {
 	search := attrName + "="
-	idx := strings.Index(strings.ToLower(rawBody), search)
+	searchLower := strings.ToLower(search)
+	rawLower := strings.ToLower(rawBody)
+
+	// Find the position of the marker in the raw body first.
+	markerIdx := strings.Index(rawLower, strings.ToLower(markerOriginal))
+	if markerIdx < 0 {
+		return '"' // default assumption
+	}
+
+	// Search backward: find the last occurrence of attrName= before the marker.
+	segment := rawLower[:markerIdx]
+	idx := strings.LastIndex(segment, searchLower)
 	if idx < 0 {
 		return '"' // default assumption
 	}
@@ -541,6 +554,11 @@ func isJSONContext(text, markerLower string) bool {
 	// Pattern: `": "` or `': '` or `["`
 	last := trimmed[len(trimmed)-1]
 	if last != '"' && last != '\'' && last != '[' {
+		return false
+	}
+	// JSON only uses double quotes. If the value is wrapped in single quotes,
+	// this is a JavaScript string or similar context — not valid JSON.
+	if last == '\'' {
 		return false
 	}
 	// Additional check: must see a colon (JSON key separator) in the context

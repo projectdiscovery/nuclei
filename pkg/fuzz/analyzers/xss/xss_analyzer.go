@@ -57,10 +57,12 @@ func (a *XSSAnalyzer) Analyze(options *analyzers.Options) (bool, string, error) 
 	}
 
 	// Determine what the reflected marker is.
-	// OriginalPayload holds the raw fuzz payload sent.
-	marker := gr.OriginalPayload
+	// Use the final transformed fuzz value (gr.Value) so that the canary
+	// matches what was actually sent to the server. Fall back to
+	// gr.OriginalPayload only when gr.Value is empty.
+	marker := gr.Value
 	if marker == "" {
-		marker = gr.Value
+		marker = gr.OriginalPayload
 	}
 	if marker == "" {
 		return false, "", nil
@@ -69,6 +71,34 @@ func (a *XSSAnalyzer) Analyze(options *analyzers.Options) (bool, string, error) 
 	// Quick pre-check before full HTML parse
 	if !strings.Contains(strings.ToLower(string(bodyBytes)), strings.ToLower(marker)) {
 		return false, "", nil
+	}
+
+	// Gate expensive HTML context analysis on Content-Type.
+	// JSON responses cannot contain exploitable HTML injection; for them we
+	// skip straight to AnalyzeReflectionContext which will classify as
+	// ContextJSON when appropriate. For all non-HTML content types we still
+	// run the lightweight reflection check but skip the HTML tokenizer path.
+	contentType := resp.Header.Get("Content-Type")
+	isHTML := strings.Contains(strings.ToLower(contentType), "text/html") ||
+		contentType == "" // empty CT: assume HTML for safety
+
+	if !isHTML {
+		// For non-HTML responses (e.g. application/json), only check JSON context.
+		result := AnalyzeReflectionContext(string(bodyBytes), marker)
+		if result.Context == ContextUnknown || result.Context != ContextJSON {
+			return false, "", nil
+		}
+		if result.Confidence < 0.5 {
+			return false, "", nil
+		}
+		explanation := result.Explanation
+		if len(result.Payloads) > 0 {
+			explanation += "\nSuggested payloads:\n"
+			for _, p := range result.Payloads {
+				explanation += "  - " + p + "\n"
+			}
+		}
+		return true, explanation, nil
 	}
 
 	result := AnalyzeReflectionContext(string(bodyBytes), marker)
