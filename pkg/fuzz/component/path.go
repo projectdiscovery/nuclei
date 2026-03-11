@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -14,7 +15,8 @@ import (
 type Path struct {
 	value *Value
 
-	req *retryablehttp.Request
+	req          *retryablehttp.Request
+	originalPath string // snapshot of path at parse time to avoid mutation issues
 }
 
 var _ Component = &Path{}
@@ -33,10 +35,15 @@ func (q *Path) Name() string {
 // parsed component
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
+	q.originalPath = req.Path
 	q.value = NewValue("")
 
 	splitted := strings.Split(req.Path, "/")
-	values := make(map[string]interface{})
+	// Use an ordered map to preserve segment order and avoid flat.Flatten
+	// converting numeric-keyed maps into slices, which would break type assertions
+	// during Rebuild.
+	segments := mapsutil.NewOrderedMap[string, any]()
+	idx := 1
 	for i, segment := range splitted {
 		if segment == "" && i == 0 {
 			// Skip the first empty segment from leading "/"
@@ -46,11 +53,11 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 			// Skip any other empty segments
 			continue
 		}
-		// Use 1-based indexing and store individual segments
-		key := strconv.Itoa(len(values) + 1)
-		values[key] = segment
+		key := strconv.Itoa(idx)
+		segments.Set(key, segment)
+		idx++
 	}
-	q.value.SetParsed(dataformat.KVMap(values), "")
+	q.value.SetParsed(dataformat.KVOrderedMap(&segments), "")
 	return true, nil
 }
 
@@ -87,8 +94,8 @@ func (q *Path) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	// Get the original path segments
-	originalSplitted := strings.Split(q.req.Path, "/")
+	// Use the original path snapshot to avoid reading from a mutated request URL
+	originalSplitted := strings.Split(q.originalPath, "/")
 
 	// Create a new slice to hold the rebuilt segments
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
@@ -98,8 +105,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		rebuiltSegments = append(rebuiltSegments, "")
 	}
 
-	// Process each segment
-	segmentIndex := 1 // 1-based indexing for our stored values
+	// Process each segment, looking up replacements from the ordered map
+	segmentIndex := 1 // 1-based indexing matching Parse
 	for i := 1; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
@@ -107,10 +114,15 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 			continue
 		}
 
-		// Check if we have a replacement for this segment
+		// Retrieve from OrderedMap to avoid type-assertion failures caused by
+		// flat.Flatten converting numeric-keyed maps into slices.
 		key := strconv.Itoa(segmentIndex)
-		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
-			rebuiltSegments = append(rebuiltSegments, newValue)
+		if newValue, ok := q.value.parsed.OrderedMap.Get(key); ok {
+			if strVal, isStr := newValue.(string); isStr && strVal != "" {
+				rebuiltSegments = append(rebuiltSegments, strVal)
+			} else {
+				rebuiltSegments = append(rebuiltSegments, originalSegment)
+			}
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
 		}
@@ -121,12 +133,13 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	rebuiltPath := strings.Join(rebuiltSegments, "/")
 
 	if unescaped, err := urlutil.PathDecode(rebuiltPath); err == nil {
-		// this is handle the case where anyportion of path has url encoded data
-		// by default the http/request official library will escape/encode special characters in path
-		// to avoid double encoding we unescape/decode already encoded value
+		// Handle the case where any portion of the path has URL encoded data.
+		// By default the http/request library will escape/encode special characters
+		// in path; to avoid double encoding we unescape already-encoded values.
 		//
-		// if there is a invalid url encoded value like %99 then it will still be encoded as %2599 and not %99
-		// the only way to make sure it stays as %99 is to implement raw request and unsafe for fuzzing as well
+		// If there is an invalid URL encoded value like %99 it will still be
+		// encoded as %2599. To make it stay as %99, raw/unsafe request support
+		// would be required.
 		rebuiltPath = unescaped
 	}
 
@@ -141,7 +154,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 // Clones current state to a new component
 func (q *Path) Clone() Component {
 	return &Path{
-		value: q.value.Clone(),
-		req:   q.req.Clone(context.Background()),
+		value:        q.value.Clone(),
+		req:          q.req.Clone(context.Background()),
+		originalPath: q.originalPath,
 	}
 }
