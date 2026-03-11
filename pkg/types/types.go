@@ -33,6 +33,12 @@ type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalo
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
+	Secrets            map[string]interface{} `yaml:"secrets,omitempty" json:"secrets,omitempty"`
+	List               string                 `yaml:"list,omitempty" json:"list,omitempty"`
+	ProfileID          string                 `yaml:"id,omitempty" json:"id,omitempty"`
+	ProfileName        string                 `yaml:"name,omitempty" json:"name,omitempty"`
+	ProfileDescription string                 `yaml:"description,omitempty" json:"description,omitempty"`
+	// ... existing fields (Tags, ExcludeTags, etc.)
 	// Tags contains a list of tags to execute templates for. Multiple paths
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
@@ -475,7 +481,19 @@ type Options struct {
 }
 
 func (options *Options) Copy() *Options {
+	var secretsCopy map[string]interface{}
+	if options.Secrets != nil {
+		secretsCopy = make(map[string]interface{})
+		for k, v := range options.Secrets {
+			secretsCopy[k] = v
+		}
+	}
 	optCopy := &Options{
+		Secrets:                        secretsCopy,
+		List:                           options.List,
+		ProfileID:                      options.ProfileID,
+		ProfileName:                    options.ProfileName,
+		ProfileDescription:             options.ProfileDescription,
 		Tags:                           options.Tags,
 		ExcludeTags:                    options.ExcludeTags,
 		Workflows:                      options.Workflows,

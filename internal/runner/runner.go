@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	yamlv3 "gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -261,8 +262,63 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}()
 
-	// create the input provider and load the inputs
-	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options, TempDir: runner.tmpDir})
+	// We catch the target if it's in List, Targets, OR incorrectly sitting in TargetsFilePath
+	// --- Task 2 & 3: Materialize Inline Targets and Secrets (#5567) ---
+
+	// 1. Resolve Target Content
+	targetContent := options.List
+	if targetContent == "" && len(options.Targets) > 0 {
+		targetContent = strings.Join(options.Targets, "\n")
+	}
+
+	// Check if TargetsFilePath is actually raw input (common in profile materialization)
+	// We verify this by checking if the path does not exist as a physical file on disk
+	if targetContent == "" && options.TargetsFilePath != "" {
+		if !fileutil.FileExists(options.TargetsFilePath) || strings.Contains(options.TargetsFilePath, "\n") {
+			targetContent = options.TargetsFilePath
+		}
+	}
+
+	if targetContent != "" {
+		// Use system temp dir if runner.tmpDir isn't initialized yet
+		tDir := runner.tmpDir
+		if tDir == "" {
+			tDir = os.TempDir()
+		}
+
+		tempFile, err := os.CreateTemp(tDir, "nuclei-targets-*.txt")
+		if err == nil {
+			defer tempFile.Close()
+			_, _ = tempFile.WriteString(targetContent)
+			options.TargetsFilePath = tempFile.Name()
+			runner.Logger.Info().Msgf("Materialized profile targets to: %s", tempFile.Name())
+		}
+	}
+
+	// 2. Resolve Secrets
+	if len(options.Secrets) > 0 {
+		secretBytes, err := yamlv3.Marshal(options.Secrets)
+		if err == nil {
+			tDir := runner.tmpDir
+			if tDir == "" {
+				tDir = os.TempDir()
+			}
+
+			tempSecret, err := os.CreateTemp(tDir, "nuclei-secrets-*.yaml")
+			if err == nil {
+				defer tempSecret.Close()
+				_, _ = tempSecret.Write(secretBytes)
+				options.SecretsFile = append(options.SecretsFile, tempSecret.Name())
+				runner.Logger.Info().Msgf("Materialized profile secrets to: %s", tempSecret.Name())
+			}
+		}
+	}
+
+	// 3. Create the input provider (only once!)
+	inputProvider, err := provider.NewInputProvider(provider.InputOptions{
+		Options: options,
+		TempDir: runner.tmpDir,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
