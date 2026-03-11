@@ -40,6 +40,11 @@ const (
 
 // Get returns the dataformat by name
 func Get(name string) DataFormat {
+	// MultiPartForm has mutable state (boundary, filesMetadata) that is not
+	// safe for concurrent access, so we return a new instance each time
+	if name == MultiPartFormDataFormat {
+		return NewMultiPartForm()
+	}
 	return dataformats[name]
 }
 
