@@ -95,6 +95,9 @@ func Parse(data []byte, path string) (*Profile, error) {
 	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("could not parse profile %q: %w", path, err)
 	}
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("profile %q is empty", path)
+	}
 
 	p := &Profile{}
 

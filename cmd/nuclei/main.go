@@ -704,7 +704,12 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 		// Register temp files for deferred cleanup.
 		for _, tmp := range prof.TempFiles() {
-			_ = tmp // cleanup handled by OS on process exit; temp files use os.CreateTemp
+			tmp := tmp // capture loop variable
+			defer func() {
+				if err := os.Remove(tmp); err != nil && !os.IsNotExist(err) {
+					options.Logger.Debug().Msgf("Could not remove profile temp file %s: %s", tmp, err)
+				}
+			}()
 		}
 	}
 

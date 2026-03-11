@@ -272,8 +272,13 @@ func TestListProfiles(t *testing.T) {
 	}
 
 	// Write two profile files.
-	profile1 := `id: cloud\nname: Cloud Scan\ntags: cloud`
-	profile2 := `id: cve-scan\ntags: cve`
+	profile1 := `id: cloud
+name: Cloud Scan
+tags: cloud
+`
+	profile2 := `id: cve-scan
+tags: cve
+`
 	if err := os.WriteFile(filepath.Join(profilesDir, "cloud.yml"), []byte(profile1), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -296,6 +301,9 @@ func TestListProfiles(t *testing.T) {
 	ids := make(map[string]bool)
 	for _, e := range entries {
 		ids[e.ProfileID] = true
+		if e.ProfileID == "cloud" && e.Metadata.Name != "Cloud Scan" {
+			t.Errorf("expected metadata name 'Cloud Scan' for cloud profile, got %q", e.Metadata.Name)
+		}
 	}
 	if !ids["cloud"] || !ids["cve"] {
 		t.Errorf("expected profile IDs 'cloud' and 'cve', got %v", ids)
