@@ -691,6 +691,9 @@ func (options *Options) Copy() *Options {
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
 		ExecutionId:                    options.ExecutionId,
 		Parser:                         options.Parser,
+		HoneypotCheck:                  options.HoneypotCheck,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotProbes:                 options.HoneypotProbes,
 	}
 	optCopy.SetTimeouts(options.timeouts)
 	return optCopy

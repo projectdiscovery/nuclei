@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -54,11 +56,44 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
+// contentLengthVariance computes the sample variance of the given content-length
+// values. Returns 0 if fewer than 2 values are provided.
+func contentLengthVariance(lengths []int64) float64 {
+	if len(lengths) < 2 {
+		return 0
+	}
+	var sum float64
+	for _, l := range lengths {
+		sum += float64(l)
+	}
+	mean := sum / float64(len(lengths))
+	var variance float64
+	for _, l := range lengths {
+		d := float64(l) - mean
+		variance += d * d
+	}
+	return variance / float64(len(lengths)-1)
+}
+
 // Check sends canary requests to detect honeypot behavior.
 // A honeypot returns 200 OK for completely random, non-existent paths.
+//
+// Detection requires BOTH conditions:
+//  1. confidence (fraction of 200-status canary responses) >= threshold
+//  2. Low body-length variance across responses — a real catch-all-200 app
+//     typically returns varying page content; a honeypot returns nearly the
+//     same page every time. If the standard deviation of observed content
+//     lengths exceeds contentLenStdDevThreshold bytes we treat the host as a
+//     real (non-honeypot) wildcard application and skip the honeypot flag.
+//
+// This avoids the false-positive where a legitimate site returns 200 with
+// wildcard routing but serves meaningfully different content for each path.
+const contentLenStdDevThreshold = 200.0 // bytes; tune as needed
+
 func (h *HoneypotDetector) Check(ctx context.Context, target string) HoneypotResult {
 	target = strings.TrimRight(target, "/")
 	positives := 0
+	var bodyLengths []int64
 
 	for i := 0; i < h.probes; i++ {
 		path := fmt.Sprintf("/nuclei-canary-%s-%s", randomHex(4), randomHex(4))
@@ -74,24 +109,31 @@ func (h *HoneypotDetector) Check(ctx context.Context, target string) HoneypotRes
 		if err != nil {
 			continue
 		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 		_ = resp.Body.Close()
 
-		// A real server returns 404 for random paths; a honeypot returns 200
 		if resp.StatusCode == http.StatusOK {
 			positives++
+			bodyLengths = append(bodyLengths, int64(len(body)))
 		}
 	}
 
 	confidence := float64(positives) / float64(h.probes)
-	isHoneypot := confidence >= h.threshold
+
+	// Require high confidence AND near-constant body length.
+	// High variance implies different content per path → real wildcard app, not honeypot.
+	stdDev := math.Sqrt(contentLengthVariance(bodyLengths))
+	isHoneypot := confidence >= h.threshold && stdDev < contentLenStdDevThreshold
+
+	reason := fmt.Sprintf("%d/%d canary requests returned 200 OK (body-length stddev=%.1f)", positives, h.probes, stdDev)
 
 	if isHoneypot {
-		gologger.Warning().Msgf("[honeypot] %s appears to be a honeypot (%.0f%% of canary requests returned 200)", target, confidence*100)
+		gologger.Warning().Msgf("[honeypot] %s appears to be a honeypot (%.0f%% of canary requests returned 200, body stddev=%.1f)", target, confidence*100, stdDev)
 	}
 
 	return HoneypotResult{
 		IsHoneypot: isHoneypot,
 		Confidence: confidence,
-		Reason:     fmt.Sprintf("%d/%d canary requests returned 200 OK", positives, h.probes),
+		Reason:     reason,
 	}
 }
