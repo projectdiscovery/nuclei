@@ -1160,6 +1160,8 @@ github.com/zmap/zgrab2 v0.1.8/go.mod h1:5d8HSmUwvllx4q1qG50v/KXphkg45ZzWdaQtgTFn
 github.com/zmap/zlint/v3 v3.0.0/go.mod h1:paGwFySdHIBEMJ61YjoqT4h7Ge+fdYG4sUQhnTb1lJ8=
 gitlab.com/gitlab-org/api/client-go v0.130.1 h1:1xF5C5Zq3sFeNg3PzS2z63oqrxifne3n/OnbI7nptRc=
 gitlab.com/gitlab-org/api/client-go v0.130.1/go.mod h1:ZhSxLAWadqP6J9lMh40IAZOlOxBLPRh7yFOXR/bMJWM=
+go.dw1.io/x/exp/gctuner v0.0.0-20260204023956-e410dfed9099 h1:8r0sO5zgoCtSZK4i2pc5GmSAbDuVR523NPyEu/iO8/A=
+go.dw1.io/x/exp/gctuner v0.0.0-20260204023956-e410dfed9099/go.mod h1:KcYHaFU3zy6htvGsFz/TuUQAM+mBdmDwC5lL/eLdb9E=
 go.etcd.io/bbolt v1.4.3 h1:dEadXpI6G79deX5prL3QRNP6JB8UxVkqo4UPnHaNXJo=
 go.etcd.io/bbolt v1.4.3/go.mod h1:tKQlpPaYCVFctUIgFKFnAlvbmB3tpy1vkTnDWohtc0E=
 go.mongodb.org/mongo-driver v1.17.4 h1:jUorfmVzljjr0FLzYQsGP8cgN/qzzxlY9Vh0C9KFXVw=

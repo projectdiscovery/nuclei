@@ -124,6 +124,7 @@ require (
 	github.com/yassinebenaid/godump v0.11.1
 	github.com/zmap/zgrab2 v0.1.8
 	gitlab.com/gitlab-org/api/client-go v0.130.1
+	go.dw1.io/x/exp/gctuner v0.0.0-20260204023956-e410dfed9099
 	go.mongodb.org/mongo-driver v1.17.4
 	golang.org/x/term v0.39.0
 	gopkg.in/yaml.v3 v3.0.1
