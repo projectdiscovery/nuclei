@@ -3,7 +3,6 @@ package runner
 import (
 	"bufio"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/profile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -26,7 +26,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -82,24 +81,33 @@ func ParseOptions(options *types.Options) {
 	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
 	if options.ListTemplateProfiles {
 		options.Logger.Print().Msgf(
-			"Listing available %v nuclei template profiles for %v",
+			"Listing available %v nuclei template profiles for %v\n",
 			config.DefaultConfig.TemplateVersion,
 			config.DefaultConfig.TemplatesDirectory,
 		)
 		templatesRootDir := config.DefaultConfig.GetTemplateDir()
-		err := filepath.WalkDir(defaultProfilesPath, func(iterItem string, d fs.DirEntry, err error) error {
-			ext := filepath.Ext(iterItem)
-			isYaml := ext == extensions.YAML || ext == extensions.YML
-			if err != nil || d.IsDir() || !isYaml {
-				return nil
-			}
-			if profileRelPath, err := filepath.Rel(templatesRootDir, iterItem); err == nil {
-				options.Logger.Print().Msgf("%s (%s)\n", profileRelPath, strings.TrimSuffix(filepath.Base(iterItem), ext))
-			}
-			return nil
-		})
+		entries, err := profile.ListProfiles(defaultProfilesPath, templatesRootDir)
 		if err != nil {
-			options.Logger.Error().Msgf("%s\n", err)
+			options.Logger.Error().Msgf("could not list profiles: %s\n", err)
+		}
+		if len(entries) == 0 {
+			options.Logger.Print().Msgf("No profiles found in %s\n", defaultProfilesPath)
+			options.Logger.Print().Msgf("Tip: run 'nuclei -update-templates' to download community profiles\n")
+		}
+		for _, e := range entries {
+			if e.Metadata.Name != "" || e.Metadata.Purpose != "" {
+				desc := e.Metadata.Name
+				if e.Metadata.Purpose != "" {
+					if desc != "" {
+						desc += " — " + e.Metadata.Purpose
+					} else {
+						desc = e.Metadata.Purpose
+					}
+				}
+				options.Logger.Print().Msgf("%-50s %-20s  %s\n", e.RelPath, "("+e.ProfileID+")", desc)
+			} else {
+				options.Logger.Print().Msgf("%-50s %-20s\n", e.RelPath, "("+e.ProfileID+")")
+			}
 		}
 		os.Exit(0)
 	}

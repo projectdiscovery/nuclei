@@ -39,6 +39,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
+	"github.com/projectdiscovery/nuclei/v3/pkg/profile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/monitor"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -639,7 +640,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			if tp := findProfilePathById(templateProfile, defaultProfilesPath); tp != "" {
 				templateProfile = tp
 			} else {
-				options.Logger.Fatal().Msgf("'%s' is not a profile-id or profile path", templateProfile)
+				options.Logger.Fatal().Msgf("template profile %q not found — use 'nuclei -tpl' to list available profiles, or provide a file path", templateProfile)
 			}
 		}
 		if !filepath.IsAbs(templateProfile) {
@@ -654,10 +655,56 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			}
 		}
 		if !fileutil.FileExists(templateProfile) {
-			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
+			options.Logger.Fatal().Msgf("template profile file %q does not exist — run 'nuclei -update-templates' to download community profiles, or check the path", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
-			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+
+		// Parse the profile using the profile package so we can:
+		//   1. Strip metadata fields (id, name, purpose, description) that goflags doesn't understand.
+		//   2. Materialize inline targets (list: |...) into a temp file.
+		//   3. Materialize inline secrets (secrets: ...) into a temp file.
+		prof, err := profile.Load(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not load template profile %q: %s", templateProfile, err)
+		}
+		if err := prof.Validate(); err != nil {
+			options.Logger.Fatal().Msgf("Invalid template profile %q: %s", templateProfile, err)
+		}
+
+		if prof.Name != "" || prof.ID != "" {
+			options.Logger.Info().Msgf("Loading template profile: %s", prof.Summary())
+		}
+
+		// Materialize inline target list if present.
+		tmpDir := os.TempDir()
+		if targetsFile, err := prof.MaterializeTargets(tmpDir); err != nil {
+			options.Logger.Fatal().Msgf("Could not materialize inline targets from profile %q: %s", templateProfile, err)
+		} else if targetsFile != "" {
+			options.Logger.Debug().Msgf("Profile inline targets written to %s", targetsFile)
+			options.Targets = append(options.Targets, targetsFile)
+		}
+
+		// Materialize inline secrets if present.
+		if secretsFile, err := prof.MaterializeSecrets(tmpDir); err != nil {
+			options.Logger.Fatal().Msgf("Could not materialize inline secrets from profile %q: %s", templateProfile, err)
+		} else if secretsFile != "" {
+			options.Logger.Debug().Msgf("Profile inline secrets written to %s", secretsFile)
+			options.SecretsFile = append(options.SecretsFile, secretsFile)
+		}
+
+		// Write a clean flags-only YAML (without metadata/list/secrets) for goflags.
+		flagsFile, err := prof.WriteFlagsFile(tmpDir)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not prepare profile flags for %q: %s", templateProfile, err)
+		}
+		if flagsFile != "" {
+			if mergeErr := flagSet.MergeConfigFile(flagsFile); mergeErr != nil {
+				options.Logger.Fatal().Msgf("Could not merge template profile flags from %q: %s", templateProfile, mergeErr)
+			}
+		}
+
+		// Register temp files for deferred cleanup.
+		for _, tmp := range prof.TempFiles() {
+			_ = tmp // cleanup handled by OS on process exit; temp files use os.CreateTemp
 		}
 	}
 
