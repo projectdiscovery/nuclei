@@ -72,6 +72,7 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
 	d.fetched = &atomic.Bool{}
+	d.fetchOnce = sync.Once{} // reset so Fetch can run again if Validate is called multiple times
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
