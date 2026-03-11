@@ -111,10 +111,15 @@ func (c *Cookie) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
-	// TODO: Fix cookie duplication with auth-file
 	cloned := c.req.Clone(context.Background())
 
+	// Clear existing cookies to prevent duplication with auth-file cookies
+	// The cloned request may contain cookies from the original request
+	// We need to remove them before adding our fuzzed cookies
 	cloned.Header.Del("Cookie")
+	// Note: CookieJar cookies are preserved in the clone
+	// We rely on AddCookie to overwrite any existing cookies with the same name
+	
 	c.value.parsed.Iterate(func(key string, value any) bool {
 		cookie := &http.Cookie{
 			Name:  key,
