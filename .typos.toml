@@ -1,0 +1,61 @@
+[files]
+extend-exclude = [
+    # Non-English README translations (contain valid non-English words)
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Integration test fixtures and payloads (may contain intentional strings)
+    "integration_tests/",
+    # Test data files with captured real-world HTTP traffic
+    "pkg/input/formats/testdata/",
+    # WAF regex patterns (contain abbreviated/partial strings by design)
+    "pkg/output/stats/waf/",
+    # Deserialization test data
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    # Certificate/encoded data fragments in test utilities
+    "pkg/testutils/integration.go",
+    # Vendor directory
+    "vendor/",
+    # Go checksum file
+    "go.sum",
+]
+
+[default.extend-identifiers]
+# Exported Go identifiers that cannot be renamed without breaking API compatibility
+MisMatched = "MisMatched"
+NoopWriter = "NoopWriter"
+AllowdTypes = "AllowdTypes"
+
+[default.extend-words]
+# Variable name used for flow comment annotations (intentional short name)
+fo = "fo"
+# Short test data words from XML/JSON fixtures (Serbian, SQL fragments)
+alo = "alo"
+algoritmos = "algoritmos"
+Noo = "Noo"
+# Base64/binary data fragments
+ba = "ba"
+nd = "nd"
+Iif = "Iif"
+# Portuguese/Spanish words in test data
+ser = "ser"
+
+[type.go.extend-identifiers]
+# Short CLI flag names that appear in help strings (generated output, not typos)
+ot = "ot"
+ue = "ue"
+ine = "ine"
+ines = "ines"
+hae = "hae"
+
+[type.md.extend-identifiers]
+# CLI flag references in documentation (mirrors flags in Go source)
+ot = "ot"
+ue = "ue"
+ine = "ine"
+ines = "ines"
+hae = "hae"
