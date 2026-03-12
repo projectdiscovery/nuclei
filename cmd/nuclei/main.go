@@ -751,12 +751,13 @@ func resetCallback() {
 Using '-reset' will delete all nuclei configurations files and all nuclei-templates
 
 Following files will be deleted:
-1. All Config + Resumes files at %v
-2. All nuclei-templates at %v
+1. All config files at %v
+2. All cache files (including resume state) at %v
+3. All nuclei-templates at %v
 
 Note: Make sure you have backup of your custom nuclei-templates before proceeding
 
-`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.TemplatesDirectory)
+`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.GetCacheDir(), config.DefaultConfig.TemplatesDirectory)
 	options.Logger.Print().Msg(warning)
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -777,6 +778,10 @@ Note: Make sure you have backup of your custom nuclei-templates before proceedin
 	err := os.RemoveAll(config.DefaultConfig.GetConfigDir())
 	if err != nil {
 		options.Logger.Fatal().Msgf("could not delete config dir: %s", err)
+	}
+	err = os.RemoveAll(config.DefaultConfig.GetCacheDir())
+	if err != nil {
+		options.Logger.Fatal().Msgf("could not delete cache dir: %s", err)
 	}
 	err = os.RemoveAll(config.DefaultConfig.TemplatesDirectory)
 	if err != nil {

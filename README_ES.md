@@ -328,7 +328,7 @@ Ejecutar nuclei con una salida JSON:
 Ejecutar nuclei con salidas Markdown ordenadas (con variables de entorno):
    $ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Documentación adicional disponible en: https://docs.nuclei.sh/getting-started/running
+Documentación adicional disponible en: https://docs.projectdiscovery.io/getting-started/running
 ```
 
 ### Ejecutando Nuclei
