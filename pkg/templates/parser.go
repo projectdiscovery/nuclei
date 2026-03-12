@@ -86,7 +86,7 @@ func checkOpenFileError(err error) bool {
 func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	tagFilter, ok := t.(*TagFilter)
 	if !ok {
-		panic("not a *TagFilter")
+		return false, fmt.Errorf("invalid template filter: expected *TagFilter, got %T", t)
 	}
 	t, templateParseError := p.ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
@@ -95,7 +95,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	}
 	template, ok := t.(*Template)
 	if !ok {
-		panic("not a template")
+		return false, fmt.Errorf("invalid template: expected *Template, got %T", t)
 	}
 
 	if len(template.Workflows) > 0 {
@@ -201,7 +201,7 @@ func (p *Parser) LoadWorkflow(templatePath string, catalog catalog.Catalog) (boo
 
 	template, ok := t.(*Template)
 	if !ok {
-		panic("not a template")
+		return false, fmt.Errorf("invalid workflow template: expected *Template, got %T", t)
 	}
 
 	if len(template.Workflows) > 0 {

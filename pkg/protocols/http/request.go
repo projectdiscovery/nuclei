@@ -787,6 +787,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
 		inputUrl := input.MetaInput.Input
+		if generatedRequest.rawRequest.FullURL != "" {
+			inputUrl = generatedRequest.rawRequest.FullURL
+		}
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
 			url.Params = urlutil.NewOrderedParams() // donot include query params

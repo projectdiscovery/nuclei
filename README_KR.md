@@ -289,7 +289,7 @@ JSON 출력으로 nuclei 실행:
 정렬된 Markdown 출력으로 nuclei 실행 (환경 변수 사용):
 	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-추가 문서는 여기에서 확인할 수 있습니다: https://docs.nuclei.sh/getting-started/running
+추가 문서는 여기에서 확인할 수 있습니다: https://docs.projectdiscovery.io/getting-started/running
 ```
 
 ### Nuclei 실행

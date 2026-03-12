@@ -374,13 +374,48 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 
 	// Unsafe option uses rawhttp library
 	if r.request.Unsafe {
+		annotationURL := rawRequestData.FullURL
+		if annotationURL == "" && baseURL != nil {
+			cloned := baseURL.Clone()
+			cloned.Params.IncludeEquals = true
+			cloned.Path = ""
+			_ = cloned.MergePath(rawRequestData.Path, true)
+			annotationURL = cloned.String()
+			rawRequestData.FullURL = annotationURL
+		}
+
+		var annotationOverrides annotationOverrides
+		if annotationURL != "" {
+			annotationRequest, reqErr := retryablehttp.NewRequestWithContext(ctx, rawRequestData.Method, annotationURL, nil)
+			if reqErr == nil {
+				if hostHeader, ok := rawRequestData.Headers["Host"]; ok {
+					annotationRequest.Host = hostHeader
+				}
+
+				annotationOverrides, _ = r.request.parseAnnotations(rawRequest, annotationRequest)
+				if annotationOverrides.request != nil && annotationOverrides.request.URL != nil {
+					rawRequestData.FullURL = annotationOverrides.request.String()
+				}
+			}
+		}
+
 		if len(r.options.Options.CustomHeaders) > 0 {
 			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
 		}
+
 		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {
 			rawRequestData.Headers["Content-Length"] = strconv.Itoa(len(rawRequestData.Data))
 		}
+
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
+		if annotationOverrides.cancelFunc != nil {
+			unsafeReq.customCancelFunction = annotationOverrides.cancelFunc
+		}
+
+		if len(annotationOverrides.interactshURLs) > 0 {
+			unsafeReq.interactshURLs = append(unsafeReq.interactshURLs, annotationOverrides.interactshURLs...)
+		}
+
 		return unsafeReq, nil
 	}
 	urlx, err := urlutil.ParseAbsoluteURL(rawRequestData.FullURL, true)
