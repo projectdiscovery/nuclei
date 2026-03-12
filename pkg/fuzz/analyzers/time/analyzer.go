@@ -130,6 +130,13 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			rebuilt.Cookies = append(rebuilt.Cookies, cookie)
 		}
 
+		// Also copy headers from original request (including Cookie header set via -H flag)
+		for key, values := range gr.Request.Header {
+			for _, value := range values {
+				rebuilt.Header.Add(key, value)
+			}
+		}
+
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())
 
 		timeTaken, err := doHTTPRequestWithTimeTracing(rebuilt, options.HttpClient)
