@@ -82,11 +82,21 @@ func (q *Header) Delete(key string) error {
 // component rebuilt
 func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 	cloned := q.req.Clone(context.Background())
+	
+	// Preserve original Cookie header if present (e.g., set via -H flag)
+	// This ensures cookies set via command line are not lost during rebuild
+	originalCookie := cloned.Header.Get("Cookie")
+	
 	q.value.parsed.Iterate(func(key string, value any) bool {
 		if strings.TrimSpace(key) == "" {
 			return true
 		}
 		if strings.EqualFold(key, "Host") {
+			return true
+		}
+		if strings.EqualFold(key, "Cookie") {
+			// Restore original Cookie header if not in parsed value
+			// This preserves cookies set via -H flag
 			return true
 		}
 		if vx, ok := IsTypedSlice(value); ok {
@@ -102,6 +112,13 @@ func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 		cloned.Header.Set(key, value.(string))
 		return true
 	})
+	
+	// Restore original Cookie header if it was in the original request
+	// and was not explicitly set in the fuzzed values
+	if originalCookie != "" && cloned.Header.Get("Cookie") == "" {
+		cloned.Header.Set("Cookie", originalCookie)
+	}
+	
 	return cloned, nil
 }
 
