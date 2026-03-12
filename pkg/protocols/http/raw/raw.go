@@ -178,7 +178,7 @@ func readRawRequest(request string, unsafe bool) (*Request, error) {
 
 	// store body if it is unsafe request
 	if unsafe {
-		rawRequest.UnsafeRawBytes = []byte(request)
+		rawRequest.UnsafeRawBytes = stripLeadingAnnotations(request)
 	}
 
 	// parse raw request
@@ -263,6 +263,36 @@ read_line:
 	}
 	return rawRequest, nil
 
+}
+
+func stripLeadingAnnotations(request string) []byte {
+	reader := bufio.NewReader(strings.NewReader(request))
+	buffer := bufferPool.Get().(*bytes.Buffer)
+	buffer.Reset()
+	defer func() {
+		buffer.Reset()
+		bufferPool.Put(buffer)
+	}()
+
+	requestLineFound := false
+	for {
+		line, err := reader.ReadString('\n')
+		if len(line) > 0 {
+			if requestLineFound || !stringsutil.HasPrefixAny(line, "@") {
+				requestLineFound = true
+				_, _ = buffer.WriteString(line)
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return []byte(request)
+		}
+	}
+
+	return append([]byte(nil), buffer.Bytes()...)
 }
 
 // TryFillCustomHeaders after the Host header

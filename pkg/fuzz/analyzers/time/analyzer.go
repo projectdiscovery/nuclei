@@ -119,9 +119,19 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			return 0, errors.Wrap(err, "could not set value in component")
 		}
 
-		rebuilt, err := gr.Component.Rebuild()
+		// Clone the original request to preserve all headers (including cookies set via -H flag)
+		rebuilt := gr.Request.Clone(gr.Request.Context())
+		componentReq, err := gr.Component.Rebuild()
 		if err != nil {
 			return 0, errors.Wrap(err, "could not rebuild request")
+		}
+		// Apply the fuzzed component to the cloned request while preserving original headers
+		rebuilt.URL = componentReq.URL
+		rebuilt.Body = componentReq.Body
+		// Only update headers that were modified by the component (not all headers)
+		// This preserves cookies and other headers set via -H flag
+		for key := range componentReq.Header {
+			rebuilt.Header.Set(key, componentReq.Header.Get(key))
 		}
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())
 

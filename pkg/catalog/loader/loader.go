@@ -389,6 +389,86 @@ func (store *Store) loadTemplatesIndex() *index.Index {
 	return metadataIdx
 }
 
+// LoadTemplateTags loads template tags count using metadata index when possible.
+//
+// This method is optimized for tag listing (`-tgl`) and avoids loading all
+// templates into the store.
+func (store *Store) LoadTemplateTags() (map[string]int, error) {
+	defer store.saveMetadataIndexOnce()
+
+	templatePaths, errs := store.config.Catalog.GetTemplatesPath(store.finalTemplates)
+	store.logErroredTemplates(errs)
+
+	tagsMap := make(map[string]int)
+	indexFilter := store.indexFilter
+
+	templatesCache := store.parserCacheOnce()
+	if templatesCache == nil {
+		return nil, errors.New("invalid parser")
+	}
+
+	// Include conditions require a parsed template and cannot be evaluated from
+	// metadata alone.
+	requiresTemplateParse := len(store.config.IncludeConditions) > 0
+
+	for _, templatePath := range templatePaths {
+		if store.metadataIndex != nil {
+			if metadata, found := store.metadataIndex.Get(templatePath); found {
+				if !indexFilter.Matches(metadata) {
+					continue
+				}
+
+				if !requiresTemplateParse {
+					for _, tag := range metadata.Tags {
+						tagsMap[tag]++
+					}
+					continue
+				}
+			}
+		}
+
+		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		if err != nil {
+			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
+				stats.Increment(templates.TemplatesExcludedStats)
+				if config.DefaultConfig.LogAllEvents {
+					store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+				}
+				continue
+			}
+
+			store.logger.Warning().Msg(err.Error())
+			continue
+		}
+
+		if !loaded {
+			continue
+		}
+
+		template, _, _ := templatesCache.Has(templatePath)
+		if template == nil {
+			continue
+		}
+
+		var metadata *index.Metadata
+		if store.metadataIndex != nil {
+			metadata, _ = store.metadataIndex.SetFromTemplate(templatePath, template)
+		} else {
+			metadata = index.NewMetadataFromTemplate(templatePath, template)
+		}
+
+		if metadata != nil && !indexFilter.Matches(metadata) {
+			continue
+		}
+
+		for _, tag := range template.Info.Tags.ToSlice() {
+			tagsMap[tag]++
+		}
+	}
+
+	return tagsMap, nil
+}
+
 // LoadTemplatesOnlyMetadata loads only the metadata of the templates
 func (store *Store) LoadTemplatesOnlyMetadata() error {
 	defer store.saveMetadataIndexOnce()
