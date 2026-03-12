@@ -7,6 +7,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/textproto"
+	"sync"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -14,6 +15,10 @@ import (
 type MultiPartForm struct {
 	boundary      string
 	filesMetadata map[string]FileMetadata
+	// mu protects filesMetadata from concurrent map access
+	mu sync.RWMutex
+	// boundaryMu protects boundary from concurrent access
+	boundaryMu sync.Mutex
 }
 
 type FileMetadata struct {
@@ -34,6 +39,9 @@ func NewMultiPartForm() *MultiPartForm {
 
 // SetFileMetadata sets the file metadata for a given field name
 func (m *MultiPartForm) SetFileMetadata(fieldName string, metadata FileMetadata) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.filesMetadata == nil {
 		m.filesMetadata = make(map[string]FileMetadata)
 	}
@@ -43,6 +51,9 @@ func (m *MultiPartForm) SetFileMetadata(fieldName string, metadata FileMetadata)
 
 // GetFileMetadata gets the file metadata for a given field name
 func (m *MultiPartForm) GetFileMetadata(fieldName string) (FileMetadata, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if m.filesMetadata == nil {
 		return FileMetadata{}, false
 	}
@@ -60,6 +71,9 @@ func (m *MultiPartForm) IsType(data string) bool {
 
 // Encode encodes the data into MultiPartForm format
 func (m *MultiPartForm) Encode(data KV) (string, error) {
+	m.boundaryMu.Lock()
+	defer m.boundaryMu.Unlock()
+
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	if err := w.SetBoundary(m.boundary); err != nil {
@@ -139,6 +153,9 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 
 // ParseBoundary parses the boundary from the content type
 func (m *MultiPartForm) ParseBoundary(contentType string) error {
+	m.boundaryMu.Lock()
+	defer m.boundaryMu.Unlock()
+
 	_, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		return err
@@ -159,6 +176,9 @@ func (m *MultiPartForm) ParseBoundary(contentType string) error {
 
 // Decode decodes the data from MultiPartForm format
 func (m *MultiPartForm) Decode(data string) (KV, error) {
+	m.boundaryMu.Lock()
+	defer m.boundaryMu.Unlock()
+
 	if m.boundary == "" {
 		return KV{}, fmt.Errorf("boundary not set, call ParseBoundary first")
 	}
@@ -185,7 +205,9 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 	}
 
 	if m.filesMetadata == nil {
+		m.mu.Lock()
 		m.filesMetadata = make(map[string]FileMetadata)
+		m.mu.Unlock()
 	}
 
 	for key, files := range form.File {
@@ -219,7 +241,9 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 		// NOTE(dwisiswant0): store the first file's metadata instead of the
 		// last one
 		if len(fileMetadataList) > 0 {
+			m.mu.Lock()
 			m.filesMetadata[key] = fileMetadataList[0]
+			m.mu.Unlock()
 		}
 	}
 	return KVOrderedMap(&result), nil
