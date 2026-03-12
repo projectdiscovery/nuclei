@@ -130,8 +130,19 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			rebuilt.Cookies = append(rebuilt.Cookies, cookie)
 		}
 
-		// Also copy headers from original request (including Cookie header set via -H flag)
+		// Also copy the Cookie header from original request if present
+		// This handles cookies set via -H flag which are stored as headers
+		if cookieHeader := gr.Request.Header.Get("Cookie"); cookieHeader != "" {
+			rebuilt.Header.Set("Cookie", cookieHeader)
+		}
+
+		// Copy other important headers from original request
 		for key, values := range gr.Request.Header {
+			// Skip Cookie header as we handle it separately above
+			// Skip Host header as it's handled by the HTTP client
+			if strings.EqualFold(key, "Cookie") || strings.EqualFold(key, "Host") {
+				continue
+			}
 			for _, value := range values {
 				rebuilt.Header.Add(key, value)
 			}
