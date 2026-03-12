@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
@@ -82,6 +83,15 @@ func (q *Header) Delete(key string) error {
 // component rebuilt
 func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 	cloned := q.req.Clone(context.Background())
+
+	// First, restore the original headers from the cloned request
+	// This ensures that headers like Cookie that are in defaultIgnoredHeaderKeys
+	// are preserved (since the clone already has them)
+	clonedHeaders := cloned.Header.Clone()
+
+	// Clear all headers on the cloned request and rebuild from parsed values
+	cloned.Header = make(http.Header)
+
 	q.value.parsed.Iterate(func(key string, value any) bool {
 		if strings.TrimSpace(key) == "" {
 			return true
@@ -102,6 +112,17 @@ func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 		cloned.Header.Set(key, value.(string))
 		return true
 	})
+
+	// For headers that were in the original request but not in parsed headers
+	// (like Cookie and other ignored headers), restore them from the cloned copy
+	for key, values := range clonedHeaders {
+		if _, exists := defaultIgnoredHeaderKeys[key]; exists {
+			for _, value := range values {
+				cloned.Header.Add(key, value)
+			}
+		}
+	}
+
 	return cloned, nil
 }
 
