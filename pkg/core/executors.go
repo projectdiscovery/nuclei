@@ -259,7 +259,28 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 // executeTemplatesOnTarget execute given templates on given single target
 func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*templates.Template, target *contextargs.MetaInput, results *atomic.Bool) {
 	// all templates are executed on single target
+/*
+	isApache := e.detectApacheServer(ctx, target)
 
+	// Filter templates if Apache was detected
+	templatesToRun := alltemplates
+	if isApache {
+		var apacheTemplates []*templates.Template
+		var skippedCount int
+		for _, tpl := range alltemplates {
+			if e.isApacheTemplate(tpl) {
+				apacheTemplates = append(apacheTemplates, tpl)
+			} else {
+				skippedCount++
+			}
+		}
+		templatesToRun = apacheTemplates
+		if skippedCount > 0 {
+			e.options.Logger.Info().Msgf("Filtered out %d non-Apache templates for %s", skippedCount, target.Input)
+		}
+	}
+		*/
+	
 	// wp is workpool that contains different waitgroups for
 	// headless and non-headless templates
 	// global waitgroup should not be used here
