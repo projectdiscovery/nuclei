@@ -1028,6 +1028,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
+
+		// Add cookies from response to CookieJar for cookie reuse in subsequent requests
+		// This ensures cookies received in the response are available for subsequent requests
+		if input.CookieJar != nil && respChain.Response() != nil {
+			for _, cookie := range respChain.Response().Cookies() {
+				input.CookieJar.SetCookies(respChain.Request().URL, []*http.Cookie{cookie})
+			}
+		}
+
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
