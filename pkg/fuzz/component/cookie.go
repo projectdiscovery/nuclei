@@ -115,14 +115,25 @@ func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
 	cloned := c.req.Clone(context.Background())
 
 	cloned.Header.Del("Cookie")
+	
+	// Build cookie header value from parsed cookies
+	// This ensures cookies are properly sent in HTTP requests
+	var cookieParts []string
 	c.value.parsed.Iterate(func(key string, value any) bool {
 		cookie := &http.Cookie{
 			Name:  key,
 			Value: fmt.Sprint(value), // Assume the value is always a string for cookies
 		}
 		cloned.AddCookie(cookie)
+		cookieParts = append(cookieParts, cookie.String())
 		return true
 	})
+	
+	// Set Cookie header explicitly to ensure cookies are sent
+	if len(cookieParts) > 0 {
+		cloned.Header.Set("Cookie", strings.Join(cookieParts, "; "))
+	}
+	
 	return cloned, nil
 }
 
