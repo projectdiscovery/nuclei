@@ -123,6 +123,14 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		if err != nil {
 			return 0, errors.Wrap(err, "could not rebuild request")
 		}
+
+		// Preserve cookies from the original request (e.g., set via -H flag)
+		// The Component.Rebuild() only rebuilds the fuzzed component (query/body/etc)
+		// but doesn't carry over cookies from the original request
+		if cookieHeader := gr.Request.Header.Get("Cookie"); cookieHeader != "" {
+			rebuilt.Header.Set("Cookie", cookieHeader)
+		}
+
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())
 
 		timeTaken, err := doHTTPRequestWithTimeTracing(rebuilt, options.HttpClient)
