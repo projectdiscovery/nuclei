@@ -2066,6 +2066,8 @@ Valid values:
 
 
   - <code>time_delay</code>
+
+  - <code>xss_context</code>
 </div>
 
 <hr />
