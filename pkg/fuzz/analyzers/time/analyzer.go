@@ -123,6 +123,31 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		if err != nil {
 			return 0, errors.Wrap(err, "could not rebuild request")
 		}
+
+		// Copy cookies from original request to rebuilt request
+		// This ensures cookies set via -H flag are preserved
+		for _, cookie := range gr.Request.Cookies() {
+			rebuilt.Cookies = append(rebuilt.Cookies, cookie)
+		}
+
+		// Also copy the Cookie header from original request if present
+		// This handles cookies set via -H flag which are stored as headers
+		if cookieHeader := gr.Request.Header.Get("Cookie"); cookieHeader != "" {
+			rebuilt.Header.Set("Cookie", cookieHeader)
+		}
+
+		// Copy other important headers from original request
+		for key, values := range gr.Request.Header {
+			// Skip Cookie header as we handle it separately above
+			// Skip Host header as it's handled by the HTTP client
+			if strings.EqualFold(key, "Cookie") || strings.EqualFold(key, "Host") {
+				continue
+			}
+			for _, value := range values {
+				rebuilt.Header.Add(key, value)
+			}
+		}
+
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())
 
 		timeTaken, err := doHTTPRequestWithTimeTracing(rebuilt, options.HttpClient)
