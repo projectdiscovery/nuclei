@@ -99,6 +99,16 @@ Connection: close`, parseURL(t, "https://test.com/test/"), true, false)
 	require.Contains(t, string(request.UnsafeRawBytes), "GET /test.js?a=b", "Could not parse unsafe method request path correctly")
 }
 
+func TestParseUnsafeRequestStripsLeadingAnnotations(t *testing.T) {
+	request, err := Parse(`@Host: honey.scanme.sh
+GET /foo HTTP/1.1
+Host: {{Hostname}}
+Connection: close`, parseURL(t, "http://scanme.sh"), true, false)
+	require.Nil(t, err, "could not parse unsafe request with annotation")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET /foo HTTP/1.1", "unsafe request line should be preserved")
+	require.NotContains(t, string(request.UnsafeRawBytes), "@Host:", "annotation lines must not be present in unsafe raw bytes")
+}
+
 func TestTryFillCustomHeaders(t *testing.T) {
 	testValue := "GET /manager/html HTTP/1.1\r\nHost: Test\r\n"
 	expected := "GET /test/manager/html HTTP/1.1\r\nHost: Test\r\ntest: test\r\n"
@@ -179,7 +189,7 @@ Connection: close`, parseURL(t, "http://target.com/api"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with full URL root path")
 	// With disable-path-automerge=true and root path, it becomes empty per existing logic
 	require.Equal(t, "", request.Path, "Root path with disable-path-automerge should be empty")
-	
+
 	// Test with disable-path-automerge=false
 	request, err = Parse(`GET http://example.com/ HTTP/1.1
 Host: {{Hostname}}
