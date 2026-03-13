@@ -1,6 +1,9 @@
 package xss
 
-import "strings"
+import (
+	"net/url"
+	"strings"
+)
 
 // Context represents the HTML context where a reflection occurs
 type Context int
@@ -220,7 +223,19 @@ var uriSchemeWhitespaceRemover = strings.NewReplacer(
 // normalizeURIScheme canonicalizes URI values for scheme checks.
 func normalizeURIScheme(val string) string {
 	normalized := uriSchemeWhitespaceRemover.Replace(val)
-	return strings.ToLower(strings.TrimSpace(normalized))
+	normalized = strings.ToLower(strings.TrimSpace(normalized))
+
+	colon := strings.IndexByte(normalized, ':')
+	if colon <= 0 {
+		return normalized
+	}
+
+	decodedPrefix, err := url.PathUnescape(normalized[:colon])
+	if err == nil {
+		return decodedPrefix + normalized[colon:]
+	}
+
+	return normalized
 }
 
 // rcdataElements are HTML elements whose content is treated as RCDATA (no tag parsing)

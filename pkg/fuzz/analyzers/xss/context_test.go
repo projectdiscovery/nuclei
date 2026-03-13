@@ -735,3 +735,47 @@ func BenchmarkDetectReflections_LargeBody(b *testing.B) {
 		DetectReflections(body, testMarker)
 	}
 }
+
+func TestDetectReflections_EncodedSchemesAndXHTMLDataURI(t *testing.T) {
+	testCases := []struct {
+		name     string
+		body     string
+		attrName string
+	}{
+		{
+			name:     "percent encoded javascript scheme",
+			body:     `<html><body><a href="%6A%61%76%61%73%63%72%69%70%74:alert(1)#nucleiXSScanary">test</a></body></html>`,
+			attrName: "href",
+		},
+		{
+			name:     "percent encoded data html in iframe src",
+			body:     `<html><body><iframe src="%64%61%74%61:text/html,<script>alert(1)</script>#nucleiXSScanary"></iframe></body></html>`,
+			attrName: "src",
+		},
+		{
+			name:     "data xhtml in iframe src",
+			body:     `<html><body><iframe src="data:application/xhtml+xml,<html xmlns='http://www.w3.org/1999/xhtml'><script>alert(1)</script></html>#nucleiXSScanary"></iframe></body></html>`,
+			attrName: "src",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reflections := DetectReflections(tc.body, testMarker)
+			if len(reflections) == 0 {
+				t.Fatalf("expected at least one reflection for %s", tc.name)
+			}
+
+			found := false
+			for _, r := range reflections {
+				if r.AttrName == tc.attrName && r.Context == ContextScript {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("expected ContextScript in %s for %s, got %v", tc.attrName, tc.name, reflections)
+			}
+		})
+	}
+}
