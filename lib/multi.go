@@ -42,8 +42,12 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		Parser:          base.parser,
 		Browser:         base.browserInstance,
 	}
+	// Only set HostErrorsCache if host error checking is enabled
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
+	} else {
+		// Explicitly disable host error checking when NoHostErrors is true
+		u.executerOpts.HostErrorsCache = nil
 	}
 	if opts.RateLimitMinute > 0 {
 		opts.RateLimit = opts.RateLimitMinute
