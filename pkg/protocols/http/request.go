@@ -691,10 +691,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	var (
-		resp            *http.Response
-		fromCache       bool
-		dumpedRequest   []byte
-		projectCacheKey []byte
+		resp          *http.Response
+		fromCache     bool
+		dumpedRequest []byte
 	)
 
 	// Dump request for variables checks
@@ -731,11 +730,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
-		}
-		if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.URL.Host)
-		} else {
-			projectCacheKey = dumpedRequest
 		}
 		dumpedRequestString := string(dumpedRequest)
 
@@ -793,9 +787,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
 		inputUrl := input.MetaInput.Input
-		if generatedRequest.rawRequest.FullURL != "" {
-			inputUrl = generatedRequest.rawRequest.FullURL
-		}
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
 			url.Params = urlutil.NewOrderedParams() // donot include query params
@@ -821,7 +812,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromCache = true
-			resp, err = request.options.ProjectFile.Get(projectCacheKey)
+			resp, err = request.options.ProjectFile.Get(dumpedRequest)
 			if err != nil {
 				fromCache = false
 			}
@@ -971,7 +962,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
+			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
@@ -1018,11 +1009,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
+			var respHeaders map[string][]string
+			var respStatusCode int
+			if respChain.Response() != nil {
+				respHeaders = respChain.Response().Header
+				respStatusCode = respChain.Response().StatusCode
+			}
 			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
 				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
 				HttpClient:         request.httpClient,
 				ResponseTimeDelay:  duration,
 				AnalyzerParameters: request.Analyzer.Parameters,
+				ResponseBody:       bodyStr,
+				ResponseHeaders:    respHeaders,
+				ResponseStatusCode: respStatusCode,
 			})
 			if err != nil {
 				gologger.Warning().Msgf("Could not analyze response: %v\n", err)
