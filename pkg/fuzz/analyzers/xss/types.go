@@ -202,7 +202,6 @@ var scriptURLAttributes = map[string]struct{}{
 	"src":        {},
 	"xlink:href": {},
 	"data":       {},
-	"poster":     {},
 	"codebase":   {},
 }
 
