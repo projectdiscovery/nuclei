@@ -11,15 +11,16 @@ import (
 // only JavaScript MIME types (text/javascript and its legacy aliases) cause
 // script execution. Everything else is treated as a data block.
 var nonExecutableScriptTypes = map[string]struct{}{
-	"application/json":       {},
-	"application/ld+json":    {},
-	"application/x-json":     {},
-	"text/json":              {},
-	"text/x-json":            {},
+	"application/json":          {},
+	"application/ld+json":       {},
+	"application/x-json":        {},
+	"text/json":                 {},
+	"text/x-json":               {},
 	"application/importmap+json": {},
-	"speculationrules":       {},
-	"text/template":          {},
-	"application/x-template": {},
+	"importmap":                 {},
+	"speculationrules":          {},
+	"text/template":             {},
+	"application/x-template":    {},
 }
 
 // isNonExecutableScriptType returns true if the script type attribute value
@@ -34,15 +35,23 @@ func isNonExecutableScriptType(typeAttr string) bool {
 	return ok
 }
 
-// isJavaScriptURI returns true when an attribute value contains a javascript:
-// URI scheme (with optional leading C0 whitespace per the URL spec).
-func isJavaScriptURI(attrVal string) bool {
+// isExecutableURI returns true when an attribute value contains a scheme that
+// can execute content (javascript: or certain data: URIs) after optional leading
+// whitespace per the URL spec.
+func isExecutableURI(attrVal string) bool {
 	// Strip C0 control characters and ASCII whitespace that browsers skip
 	// before the scheme (per WHATWG URL Standard § 4.1).
 	stripped := strings.TrimFunc(attrVal, func(r rune) bool {
 		return r <= 0x20
 	})
-	return strings.HasPrefix(strings.ToLower(stripped), "javascript:")
+	lower := strings.ToLower(stripped)
+	if strings.HasPrefix(lower, "javascript:") {
+		return true
+	}
+	if strings.HasPrefix(lower, "data:text/html") || strings.HasPrefix(lower, "data:image/svg+xml") {
+		return true
+	}
+	return false
 }
 
 // DetectReflections parses the HTML body and returns all reflection contexts
@@ -134,8 +143,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						if isEventHandler(attrName) {
 							// Event handler attributes contain JavaScript
 							ctx = ContextScript
-						} else if isJavaScriptURI(attrVal) {
-							// Fix #1: javascript: URI → treat as script context
+						} else if isExecutableURI(attrVal) {
+							// Fix #1: executable URI → treat as script context
 							ctx = ContextScript
 						} else if attrName == "srcdoc" {
 							// Fix #4: srcdoc allows full HTML injection

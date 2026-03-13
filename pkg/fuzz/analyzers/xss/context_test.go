@@ -465,22 +465,33 @@ func TestHasCSP(t *testing.T) {
 
 // ---- Regression tests for issue #7086 ----
 
-// Fix #1: javascript: URI scheme in href/src/action should be ContextScript
-func TestDetectReflections_JavascriptURI_Href(t *testing.T) {
-	body := `<html><body><a href="javascript:nucleiXSScanary">click</a></body></html>`
-	reflections := DetectReflections(body, testMarker)
-	if len(reflections) == 0 {
-		t.Fatal("expected at least one reflection for javascript: URI in href")
+// Fix #1: javascript: or data: URI scheme in href/src/action should be ContextScript
+func TestDetectReflections_ExecutableURI_Href(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"javascript", `<html><body><a href="javascript:nucleiXSScanary">click</a></body></html>`},
+		{"data-html", `<html><body><a href="data:text/html,nucleiXSScanary">click</a></body></html>`},
+		{"data-svg", `<html><body><a href="data:image/svg+xml,nucleiXSScanary">click</a></body></html>`},
 	}
-	found := false
-	for _, r := range reflections {
-		if r.Context == ContextScript && r.AttrName == "href" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("expected ContextScript for javascript: URI in href, got %v", reflections)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reflections := DetectReflections(tt.body, testMarker)
+			if len(reflections) == 0 {
+				t.Fatal("expected at least one reflection")
+			}
+			found := false
+			for _, r := range reflections {
+				if r.Context == ContextScript && r.AttrName == "href" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("expected ContextScript for executable URI in href, got %v", reflections)
+			}
+		})
 	}
 }
 
@@ -613,6 +624,8 @@ func TestIsNonExecutableScriptType(t *testing.T) {
 	}{
 		{"application/json", true},
 		{"application/ld+json", true},
+		{"importmap", true},
+		{"application/importmap+json", true},
 		{"application/json; charset=utf-8", true},
 		{"  application/json  ", true},
 		{"text/javascript", false},
@@ -629,7 +642,7 @@ func TestIsNonExecutableScriptType(t *testing.T) {
 	}
 }
 
-func TestIsJavaScriptURI(t *testing.T) {
+func TestIsExecutableURI(t *testing.T) {
 	tests := []struct {
 		attrVal  string
 		expected bool
@@ -638,15 +651,17 @@ func TestIsJavaScriptURI(t *testing.T) {
 		{"JAVASCRIPT:alert(1)", true},
 		{"JavaScript:alert(1)", true},
 		{"  javascript:alert(1)", true}, // leading whitespace
+		{"data:text/html,<h1>test</h1>", true},
+		{"DATA:TEXT/HTML,<h1>test</h1>", true},
+		{"data:image/svg+xml,test", true},
 		{"https://example.com", false},
 		{"http://example.com", false},
-		{"data:text/html,<h1>test</h1>", false},
 		{"/path/to/page", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.attrVal, func(t *testing.T) {
-			if got := isJavaScriptURI(tt.attrVal); got != tt.expected {
-				t.Errorf("isJavaScriptURI(%q) = %v, want %v", tt.attrVal, got, tt.expected)
+			if got := isExecutableURI(tt.attrVal); got != tt.expected {
+				t.Errorf("isExecutableURI(%q) = %v, want %v", tt.attrVal, got, tt.expected)
 			}
 		})
 	}
