@@ -188,6 +188,101 @@ func TestDetectReflections_JavascriptURI_NonScriptURLAttribute(t *testing.T) {
 	}
 }
 
+func TestDetectReflections_ScriptURIWhitespaceAndLegacySchemes(t *testing.T) {
+	testCases := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "javascript tab obfuscation",
+			body: "<html><body><a href=\"java\tscript:alert(nucleiXSScanary)\">test</a></body></html>",
+		},
+		{
+			name: "javascript newline obfuscation",
+			body: "<html><body><a href=\"java\nscript:alert(nucleiXSScanary)\">test</a></body></html>",
+		},
+		{
+			name: "vbscript scheme",
+			body: `<html><body><a href="vbscript:msgbox(nucleiXSScanary)">test</a></body></html>`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reflections := DetectReflections(tc.body, testMarker)
+			if len(reflections) == 0 {
+				t.Fatalf("expected at least one reflection for %s", tc.name)
+			}
+
+			found := false
+			for _, r := range reflections {
+				if r.AttrName == "href" && r.Context == ContextScript {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("expected ContextScript for %s, got %v", tc.name, reflections)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_DataURIExecutableMIME(t *testing.T) {
+	testCases := []struct {
+		name         string
+		body         string
+		attrName     string
+		expectScript bool
+	}{
+		{
+			name:         "data html in href",
+			body:         `<html><body><a href="data:text/html,<script>alert(nucleiXSScanary)</script>">test</a></body></html>`,
+			attrName:     "href",
+			expectScript: true,
+		},
+		{
+			name:         "data html base64 in iframe src",
+			body:         `<html><body><iframe src="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==#nucleiXSScanary"></iframe></body></html>`,
+			attrName:     "src",
+			expectScript: true,
+		},
+		{
+			name:         "data png in img src",
+			body:         `<html><body><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA#nucleiXSScanary"></body></html>`,
+			attrName:     "src",
+			expectScript: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reflections := DetectReflections(tc.body, testMarker)
+			if len(reflections) == 0 {
+				t.Fatalf("expected at least one reflection for %s", tc.name)
+			}
+
+			found := false
+			for _, r := range reflections {
+				if r.AttrName != tc.attrName {
+					continue
+				}
+				found = true
+				if tc.expectScript && r.Context != ContextScript {
+					t.Fatalf("expected ContextScript for %s, got %v", tc.name, reflections)
+				}
+				if !tc.expectScript && r.Context == ContextScript {
+					t.Fatalf("expected non-script context for %s, got %v", tc.name, reflections)
+				}
+				break
+			}
+			if !found {
+				t.Fatalf("expected reflection in %s for %s, got %v", tc.attrName, tc.name, reflections)
+			}
+		})
+	}
+}
+
 func TestDetectReflections_JSONScriptBlock(t *testing.T) {
 	body := `<html><body><script type="application/json">nucleiXSScanary</script></body></html>`
 	reflections := DetectReflections(body, testMarker)

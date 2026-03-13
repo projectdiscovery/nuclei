@@ -89,8 +89,16 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 							ctx = ContextScript
 						}
 
-						if isScriptURLAttribute(attrName) && strings.HasPrefix(strings.ToLower(strings.TrimSpace(attrVal)), "javascript:") {
-							ctx = ContextScript
+						if isScriptURLAttribute(attrName) {
+							normalizedVal := normalizeURIScheme(attrVal)
+							if strings.HasPrefix(normalizedVal, "javascript:") || strings.HasPrefix(normalizedVal, "vbscript:") {
+								ctx = ContextScript
+							} else if strings.HasPrefix(normalizedVal, "data:") {
+								// data:text/html and data:image/svg+xml can execute scripts
+								if strings.Contains(normalizedVal, "text/html") || strings.Contains(normalizedVal, "image/svg+xml") {
+									ctx = ContextScript
+								}
+							}
 						}
 
 						if attrName == "srcdoc" {

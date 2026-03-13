@@ -210,6 +210,19 @@ func isScriptURLAttribute(name string) bool {
 	return ok
 }
 
+var uriSchemeWhitespaceRemover = strings.NewReplacer(
+	"\t", "",
+	"\n", "",
+	"\r", "",
+	"\f", "",
+)
+
+// normalizeURIScheme canonicalizes URI values for scheme checks.
+func normalizeURIScheme(val string) string {
+	normalized := uriSchemeWhitespaceRemover.Replace(val)
+	return strings.ToLower(strings.TrimSpace(normalized))
+}
+
 // rcdataElements are HTML elements whose content is treated as RCDATA (no tag parsing)
 var rcdataElements = map[string]struct{}{
 	"textarea": {},
