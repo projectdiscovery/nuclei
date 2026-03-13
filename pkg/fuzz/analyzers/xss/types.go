@@ -202,7 +202,6 @@ var scriptURLAttributes = map[string]struct{}{
 	"src":        {},
 	"xlink:href": {},
 	"data":       {},
-	"codebase":   {},
 }
 
 // isScriptURLAttribute returns true if the attribute can execute a javascript: URI.
