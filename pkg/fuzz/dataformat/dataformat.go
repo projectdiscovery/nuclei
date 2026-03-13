@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// dataformats is a list of dataformats
-var dataformats map[string]DataFormat
+// dataformats is a list of dataformat constructors
+var dataformats map[string]func() DataFormat
 
 const (
 	// DefaultKey is the key i.e used when given
@@ -15,14 +15,14 @@ const (
 )
 
 func init() {
-	dataformats = make(map[string]DataFormat)
+	dataformats = make(map[string]func() DataFormat)
 
 	// register the default data formats
-	RegisterDataFormat(NewJSON())
-	RegisterDataFormat(NewXML())
-	RegisterDataFormat(NewRaw())
-	RegisterDataFormat(NewForm())
-	RegisterDataFormat(NewMultiPartForm())
+	RegisterDataFormat(func() DataFormat { return NewJSON() })
+	RegisterDataFormat(func() DataFormat { return NewXML() })
+	RegisterDataFormat(func() DataFormat { return NewRaw() })
+	RegisterDataFormat(func() DataFormat { return NewForm() })
+	RegisterDataFormat(func() DataFormat { return NewMultiPartForm() })
 }
 
 const (
@@ -38,14 +38,18 @@ const (
 	MultiPartFormDataFormat = "multipart/form-data"
 )
 
-// Get returns the dataformat by name
+// Get returns a new instance of the dataformat by name
 func Get(name string) DataFormat {
-	return dataformats[name]
+	if constructor, ok := dataformats[name]; ok {
+		return constructor()
+	}
+	return nil
 }
 
-// RegisterEncoder registers an encoder
-func RegisterDataFormat(dataformat DataFormat) {
-	dataformats[dataformat.Name()] = dataformat
+// RegisterEncoder registers a dataformat constructor
+func RegisterDataFormat(constructor func() DataFormat) {
+	df := constructor()
+	dataformats[df.Name()] = constructor
 }
 
 // DataFormat is an interface for encoding and decoding
@@ -70,7 +74,8 @@ type Decoded struct {
 
 // Decode decodes the data from a format
 func Decode(data string) (*Decoded, error) {
-	for _, dataformat := range dataformats {
+	for _, constructor := range dataformats {
+		dataformat := constructor()
 		if dataformat.IsType(data) {
 			decoded, err := dataformat.Decode(data)
 			if err != nil {
@@ -91,7 +96,8 @@ func Encode(data KV, dataformat string) (string, error) {
 	if dataformat == "" {
 		return "", errors.New("dataformat is required")
 	}
-	if encoder, ok := dataformats[dataformat]; ok {
+	if constructor, ok := dataformats[dataformat]; ok {
+		encoder := constructor()
 		return encoder.Encode(data)
 	}
 	return "", fmt.Errorf("dataformat %s is not supported", dataformat)
