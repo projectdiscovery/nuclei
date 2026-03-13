@@ -10,12 +10,13 @@ import (
 
 // CacheInterface defines the signature of the honeypot cache
 type CacheInterface interface {
-	Check(ctx *contextargs.Context) bool             // return true if the host should be skipped (is a honeypot)
+	Check(ctx *contextargs.Context) bool                   // return true if the host should be skipped (is a honeypot)
 	MarkMatch(ctx *contextargs.Context, templateID string) // record a match for the host
 }
 
 // Cache is a cache for honeypot detection based on match threshold.
 type Cache struct {
+	mu           sync.Mutex
 	MaxHostMatch int
 	matches      gcache.Cache[string, *cacheItem]
 }
@@ -65,6 +66,8 @@ func (c *Cache) MarkMatch(ctx *contextargs.Context, templateID string) {
 		return
 	}
 	key := ctx.MetaInput.Input
+
+	c.mu.Lock()
 	item, err := c.matches.GetIFPresent(key)
 	if err != nil {
 		item = &cacheItem{
@@ -72,6 +75,7 @@ func (c *Cache) MarkMatch(ctx *contextargs.Context, templateID string) {
 		}
 		_ = c.matches.Set(key, item)
 	}
+	c.mu.Unlock()
 
 	item.Lock()
 	defer item.Unlock()
