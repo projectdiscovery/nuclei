@@ -219,10 +219,10 @@ func getHeader(headers map[string][]string, name string) string {
 func detectCharacterSurvival(body string, canary string) CharacterSet {
 	return CharacterSet{
 		LessThan:     strings.Contains(body, canary+"<"),
-		GreaterThan:  strings.Contains(body, canary+"<>") || strings.Contains(body, canary+">"),
-		DoubleQuote:  strings.Contains(body, canary+`<>"`),
-		SingleQuote:  strings.Contains(body, canary+`<>"'`),
-		ForwardSlash: strings.Contains(body, canary+canaryChars), // full canary+chars survived
+		GreaterThan:  strings.Contains(body, canary+">"),
+		DoubleQuote:  strings.Contains(body, canary+`"`),
+		SingleQuote:  strings.Contains(body, canary+`'`),
+		ForwardSlash: strings.Contains(body, canary+"/"),
 	}
 }
 

@@ -296,17 +296,19 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	}
 }
 
-// BestReflection returns the highest-priority reflection from the list
+// BestReflection returns the highest-priority reflection from the list.
+// Returns a copy so the caller is not aliased to the original slice.
 func BestReflection(reflections []ReflectionInfo) *ReflectionInfo {
 	if len(reflections) == 0 {
 		return nil
 	}
 
-	best := &reflections[0]
+	bestIdx := 0
 	for i := 1; i < len(reflections); i++ {
-		if reflections[i].Context.priority() > best.Context.priority() {
-			best = &reflections[i]
+		if reflections[i].Context.priority() > reflections[bestIdx].Context.priority() {
+			bestIdx = i
 		}
 	}
-	return best
+	result := reflections[bestIdx]
+	return &result
 }
