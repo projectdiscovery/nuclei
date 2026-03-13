@@ -167,16 +167,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					Context: ContextStyle,
 					TagName: "style",
 				})
-			} else if inRCDATA {
-				tag := ""
-				if len(tagStack) > 0 {
-					tag = tagStack[len(tagStack)-1]
-				}
-				reflections = append(reflections, ReflectionInfo{
-					Context: ContextHTMLText,
-					TagName: tag,
-				})
 			} else {
+				// Both RCDATA and regular text are HTML text contexts.
 				tag := ""
 				if len(tagStack) > 0 {
 					tag = tagStack[len(tagStack)-1]
@@ -278,7 +270,20 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 	attrAssign := attrName + "="
 	rawLower := strings.ToLower(rawToken)
-	idx := strings.Index(rawLower, attrAssign)
+	searchStart := 0
+	idx := -1
+	for {
+		pos := strings.Index(rawLower[searchStart:], attrAssign)
+		if pos < 0 {
+			break
+		}
+		absPos := searchStart + pos
+		if absPos == 0 || isAttrBoundary(rawLower[absPos-1]) {
+			idx = absPos
+			break
+		}
+		searchStart = absPos + 1
+	}
 	if idx < 0 {
 		return '"', false // default to double-quoted
 	}
@@ -293,6 +298,15 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 		return '\'', false
 	default:
 		return 0, true
+	}
+}
+
+func isAttrBoundary(ch byte) bool {
+	switch ch {
+	case ' ', '\t', '\n', '\r', '/':
+		return true
+	default:
+		return false
 	}
 }
 

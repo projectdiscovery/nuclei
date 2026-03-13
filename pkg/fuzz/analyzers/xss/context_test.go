@@ -55,6 +55,24 @@ func TestDetectReflections_AttributeSingleQuoted(t *testing.T) {
 	}
 }
 
+func TestDetectReflections_AttributeQuotingDoesNotMatchAttributeSubstring(t *testing.T) {
+	body := `<html><body><div dataclass="a" class='nucleiXSScanary'></div></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in class attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextAttribute && r.AttrName == "class" && r.QuoteChar == '\'' {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected class attribute to be detected as single-quoted, got %v", reflections)
+	}
+}
+
 func TestDetectReflections_ScriptBlock(t *testing.T) {
 	body := `<html><body><script>var x = nucleiXSScanary;</script></body></html>`
 	reflections := DetectReflections(body, testMarker)
