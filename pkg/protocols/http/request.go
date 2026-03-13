@@ -787,9 +787,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
 		inputUrl := input.MetaInput.Input
-		if generatedRequest.rawRequest.FullURL != "" {
-			inputUrl = generatedRequest.rawRequest.FullURL
-		}
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
 			url.Params = urlutil.NewOrderedParams() // donot include query params
@@ -1012,11 +1009,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
+			var respHeaders map[string][]string
+			var respStatusCode int
+			if respChain.Response() != nil {
+				respHeaders = respChain.Response().Header
+				respStatusCode = respChain.Response().StatusCode
+			}
 			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
 				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
 				HttpClient:         request.httpClient,
 				ResponseTimeDelay:  duration,
 				AnalyzerParameters: request.Analyzer.Parameters,
+				ResponseBody:       bodyStr,
+				ResponseHeaders:    respHeaders,
+				ResponseStatusCode: respStatusCode,
 			})
 			if err != nil {
 				gologger.Warning().Msgf("Could not analyze response: %v\n", err)

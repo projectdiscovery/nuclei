@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -27,6 +28,7 @@ type AnalyzerTemplate struct {
 	//   Name is the name of the analyzer to use
 	// values:
 	//   - time_delay
+	//   - xss_context
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
@@ -61,10 +63,18 @@ type Options struct {
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
 	AnalyzerParameters map[string]interface{}
+
+	// ResponseBody is the body of the HTTP response
+	ResponseBody string
+	// ResponseHeaders is the headers of the HTTP response
+	ResponseHeaders map[string][]string
+	// ResponseStatusCode is the status code of the HTTP response
+	ResponseStatusCode int
 }
 
 var (
-	random = rand.New(rand.NewSource(time.Now().UnixNano()))
+	random   = rand.New(rand.NewSource(time.Now().UnixNano()))
+	randomMu sync.Mutex
 )
 
 // ApplyPayloadTransformations applies the payload transformations to the payload
@@ -73,7 +83,7 @@ var (
 //   - [RANDSTR] => random string of 4 characters
 func ApplyPayloadTransformations(value string) string {
 	randomInt := GetRandomInteger()
-	randomStr := randStringBytesMask(4)
+	randomStr := RandStringBytesMask(4)
 
 	value = strings.ReplaceAll(value, "[RANDNUM]", strconv.Itoa(randomInt))
 	value = strings.ReplaceAll(value, "[RANDSTR]", randomStr)
@@ -82,7 +92,10 @@ func ApplyPayloadTransformations(value string) string {
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func randStringBytesMask(n int) string {
+// RandStringBytesMask generates a random string of n characters
+func RandStringBytesMask(n int) string {
+	randomMu.Lock()
+	defer randomMu.Unlock()
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letterBytes[random.Intn(len(letterBytes))]
@@ -92,5 +105,7 @@ func randStringBytesMask(n int) string {
 
 // GetRandomInteger returns a random integer between 1000 and 9999
 func GetRandomInteger() int {
+	randomMu.Lock()
+	defer randomMu.Unlock()
 	return random.Intn(9000) + 1000
 }
