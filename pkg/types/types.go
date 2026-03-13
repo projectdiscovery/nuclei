@@ -129,10 +129,14 @@ type Options struct {
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host
 	MaxHostError int
+	// MaxHostMatch is the maximum number of matches allowed for a host before it's considered a honeypot
+	MaxHostMatch int
 	// TrackError contains additional error messages that count towards the maximum number of errors allowed for a host
 	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
+	// NoHoneypot disables honeypot detection
+	NoHoneypot bool
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel

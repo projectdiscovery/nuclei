@@ -52,6 +52,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
@@ -89,6 +90,7 @@ type Runner struct {
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
 	hostErrors         hosterrorscache.CacheInterface
+	honeypotCache      honeypotcache.CacheInterface
 	resumeCfg          *types.ResumeCfg
 	pprofServer        *pprofutil.PprofServer
 	pdcpUploadErrMsg   string
@@ -610,6 +612,12 @@ func (r *Runner) RunEnumeration() error {
 
 		r.hostErrors = cache
 		executorOpts.HostErrorsCache = cache
+	}
+
+	if r.options.MaxHostMatch > 0 && !r.options.NoHoneypot {
+		cache := honeypotcache.New(r.options.MaxHostMatch, honeypotcache.DefaultMaxHostsCount)
+		r.honeypotCache = cache
+		executorOpts.HoneypotCache = cache
 	}
 
 	executorEngine := core.New(r.options)

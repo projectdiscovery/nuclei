@@ -168,6 +168,27 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			return true
 		}
 
+		// Skip if the host is a honeypot
+		if e.executerOpts.HoneypotCache != nil && e.executerOpts.HoneypotCache.Check(contextargs.NewWithMetaInput(ctx, scannedValue)) {
+			skipEvent := &output.ResultEvent{
+				TemplateID:    template.ID,
+				TemplatePath:  template.Path,
+				Info:          template.Info,
+				Type:          e.executerOpts.ProtocolType.String(),
+				Host:          scannedValue.Input,
+				MatcherStatus: false,
+				Error:         "host was skipped as it was found to be a potential honeypot",
+				Timestamp:     time.Now(),
+			}
+
+			if e.Callback != nil {
+				e.Callback(skipEvent)
+			} else if e.executerOpts.Output != nil {
+				_ = e.executerOpts.Output.Write(skipEvent)
+			}
+			return true
+		}
+
 		tasks <- task{index: index, skip: skip, value: scannedValue}
 		index++
 		return true
@@ -221,6 +242,27 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			break
 		}
 
+		// Check whether the target has already been marked as a honeypot
+		if e.executerOpts.HoneypotCache != nil &&
+			e.executerOpts.HoneypotCache.Check(contextargs.NewWithMetaInput(ctx, target)) {
+			skipEvent := &output.ResultEvent{
+				TemplateID:    tpl.ID,
+				TemplatePath:  tpl.Path,
+				Info:          tpl.Info,
+				Type:          e.executerOpts.ProtocolType.String(),
+				Host:          target.Input,
+				MatcherStatus: false,
+				Error:         "host was skipped as it was found to be a potential honeypot",
+				Timestamp:     time.Now(),
+			}
+			if e.Callback != nil {
+				e.Callback(skipEvent)
+			} else if e.executerOpts.Output != nil {
+				_ = e.executerOpts.Output.Write(skipEvent)
+			}
+			break
+		}
+
 		// resize check point - nop if there are no changes
 		wp.RefreshWithConfig(e.GetWorkPoolConfig())
 
@@ -258,11 +300,18 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 			if err != nil {
 				return false, err
 			}
+			if len(results) > 0 && e.executerOpts.HoneypotCache != nil {
+				e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+			}
 			for _, result := range results {
 				e.Callback(result)
 			}
 			return len(results) > 0, nil
 		}
-		return template.Executer.Execute(scanCtx)
+		match, err := template.Executer.Execute(scanCtx)
+		if match && e.executerOpts.HoneypotCache != nil {
+			e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+		}
+		return match, err
 	}
 }
