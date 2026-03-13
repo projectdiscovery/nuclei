@@ -39,8 +39,8 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 		if params != nil {
 			params["xss_canary"] = canary
 		}
-		// The canary includes special chars for character survival detection
-		canaryWithChars := canary + canaryChars
+		// Each character gets its own canary prefix for independent detection.
+		canaryWithChars := canary + "<" + canary + ">" + canary + `"` + canary + "'" + canary + "/"
 		data = strings.ReplaceAll(data, "[XSS_CANARY]", canaryWithChars)
 	}
 	data = analyzers.ApplyPayloadTransformations(data)
@@ -285,11 +285,10 @@ func selectPayloads(reflection *ReflectionInfo, chars CharacterSet) []string {
 		if chars.DoubleQuote {
 			candidates = append(candidates, `";alert(1)//`)
 		}
+		// Template literals (backtick) can execute via interpolation.
+		candidates = append(candidates, "${alert(1)}")
 		if chars.LessThan && chars.GreaterThan {
 			candidates = append(candidates, `</script><img src=x onerror=alert(1)>`)
-		}
-		if len(candidates) == 0 {
-			candidates = []string{`</script><img src=x onerror=alert(1)>`}
 		}
 
 	case ContextStyle:

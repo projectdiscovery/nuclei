@@ -175,6 +175,19 @@ func TestDetectReflections_JavascriptURI(t *testing.T) {
 	}
 }
 
+func TestDetectReflections_JavascriptURI_NonScriptURLAttribute(t *testing.T) {
+	body := `<html><body><div data-url="javascript:alert(nucleiXSScanary)">test</div></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in data-url attribute")
+	}
+	for _, r := range reflections {
+		if r.AttrName == "data-url" && r.Context == ContextScript {
+			t.Fatalf("expected data-url javascript URI to stay non-script, got %v", reflections)
+		}
+	}
+}
+
 func TestDetectReflections_JSONScriptBlock(t *testing.T) {
 	body := `<html><body><script type="application/json">nucleiXSScanary</script></body></html>`
 	reflections := DetectReflections(body, testMarker)
@@ -452,9 +465,77 @@ func TestSelectPayloads(t *testing.T) {
 	}
 }
 
+func TestSelectPayloads_ScriptStringIncludesTemplateLiteral(t *testing.T) {
+	payloads := selectPayloads(&ReflectionInfo{Context: ContextScriptString}, CharacterSet{})
+	found := false
+	for _, payload := range payloads {
+		if payload == "${alert(1)}" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected template literal payload in script string candidates, got %v", payloads)
+	}
+}
+
+func TestIsExecutableScriptType_ParameterizedTypes(t *testing.T) {
+	tests := []struct {
+		name       string
+		hasType    bool
+		scriptType string
+		expected   bool
+	}{
+		{name: "missing type attribute", hasType: false, scriptType: "", expected: true},
+		{name: "empty type attribute", hasType: true, scriptType: "", expected: true},
+		{name: "parameterized javascript type", hasType: true, scriptType: "text/javascript; charset=utf-8", expected: true},
+		{name: "parameterized non-js type", hasType: true, scriptType: "application/json; charset=utf-8", expected: false},
+		{name: "parameter only", hasType: true, scriptType: ";charset=utf-8", expected: false},
+		{name: "json script type", hasType: true, scriptType: "application/json", expected: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isExecutableScriptType(tt.hasType, tt.scriptType); got != tt.expected {
+				t.Fatalf("isExecutableScriptType(%v, %q) = %v, want %v", tt.hasType, tt.scriptType, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsExecutableScriptType_LegacyMIMETypes(t *testing.T) {
+	legacyTypes := []string{
+		"text/javascript",
+		"text/ecmascript",
+		"text/javascript1.0",
+		"text/javascript1.1",
+		"text/javascript1.2",
+		"text/javascript1.3",
+		"text/javascript1.4",
+		"text/javascript1.5",
+		"text/jscript",
+		"text/livescript",
+		"text/x-ecmascript",
+		"text/x-javascript",
+		"application/javascript",
+		"application/ecmascript",
+		"application/x-ecmascript",
+		"application/x-javascript",
+		"module",
+	}
+
+	for _, mimeType := range legacyTypes {
+		t.Run(mimeType, func(t *testing.T) {
+			if !isExecutableScriptType(true, mimeType) {
+				t.Fatalf("expected MIME type %q to be executable", mimeType)
+			}
+		})
+	}
+}
+
 func TestDetectCharacterSurvival(t *testing.T) {
 	canary := "testcanary"
-	body := canary + `<>"'/`
+	body := canary + "<" + canary + ">" + canary + `"` + canary + "'" + canary + "/"
 	chars := detectCharacterSurvival(body, canary)
 	if !chars.LessThan {
 		t.Error("expected LessThan to survive")
@@ -475,7 +556,7 @@ func TestDetectCharacterSurvival(t *testing.T) {
 
 func TestDetectCharacterSurvival_Encoded(t *testing.T) {
 	canary := "testcanary"
-	body := canary + `&lt;&gt;&quot;&#39;/`
+	body := canary + `&lt;` + canary + `&gt;` + canary + `&quot;` + canary + `&#39;` + canary + "/"
 	chars := detectCharacterSurvival(body, canary)
 	if chars.LessThan {
 		t.Error("expected LessThan to be encoded")

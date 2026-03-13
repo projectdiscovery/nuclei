@@ -86,9 +86,6 @@ type CharacterSet struct {
 	ForwardSlash bool // /
 }
 
-// canaryChars are the characters appended to the canary to check survival
-const canaryChars = `<>"'/`
-
 // eventHandlers is a set of known HTML event handler attribute names
 var eventHandlers = map[string]struct{}{
 	"onabort":             {},
@@ -194,6 +191,24 @@ var eventHandlers = map[string]struct{}{
 // isEventHandler returns true if the attribute name is a known event handler
 func isEventHandler(name string) bool {
 	_, ok := eventHandlers[strings.ToLower(name)]
+	return ok
+}
+
+// scriptURLAttributes is a set of attributes that can execute javascript: URIs.
+var scriptURLAttributes = map[string]struct{}{
+	"href":       {},
+	"action":     {},
+	"formaction": {},
+	"src":        {},
+	"xlink:href": {},
+	"data":       {},
+	"poster":     {},
+	"codebase":   {},
+}
+
+// isScriptURLAttribute returns true if the attribute can execute a javascript: URI.
+func isScriptURLAttribute(name string) bool {
+	_, ok := scriptURLAttributes[strings.ToLower(name)]
 	return ok
 }
 

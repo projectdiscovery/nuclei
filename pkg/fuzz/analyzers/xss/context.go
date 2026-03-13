@@ -89,7 +89,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 							ctx = ContextScript
 						}
 
-						if strings.HasPrefix(strings.ToLower(strings.TrimSpace(attrVal)), "javascript:") {
+						if isScriptURLAttribute(attrName) && strings.HasPrefix(strings.ToLower(strings.TrimSpace(attrVal)), "javascript:") {
 							ctx = ContextScript
 						}
 
@@ -200,16 +200,27 @@ func isExecutableScriptType(hasType bool, scriptType string) bool {
 	}
 
 	normalized := strings.ToLower(strings.TrimSpace(scriptType))
-	if idx := strings.Index(normalized, ";"); idx >= 0 {
-		normalized = strings.TrimSpace(normalized[:idx])
-	}
-
 	if normalized == "" {
 		return true
 	}
+	// Extract MIME essence by stripping parameters after ';'.
+	// Per WHATWG spec, "text/javascript; charset=utf-8" has essence "text/javascript" → executable.
+	if idx := strings.IndexByte(normalized, ';'); idx >= 0 {
+		normalized = strings.TrimSpace(normalized[:idx])
+		if normalized == "" {
+			return false // e.g. ";charset=utf-8" — invalid MIME type, not executable
+		}
+	}
 
 	switch normalized {
-	case "text/javascript", "text/ecmascript", "application/javascript", "application/ecmascript", "module":
+	case "text/javascript", "text/ecmascript",
+		"text/javascript1.0", "text/javascript1.1", "text/javascript1.2",
+		"text/javascript1.3", "text/javascript1.4", "text/javascript1.5",
+		"text/jscript", "text/livescript",
+		"text/x-ecmascript", "text/x-javascript",
+		"application/javascript", "application/ecmascript",
+		"application/x-ecmascript", "application/x-javascript",
+		"module":
 		return true
 	default:
 		return false
