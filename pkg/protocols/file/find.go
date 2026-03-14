@@ -53,6 +53,14 @@ func (request *Request) findGlobPathMatches(absPath string, processed map[string
 		return errors.Errorf("wildcard found, but unable to glob: %s\n", err)
 	}
 	for _, match := range matches {
+		// Skip symlinks to prevent traversal outside scan scope
+		info, err := os.Lstat(match)
+		if err != nil {
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
 		if !request.validatePath(absPath, match, false) {
 			continue
 		}
