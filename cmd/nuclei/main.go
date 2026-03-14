@@ -63,6 +63,7 @@ func main() {
 		options.Logger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
 	_ = readConfig()
+	defer cleanupInternalTempFiles()
 
 	if options.ListDslSignatures {
 		options.Logger.Info().Msgf("The available custom DSL functions are:")
@@ -588,6 +589,10 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
+		// handle special keys (inline list, embedded secrets) not covered by goflags
+		if err := processConfigExtras(cfgFile, options); err != nil {
+			options.Logger.Warning().Msgf("Could not process config extras: %s\n", err)
+		}
 
 		if !options.Vars.IsEmpty() {
 			// Maybe we should add vars to the config file as well even if they are set via flags?
@@ -658,6 +663,10 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		}
 		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		}
+		// handle special keys (inline list, embedded secrets) not covered by goflags
+		if err := processConfigExtras(templateProfile, options); err != nil {
+			options.Logger.Warning().Msgf("Could not process profile extras: %s\n", err)
 		}
 	}
 
