@@ -77,8 +77,9 @@ type Tracker struct {
 	// unbounded memory growth from crafted target lists.
 	maxHosts int
 
-	// droppedHosts counts how many unique hosts were excluded because
-	// the maxHosts limit was reached.
+	// droppedHosts counts how many record attempts were excluded because
+	// the maxHosts limit was reached. Note: this counts all excluded
+	// attempts, not unique hosts, since excluded hosts are not tracked.
 	droppedHosts int
 
 	// maxHostsWarned ensures the maxHosts warning is emitted only once.
@@ -227,8 +228,9 @@ func (t *Tracker) GetFlaggedHosts() []FlaggedHost {
 	return flagged
 }
 
-// DroppedHosts returns the number of unique hosts that were excluded from
-// honeypot tracking because the maxHosts limit was reached.
+// DroppedHosts returns the number of record attempts that were excluded from
+// honeypot tracking because the maxHosts limit was reached. This counts all
+// excluded attempts, not unique hosts, since excluded hosts are not tracked.
 func (t *Tracker) DroppedHosts() int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
