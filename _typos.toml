@@ -1,0 +1,19 @@
+[default]
+extend-ignore-re = [
+    "https?://\\S+",
+]
+
+[files]
+extend-exclude = [
+    "vendor",
+    "node_modules",
+    "*.lock",
+    "*.sum"
+]
+
+[default.extend-words]
+nuclei = "nuclei"
+httpx = "httpx"
+shodan = "shodan"
+fofa = "fofa"
+chaos = "chaos"
