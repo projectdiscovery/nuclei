@@ -688,7 +688,7 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	// prefetch secrets if enabled
-	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
+	if executorOpts.AuthProvider != nil && (r.options.PreFetchSecrets || len(r.options.SecretsFile) > 0) {
 		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
 		if err := executorOpts.AuthProvider.PreFetchSecrets(); err != nil {
 			return errors.Wrap(err, "could not pre-fetch secrets")
