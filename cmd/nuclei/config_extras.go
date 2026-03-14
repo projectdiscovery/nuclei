@@ -118,15 +118,17 @@ func applyInlineList(raw map[string]interface{}, opts *types.Options) error {
 	if err != nil {
 		return fmt.Errorf("could not create temp targets file: %w", err)
 	}
+	// Register immediately so cleanupInternalTempFiles removes it even if a
+	// subsequent write or close fails.
+	internalTempFiles = append(internalTempFiles, tmpFile.Name())
+	opts.TargetsFilePath = tmpFile.Name()
+
 	for _, t := range targets {
 		fmt.Fprintln(tmpFile, t)
 	}
 	if err := tmpFile.Close(); err != nil {
 		return fmt.Errorf("could not write temp targets file: %w", err)
 	}
-
-	internalTempFiles = append(internalTempFiles, tmpFile.Name())
-	opts.TargetsFilePath = tmpFile.Name()
 	return nil
 }
 
@@ -173,6 +175,10 @@ func applyInlineSecrets(raw map[string]interface{}, opts *types.Options) error {
 	if err != nil {
 		return fmt.Errorf("could not create temp secrets file: %w", err)
 	}
+	// Register immediately so cleanupInternalTempFiles removes it even if a
+	// subsequent write or close fails.
+	internalTempFiles = append(internalTempFiles, tmpFile.Name())
+
 	if _, err := tmpFile.Write(secretsData); err != nil {
 		_ = tmpFile.Close()
 		return fmt.Errorf("could not write temp secrets file: %w", err)
@@ -180,8 +186,6 @@ func applyInlineSecrets(raw map[string]interface{}, opts *types.Options) error {
 	if err := tmpFile.Close(); err != nil {
 		return fmt.Errorf("could not close temp secrets file: %w", err)
 	}
-
-	internalTempFiles = append(internalTempFiles, tmpFile.Name())
 	opts.SecretsFile = append(opts.SecretsFile, tmpFile.Name())
 	return nil
 }
