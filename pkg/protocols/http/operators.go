@@ -31,7 +31,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		if !ok {
 			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(data["response"].(string), statusCode)}
+		responseStr, _ := data["response"].(string)
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(responseStr, statusCode)}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
@@ -167,11 +168,11 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	}
 	var isGlobalMatchers bool
 	if value, ok := wrapped.InternalEvent["global-matchers"]; ok {
-		isGlobalMatchers = value.(bool)
+		isGlobalMatchers, _ = value.(bool)
 	}
 	var analyzerDetails string
 	if value, ok := wrapped.InternalEvent["analyzer_details"]; ok {
-		analyzerDetails = value.(string)
+		analyzerDetails, _ = value.(string)
 	}
 	var reqURLPattern string
 	if request.options.ExportReqURLPattern {
@@ -179,10 +180,11 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 			reqURLPattern = types.ToString(value)
 		}
 	}
+	info, _ := wrapped.InternalEvent["template-info"].(model.Info)
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		Info:             info,
 		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             fields.Host,
