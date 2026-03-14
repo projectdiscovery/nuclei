@@ -3,7 +3,6 @@ package signer
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/gob"
@@ -58,12 +57,12 @@ func (t *TemplateSigner) Identifier() string {
 }
 
 // fragment is optional part of signature that is used to identify the user
-// who signed the template via md5 hash of public key
+// who signed the template via sha256 hash of public key
 func (t *TemplateSigner) GetUserFragment() string {
-	// wrap with sync.Once to reduce unnecessary md5 hashing
+	// wrap with sync.Once to reduce unnecessary sha256 hashing
 	t.Do(func() {
 		if t.handler.ecdsaPubKey != nil {
-			hashed := md5.Sum(t.handler.ecdsaPubKey.X.Bytes())
+			hashed := sha256.Sum256(t.handler.ecdsaPubKey.X.Bytes())
 			t.fragment = fmt.Sprintf("%x", hashed)
 		}
 	})
