@@ -107,6 +107,18 @@ func TestFindContext(t *testing.T) {
 			marker:   "MARKER",
 			expected: "script_data",
 		},
+		{
+			name:     "marker outside script",
+			body:     `<script>safe</script><div>MARKER</div>`,
+			marker:   "MARKER",
+			expected: "html_text",
+		},
+		{
+			name:     "marker outside style",
+			body:     `<style>body{}</style><p>MARKER</p>`,
+			marker:   "MARKER",
+			expected: "html_text",
+		},
 	}
 
 	for _, tt := range tests {

@@ -94,20 +94,32 @@ func FindContext(body string, marker string) string {
 			}
 
 			if tag == "script" {
-				// Check for type="application/json" etc.
-				for _, attr := range token.Attr {
-					if strings.ToLower(attr.Key) == "type" {
-						val := strings.ToLower(attr.Val)
-						if val == "application/json" || val == "application/ld+json" || val == "text/json" {
-							return "script_data"
+				// Read script content and check for marker
+				if z.Next() == html.TextToken {
+					scriptContent := z.Token().Data
+					if strings.Contains(scriptContent, marker) {
+						// Check for type="application/json" etc.
+						for _, attr := range token.Attr {
+							if strings.ToLower(attr.Key) == "type" {
+								val := strings.ToLower(attr.Val)
+								if val == "application/json" || val == "application/ld+json" || val == "text/json" {
+									return "script_data"
+								}
+							}
 						}
+						return "script_executable"
 					}
 				}
-				return "script_executable"
 			}
 
 			if tag == "style" {
-				return "style"
+				// Read style content and check for marker
+				if z.Next() == html.TextToken {
+					styleContent := z.Token().Data
+					if strings.Contains(styleContent, marker) {
+						return "style"
+					}
+				}
 			}
 		}
 	}
