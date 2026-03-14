@@ -870,6 +870,7 @@ func init() {
 	ANALYZERSAnalyzerTemplateDoc.Fields[0].Comments[encoder.LineComment] = "Name is the name of the analyzer to use"
 	ANALYZERSAnalyzerTemplateDoc.Fields[0].Values = []string{
 		"time_delay",
+		"xss_context",
 	}
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Name = "parameters"
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Type = "map[string]interface{}"
