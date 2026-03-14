@@ -138,8 +138,12 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	}
 
 	digestData := bytes.TrimSpace(bytes.TrimPrefix(signature, []byte(SignaturePattern)))
-	// remove fragment from digest as it is used for re-signing purposes only
-	digestString := strings.TrimSuffix(string(digestData), ":"+t.GetUserFragment())
+	// fragment is only for re-signing authorization; strip it by splitting on first ':'
+	// to remain compatible regardless of the hash algorithm used for the fragment
+	digestString := string(digestData)
+	if i := strings.LastIndex(digestString, ":"); i != -1 {
+		digestString = digestString[:i]
+	}
 	digest, err := hex.DecodeString(digestString)
 	if err != nil {
 		return false, err
