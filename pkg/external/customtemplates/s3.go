@@ -2,6 +2,7 @@ package customtemplates
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,12 +85,16 @@ func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
 
 func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key string) error {
 	// Create the directories in the path
-	file := filepath.Join(targetDirectory, key)
+	file := filepath.Clean(filepath.Join(targetDirectory, key))
+	// Prevent path traversal - ensure the file stays within targetDirectory
+	if !strings.HasPrefix(file, filepath.Clean(targetDirectory)) {
+		return fmt.Errorf("path traversal detected in S3 object key: %s", key)
+	}
 	// If empty dir in s3
 	if stringsutil.HasSuffixI(key, "/") {
-		return os.MkdirAll(file, 0775)
+		return os.MkdirAll(file, 0750)
 	}
-	if err := os.MkdirAll(filepath.Dir(file), 0775); err != nil {
+	if err := os.MkdirAll(filepath.Dir(file), 0750); err != nil {
 		return err
 	}
 
