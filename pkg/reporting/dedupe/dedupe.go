@@ -72,6 +72,12 @@ func (s *Storage) Close() {
 
 // Index indexes an item in storage and returns true if the item
 // was unique.
+//
+// NOTE: The hash algorithm was changed from SHA-1 (20-byte keys) to SHA-256
+// (32-byte keys). Existing LevelDB entries created with SHA-1 will not match
+// new SHA-256 lookups. Users with persistent dedupe database paths should
+// clear or delete the old database after upgrading to avoid re-reporting
+// previously deduplicated findings.
 func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 	hasher := sha256.New()
 	if result.TemplateID != "" {
