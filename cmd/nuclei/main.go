@@ -172,6 +172,7 @@ func main() {
 
 	if options.ScanUploadFile != "" {
 		if err := runner.UploadResultsToCloud(options); err != nil {
+			cleanupTempFiles() // Fatal calls os.Exit which skips defers
 			options.Logger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
 		}
 		return
@@ -179,6 +180,7 @@ func main() {
 
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
+		cleanupTempFiles() // Fatal calls os.Exit which skips defers
 		options.Logger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
 	if nucleiRunner == nil {
@@ -237,6 +239,7 @@ func main() {
 	}()
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
+		cleanupTempFiles() // Fatal calls os.Exit which skips defers
 		if options.Validate {
 			options.Logger.Fatal().Msgf("Could not validate templates: %s\n", err)
 		} else {
@@ -729,6 +732,14 @@ func processProfileExtras(profilePath string) error {
 		return nil
 	}
 
+	// Clear previous profile metadata so that a later file that omits
+	// a field does not inherit stale values from an earlier file.
+	// This matters when both --config and --profile are used.
+	options.ProfileID = ""
+	options.ProfileName = ""
+	options.ProfilePurpose = ""
+	options.ProfileDescription = ""
+
 	// Feature A: Extract profile metadata fields.
 	// These allow users to document their profiles with descriptive fields.
 	if id, ok := profileMap["id"]; ok {
@@ -840,12 +851,15 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 		return
 	}
 	// if config file exists, merge it with the default config.
-	// Note: processProfileExtras is intentionally NOT called here because
-	// this is the nuclei settings config file, not a user profile. Profile
-	// extras (id, name, purpose, description, inline secrets) are only
-	// processed for explicit --config and --profile inputs.
 	if err = flagset.MergeConfigFile(cfgFile); err != nil {
 		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
+	}
+	// Process profile extras (metadata and inline secrets) for the
+	// auto-loaded config file so that secrets and metadata are not
+	// silently ignored when loaded via NUCLEI_CONFIG_DIR.
+	if err := processProfileExtras(cfgFile); err != nil {
+		cleanupTempFiles() // Fatal calls os.Exit which skips defers
+		options.Logger.Fatal().Msgf("Could not process profile extras from auto-loaded config: %s\n", err)
 	}
 }
 
