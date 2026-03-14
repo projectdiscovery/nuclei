@@ -87,7 +87,9 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	// Create the directories in the path
 	file := filepath.Clean(filepath.Join(targetDirectory, key))
 	// Prevent path traversal - ensure the file stays within targetDirectory
-	if !strings.HasPrefix(file, filepath.Clean(targetDirectory)) {
+	// Append separator to prevent sibling directory bypass (e.g., /templates-evil matching /templates)
+	cleanTarget := filepath.Clean(targetDirectory) + string(filepath.Separator)
+	if !strings.HasPrefix(file, cleanTarget) {
 		return fmt.Errorf("path traversal detected in S3 object key: %s", key)
 	}
 	// If empty dir in s3
