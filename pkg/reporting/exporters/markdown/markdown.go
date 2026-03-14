@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,6 +87,12 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		// Sanitize the subdirectory name to remove any characters that are not allowed in a directory name
 		subdirectory = sanitizeFilename(subdirectory)
 
+		// Validate the resolved path stays within the export directory
+		resolvedDir := filepath.Clean(filepath.Join(exporter.directory, subdirectory))
+		if !strings.HasPrefix(resolvedDir, filepath.Clean(exporter.directory)) {
+			return fmt.Errorf("path traversal detected in subdirectory: %s", subdirectory)
+		}
+
 		// Prepend the subdirectory name to the filename for the fileUrl
 		fileUrl = filepath.Join(subdirectory, filename)
 
@@ -111,7 +118,11 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(format.CreateReportDescription(event, util.MarkdownFormatter{}, exporter.options.OmitRaw))
 	data := dataBuilder.Bytes()
 
-	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0644)
+	finalPath := filepath.Clean(filepath.Join(exporter.directory, subdirectory, filename))
+	if !strings.HasPrefix(finalPath, filepath.Clean(exporter.directory)) {
+		return fmt.Errorf("path traversal detected in output path: %s", finalPath)
+	}
+	return os.WriteFile(finalPath, data, 0644)
 }
 
 func createFileName(event *output.ResultEvent) string {
@@ -145,5 +156,7 @@ func sanitizeFilename(filename string) string {
 	if len(filename) > 256 {
 		filename = filename[0:255]
 	}
+	// Replace directory traversal sequences before other sanitization
+	filename = strings.ReplaceAll(filename, "..", "_")
 	return stringsutil.ReplaceAll(filename, "_", "?", "/", ">", "|", ":", ";", "*", "<", "\"", "'", " ")
 }
