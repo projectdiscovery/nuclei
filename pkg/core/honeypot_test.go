@@ -41,6 +41,32 @@ func TestHoneypotDetector_Honeypot(t *testing.T) {
 	assert.GreaterOrEqual(t, result.Confidence, 0.8)
 }
 
+// TestHoneypotDetector_EchoService verifies that a service which echoes the
+// request path inside a fixed template is NOT flagged as a honeypot. This
+// catches the false-positive where body-length variance alone is insufficient
+// because the canary token is small relative to the surrounding template.
+func TestHoneypotDetector_EchoService(t *testing.T) {
+	// Echo service: returns 200 with the request path embedded in a large fixed template.
+	// The body length barely varies between probes despite unique canary content.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// ~4KB fixed template with the path echoed once
+		padding := make([]byte, 4000)
+		for i := range padding {
+			padding[i] = 'A'
+		}
+		body := fmt.Sprintf("<html><body><h1>Error</h1><p>Page not found: %s</p><div>%s</div></body></html>",
+			r.URL.Path, string(padding))
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	d := NewHoneypotDetector(5*time.Second, 0.8, 5)
+	result := d.Check(context.Background(), srv.URL)
+	assert.False(t, result.IsHoneypot,
+		"echo service should NOT be flagged as honeypot (reason=%s)", result.Reason)
+}
+
 // TestHoneypotDetector_CatchAll200 verifies that a legitimate catch-all-200 app
 // is NOT flagged as a honeypot. The server returns 200 for every path but serves
 // meaningfully different content per path (high body-length variance), which is
@@ -70,5 +96,5 @@ func TestHoneypotDetector_CatchAll200(t *testing.T) {
 	assert.False(t, result.IsHoneypot,
 		"catch-all-200 app with varying content should NOT be flagged as honeypot (got confidence=%.2f, reason=%s)",
 		result.Confidence, result.Reason)
-	assert.Less(t, result.Confidence, 1.0, "confidence should reflect 200 responses but host should not be honeypot")
+	assert.GreaterOrEqual(t, result.Confidence, 0.8, "confidence should be high since all probes return 200, but host should not be honeypot due to varying content")
 }

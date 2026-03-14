@@ -49,11 +49,21 @@ func NewHoneypotDetector(timeout time.Duration, threshold float64, probes int) *
 	}
 }
 
-// randomHex generates a random hex string of n bytes.
+// randomHex generates a random hex string of n bytes (2n hex characters).
 func randomHex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// randomInt returns a random int in [min, max].
+func randomInt(min, max int) int {
+	if min >= max {
+		return min
+	}
+	b := make([]byte, 1)
+	_, _ = rand.Read(b)
+	return min + int(b[0])%(max-min+1)
 }
 
 // contentLengthVariance computes the sample variance of the given content-length
@@ -93,10 +103,14 @@ const contentLenStdDevThreshold = 200.0 // bytes; tune as needed
 func (h *HoneypotDetector) Check(ctx context.Context, target string) HoneypotResult {
 	target = strings.TrimRight(target, "/")
 	positives := 0
+	echoCount := 0
 	var bodyLengths []int64
 
 	for i := 0; i < h.probes; i++ {
-		path := fmt.Sprintf("/nuclei-canary-%s-%s", randomHex(4), randomHex(4))
+		// Variable-length canary tokens (4-12 bytes → 8-24 hex chars) so that
+		// echo services produce measurably different body lengths per probe.
+		canaryToken := randomHex(randomInt(4, 12))
+		path := fmt.Sprintf("/nuclei-canary-%s", canaryToken)
 		url := target + path
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -115,13 +129,20 @@ func (h *HoneypotDetector) Check(ctx context.Context, target string) HoneypotRes
 		if resp.StatusCode == http.StatusOK {
 			positives++
 			bodyLengths = append(bodyLengths, int64(len(body)))
+			// Track echo: if the unique canary token appears in the response
+			// body, the service is reflecting the request path — it's an echo
+			// service, not a honeypot.
+			if strings.Contains(string(body), canaryToken) {
+				echoCount++
+			}
 		}
 	}
 
 	confidence := float64(positives) / float64(h.probes)
 
-	// Require high confidence AND near-constant body length.
+	// Require high confidence AND near-constant body length AND low echo rate.
 	// High variance implies different content per path → real wildcard app, not honeypot.
+	// High echo rate implies the service reflects the canary → echo service, not honeypot.
 	//
 	// Guard: if we have fewer than 2 positive responses the variance is undefined
 	// (contentLengthVariance returns 0 for <2 samples), which would make the
@@ -129,12 +150,23 @@ func (h *HoneypotDetector) Check(ctx context.Context, target string) HoneypotRes
 	// the variance signal is meaningful; with only 1 positive we cannot distinguish
 	// a honeypot from a wildcard app by body length alone, so we refuse to classify.
 	stdDev := math.Sqrt(contentLengthVariance(bodyLengths))
-	isHoneypot := confidence >= h.threshold && len(bodyLengths) >= 2 && stdDev < contentLenStdDevThreshold
 
-	reason := fmt.Sprintf("%d/%d canary requests returned 200 OK (body-length stddev=%.1f, samples=%d)", positives, h.probes, stdDev, len(bodyLengths))
+	// If >50% of responses echo the canary token, it's a legitimate echo/error
+	// service, not a honeypot.
+	echoRate := 0.0
+	if positives > 0 {
+		echoRate = float64(echoCount) / float64(positives)
+	}
+
+	isHoneypot := confidence >= h.threshold &&
+		len(bodyLengths) >= 2 &&
+		stdDev < contentLenStdDevThreshold &&
+		echoRate < 0.5
+
+	reason := fmt.Sprintf("%d/%d canary requests returned 200 OK (body-length stddev=%.1f, samples=%d, echo-rate=%.0f%%)", positives, h.probes, stdDev, len(bodyLengths), echoRate*100)
 
 	if isHoneypot {
-		gologger.Warning().Msgf("[honeypot] %s appears to be a honeypot (%.0f%% of canary requests returned 200, body stddev=%.1f)", target, confidence*100, stdDev)
+		gologger.Warning().Msgf("[honeypot] %s appears to be a honeypot (%.0f%% of canary requests returned 200, body stddev=%.1f, echo-rate=%.0f%%)", target, confidence*100, stdDev, echoRate*100)
 	}
 
 	return HoneypotResult{
