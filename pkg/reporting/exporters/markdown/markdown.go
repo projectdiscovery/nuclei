@@ -88,8 +88,10 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		subdirectory = sanitizeFilename(subdirectory)
 
 		// Validate the resolved path stays within the export directory
+		// Append separator to prevent sibling directory bypass (e.g., /reports-evil matching /reports)
+		cleanBase := filepath.Clean(exporter.directory) + string(filepath.Separator)
 		resolvedDir := filepath.Clean(filepath.Join(exporter.directory, subdirectory))
-		if !strings.HasPrefix(resolvedDir, filepath.Clean(exporter.directory)) {
+		if !strings.HasPrefix(resolvedDir, cleanBase) {
 			return fmt.Errorf("path traversal detected in subdirectory: %s", subdirectory)
 		}
 
@@ -118,8 +120,9 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(format.CreateReportDescription(event, util.MarkdownFormatter{}, exporter.options.OmitRaw))
 	data := dataBuilder.Bytes()
 
+	cleanBase := filepath.Clean(exporter.directory) + string(filepath.Separator)
 	finalPath := filepath.Clean(filepath.Join(exporter.directory, subdirectory, filename))
-	if !strings.HasPrefix(finalPath, filepath.Clean(exporter.directory)) {
+	if !strings.HasPrefix(finalPath, cleanBase) {
 		return fmt.Errorf("path traversal detected in output path: %s", finalPath)
 	}
 	return os.WriteFile(finalPath, data, 0644)
