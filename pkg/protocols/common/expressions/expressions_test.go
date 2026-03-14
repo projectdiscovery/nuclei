@@ -62,3 +62,46 @@ func TestEval(t *testing.T) {
 		require.Equal(t, item.expected, value, "could not get correct expression")
 	}
 }
+
+func TestEvaluateDoesNotReinterpretResolvedValues(t *testing.T) {
+	items := []struct {
+		name     string
+		input    string
+		expected string
+		extra    map[string]interface{}
+	}{
+		{
+			name:     "helper syntax in resolved values stays literal",
+			input:    "/?x={{body}}",
+			expected: `/?x={{md5("Hello")}}-by-Adelle`,
+			extra: map[string]interface{}{
+				"body": `{{md5("Hello")}}-by-Adelle`,
+			},
+		},
+		{
+			name:     "resolved values cannot access other variables",
+			input:    "Authorization: {{body}}",
+			expected: "Authorization: {{secret_token}}",
+			extra: map[string]interface{}{
+				"body":         "{{secret_token}}",
+				"secret_token": "top-secret-cia-mi6-kgb-mossad-classified",
+			},
+		},
+		{
+			name:     "template-authored placeholders inside helper expressions still resolve",
+			input:    "{{base64('{{Host}}')}}",
+			expected: "MTI3LjAuMC4x",
+			extra: map[string]interface{}{
+				"Host": "127.0.0.1",
+			},
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			value, err := Evaluate(item.input, item.extra)
+			require.NoError(t, err)
+			require.Equal(t, item.expected, value)
+		})
+	}
+}

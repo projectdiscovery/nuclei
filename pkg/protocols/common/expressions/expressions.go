@@ -43,6 +43,8 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 }
 
 func evaluate(data string, base map[string]interface{}) (string, error) {
+	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
+
 	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
 	data = replacer.Replace(data, base)
 
@@ -50,7 +52,6 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
