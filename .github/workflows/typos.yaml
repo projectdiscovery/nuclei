@@ -1,0 +1,60 @@
+name: 🔤 Typos
+
+on:
+  push:
+    branches: ["dev", "master"]
+    paths:
+      - '**.go'
+      - '**.md'
+      - '**.yaml'
+      - '**.yml'
+      - '**.toml'
+      - '**.json'
+      - '**.sh'
+      - '**.py'
+      - '**.js'
+      - '**.ts'
+      - '**.jsx'
+      - '**.tsx'
+      - '**.rs'
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - 'Dockerfile*'
+      - 'Makefile*'
+  pull_request:
+    paths:
+      - '**.go'
+      - '**.md'
+      - '**.yaml'
+      - '**.yml'
+      - '**.toml'
+      - '**.json'
+      - '**.sh'
+      - '**.py'
+      - '**.js'
+      - '**.ts'
+      - '**.jsx'
+      - '**.tsx'
+      - '**.rs'
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
+      - 'Dockerfile*'
+      - 'Makefile*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typos:
+    name: "Check for typos"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check for typos
+        uses: crate-ci/typos@v1.29.10

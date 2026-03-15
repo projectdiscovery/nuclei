@@ -1,0 +1,54 @@
+[files]
+extend-exclude = [
+    # Dependency and lock files
+    "go.sum",
+    "go.mod",
+    "*.lock",
+    "vendor/",
+    "node_modules/",
+    # Non-English README translations (Portuguese, Spanish, Chinese, etc.)
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test data and fixtures
+    "integration_tests/",
+    "cmd/functional-test/",
+    "pkg/input/formats/testdata/",
+    "pkg/output/stats/waf/regexes.json",
+    # Helm charts (Go templates, not prose)
+    "helm/",
+]
+
+[default.extend-words]
+# Legitimate words found in the codebase
+ser = "ser"
+erro = "erro"
+utiliza = "utiliza"
+distribuye = "distribuye"
+alo = "alo"
+hae = "hae"
+ue = "ue"
+nd = "nd"
+ot = "ot"
+te = "te"
+ded = "ded"
+thant = "thant"
+brower = "brower"
+Inactiv = "Inactiv"
+Noo = "Noo"
+Fo = "Fo"
+Iz = "Iz"
+Iy = "Iy"
+# JSONL(ine) is intentional formatting in CLI help text
+ine = "ine"
+ines = "ines"
+# Existing identifiers in the codebase (would require broader refactor)
+Exluded = "Exluded"
+Allowd = "Allowd"
+# False positives in base64 certs and struct field prefixes
+BA = "BA"
+Mis = "Mis"
