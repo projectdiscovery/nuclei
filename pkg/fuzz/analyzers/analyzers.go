@@ -61,6 +61,10 @@ type Options struct {
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
 	AnalyzerParameters map[string]interface{}
+	// ResponseBody is the response body from the already-executed request
+	ResponseBody string
+	// ResponseHeaders is the response headers from the already-executed request
+	ResponseHeaders string
 }
 
 var (
