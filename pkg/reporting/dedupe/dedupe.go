@@ -5,7 +5,7 @@
 package dedupe
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"os"
 
 	"github.com/syndtr/goleveldb/leveldb"
@@ -73,7 +73,7 @@ func (s *Storage) Close() {
 // Index indexes an item in storage and returns true if the item
 // was unique.
 func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
-	hasher := sha1.New()
+	hasher := sha256.New()
 	if result.TemplateID != "" {
 		_, _ = hasher.Write(conversion.Bytes(result.TemplateID))
 	}
