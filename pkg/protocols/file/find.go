@@ -67,7 +67,7 @@ func (request *Request) findGlobPathMatches(absPath string, processed map[string
 // findFileMatches finds if a path is an absolute file. If the path
 // is a file, it returns true otherwise false with no errors.
 func (request *Request) findFileMatches(absPath string, processed map[string]struct{}, callback func(string)) (bool, error) {
-	info, err := os.Stat(absPath)
+	info, err := os.Lstat(absPath)
 	if err != nil {
 		return false, err
 	}
