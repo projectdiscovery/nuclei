@@ -1,0 +1,53 @@
+[files]
+extend-exclude = [
+    "**/testdata/**",
+    "integration_tests/**",
+    "pkg/js/generated/**",
+    "pkg/output/stats/waf/regexes.json",
+    "*.png",
+    "*.jpg",
+    "*.gif",
+    "*.exe",
+    "*.class",
+    "*.ser",
+    "dsl.md",
+    "SYNTAX-REFERENCE.md",
+    "nuclei-jsonschema.json",
+    "static/**",
+    "go.sum",
+    "README_*.md",
+    "bin/**",
+]
+
+[default.extend-words]
+oast = "oast"
+whois = "whois"
+memoize = "memoize"
+memogen = "memogen"
+projectdiscovery = "projectdiscovery"
+# CLI flag short names
+ot = "ot"
+hae = "hae"
+ue = "ue"
+# Part of JSONL(ine)/JSONL(ines) format notation
+ines = "ines"
+ine = "ine"
+# Go variable names / idioms
+typ = "typ"
+fo = "fo"
+# External library type (goflags.AllowdTypes)
+Allowd = "Allowd"
+# Test data content
+alo = "alo"
+Fo = "Fo"
+algoritmos = "algoritmos"
+# NooP in comment (matching NoopWriter struct)
+Noo = "Noo"
+# camelCase field name MisMatched
+Mis = "Mis"
+
+[default]
+extend-ignore-re = [
+    "[0-9a-fA-F]{32,}",
+    "[A-Za-z0-9+/]{40,}={0,2}",
+]

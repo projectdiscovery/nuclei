@@ -1,0 +1,22 @@
+name: "🔤 Typos Check"
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typos:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    if: ${{ !endsWith(github.actor, '[bot]') }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crate-ci/typos@v1
+        with:
+          config: ./_typos.toml
