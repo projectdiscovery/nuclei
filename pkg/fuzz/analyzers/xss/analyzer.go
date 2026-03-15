@@ -33,12 +33,13 @@ func (a *Analyzer) Name() string {
 //   - [XSS_CANARY] => unique canary string with XSS-critical characters for reflection/context detection
 //
 // It also applies the standard [RANDNUM] and [RANDSTR] transformations.
+//
+// The generated canary is embedded directly into the transformed payload
+// (prefixed with "nuclei") rather than stored in the shared params map,
+// avoiding race conditions with concurrent fuzzing.
 func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]interface{}) string {
 	if strings.Contains(data, "[XSS_CANARY]") {
 		canary := generateCanary()
-		if params != nil {
-			params["xss_canary"] = canary
-		}
 		// The canary includes special chars for character survival detection
 		canaryWithChars := canary + canaryChars
 		data = strings.ReplaceAll(data, "[XSS_CANARY]", canaryWithChars)
@@ -52,16 +53,31 @@ func generateCanary() string {
 	return "nuclei" + analyzers.RandStringBytesMask(8)
 }
 
+// canaryPrefix is the static prefix used to locate the canary in fuzz values.
+const canaryPrefix = "nuclei"
+
+// extractCanaryFromValue extracts the canary from the fuzz-generated value.
+// The canary is the "nuclei" prefix followed by 8 random characters.
+func extractCanaryFromValue(value string) string {
+	idx := strings.Index(value, canaryPrefix)
+	if idx < 0 {
+		return ""
+	}
+	end := idx + len(canaryPrefix) + 8 // "nuclei" + 8 random chars
+	if end > len(value) {
+		return ""
+	}
+	return value[idx:end]
+}
+
 // Analyze detects XSS vulnerabilities by:
 // 1. Checking for canary reflection in the initial response
 // 2. Detecting the HTML context of the reflection
 // 3. Replaying context-appropriate payloads to verify exploitability
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
-	// Determine the canary from parameters
-	canary := ""
-	if v, ok := options.AnalyzerParameters["xss_canary"]; ok {
-		canary, _ = v.(string)
-	}
+	// Extract canary from the generated request's value to avoid
+	// race conditions with shared AnalyzerParameters map.
+	canary := extractCanaryFromValue(options.FuzzGenerated.Value)
 	if canary == "" {
 		return false, "", nil
 	}
@@ -76,13 +92,10 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if canary is reflected at all
-	if !strings.Contains(body, canary) {
+	// Check if canary is reflected at all (case-insensitive precheck)
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(canary)) {
 		return false, "", nil
 	}
-
-	// Detect character survival
-	chars := detectCharacterSurvival(body, canary)
 
 	// Detect reflection contexts using the HTML tokenizer
 	reflections := DetectReflections(body, canary)
@@ -90,20 +103,45 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
-	best := BestReflection(reflections)
-	if best == nil || best.Context == ContextNone {
+	// Compute character survival per-reflection, filter non-viable ones,
+	// then pick the best viable reflection.
+	type viableReflection struct {
+		reflection *ReflectionInfo
+		chars      CharacterSet
+	}
+	var viable []viableReflection
+	for i := range reflections {
+		r := &reflections[i]
+		if r.Context == ContextNone {
+			continue
+		}
+		chars := detectCharacterSurvival(body, canary)
+		payloads := selectPayloads(r, chars)
+		if len(payloads) > 0 {
+			viable = append(viable, viableReflection{reflection: r, chars: chars})
+		}
+	}
+	if len(viable) == 0 {
 		return false, "", nil
 	}
 
+	// Pick the best viable reflection by priority
+	best := viable[0]
+	for _, v := range viable[1:] {
+		if v.reflection.Context.priority() > best.reflection.Context.priority() {
+			best = v
+		}
+	}
+
 	// Select payloads appropriate for the detected context
-	payloads := selectPayloads(best, chars)
+	payloads := selectPayloads(best.reflection, best.chars)
 	if len(payloads) == 0 {
-		return false, "", fmt.Errorf("no suitable payloads for context %s", best.Context)
+		return false, "", fmt.Errorf("no suitable payloads for context %s", best.reflection.Context)
 	}
 
 	// Replay with context-appropriate payloads
 	for _, payload := range payloads {
-		matched, details, err := a.replayAndVerify(options, payload, best)
+		matched, details, err := a.replayAndVerify(options, payload, best.reflection)
 		if err != nil {
 			gologger.Verbose().Msgf("[%s] replay error: %v", a.Name(), err)
 			continue
@@ -115,6 +153,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 	return false, "", nil
 }
+
+// maxReplayBodySize limits the replay response body read to 5 MB.
+const maxReplayBodySize = 5 * 1024 * 1024
 
 // replayAndVerify sends a request with the given payload and checks
 // if the payload appears unencoded in the response.
@@ -132,15 +173,15 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 		return false, "", errors.Wrap(err, "could not set value in component")
 	}
 
+	// Restore original value on every exit path (including Rebuild errors)
+	defer func() {
+		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
+	}()
+
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not rebuild request")
 	}
-
-	// Restore original value after rebuild so subsequent replays start from clean state
-	defer func() {
-		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
-	}()
 
 	gologger.Verbose().Msgf("[%s] Replaying with payload for %s context: %s", a.Name(), reflection.Context, rebuilt.String())
 
@@ -150,7 +191,13 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	// Verify the replay response is HTML before checking for reflection
+	if !isHTMLResponse(resp.Header) {
+		return false, "", nil
+	}
+
+	// Use bounded reader to avoid unbounded memory consumption
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxReplayBodySize))
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not read replay response body")
 	}
@@ -178,7 +225,8 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 	return false, "", nil
 }
 
-// isHTMLResponse checks if the Content-Type indicates an HTML response
+// isHTMLResponse checks if the Content-Type indicates an HTML response.
+// Accepts both map[string][]string and http.Header (which is the same type).
 func isHTMLResponse(headers map[string][]string) bool {
 	if headers == nil {
 		return true // assume HTML if no headers available
@@ -215,14 +263,15 @@ func getHeader(headers map[string][]string, name string) string {
 	return ""
 }
 
-// detectCharacterSurvival checks which XSS-critical characters survived server-side encoding
+// detectCharacterSurvival checks which XSS-critical characters survived server-side encoding.
+// Each character is tested independently against the canary to avoid cascading dependencies.
 func detectCharacterSurvival(body string, canary string) CharacterSet {
 	return CharacterSet{
 		LessThan:     strings.Contains(body, canary+"<"),
-		GreaterThan:  strings.Contains(body, canary+"<>") || strings.Contains(body, canary+">"),
-		DoubleQuote:  strings.Contains(body, canary+`<>"`),
-		SingleQuote:  strings.Contains(body, canary+`<>"'`),
-		ForwardSlash: strings.Contains(body, canary+canaryChars), // full canary+chars survived
+		GreaterThan:  strings.Contains(body, canary+">"),
+		DoubleQuote:  strings.Contains(body, canary+`"`),
+		SingleQuote:  strings.Contains(body, canary+`'`),
+		ForwardSlash: strings.Contains(body, canary+"/"),
 	}
 }
 
@@ -300,6 +349,13 @@ func selectPayloads(reflection *ReflectionInfo, chars CharacterSet) []string {
 	case ContextHTMLComment:
 		candidates = []string{
 			`--><img src=x onerror=alert(1)>`,
+		}
+
+	case ContextNonExecutableScript:
+		// Non-executable script blocks (application/json, etc.) can still be
+		// broken out of with </script> tag injection.
+		candidates = []string{
+			`</script><img src=x onerror=alert(1)>`,
 		}
 	}
 

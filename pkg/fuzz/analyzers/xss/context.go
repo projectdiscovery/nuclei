@@ -1,6 +1,7 @@
 package xss
 
 import (
+	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -155,8 +156,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				var ctx Context
 				if inNonExecScript {
 					// Non-executable script types (application/json, application/ld+json, etc.)
-					// should not be treated as executable script context — treat as HTML text
-					ctx = ContextHTMLText
+					// Use a distinct context so verifier can still try </script> breakouts.
+					ctx = ContextNonExecutableScript
 				} else {
 					ctx = detectScriptStringContext(text, marker)
 				}
@@ -253,18 +254,19 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 
 // detectAttrQuoting detects the quoting style of an attribute from raw HTML.
 // Returns the quote character and whether the attribute is unquoted.
+// Uses regex with word boundary for exact attribute name matching and handles
+// spaces around =.
 func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
-	attrAssign := attrName + "="
-	rawLower := strings.ToLower(rawToken)
-	idx := strings.Index(rawLower, attrAssign)
-	if idx < 0 {
+	// Build a regex that matches the exact attribute name (word boundary) with
+	// optional spaces around '=' followed by the quote or value.
+	pattern := `(?i)\b` + regexp.QuoteMeta(attrName) + `\s*=\s*(.)`
+	re := regexp.MustCompile(pattern)
+	m := re.FindStringSubmatch(rawToken)
+	if m == nil {
 		return '"', false // default to double-quoted
 	}
-	afterEq := idx + len(attrAssign)
-	if afterEq >= len(rawToken) {
-		return '"', false
-	}
-	switch rawToken[afterEq] {
+	ch := m[1][0]
+	switch ch {
 	case '"':
 		return '"', false
 	case '\'':

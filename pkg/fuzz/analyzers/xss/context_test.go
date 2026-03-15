@@ -389,7 +389,9 @@ func TestSelectPayloads(t *testing.T) {
 
 func TestDetectCharacterSurvival(t *testing.T) {
 	canary := "testcanary"
-	body := canary + `<>"'/`
+	// Each character appears individually after the canary so they can be
+	// detected independently (no cascading dependency).
+	body := canary + `<` + " " + canary + `>` + " " + canary + `"` + " " + canary + `'` + " " + canary + `/`
 	chars := detectCharacterSurvival(body, canary)
 	if !chars.LessThan {
 		t.Error("expected LessThan to survive")
@@ -525,8 +527,8 @@ func TestDetectReflections_ScriptTypeJSON(t *testing.T) {
 			t.Fatalf("application/json script should not be classified as executable script context, got %s", r.Context)
 		}
 	}
-	if reflections[0].Context != ContextHTMLText {
-		t.Fatalf("expected ContextHTMLText for JSON script block, got %s", reflections[0].Context)
+	if reflections[0].Context != ContextNonExecutableScript {
+		t.Fatalf("expected ContextNonExecutableScript for JSON script block, got %s", reflections[0].Context)
 	}
 }
 

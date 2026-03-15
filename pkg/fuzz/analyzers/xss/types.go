@@ -1,6 +1,9 @@
 package xss
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 // Context represents the HTML context where a reflection occurs
 type Context int
@@ -22,6 +25,9 @@ const (
 	ContextScriptString
 	// ContextStyle means the marker is inside a style block
 	ContextStyle
+	// ContextNonExecutableScript means the marker is inside a non-executable script block
+	// (e.g. <script type="application/json">). The verifier can still try </script> breakouts.
+	ContextNonExecutableScript
 )
 
 // String returns the string representation of the context
@@ -43,6 +49,8 @@ func (c Context) String() string {
 		return "script_string"
 	case ContextStyle:
 		return "style"
+	case ContextNonExecutableScript:
+		return "non_executable_script"
 	default:
 		return "unknown"
 	}
@@ -61,6 +69,8 @@ func (c Context) priority() int {
 	case ContextHTMLText:
 		return 2
 	case ContextStyle:
+		return 1
+	case ContextNonExecutableScript:
 		return 1
 	case ContextHTMLComment:
 		return 0
@@ -231,31 +241,26 @@ var nonExecutableScriptTypes = map[string]struct{}{
 	"text/x-template":     {},
 }
 
+// scriptTypeAttrRe matches the "type" attribute with word boundaries to avoid
+// matching "data-type", "subtype", etc. It handles optional spaces around "=".
+var scriptTypeAttrRe = regexp.MustCompile(`(?i)\btype\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))`)
+
 // isNonExecutableScriptType checks the raw token of a <script> tag to determine
 // if it has a type attribute that indicates non-executable content.
 func isNonExecutableScriptType(rawToken string) bool {
-	rawLower := strings.ToLower(rawToken)
-	idx := strings.Index(rawLower, "type=")
-	if idx < 0 {
+	m := scriptTypeAttrRe.FindStringSubmatch(rawToken)
+	if m == nil {
 		return false // no type attribute means default (text/javascript) — executable
 	}
-	after := rawLower[idx+5:]
-	// Strip quote character if present
-	if len(after) > 0 && (after[0] == '"' || after[0] == '\'') {
-		quote := after[0]
-		after = after[1:]
-		end := strings.IndexByte(after, quote)
-		if end >= 0 {
-			after = after[:end]
-		}
-	} else {
-		// Unquoted — read until space or >
-		end := strings.IndexAny(after, " \t\n\r>")
-		if end >= 0 {
-			after = after[:end]
-		}
+	// m[1] = double-quoted value, m[2] = single-quoted value, m[3] = unquoted value
+	scriptType := m[1]
+	if scriptType == "" {
+		scriptType = m[2]
 	}
-	scriptType := strings.TrimSpace(after)
+	if scriptType == "" {
+		scriptType = m[3]
+	}
+	scriptType = strings.TrimSpace(strings.ToLower(scriptType))
 	_, nonExec := nonExecutableScriptTypes[scriptType]
 	return nonExec
 }
