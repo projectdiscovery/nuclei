@@ -28,6 +28,9 @@ const (
 	// ContextNonExecutableScript means the marker is inside a non-executable script block
 	// (e.g. <script type="application/json">). The verifier can still try </script> breakouts.
 	ContextNonExecutableScript
+	// ContextScriptComment means the marker is inside a JavaScript comment (// or /* */)
+	// or a regex literal (/pattern/). These are non-executable contexts within script blocks.
+	ContextScriptComment
 )
 
 // String returns the string representation of the context
@@ -51,6 +54,8 @@ func (c Context) String() string {
 		return "style"
 	case ContextNonExecutableScript:
 		return "non_executable_script"
+	case ContextScriptComment:
+		return "script_comment"
 	default:
 		return "unknown"
 	}
@@ -72,6 +77,8 @@ func (c Context) priority() int {
 		return 1
 	case ContextNonExecutableScript:
 		return 1
+	case ContextScriptComment:
+		return 0
 	case ContextHTMLComment:
 		return 0
 	default:

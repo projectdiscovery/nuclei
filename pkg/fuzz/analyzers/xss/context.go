@@ -203,8 +203,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 	return reflections
 }
 
-// detectScriptStringContext determines if the marker is inside a JS string literal
-// or in bare script code.
+// detectScriptStringContext determines if the marker is inside a JS string literal,
+// a JS comment (// or /* */), a regex literal (/pattern/), or in bare script code.
 func detectScriptStringContext(scriptContent, marker string) Context {
 	markerLower := strings.ToLower(marker)
 	contentLower := strings.ToLower(scriptContent)
@@ -214,34 +214,133 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 		return ContextScript
 	}
 
-	// Walk through the script content tracking quote state
+	// Walk through the script content tracking quote, comment, and regex state.
 	inSingleQuote := false
 	inDoubleQuote := false
 	inBacktick := false
+	inLineComment := false
+	inBlockComment := false
+	inRegex := false
 	escaped := false
+
+	// lastSignificantChar tracks the last non-whitespace character outside of
+	// strings/comments/regex for determining if '/' starts a regex literal.
+	lastSignificantChar := byte(0)
+	// lastWord accumulates the current identifier/keyword token for regex
+	// disambiguation. When we encounter '/' after a keyword like "return",
+	// "typeof", etc., it's a regex, not division.
+	var lastWord []byte
 
 	for i := 0; i < idx; i++ {
 		ch := scriptContent[i]
+
+		// Handle line comment: everything until newline is ignored.
+		if inLineComment {
+			if ch == '\n' || ch == '\r' {
+				inLineComment = false
+			}
+			continue
+		}
+
+		// Handle block comment: everything until */ is ignored.
+		if inBlockComment {
+			if ch == '*' && i+1 < len(scriptContent) && scriptContent[i+1] == '/' {
+				inBlockComment = false
+				i++ // skip the '/'
+			}
+			continue
+		}
+
+		// Handle regex literal: scan until unescaped closing '/'.
+		if inRegex {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '/' {
+				inRegex = false
+			}
+			continue
+		}
+
+		// Handle string literals.
+		if inSingleQuote || inDoubleQuote || inBacktick {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			switch {
+			case inSingleQuote && ch == '\'':
+				inSingleQuote = false
+			case inDoubleQuote && ch == '"':
+				inDoubleQuote = false
+			case inBacktick && ch == '`':
+				inBacktick = false
+			}
+			continue
+		}
+
+		// Outside any string/comment/regex — handle transitions.
 		if escaped {
 			escaped = false
 			continue
 		}
-		if ch == '\\' {
+
+		// Check for comment start: // or /*
+		if ch == '/' && i+1 < idx {
+			next := scriptContent[i+1]
+			if next == '/' {
+				inLineComment = true
+				i++ // skip second '/'
+				continue
+			}
+			if next == '*' {
+				inBlockComment = true
+				i++ // skip '*'
+				continue
+			}
+		}
+
+		// Check for regex literal start.
+		// '/' is a regex delimiter when not preceded by a value expression.
+		if ch == '/' {
+			if isRegexPreceding(lastSignificantChar, lastWord) {
+				inRegex = true
+				continue
+			}
+			// Otherwise it's a division operator — update lastSignificantChar and continue.
+		}
+
+		switch ch {
+		case '\'':
+			inSingleQuote = true
+			continue
+		case '"':
+			inDoubleQuote = true
+			continue
+		case '`':
+			inBacktick = true
+			continue
+		case '\\':
 			escaped = true
 			continue
 		}
-		switch ch {
-		case '\'':
-			if !inDoubleQuote && !inBacktick {
-				inSingleQuote = !inSingleQuote
-			}
-		case '"':
-			if !inSingleQuote && !inBacktick {
-				inDoubleQuote = !inDoubleQuote
-			}
-		case '`':
-			if !inSingleQuote && !inDoubleQuote {
-				inBacktick = !inBacktick
+
+		// Track last significant (non-whitespace) character for regex detection.
+		if ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' {
+			lastSignificantChar = ch
+			if isIdentChar(ch) {
+				lastWord = append(lastWord, ch)
+			} else {
+				lastWord = lastWord[:0]
 			}
 		}
 	}
@@ -249,7 +348,60 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 	if inSingleQuote || inDoubleQuote || inBacktick {
 		return ContextScriptString
 	}
+	if inLineComment || inBlockComment || inRegex {
+		return ContextScriptComment
+	}
 	return ContextScript
+}
+
+// regexPrecedingKeywords are JavaScript keywords after which '/' starts a
+// regex literal, not a division. These keywords cannot produce a value on
+// the left-hand side of a division operator.
+var regexPrecedingKeywords = map[string]struct{}{
+	"return":     {},
+	"typeof":     {},
+	"void":       {},
+	"delete":     {},
+	"throw":      {},
+	"new":        {},
+	"in":         {},
+	"instanceof": {},
+	"case":       {},
+	"yield":      {},
+	"await":      {},
+}
+
+// isRegexPreceding returns true if the context preceding a '/' suggests the
+// '/' begins a regex literal rather than being a division operator.
+func isRegexPreceding(ch byte, lastWord []byte) bool {
+	if ch == 0 {
+		// Start of content — '/' is a regex.
+		return true
+	}
+
+	// If the last significant char is an identifier char, check if the
+	// accumulated word is a keyword that precedes regex.
+	if isIdentChar(ch) {
+		if len(lastWord) > 0 {
+			_, isKeyword := regexPrecedingKeywords[strings.ToLower(string(lastWord))]
+			return isKeyword
+		}
+		return false
+	}
+
+	// Closing paren/bracket — result of expression, so '/' is division.
+	if ch == ')' || ch == ']' {
+		return false
+	}
+
+	// Everything else (operators like =, ;, (, {, [, !, &, |, etc.) precedes regex.
+	return true
+}
+
+// isIdentChar returns true if ch is a valid JavaScript identifier character.
+func isIdentChar(ch byte) bool {
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+		(ch >= '0' && ch <= '9') || ch == '_' || ch == '$'
 }
 
 // detectAttrQuoting detects the quoting style of an attribute from raw HTML.

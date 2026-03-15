@@ -357,6 +357,15 @@ func selectPayloads(reflection *ReflectionInfo, chars CharacterSet) []string {
 		candidates = []string{
 			`</script><img src=x onerror=alert(1)>`,
 		}
+
+	case ContextScriptComment:
+		// Marker is inside a JS comment or regex literal — not directly executable.
+		// The only viable attack is breaking out of the <script> block entirely.
+		if chars.LessThan && chars.GreaterThan {
+			candidates = []string{
+				`</script><img src=x onerror=alert(1)>`,
+			}
+		}
 	}
 
 	return candidates

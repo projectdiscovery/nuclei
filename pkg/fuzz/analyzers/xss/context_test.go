@@ -665,6 +665,185 @@ func TestIsNonExecutableScriptType(t *testing.T) {
 	}
 }
 
+// === Tests for Finding #3: JavaScript comment and regex literal detection ===
+
+func TestDetectScriptStringContext_LineComment(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    Context
+	}{
+		{
+			name:    "marker in line comment",
+			content: "var x = 1; // nucleiXSScanary",
+			want:    ContextScriptComment,
+		},
+		{
+			name:    "marker after line comment on next line",
+			content: "// comment\nvar x = nucleiXSScanary;",
+			want:    ContextScript,
+		},
+		{
+			name:    "marker in line comment after code",
+			content: "var x = 'safe'; // here is nucleiXSScanary",
+			want:    ContextScriptComment,
+		},
+		{
+			name:    "slash in string not a comment",
+			content: `var x = "//not a comment"; var y = nucleiXSScanary;`,
+			want:    ContextScript,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectScriptStringContext(tt.content, testMarker)
+			if got != tt.want {
+				t.Errorf("detectScriptStringContext() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDetectScriptStringContext_BlockComment(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    Context
+	}{
+		{
+			name:    "marker in block comment",
+			content: "var x = 1; /* nucleiXSScanary */",
+			want:    ContextScriptComment,
+		},
+		{
+			name:    "marker in multiline block comment",
+			content: "var x = 1;\n/* this is a\nnucleiXSScanary\ncomment */",
+			want:    ContextScriptComment,
+		},
+		{
+			name:    "marker after closed block comment",
+			content: "/* comment */ var x = nucleiXSScanary;",
+			want:    ContextScript,
+		},
+		{
+			name:    "marker in string after block comment",
+			content: "/* comment */ var x = 'nucleiXSScanary';",
+			want:    ContextScriptString,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectScriptStringContext(tt.content, testMarker)
+			if got != tt.want {
+				t.Errorf("detectScriptStringContext() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDetectScriptStringContext_RegexLiteral(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    Context
+	}{
+		{
+			name:    "marker in regex literal after assignment",
+			content: "var re = /nucleiXSScanary/;",
+			want:    ContextScriptComment,
+		},
+		{
+			name:    "marker in regex after return",
+			content: "return /nucleiXSScanary/g;",
+			want:    ContextScriptComment,
+		},
+		{
+			name:    "division not regex",
+			content: "var x = a / b; var y = nucleiXSScanary;",
+			want:    ContextScript,
+		},
+		{
+			name:    "regex in condition",
+			content: "if (/nucleiXSScanary/.test(s)) {}",
+			want:    ContextScriptComment,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectScriptStringContext(tt.content, testMarker)
+			if got != tt.want {
+				t.Errorf("detectScriptStringContext() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDetectReflections_ScriptLineComment(t *testing.T) {
+	body := `<html><body><script>var x = "safe"; // nucleiXSScanary here</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection")
+	}
+	if reflections[0].Context != ContextScriptComment {
+		t.Fatalf("expected ContextScriptComment, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ScriptBlockComment(t *testing.T) {
+	body := `<html><body><script>/* nucleiXSScanary */ var x = 1;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection")
+	}
+	if reflections[0].Context != ContextScriptComment {
+		t.Fatalf("expected ContextScriptComment, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_ScriptRegexLiteral(t *testing.T) {
+	body := `<html><body><script>var re = /nucleiXSScanary/g;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection")
+	}
+	if reflections[0].Context != ContextScriptComment {
+		t.Fatalf("expected ContextScriptComment for regex literal, got %s", reflections[0].Context)
+	}
+}
+
+func TestSelectPayloads_ScriptComment(t *testing.T) {
+	// Script comment with angle brackets should allow </script> breakout
+	reflection := ReflectionInfo{Context: ContextScriptComment}
+	chars := CharacterSet{LessThan: true, GreaterThan: true}
+	payloads := selectPayloads(&reflection, chars)
+	if len(payloads) == 0 {
+		t.Fatal("expected payloads for script comment with angle brackets")
+	}
+
+	// Without angle brackets, no payloads (comment injection is not exploitable)
+	chars2 := CharacterSet{}
+	payloads2 := selectPayloads(&reflection, chars2)
+	if len(payloads2) != 0 {
+		t.Fatalf("expected no payloads for script comment without angle brackets, got %d", len(payloads2))
+	}
+}
+
+func TestContextScriptComment_String(t *testing.T) {
+	if got := ContextScriptComment.String(); got != "script_comment" {
+		t.Errorf("ContextScriptComment.String() = %q, want %q", got, "script_comment")
+	}
+}
+
+func TestContextScriptComment_Priority(t *testing.T) {
+	// Script comment should have lower priority than executable script contexts
+	if ContextScriptComment.priority() >= ContextScript.priority() {
+		t.Error("ContextScriptComment should have lower priority than ContextScript")
+	}
+	if ContextScriptComment.priority() >= ContextScriptString.priority() {
+		t.Error("ContextScriptComment should have lower priority than ContextScriptString")
+	}
+}
+
 func BenchmarkDetectReflections(b *testing.B) {
 	var sb strings.Builder
 	sb.WriteString("<html><body>")
