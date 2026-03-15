@@ -720,16 +720,12 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 func processProfileExtras(profilePath string) error {
 	profileData, err := os.ReadFile(profilePath)
 	if err != nil {
-		options.Logger.Warning().Msgf("Could not read profile for extras: %s", err)
-		return nil
+		return fmt.Errorf("could not read profile extras from %s: %w", profilePath, err)
 	}
 
 	var profileMap map[string]interface{}
 	if err := yaml.Unmarshal(profileData, &profileMap); err != nil {
-		// The YAML was already successfully parsed by MergeConfigFile,
-		// so this error is unexpected. Log and continue.
-		options.Logger.Warning().Msgf("Could not parse profile extras: %s", err)
-		return nil
+		return fmt.Errorf("could not parse profile extras from %s: %w", profilePath, err)
 	}
 
 	// Clear previous profile metadata so that a later file that omits
@@ -857,9 +853,9 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 	// Process profile extras (metadata and inline secrets) for the
 	// auto-loaded config file so that secrets and metadata are not
 	// silently ignored when loaded via NUCLEI_CONFIG_DIR.
+	// Non-fatal here since the settings config may not contain profile extras.
 	if err := processProfileExtras(cfgFile); err != nil {
-		cleanupTempFiles() // Fatal calls os.Exit which skips defers
-		options.Logger.Fatal().Msgf("Could not process profile extras from auto-loaded config: %s\n", err)
+		options.Logger.Warning().Msgf("Could not process profile extras from auto-loaded config: %s\n", err)
 	}
 }
 

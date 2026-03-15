@@ -103,13 +103,11 @@ func TestProcessProfileExtras_InvalidFile(t *testing.T) {
 
 	options = &types.Options{Logger: gologger.DefaultLogger}
 
-	// Should not panic or return error on non-existent file
-	// (file read failure is a warning, not an error — no secrets to silently drop)
+	// Should return error on non-existent file to fail fast and prevent
+	// silently running without expected profile extras
 	err := processProfileExtras("/nonexistent/path/profile.yaml")
-	require.NoError(t, err, "non-existent file should not return an error (only warns)")
-
-	require.Empty(t, options.ProfileID)
-	require.Empty(t, options.ProfileName)
+	require.Error(t, err, "non-existent file should return an error")
+	require.Contains(t, err.Error(), "could not read profile extras")
 }
 
 func TestProcessProfileExtras_ExtraUnknownFields(t *testing.T) {
