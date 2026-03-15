@@ -307,6 +307,8 @@ func TestContextString(t *testing.T) {
 		{ContextScript, "script"},
 		{ContextScriptString, "script_string"},
 		{ContextStyle, "style"},
+		{ContextNonExecutableScript, "non_executable_script"},
+		{ContextScriptComment, "script_comment"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
