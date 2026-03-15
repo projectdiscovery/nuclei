@@ -6,33 +6,50 @@ import (
 	"golang.org/x/net/html"
 )
 
-// nonExecutableScriptTypes contains MIME types that make a <script> block
-// a data block rather than executable JavaScript. Per the WHATWG HTML spec,
-// only JavaScript MIME types (text/javascript and its legacy aliases) cause
-// script execution. Everything else is treated as a data block.
-var nonExecutableScriptTypes = map[string]struct{}{
-	"application/json":          {},
-	"application/ld+json":       {},
-	"application/x-json":        {},
-	"text/json":                 {},
-	"text/x-json":               {},
-	"application/importmap+json": {},
-	"importmap":                 {},
-	"speculationrules":          {},
-	"text/template":             {},
-	"application/x-template":    {},
+// urlAttributes is a set of HTML attributes that can contain a URL.
+var urlAttributes = map[string]struct{}{
+	"href":       {},
+	"src":        {},
+	"data":       {},
+	"srcset":     {},
+	"action":     {},
+	"formaction": {},
+	"poster":     {},
+	"manifest":   {},
+	"codebase":   {},
+	"cite":       {},
+	"profile":    {},
+	"longdesc":   {},
+	"usemap":     {},
+	"form":       {},
+	"background": {},
 }
 
-// isNonExecutableScriptType returns true if the script type attribute value
-// indicates a non-executable data block.
-func isNonExecutableScriptType(typeAttr string) bool {
+// isExecutableScriptType returns true if the script type attribute value
+// indicates an executable JavaScript type.
+func isExecutableScriptType(typeAttr string) bool {
 	t := strings.TrimSpace(strings.ToLower(typeAttr))
 	// Strip MIME parameters (e.g. "application/json; charset=utf-8")
 	if idx := strings.IndexByte(t, ';'); idx >= 0 {
 		t = strings.TrimSpace(t[:idx])
 	}
-	_, ok := nonExecutableScriptTypes[t]
-	return ok
+
+	// Per WHATWG HTML spec, only JavaScript MIME types (text/javascript and its
+	// legacy aliases) cause script execution. Empty/omitted type also defaults
+	// to text/javascript. Everything else is treated as a data block.
+	switch t {
+	case "", "text/javascript", "application/javascript", "application/ecmascript",
+		"text/ecmascript", "application/x-javascript", "text/jscript",
+		"text/coffeescript", "module": // module is also executable but in strict mode
+		return true
+	default:
+		return false
+	}
+}
+
+// isNonExecutableScriptType is now deprecated, use !isExecutableScriptType
+func isNonExecutableScriptType(typeAttr string) bool {
+	return !isExecutableScriptType(typeAttr)
 }
 
 // isExecutableURI returns true when an attribute value contains a scheme that
@@ -143,7 +160,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						if isEventHandler(attrName) {
 							// Event handler attributes contain JavaScript
 							ctx = ContextScript
-						} else if isExecutableURI(attrVal) {
+						} else if _, ok := urlAttributes[attrName]; ok && isExecutableURI(attrVal) {
 							// Fix #1: executable URI → treat as script context
 							ctx = ContextScript
 						} else if attrName == "srcdoc" {
@@ -309,7 +326,7 @@ func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
 		return '"', false // default to double-quoted
 	}
 	afterEq := idx + len(attrAssign)
-	if afterEq >= len(rawToken) {
+	if afterEq >= len(attrAssign) {
 		return '"', false
 	}
 	switch rawToken[afterEq] {

@@ -202,5 +202,4 @@ var rcdataElements = map[string]struct{}{
 	"textarea": {},
 	"title":    {},
 	"xmp":      {},
-	"noscript": {},
 }

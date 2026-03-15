@@ -40,16 +40,21 @@ type AnalyzerTemplate struct {
 }
 
 var (
-	analyzers map[string]Analyzer
+	analyzers   map[string]Analyzer
+	analyzersMu sync.RWMutex
 )
 
 // RegisterAnalyzer registers a new analyzer
 func RegisterAnalyzer(name string, analyzer Analyzer) {
+	analyzersMu.Lock()
+	defer analyzersMu.Unlock()
 	analyzers[name] = analyzer
 }
 
 // GetAnalyzer returns the analyzer for a given name
 func GetAnalyzer(name string) Analyzer {
+	analyzersMu.RLock()
+	defer analyzersMu.RUnlock()
 	return analyzers[name]
 }
 
