@@ -27,6 +27,7 @@ type AnalyzerTemplate struct {
 	//   Name is the name of the analyzer to use
 	// values:
 	//   - time_delay
+	//   - xss_context
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
@@ -61,6 +62,10 @@ type Options struct {
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
 	AnalyzerParameters map[string]interface{}
+	// ResponseBody is the body of the initial fuzz response (for reflection-based analyzers)
+	ResponseBody string
+	// ResponseHeaders are the headers of the initial fuzz response
+	ResponseHeaders map[string][]string
 }
 
 var (
@@ -73,7 +78,7 @@ var (
 //   - [RANDSTR] => random string of 4 characters
 func ApplyPayloadTransformations(value string) string {
 	randomInt := GetRandomInteger()
-	randomStr := randStringBytesMask(4)
+	randomStr := RandStringBytesMask(4)
 
 	value = strings.ReplaceAll(value, "[RANDNUM]", strconv.Itoa(randomInt))
 	value = strings.ReplaceAll(value, "[RANDSTR]", randomStr)
@@ -82,7 +87,8 @@ func ApplyPayloadTransformations(value string) string {
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func randStringBytesMask(n int) string {
+// RandStringBytesMask generates a random string of n characters
+func RandStringBytesMask(n int) string {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letterBytes[random.Intn(len(letterBytes))]
