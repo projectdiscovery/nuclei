@@ -1,12 +1,10 @@
 [default.extend-words]
-# Add any false positives or intentional strings here
-# Example:
-# "iff" = "iff"  # mathematical abbreviation for "if and only if"
+# Security/technical terms that may be flagged as typos
+# "iff" = "iff"
 
 [files]
-# Exclude files/directories that shouldn't be checked
 extend-exclude = [
-    "*.sum",
     "go.sum",
-    "vendor/",
+    "*.sum",
+    "nuclei-jsonschema.json",
 ]
