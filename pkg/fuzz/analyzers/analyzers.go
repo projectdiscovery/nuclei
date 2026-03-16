@@ -61,6 +61,10 @@ type Options struct {
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
 	AnalyzerParameters map[string]interface{}
+	// Response holds the HTTP response for analyzers that need it
+	Response           interface{} // *http.Response or similar
+	// ResponseBody holds the response body as string
+	ResponseBody       string
 }
 
 var (
