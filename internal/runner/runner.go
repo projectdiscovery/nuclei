@@ -615,7 +615,11 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if !r.options.NoHoneypot {
-		hpCache := honeypotcache.New(r.options.MaxHostMatch, false)
+		maxHostMatch := r.options.MaxHostMatch
+		if maxHostMatch < 0 {
+			maxHostMatch = 0
+		}
+		hpCache := honeypotcache.New(maxHostMatch, false)
 		r.honeypotCache = hpCache
 		executorOpts.HoneypotCache = hpCache
 	}

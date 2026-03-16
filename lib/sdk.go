@@ -115,6 +115,9 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 	if err := e.store.Load(); err != nil {
 		return errkit.Wrapf(err, "Could not load templates: %s", err)
 	}
+	if e.honeypotCache != nil {
+		e.honeypotCache.SetTotalTemplates(len(e.store.Templates()))
+	}
 	e.templatesLoaded = true
 	return nil
 }

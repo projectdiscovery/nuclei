@@ -2,6 +2,7 @@ package honeypotcache
 
 import (
 	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -42,7 +43,7 @@ func (c *Cache) SetTotalTemplates(n int) {
 
 // MarkMatch records that templateID matched on the host derived from ctx.
 func (c *Cache) MarkMatch(ctx *contextargs.Context, templateID string) {
-	if c == nil || c.disabled {
+	if c == nil || c.disabled || ctx == nil || ctx.MetaInput == nil {
 		return
 	}
 	key := normalizeHost(ctx.MetaInput.Input)
@@ -66,7 +67,7 @@ func (c *Cache) MarkMatch(ctx *contextargs.Context, templateID string) {
 
 // Check returns true if the host has been flagged as a honeypot.
 func (c *Cache) Check(ctx *contextargs.Context) bool {
-	if c == nil || c.disabled {
+	if c == nil || c.disabled || ctx == nil || ctx.MetaInput == nil {
 		return false
 	}
 	key := normalizeHost(ctx.MetaInput.Input)
@@ -158,12 +159,13 @@ var signatures = []signature{
 	},
 }
 
-// normalizeHost strips scheme and port to produce a canonical host key.
-// "https://example.com:443/path" → "example.com"
-// "example.com:8080"            → "example.com"
-// "[::1]:8080"                  → "[::1]"   (bracketed IPv6)
-// "2001:db8::1"                 → "2001:db8::1"  (raw IPv6 — unchanged)
+// normalizeHost strips scheme and port to produce a canonical, lowercase host key.
+// "https://Example.com:443/path" → "example.com"
+// "example.com:8080"             → "example.com"
+// "[::1]:8080"                   → "[::1]"   (bracketed IPv6)
+// "2001:db8::1"                  → "2001:db8::1"  (raw IPv6 — unchanged)
 func normalizeHost(input string) string {
+	input = strings.TrimSpace(input)
 	// Strip scheme.
 	if idx := indexAfterScheme(input); idx >= 0 {
 		input = input[idx:]
@@ -184,8 +186,8 @@ func normalizeHost(input string) string {
 			input = input[:idx]
 		}
 	}
-	// Raw IPv6 (multiple colons, no brackets) — leave as-is.
-	return input
+	// Raw IPv6 (multiple colons, no brackets) — leave as-is, but lowercase.
+	return strings.ToLower(input)
 }
 
 // countByte returns the number of occurrences of b in s.

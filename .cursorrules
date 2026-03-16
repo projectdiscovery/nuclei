@@ -1,0 +1,48 @@
+# nuclei #6403 — Honeypot Detection Bounty
+
+## Stack
+- Language: Go 1.21+
+- Repo: projectdiscovery/nuclei (branch: dev)
+- Module: github.com/projectdiscovery/nuclei/v3
+
+## Conventions
+- All new packages go under `pkg/protocols/common/`
+- Logging: `gologger.Warning().Msgf(...)` — never fmt.Println
+- Tests: `testify/require`, table-driven where possible
+- Concurrency: always acquire per-item lock BEFORE releasing cache lock (see MASTER_PLAN)
+- No placeholder comments. Full logic only.
+
+## Critical constraint
+The `MarkMatch` race fix is the core differentiator. The item lock MUST be acquired while
+the cache lock is still held. Do not release `c.mu` before `item.mu.Lock()`.
+
+## PR target
+Branch `dev` on upstream projectdiscovery/nuclei — not main.
+
+---
+
+## Cursor Handoff Protocol (MANDATORY)
+
+After every execution session — whether complete or blocked — update these two files:
+
+### `.context/LEARNINGS.md`
+Fill every section. Exact file paths, line numbers, error text. No summaries.
+Claude reads this cold. Vague entries are useless.
+
+Required sections:
+- **What Was Built** — each file touched, one line per file
+- **Patterns Used** — nuclei-specific discoveries (struct layouts, import paths, init order)
+- **Decisions Made** — any deviation from MASTER_PLAN and the exact reason
+- **Gotchas** — surprises that would have saved time to know earlier
+- **Blockers** — if blocked, paste the FULL compiler/runtime error verbatim
+- **Open Questions** — anything uncertain for Claude to resolve
+- **Test Results** — paste `go test ./pkg/protocols/common/honeypotcache/... -race -count=1 -v` output
+- **Build Check** — paste `go build ./...` output
+
+### `.context/STATUS.md`
+Change the `status:` frontmatter field to one of:
+- `in_progress` — still executing
+- `blocked` — hit a hard wall, cannot continue without Claude input
+- `done` — `go build ./...` clean, race tests pass, flags appear in `-h`
+
+If `blocked`: write a one-sentence blocker summary under `## Blocking Criteria`.
