@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // Analyzer is an interface for all the analyzers
