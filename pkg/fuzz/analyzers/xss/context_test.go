@@ -235,7 +235,7 @@ func TestBuildCanary(t *testing.T) {
 	if !strings.HasPrefix(canary, "test") {
 		t.Fatal("canary should start with prefix")
 	}
-	for _, ch := range []string{"<", ">", "'", "\"", "`"} {
+	for _, ch := range []string{"<", ">", "'", "\"", "`", ":", "-"} {
 		if !strings.Contains(canary, ch) {
 			t.Fatalf("canary missing probe char: %s", ch)
 		}
@@ -358,6 +358,18 @@ func TestURLAttribute_NarrowDetection(t *testing.T) {
 	}
 	if findings[0].Context != ContextHTMLAttrDoubleQuoted {
 		t.Fatalf("expected html-attr-double-quoted, got %s", findings[0].Context)
+	}
+}
+
+func TestClassifyReflections_MaxReflectionsLimit(t *testing.T) {
+	canary := "xssLIMIT"
+	body := strings.Repeat(canary+" ", maxReflections+20)
+	findings := classifyReflections(body, canary)
+	if len(findings) > maxReflections {
+		t.Fatalf("expected at most %d reflections, got %d", maxReflections, len(findings))
+	}
+	if len(findings) != maxReflections {
+		t.Fatalf("expected exactly %d reflections (capped), got %d", maxReflections, len(findings))
 	}
 }
 

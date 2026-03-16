@@ -49,9 +49,10 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 }
 
 // buildCanary creates a canary string with HTML/JS-significant probe chars.
+// Includes : for javascript: protocol detection and - for --> comment breakout.
 func buildCanary(prefix string) string {
 	randStr := fmt.Sprintf("%d", analyzers.GetRandomInteger())
-	return prefix + randStr + "<>'\"`"
+	return prefix + randStr + "<>'\"`:-"
 }
 
 // Analyze checks for reflected XSS by looking for the canary in the response
@@ -69,9 +70,10 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 
 	body := options.ResponseBody
-	// If response body not provided in options AND status suggests a body
-	// should exist, re-issue the request with a fresh canary.
-	if body == "" && options.ResponseStatusCode > 0 {
+	// If no response was received (status code 0), re-issue the request
+	// with a fresh canary. When ResponseStatusCode > 0, the body was
+	// already captured by the caller (even if legitimately empty).
+	if options.ResponseStatusCode == 0 {
 		freshPayload := a.ApplyInitialTransformation(gr.OriginalPayload, options.AnalyzerParameters)
 		if freshPayload == "" {
 			return false, "", nil

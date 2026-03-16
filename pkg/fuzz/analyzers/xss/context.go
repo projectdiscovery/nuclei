@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+// maxReflections limits the number of reflections processed per response
+// to prevent memory exhaustion from adversarial inputs.
+const maxReflections = 50
+
 // Context represents the HTML context where a reflection was found
 type Context int
 
@@ -78,6 +82,9 @@ func classifyReflections(body, canary string) []Reflection {
 	var findings []Reflection
 	offset := 0
 	for offset+canaryLen <= len(body) {
+		if len(findings) >= maxReflections {
+			break
+		}
 		idx := indexFold(body[offset:], canary)
 		if idx < 0 {
 			break
