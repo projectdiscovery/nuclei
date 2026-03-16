@@ -313,3 +313,74 @@ func TestFormatFindings_Empty(t *testing.T) {
 		t.Fatal("expected empty string for no findings")
 	}
 }
+
+func TestURLAttribute_OnlyExploitableWithColon(t *testing.T) {
+	// Canary with colon should be exploitable
+	canaryWithColon := "javascript:alert(1)"
+	body := `<a href="` + canaryWithColon + `">link</a>`
+	findings := classifyReflections(body, canaryWithColon)
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	if findings[0].Context != ContextURLAttribute {
+		t.Fatalf("expected url-attribute, got %s", findings[0].Context)
+	}
+	if !findings[0].Exploitable {
+		t.Fatal("expected exploitable when colon present")
+	}
+
+	// Canary without colon should NOT be exploitable
+	canaryNoColon := "xss1234noproto"
+	body2 := `<a href="` + canaryNoColon + `">link</a>`
+	findings2 := classifyReflections(body2, canaryNoColon)
+	if len(findings2) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings2))
+	}
+	if findings2[0].Context != ContextURLAttribute {
+		t.Fatalf("expected url-attribute, got %s", findings2[0].Context)
+	}
+	if findings2[0].Exploitable {
+		t.Fatal("should not be exploitable without colon")
+	}
+}
+
+func TestURLAttribute_NarrowDetection(t *testing.T) {
+	// Reflection in a non-URL attribute of a tag that also has href
+	// should NOT be classified as url-attribute
+	canary := "xss4321test"
+	body := `<a href="safe" class="` + canary + `">link</a>`
+	findings := classifyReflections(body, canary)
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	if findings[0].Context == ContextURLAttribute {
+		t.Fatal("should not be url-attribute when reflection is in class, not href")
+	}
+	if findings[0].Context != ContextHTMLAttrDoubleQuoted {
+		t.Fatalf("expected html-attr-double-quoted, got %s", findings[0].Context)
+	}
+}
+
+func TestIndexFold(t *testing.T) {
+	tests := []struct {
+		name     string
+		haystack string
+		needle   string
+		expected int
+	}{
+		{"exact match", "hello world", "world", 6},
+		{"case insensitive", "Hello WORLD", "world", 6},
+		{"no match", "hello world", "xyz", -1},
+		{"empty needle", "hello", "", 0},
+		{"needle longer", "hi", "hello", -1},
+		{"non-ascii", "Stra\u00dfe", "stra\u00dfe", 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := indexFold(tt.haystack, tt.needle)
+			if got != tt.expected {
+				t.Fatalf("indexFold(%q, %q) = %d, want %d", tt.haystack, tt.needle, got, tt.expected)
+			}
+		})
+	}
+}

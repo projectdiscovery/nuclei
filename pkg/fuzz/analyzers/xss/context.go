@@ -74,13 +74,11 @@ func classifyReflections(body, canary string) []Reflection {
 		return nil
 	}
 
-	lowerBody := strings.ToLower(body)
-	lowerCanary := strings.ToLower(canary)
-
+	canaryLen := len(canary)
 	var findings []Reflection
 	offset := 0
-	for {
-		idx := strings.Index(lowerBody[offset:], lowerCanary)
+	for offset+canaryLen <= len(body) {
+		idx := indexFold(body[offset:], canary)
 		if idx < 0 {
 			break
 		}
@@ -93,9 +91,28 @@ func classifyReflections(body, canary string) []Reflection {
 			Exploitable:  exploitable,
 			BreakoutChar: breakoutChar,
 		})
-		offset = absIdx + len(canary)
+		offset = absIdx + canaryLen
 	}
 	return findings
+}
+
+// indexFold finds the first case-insensitive occurrence of needle in haystack,
+// returning the byte index in haystack. Uses EqualFold window scanning to
+// avoid byte-length shifts that strings.ToLower can introduce for non-ASCII.
+func indexFold(haystack, needle string) int {
+	n := len(needle)
+	if n == 0 {
+		return 0
+	}
+	if n > len(haystack) {
+		return -1
+	}
+	for i := 0; i <= len(haystack)-n; i++ {
+		if strings.EqualFold(haystack[i:i+n], needle) {
+			return i
+		}
+	}
+	return -1
 }
 
 // classifyContext determines the HTML context based on content before the
@@ -192,19 +209,16 @@ func classifyScriptContext(scriptContent string) Context {
 
 // classifyAttributeContext determines the attribute quote context
 func classifyAttributeContext(tagContent string) Context {
-	// Check for URL attributes
-	lowerTag := strings.ToLower(tagContent)
-	urlAttrs := []string{"href=", "src=", "action=", "formaction=", "data=", "poster="}
-	for _, attr := range urlAttrs {
-		if strings.Contains(lowerTag, attr) {
-			return ContextURLAttribute
-		}
-	}
-
 	// Determine quote context by tracking quotes after the last '='
 	lastEq := strings.LastIndex(tagContent, "=")
 	if lastEq < 0 {
 		return ContextHTMLAttrUnquoted
+	}
+
+	// Check if the attribute containing the reflection is a URL attribute
+	// by parsing backwards from the '=' to find the attribute name.
+	if isURLAttribute(tagContent, lastEq) {
+		return ContextURLAttribute
 	}
 
 	afterEq := strings.TrimLeft(tagContent[lastEq+1:], " \t\n\r")
@@ -220,6 +234,27 @@ func classifyAttributeContext(tagContent string) Context {
 	default:
 		return ContextHTMLAttrUnquoted
 	}
+}
+
+// isURLAttribute checks whether the attribute at the given '=' position
+// is a URL-type attribute (href, src, action, formaction, data, poster).
+func isURLAttribute(tagContent string, eqIdx int) bool {
+	// Walk backwards from eqIdx to find the attribute name start
+	nameEnd := eqIdx
+	nameStart := nameEnd
+	for nameStart > 0 && tagContent[nameStart-1] != ' ' && tagContent[nameStart-1] != '\t' &&
+		tagContent[nameStart-1] != '\n' && tagContent[nameStart-1] != '\r' &&
+		tagContent[nameStart-1] != '<' {
+		nameStart--
+	}
+	attrName := strings.ToLower(tagContent[nameStart:nameEnd])
+	urlAttrs := []string{"href", "src", "action", "formaction", "data", "poster"}
+	for _, ua := range urlAttrs {
+		if attrName == ua {
+			return true
+		}
+	}
+	return false
 }
 
 // isExploitable checks whether the context-specific breakout characters survived encoding
@@ -268,8 +303,11 @@ func isExploitable(ctx Context, body string, reflectionIdx int, canary string) (
 			return true, "</style>"
 		}
 	case ContextURLAttribute:
-		// javascript: protocol injection
-		return true, "javascript:"
+		// Only exploitable if the reflected value contains an unencoded colon,
+		// which is required for javascript: protocol injection.
+		if strings.Contains(reflected, ":") {
+			return true, "javascript:"
+		}
 	}
 
 	return false, ""

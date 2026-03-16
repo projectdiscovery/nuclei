@@ -65,6 +65,8 @@ type Options struct {
 	ResponseBody string
 	// ResponseHeaders is the response headers from the already-executed request
 	ResponseHeaders string
+	// ResponseStatusCode is the HTTP status code from the already-executed request
+	ResponseStatusCode int
 }
 
 var (

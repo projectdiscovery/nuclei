@@ -58,19 +58,28 @@ func buildCanary(prefix string) string {
 // body and classifying the injection context.
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	gr := options.FuzzGenerated
-	payload := a.ApplyInitialTransformation(gr.OriginalPayload, options.AnalyzerParameters)
+
+	// Use gr.Value (the actual payload sent) as the reflection marker.
+	// ApplyInitialTransformation generates a new random canary each call,
+	// so re-transforming gr.OriginalPayload would produce a different string
+	// than what was actually sent and reflected.
+	payload := gr.Value
 	if payload == "" {
 		return false, "", nil
 	}
 
 	body := options.ResponseBody
-	// If response body not provided in options, re-issue the request
-	if body == "" {
-		if err := gr.Component.SetValue(gr.Key, payload); err != nil {
+	// If response body not provided in options AND status suggests a body
+	// should exist, re-issue the request with a fresh canary.
+	if body == "" && options.ResponseStatusCode > 0 {
+		freshPayload := a.ApplyInitialTransformation(gr.OriginalPayload, options.AnalyzerParameters)
+		if freshPayload == "" {
+			return false, "", nil
+		}
+		if err := gr.Component.SetValue(gr.Key, freshPayload); err != nil {
 			return false, "", errors.Wrap(err, "could not set value in component")
 		}
 		defer func() {
-			// Restore original value
 			_ = gr.Component.SetValue(gr.Key, gr.Value)
 		}()
 
@@ -91,6 +100,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			return false, "", errors.Wrap(err, "could not read response body")
 		}
 		body = string(bodyBytes)
+		payload = freshPayload
 	}
 
 	findings := classifyReflections(body, payload)

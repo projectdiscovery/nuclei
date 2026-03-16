@@ -1019,6 +1019,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				AnalyzerParameters: request.Analyzer.Parameters,
 				ResponseBody:       bodyStr,
 				ResponseHeaders:    headersStr,
+				ResponseStatusCode: respChain.Response().StatusCode,
 			})
 			if err != nil {
 				gologger.Warning().Msgf("Could not analyze response: %v\n", err)
