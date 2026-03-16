@@ -10,7 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger
+	"github.com/projectdiscovery/nuclei/v3/pkg/output""
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
