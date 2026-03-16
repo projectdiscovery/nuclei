@@ -38,6 +38,9 @@ func New(maxHostMatch int, disabled bool) *Cache {
 // SetTotalTemplates records the total number of templates loaded.
 // Must be called after the template store is built, before scanning begins.
 func (c *Cache) SetTotalTemplates(n int) {
+	if c == nil {
+		return
+	}
 	c.totalTemplates.Store(int32(n))
 }
 
@@ -160,15 +163,22 @@ var signatures = []signature{
 }
 
 // normalizeHost strips scheme and port to produce a canonical, lowercase host key.
-// "https://Example.com:443/path" → "example.com"
-// "example.com:8080"             → "example.com"
-// "[::1]:8080"                   → "[::1]"   (bracketed IPv6)
-// "2001:db8::1"                  → "2001:db8::1"  (raw IPv6 — unchanged)
+// "https://Example.com:443/path?x=1#frag" → "example.com"
+// "example.com:8080"                      → "example.com"
+// "[::1]:8080"                            → "[::1]"   (bracketed IPv6)
+// "2001:db8::1"                           → "2001:db8::1"  (raw IPv6 — unchanged)
 func normalizeHost(input string) string {
 	input = strings.TrimSpace(input)
 	// Strip scheme.
 	if idx := indexAfterScheme(input); idx >= 0 {
 		input = input[idx:]
+	}
+	// Strip query/fragment tails first so they don't affect keying.
+	if qIdx := indexOf(input, '?'); qIdx >= 0 {
+		input = input[:qIdx]
+	}
+	if fIdx := indexOf(input, '#'); fIdx >= 0 {
+		input = input[:fIdx]
 	}
 	// Strip path.
 	if idx := indexOf(input, '/'); idx >= 0 {
@@ -212,15 +222,6 @@ func indexAfterScheme(s string) int {
 
 func indexOf(s string, b byte) int {
 	for i := 0; i < len(s); i++ {
-		if s[i] == b {
-			return i
-		}
-	}
-	return -1
-}
-
-func lastIndexOf(s string, b byte) int {
-	for i := len(s) - 1; i >= 0; i-- {
 		if s[i] == b {
 			return i
 		}

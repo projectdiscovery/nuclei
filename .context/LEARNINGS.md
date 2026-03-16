@@ -49,7 +49,7 @@ Is the default 50% percentage threshold acceptable for all template sets, or sho
 ok  	github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache	0.154s
 ```
 
-`go test ./pkg/protocols/common/honeypotcache/... -race -count=3` (environment-limited):
+`go test ./pkg/protocols/common/honeypotcache/... -race -count=1 -v` (environment-limited):
 ```bash
 go: -race requires cgo; enable cgo by setting CGO_ENABLED=1
 ```

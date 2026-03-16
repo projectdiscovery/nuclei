@@ -315,10 +315,12 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 
 			hasResults := len(results) > 0
 			if hasResults && e.executerOpts != nil && e.executerOpts.HoneypotCache != nil {
+				sigDetected := false
 				for _, result := range results {
 					// Check response content for static honeypot signatures.
 					if result.Response != "" {
 						if matched, sigName := honeypotcache.CheckSignature(result.Response); matched {
+							sigDetected = true
 							e.options.Logger.Warning().Msgf("[honeypot-sig] %s matched signature: %s", value.Input, sigName)
 							// Always mark the real template ID so density tracking records it.
 							e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
@@ -331,8 +333,11 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 						}
 					}
 				}
-				// Always mark density for this template regardless of signature.
-				e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+				// Mark density for this template only if no signature was detected.
+				// The signature path already marked the real template ID above.
+				if !sigDetected {
+					e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+				}
 
 				// If the host is now flagged, suppress results — they are honeypot bait.
 				if e.executerOpts.HoneypotCache.Check(scanCtx.Input) {
