@@ -248,7 +248,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			break
 		}
 
-		if e.executerOpts.HoneypotCache != nil {
+		if e.executerOpts.HoneypotCache != nil && target.Input != "" {
 			if e.executerOpts.HoneypotCache.Check(contextargs.NewWithMetaInput(ctx, target)) {
 				e.options.Logger.Warning().Msgf("[honeypot] skipping %s — exceeded match density threshold", target.Input)
 				skipEvent := &output.ResultEvent{

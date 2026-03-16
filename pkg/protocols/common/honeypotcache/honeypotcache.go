@@ -26,10 +26,14 @@ type Cache struct {
 }
 
 // New creates a Cache. maxHostMatch is the absolute count threshold (e.g. 30).
+// cacheSize is the maximum number of hosts to track; if <= 0, 1000 is used.
 // Pass disabled=true to create a no-op cache when -no-honeypot is set.
-func New(maxHostMatch int, disabled bool) *Cache {
+func New(maxHostMatch int, disabled bool, cacheSize int) *Cache {
+	if cacheSize <= 0 {
+		cacheSize = 1000
+	}
 	return &Cache{
-		matches:      gcache.New(1000).ARC().Build(),
+		matches:      gcache.New(cacheSize).ARC().Build(),
 		maxHostMatch: maxHostMatch,
 		disabled:     disabled,
 	}

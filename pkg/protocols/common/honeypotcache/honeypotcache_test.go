@@ -16,7 +16,7 @@ func makeCtx(input string) *contextargs.Context {
 }
 
 func TestCacheMarkAndCheck(t *testing.T) {
-	c := New(5, false)
+	c := New(5, false, 0)
 	ctx := makeCtx("http://192.168.1.1/path")
 
 	for i := 0; i < 4; i++ {
@@ -28,7 +28,7 @@ func TestCacheMarkAndCheck(t *testing.T) {
 }
 
 func TestCacheDisabled(t *testing.T) {
-	c := New(5, true)
+	c := New(5, true, 0)
 	ctx := makeCtx("192.168.1.1")
 	for i := 0; i < 100; i++ {
 		c.MarkMatch(ctx, fmt.Sprintf("t%d", i))
@@ -37,7 +37,7 @@ func TestCacheDisabled(t *testing.T) {
 }
 
 func TestCachePercentageThreshold(t *testing.T) {
-	c := New(0, false) // absolute threshold disabled
+	c := New(0, false, 0) // absolute threshold disabled
 	// Use 20 templates — the minimum required for percentage-based detection.
 	c.SetTotalTemplates(20)
 	ctx := makeCtx("10.0.0.1")
@@ -54,7 +54,7 @@ func TestCachePercentageThreshold(t *testing.T) {
 }
 
 func TestCachePercentageBelowMinTotal(t *testing.T) {
-	c := New(0, false) // absolute threshold disabled
+	c := New(0, false, 0) // absolute threshold disabled
 	// Fewer than 20 templates — percentage detection must stay silent.
 	c.SetTotalTemplates(10)
 	ctx := makeCtx("10.0.0.5")
@@ -67,7 +67,7 @@ func TestCachePercentageBelowMinTotal(t *testing.T) {
 }
 
 func TestCacheHostNormalization(t *testing.T) {
-	c := New(3, false)
+	c := New(3, false, 0)
 
 	// All variants should resolve to the same host key.
 	variants := []string{
@@ -83,7 +83,7 @@ func TestCacheHostNormalization(t *testing.T) {
 }
 
 func TestCacheUniqueTemplatesOnly(t *testing.T) {
-	c := New(3, false)
+	c := New(3, false, 0)
 	ctx := makeCtx("10.0.0.2")
 	// Same template ID repeated many times — should count as 1.
 	for i := 0; i < 100; i++ {
@@ -93,7 +93,7 @@ func TestCacheUniqueTemplatesOnly(t *testing.T) {
 }
 
 func TestCacheConcurrentMarkMatch(t *testing.T) {
-	c := New(200, false)
+	c := New(200, false, 0)
 	ctx := makeCtx("10.0.0.3")
 	var wg sync.WaitGroup
 	const goroutines = 50
@@ -147,7 +147,7 @@ func TestCacheNilSafe(t *testing.T) {
 func TestCacheAbsoluteMaxPrecedence(t *testing.T) {
 	// maxHostMatch=30 configured; 15/20 = 75% would fire the percentage rule,
 	// but the absolute limit takes precedence and 15 < 30 → must not flag.
-	c := New(30, false)
+	c := New(30, false, 0)
 	c.SetTotalTemplates(20)
 	ctx := makeCtx("10.0.0.6")
 	for i := 0; i < 15; i++ {

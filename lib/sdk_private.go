@@ -77,7 +77,7 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.hostErrCache = hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	}
 	if e.honeypotCache == nil && !e.opts.NoHoneypot {
-		e.honeypotCache = honeypotcache.New(e.opts.MaxHostMatch, false)
+		e.honeypotCache = honeypotcache.New(e.opts.MaxHostMatch, false, 1000)
 	}
 	// setup interactsh
 	if e.interactshOpts != nil {
