@@ -636,16 +636,20 @@ func (r *Runner) RunEnumeration() error {
 	// This uses a separate parser to reduce time taken as
 	// normally nuclei does a lot of compilation and stuff
 	// for templates, which we don't want for these simp
-	if r.options.TemplateList || r.options.TemplateDisplay || r.options.TagList {
+	if r.options.TagList {
+		tagsMap, err := store.LoadTemplateTags()
+		if err != nil {
+			return err
+		}
+		r.listAvailableTags(tagsMap)
+		os.Exit(0)
+	}
+
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		if err := store.LoadTemplatesOnlyMetadata(); err != nil {
 			return err
 		}
-
-		if r.options.TagList {
-			r.listAvailableStoreTags(store)
-		} else {
-			r.listAvailableStoreTemplates(store)
-		}
+		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
 
