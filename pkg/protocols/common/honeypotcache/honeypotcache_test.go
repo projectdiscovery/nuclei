@@ -161,13 +161,13 @@ func TestNormalizeHostIPv6(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"[2001:db8::1]:8080", "[2001:db8::1]"},  // bracketed IPv6 with port
-		{"[::1]:443", "[::1]"},                    // bracketed loopback with port
-		{"[::1]", "[::1]"},                        // bracketed, no port
-		{"2001:db8::1", "2001:db8::1"},            // raw IPv6 — must not be mangled
-		{"::1", "::1"},                            // raw loopback — must not be mangled
-		{"example.com:8080", "example.com"},       // plain host:port
-		{"example.com", "example.com"},            // plain host, no port
+		{"[2001:db8::1]:8080", "[2001:db8::1]"}, // bracketed IPv6 with port
+		{"[::1]:443", "[::1]"},                  // bracketed loopback with port
+		{"[::1]", "[::1]"},                      // bracketed, no port
+		{"2001:db8::1", "2001:db8::1"},          // raw IPv6 — must not be mangled
+		{"::1", "::1"},                          // raw loopback — must not be mangled
+		{"example.com:8080", "example.com"},     // plain host:port
+		{"example.com", "example.com"},          // plain host, no port
 	}
 	for _, tc := range cases {
 		got := normalizeHost(tc.input)
