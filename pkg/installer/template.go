@@ -24,6 +24,15 @@ import (
 	updateutils "github.com/projectdiscovery/utils/update"
 )
 
+// getGitHubToken returns the GitHub token from environment variable
+// It checks both GITHUB_TOKEN and GH_TOKEN for compatibility
+func getGitHubToken() string {
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		return token
+	}
+	return os.Getenv("GH_TOKEN")
+}
+
 const (
 	checkSumFilePerm = 0644
 )
@@ -81,6 +90,11 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 	}
 	gologger.Info().Msgf("nuclei-templates are not installed, installing...")
 	if err := t.installTemplatesAt(config.DefaultConfig.TemplatesDirectory); err != nil {
+		// Check if it's a rate limit error and provide helpful message
+		if strings.Contains(err.Error(), "rate limit") || strings.Contains(err.Error(), "403") {
+			gologger.Warning().Msgf("GitHub API rate limit exceeded. To avoid rate limits, set the GITHUB_TOKEN environment variable with a GitHub personal access token.")
+			gologger.Info().Msgf("You can create a token at: https://github.com/settings/tokens")
+		}
 		return errkit.Wrapf(err, "failed to install templates at %s", config.DefaultConfig.TemplatesDirectory)
 	}
 	if t.CustomTemplates != nil {
@@ -149,6 +163,13 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 		gologger.Info().Msgf("Skipping update of public nuclei-templates")
 		return nil
 	}
+
+	// Warn about rate limiting if no GitHub token is set
+	if getGitHubToken() == "" {
+		gologger.Verbose().Msgf("No GITHUB_TOKEN set. GitHub API requests may be rate limited. " +
+			"To avoid rate limits, set GITHUB_TOKEN environment variable with a GitHub personal access token.")
+	}
+
 	// firstly, read checksums from .checksum file these are used to generate stats
 	oldchecksums, err := t.getChecksumFromDir(dir)
 	if err != nil {
@@ -158,6 +179,11 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 
 	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
 	if err != nil {
+		// Check if it's a rate limit error and provide helpful message
+		if strings.Contains(err.Error(), "rate limit") || strings.Contains(err.Error(), "403") {
+			gologger.Warning().Msgf("GitHub API rate limit exceeded. To avoid rate limits, set the GITHUB_TOKEN environment variable with a GitHub personal access token.")
+			gologger.Info().Msgf("You can create a token at: https://github.com/settings/tokens")
+		}
 		return errkit.Wrapf(err, "failed to install templates at %s", dir)
 	}
 
