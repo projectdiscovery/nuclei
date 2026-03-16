@@ -423,6 +423,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
 		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
+		flagSet.IntVarP(&options.MaxHostMatch, "max-host-match", "mhm", 30, "max unique template matches on a host before flagging as honeypot (0 = count-only, use % threshold)"),
+		flagSet.BoolVarP(&options.NoHoneypot, "no-honeypot", "nhp", false, "disable honeypot detection"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
 		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),

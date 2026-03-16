@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -20,6 +22,8 @@ import (
 
 // executeAllSelfContained executes all self contained templates that do not use `target`
 func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
+	// Self-contained templates carry their own target input and do not scan external hosts.
+	// Honeypot detection is host-keyed and therefore not applicable here.
 	for _, v := range alltemplates {
 		sg.Add(1)
 		go func(template *templates.Template) {
@@ -168,6 +172,29 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			return true
 		}
 
+		// Skip honeypot hosts.
+		if e.executerOpts.HoneypotCache != nil {
+			if e.executerOpts.HoneypotCache.Check(contextargs.NewWithMetaInput(ctx, scannedValue)) {
+				e.options.Logger.Warning().Msgf("[honeypot] skipping %s — exceeded match density threshold", scannedValue.Input)
+				skipEvent := &output.ResultEvent{
+					TemplateID:    template.ID,
+					TemplatePath:  template.Path,
+					Info:          template.Info,
+					Type:          e.executerOpts.ProtocolType.String(),
+					Host:          scannedValue.Input,
+					MatcherStatus: false,
+					Error:         "host was skipped as it was identified as a honeypot",
+					Timestamp:     time.Now(),
+				}
+				if e.Callback != nil {
+					e.Callback(skipEvent)
+				} else if e.executerOpts.Output != nil {
+					_ = e.executerOpts.Output.Write(skipEvent)
+				}
+				return true
+			}
+		}
+
 		tasks <- task{index: index, skip: skip, value: scannedValue}
 		index++
 		return true
@@ -221,6 +248,28 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			break
 		}
 
+		if e.executerOpts.HoneypotCache != nil {
+			if e.executerOpts.HoneypotCache.Check(contextargs.NewWithMetaInput(ctx, target)) {
+				e.options.Logger.Warning().Msgf("[honeypot] skipping %s — exceeded match density threshold", target.Input)
+				skipEvent := &output.ResultEvent{
+					TemplateID:    tpl.ID,
+					TemplatePath:  tpl.Path,
+					Info:          tpl.Info,
+					Type:          e.executerOpts.ProtocolType.String(),
+					Host:          target.Input,
+					MatcherStatus: false,
+					Error:         "host was skipped as it was identified as a honeypot",
+					Timestamp:     time.Now(),
+				}
+				if e.Callback != nil {
+					e.Callback(skipEvent)
+				} else if e.executerOpts.Output != nil {
+					_ = e.executerOpts.Output.Write(skipEvent)
+				}
+				break
+			}
+		}
+
 		// resize check point - nop if there are no changes
 		wp.RefreshWithConfig(e.GetWorkPoolConfig())
 
@@ -253,16 +302,58 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 	case types.WorkflowProtocol:
 		return e.executeWorkflow(scanCtx, template.CompiledWorkflow), nil
 	default:
-		if e.Callback != nil {
+		// Use ExecuteWithResults when honeypot cache is active so that response
+		// content is available for signature-based detection on all execution paths.
+		wantsResults := e.Callback != nil ||
+			(e.executerOpts != nil && e.executerOpts.HoneypotCache != nil)
+
+		if wantsResults {
 			results, err := template.Executer.ExecuteWithResults(scanCtx)
 			if err != nil {
 				return false, err
 			}
-			for _, result := range results {
-				e.Callback(result)
+
+			hasResults := len(results) > 0
+			if hasResults && e.executerOpts != nil && e.executerOpts.HoneypotCache != nil {
+				sigDetected := false
+				for _, result := range results {
+					// Check response content for static honeypot signatures.
+					if result.Response != "" {
+						if matched, sigName := honeypotcache.CheckSignature(result.Response); matched {
+							e.options.Logger.Warning().Msgf("[honeypot-sig] %s matched signature: %s", value.Input, sigName)
+							max := 1
+							if e.executerOpts.Options != nil && e.executerOpts.Options.MaxHostMatch > 0 {
+								max = e.executerOpts.Options.MaxHostMatch + 1
+							}
+							for i := 0; i < max; i++ {
+								e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, fmt.Sprintf("__sig_%d_%d", i, result.Timestamp.UnixNano()))
+							}
+							sigDetected = true
+						}
+					}
+				}
+				// Signature marks already account for this result; avoid double-counting.
+				if !sigDetected {
+					e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+				}
 			}
-			return len(results) > 0, nil
+
+			if e.Callback != nil {
+				for _, result := range results {
+					e.Callback(result)
+				}
+			} else if e.executerOpts != nil && e.executerOpts.Output != nil {
+				for _, result := range results {
+					_ = e.executerOpts.Output.Write(result)
+				}
+			}
+			return hasResults, nil
 		}
-		return template.Executer.Execute(scanCtx)
+
+		hasResults, err := template.Executer.Execute(scanCtx)
+		if err != nil {
+			return false, err
+		}
+		return hasResults, nil
 	}
 }

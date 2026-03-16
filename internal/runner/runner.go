@@ -51,6 +51,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -89,6 +90,7 @@ type Runner struct {
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
 	hostErrors         hosterrorscache.CacheInterface
+	honeypotCache      *honeypotcache.Cache
 	resumeCfg          *types.ResumeCfg
 	pprofServer        *pprofutil.PprofServer
 	pdcpUploadErrMsg   string
@@ -612,6 +614,12 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.HostErrorsCache = cache
 	}
 
+	if !r.options.NoHoneypot {
+		hpCache := honeypotcache.New(r.options.MaxHostMatch, false)
+		r.honeypotCache = hpCache
+		executorOpts.HoneypotCache = hpCache
+	}
+
 	executorEngine := core.New(r.options)
 	executorEngine.SetExecuterOptions(executorOpts)
 
@@ -666,6 +674,9 @@ func (r *Runner) RunEnumeration() error {
 	}
 	if err := store.Load(); err != nil {
 		return err
+	}
+	if r.honeypotCache != nil {
+		r.honeypotCache.SetTotalTemplates(len(store.Templates()))
 	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)

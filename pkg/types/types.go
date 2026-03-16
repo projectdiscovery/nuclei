@@ -133,6 +133,12 @@ type Options struct {
 	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
+	// MaxHostMatch is the maximum number of unique template matches on a single
+	// host before it is flagged as a honeypot and skipped. 0 disables the
+	// absolute threshold (percentage-based detection still applies).
+	MaxHostMatch int
+	// NoHoneypot disables automatic honeypot detection entirely.
+	NoHoneypot bool
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
@@ -525,6 +531,8 @@ func (options *Options) Copy() *Options {
 		MaxHostError:                   options.MaxHostError,
 		TrackError:                     options.TrackError,
 		NoHostErrors:                   options.NoHostErrors,
+		MaxHostMatch:                   options.MaxHostMatch,
+		NoHoneypot:                     options.NoHoneypot,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
 		HeadlessBulkSize:               options.HeadlessBulkSize,

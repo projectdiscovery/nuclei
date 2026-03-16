@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -98,6 +99,9 @@ type ExecutorOptions struct {
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HoneypotCache tracks per-host match density for honeypot detection.
+	// Nil when honeypot detection is disabled.
+	HoneypotCache *honeypotcache.Cache
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -273,44 +277,45 @@ func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateT
 // Copy returns a copy of the executeroptions structure
 func (e *ExecutorOptions) Copy() *ExecutorOptions {
 	copy := &ExecutorOptions{
-		TemplateID:          e.TemplateID,
-		TemplatePath:        e.TemplatePath,
-		TemplateInfo:        e.TemplateInfo,
-		TemplateVerifier:    e.TemplateVerifier,
+		TemplateID:                   e.TemplateID,
+		TemplatePath:                 e.TemplatePath,
+		TemplateInfo:                 e.TemplateInfo,
+		TemplateVerifier:             e.TemplateVerifier,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
-		RawTemplate:         e.RawTemplate,
-		Output:              e.Output,
-		Options:             e.Options,
-		IssuesClient:        e.IssuesClient,
-		Progress:            e.Progress,
-		RateLimiter:         e.RateLimiter,
-		Catalog:             e.Catalog,
-		ProjectFile:         e.ProjectFile,
-		Browser:             e.Browser,
-		Interactsh:          e.Interactsh,
-		HostErrorsCache:     e.HostErrorsCache,
-		StopAtFirstMatch:    e.StopAtFirstMatch,
-		Variables:           e.Variables,
-		Constants:           e.Constants,
-		ExcludeMatchers:     e.ExcludeMatchers,
-		InputHelper:         e.InputHelper,
-		FuzzParamsFrequency: e.FuzzParamsFrequency,
-		FuzzStatsDB:         e.FuzzStatsDB,
-		Operators:           e.Operators,
-		DoNotCache:          e.DoNotCache,
-		Colorizer:           e.Colorizer,
-		WorkflowLoader:      e.WorkflowLoader,
-		ResumeCfg:           e.ResumeCfg,
-		ProtocolType:        e.ProtocolType,
-		Flow:                e.Flow,
-		IsMultiProtocol:     e.IsMultiProtocol,
-		JsCompiler:          e.JsCompiler,
-		AuthProvider:        e.AuthProvider,
-		TemporaryDirectory:  e.TemporaryDirectory,
-		Parser:              e.Parser,
-		ExportReqURLPattern: e.ExportReqURLPattern,
-		GlobalMatchers:      e.GlobalMatchers,
-		Logger:              e.Logger,
+		RawTemplate:                  e.RawTemplate,
+		Output:                       e.Output,
+		Options:                      e.Options,
+		IssuesClient:                 e.IssuesClient,
+		Progress:                     e.Progress,
+		RateLimiter:                  e.RateLimiter,
+		Catalog:                      e.Catalog,
+		ProjectFile:                  e.ProjectFile,
+		Browser:                      e.Browser,
+		Interactsh:                   e.Interactsh,
+		HostErrorsCache:              e.HostErrorsCache,
+		HoneypotCache:                e.HoneypotCache,
+		StopAtFirstMatch:             e.StopAtFirstMatch,
+		Variables:                    e.Variables,
+		Constants:                    e.Constants,
+		ExcludeMatchers:              e.ExcludeMatchers,
+		InputHelper:                  e.InputHelper,
+		FuzzParamsFrequency:          e.FuzzParamsFrequency,
+		FuzzStatsDB:                  e.FuzzStatsDB,
+		Operators:                    e.Operators,
+		DoNotCache:                   e.DoNotCache,
+		Colorizer:                    e.Colorizer,
+		WorkflowLoader:               e.WorkflowLoader,
+		ResumeCfg:                    e.ResumeCfg,
+		ProtocolType:                 e.ProtocolType,
+		Flow:                         e.Flow,
+		IsMultiProtocol:              e.IsMultiProtocol,
+		JsCompiler:                   e.JsCompiler,
+		AuthProvider:                 e.AuthProvider,
+		TemporaryDirectory:           e.TemporaryDirectory,
+		Parser:                       e.Parser,
+		ExportReqURLPattern:          e.ExportReqURLPattern,
+		GlobalMatchers:               e.GlobalMatchers,
+		Logger:                       e.Logger,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
@@ -470,6 +475,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
 	e.HostErrorsCache = n.HostErrorsCache
+	e.HoneypotCache = n.HoneypotCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB
