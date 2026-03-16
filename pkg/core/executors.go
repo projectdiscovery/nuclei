@@ -315,26 +315,28 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 
 			hasResults := len(results) > 0
 			if hasResults && e.executerOpts != nil && e.executerOpts.HoneypotCache != nil {
-				sigDetected := false
 				for _, result := range results {
 					// Check response content for static honeypot signatures.
 					if result.Response != "" {
 						if matched, sigName := honeypotcache.CheckSignature(result.Response); matched {
 							e.options.Logger.Warning().Msgf("[honeypot-sig] %s matched signature: %s", value.Input, sigName)
-							max := 1
+							// Always mark the real template ID so density tracking records it.
+							e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+							// Inject synthetic marks to push above the absolute threshold when set.
 							if e.executerOpts.Options != nil && e.executerOpts.Options.MaxHostMatch > 0 {
-								max = e.executerOpts.Options.MaxHostMatch + 1
+								for i := 0; i < e.executerOpts.Options.MaxHostMatch; i++ {
+									e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, fmt.Sprintf("__sig_%d_%d", i, result.Timestamp.UnixNano()))
+								}
 							}
-							for i := 0; i < max; i++ {
-								e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, fmt.Sprintf("__sig_%d_%d", i, result.Timestamp.UnixNano()))
-							}
-							sigDetected = true
 						}
 					}
 				}
-				// Signature marks already account for this result; avoid double-counting.
-				if !sigDetected {
-					e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+				// Always mark density for this template regardless of signature.
+				e.executerOpts.HoneypotCache.MarkMatch(scanCtx.Input, template.ID)
+
+				// If the host is now flagged, suppress results — they are honeypot bait.
+				if e.executerOpts.HoneypotCache.Check(scanCtx.Input) {
+					return false, nil
 				}
 			}
 

@@ -143,3 +143,34 @@ func TestCacheNilSafe(t *testing.T) {
 	c.MarkMatch(ctx, "t1")
 	require.False(t, c.Check(ctx))
 }
+
+func TestCacheAbsoluteMaxPrecedence(t *testing.T) {
+	// maxHostMatch=30 configured; 15/20 = 75% would fire the percentage rule,
+	// but the absolute limit takes precedence and 15 < 30 → must not flag.
+	c := New(30, false)
+	c.SetTotalTemplates(20)
+	ctx := makeCtx("10.0.0.6")
+	for i := 0; i < 15; i++ {
+		c.MarkMatch(ctx, fmt.Sprintf("t%d", i))
+	}
+	require.False(t, c.Check(ctx), "percentage rule must not fire when absolute max is configured and not reached")
+}
+
+func TestNormalizeHostIPv6(t *testing.T) {
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"[2001:db8::1]:8080", "[2001:db8::1]"},  // bracketed IPv6 with port
+		{"[::1]:443", "[::1]"},                    // bracketed loopback with port
+		{"[::1]", "[::1]"},                        // bracketed, no port
+		{"2001:db8::1", "2001:db8::1"},            // raw IPv6 — must not be mangled
+		{"::1", "::1"},                            // raw loopback — must not be mangled
+		{"example.com:8080", "example.com"},       // plain host:port
+		{"example.com", "example.com"},            // plain host, no port
+	}
+	for _, tc := range cases {
+		got := normalizeHost(tc.input)
+		require.Equal(t, tc.want, got, "input: %q", tc.input)
+	}
+}

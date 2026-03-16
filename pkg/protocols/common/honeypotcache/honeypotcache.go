@@ -83,12 +83,12 @@ func (c *Cache) Check(ctx *contextargs.Context) bool {
 	count := len(item.uniqueMatches)
 	item.mu.Unlock()
 
-	// Absolute threshold check.
-	if c.maxHostMatch > 0 && count >= c.maxHostMatch {
-		return true
+	// Absolute threshold — always takes precedence when configured.
+	if c.maxHostMatch > 0 {
+		return count >= c.maxHostMatch
 	}
 
-	// Percentage threshold check (>= 50% of all templates matched → likely honeypot).
+	// Percentage threshold — only used when no absolute limit is set.
 	// Requires at least 20 templates to avoid false-positives on small targeted scans
 	// where a few genuine vulnerabilities could accidentally hit the 50% mark.
 	const minTotalForPct = 20
@@ -161,6 +161,8 @@ var signatures = []signature{
 // normalizeHost strips scheme and port to produce a canonical host key.
 // "https://example.com:443/path" → "example.com"
 // "example.com:8080"            → "example.com"
+// "[::1]:8080"                  → "[::1]"   (bracketed IPv6)
+// "2001:db8::1"                 → "2001:db8::1"  (raw IPv6 — unchanged)
 func normalizeHost(input string) string {
 	// Strip scheme.
 	if idx := indexAfterScheme(input); idx >= 0 {
@@ -170,11 +172,31 @@ func normalizeHost(input string) string {
 	if idx := indexOf(input, '/'); idx >= 0 {
 		input = input[:idx]
 	}
-	// Strip port.
-	if idx := lastIndexOf(input, ':'); idx >= 0 {
-		input = input[:idx]
+	// Strip port — but only when safe to do so.
+	if len(input) > 0 && input[0] == '[' {
+		// Bracketed IPv6: "[::1]:8080" → keep up to and including ']'.
+		if close := indexOf(input, ']'); close >= 0 {
+			input = input[:close+1]
+		}
+	} else if countByte(input, ':') == 1 {
+		// Plain "host:port" with exactly one colon — strip the port.
+		if idx := indexOf(input, ':'); idx >= 0 {
+			input = input[:idx]
+		}
 	}
+	// Raw IPv6 (multiple colons, no brackets) — leave as-is.
 	return input
+}
+
+// countByte returns the number of occurrences of b in s.
+func countByte(s string, b byte) int {
+	n := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == b {
+			n++
+		}
+	}
+	return n
 }
 
 func indexAfterScheme(s string) int {
