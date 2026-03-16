@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -86,6 +87,7 @@ type NucleiEngine struct {
 	opts           *types.Options
 	interactshOpts *interactsh.Options
 	hostErrCache   *hosterrorscache.Cache
+	honeypotCache  *honeypotcache.Cache
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client

@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -74,6 +75,9 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	}
 	if e.hostErrCache == nil && e.opts.ShouldUseHostError() {
 		e.hostErrCache = hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
+	}
+	if e.honeypotCache == nil && !e.opts.NoHoneypot {
+		e.honeypotCache = honeypotcache.New(e.opts.MaxHostMatch, false)
 	}
 	// setup interactsh
 	if e.interactshOpts != nil {
@@ -206,6 +210,9 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 	if e.opts.ShouldUseHostError() && e.hostErrCache != nil {
 		e.executerOpts.HostErrorsCache = e.hostErrCache
+	}
+	if e.honeypotCache != nil {
+		e.executerOpts.HoneypotCache = e.honeypotCache
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(e.opts, e.catalog, e.executerOpts)
