@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"io"
 	"io/fs"
@@ -41,7 +41,7 @@ func main() {
 		if err != nil {
 			return nil
 		}
-		h := sha1.New()
+		h := sha256.New()
 		_, _ = io.Copy(h, bytes.NewReader(data))
 		hash := hex.EncodeToString(h.Sum(nil))
 
