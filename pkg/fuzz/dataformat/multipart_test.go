@@ -1,6 +1,7 @@
 package dataformat
 
 import (
+	"sync"
 	"testing"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -367,4 +368,24 @@ func TestMultiPartForm_GetFileMetadataWithNilMap(t *testing.T) {
 	// GetFileMetadata should handle nil filesMetadata gracefully
 	_, exists := form.GetFileMetadata("anything")
 	assert.False(t, exists)
+}
+
+// TestMultiPartFormConcurrentDecode verifies that Get("multipart/form-data")
+// returns independent instances so concurrent goroutines do not trigger a
+// fatal "concurrent map writes" panic (regression test for #7028).
+func TestMultiPartFormConcurrentDecode(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			format := Get(MultiPartFormDataFormat)
+			kv := mapsutil.NewOrderedMap[string, any]()
+			kv.Set("key", "value")
+			// Encode writes to the instance's filesMetadata; running this
+			// concurrently across separate instances must not race.
+			_, _ = format.Encode(KVOrderedMap(&kv))
+		}()
+	}
+	wg.Wait()
 }

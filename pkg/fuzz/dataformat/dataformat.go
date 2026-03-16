@@ -38,8 +38,14 @@ const (
 	MultiPartFormDataFormat = "multipart/form-data"
 )
 
-// Get returns the dataformat by name
+// Get returns the dataformat by name.
+// MultiPartForm holds mutable state (boundary, filesMetadata), so a fresh
+// instance is returned every call to avoid concurrent map writes when
+// multiple goroutines scan different targets simultaneously (see #7028).
 func Get(name string) DataFormat {
+	if name == MultiPartFormDataFormat {
+		return NewMultiPartForm()
+	}
 	return dataformats[name]
 }
 
