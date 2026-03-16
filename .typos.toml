@@ -1,0 +1,12 @@
+[default.extend-words]
+# Add any false positives or intentional strings here
+# Example:
+# "iff" = "iff"  # mathematical abbreviation for "if and only if"
+
+[files]
+# Exclude files/directories that shouldn't be checked
+extend-exclude = [
+    "*.sum",
+    "go.sum",
+    "vendor/",
+]
