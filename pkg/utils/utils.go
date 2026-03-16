@@ -70,7 +70,7 @@ func MapHash[K constraints.Ordered, V any](m map[K]V) uint64 {
 	keys := mapsutil.GetSortedKeys(m)
 	var sb strings.Builder
 	for _, k := range keys {
-		sb.WriteString(fmt.Sprintf("%v:%v\n", k, m[k]))
+		fmt.Fprintf(&sb, "%v:%v\n", k, m[k])
 	}
 	return xxhash.Sum64([]byte(sb.String()))
 }

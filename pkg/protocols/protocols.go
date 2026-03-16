@@ -147,6 +147,8 @@ type ExecutorOptions struct {
 	Logger *gologger.Logger
 	// CustomFastdialer is a fastdialer dialer instance
 	CustomFastdialer *fastdialer.Dialer
+	// ClusterMappings stores cluster ID to template IDs mapping during execution
+	ClusterMappings *templateTypes.ClusterMappingsMap
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
@@ -310,6 +312,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		GlobalMatchers:      e.GlobalMatchers,
 		Logger:              e.Logger,
 	}
+	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
 	return copy
 }
@@ -482,4 +485,5 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.GlobalMatchers = n.GlobalMatchers
 	e.Logger = n.Logger
 	e.CustomFastdialer = n.CustomFastdialer
+	e.ClusterMappings = n.ClusterMappings.Copy()
 }

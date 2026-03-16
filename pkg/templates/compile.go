@@ -409,8 +409,8 @@ mainLoop:
 	return ErrIncompatibleWithOfflineMatching
 }
 
-// ParseTemplateFromReader reads the template from reader
-// returns the parsed template
+// ParseTemplateFromReader parses a template from an [io.Reader] with optional
+// preprocessing.
 func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, error) {
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -444,16 +444,29 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	}
 
 	// if preprocessor is required / exists in this template
-	// first unmarshal it and check if its verified
-	// persist verified status value and then
-	// expand all preprocessor and reparse template
+	// expand all preprocessors, parse once, then verify against original data
+	generatedConstants := map[string]interface{}{}
 
-	// === signature verification before preprocessors ===
-	template, err := parseTemplate(data, options)
+	// ==== execute preprocessors ======
+	processedData := data
+	for _, v := range allPreprocessors {
+		var replaced map[string]interface{}
+		processedData, replaced = v.ProcessNReturnData(processedData)
+		// preprocess kind of act like a constant and are generated while loading
+		// and stay constant for the template lifecycle
+		generatedConstants = generators.MergeMaps(generatedConstants, replaced)
+	}
+
+	template, err := parseTemplateNoVerify(processedData, options)
 	if err != nil {
 		return nil, err
 	}
-	isVerified := template.Verified
+
+	// add generated constants to constants map and executer options
+	template.Constants = generators.MergeMaps(template.Constants, generatedConstants)
+	template.Options.Constants = template.Constants
+	applyTemplateVerification(template, data)
+
 	if !template.Verified && len(template.Workflows) == 0 {
 		// workflows are not signed by default
 		if config.DefaultConfig.LogAllEvents {
@@ -461,28 +474,22 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		}
 	}
 
-	generatedConstants := map[string]interface{}{}
-	// ==== execute preprocessors ======
-	for _, v := range allPreprocessors {
-		var replaced map[string]interface{}
-		data, replaced = v.ProcessNReturnData(data)
-		// preprocess kind of act like a constant and are generated while loading
-		// and stay constant for the template lifecycle
-		generatedConstants = generators.MergeMaps(generatedConstants, replaced)
-	}
-	reParsed, err := parseTemplate(data, options)
+	return template, nil
+}
+
+// parseTemplate parses the template and applies verification.
+func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
+	template, err := parseTemplateNoVerify(data, srcOptions)
 	if err != nil {
 		return nil, err
 	}
-	// add generated constants to constants map and executer options
-	reParsed.Constants = generators.MergeMaps(reParsed.Constants, generatedConstants)
-	reParsed.Options.Constants = reParsed.Constants
-	reParsed.Verified = isVerified
-	return reParsed, nil
+	applyTemplateVerification(template, data)
+
+	return template, nil
 }
 
-// this method does not include any kind of preprocessing
-func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
+// parseTemplateNoVerify parses the template without applying any verification.
+func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
 	// Create a copy of the options specifically for this template
 	options := srcOptions.Copy()
 
@@ -578,6 +585,16 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	}
 	template.parseSelfContainedRequests()
 
+	return template, nil
+}
+
+// applyTemplateVerification verifies a parsed template against the provided data.
+func applyTemplateVerification(template *Template, data []byte) {
+	if template == nil || template.Options == nil {
+		return
+	}
+
+	options := template.Options
 	// check if the template is verified
 	// only valid templates can be verified or signed
 	if options.TemplateVerificationCallback != nil && options.TemplatePath != "" {
@@ -589,7 +606,7 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 			if !(template.Verified && template.TemplateVerifier == "projectdiscovery/nuclei-templates") {
 				template.Options.RawTemplate = data
 			}
-			return template, nil
+			return
 		}
 	}
 
@@ -610,8 +627,6 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
 		template.Options.RawTemplate = data
 	}
-
-	return template, nil
 }
 
 // isCachedTemplateValid validates that a cached template is still usable after

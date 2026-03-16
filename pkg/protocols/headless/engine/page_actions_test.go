@@ -41,7 +41,10 @@ func TestActionNavigate(t *testing.T) {
 
 	testHeadlessSimpleResponse(t, response, actions, 60*time.Second, func(page *Page, err error, out ActionData) {
 		require.Nilf(t, err, "could not run page actions")
-		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
+		require.NotNil(t, page, "page should not be nil")
+		info, infoErr := page.Page().Info()
+		require.NoError(t, infoErr, "could not fetch page info")
+		require.Equal(t, "Nuclei Test Page", info.Title, "could not navigate correctly")
 	})
 }
 

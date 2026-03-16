@@ -636,16 +636,20 @@ func (r *Runner) RunEnumeration() error {
 	// This uses a separate parser to reduce time taken as
 	// normally nuclei does a lot of compilation and stuff
 	// for templates, which we don't want for these simp
-	if r.options.TemplateList || r.options.TemplateDisplay || r.options.TagList {
+	if r.options.TagList {
+		tagsMap, err := store.LoadTemplateTags()
+		if err != nil {
+			return err
+		}
+		r.listAvailableTags(tagsMap)
+		os.Exit(0)
+	}
+
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		if err := store.LoadTemplatesOnlyMetadata(); err != nil {
 			return err
 		}
-
-		if r.options.TagList {
-			r.listAvailableStoreTags(store)
-		} else {
-			r.listAvailableStoreTemplates(store)
-		}
+		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
 
@@ -660,7 +664,9 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return nil // exit
 	}
-	store.Load()
+	if err := store.Load(); err != nil {
+		return err
+	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 

@@ -41,7 +41,12 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	var finalTemplates []*templates.Template
 	clusterCount := 0
 	if !noCluster {
-		finalTemplates, clusterCount = templates.ClusterTemplates(templatesList, e.executerOpts)
+		var clusterMappings map[string][]string
+		finalTemplates, clusterCount, clusterMappings = templates.ClusterTemplates(templatesList, e.executerOpts)
+		// Store cluster mappings in executerOpts for SDK access (thread-safe)
+		if clusterMappings != nil {
+			e.executerOpts.ClusterMappings = types.NewClusterMappingsMap(clusterMappings)
+		}
 	} else {
 		finalTemplates = templatesList
 	}

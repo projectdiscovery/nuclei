@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
@@ -222,18 +223,29 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
 
-	//TODO: this is a hacky way to handle the case where the callback is not called and matcher-status is true.
-	// This is a workaround and needs to be refactored.
-	// Check if callback was never called and matcher-status is true
+	// Fallback: if callback was never called and matcher-status is enabled,
+	// create a synthetic failure event. This handles edge cases where protocol
+	// implementations return early without invoking the callback (e.g., context
+	// cancellation, early validation errors). Most error paths now invoke the
+	// callback directly, but this remains as a safety net.
+	// Note: ClusterExecuter has equivalent fallback logic in pkg/templates/cluster.go
 	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
+		// Parse URL fields from the input
+		fields := protocolUtils.GetJsonFieldsFromURL(ctx.Input.MetaInput.Input)
 		fakeEvent := &output.InternalWrappedEvent{
 			Results: []*output.ResultEvent{
 				{
-					TemplateID: e.options.TemplateID,
-					Info:       e.options.TemplateInfo,
-					Type:       e.getTemplateType(),
-					Host:       ctx.Input.MetaInput.Input,
-					Error:      getErrorCause(ctx.GenerateErrorMessage()),
+					TemplateID:   e.options.TemplateID,
+					TemplatePath: e.options.TemplatePath,
+					Info:         e.options.TemplateInfo,
+					Type:         e.getTemplateType(),
+					Host:         fields.Host,
+					Port:         fields.Port,
+					Scheme:       fields.Scheme,
+					URL:          fields.URL,
+					Path:         fields.Path,
+					Timestamp:    time.Now(),
+					Error:        getErrorCause(ctx.GenerateErrorMessage()),
 				},
 			},
 			OperatorsResult: &operators.Result{
