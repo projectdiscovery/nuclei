@@ -134,3 +134,24 @@ func (v SliceOrMapSlice) MarshalYAML() (any, error) {
 	}
 	return v.Value, nil
 }
+
+// Len returns the length of the SliceOrMapSlice
+func (v SliceOrMapSlice) Len() int {
+	if v.KV != nil {
+		return v.KV.Len()
+	}
+	return len(v.Value)
+}
+
+// IsEmpty checks if the SliceOrMapSlice is empty
+func (v SliceOrMapSlice) IsEmpty() bool {
+	return v.Len() == 0
+}
+
+// Validate validates the SliceOrMapSlice
+func (v SliceOrMapSlice) Validate() error {
+	if v.Value == nil && v.KV == nil {
+		return fmt.Errorf("SliceOrMapSlice must have either Value or KV set")
+	}
+	return nil
+}
