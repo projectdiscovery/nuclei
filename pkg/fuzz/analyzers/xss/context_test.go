@@ -494,3 +494,217 @@ func BenchmarkDetectReflections_LargeBody(b *testing.B) {
 		DetectReflections(body, testMarker)
 	}
 }
+
+// Test Fix #1: javascript: URIs should be classified as ContextScript
+func TestDetectReflections_JavaScriptURI_Href(t *testing.T) {
+	body := `<html><body><a href="javascript:nucleiXSScanary">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in javascript: URI")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "href" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI in href, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_JavaScriptURI_Src(t *testing.T) {
+	body := `<html><body><iframe src="javascript:nucleiXSScanary"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in javascript: URI")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "src" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI in src, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_JavaScriptURI_CaseInsensitive(t *testing.T) {
+	body := `<html><body><a href="JaVaScRiPt:nucleiXSScanary">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in case-insensitive javascript: URI")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "href" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for case-insensitive javascript: URI, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_JavaScriptURI_WithWhitespace(t *testing.T) {
+	body := `<html><body><a href="  javascript:nucleiXSScanary">click</a></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in javascript: URI with whitespace")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript && r.AttrName == "href" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for javascript: URI with whitespace, got %v", reflections)
+	}
+}
+
+// Test Fix #2: JSON script blocks should NOT be treated as executable
+func TestDetectReflections_JSONScript_ApplicationJSON(t *testing.T) {
+	body := `<html><body><script type="application/json">{"data": "nucleiXSScanary"}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in JSON script block")
+	}
+	// Should NOT be classified as ContextScript or ContextScriptString
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("JSON script block should not be classified as executable script context, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_JSONScript_LdJSON(t *testing.T) {
+	body := `<html><body><script type="application/ld+json">{"@context": "nucleiXSScanary"}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in LD+JSON script block")
+	}
+	// Should NOT be classified as ContextScript or ContextScriptString
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("LD+JSON script block should not be classified as executable script context, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_JSONScript_Importmap(t *testing.T) {
+	body := `<html><body><script type="importmap">{"imports": {"nucleiXSScanary": "/module.js"}}</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in importmap script block")
+	}
+	// Should NOT be classified as ContextScript or ContextScriptString
+	for _, r := range reflections {
+		if r.Context == ContextScript || r.Context == ContextScriptString {
+			t.Fatalf("Importmap script block should not be classified as executable script context, got %s", r.Context)
+		}
+	}
+}
+
+func TestDetectReflections_ExecutableScript_NoType(t *testing.T) {
+	// Script with no type attribute should still be treated as executable
+	body := `<html><body><script>var x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in executable script")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for executable script without type, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_ExecutableScript_TextJavaScript(t *testing.T) {
+	// Script with type="text/javascript" should be treated as executable
+	body := `<html><body><script type="text/javascript">var x = nucleiXSScanary;</script></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected reflection in text/javascript script")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextScript {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextScript for text/javascript script, got %v", reflections)
+	}
+}
+
+// Test Fix #3: Reflection detection should be case-insensitive
+func TestDetectReflections_CaseInsensitive_UpperCase(t *testing.T) {
+	body := `<html><body><p>NUCLEIXSSCANARY</p></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected case-insensitive reflection detection for uppercase")
+	}
+	if reflections[0].Context != ContextHTMLText {
+		t.Fatalf("expected ContextHTMLText, got %s", reflections[0].Context)
+	}
+}
+
+func TestDetectReflections_CaseInsensitive_MixedCase(t *testing.T) {
+	body := `<html><body><p>NuClEiXsScAnArY</p></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected case-insensitive reflection detection for mixed case")
+	}
+	if reflections[0].Context != ContextHTMLText {
+		t.Fatalf("expected ContextHTMLText, got %s", reflections[0].Context)
+	}
+}
+
+// Test Fix #4: srcdoc attributes should be treated as HTML injection context
+func TestDetectReflections_Srcdoc_HTMLInjection(t *testing.T) {
+	body := `<html><body><iframe srcdoc="<p>nucleiXSScanary</p>"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in srcdoc attribute")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextHTMLText && r.AttrName == "srcdoc" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextHTMLText for srcdoc attribute, got %v", reflections)
+	}
+}
+
+func TestDetectReflections_Srcdoc_ComplexHTML(t *testing.T) {
+	body := `<html><body><iframe srcdoc="<html><body><script>alert('nucleiXSScanary')</script></body></html>"></iframe></body></html>`
+	reflections := DetectReflections(body, testMarker)
+	if len(reflections) == 0 {
+		t.Fatal("expected at least one reflection in srcdoc with complex HTML")
+	}
+	found := false
+	for _, r := range reflections {
+		if r.Context == ContextHTMLText && r.AttrName == "srcdoc" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected ContextHTMLText for srcdoc with complex HTML, got %v", reflections)
+	}
+}

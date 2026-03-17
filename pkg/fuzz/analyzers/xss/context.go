@@ -9,7 +9,8 @@ import (
 // DetectReflections parses the HTML body and returns all reflection contexts
 // where the marker is found.
 func DetectReflections(body string, marker string) []ReflectionInfo {
-	if !strings.Contains(body, marker) {
+	// Fix #3: Make reflection detection case-insensitive
+	if !strings.Contains(strings.ToLower(body), strings.ToLower(marker)) {
 		return nil
 	}
 
@@ -44,7 +45,14 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 			switch tagNameLower {
 			case "script":
-				inScript = true
+				// Fix #2: Check if this is a JSON script block (non-executable)
+				isJSONScript := false
+				if hasAttr {
+					isJSONScript = isNonExecutableScript(rawToken)
+				}
+				if !isJSONScript {
+					inScript = true
+				}
 			case "style":
 				inStyle = true
 			default:
@@ -81,6 +89,14 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 						if isEventHandler(attrName) {
 							// Event handler attributes contain JavaScript
 							ctx = ContextScript
+						} else if attrName == "srcdoc" {
+							// Fix #4: srcdoc attributes allow full HTML injection
+							ctx = ContextHTMLText
+						} else if attrName == "href" || attrName == "src" {
+							// Fix #1: javascript: URIs should be classified as ContextScript
+							if isJavaScriptURI(attrVal) {
+								ctx = ContextScript
+							}
 						}
 
 						reflections = append(reflections, ReflectionInfo{
@@ -267,4 +283,62 @@ func BestReflection(reflections []ReflectionInfo) *ReflectionInfo {
 		}
 	}
 	return best
+}
+
+// isJavaScriptURI checks if a URI value uses the javascript: protocol
+func isJavaScriptURI(uri string) bool {
+	// Trim leading/trailing whitespace
+	uri = strings.TrimSpace(uri)
+	// Case-insensitive check for javascript: prefix
+	return strings.HasPrefix(strings.ToLower(uri), "javascript:")
+}
+
+// isNonExecutableScript checks if a script tag has a non-executable type attribute
+// (e.g., application/json, application/ld+json)
+func isNonExecutableScript(rawToken string) bool {
+	rawLower := strings.ToLower(rawToken)
+	// Look for type= attribute
+	typeIdx := strings.Index(rawLower, "type=")
+	if typeIdx < 0 {
+		return false
+	}
+	
+	// Extract the type value
+	afterEq := typeIdx + 5
+	if afterEq >= len(rawToken) {
+		return false
+	}
+	
+	// Find the value (accounting for quotes)
+	var typeValue string
+	if rawToken[afterEq] == '"' || rawToken[afterEq] == '\'' {
+		quote := rawToken[afterEq]
+		endQuote := strings.IndexByte(rawToken[afterEq+1:], quote)
+		if endQuote >= 0 {
+			typeValue = strings.ToLower(rawToken[afterEq+1 : afterEq+1+endQuote])
+		}
+	} else {
+		// Unquoted value - read until whitespace or >
+		end := afterEq
+		for end < len(rawToken) && rawToken[end] != ' ' && rawToken[end] != '\t' && rawToken[end] != '\n' && rawToken[end] != '\r' && rawToken[end] != '>' {
+			end++
+		}
+		typeValue = strings.ToLower(rawToken[afterEq:end])
+	}
+	
+	// Check if it's a non-executable type
+	nonExecutableTypes := []string{
+		"application/json",
+		"application/ld+json",
+		"text/json",
+		"importmap",
+	}
+	
+	for _, nonExec := range nonExecutableTypes {
+		if typeValue == nonExec {
+			return true
+		}
+	}
+	
+	return false
 }
