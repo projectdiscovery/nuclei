@@ -99,14 +99,18 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	}
 
 	// Process each segment
-	segmentIndex := 1 // 1-based indexing for our stored values
+	// Note: segmentIndex tracks non-empty segments only (1-based)
+	segmentIndex := 0 // Will be incremented at start of each non-empty segment
 	for i := 1; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
-			// Skip empty segments
+			// Skip empty segments but don't increment index
 			continue
 		}
 
+		// Increment index for non-empty segments only
+		segmentIndex++
+		
 		// Check if we have a replacement for this segment
 		key := strconv.Itoa(segmentIndex)
 		if newValue, exists := q.value.parsed.Map.GetOrDefault(key, "").(string); exists && newValue != "" {
@@ -114,7 +118,6 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
 		}
-		segmentIndex++
 	}
 
 	// Join the segments back into a path
