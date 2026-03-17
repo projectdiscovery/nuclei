@@ -65,8 +65,8 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
 	} else if options.AliveSocksProxy != "" {
-		socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
-		if proxyErr != nil {
+		socksURL, err := url.Parse(options.AliveSocksProxy)
+		if err != nil {
 			return nil, err
 		}
 		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
