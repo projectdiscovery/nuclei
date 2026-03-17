@@ -19,7 +19,7 @@ type Path struct {
 
 var _ Component = &Path{}
 
-// NewPath creates a new URL component
+// NewPath creates a new Path component
 func NewPath() *Path {
 	return &Path{}
 }
@@ -37,8 +37,7 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 
 	splitted := strings.Split(req.Path, "/")
 	values := make(map[string]interface{})
-	
-	// Create a stable map
+
 	count := 1
 	for i, segment := range splitted {
 		if segment == "" && i == 0 {
@@ -55,32 +54,22 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	return true, nil
 }
 
-// Iterate iterates through the component
+// Iterate iterates over the component
 func (q *Path) Iterate(callback func(key string, value interface{}) error) (err error) {
-	q.value.parsed.Iterate(func(key string, value any) bool {
-		if errx := callback(key, value); errx != nil {
-			err = errx
-			return false
-		}
-		return true
-	})
-	return
+	return q.value.Iterate(callback)
 }
 
 // SetValue sets a value in the component
 func (q *Path) SetValue(key string, value string) error {
 	escaped := urlutil.PathEncode(value)
 	if !q.value.SetParsedValue(key, escaped) {
-		return ErrSetValue
+		return ErrKeyNotFound
 	}
 	return nil
 }
 
 // Delete deletes a key from the component
 func (q *Path) Delete(key string) error {
-	if !q.value.Delete(key) {
-		return ErrKeyNotFound
-	}
 	return nil
 }
 
@@ -94,7 +83,12 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	}
 
 	segmentIndex := 1
-	for i := 1; i < len(originalSplitted); i++ {
+	start := 0
+	if len(originalSplitted) > 0 && originalSplitted[0] == "" {
+		start = 1
+	}
+
+	for i := start; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
 			continue
@@ -122,7 +116,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	return cloned, nil
 }
 
-// Clones current state to a new component
+// Clone clones the current state to a new component
 func (q *Path) Clone() Component {
 	return &Path{
 		value:        q.value.Clone(),
