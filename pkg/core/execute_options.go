@@ -90,6 +90,15 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	// Execute All SelfContained in parallel
 	e.executeAllSelfContained(ctx, selfContained, results, selfcontainedWg)
 
+	// Pre-fetch secrets for authenticated scanning before executing templates
+	// This ensures authentication is completed before any template execution
+	if e.executerOpts.AuthProvider != nil {
+		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
+			e.Logger.Error().Err(err).Msg("Failed to pre-fetch secrets for authentication")
+			// Continue execution even if auth fails, templates will run without auth
+		}
+	}
+
 	strategyResult := &atomic.Bool{}
 	switch e.options.ScanStrategy {
 	case scanstrategy.TemplateSpray.String():
