@@ -155,3 +155,29 @@ func (v SliceOrMapSlice) Validate() error {
 	}
 	return nil
 }
+
+// Get retrieves a value by key (for KV mode)
+func (v SliceOrMapSlice) Get(key string) (string, bool) {
+	if v.KV != nil {
+		val, ok := v.KV.Get(key)
+		return val, ok
+	}
+	return "", false
+}
+
+// Set sets a value (for KV mode)
+func (v *SliceOrMapSlice) Set(key, value string) {
+	if v.KV == nil {
+		v.KV = mapsutil.NewOrderedMap[string, string]()
+	}
+	v.KV.Set(key, value)
+}
+
+// Append appends a value (for Value mode)
+func (v *SliceOrMapSlice) Append(value string) {
+	if v.Value == nil {
+		v.Value = []string{value}
+	} else {
+		v.Value = append(v.Value, value)
+	}
+}
