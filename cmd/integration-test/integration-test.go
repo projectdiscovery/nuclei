@@ -60,6 +60,7 @@ var (
 		"javascript":      jsTestcases,
 		"matcher-status":  matcherStatusTestcases,
 		"exporters":       exportersTestCases,
+		"honeypot":        honeypotTestCases,
 	}
 
 	// flakyTests are run with a retry count of 3

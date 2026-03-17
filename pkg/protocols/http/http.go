@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/timing"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
@@ -30,6 +31,21 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
+
+// TimingRequest defines the configuration for a timing analysis probe.
+type TimingRequest struct {
+	// Path is the specific endpoint to target for timing analysis.
+	Path string `yaml:"path,omitempty" json:"path,omitempty" jsonschema:"title=path for timing analysis,description=Specific endpoint to probe for timing analysis"`
+
+	// Iterations is the number of requests to send for statistical significance.
+	Iterations int `yaml:"iterations,omitempty" json:"iterations,omitempty" jsonschema:"title=iterations,description=Number of requests to sample,default=5"`
+
+	// ThresholdCV is the Coefficient of Variation threshold to determine static latency.
+	ThresholdCV float64 `yaml:"threshold_cv,omitempty" json:"threshold_cv,omitempty" jsonschema:"title=threshold coefficient of variation,description=Threshold for determining static latency,default=0.05"`
+
+	// Method is the HTTP method to use (defaults to GET).
+	Method string `yaml:"method,omitempty" json:"method,omitempty" jsonschema:"title=method for timing probe,description=HTTP method to use for timing probe,default=GET"`
+}
 
 // Request contains a http request to be made from a template
 type Request struct {
@@ -136,6 +152,11 @@ type Request struct {
 	// description: |
 	//   Analyzer is an analyzer to use for matching the response.
 	Analyzer *analyzers.AnalyzerTemplate `yaml:"analyzer,omitempty" json:"analyzer,omitempty" jsonschema:"title=analyzer for http request,description=Analyzer for HTTP Request"`
+
+	// description: |
+	//   Timing defines configurations for performing timing analysis (honeypot detection).
+	//   It allows executing statistical probes against specific endpoints.
+	Timing []*timing.TimingRequest `yaml:"timing,omitempty" json:"timing,omitempty" jsonschema:"title=timing analysis configuration,description=Configuration for timing analysis probes"`
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 

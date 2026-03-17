@@ -8,6 +8,8 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
@@ -32,6 +35,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/timing"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -523,6 +527,108 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
+	// ==========================================
+	// TIMING ANALYSIS - PRE-EXECUTION
+	// ==========================================
+	// We execute timing probes before the main generator loop so that
+	// the timing variables are available for the first request's matchers.
+
+	var timingResults map[string]interface{}
+
+	if len(request.Timing) > 0 {
+		timingResults = make(map[string]interface{})
+
+		for _, timingReq := range request.Timing {
+			// Determine HTTP method
+			method := timingReq.Method
+			if method == "" {
+				method = http.MethodGet
+			}
+
+			// Construct Target URL
+			// input.MetaInput.Input contains the target (e.g., https://example.com)
+			targetURL, err := url.Parse(input.MetaInput.Input)
+			if err != nil {
+				gologger.Debug().Msgf("[timing] Could not parse input URL '%s': %s", input.MetaInput.Input, err)
+				continue
+			}
+
+			// Handle relative paths for the probe
+			if timingReq.Path != "" {
+				if strings.HasPrefix(timingReq.Path, "/") {
+					targetURL.Path = timingReq.Path
+				} else {
+					targetURL.Path = path.Join(targetURL.Path, timingReq.Path)
+				}
+			}
+
+			// Initialize the Analyzer with the probe function
+			analyzer := timing.NewTimingAnalyzer(timing.Options{
+				Iterations:        timingReq.Iterations,
+				StaticThresholdCV: timingReq.ThresholdCV,
+				SleepInterval:     time.Millisecond * 100, // Delay to avoid rate limits
+			}, func() (time.Duration, error) {
+				start := time.Now()
+
+				// Create a new request for the probe
+				req, err := retryablehttp.NewRequest(method, targetURL.String(), nil)
+				if err != nil {
+					return 0, err
+				}
+
+				// Apply custom headers from the template to the probe
+				for k, v := range request.customHeaders {
+					req.Header.Set(k, v)
+				}
+
+				// Respect global rate limits
+				request.options.RateLimitTake()
+
+				// Execute the request using the template's configured client
+				resp, err := request.httpClient.Do(req)
+				if err != nil {
+					return 0, err
+				}
+				defer resp.Body.Close()
+
+				// Drain body to ensure full RTT measurement
+				_, _ = io.CopyN(io.Discard, resp.Body, 1024*10)
+
+				return time.Since(start), nil
+			})
+
+			// Execute Probe
+			result, err := analyzer.ExecuteProbe()
+			if err != nil {
+				gologger.Debug().Msgf("[timing] Probe execution failed for %s: %s", targetURL.String(), err)
+				continue
+			}
+
+			// Store results in the map
+			timingResults["timing_min_rtt"] = result.MinRTT.String()
+			timingResults["timing_max_rtt"] = result.MaxRTT.String()
+			timingResults["timing_avg_rtt"] = result.AvgRTT.String()
+			timingResults["timing_std_dev"] = result.StdDev.String()
+			timingResults["timing_cv"] = result.CoefficientOfVariation
+			timingResults["timing_is_suspicious"] = result.IsStaticLatency
+
+			if result.IsStaticLatency {
+				timingResults["timing_verdict"] = "honeypot_suspected"
+			} else {
+				timingResults["timing_verdict"] = "normal"
+			}
+
+			if request.options.Options.Debug {
+				gologger.Debug().Msgf("[timing] Results for %s: Avg=%s, CV=%.4f, Suspected=%v",
+					targetURL.String(), result.AvgRTT, result.CoefficientOfVariation, result.IsStaticLatency)
+			}
+		}
+	}
+
+	// ==========================================
+	// MAIN EXECUTION LOOP
+	// ==========================================
+
 	generator := request.newGenerator(false)
 
 	var gotDynamicValues map[string][]string
@@ -566,7 +672,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				return true, nil
 			}
 			var gotMatches bool
-			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+
+			// --- WRAPPER CALLBACK FOR TIMING INJECTION ---
+			wrappedCallback := func(event *output.InternalWrappedEvent) {
+				// Inject timing results into the internal event if they exist
+				for k, v := range timingResults {
+					event.InternalEvent[k] = v
+				}
+
+				// --- ORIGINAL CALLBACK LOGIC ---
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
 				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
@@ -594,7 +708,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Note: this only happens if requests > 1 and interactsh matcher is used
 				// TODO: interactsh logic in nuclei needs to be refactored to avoid such situations
 				callback(event)
-			}, generator.currentIndex)
+			}
+
+			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, wrappedCallback, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
 			if errors.Is(execReqErr, ErrMissingVars) {
