@@ -189,14 +189,25 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 // executeEvaluate executes evaluation of payload on a key and value and
 // returns completed values to be replaced and processed
 // for fuzzing.
-func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload string, interactshURLs []string) (string, []string) {
-	// TODO: Handle errors
+func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload string, interactshURLs []string) (string, []string) {
 	values := generators.MergeMaps(rule.options.Variables.GetAll(), map[string]interface{}{
 		"value": value,
+		"key":   key,
 	}, rule.options.Options.Vars.AsMap(), input.Values)
-	firstpass, _ := expressions.Evaluate(payload, values)
+	
+	firstpass, err := expressions.Evaluate(payload, values)
+	if err != nil {
+		gologger.Warning().Msgf("Failed to evaluate payload: %v\n", err)
+		return payload, interactshURLs
+	}
+	
 	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
-	evaluated, _ := expressions.Evaluate(interactData, values)
+	evaluated, err := expressions.Evaluate(interactData, values)
+	if err != nil {
+		gologger.Warning().Msgf("Failed to evaluate expression: %v\n", err)
+		return interactData, interactshURLs
+	}
+	
 	replaced := rule.executeRuleTypes(input, value, evaluated)
 	return replaced, interactshURLs
 }
