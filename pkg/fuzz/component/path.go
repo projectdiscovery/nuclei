@@ -91,12 +91,18 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	for i := start; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
+			// Preserve empty segments (e.g., // or trailing /)
+			rebuiltSegments = append(rebuiltSegments, "")
 			continue
 		}
 
 		key := strconv.Itoa(segmentIndex)
 		if val, exists := q.value.parsed.Map.Get(key); exists && val != "" {
-			rebuiltSegments = append(rebuiltSegments, val.(string))
+			if s, ok := val.(string); ok {
+				rebuiltSegments = append(rebuiltSegments, s)
+			} else {
+				rebuiltSegments = append(rebuiltSegments, originalSegment)
+			}
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
 		}
