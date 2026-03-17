@@ -52,4 +52,5 @@ vendor
 *.pprof
 *.trace
 *.mem
-*.cpu
+*.cpu*.db
+.context/
