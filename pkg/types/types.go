@@ -19,6 +19,7 @@ import (
 	folderutil "github.com/projectdiscovery/utils/folder"
 	unitutils "github.com/projectdiscovery/utils/unit"
 	"github.com/rs/xid"
+	"gopkg.in/yaml.v2"
 )
 
 const DefaultTemplateLoadingConcurrency = 50
@@ -27,6 +28,64 @@ var (
 	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
 	ErrNoMoreRequests = io.EOF
 )
+
+// TemplateProfile represents a template profile configuration
+// Supports additional metadata fields (id, name, purpose, description) that are ignored during parsing
+type TemplateProfile struct {
+	// Metadata fields (ignored by nuclei, for documentation purposes)
+	ID          string `yaml:"id,omitempty"`
+	Name        string `yaml:"name,omitempty"`
+	Purpose     string `yaml:"purpose,omitempty"`
+	Description string `yaml:"description,omitempty"`
+	
+	// Actual configuration fields
+	List              string                 `yaml:"list,omitempty"`
+	Type              goflags.StringSlice    `yaml:"type,omitempty"`
+	ExcludeTags       goflags.StringSlice    `yaml:"exclude-tags,omitempty"`
+	TemplateConcurrency int                  `yaml:"template-concurrency,omitempty"`
+	HostConcurrency   int                    `yaml:"host-concurrency,omitempty"`
+	Stats             bool                   `yaml:"stats,omitempty"`
+	Timeout           int                    `yaml:"timeout,omitempty"`
+	Secrets           map[string]interface{} `yaml:"secrets,omitempty"`
+}
+
+// UnmarshalYAML implements custom YAML unmarshaling for TemplateProfile
+// This allows additional metadata fields while ignoring unknown fields
+func (t *TemplateProfile) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// First unmarshal known fields
+	type Alias TemplateProfile
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+	
+	if err := unmarshal(aux); err != nil {
+		return err
+	}
+	
+	// Additional fields are automatically ignored by YAML parser
+	// This allows users to add metadata like id, name, purpose, description
+	return nil
+}
+
+// LoadTemplateProfile loads a template profile from a YAML file
+// Ignores extra fields to allow metadata documentation
+func LoadTemplateProfile(file string) (*TemplateProfile, error) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	
+	profile := &TemplateProfile{}
+	
+	// Use yaml.Unmarshal with strict mode disabled to ignore unknown fields
+	if err := yaml.Unmarshal(data, profile); err != nil {
+		return nil, err
+	}
+	
+	return profile, nil
+}
 
 // LoadHelperFileFunction can be used to load a helper file.
 type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error)
