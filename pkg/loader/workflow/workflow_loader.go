@@ -3,6 +3,7 @@ package workflow
 import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -44,16 +45,7 @@ func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error)
 func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath([]string{config.DefaultConfig.TemplatesDirectory})
 	for template, err := range errs {
-		gologger.Error().Msgf(
-			"Could not find template '%s'.\n"+
-				"Details: %s\n"+
-				"Ensure nuclei templates are installed by running:\n"+
-				"  nuclei -update-templates\n"+
-				"Or specify the templates directory using:\n"+
-				"  -t /path/to/nuclei-templates",
-			template,
-			err,
-		)
+		gologger.Error().Msgf(loader.MissingTemplateGuidance, template, err)
 	}
 
 	templatePathMap := w.pathFilter.Match(includedTemplates)
@@ -71,16 +63,7 @@ func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string 
 func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate bool) []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath(templatesList)
 	for template, err := range errs {
-		gologger.Error().Msgf(
-			"Could not find template '%s'.\n"+
-				"Details: %s\n"+
-				"Ensure nuclei templates are installed by running:\n"+
-				"  nuclei -update-templates\n"+
-				"Or specify the templates directory using:\n"+
-				"  -t /path/to/nuclei-templates",
-			template,
-			err,
-		)
+		gologger.Error().Msgf(loader.MissingTemplateGuidance, template, err)
 	}
 	templatesPathMap := w.pathFilter.Match(includedTemplates)
 
@@ -88,7 +71,7 @@ func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate boo
 	for templatePath := range templatesPathMap {
 		matched, err := w.options.Parser.LoadTemplate(templatePath, w.tagFilter, nil, w.options.Catalog)
 		if err != nil && !matched {
-			gologger.Warning().Msg(err.Error())
+			gologger.Warninggologger.Error().Msgf(missingTemplateGuidance, template, err)().Msg(err.Error())
 		} else if matched || noValidate {
 			loadedTemplates = append(loadedTemplates, templatePath)
 		}
