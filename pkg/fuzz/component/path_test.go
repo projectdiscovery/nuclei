@@ -127,3 +127,45 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+func TestPathComponent_RebuildDoesNotMutateOriginalRequest(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	require.NoError(t, path.SetValue("1", "user OR True"))
+
+	rebuilt, err := path.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/user OR True/55/profile", rebuilt.Path)
+
+	require.Equal(t, "/user/55/profile", req.Path)
+	require.Equal(t, "/user/55/profile", path.originalPath)
+}
+
+func TestPathComponent_RebuildUsesOriginalPathAcrossMultipleMutations(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	require.NoError(t, path.SetValue("3", "profile OR True"))
+
+	rebuiltLast, err := path.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/user/55/profile OR True", rebuiltLast.Path)
+
+	require.NoError(t, path.SetValue("3", "profile"))
+	require.NoError(t, path.SetValue("2", "55 OR True"))
+
+	rebuiltNumeric, err := path.Rebuild()
+	require.NoError(t, err)
+	require.Equal(t, "/user/55 OR True/profile", rebuiltNumeric.Path)
+}
