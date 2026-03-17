@@ -71,7 +71,7 @@ func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate boo
 	for templatePath := range templatesPathMap {
 		matched, err := w.options.Parser.LoadTemplate(templatePath, w.tagFilter, nil, w.options.Catalog)
 		if err != nil && !matched {
-			gologger.Warninggologger.Error().Msgf(missingTemplateGuidance, template, err)().Msg(err.Error())
+			gologger.Warning().Msg(err.Error())
 		} else if matched || noValidate {
 			loadedTemplates = append(loadedTemplates, templatePath)
 		}
