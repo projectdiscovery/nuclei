@@ -112,7 +112,9 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 	}
 
 	// inject execution id and context
-	runtime.SetContextValue("executionId", opts.ExecutionId)
+	if opts != nil {
+		runtime.SetContextValue("executionId", opts.ExecutionId)
+	}
 
 	// execute the script
 	return runtime.RunProgram(p)
