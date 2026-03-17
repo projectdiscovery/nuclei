@@ -14,7 +14,7 @@ import (
 type Path struct {
 	value        *Value
 	req          *retryablehttp.Request
-	originalPath string // Snapshot of original path
+	originalPath string // Snapshot of original path for deterministic rebuilds
 }
 
 var _ Component = &Path{}
@@ -29,7 +29,7 @@ func (q *Path) Name() string {
 	return RequestPathComponent
 }
 
-// Parse parses the component
+// Parse parses the component and extracts path segments as keys
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.originalPath = req.Path
@@ -40,9 +40,11 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 
 	count := 1
 	for i, segment := range splitted {
+		// Skip leading empty segment from "/"
 		if segment == "" && i == 0 {
 			continue
 		}
+		// Skip other empty segments for parsing keys, but they'll be preserved in Rebuild
 		if segment == "" {
 			continue
 		}
@@ -59,25 +61,29 @@ func (q *Path) Iterate(callback func(key string, value interface{}) error) (err 
 	return q.value.Iterate(callback)
 }
 
-// SetValue sets a value in the component
+// SetValue sets a value in the component for a key
 func (q *Path) SetValue(key string, value string) error {
 	escaped := urlutil.PathEncode(value)
 	if !q.value.SetParsedValue(key, escaped) {
-		return ErrKeyNotFound
+		return ErrSetValue
 	}
 	return nil
 }
 
 // Delete deletes a key from the component
 func (q *Path) Delete(key string) error {
+	if !q.value.Delete(key) {
+		return ErrKeyNotFound
+	}
 	return nil
 }
 
-// Rebuild returns a new request with the component rebuilt
+// Rebuild returns a new request with the component rebuilt, preserving original structure
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	originalSplitted := strings.Split(q.originalPath, "/")
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
 
+	// Handle leading slash preservation
 	if len(originalSplitted) > 0 && originalSplitted[0] == "" {
 		rebuiltSegments = append(rebuiltSegments, "")
 	}
@@ -91,14 +97,17 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	for i := start; i < len(originalSplitted); i++ {
 		originalSegment := originalSplitted[i]
 		if originalSegment == "" {
-			// Preserve empty segments (e.g., // or trailing /)
+			// Preserve empty segments (e.g., // or trailing /) to maintain request semantics
 			rebuiltSegments = append(rebuiltSegments, "")
 			continue
 		}
 
 		key := strconv.Itoa(segmentIndex)
-		if val, exists := q.value.parsed.Map.Get(key); exists && val != "" {
-			if s, ok := val.(string); ok {
+		// Check for replacement or deletion
+		if val, exists := q.value.parsed.Map.Get(key); exists {
+			if val == nil {
+				// Segment was deleted, do not append anything
+			} else if s, ok := val.(string); ok {
 				rebuiltSegments = append(rebuiltSegments, s)
 			} else {
 				rebuiltSegments = append(rebuiltSegments, originalSegment)
@@ -111,6 +120,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 
 	rebuiltPath := strings.Join(rebuiltSegments, "/")
 
+	// Handle URL decoding to prevent double encoding by retryablehttp
 	if unescaped, err := urlutil.PathDecode(rebuiltPath); err == nil {
 		rebuiltPath = unescaped
 	}
