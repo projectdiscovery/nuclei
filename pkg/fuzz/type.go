@@ -26,6 +26,22 @@ func (v *ValueOrKeyValue) IsKV() bool {
 	return v.Key != ""
 }
 
+// Validate validates the ValueOrKeyValue struct
+func (v *ValueOrKeyValue) Validate() error {
+	if v.Value == "" {
+		return fmt.Errorf("value cannot be empty")
+	}
+	return nil
+}
+
+// String returns string representation
+func (v *ValueOrKeyValue) String() string {
+	if v.Key != "" {
+		return fmt.Sprintf("%s=%s", v.Key, v.Value)
+	}
+	return v.Value
+}
+
 type SliceOrMapSlice struct {
 	Value []string
 	KV    *mapsutil.OrderedMap[string, string]
