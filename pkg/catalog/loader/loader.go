@@ -984,7 +984,17 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 func (s *Store) logErroredTemplates(erred map[string]error) {
 	for template, err := range erred {
 		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
-			s.logger.Error().Msgf("Could not find template '%s': %s", template, err)
+			s.logger.Error().Msgf(
+				"Could not find template '%s'.\n"+
+					"Details: %s\n"+
+					"Ensure nuclei templates are installed by running:\n"+
+					"  nuclei -update-templates\n"+
+					"Or specify the templates directory using:\n"+
+					"  -t /path/to/nuclei-templates",
+				template,
+				err,
+			)
+
 		}
 	}
 }

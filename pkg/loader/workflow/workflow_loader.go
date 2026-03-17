@@ -44,7 +44,16 @@ func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error)
 func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath([]string{config.DefaultConfig.TemplatesDirectory})
 	for template, err := range errs {
-		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
+		gologger.Error().Msgf(
+			"Could not find template '%s'.\n"+
+				"Details: %s\n"+
+				"Ensure nuclei templates are installed by running:\n"+
+				"  nuclei -update-templates\n"+
+				"Or specify the templates directory using:\n"+
+				"  -t /path/to/nuclei-templates",
+			template,
+			err,
+		)
 	}
 
 	templatePathMap := w.pathFilter.Match(includedTemplates)
@@ -62,7 +71,16 @@ func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string 
 func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate bool) []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath(templatesList)
 	for template, err := range errs {
-		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
+		gologger.Error().Msgf(
+			"Could not find template '%s'.\n"+
+				"Details: %s\n"+
+				"Ensure nuclei templates are installed by running:\n"+
+				"  nuclei -update-templates\n"+
+				"Or specify the templates directory using:\n"+
+				"  -t /path/to/nuclei-templates",
+			template,
+			err,
+		)
 	}
 	templatesPathMap := w.pathFilter.Match(includedTemplates)
 
