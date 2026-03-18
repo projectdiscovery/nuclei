@@ -619,6 +619,10 @@ func (r *Runner) RunEnumeration() error {
 		if maxHostMatch < 0 {
 			maxHostMatch = 0
 		}
+		if maxHostMatch > 10000 {
+			gologger.Warning().Msgf("MaxHostMatch value %d exceeds safe limit, capping at 10000", maxHostMatch)
+			maxHostMatch = 10000
+		}
 		hpCache := honeypotcache.New(maxHostMatch, false, 1000)
 		r.honeypotCache = hpCache
 		executorOpts.HoneypotCache = hpCache
