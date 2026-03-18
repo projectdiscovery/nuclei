@@ -139,11 +139,12 @@ func (c *Configuration) HasStandardOptions() bool {
 	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0
 }
 
-// GetRawHTTP returns the rawhttp request client
-func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
+// GetRawHTTP returns the rawhttp request client.
+// Returns an error if dialers are not initialized for the given execution ID.
+func GetRawHTTP(options *protocols.ExecutorOptions) (*rawhttp.Client, error) {
 	dialers := protocolstate.GetDialersWithId(options.Options.ExecutionId)
 	if dialers == nil {
-		panic("dialers not initialized for execution id: " + options.Options.ExecutionId)
+		return nil, fmt.Errorf("dialers not initialized for execution id: %s", options.Options.ExecutionId)
 	}
 
 	// Lock the dialers to avoid a race when setting RawHTTPClient
@@ -151,7 +152,7 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	defer dialers.Unlock()
 
 	if dialers.RawHTTPClient != nil {
-		return dialers.RawHTTPClient
+		return dialers.RawHTTPClient, nil
 	}
 
 	rawHttpOptionsCopy := *rawhttp.DefaultOptions
@@ -164,7 +165,7 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	}
 	rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
 	dialers.RawHTTPClient = rawhttp.NewClient(&rawHttpOptionsCopy)
-	return dialers.RawHTTPClient
+	return dialers.RawHTTPClient, nil
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
