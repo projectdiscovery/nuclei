@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
@@ -656,6 +657,18 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
+		// Extract embedded secrets from profile before merging
+		// This allows users to include secrets directly in template profiles
+		// under a 'secrets' key instead of using a separate secrets file.
+		// Extra YAML fields (like name, purpose, description) are automatically
+		// ignored by goflags' map-based parsing.
+		if embeddedSecretsFile, err := authx.ExtractSecretsFromProfile(templateProfile); err != nil {
+			options.Logger.Warning().Msgf("Could not extract embedded secrets from profile: %s\n", err)
+		} else if embeddedSecretsFile != "" {
+			options.SecretsFile = append(options.SecretsFile, embeddedSecretsFile)
+			options.Logger.Debug().Msgf("Loaded embedded secrets from template profile into temp file: %s\n", embeddedSecretsFile)
+		}
+
 		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
