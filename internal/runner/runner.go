@@ -860,7 +860,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		// only print these stats in verbose mode
 		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
 		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
-		stats.ForceDisplayWarning(templates.ExludedDastTmplStats)
+		stats.ForceDisplayWarning(templates.ExcludedDastTmplStats)
 		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
 		stats.ForceDisplayWarning(templates.ExcludedFileStats)
 		stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)

@@ -1,0 +1,43 @@
+[files]
+extend-exclude = [
+    # Translated README files contain non-English words
+    "README_*.md",
+    # Test fixture data with encoded/binary content
+    "**/testdata/**",
+    # WAF fingerprint data with encoded strings and product names
+    "pkg/output/stats/waf/regexes.json",
+    # Go dependency files
+    "go.sum",
+    "go.mod",
+    "vendor/",
+]
+
+[default]
+extend-ignore-re = [
+    # Base64-encoded data (certificates, keys, etc.)
+    "[A-Za-z0-9+/]{20,}={0,2}",
+]
+
+[default.extend-identifiers]
+# External dependency identifiers that cannot be changed
+AllowdTypes = "AllowdTypes"
+MisMatched = "MisMatched"
+
+[default.extend-words]
+# CLI flag shorthands used throughout codebase and docs
+ot = "ot"
+ue = "ue"
+hae = "hae"
+fo = "fo"
+# Appears in "JSONL(ines)" and "JSONL(ine)" documentation pattern
+ines = "ines"
+ine = "ine"
+# Non-English words in test fixtures
+alo = "alo"
+algoritmos = "algoritmos"
+# SQL keyword plural form used in SQLite error messages ("SELECTs")
+SELEC = "SELEC"
+# Part of test expression identifiers
+Iif = "Iif"
+# Test case for case-insensitive severity parsing ("inFo")
+Fo = "Fo"
