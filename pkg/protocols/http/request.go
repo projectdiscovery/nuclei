@@ -538,6 +538,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 			// Handle relative paths for the probe
 			if timingReq.Path != "" {
+				if strings.Contains(timingReq.Path, "://") || strings.Contains(timingReq.Path, "@") || strings.HasPrefix(timingReq.Path, "//") {
+					gologger.Error().Msgf("[timing] Invalid path detected (looks like URL): %s", timingReq.Path)
+					continue
+				}
 				if strings.HasPrefix(timingReq.Path, "/") {
 					targetURL.Path = timingReq.Path
 				} else {
