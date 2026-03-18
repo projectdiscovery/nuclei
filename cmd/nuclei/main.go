@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -21,6 +23,7 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v2"
+	yamlv3 "gopkg.in/yaml.v3"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger/levels"
@@ -51,10 +54,12 @@ var (
 	templateProfile string
 	memProfile      string // optional profile file path
 	options         = &types.Options{}
+	generatedFiles  []string
 )
 
 func main() {
 	options.Logger = gologger.DefaultLogger
+	defer cleanupGeneratedFiles()
 
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
@@ -584,14 +589,19 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(cfgFile) {
 			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
 		}
+		preparedCfg, err := prepareConfigFileForMerge(cfgFile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not prepare config: %s\n", err)
+		}
 		// merge config file with flags
-		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
+		if err := flagSet.MergeConfigFile(preparedCfg.Path); err != nil {
 			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
+		options.SecretsFile = append(options.SecretsFile, preparedCfg.SecretsFiles...)
 
 		if !options.Vars.IsEmpty() {
 			// Maybe we should add vars to the config file as well even if they are set via flags?
-			file, err := os.Open(cfgFile)
+			file, err := os.Open(preparedCfg.Path)
 			if err != nil {
 				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
 			}
@@ -656,9 +666,14 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if !fileutil.FileExists(templateProfile) {
 			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
 		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
+		preparedProfile, err := prepareConfigFileForMerge(templateProfile)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not prepare template profile: %s\n", err)
+		}
+		if err := flagSet.MergeConfigFile(preparedProfile.Path); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
+		options.SecretsFile = append(options.SecretsFile, preparedProfile.SecretsFiles...)
 	}
 
 	if len(options.SecretsFile) > 0 {
@@ -671,6 +686,122 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 	cleanupOldResumeFiles()
 	return flagSet
+}
+
+type preparedConfigFile struct {
+	Path         string
+	SecretsFiles []string
+}
+
+func prepareConfigFileForMerge(path string) (*preparedConfigFile, error) {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != ".yaml" && ext != ".yml" && ext != ".json" {
+		return &preparedConfigFile{Path: path}, nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	root := map[string]interface{}{}
+	switch ext {
+	case ".json":
+		if err := json.Unmarshal(data, &root); err != nil {
+			gologger.Warning().Msgf("Could not parse config file %q as json, leaving it unchanged: %s\n", path, err)
+			return &preparedConfigFile{Path: path}, nil
+		}
+	default:
+		if err := yamlv3.Unmarshal(data, &root); err != nil {
+			gologger.Warning().Msgf("Could not parse config file %q as yaml, leaving it unchanged: %s\n", path, err)
+			return &preparedConfigFile{Path: path}, nil
+		}
+	}
+
+	prepared := &preparedConfigFile{Path: path}
+	changed := false
+	secrets, hasSecrets := root["secrets"]
+	if hasSecrets {
+		delete(root, "secrets")
+		secretPath, err := writePreparedSecretsFile(secrets)
+		if err != nil {
+			return nil, err
+		}
+		prepared.SecretsFiles = append(prepared.SecretsFiles, secretPath)
+		changed = true
+	}
+
+	for _, key := range []string{"id", "name", "purpose", "description", "info"} {
+		if _, ok := root[key]; ok {
+			delete(root, key)
+			changed = true
+		}
+	}
+
+	if !changed {
+		return prepared, nil
+	}
+
+	configPath, err := writePreparedConfigFile(ext, root)
+	if err != nil {
+		return nil, err
+	}
+	prepared.Path = configPath
+	return prepared, nil
+}
+
+func writePreparedConfigFile(ext string, root map[string]interface{}) (string, error) {
+	var (
+		data []byte
+		err  error
+	)
+	switch ext {
+	case ".json":
+		data, err = json.MarshalIndent(root, "", "  ")
+	default:
+		data, err = yamlv3.Marshal(root)
+	}
+	if err != nil {
+		return "", err
+	}
+	return writeGeneratedFile("nuclei-config-*"+ext, data)
+}
+
+func writePreparedSecretsFile(raw interface{}) (string, error) {
+	secretMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("embedded secrets must be an object")
+	}
+	data, err := yamlv3.Marshal(secretMap)
+	if err != nil {
+		return "", err
+	}
+	return writeGeneratedFile("nuclei-secrets-*.yaml", data)
+}
+
+func writeGeneratedFile(pattern string, data []byte) (string, error) {
+	file, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return "", err
+	}
+	if _, err := bytes.NewReader(data).WriteTo(file); err != nil {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+		return "", err
+	}
+	if err := file.Close(); err != nil {
+		_ = os.Remove(file.Name())
+		return "", err
+	}
+	generatedFiles = append(generatedFiles, file.Name())
+	return file.Name(), nil
+}
+
+func cleanupGeneratedFiles() {
+	for _, path := range generatedFiles {
+		_ = os.Remove(path)
+	}
+	generatedFiles = nil
 }
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.
@@ -707,9 +838,15 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 		return
 	}
 	// if config file exists, merge it with the default config
-	if err = flagset.MergeConfigFile(cfgFile); err != nil {
+	preparedCfg, err := prepareConfigFileForMerge(cfgFile)
+	if err != nil {
+		options.Logger.Warning().Msgf("failed to prepare configfile for merge: %s\n", err)
+		return
+	}
+	if err = flagset.MergeConfigFile(preparedCfg.Path); err != nil {
 		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
 	}
+	options.SecretsFile = append(options.SecretsFile, preparedCfg.SecretsFiles...)
 }
 
 // disableUpdatesCallback disables the update check.
