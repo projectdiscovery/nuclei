@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -77,6 +78,9 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+
+	// HoneypotDetector tracks match density per host to detect honeypots.
+	HoneypotDetector *honeypot.Detector
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -282,6 +286,16 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		KeysToRedact:     options.Redact,
 	}
 
+	// Initialize honeypot detector if threshold is configured
+	if options.HoneypotThreshold > 0 || options.HoneypotPercentage > 0 {
+		writer.HoneypotDetector = honeypot.New(
+			options.HoneypotThreshold,
+			options.HoneypotPercentage,
+			50, // default min percentage if both are set
+			options.HoneypotSuppress,
+		)
+	}
+
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
 		writer.DisableStdout = true
 	}
@@ -297,6 +311,21 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Honeypot detection: track matches per host and optionally suppress results
+	if w.HoneypotDetector != nil && w.HoneypotDetector.Enabled() {
+		hostKey := event.Host
+		if hostKey == "" && event.URL != "" {
+			hostKey = event.URL
+		}
+		if hostKey != "" {
+			if w.HoneypotDetector.RecordMatch(hostKey, event.TemplateID) {
+				if w.HoneypotDetector.Suppress() {
+					return nil
+				}
+			}
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -461,6 +490,10 @@ func (w *StandardWriter) Close() {
 	}
 	if w.errorFile != nil {
 		_ = w.errorFile.Close()
+	}
+	// Print honeypot detection summary
+	if w.HoneypotDetector != nil && w.HoneypotDetector.Enabled() && w.HoneypotDetector.FlaggedCount() > 0 {
+		gologger.Warning().Msgf("[honeypot] %d host(s) flagged as potential honeypots (matched unusually high number of templates)", w.HoneypotDetector.FlaggedCount())
 	}
 }
 

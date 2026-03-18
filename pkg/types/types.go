@@ -457,6 +457,14 @@ type Options struct {
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
 	LoadHelperFileFunction LoadHelperFileFunction
+	// HoneypotThreshold is the absolute number of unique template matches
+	// per host before flagging it as a potential honeypot (0 = disabled).
+	HoneypotThreshold int
+	// HoneypotPercentage is the minimum percentage of total templates that
+	// must match on a host to flag it as a potential honeypot (0 = disabled).
+	HoneypotPercentage int
+	// HoneypotSuppress suppresses output for hosts flagged as honeypots.
+	HoneypotSuppress bool
 	// Logger is the gologger instance for this optionset
 	Logger *gologger.Logger
 	// NoCacheTemplates disables caching of templates
@@ -683,6 +691,9 @@ func (options *Options) Copy() *Options {
 		Logger:                         options.Logger,
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
 		ExecutionId:                    options.ExecutionId,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		HoneypotPercentage:             options.HoneypotPercentage,
+		HoneypotSuppress:               options.HoneypotSuppress,
 		Parser:                         options.Parser,
 	}
 	optCopy.SetTimeouts(options.timeouts)
