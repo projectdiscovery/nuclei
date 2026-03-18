@@ -62,6 +62,42 @@ rate-limit: 50
 	require.Empty(t, prepared.SecretsFiles)
 }
 
+func TestPrepareConfigFileForMerge_LeavesNonConfigFilesUntouched(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.txt")
+	require.NoError(t, os.WriteFile(configPath, []byte("id: ignored\n"), 0o644))
+
+	prepared, err := prepareConfigFileForMerge(configPath)
+	require.NoError(t, err)
+	require.Equal(t, configPath, prepared.Path)
+	require.Empty(t, prepared.SecretsFiles)
+}
+
+func TestPrepareConfigFileForMerge_StripsMetadataOnlyConfig(t *testing.T) {
+	t.Cleanup(cleanupGeneratedFiles)
+
+	configPath := filepath.Join(t.TempDir(), "profile.yaml")
+	config := `id: cloud-profile
+name: Cloud Scan
+purpose: Shared scan settings
+description: Example profile
+info:
+  name: remove me
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(config), 0o644))
+
+	prepared, err := prepareConfigFileForMerge(configPath)
+	require.NoError(t, err)
+	require.NotEqual(t, configPath, prepared.Path)
+	require.Empty(t, prepared.SecretsFiles)
+
+	preparedConfig, err := os.ReadFile(prepared.Path)
+	require.NoError(t, err)
+	require.NotContains(t, string(preparedConfig), "cloud-profile")
+	require.NotContains(t, string(preparedConfig), "Cloud Scan")
+	require.NotContains(t, string(preparedConfig), "purpose:")
+	require.NotContains(t, string(preparedConfig), "info:")
+}
+
 func TestPrepareConfigFileForMerge_StripsProfileMetadataAndExtractsSecretsFromJSON(t *testing.T) {
 	t.Cleanup(cleanupGeneratedFiles)
 
