@@ -708,10 +708,12 @@ func prepareConfigFileForMerge(path string) (*preparedConfigFile, error) {
 	switch ext {
 	case ".json":
 		if err := json.Unmarshal(data, &root); err != nil {
+			gologger.Warning().Msgf("Could not parse config file %q as json, leaving it unchanged: %s\n", path, err)
 			return &preparedConfigFile{Path: path}, nil
 		}
 	default:
 		if err := yamlv3.Unmarshal(data, &root); err != nil {
+			gologger.Warning().Msgf("Could not parse config file %q as yaml, leaving it unchanged: %s\n", path, err)
 			return &preparedConfigFile{Path: path}, nil
 		}
 	}
@@ -783,8 +785,8 @@ func writeGeneratedFile(pattern string, data []byte) (string, error) {
 		return "", err
 	}
 	if _, err := bytes.NewReader(data).WriteTo(file); err != nil {
-		_ = os.Remove(file.Name())
 		_ = file.Close()
+		_ = os.Remove(file.Name())
 		return "", err
 	}
 	if err := file.Close(); err != nil {
