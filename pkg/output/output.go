@@ -291,7 +291,6 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		writer.HoneypotDetector = honeypot.New(
 			options.HoneypotThreshold,
 			options.HoneypotPercentage,
-			50, // default min percentage if both are set
 			options.HoneypotSuppress,
 		)
 	}

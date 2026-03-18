@@ -687,6 +687,11 @@ func (r *Runner) RunEnumeration() error {
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
+	// Set total template count for honeypot percentage detection
+	if sw, ok := r.output.(*output.StandardWriter); ok && sw.HoneypotDetector != nil {
+		sw.HoneypotDetector.SetTotalTemplates(len(store.Templates()) + len(store.Workflows()))
+	}
+
 	// prefetch secrets if enabled
 	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
 		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")

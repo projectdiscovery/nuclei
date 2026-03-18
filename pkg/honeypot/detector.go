@@ -32,14 +32,19 @@ type hostEntry struct {
 // max: absolute threshold for unique template matches per host (0 = disabled)
 // total: total template count (0 = skip percentage check)
 // suppress: if true, results from flagged hosts are dropped
-func New(max, total, minPct int, suppress bool) *Detector {
+func New(max, minPct int, suppress bool) *Detector {
 	return &Detector{
 		hosts:    make(map[string]*hostEntry),
 		max:      max,
-		total:    total,
 		minPct:   minPct,
 		suppress: suppress,
 	}
+}
+
+// SetTotalTemplates sets the total number of loaded templates.
+// This must be called before percentage-based detection is used.
+func (d *Detector) SetTotalTemplates(total int) {
+	d.total = total
 }
 
 // RecordMatch records that templateID matched on host. Returns true if
@@ -143,7 +148,13 @@ func normalizeHost(host string) string {
 		if close := strings.Index(host, "]"); close != -1 {
 			host = host[:close+1]
 		}
-		return host
+		return strings.ToLower(host)
+	}
+
+	// Detect bare IPv6 addresses (e.g. 2001:db8::1) — they contain
+	// multiple colons so port-stripping via LastIndex(":") would truncate them.
+	if strings.Count(host, ":") >= 2 {
+		return strings.ToLower(host)
 	}
 
 	// Remove port for IPv4/hostname
