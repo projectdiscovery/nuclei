@@ -76,13 +76,15 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return false, "", nil
 	}
 
-	// Check if canary is reflected at all
-	if !strings.Contains(body, canary) {
+	// Check if canary is reflected at all (case-insensitive)
+	bodyLower := strings.ToLower(body)
+	canaryLower := strings.ToLower(canary)
+	if !strings.Contains(bodyLower, canaryLower) {
 		return false, "", nil
 	}
 
-	// Detect character survival
-	chars := detectCharacterSurvival(body, canary)
+	// Detect character survival (case-insensitive)
+	chars := detectCharacterSurvival(bodyLower, canaryLower)
 
 	// Detect reflection contexts using the HTML tokenizer
 	reflections := DetectReflections(body, canary)
@@ -232,7 +234,13 @@ func selectPayloads(reflection *ReflectionInfo, chars CharacterSet) []string {
 
 	switch reflection.Context {
 	case ContextHTMLText:
-		if chars.LessThan && chars.GreaterThan {
+		// Special case: if reflection is inside a <script> tag, avoid HTML payloads
+		if reflection.TagName == "script" {
+			// Script context - use script-breaking payloads instead
+			candidates = []string{
+				`</script><img src=x onerror=alert(1)>`,
+			}
+		} else if chars.LessThan && chars.GreaterThan {
 			candidates = []string{
 				`<img src=x onerror=alert(1)>`,
 				`<svg onload=alert(1)>`,

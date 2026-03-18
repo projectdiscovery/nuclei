@@ -297,33 +297,84 @@ func isJavaScriptURI(uri string) bool {
 // (e.g., application/json, application/ld+json)
 func isNonExecutableScript(rawToken string) bool {
 	rawLower := strings.ToLower(rawToken)
-	// Look for type= attribute
-	typeIdx := strings.Index(rawLower, "type=")
+	// Look for type= attribute with flexible spacing/quoting
+	// Regex: (?i)\btype\s*=\s*(["']?)(?P<val>[^"'\s>]+)\1
+	// Since Go regexp doesn't support backreferences, we'll handle it manually
+	
+	// Find "type" word boundary
+	typeIdx := -1
+	for i := 0; i <= len(rawLower)-4; i++ {
+		if rawLower[i:i+4] == "type" {
+			// Check word boundary before
+			if i > 0 {
+				prev := rawLower[i-1]
+				if (prev >= 'a' && prev <= 'z') || (prev >= '0' && prev <= '9') || prev == '_' {
+					continue
+				}
+			}
+			// Check word boundary after
+			if i+4 < len(rawLower) {
+				next := rawLower[i+4]
+				if (next >= 'a' && next <= 'z') || (next >= '0' && next <= '9') || next == '_' {
+					continue
+				}
+			}
+			typeIdx = i
+			break
+		}
+	}
+	
 	if typeIdx < 0 {
 		return false
 	}
 	
-	// Extract the type value
-	afterEq := typeIdx + 5
-	if afterEq >= len(rawToken) {
+	// Skip whitespace after "type"
+	i := typeIdx + 4
+	for i < len(rawToken) && (rawToken[i] == ' ' || rawToken[i] == '\t' || rawToken[i] == '\n' || rawToken[i] == '\r') {
+		i++
+	}
+	
+	// Expect '='
+	if i >= len(rawToken) || rawToken[i] != '=' {
+		return false
+	}
+	i++
+	
+	// Skip whitespace after '='
+	for i < len(rawToken) && (rawToken[i] == ' ' || rawToken[i] == '\t' || rawToken[i] == '\n' || rawToken[i] == '\r') {
+		i++
+	}
+	
+	if i >= len(rawToken) {
 		return false
 	}
 	
-	// Find the value (accounting for quotes)
+	// Extract the type value (accounting for quotes)
 	var typeValue string
-	if rawToken[afterEq] == '"' || rawToken[afterEq] == '\'' {
-		quote := rawToken[afterEq]
-		endQuote := strings.IndexByte(rawToken[afterEq+1:], quote)
-		if endQuote >= 0 {
-			typeValue = strings.ToLower(rawToken[afterEq+1 : afterEq+1+endQuote])
+	if rawToken[i] == '"' || rawToken[i] == '\'' {
+		quote := rawToken[i]
+		i++
+		start := i
+		for i < len(rawToken) && rawToken[i] != quote {
+			i++
+		}
+		if i < len(rawToken) {
+			typeValue = rawToken[start:i]
 		}
 	} else {
 		// Unquoted value - read until whitespace or >
-		end := afterEq
-		for end < len(rawToken) && rawToken[end] != ' ' && rawToken[end] != '\t' && rawToken[end] != '\n' && rawToken[end] != '\r' && rawToken[end] != '>' {
-			end++
+		start := i
+		for i < len(rawToken) && rawToken[i] != ' ' && rawToken[i] != '\t' && rawToken[i] != '\n' && rawToken[i] != '\r' && rawToken[i] != '>' {
+			i++
 		}
-		typeValue = strings.ToLower(rawToken[afterEq:end])
+		typeValue = rawToken[start:i]
+	}
+	
+	// Normalize: trim whitespace, lowercase, strip MIME parameters after ';'
+	typeValue = strings.TrimSpace(typeValue)
+	typeValue = strings.ToLower(typeValue)
+	if semiIdx := strings.IndexByte(typeValue, ';'); semiIdx >= 0 {
+		typeValue = strings.TrimSpace(typeValue[:semiIdx])
 	}
 	
 	// Check if it's a non-executable type
