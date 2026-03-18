@@ -63,8 +63,9 @@ func (ta *TimingAnalyzer) ExecuteProbe() (*TimingResult, error) {
 		}
 	}
 
-	// If no valid requests were completed, return error
-	if validCount == 0 {
+	// If fewer than two valid requests were completed, return error
+	// We need at least 2 samples to compute meaningful variance/CV statistics
+	if validCount < 2 {
 		return nil, ErrNoValidProbes
 	}
 
