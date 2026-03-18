@@ -132,15 +132,15 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 		return false, "", errors.Wrap(err, "could not set value in component")
 	}
 
+	// Restore original value regardless of rebuild outcome to prevent state mutation leaks.
+	defer func() {
+		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
+	}()
+
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not rebuild request")
 	}
-
-	// Restore original value after rebuild so subsequent replays start from clean state
-	defer func() {
-		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
-	}()
 
 	gologger.Verbose().Msgf("[%s] Replaying with payload for %s context: %s", a.Name(), reflection.Context, rebuilt.String())
 

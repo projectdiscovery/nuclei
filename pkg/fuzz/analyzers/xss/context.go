@@ -21,7 +21,6 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 	var tagStack []string
 	inScript := false
 	inStyle := false
-	inRCDATA := false
 
 	for {
 		tt := tokenizer.Next()
@@ -42,13 +41,8 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				tagStack = append(tagStack, tagNameLower)
 			}
 
-			switch tagNameLower {
-			case "style":
+			if tagNameLower == "style" {
 				inStyle = true
-			default:
-				if _, ok := rcdataElements[tagNameLower]; ok {
-					inRCDATA = true
-				}
 			}
 
 			// Check if marker is reflected in the tag name itself
@@ -143,10 +137,6 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 				inScript = false
 			case "style":
 				inStyle = false
-			default:
-				if _, ok := rcdataElements[tagNameLower]; ok {
-					inRCDATA = false
-				}
 			}
 
 			// Pop tag stack

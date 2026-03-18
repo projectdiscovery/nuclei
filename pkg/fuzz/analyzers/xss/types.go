@@ -237,10 +237,3 @@ func normalizeURIScheme(val string) string {
 	return prefix + normalized[colon:]
 }
 
-// rcdataElements are HTML elements whose content is treated as RCDATA (no tag parsing)
-var rcdataElements = map[string]struct{}{
-	"textarea": {},
-	"title":    {},
-	"xmp":      {},
-	"noscript": {},
-}
