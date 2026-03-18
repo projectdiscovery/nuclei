@@ -222,20 +222,19 @@ var uriSchemeWhitespaceRemover = strings.NewReplacer(
 
 // normalizeURIScheme canonicalizes URI values for scheme checks.
 func normalizeURIScheme(val string) string {
-	normalized := uriSchemeWhitespaceRemover.Replace(val)
-	normalized = strings.ToLower(strings.TrimSpace(normalized))
+	normalized := strings.ToLower(strings.TrimSpace(val))
 
 	colon := strings.IndexByte(normalized, ':')
 	if colon <= 0 {
-		return normalized
+		return uriSchemeWhitespaceRemover.Replace(normalized)
 	}
 
-	decodedPrefix, err := url.PathUnescape(normalized[:colon])
-	if err == nil {
-		return decodedPrefix + normalized[colon:]
+	prefix := normalized[:colon]
+	if decodedPrefix, err := url.PathUnescape(prefix); err == nil {
+		prefix = decodedPrefix
 	}
-
-	return normalized
+	prefix = uriSchemeWhitespaceRemover.Replace(prefix)
+	return prefix + normalized[colon:]
 }
 
 // rcdataElements are HTML elements whose content is treated as RCDATA (no tag parsing)
