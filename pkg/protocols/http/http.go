@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/gologger"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -502,6 +503,24 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			if err := rule.Compile(request.generator, request.options); err != nil {
 				return errors.Wrap(err, "could not compile fuzzing rule")
 			}
+		}
+	}
+
+	// Validate timing analysis compatibility with execution modes
+	if len(request.Timing) > 0 {
+		// Timing analysis is executed before mode dispatchers, but timing variables
+		// may not be properly injected into pipeline, race, fuzzing, or parallel modes
+		if request.Pipeline {
+			gologger.Warning().Msgf("Timing analysis with pipeline mode may not inject timing variables into requests")
+		}
+		if request.Race && request.RaceNumberRequests > 0 {
+			gologger.Warning().Msgf("Timing analysis with race mode may not inject timing variables into requests")
+		}
+		if len(request.Fuzzing) > 0 {
+			gologger.Warning().Msgf("Timing analysis with fuzzing mode may not inject timing variables into requests")
+		}
+		if request.Threads > 0 && len(request.Payloads) > 0 {
+			gologger.Warning().Msgf("Timing analysis with parallel/threaded mode may not inject timing variables into requests")
 		}
 	}
 	if len(request.Payloads) > 0 {

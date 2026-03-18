@@ -508,37 +508,20 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	// verify if pipeline was requested
-	if request.Pipeline {
-		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
-	}
-	// verify if a basic race condition was requested
-	if request.Race && request.RaceNumberRequests > 0 {
-		return request.executeRaceRequest(input, dynamicValues, callback)
-	}
-
-	// verify if fuzz elaboration was requested
-	if len(request.Fuzzing) > 0 {
-		return request.executeFuzzingRule(input, dynamicValues, callback)
-	}
-
-	// verify if parallel elaboration was requested
-	if request.Threads > 0 && (len(request.Payloads) > 0 || request.Race) {
-		return request.executeParallelHTTP(input, dynamicValues, callback)
-	}
-
 	// ==========================================
 	// TIMING ANALYSIS - PRE-EXECUTION
 	// ==========================================
 	// We execute timing probes before the main generator loop so that
 	// the timing variables are available for the first request's matchers.
+	// This must run BEFORE any execution mode dispatchers to ensure timing
+	// variables are available regardless of execution mode.
 
 	var timingResults map[string]interface{}
 
 	if len(request.Timing) > 0 {
 		timingResults = make(map[string]interface{})
 
-		for _, timingReq := range request.Timing {
+		for probeIndex, timingReq := range request.Timing {
 			// Determine HTTP method
 			method := timingReq.Method
 			if method == "" {
@@ -562,22 +545,93 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				}
 			}
 
-			// Initialize the Analyzer with the probe function
-			analyzer := timing.NewTimingAnalyzer(timing.Options{
+			// Prepare timing analyzer options
+			timingOpts := timing.Options{
 				Iterations:        timingReq.Iterations,
 				StaticThresholdCV: timingReq.ThresholdCV,
 				SleepInterval:     time.Millisecond * 100, // Delay to avoid rate limits
-			}, func() (time.Duration, error) {
+			}
+
+			// Wire up validation functions if validation spec is provided
+			if timingReq.Validation != nil {
+				// ValidationRead function
+				if timingReq.Validation.ReadPath != "" {
+					readURL := *targetURL // Copy the URL
+					readURL.Path = timingReq.Validation.ReadPath
+					timingOpts.ValidationRead = func() (int, error) {
+						req, err := retryablehttp.NewRequest(http.MethodGet, readURL.String(), nil)
+						if err != nil {
+							return 0, err
+						}
+						// Apply custom headers
+						for k, v := range request.customHeaders {
+							req.Header.Set(k, v)
+						}
+						// Apply timing request headers
+						for k, v := range timingReq.Headers {
+							req.Header.Set(k, v)
+						}
+						request.options.RateLimitTake()
+						resp, err := request.httpClient.Do(req)
+						if err != nil {
+							return 0, err
+						}
+						defer resp.Body.Close()
+						_, _ = io.Copy(io.Discard, resp.Body)
+						return resp.StatusCode, nil
+					}
+				}
+
+				// ValidationDelete function
+				if timingReq.Validation.DeletePath != "" {
+					deleteURL := *targetURL // Copy the URL
+					deleteURL.Path = timingReq.Validation.DeletePath
+					timingOpts.ValidationDelete = func() (int, error) {
+						req, err := retryablehttp.NewRequest(http.MethodDelete, deleteURL.String(), nil)
+						if err != nil {
+							return 0, err
+						}
+						// Apply custom headers
+						for k, v := range request.customHeaders {
+							req.Header.Set(k, v)
+						}
+						// Apply timing request headers
+						for k, v := range timingReq.Headers {
+							req.Header.Set(k, v)
+						}
+						request.options.RateLimitTake()
+						resp, err := request.httpClient.Do(req)
+						if err != nil {
+							return 0, err
+						}
+						defer resp.Body.Close()
+						_, _ = io.Copy(io.Discard, resp.Body)
+						return resp.StatusCode, nil
+					}
+				}
+			}
+
+			// Initialize the Analyzer with the probe function
+			analyzer := timing.NewTimingAnalyzer(timingOpts, func() (time.Duration, error) {
 				start := time.Now()
 
-				// Create a new request for the probe
-				req, err := retryablehttp.NewRequest(method, targetURL.String(), nil)
+				// Create a new request for the probe with body if provided
+				var bodyReader io.Reader
+				if timingReq.Body != "" {
+					bodyReader = strings.NewReader(timingReq.Body)
+				}
+				req, err := retryablehttp.NewRequest(method, targetURL.String(), bodyReader)
 				if err != nil {
 					return 0, err
 				}
 
 				// Apply custom headers from the template to the probe
 				for k, v := range request.customHeaders {
+					req.Header.Set(k, v)
+				}
+
+				// Apply timing request specific headers
+				for k, v := range timingReq.Headers {
 					req.Header.Set(k, v)
 				}
 
@@ -604,25 +658,60 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				continue
 			}
 
-			// Store results in the map
-			timingResults["timing_min_rtt"] = result.MinRTT.String()
-			timingResults["timing_max_rtt"] = result.MaxRTT.String()
-			timingResults["timing_avg_rtt"] = result.AvgRTT.String()
-			timingResults["timing_std_dev"] = result.StdDev.String()
-			timingResults["timing_cv"] = result.CoefficientOfVariation
-			timingResults["timing_is_suspicious"] = result.IsStaticLatency
+			// Store results in the map with unique keys per probe
+			// Use probe index to distinguish between multiple timing probes
+			suffix := ""
+			if len(request.Timing) > 1 {
+				suffix = fmt.Sprintf("_%d", probeIndex)
+			}
 
-			if result.IsStaticLatency {
-				timingResults["timing_verdict"] = "honeypot_suspected"
+			timingResults[fmt.Sprintf("timing_min_rtt%s", suffix)] = result.MinRTT.String()
+			timingResults[fmt.Sprintf("timing_max_rtt%s", suffix)] = result.MaxRTT.String()
+			timingResults[fmt.Sprintf("timing_avg_rtt%s", suffix)] = result.AvgRTT.String()
+			timingResults[fmt.Sprintf("timing_std_dev%s", suffix)] = result.StdDev.String()
+			// Publish both the documented key and a short alias for coefficient of variation
+			timingResults[fmt.Sprintf("timing_coefficient_of_variation%s", suffix)] = result.CoefficientOfVariation
+			timingResults[fmt.Sprintf("timing_cv%s", suffix)] = result.CoefficientOfVariation
+			timingResults[fmt.Sprintf("timing_is_suspicious%s", suffix)] = result.IsStaticLatency
+
+			// Prefer result.Verdict when available (from validation), otherwise fall back to IsStaticLatency
+			if result.Verdict != "" {
+				timingResults[fmt.Sprintf("timing_verdict%s", suffix)] = result.Verdict
+			} else if result.IsStaticLatency {
+				timingResults[fmt.Sprintf("timing_verdict%s", suffix)] = "honeypot_suspected"
 			} else {
-				timingResults["timing_verdict"] = "normal"
+				timingResults[fmt.Sprintf("timing_verdict%s", suffix)] = "normal"
 			}
 
 			if request.options.Options.Debug {
-				gologger.Debug().Msgf("[timing] Results for %s: Avg=%s, CV=%.4f, Suspected=%v",
-					targetURL.String(), result.AvgRTT, result.CoefficientOfVariation, result.IsStaticLatency)
+				gologger.Debug().Msgf("[timing] Results for %s (probe %d): Avg=%s, CV=%.4f, Suspected=%v",
+					targetURL.String(), probeIndex, result.AvgRTT, result.CoefficientOfVariation, result.IsStaticLatency)
 			}
 		}
+	}
+
+	// ==========================================
+	// EXECUTION MODE DISPATCHERS
+	// ==========================================
+	// Now that timing analysis is complete, dispatch to the appropriate execution mode
+
+	// verify if pipeline was requested
+	if request.Pipeline {
+		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
+	}
+	// verify if a basic race condition was requested
+	if request.Race && request.RaceNumberRequests > 0 {
+		return request.executeRaceRequest(input, dynamicValues, callback)
+	}
+
+	// verify if fuzz elaboration was requested
+	if len(request.Fuzzing) > 0 {
+		return request.executeFuzzingRule(input, dynamicValues, callback)
+	}
+
+	// verify if parallel elaboration was requested
+	if request.Threads > 0 && (len(request.Payloads) > 0 || request.Race) {
+		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
 	// ==========================================
