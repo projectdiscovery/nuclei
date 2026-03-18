@@ -190,13 +190,18 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 // returns completed values to be replaced and processed
 // for fuzzing.
 func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload string, interactshURLs []string) (string, []string) {
-	// TODO: Handle errors
 	values := generators.MergeMaps(rule.options.Variables.GetAll(), map[string]interface{}{
 		"value": value,
 	}, rule.options.Options.Vars.AsMap(), input.Values)
-	firstpass, _ := expressions.Evaluate(payload, values)
+	firstpass, err := expressions.Evaluate(payload, values)
+	if err != nil {
+		return "", interactshURLs
+	}
 	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
-	evaluated, _ := expressions.Evaluate(interactData, values)
+	evaluated, err := expressions.Evaluate(interactData, values)
+	if err != nil {
+		return "", interactshURLs
+	}
 	replaced := rule.executeRuleTypes(input, value, evaluated)
 	return replaced, interactshURLs
 }
