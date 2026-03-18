@@ -173,7 +173,7 @@ TEMPLATES:
 ... (Diğer bayraklar orijinalindeki gibi, tam çeviri için çok uzun olabilir, ancak bağlam için yeterli)
 ```
 
-Ek dokümantasyon şu adreste mevcuttur: [**`docs.nuclei.sh/getting-started/running`**](https://docs.nuclei.sh/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
+Ek dokümantasyon şu adreste mevcuttur: [**`docs.projectdiscovery.io/getting-started/running`**](https://docs.projectdiscovery.io/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 

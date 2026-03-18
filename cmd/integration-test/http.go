@@ -88,6 +88,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/multi-request.yaml", TestCase: &httpMultiRequest{}},
 	{Path: "protocols/http/http-matcher-extractor-dy-extractor.yaml", TestCase: &httpMatcherExtractorDynamicExtractor{}},
 	{Path: "protocols/http/multi-http-var-sharing.yaml", TestCase: &httpMultiVarSharing{}},
+	{Path: "protocols/http/response-data-literal-reuse.yaml", TestCase: &httpResponseDataLiteralReuse{}},
 	{Path: "protocols/http/raw-path-single-slash.yaml", TestCase: &httpRawPathSingleSlash{}},
 	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
 }
@@ -99,6 +100,31 @@ func (h *httpMultiVarSharing) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	return expectResultsCount(results, 1)
+}
+
+type httpResponseDataLiteralReuse struct{}
+
+func (h *httpResponseDataLiteralReuse) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = fmt.Fprint(w, `{{md5("Hello")}}`)
+	})
+	router.GET("/echo", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if r.URL.Query().Get("x") != `{{md5("Hello")}}` {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
 	return expectResultsCount(results, 1)
 }
 

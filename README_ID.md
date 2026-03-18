@@ -291,7 +291,7 @@ Run nuclei with a JSON output:
 Run nuclei with sorted Markdown outputs (with environment variables):
 	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
+Additional documentation is available at: https://docs.projectdiscovery.io/getting-started/running
 ```
 
 ### Menjalankan Nuclei

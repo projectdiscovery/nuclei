@@ -105,7 +105,7 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 	fmt.Println(directory)
 	fset := token.NewFileSet()
 
-	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments)
+	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments) //nolint
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse directory")
 	}
