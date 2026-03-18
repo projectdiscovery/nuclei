@@ -94,8 +94,11 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 							if strings.HasPrefix(normalizedVal, "javascript:") || strings.HasPrefix(normalizedVal, "vbscript:") {
 								ctx = ContextScript
 							} else if strings.HasPrefix(normalizedVal, "data:") {
-								// data:text/html, data:image/svg+xml and data:application/xhtml+xml can execute scripts
-								if strings.Contains(normalizedVal, "text/html") || strings.Contains(normalizedVal, "image/svg+xml") || strings.Contains(normalizedVal, "application/xhtml+xml") {
+								// Parse media-type only (before , or ;) to avoid false positives on payload data
+								dataRest := strings.TrimPrefix(normalizedVal, "data:")
+								mediaType := strings.ToLower(strings.TrimSpace(
+									strings.SplitN(strings.SplitN(dataRest, ",", 2)[0], ";", 2)[0]))
+								if mediaType == "text/html" || mediaType == "image/svg+xml" || mediaType == "application/xhtml+xml" {
 									ctx = ContextScript
 								}
 							}
@@ -287,26 +290,36 @@ func detectScriptStringContext(scriptContent, marker string) Context {
 // detectAttrQuoting detects the quoting style of an attribute from raw HTML.
 // Returns the quote character and whether the attribute is unquoted.
 func detectAttrQuoting(rawToken, attrName string) (byte, bool) {
-	attrAssign := attrName + "="
+	// Handle optional whitespace around = (e.g. href = "val")
 	rawLower := strings.ToLower(rawToken)
+	attrLower := strings.ToLower(attrName)
 	searchStart := 0
 	idx := -1
+	eqOffset := 0
 	for {
-		pos := strings.Index(rawLower[searchStart:], attrAssign)
+		pos := strings.Index(rawLower[searchStart:], attrLower)
 		if pos < 0 {
 			break
 		}
 		absPos := searchStart + pos
 		if absPos == 0 || isAttrBoundary(rawLower[absPos-1]) {
-			idx = absPos
-			break
+			// skip optional whitespace after attr name, then require =
+			i := absPos + len(attrLower)
+			for i < len(rawLower) && (rawLower[i] == ' ' || rawLower[i] == '\t') {
+				i++
+			}
+			if i < len(rawLower) && rawLower[i] == '=' {
+				idx = absPos
+				eqOffset = i - absPos
+				break
+			}
 		}
 		searchStart = absPos + 1
 	}
 	if idx < 0 {
 		return '"', false // default to double-quoted
 	}
-	afterEq := idx + len(attrAssign)
+	afterEq := idx + eqOffset + 1
 	if afterEq >= len(rawToken) {
 		return '"', false
 	}
