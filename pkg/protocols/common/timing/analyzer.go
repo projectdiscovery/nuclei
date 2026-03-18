@@ -22,6 +22,9 @@ func NewTimingAnalyzer(options Options, probe ProbeFunc) *TimingAnalyzer {
 	if options.Iterations <= 0 {
 		options.Iterations = 5
 	}
+	if options.Iterations > 100 {
+		options.Iterations = 100
+	}
 	if options.StaticThresholdCV <= 0 {
 		options.StaticThresholdCV = 0.05 // 5% variance threshold
 	}
