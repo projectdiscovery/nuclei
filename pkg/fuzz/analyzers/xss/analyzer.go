@@ -2,8 +2,11 @@ package xss
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
@@ -39,36 +42,53 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 // Analyze is the main function for the XSS analyzer
 // It analyzes the response to determine if XSS vulnerability is present
 // based on context classification
+// FIX: Now uses FuzzGenerated.Value and executes the rebuilt fuzzed request
 func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
-	if options.FuzzGenerated.OriginalPayload == "" {
+	// FIX: Use FuzzGenerated.Value instead of OriginalPayload
+	payload := options.FuzzGenerated.Value
+	if payload == "" {
 		return false, "", nil
 	}
 
-	// Get the response body from the fuzzed request
-	resp := options.FuzzGenerated.Request.Response
-	if resp == nil {
-		return false, "", nil
+	// FIX: Execute the rebuilt fuzzed request instead of using cached response
+	gr := options.FuzzGenerated
+	if gr.Component == nil {
+		return false, "", errors.New("fuzz component is nil")
 	}
+
+	// Rebuild the request with the payload
+	rebuilt, err := gr.Component.Rebuild()
+	if err != nil {
+		return false, "", errors.Wrap(err, "could not rebuild request")
+	}
+
+	// Execute the rebuilt request
+	resp, err := options.HttpClient.Do(rebuilt)
+	if err != nil {
+		return false, "", errors.Wrap(err, "could not send request")
+	}
+	defer resp.Body.Close()
 
 	// Read response body
-	bodyBytes, err := options.FuzzGenerated.Request.BodyBytes()
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return false, "", nil
+		return false, "", errors.Wrap(err, "could not read response body")
 	}
 
-	responseBody := string(bodyBytes)
+	responseBody := string(respBody)
 
 	// Check if payload is reflected in response (case-insensitive)
-	if !strings.Contains(strings.ToLower(responseBody), strings.ToLower(options.FuzzGenerated.OriginalPayload)) {
+	if !strings.Contains(strings.ToLower(responseBody), strings.ToLower(payload)) {
 		return false, "", nil
 	}
 
 	// Classify the context of the reflection
-	ctx := ClassifyContext(responseBody, options.FuzzGenerated.OriginalPayload)
+	ctx := ClassifyContext(responseBody, payload)
 
 	// Determine vulnerability based on context
 	isVulnerable := false
 	reason := ""
+	requiresManualVerification := false
 
 	switch ctx {
 	case ContextScript:
@@ -76,9 +96,17 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		isVulnerable = true
 		reason = "Payload reflected in executable JavaScript context"
 	case ContextAttribute:
-		// Attribute context may be vulnerable (requires event handlers)
-		isVulnerable = true
-		reason = "Payload reflected in HTML attribute context"
+		// FIX: Attribute context requires secondary validation for event handlers
+		// Check if the attribute is an event handler
+		if isEventHandlerAttribute(responseBody, payload) {
+			isVulnerable = true
+			reason = "Payload reflected in event handler attribute context"
+		} else {
+			// Mark as requiring manual verification for non-event-handler attributes
+			requiresManualVerification = true
+			isVulnerable = true
+			reason = "Payload reflected in HTML attribute context (requires manual verification)"
+		}
 	case ContextHTML:
 		// HTML context is vulnerable
 		isVulnerable = true
@@ -97,8 +125,63 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 
 	if isVulnerable {
-		gologger.Verbose().Msgf("[%s] %s", a.Name(), reason)
+		if requiresManualVerification {
+			gologger.Verbose().Msgf("[%s] %s", a.Name(), reason)
+		} else {
+			gologger.Verbose().Msgf("[%s] %s", a.Name(), reason)
+		}
 	}
 
 	return isVulnerable, reason, nil
+}
+
+// isEventHandlerAttribute checks if the payload is in an event handler attribute
+func isEventHandlerAttribute(responseBody, payload string) bool {
+	lowerBody := strings.ToLower(responseBody)
+	lowerPayload := strings.ToLower(payload)
+	
+	payloadIdx := strings.Index(lowerBody, lowerPayload)
+	if payloadIdx == -1 {
+		return false
+	}
+	
+	// Look backward to find the attribute name
+	beforePayload := responseBody[:payloadIdx]
+	
+	// Find the last = before the payload
+	eqIdx := strings.LastIndex(beforePayload, "=")
+	if eqIdx == -1 {
+		return false
+	}
+	
+	// Find the attribute name before the =
+	beforeEq := beforePayload[:eqIdx]
+	
+	// Find the start of the attribute name (after whitespace or tag start)
+	attrNameStart := -1
+	for i := len(beforeEq) - 1; i >= 0; i-- {
+		if beforeEq[i] == ' ' || beforeEq[i] == '\t' || beforeEq[i] == '\n' || beforeEq[i] == '<' {
+			attrNameStart = i + 1
+			break
+		}
+	}
+	
+	if attrNameStart == -1 {
+		return false
+	}
+	
+	attrName := strings.ToLower(beforeEq[attrNameStart:])
+	
+	// Check if it's an event handler (starts with "on")
+	return strings.HasPrefix(attrName, "on")
+}
+
+// isHTMLResponse checks if the Content-Type indicates an HTML response
+func isHTMLResponse(headers http.Header) bool {
+	ct := headers.Get("Content-Type")
+	if ct == "" {
+		return true // assume HTML if no Content-Type
+	}
+	ctLower := strings.ToLower(ct)
+	return strings.Contains(ctLower, "text/html") || strings.Contains(ctLower, "application/xhtml")
 }
