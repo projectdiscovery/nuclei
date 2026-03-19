@@ -485,7 +485,8 @@ func WithAuthProvider(provider authprovider.AuthProvider) NucleiSDKOptions {
 	}
 }
 
-// LoadSecretsFromFile allows loading secrets from file
+// LoadSecretsFromFile allows loading secrets from file.
+// Deprecated: the prefetch argument is retained for backward compatibility; authenticated scans prefetch automatically.
 func LoadSecretsFromFile(files []string, prefetch bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.SecretsFile = goflags.StringSlice(files)

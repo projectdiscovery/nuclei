@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -16,10 +17,28 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/projectdiscovery/utils/errkit"
 )
+
+// PreFetchAuthSecrets prefetches secrets when an auth provider is configured.
+func PreFetchAuthSecrets(provider authprovider.AuthProvider) error {
+	if provider == nil {
+		return nil
+	}
+	return provider.PreFetchSecrets()
+}
+
+func prepareAuthTemplate(tmpl *templates.Template) {
+	if tmpl == nil {
+		return
+	}
+	for _, request := range tmpl.RequestsHTTP {
+		request.SkipSecretFile = true
+	}
+}
 
 type AuthLazyFetchOptions struct {
 	TemplateStore *loader.Store
@@ -79,6 +98,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		}
 		data := map[string]interface{}{}
 		tmpl := tmpls[0]
+		prepareAuthTemplate(tmpl)
 		// add args to tmpl here
 		vars := map[string]interface{}{}
 		mainCtx := context.Background()

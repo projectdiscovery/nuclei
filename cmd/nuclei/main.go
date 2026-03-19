@@ -495,7 +495,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("Authentication", "Authentication",
 		flagSet.StringSliceVarP(&options.SecretsFile, "secret-file", "sf", nil, "path to config file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
-		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
+		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "legacy compatibility flag; authenticated scans now prefetch secrets automatically"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:

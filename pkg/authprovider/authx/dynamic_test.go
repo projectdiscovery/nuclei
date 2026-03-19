@@ -1,7 +1,10 @@
 package authx
 
 import (
+	"errors"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -122,4 +125,105 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
 	})
+}
+
+func newTestDynamic(t *testing.T, callback LazyFetchSecret) *Dynamic {
+	t.Helper()
+
+	dynamic := &Dynamic{
+		Secret: &Secret{
+			Type:    string(BearerTokenAuth),
+			Domains: []string{"example.com"},
+			Token:   "Bearer {{token}}",
+		},
+		TemplatePath: "auth-template.yaml",
+		Variables: []KV{{
+			Key:   "username",
+			Value: "tester",
+		}},
+	}
+	require.NoError(t, dynamic.Validate())
+	dynamic.SetLazyFetchCallback(callback)
+	return dynamic
+}
+
+func TestDynamicFetchBlocksConcurrentCallers(t *testing.T) {
+	var calls atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan error, 2)
+
+	dynamic := newTestDynamic(t, func(d *Dynamic) error {
+		calls.Add(1)
+		close(started)
+		<-release
+		d.Extracted = map[string]interface{}{"token": "secret-token"}
+		return nil
+	})
+
+	go func() {
+		done <- dynamic.Fetch(false)
+	}()
+
+	<-started
+
+	go func() {
+		done <- dynamic.Fetch(false)
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("concurrent fetch returned before first fetch finished: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(release)
+	require.NoError(t, <-done)
+	require.NoError(t, <-done)
+	require.EqualValues(t, 1, calls.Load())
+	require.True(t, dynamic.fetched.Load())
+	require.Equal(t, "Bearer secret-token", dynamic.Secret.Token)
+}
+
+func TestDynamicGetStrategiesWaitsForFetchCompletion(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan []AuthStrategy, 1)
+
+	dynamic := newTestDynamic(t, func(d *Dynamic) error {
+		close(started)
+		<-release
+		d.Extracted = map[string]interface{}{"token": "secret-token"}
+		return nil
+	})
+
+	go func() {
+		done <- dynamic.GetStrategies()
+	}()
+
+	<-started
+
+	select {
+	case strategies := <-done:
+		t.Fatalf("strategies became available before fetch completed: %d", len(strategies))
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(release)
+	strategies := <-done
+	require.Len(t, strategies, 1)
+	require.Equal(t, "Bearer secret-token", dynamic.Secret.Token)
+	require.NoError(t, dynamic.Error())
+}
+
+func TestDynamicGetStrategiesReturnsNilOnFetchFailure(t *testing.T) {
+	expectedErr := errors.New("fetch failed")
+	dynamic := newTestDynamic(t, func(d *Dynamic) error {
+		return expectedErr
+	})
+
+	require.ErrorIs(t, dynamic.Fetch(false), expectedErr)
+	require.Nil(t, dynamic.GetStrategies())
+	require.ErrorIs(t, dynamic.Error(), expectedErr)
+	require.True(t, dynamic.fetched.Load())
 }

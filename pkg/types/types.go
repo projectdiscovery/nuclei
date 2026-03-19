@@ -420,7 +420,7 @@ type Options struct {
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
-	// PreFetchSecrets pre-fetches the secrets from the auth provider
+	// Deprecated: authenticated scans now pre-fetch secrets automatically whenever an auth provider is configured.
 	PreFetchSecrets bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
 	FormatUseRequiredOnly bool
