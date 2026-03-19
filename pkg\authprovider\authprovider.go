@@ -11,14 +11,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// AuthProvider is the interface for providing authentication
+var ErrNoAuthProvider = fmt.Errorf("no auth provider available")
+
+// AuthProvider is the interface for auth providers
 type AuthProvider interface {
-	// LookupURLX looks up credentials for a given URL
 	LookupURLX(url string) authx.AuthStrategy
-	// GetTemplatePaths returns all template paths for auth
 	GetTemplatePaths() []string
-	// PreFetchSecrets synchronously pre-fetches all secrets
 	PreFetchSecrets() error
 }
-
-var ErrNoAuthProvider = fmt.Errorf("no auth provider found")
