@@ -11,22 +11,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	ErrNoAuthProvider = fmt.Errorf("no auth provider available")
-)
-
 // AuthProvider is the interface for auth providers
 type AuthProvider interface {
+	// LookupURLX looks up credentials for a given URL and returns AuthStrategy
 	LookupURLX(url string) authx.AuthStrategy
+	// GetTemplatePaths returns template paths used by this auth provider
 	GetTemplatePaths() []string
+	// PreFetchSecrets pre-fetches all secrets - must block until complete
 	PreFetchSecrets() error
 }
 
-// FileAuthProvider is a file-based auth provider
-type FileAuthProvider struct {
-	Path           string
-	store          *authx.AuthConfig
-	mu             sync.RWMutex
-	secretsFetched bool
-	callback       func(authx.AuthStrategy)
-}
+var ErrNoAuthProvider = fmt.Errorf("no auth provider available")
