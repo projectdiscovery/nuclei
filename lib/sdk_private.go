@@ -207,6 +207,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.opts.ShouldUseHostError() && e.hostErrCache != nil {
 		e.executerOpts.HostErrorsCache = e.hostErrCache
 	}
+	prefetchAuthProvider := false
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(e.opts, e.catalog, e.executerOpts)
 		if err != nil {
@@ -223,13 +224,15 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 			return errors.Wrap(err, "could not create auth provider")
 		}
 		e.executerOpts.AuthProvider = provider
+		prefetchAuthProvider = true
 	}
 	if e.authprovider != nil {
 		e.executerOpts.AuthProvider = e.authprovider
+		prefetchAuthProvider = false
 	}
 
-	// prefetch secrets before normal template execution when auth is configured
-	if e.executerOpts.AuthProvider != nil {
+	// prefetch secrets before normal template execution only for providers created from secret files
+	if prefetchAuthProvider {
 		if err := runner.PreFetchAuthSecrets(e.executerOpts.AuthProvider); err != nil {
 			return errors.Wrap(err, "could not prefetch secrets")
 		}
