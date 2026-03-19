@@ -51,22 +51,33 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 
 	rebuiltSegments := make([]string, 0, len(originalSplitted))
 
+	counter := 1
 	for i, originalSegment := range originalSplitted {
 		if i == 0 && originalSegment == "" {
 			rebuiltSegments = append(rebuiltSegments, "")
 			continue
 		}
 
-		key := strconv.Itoa(i)
+		key := strconv.Itoa(counter)
 		if newValue := q.value.parsed.Get(key); newValue != nil {
 			rebuiltSegments = append(rebuiltSegments, newValue.(string))
 		} else {
 			rebuiltSegments = append(rebuiltSegments, originalSegment)
 		}
+		counter++
 	}
 
 	newPath := strings.Join(rebuiltSegments, "/")
+
 	newReq := q.req.Clone(context.Background())
+
+	// 🔥 critical fix: prevent URL pointer mutation
+	if newReq.URL != nil {
+		u := *newReq.URL
+		newReq.URL = &u
+		newReq.URL.Path = newPath
+	}
+
 	newReq.Path = newPath
 
 	return newReq, nil
