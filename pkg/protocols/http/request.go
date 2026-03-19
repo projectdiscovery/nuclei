@@ -538,14 +538,29 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 			// Handle relative paths for the probe
 			if timingReq.Path != "" {
-				if strings.Contains(timingReq.Path, "://") || strings.Contains(timingReq.Path, "@") || strings.HasPrefix(timingReq.Path, "//") {
+				// Normalize the path to prevent path traversal attacks
+				cleanedPath := path.Clean(timingReq.Path)
+
+				// Check for malicious patterns after normalization
+				if strings.Contains(cleanedPath, "://") || strings.HasPrefix(cleanedPath, "//") {
 					gologger.Error().Msgf("[timing] Invalid path detected (looks like URL): %s", timingReq.Path)
 					continue
 				}
+
+				// Verify the host hasn't been overridden (prevent host replacement attacks)
+				originalHost := targetURL.Host
+
 				if strings.HasPrefix(timingReq.Path, "/") {
 					targetURL.Path = timingReq.Path
 				} else {
 					targetURL.Path = path.Join(targetURL.Path, timingReq.Path)
+				}
+
+				// Verify host wasn't changed
+				if targetURL.Host != originalHost {
+					gologger.Error().Msgf("[timing] Invalid path detected (host override attempt): %s", timingReq.Path)
+					targetURL.Host = originalHost
+					continue
 				}
 			}
 
@@ -561,12 +576,19 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// ValidationRead function
 				if timingReq.Validation.ReadPath != "" {
 					// Validate ReadPath to prevent SSRF attacks
-					if strings.Contains(timingReq.Validation.ReadPath, "://") || strings.Contains(timingReq.Validation.ReadPath, "@") || strings.HasPrefix(timingReq.Validation.ReadPath, "//") {
+					cleanedReadPath := path.Clean(timingReq.Validation.ReadPath)
+					if strings.Contains(cleanedReadPath, "://") || strings.HasPrefix(cleanedReadPath, "//") {
 						gologger.Error().Msgf("[timing] Invalid validation read path detected (looks like URL): %s", timingReq.Validation.ReadPath)
 						continue
 					}
 					readURL := *targetURL // Copy the URL
+					originalHost := readURL.Host
 					readURL.Path = timingReq.Validation.ReadPath
+					// Verify host wasn't changed
+					if readURL.Host != originalHost {
+						gologger.Error().Msgf("[timing] Invalid validation read path detected (host override attempt): %s", timingReq.Validation.ReadPath)
+						continue
+					}
 					timingOpts.ValidationRead = func() (int, error) {
 						req, err := retryablehttp.NewRequest(http.MethodGet, readURL.String(), nil)
 						if err != nil {
@@ -594,12 +616,19 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// ValidationDelete function
 				if timingReq.Validation.DeletePath != "" {
 					// Validate DeletePath to prevent SSRF attacks
-					if strings.Contains(timingReq.Validation.DeletePath, "://") || strings.Contains(timingReq.Validation.DeletePath, "@") || strings.HasPrefix(timingReq.Validation.DeletePath, "//") {
+					cleanedDeletePath := path.Clean(timingReq.Validation.DeletePath)
+					if strings.Contains(cleanedDeletePath, "://") || strings.HasPrefix(cleanedDeletePath, "//") {
 						gologger.Error().Msgf("[timing] Invalid validation delete path detected (looks like URL): %s", timingReq.Validation.DeletePath)
 						continue
 					}
 					deleteURL := *targetURL // Copy the URL
+					originalHost := deleteURL.Host
 					deleteURL.Path = timingReq.Validation.DeletePath
+					// Verify host wasn't changed
+					if deleteURL.Host != originalHost {
+						gologger.Error().Msgf("[timing] Invalid validation delete path detected (host override attempt): %s", timingReq.Validation.DeletePath)
+						continue
+					}
 					timingOpts.ValidationDelete = func() (int, error) {
 						req, err := retryablehttp.NewRequest(http.MethodDelete, deleteURL.String(), nil)
 						if err != nil {

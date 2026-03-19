@@ -39,7 +39,8 @@ type TimingRequest struct {
 	Path string `yaml:"path,omitempty" json:"path,omitempty" jsonschema:"title=path for timing analysis,description=Specific endpoint to probe for timing analysis"`
 
 	// Iterations is the number of requests to send for statistical significance.
-	Iterations int `yaml:"iterations,omitempty" json:"iterations,omitempty" jsonschema:"title=iterations,description=Number of requests to sample,default=5"`
+	// Maximum value is capped at 100 to prevent DoS attacks via unbounded iteration counts.
+	Iterations int `yaml:"iterations,omitempty" json:"iterations,omitempty" jsonschema:"title=iterations,description=Number of requests to sample (max 100),default=5,maximum=100"`
 
 	// ThresholdCV is the Coefficient of Variation threshold to determine static latency.
 	ThresholdCV float64 `yaml:"threshold_cv,omitempty" json:"threshold_cv,omitempty" jsonschema:"title=threshold coefficient of variation,description=Threshold for determining static latency,default=0.05"`
