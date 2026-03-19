@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -36,7 +37,7 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.value = NewValue("")
 
 	split := strings.Split(req.Path, "/")
-	values := make(map[string]interface{})
+	orderedValues := mapsutil.NewOrderedMap[string, any]()
 	for i, segment := range split {
 		if segment == "" && i == 0 {
 			// Skip the first empty segment from leading "/"
@@ -46,11 +47,11 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 			// Skip any other empty segments
 			continue
 		}
-		// Use 1-based indexing and store individual segments
-		key := strconv.Itoa(len(values) + 1)
-		values[key] = segment
+		// Use 1-based indexing and store individual segments in order
+		key := strconv.Itoa(orderedValues.Size() + 1)
+		orderedValues.Set(key, segment)
 	}
-	q.value.SetParsed(dataformat.KVMap(values), "")
+	q.value.SetParsed(dataformat.KVOrderedMap(&orderedValues), "")
 	return true, nil
 }
 
