@@ -394,6 +394,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.OutOfScope, "fuzz-out-scope", "cos", nil, "out of scope url regex to be excluded by fuzzer", goflags.FileCommaSeparatedStringSliceOptions),
 	)
 
+	flagSet.CreateGroup("honeypot", "Honeypot Detection",
+		flagSet.BoolVarP(&options.HoneypotDetectionEnabled, "honeypot-detection", "hd", false, "enable honeypot detection to identify hosts matching excessive templates"),
+		flagSet.IntVarP(&options.HoneypotMatchThreshold, "honeypot-threshold", "ht", 50, "threshold of unique template matches to mark host as honeypot"),
+		flagSet.IntVarP(&options.HoneypotResetIntervalSeconds, "honeypot-reset-interval", "hr", 0, "reset interval in seconds for honeypot counters (0 = no reset)"),
+	)
+
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
 		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "uncover search query", goflags.FileStringSliceOptions),

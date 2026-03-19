@@ -6,8 +6,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
 )
 
@@ -16,6 +18,12 @@ type ScanContextOption func(*ScanContext)
 func WithEvents() ScanContextOption {
 	return func(sc *ScanContext) {
 		sc.withEvents = true
+	}
+}
+
+func WithOptions(opts *types.Options) ScanContextOption {
+	return func(sc *ScanContext) {
+		sc.options = opts
 	}
 }
 
@@ -39,6 +47,9 @@ type ScanContext struct {
 	// what to log
 	withEvents bool
 
+	// scan options
+	options *types.Options
+
 	// might not be required but better to sync
 	m sync.Mutex
 }
@@ -46,6 +57,11 @@ type ScanContext struct {
 // NewScanContext creates a new scan context using input
 func NewScanContext(ctx context.Context, input *contextargs.Context) *ScanContext {
 	return &ScanContext{ctx: ctx, Input: input}
+}
+
+// NewScanContextWithOptions creates a new scan context with options
+func NewScanContextWithOptions(ctx context.Context, input *contextargs.Context, options *types.Options) *ScanContext {
+	return &ScanContext{ctx: ctx, Input: input, options: options}
 }
 
 // Context returns the context of the scan
@@ -72,6 +88,23 @@ func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 	if e == nil {
 		// do not log nil events
 		return
+	}
+
+	// Honeypot detection integration
+	if s.options != nil && s.options.HoneypotDetectionEnabled {
+		for _, result := range e.Results {
+			host := result.Host
+			if host != "" {
+				if honeypot.Record(host, result.TemplateID, s.options) {
+					// Mark result as from honeypot
+					if result.Metadata == nil {
+						result.Metadata = make(map[string]interface{})
+					}
+					result.Metadata["honeypot"] = true
+					result.Metadata["honeypot_match_count"] = honeypot.Count(host)
+				}
+			}
+		}
 	}
 
 	if s.OnResult != nil {

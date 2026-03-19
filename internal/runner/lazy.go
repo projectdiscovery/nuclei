@@ -82,7 +82,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		// add args to tmpl here
 		vars := map[string]interface{}{}
 		mainCtx := context.Background()
-		ctx := scan.NewScanContext(mainCtx, contextargs.NewWithInput(mainCtx, d.Input))
+		ctx := scan.NewScanContextWithOptions(mainCtx, contextargs.NewWithInput(mainCtx, d.Input), opts.ExecOpts.Options)
 
 		cliVars := map[string]interface{}{}
 		if opts.ExecOpts.Options != nil {

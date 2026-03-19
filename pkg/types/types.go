@@ -404,6 +404,12 @@ type Options struct {
 	EnableSelfContainedTemplates bool
 	// EnableGlobalMatchersTemplates enables processing of global-matchers templates
 	EnableGlobalMatchersTemplates bool
+	// HoneypotDetection enables detection of honeypot hosts based on excessive matches
+	HoneypotDetectionEnabled bool
+	// HoneypotMatchThreshold is the number of unique template matches before flagging host as honeypot
+	HoneypotMatchThreshold int
+	// HoneypotResetIntervalSeconds is the time after which match counters are reset (0 = no reset)
+	HoneypotResetIntervalSeconds int
 	// EnableFileTemplates enables file templates
 	EnableFileTemplates bool
 	// Disables cloud upload
@@ -657,6 +663,9 @@ func (options *Options) Copy() *Options {
 		DisableUnsignedTemplates:       options.DisableUnsignedTemplates,
 		EnableSelfContainedTemplates:   options.EnableSelfContainedTemplates,
 		EnableGlobalMatchersTemplates:  options.EnableGlobalMatchersTemplates,
+		HoneypotDetectionEnabled:       options.HoneypotDetectionEnabled,
+		HoneypotMatchThreshold:         options.HoneypotMatchThreshold,
+		HoneypotResetIntervalSeconds:  options.HoneypotResetIntervalSeconds,
 		EnableFileTemplates:            options.EnableFileTemplates,
 		EnableCloudUpload:              options.EnableCloudUpload,
 		ScanID:                         options.ScanID,
@@ -798,6 +807,9 @@ func DefaultOptions() *Options {
 		ResponseSaveSize:           unitutils.Mega,
 		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
+		HoneypotDetectionEnabled:   false,
+		HoneypotMatchThreshold:     50,
+		HoneypotResetIntervalSeconds: 0,
 	}
 }
 
