@@ -560,6 +560,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if timingReq.Validation != nil {
 				// ValidationRead function
 				if timingReq.Validation.ReadPath != "" {
+					// Validate ReadPath to prevent SSRF attacks
+					if strings.Contains(timingReq.Validation.ReadPath, "://") || strings.Contains(timingReq.Validation.ReadPath, "@") || strings.HasPrefix(timingReq.Validation.ReadPath, "//") {
+						gologger.Error().Msgf("[timing] Invalid validation read path detected (looks like URL): %s", timingReq.Validation.ReadPath)
+						continue
+					}
 					readURL := *targetURL // Copy the URL
 					readURL.Path = timingReq.Validation.ReadPath
 					timingOpts.ValidationRead = func() (int, error) {
@@ -588,6 +593,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 				// ValidationDelete function
 				if timingReq.Validation.DeletePath != "" {
+					// Validate DeletePath to prevent SSRF attacks
+					if strings.Contains(timingReq.Validation.DeletePath, "://") || strings.Contains(timingReq.Validation.DeletePath, "@") || strings.HasPrefix(timingReq.Validation.DeletePath, "//") {
+						gologger.Error().Msgf("[timing] Invalid validation delete path detected (looks like URL): %s", timingReq.Validation.DeletePath)
+						continue
+					}
 					deleteURL := *targetURL // Copy the URL
 					deleteURL.Path = timingReq.Validation.DeletePath
 					timingOpts.ValidationDelete = func() (int, error) {
@@ -676,21 +686,41 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// Publish both the documented key and a short alias for coefficient of variation
 			timingResults[fmt.Sprintf("timing_coefficient_of_variation%s", suffix)] = result.CoefficientOfVariation
 			timingResults[fmt.Sprintf("timing_cv%s", suffix)] = result.CoefficientOfVariation
-			timingResults[fmt.Sprintf("timing_is_suspicious%s", suffix)] = result.IsStaticLatency
+
+			// Determine verdict and suspicious flag based on analyzer results
+			var verdict string
+			var isSuspicious bool
 
 			// Prefer result.Verdict when available (from validation), otherwise fall back to IsStaticLatency
 			if result.Verdict != "" {
-				timingResults[fmt.Sprintf("timing_verdict%s", suffix)] = result.Verdict
+				verdict = result.Verdict
+				// Verdicts indicating honeypot/suspicious behavior (from analyzer.go):
+				// "Stateless Honeypot", "Simulated Latency Honeypot", "Suspicious Static Latency"
+				// Non-suspicious verdicts: "Likely Real Server", "Normal Latency Profile"
+				isSuspicious = verdict != "Likely Real Server" && verdict != "Normal Latency Profile"
 			} else if result.IsStaticLatency {
-				timingResults[fmt.Sprintf("timing_verdict%s", suffix)] = "honeypot_suspected"
+				verdict = "honeypot_suspected"
+				isSuspicious = true
 			} else {
-				timingResults[fmt.Sprintf("timing_verdict%s", suffix)] = "normal"
+				verdict = "normal"
+				isSuspicious = false
 			}
+
+			timingResults[fmt.Sprintf("timing_is_suspicious%s", suffix)] = isSuspicious
+			timingResults[fmt.Sprintf("timing_verdict%s", suffix)] = verdict
 
 			if request.options.Options.Debug {
 				gologger.Debug().Msgf("[timing] Results for %s (probe %d): Avg=%s, CV=%.4f, Suspected=%v",
 					targetURL.String(), probeIndex, result.AvgRTT, result.CoefficientOfVariation, result.IsStaticLatency)
 			}
+		}
+
+		// Copy timing results into the previous map so DSL matchers/extractors can access them
+		if previous == nil {
+			previous = make(output.InternalEvent)
+		}
+		for k, v := range timingResults {
+			previous[k] = v
 		}
 	}
 
@@ -768,9 +798,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 			// --- WRAPPER CALLBACK FOR TIMING INJECTION ---
 			wrappedCallback := func(event *output.InternalWrappedEvent) {
-				// Inject timing results into the internal event if they exist
-				for k, v := range timingResults {
-					event.InternalEvent[k] = v
+				// Inject timing results into the internal event if they exist (nil-safe)
+				if event != nil && event.InternalEvent != nil && timingResults != nil {
+					for k, v := range timingResults {
+						event.InternalEvent[k] = v
+					}
 				}
 
 				// --- ORIGINAL CALLBACK LOGIC ---

@@ -46,6 +46,24 @@ type TimingRequest struct {
 
 	// Method is the HTTP method to use (defaults to GET).
 	Method string `yaml:"method,omitempty" json:"method,omitempty" jsonschema:"title=method for timing probe,description=HTTP method to use for timing probe,default=GET"`
+
+	// Headers are custom headers to include in timing probe requests.
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"title=headers for timing probe,description=Custom headers to include in timing probe requests"`
+
+	// Body is the request body to send with timing probe requests.
+	Body string `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"title=body for timing probe,description=Request body to send with timing probe requests"`
+
+	// Validation defines behavioral validation configuration for honeypot detection.
+	Validation *TimingValidation `yaml:"validation,omitempty" json:"validation,omitempty" jsonschema:"title=validation configuration,description=Behavioral validation configuration for honeypot detection"`
+}
+
+// TimingValidation defines behavioral validation configuration for timing analysis.
+type TimingValidation struct {
+	// ReadPath is the endpoint to read/verify state persistence.
+	ReadPath string `yaml:"read_path,omitempty" json:"read_path,omitempty" jsonschema:"title=read path,description=Endpoint to read/verify state persistence"`
+
+	// DeletePath is the endpoint to delete/cleanup created state.
+	DeletePath string `yaml:"delete_path,omitempty" json:"delete_path,omitempty" jsonschema:"title=delete path,description=Endpoint to delete/cleanup created state"`
 }
 
 // Request contains a http request to be made from a template
