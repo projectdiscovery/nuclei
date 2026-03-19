@@ -68,9 +68,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		currentInfo = &generalTypes.ResumeInfo{}
 		e.executerOpts.ResumeCfg.Current[template.ID] = currentInfo
 	}
-	if currentInfo.InFlight == nil {
-		currentInfo.InFlight = make(map[uint32]struct{})
-	}
+	currentInfo.InitInFlight()
 	resumeFromInfo, ok := e.executerOpts.ResumeCfg.ResumeFrom[template.ID]
 	if !ok {
 		resumeFromInfo = &generalTypes.ResumeInfo{}
@@ -130,17 +128,17 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
-		if resumeFromInfo.Completed { // the template was completed
+		if resumeFromInfo.IsCompleted() { // the template was completed
 			e.options.Logger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Template already completed", template.ID, scannedValue.Input)
 			skip = true
-		} else if index < resumeFromInfo.SkipUnder { // index lower than the sliding window (bulk-size)
+		} else if index < resumeFromInfo.GetSkipUnder() { // index lower than the sliding window (bulk-size)
 			e.options.Logger.Debug().Msgf("[%s] Skipping \"%s\": Resume - Target already processed", template.ID, scannedValue.Input)
 			skip = true
-		} else if _, isInFlight := resumeFromInfo.InFlight[index]; isInFlight { // the target wasn't completed successfully
+		} else if resumeFromInfo.IsInFlight(index) { // the target wasn't completed successfully
 			e.options.Logger.Debug().Msgf("[%s] Repeating \"%s\": Resume - Target wasn't completed", template.ID, scannedValue.Input)
 			// skip is already false, but leaving it here for clarity
 			skip = false
-		} else if index > resumeFromInfo.DoAbove { // index above the sliding window (bulk-size)
+		} else if index > resumeFromInfo.GetDoAbove() { // index above the sliding window (bulk-size)
 			// skip is already false - but leaving it here for clarity
 			skip = false
 		}
@@ -199,6 +197,28 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		case <-ctx.Done():
 			return
 		default:
+		}
+
+		// Check whether the target has already been marked as permanently
+		// unresponsive by HostErrorsCache before spawning another goroutine.
+		if e.executerOpts.HostErrorsCache != nil &&
+			e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, target)) {
+			skipEvent := &output.ResultEvent{
+				TemplateID:    tpl.ID,
+				TemplatePath:  tpl.Path,
+				Info:          tpl.Info,
+				Type:          e.executerOpts.ProtocolType.String(),
+				Host:          target.Input,
+				MatcherStatus: false,
+				Error:         "host was skipped as it was found unresponsive",
+				Timestamp:     time.Now(),
+			}
+			if e.Callback != nil {
+				e.Callback(skipEvent)
+			} else if e.executerOpts.Output != nil {
+				_ = e.executerOpts.Output.Write(skipEvent)
+			}
+			break
 		}
 
 		// resize check point - nop if there are no changes

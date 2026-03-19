@@ -51,7 +51,7 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 			return
 		}
 		sb := strings.Builder{}
-		sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
+		fmt.Fprintf(&sb, "[%v] ", event.TemplateID)
 		if event.Matched != "" {
 			sb.WriteString(event.Matched)
 		} else {

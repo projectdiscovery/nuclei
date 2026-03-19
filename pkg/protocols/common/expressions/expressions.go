@@ -43,6 +43,8 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 }
 
 func evaluate(data string, base map[string]interface{}) (string, error) {
+	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
+
 	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
 	data = replacer.Replace(data, base)
 
@@ -50,7 +52,6 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
@@ -58,6 +59,13 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
 		if err != nil {
 			gologger.Warning().Msgf("Failed to compile expression '%s': %v", expression, err)
+			continue
+		}
+		// propagate unresolved {{...}} markers from variable values so the
+		// downstream ContainsUnresolvedVariables check can detect them instead
+		// of having encoding functions (e.g. base64) hide them
+		if markers := unresolvedVarMarkers(compiled.Vars(), base); markers != "" {
+			data = replacer.ReplaceOne(data, expression, markers)
 			continue
 		}
 		result, err := compiled.Evaluate(base)
@@ -140,6 +148,37 @@ func isExpression(data string, base map[string]interface{}) bool {
 	}
 	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	return err == nil
+}
+
+// unresolvedVarMarkers returns concatenated {{...}} markers found in the
+// string values of the given variable names. Returns "" if none.
+func unresolvedVarMarkers(vars []string, base map[string]any) string {
+	seen := make(map[string]struct{})
+	var markers []string
+	for _, varName := range vars {
+		val, ok := base[varName]
+		if !ok {
+			continue
+		}
+		valStr, ok := val.(string)
+		if !ok {
+			continue
+		}
+		for _, match := range unresolvedVariablesRegex.FindAllStringSubmatch(valStr, -1) {
+			if len(match) < 2 {
+				continue
+			}
+			if numericalExpressionRegex.MatchString(match[1]) || hasLiteralsOnly(match[1]) {
+				continue
+			}
+			full := marker.ParenthesisOpen + match[1] + marker.ParenthesisClose
+			if _, exists := seen[full]; !exists {
+				seen[full] = struct{}{}
+				markers = append(markers, full)
+			}
+		}
+	}
+	return strings.Join(markers, "")
 }
 
 func getFunctionsNames(m map[string]interface{}) []string {

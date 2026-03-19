@@ -99,7 +99,7 @@ func main() {
 	// generating index.ts file
 	var buff bytes.Buffer
 	for _, dir := range dirs {
-		buff.WriteString(fmt.Sprintf("export * as %s from './%s';\n", filepath.Base(dir), filepath.Base(dir)))
+		fmt.Fprintf(&buff, "export * as %s from './%s';\n", filepath.Base(dir), filepath.Base(dir))
 	}
 	_ = os.WriteFile(filepath.Join(out, "index.ts"), buff.Bytes(), 0755)
 }

@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
     env:
+      GITHUB_TOKEN: "${{ github.token }}"
       PGO_FILE: "cmd/nuclei/default.pgo"
       TARGET: "https://honey.scanme.sh"
       TARGET_COUNT: "100"
@@ -43,7 +44,7 @@ jobs:
         env:
           DISABLE_STDOUT: "1"
       - run: mv "${PROFILE_MEM}.cpu" "${PGO_FILE}"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: "pgo"
           path: "${{ env.PGO_FILE }}"
