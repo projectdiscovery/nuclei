@@ -1,48 +1,15 @@
-package runner
-
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"math/rand"
-	"net/http"
-	_ "net/http/pprof"
-	"os"
-	"path/filepath"
-	"reflect"
-	"runtime"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/internal/runner/nucleicloud"
-	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
-	"github.com/projectdiscovery/ratelimit"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	permissionutil "github.com/projectdiscovery/utils/permission"
-	updateutils "github.com/projectdiscovery/utils/update"
-)
+// RunEnumeration sets up the input layer for awaiting
+// and starts the execution
+func (r *Runner) RunEnumeration() error {
+	// ...
+	
+	// If secret file was provided, pre-fetch secrets first
+	// BEFORE starting template execution
+	if r.options.SecretsFile != "" {
+		if err := r.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
+			return err
+		}
+	}
+	
+	// ... rest of the execution
+}
