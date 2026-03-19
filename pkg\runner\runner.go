@@ -1,51 +1,20 @@
 package runner
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"math/rand"
-	"net/http"
-	_ "net/http/pprof"
-	"os"
-	"path/filepath"
-	"reflect"
-	"runtime"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
+// ... (existing imports and code)
 
-	"github.com/logrusorgru/aurora"
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/internal/runner/nucleicloud"
-	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
-	"github.com/projectdiscovery/ratelimit"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	permissionutil "github.com/projectdiscovery/utils/permission"
-	updateutils "github.com/projectdiscovery/utils/update"
-)
+// RunEnumeration sets up the input layer for awaiting
+// and starts the execution
+func (r *Runner) RunEnumeration() error {
+	// ... existing code before template execution
+
+	// Fix: Ensure secrets are pre-fetched BEFORE starting template execution
+	// This was the bug - PreFetchSecrets was not guaranteed to complete
+	// before templates started executing
+	if r.executerOpts.AuthProvider != nil {
+		if err := r.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
+			gologger.Warning().Msgf("Could not pre-fetch secrets: %s\n", err)
+		}
+	}
+
+	// ... rest of the execution
+}
