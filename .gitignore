@@ -52,4 +52,4 @@ vendor
 *.pprof
 *.trace
 *.mem
-*.cpu
+*.cpucmd/nuclei/nuclei

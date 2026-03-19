@@ -127,3 +127,25 @@ func TestPathComponent_SQLInjection(t *testing.T) {
 	// Let's also test what the actual URL looks like
 	t.Logf("Full URL: %s", newReq.String())
 }
+
+func TestPathComponent_Mutation(t *testing.T) {
+	path := NewPath()
+	req, _ := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	_, _ = path.Parse(req)
+
+	// First mutation
+	_ = path.SetValue("2", "66")
+	newReq1, _ := path.Rebuild()
+	require.Equal(t, "/user/66/profile", newReq1.Path)
+
+	// Second mutation - should NOT be /user/66'/profile if it was leaking
+	_ = path.SetValue("2", "77")
+	newReq2, _ := path.Rebuild()
+	require.Equal(t, "/user/77/profile", newReq2.Path)
+
+	// Verify original request path in component didn't change (if it was mutated)
+	_ = path.SetValue("1", "admin")
+	newReq3, _ := path.Rebuild()
+	require.Equal(t, "/admin/77/profile", newReq3.Path)
+}
+
