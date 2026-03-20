@@ -3,8 +3,9 @@ package global
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"embed"
-	"math/rand"
+	"math/big"
 	"net"
 	"reflect"
 	"time"
@@ -49,8 +50,8 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		Description: "Rand returns a random byte slice of length n",
 		FuncDecl: func(n int) []byte {
 			b := make([]byte, n)
-			for i := range b {
-				b[i] = byte(rand.Intn(255))
+			if _, err := rand.Read(b); err != nil {
+				return nil
 			}
 			return b
 		},
@@ -61,7 +62,11 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		Signatures:  []string{"RandInt() int"},
 		Description: "RandInt returns a random int",
 		FuncDecl: func() int64 {
-			return rand.Int63()
+			n, err := rand.Int(rand.Reader, new(big.Int).SetInt64(1<<63-1))
+			if err != nil {
+				return 0
+			}
+			return n.Int64()
 		},
 	})
 

@@ -30,6 +30,8 @@ jobs:
   tests:
     name: "Tests"
     needs: ["lint"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +55,6 @@ jobs:
       - run: make build
       - run: make test
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
       - run: go run -race . -l ../functional-test/targets.txt -id tech-detect,tls-version
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
@@ -63,6 +64,8 @@ jobs:
     name: "Run example SDK"
     needs: ["tests"]
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
@@ -82,6 +85,8 @@ jobs:
   integration:
     name: "Integration tests"
     needs: ["tests"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     strategy:
       fail-fast: false
       matrix:
@@ -95,7 +100,6 @@ jobs:
       - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh "${{ matrix.os }}"
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
         timeout-minutes: 50
         working-directory: integration_tests/
@@ -103,6 +107,8 @@ jobs:
   functional:
     name: "Functional tests"
     needs: ["tests"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     strategy:
       fail-fast: false
       matrix:
@@ -115,14 +121,14 @@ jobs:
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - run: bash run.sh
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         working-directory: cmd/functional-test/
 
   validate:
     name: "Template validate"
     needs: ["tests"]
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1

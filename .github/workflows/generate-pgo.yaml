@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
     env:
+      GITHUB_TOKEN: "${{ github.token }}"
       PGO_FILE: "cmd/nuclei/default.pgo"
       TARGET: "https://honey.scanme.sh"
       TARGET_COUNT: "100"

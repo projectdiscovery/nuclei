@@ -7,6 +7,7 @@ jobs:
   flamegraph:
     name: "Flamegraph"
     env:
+      GITHUB_TOKEN: "${{ github.token }}"
       PROFILE_MEM: "/tmp/nuclei-profile"
       TARGET_URL: "http://honey.scanme.sh/-/?foo=bar"
     runs-on: ubuntu-latest

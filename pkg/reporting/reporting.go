@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/dedupe"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
@@ -152,6 +153,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.PDFExporter != nil {
+		exporter, err := pdf.New(options.PDFExporter)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "could not create export client: %v", ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 	if options.ElasticsearchExporter != nil {
 		options.ElasticsearchExporter.HttpClient = options.HttpClient
 		options.ElasticsearchExporter.ExecutionId = options.ExecutionId
@@ -225,6 +233,7 @@ func CreateConfigIfNotExists() error {
 		SplunkExporter:        &splunk.Options{},
 		JSONExporter:          &json_exporter.Options{},
 		JSONLExporter:         &jsonl.Options{},
+		PDFExporter:           &pdf.Options{},
 		MongoDBExporter:       &mongo.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
