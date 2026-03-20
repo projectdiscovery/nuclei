@@ -783,7 +783,7 @@ func (request *Request) getPorts() []string {
 		if strings.EqualFold(k, "Port") {
 			portStr := types.ToString(v)
 			ports := []string{}
-			for _, p := range strings.Split(portStr, ",") {
+			for p := range strings.SplitSeq(portStr, ",") {
 				trimmed := strings.TrimSpace(p)
 				if trimmed != "" {
 					ports = append(ports, trimmed)

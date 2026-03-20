@@ -80,8 +80,8 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(data, "\n")
-	for _, i := range items {
+	items := strings.SplitSeq(data, "\n")
+	for i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}
@@ -114,8 +114,8 @@ func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error
 		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(data, "\n")
-	for _, i := range items {
+	items := strings.SplitSeq(data, "\n")
+	for i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}
@@ -148,7 +148,7 @@ func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]str
 		data = strings.TrimSpace(conversion.String(dataOutput))
 	}
 	results := []string{}
-	for _, v := range strings.Split(data, "\n") {
+	for v := range strings.SplitSeq(data, "\n") {
 		line := strings.TrimSpace(v)
 		switch {
 		case strings.HasPrefix(line, "[ERR]"):
@@ -189,8 +189,8 @@ func RunNucleiArgsWithEnvAndGetResults(debug bool, env []string, extra ...string
 		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(data, "\n")
-	for _, i := range items {
+	items := strings.SplitSeq(data, "\n")
+	for i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}

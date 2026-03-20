@@ -351,8 +351,8 @@ func (c *Config) IsDebugArgEnabled(arg string) bool {
 // parseDebugArgs from string
 func (c *Config) parseDebugArgs(data string) {
 	// use space as separator instead of commas
-	tmp := strings.Fields(data)
-	for _, v := range tmp {
+	tmp := strings.FieldsSeq(data)
+	for v := range tmp {
 		key := v
 		value := ""
 		// if it is key value pair then split it

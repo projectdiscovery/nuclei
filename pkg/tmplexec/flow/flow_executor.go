@@ -303,7 +303,7 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 	if err != nil {
 		return values, err
 	}
-	for _, line := range strings.Split(string(bin), "\n") {
+	for line := range strings.SplitSeq(string(bin), "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			values = append(values, line)

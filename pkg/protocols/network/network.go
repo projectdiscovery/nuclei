@@ -199,7 +199,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// parse ports and validate
 	if request.Port != "" {
-		for _, port := range strings.Split(request.Port, ",") {
+		for port := range strings.SplitSeq(request.Port, ",") {
 			if port == "" {
 				continue
 			}
