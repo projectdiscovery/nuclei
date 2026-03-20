@@ -110,7 +110,9 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 	if err != nil {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
-	e.store.Load()
+	if err := e.store.Load(); err != nil {
+		return errkit.Wrapf(err, "Could not load templates: %s", err)
+	}
 	e.templatesLoaded = true
 	return nil
 }
@@ -357,4 +359,27 @@ func wait(wg *sync.WaitGroup) <-chan struct{} {
 		wg.Wait()
 	}()
 	return ch
+}
+
+// GetClusterTemplateIDs returns the template IDs for a given cluster ID
+// Returns nil if the cluster ID doesn't exist or engine hasn't executed yet
+func (e *NucleiEngine) GetClusterTemplateIDs(clusterID string) []string {
+	if e.executerOpts == nil || e.executerOpts.ClusterMappings == nil {
+		return nil
+	}
+	templateIDs, ok := e.executerOpts.ClusterMappings.Get(clusterID)
+	if !ok {
+		return nil
+	}
+	return templateIDs
+}
+
+// GetAllClusterMappings returns all cluster mappings
+// Returns nil if engine hasn't executed yet
+func (e *NucleiEngine) GetAllClusterMappings() map[string][]string {
+	if e.executerOpts == nil || e.executerOpts.ClusterMappings == nil {
+		return nil
+	}
+
+	return e.executerOpts.ClusterMappings.GetAll()
 }

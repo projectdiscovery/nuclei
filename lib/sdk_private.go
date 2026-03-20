@@ -51,7 +51,7 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 			return
 		}
 		sb := strings.Builder{}
-		sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
+		fmt.Fprintf(&sb, "[%v] ", event.TemplateID)
 		if event.Matched != "" {
 			sb.WriteString(event.Matched)
 		} else {
@@ -228,8 +228,8 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.executerOpts.AuthProvider = e.authprovider
 	}
 
-	// prefetch secrets
-	if e.executerOpts.AuthProvider != nil && e.opts.PreFetchSecrets {
+	// prefetch secrets to ensure authentication completes before scanning starts
+	if e.executerOpts.AuthProvider != nil {
 		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
 			return errors.Wrap(err, "could not prefetch secrets")
 		}

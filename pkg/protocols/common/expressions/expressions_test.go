@@ -34,6 +34,10 @@ func TestEvaluate(t *testing.T) {
 		{input: `_IWP_JSON_PREFIX_{{base64("{\"iwp_action\":\"add_site\",\"params\":{\"username\":\"\"}}")}}`, expected: "_IWP_JSON_PREFIX_eyJpd3BfYWN0aW9uIjoiYWRkX3NpdGUiLCJwYXJhbXMiOnsidXNlcm5hbWUiOiIifX0=", extra: map[string]interface{}{}},
 		{input: "{{}}", expected: "{{}}", extra: map[string]interface{}{}},
 		{input: `"{{hex_encode('PING')}}"`, expected: `"50494e47"`, extra: map[string]interface{}{}},
+		// encoding functions must propagate unresolved markers instead of hiding them
+		{input: "{{base64(rawhash)}}", expected: "{{contact_id}}{{email}}", extra: map[string]any{
+			"rawhash": `{"contact_id":"{{contact_id}}","email":"{{email}}"}`,
+		}},
 	}
 	for _, item := range items {
 		value, err := Evaluate(item.input, item.extra)
@@ -56,5 +60,48 @@ func TestEval(t *testing.T) {
 		value, err := Eval(item.input, item.values)
 		require.Nil(t, err, "could not evaluate helper")
 		require.Equal(t, item.expected, value, "could not get correct expression")
+	}
+}
+
+func TestEvaluateDoesNotReinterpretResolvedValues(t *testing.T) {
+	items := []struct {
+		name     string
+		input    string
+		expected string
+		extra    map[string]interface{}
+	}{
+		{
+			name:     "helper syntax in resolved values stays literal",
+			input:    "/?x={{body}}",
+			expected: `/?x={{md5("Hello")}}-by-Adelle`,
+			extra: map[string]interface{}{
+				"body": `{{md5("Hello")}}-by-Adelle`,
+			},
+		},
+		{
+			name:     "resolved values cannot access other variables",
+			input:    "Authorization: {{body}}",
+			expected: "Authorization: {{secret_token}}",
+			extra: map[string]interface{}{
+				"body":         "{{secret_token}}",
+				"secret_token": "top-secret-cia-mi6-kgb-mossad-classified",
+			},
+		},
+		{
+			name:     "template-authored placeholders inside helper expressions still resolve",
+			input:    "{{base64('{{Host}}')}}",
+			expected: "MTI3LjAuMC4x",
+			extra: map[string]interface{}{
+				"Host": "127.0.0.1",
+			},
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			value, err := Evaluate(item.input, item.extra)
+			require.NoError(t, err)
+			require.Equal(t, item.expected, value)
+		})
 	}
 }

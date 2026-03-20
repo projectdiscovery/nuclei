@@ -691,9 +691,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	var (
-		resp          *http.Response
-		fromCache     bool
-		dumpedRequest []byte
+		resp            *http.Response
+		fromCache       bool
+		dumpedRequest   []byte
+		projectCacheKey []byte
 	)
 
 	// Dump request for variables checks
@@ -730,6 +731,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
+		}
+		if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.URL.Host)
+		} else {
+			projectCacheKey = dumpedRequest
 		}
 		dumpedRequestString := string(dumpedRequest)
 
@@ -787,6 +793,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
 		inputUrl := input.MetaInput.Input
+		if generatedRequest.rawRequest.FullURL != "" {
+			inputUrl = generatedRequest.rawRequest.FullURL
+		}
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
 			url.Params = urlutil.NewOrderedParams() // donot include query params
@@ -812,7 +821,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromCache = true
-			resp, err = request.options.ProjectFile.Get(dumpedRequest)
+			resp, err = request.options.ProjectFile.Get(projectCacheKey)
 			if err != nil {
 				fromCache = false
 			}
@@ -962,7 +971,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.BodyBytes()); err != nil {
+			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}

@@ -14,7 +14,8 @@ import (
 type Path struct {
 	value *Value
 
-	req *retryablehttp.Request
+	originalPath string
+	req          *retryablehttp.Request
 }
 
 var _ Component = &Path{}
@@ -33,11 +34,12 @@ func (q *Path) Name() string {
 // parsed component
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
+	q.originalPath = req.Path
 	q.value = NewValue("")
 
-	splitted := strings.Split(req.Path, "/")
+	split := strings.Split(req.Path, "/")
 	values := make(map[string]interface{})
-	for i, segment := range splitted {
+	for i, segment := range split {
 		if segment == "" && i == 0 {
 			// Skip the first empty segment from leading "/"
 			continue
@@ -87,21 +89,21 @@ func (q *Path) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	// Get the original path segments
-	originalSplitted := strings.Split(q.req.Path, "/")
+	// Use the snapshot of the original path to avoid mutation from Clone/UpdateRelPath
+	originalSplit := strings.Split(q.originalPath, "/")
 
 	// Create a new slice to hold the rebuilt segments
-	rebuiltSegments := make([]string, 0, len(originalSplitted))
+	rebuiltSegments := make([]string, 0, len(originalSplit))
 
 	// Add the first empty segment (from leading "/")
-	if len(originalSplitted) > 0 && originalSplitted[0] == "" {
+	if len(originalSplit) > 0 && originalSplit[0] == "" {
 		rebuiltSegments = append(rebuiltSegments, "")
 	}
 
 	// Process each segment
 	segmentIndex := 1 // 1-based indexing for our stored values
-	for i := 1; i < len(originalSplitted); i++ {
-		originalSegment := originalSplitted[i]
+	for i := 1; i < len(originalSplit); i++ {
+		originalSegment := originalSplit[i]
 		if originalSegment == "" {
 			// Skip empty segments
 			continue
@@ -141,7 +143,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 // Clones current state to a new component
 func (q *Path) Clone() Component {
 	return &Path{
-		value: q.value.Clone(),
-		req:   q.req.Clone(context.Background()),
+		value:        q.value.Clone(),
+		originalPath: q.originalPath,
+		req:          q.req.Clone(context.Background()),
 	}
 }

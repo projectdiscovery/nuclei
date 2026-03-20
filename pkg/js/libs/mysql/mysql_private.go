@@ -60,9 +60,9 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	}
 	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
 	var dsn strings.Builder
-	dsn.WriteString(fmt.Sprintf("%v:%v", url.QueryEscape(opts.Username), opts.Password))
+	fmt.Fprintf(&dsn, "%v:%v", url.QueryEscape(opts.Username), opts.Password)
 	dsn.WriteString("@")
-	dsn.WriteString(fmt.Sprintf("%v(%v)", opts.Protocol, target))
+	fmt.Fprintf(&dsn, "%v(%v)", opts.Protocol, target)
 	if opts.DbName != "" {
 		dsn.WriteString(opts.DbName)
 	}

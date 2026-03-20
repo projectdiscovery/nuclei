@@ -1,7 +1,11 @@
 package authx
 
 import (
+	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -121,5 +125,102 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		var d Dynamic
 		err := d.UnmarshalJSON(data)
 		require.NoError(t, err)
+	})
+}
+
+func TestDynamicFetchConcurrent(t *testing.T) {
+	t.Run("all-waiters-block-until-done", func(t *testing.T) {
+		const numGoroutines = 10
+		wantErr := errors.New("auth fetch failed")
+		fetchStarted := make(chan struct{})
+		fetchUnblock := make(chan struct{})
+
+		d := &Dynamic{
+			TemplatePath: "test-template.yaml",
+			Variables:    []KV{{Key: "username", Value: "test"}},
+		}
+		require.NoError(t, d.Validate())
+		d.SetLazyFetchCallback(func(_ *Dynamic) error {
+			close(fetchStarted)
+			<-fetchUnblock
+			return wantErr
+		})
+
+		results := make([]error, numGoroutines)
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+
+		for i := 0; i < numGoroutines; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				results[idx] = d.Fetch(false)
+			}(i)
+		}
+
+		select {
+		case <-fetchStarted:
+		case <-time.After(5 * time.Second):
+			t.Fatal("fetch callback never started")
+		}
+
+		done := make(chan struct{})
+		go func() {
+			wg.Wait()
+			close(done)
+		}()
+		select {
+		case <-done:
+			t.Fatal("fetch callers returned before fetch completed")
+		case <-time.After(25 * time.Millisecond):
+		}
+
+		close(fetchUnblock)
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("fetch callers did not complete in time")
+		}
+
+		for _, err := range results {
+			require.ErrorIs(t, err, wantErr)
+		}
+	})
+
+	t.Run("fetch-callback-runs-once", func(t *testing.T) {
+		const numGoroutines = 20
+		var callCount atomic.Int32
+		errs := make(chan error, numGoroutines)
+		barrier := make(chan struct{})
+
+		d := &Dynamic{
+			TemplatePath: "test-template.yaml",
+			Variables:    []KV{{Key: "username", Value: "test"}},
+		}
+		require.NoError(t, d.Validate())
+		d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+			callCount.Add(1)
+			time.Sleep(20 * time.Millisecond)
+			dynamic.Extracted = map[string]interface{}{"token": "secret-token"}
+			return nil
+		})
+
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+		for i := 0; i < numGoroutines; i++ {
+			go func() {
+				defer wg.Done()
+				<-barrier
+				errs <- d.Fetch(false)
+			}()
+		}
+		close(barrier)
+		wg.Wait()
+		close(errs)
+
+		for err := range errs {
+			require.NoError(t, err)
+		}
+
+		require.Equal(t, int32(1), callCount.Load(), "fetch callback must be called exactly once")
 	})
 }
