@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/honeypot"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -81,6 +82,10 @@ type StandardWriter struct {
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
+
+	// honeypotDetector tracks per-host template match density and flags
+	// hosts that exceed the configured threshold as potential honeypots.
+	honeypotDetector *honeypot.Detector
 
 	resultCount atomic.Int32
 }
@@ -286,6 +291,10 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		writer.DisableStdout = true
 	}
 
+
+	if options.HoneypotDetection {
+		writer.honeypotDetector = honeypot.New(options.HoneypotThreshold, options.HoneypotSuppress)
+	}
 	return writer, nil
 }
 
@@ -297,6 +306,22 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Honeypot detection: record this match and optionally suppress output
+	// for hosts that exceed the configured threshold.
+	if w.honeypotDetector != nil && event.MatcherStatus {
+		host := event.Host
+		if host == "" {
+			host = event.URL
+		}
+		if host == "" {
+			host = event.IP
+		}
+		w.honeypotDetector.RecordMatch(host, event.TemplateID)
+		if w.honeypotDetector.ShouldSuppress(host) {
+			return nil
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -453,6 +478,13 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
+	// Print honeypot detection summary before closing
+	if w.honeypotDetector != nil {
+		if summary := w.honeypotDetector.FormatSummary(); summary != "" {
+			gologger.Info().Msg(summary)
+		}
+	}
+
 	if w.outputFile != nil {
 		_ = w.outputFile.Close()
 	}
@@ -462,6 +494,11 @@ func (w *StandardWriter) Close() {
 	if w.errorFile != nil {
 		_ = w.errorFile.Close()
 	}
+}
+
+// HoneypotDetector returns the honeypot detector instance (may be nil).
+func (w *StandardWriter) HoneypotDetector() *honeypot.Detector {
+	return w.honeypotDetector
 }
 
 // WriteFailure writes the failure event for template to file and/or screen.
