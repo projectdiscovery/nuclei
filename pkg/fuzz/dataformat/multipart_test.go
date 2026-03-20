@@ -370,21 +370,62 @@ func TestMultiPartForm_GetFileMetadataWithNilMap(t *testing.T) {
 	assert.False(t, exists)
 }
 
-// TestMultiPartFormConcurrentDecode verifies that Get("multipart/form-data")
+// TestMultiPartFormConcurrentDecodeEncode verifies that Get("multipart/form-data")
 // returns independent instances so concurrent goroutines do not trigger a
 // fatal "concurrent map writes" panic (regression test for #7028).
-func TestMultiPartFormConcurrentDecode(t *testing.T) {
+// Each goroutine exercises ParseBoundary, Decode, and Encode to cover the
+// full mutable-state surface of MultiPartForm.
+func TestMultiPartFormConcurrentDecodeEncode(t *testing.T) {
+	const boundary = "----TestBoundary7028"
+	const contentType = "multipart/form-data; boundary=" + boundary
+
+	// Sample multipart body that Decode will parse.
+	body := "------TestBoundary7028\r\nContent-Disposition: form-data; name=\"field\"\r\n\r\nvalue\r\n------TestBoundary7028--\r\n"
+
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			format := Get(MultiPartFormDataFormat)
+
+			form := Get(MultiPartFormDataFormat)
+			mpForm, ok := form.(*MultiPartForm)
+			require.True(t, ok)
+
+			// ParseBoundary writes to boundary field.
+			err := mpForm.ParseBoundary(contentType)
+			require.NoError(t, err)
+
+			// Decode writes to filesMetadata.
+			decoded, err := mpForm.Decode(body)
+			require.NoError(t, err)
+			require.NotNil(t, decoded)
+
+			// Encode reads boundary and filesMetadata.
+			encoded, err := mpForm.Encode(decoded)
+			require.NoError(t, err)
+			require.NotEmpty(t, encoded)
+		}()
+	}
+	wg.Wait()
+}
+
+// TestMultiPartFormConcurrentPackageLevelEncode verifies that the package-level
+// Encode() function also returns fresh MultiPartForm instances (see #7028).
+func TestMultiPartFormConcurrentPackageLevelEncode(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			kv := mapsutil.NewOrderedMap[string, any]()
 			kv.Set("key", "value")
-			// Encode writes to the instance's filesMetadata; running this
-			// concurrently across separate instances must not race.
-			_, _ = format.Encode(KVOrderedMap(&kv))
+			// Package-level Encode must use Get() internally so each call
+			// gets its own MultiPartForm instance.
+			_, err := Encode(KVOrderedMap(&kv), MultiPartFormDataFormat)
+			// Encode will fail (empty boundary) but must NOT panic from
+			// concurrent map writes -- that is the regression we guard against.
+			_ = err
 		}()
 	}
 	wg.Wait()

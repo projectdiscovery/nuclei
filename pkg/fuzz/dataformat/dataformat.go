@@ -74,7 +74,9 @@ type Decoded struct {
 	Data KV
 }
 
-// Decode decodes the data from a format
+// Decode decodes the data from a format.
+// Note: MultiPartForm.IsType() returns false, so the singleton is safe here.
+// If that changes, this loop should use Get() for fresh instances.
 func Decode(data string) (*Decoded, error) {
 	for _, dataformat := range dataformats {
 		if dataformat.IsType(data) {
@@ -92,13 +94,16 @@ func Decode(data string) (*Decoded, error) {
 	return nil, nil
 }
 
-// Encode encodes the data into a format
+// Encode encodes the data into a format.
+// Like Get(), MultiPartForm is instantiated fresh to avoid concurrent map writes
+// when multiple goroutines encode simultaneously (see #7028).
 func Encode(data KV, dataformat string) (string, error) {
 	if dataformat == "" {
 		return "", errors.New("dataformat is required")
 	}
-	if encoder, ok := dataformats[dataformat]; ok {
-		return encoder.Encode(data)
+	encoder := Get(dataformat)
+	if encoder == nil {
+		return "", fmt.Errorf("dataformat %s is not supported", dataformat)
 	}
-	return "", fmt.Errorf("dataformat %s is not supported", dataformat)
+	return encoder.Encode(data)
 }
