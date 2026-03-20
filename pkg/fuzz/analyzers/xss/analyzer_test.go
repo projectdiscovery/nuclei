@@ -422,6 +422,137 @@ func TestAnalyzeReflectionContext(t *testing.T) {
 			marker:   marker,
 			expected: ContextHTMLBody,
 		},
+
+		// ================================================================
+		// Regression tests for issue #7086:
+		// XSS Context Analyzer misclassifies javascript: URIs and JSON
+		// script blocks.
+		// ================================================================
+
+		// --- #7086 Edge Case 1: javascript: URI classification ---
+		// javascript: URIs in executable sinks must be ContextScript.
+		{
+			name:     "#7086: javascript: URI with tab in scheme (WHATWG normalization)",
+			body:     "<a href=\"java\tscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: javascript: URI with newline in scheme",
+			body:     "<a href=\"java\nscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: javascript: URI with CR in scheme",
+			body:     "<a href=\"java\rscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: javascript: URI with mixed whitespace in scheme",
+			body:     "<a href=\"j\ta\nv\ra\tscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: javascript: URI in formaction on button",
+			body:     `<button formaction="javascript:void(FUZZ1337MARKER)">Go</button>`,
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: javascript: URI in iframe src",
+			body:     `<iframe src="javascript:alert('FUZZ1337MARKER')"></iframe>`,
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: javascript: URI in object data attr",
+			body:     `<object data="javascript:alert('FUZZ1337MARKER')"></object>`,
+			marker:   marker,
+			expected: ContextScript,
+		},
+
+		// --- #7086 Edge Case 2: JSON script blocks ---
+		// <script type="application/json"> is non-executable data context.
+		{
+			name:     "#7086: script type=application/json is ScriptData",
+			body:     `<script type="application/json">{"key": "FUZZ1337MARKER"}</script>`,
+			marker:   marker,
+			expected: ContextScriptData,
+		},
+		{
+			name:     "#7086: script type=application/ld+json is ScriptData",
+			body:     `<script type="application/ld+json">{"name": "FUZZ1337MARKER"}</script>`,
+			marker:   marker,
+			expected: ContextScriptData,
+		},
+		{
+			name:     "#7086: script type=application/json with charset param is ScriptData",
+			body:     `<script type="application/json; charset=utf-8">{"v": "FUZZ1337MARKER"}</script>`,
+			marker:   marker,
+			expected: ContextScriptData,
+		},
+		{
+			name:     "#7086: mixed JSON and executable script blocks",
+			body:     `<script type="application/json">{"safe": "data"}</script><script>var x = "FUZZ1337MARKER";</script>`,
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: script type empty string is executable",
+			body:     `<script type="">var x = "FUZZ1337MARKER";</script>`,
+			marker:   marker,
+			expected: ContextScript,
+		},
+
+		// --- #7086 Edge Case 3: Case-insensitive reflection detection ---
+		{
+			name:     "#7086: marker fully uppercased in body still detected",
+			body:     `<p>FUZZ1337MARKER appears here</p>`,
+			marker:   "fuzz1337marker",
+			expected: ContextHTMLBody,
+		},
+		{
+			name:     "#7086: marker with random casing in script",
+			body:     `<script>var x = "Fuzz1337Marker";</script>`,
+			marker:   "FUZZ1337MARKER",
+			expected: ContextScript,
+		},
+		{
+			name:     "#7086: marker case-insensitive in attribute value",
+			body:     `<input value="fUzZ1337mArKeR">`,
+			marker:   "FUZZ1337MARKER",
+			expected: ContextHTMLAttribute,
+		},
+		{
+			name:     "#7086: marker case-insensitive in comment",
+			body:     `<!-- fuzz1337marker -->`,
+			marker:   "FUZZ1337MARKER",
+			expected: ContextComment,
+		},
+
+		// --- #7086 Edge Case 4: srcdoc attribute context ---
+		// srcdoc contains nested HTML that the browser parses independently.
+		{
+			name:     "#7086: srcdoc on iframe is HTMLBody context",
+			body:     `<iframe srcdoc="<b>FUZZ1337MARKER</b>"></iframe>`,
+			marker:   marker,
+			expected: ContextHTMLBody,
+		},
+		{
+			name:     "#7086: srcdoc with script injection is HTMLBody",
+			body:     `<iframe srcdoc="<script>alert(FUZZ1337MARKER)</script>"></iframe>`,
+			marker:   marker,
+			expected: ContextHTMLBody,
+		},
+		{
+			name:     "#7086: srcdoc with complex nested HTML",
+			body:     `<iframe srcdoc="<html><body><img src=x onerror=alert(FUZZ1337MARKER)></body></html>"></iframe>`,
+			marker:   marker,
+			expected: ContextHTMLBody,
+		},
 	}
 
 	for _, tc := range tests {
@@ -465,6 +596,34 @@ func TestAnalyzeReflectionContext_NoPanic(t *testing.T) {
 			}()
 			_, _ = AnalyzeReflectionContext(input, "FUZZ1337MARKER")
 		}()
+	}
+}
+
+func TestNormalizeURIScheme(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"plain javascript:", "javascript:alert(1)", "javascript:alert(1)"},
+		{"tab in scheme", "java\tscript:alert(1)", "javascript:alert(1)"},
+		{"newline in scheme", "java\nscript:alert(1)", "javascript:alert(1)"},
+		{"CR in scheme", "java\rscript:alert(1)", "javascript:alert(1)"},
+		{"mixed whitespace in scheme", "j\ta\nv\ra\tscript:x", "javascript:x"},
+		{"leading spaces preserved by TrimSpace", "  javascript:x", "javascript:x"},
+		{"mixed case", "JavaScript:alert(1)", "javascript:alert(1)"},
+		{"data URI", "data:text/html,<h1>hi</h1>", "data:text/html,<h1>hi</h1>"},
+		{"normal URL unchanged", "https://example.com", "https://example.com"},
+		{"empty string", "", ""},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeURIScheme(tc.input)
+			if got != tc.expected {
+				t.Errorf("normalizeURIScheme(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
 	}
 }
 

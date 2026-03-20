@@ -387,7 +387,11 @@ func classifyAttributeContext(attrName, attrValue, tagName string) XSSContext {
 	}
 
 	if _, ok := urlAttrs[attrName]; ok {
-		trimmed := strings.TrimSpace(strings.ToLower(attrValue))
+		// WHATWG URL spec: browsers strip ASCII tab (0x09), newline (0x0A),
+		// and carriage return (0x0D) from URL scheme before parsing. This means
+		// "java\tscript:" or "java\nscript:" are equivalent to "javascript:" in
+		// navigable contexts. We normalize these characters out before checking.
+		trimmed := normalizeURIScheme(attrValue)
 		if strings.HasPrefix(trimmed, "javascript:") ||
 			strings.HasPrefix(trimmed, "vbscript:") ||
 			strings.HasPrefix(trimmed, "data:text/html") ||
@@ -406,6 +410,24 @@ func classifyAttributeContext(attrName, attrValue, tagName string) XSSContext {
 	}
 
 	return ContextHTMLAttribute
+}
+
+// normalizeURIScheme strips leading whitespace plus ASCII tab, newline, and
+// carriage-return characters that browsers silently remove from URL schemes
+// per the WHATWG URL spec, then lowercases the result for prefix comparison.
+// This ensures that obfuscated URIs like "java\tscript:" or "java\nscript:"
+// are correctly identified as dangerous schemes.
+func normalizeURIScheme(val string) string {
+	var b strings.Builder
+	b.Grow(len(val))
+	for _, c := range val {
+		// Strip ASCII tab (0x09), LF (0x0A), CR (0x0D)
+		if c == '\t' || c == '\n' || c == '\r' {
+			continue
+		}
+		b.WriteRune(c)
+	}
+	return strings.TrimSpace(strings.ToLower(b.String()))
 }
 
 // containsMarker does a case-insensitive substring check.
