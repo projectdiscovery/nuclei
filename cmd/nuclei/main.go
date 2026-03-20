@@ -59,7 +59,7 @@ func main() {
 
 	defer func() {
 		for _, f := range inlineSecretsTempFiles {
-			os.Remove(f)
+			_ = os.Remove(f)
 		}
 	}()
 
@@ -229,7 +229,7 @@ func main() {
 			}
 		}
 		for _, f := range inlineSecretsTempFiles {
-			os.Remove(f)
+			_ = os.Remove(f)
 		}
 		os.Exit(1)
 	}()
@@ -894,11 +894,13 @@ func processInlineSecretsFromProfile(profilePath string, options *types.Options)
 	if err != nil {
 		return "", fmt.Errorf("could not create temp secrets file: %w", err)
 	}
-	defer tempFile.Close()
+	defer func() {
+		_ = tempFile.Close()
+	}()
 
 	if _, err := tempFile.Write(secretsData); err != nil {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
 		return "", fmt.Errorf("could not write to temp secrets file: %w", err)
 	}
 

@@ -28,14 +28,16 @@ secrets:
 		if _, err := tmpFile.WriteString(profileContent); err != nil {
 			t.Fatalf("could not write profile: %v", err)
 		}
-		tmpFile.Close()
+		_ = tmpFile.Close()
 
 		opts := &types.Options{}
 		tempPath, err := processInlineSecretsFromProfile(tmpFile.Name(), opts)
 		if err != nil {
 			t.Fatalf("processInlineSecretsFromProfile failed: %v", err)
 		}
-		defer os.Remove(tempPath)
+		defer func() {
+			_ = os.Remove(tempPath)
+		}()
 
 		if len(opts.SecretsFile) != 1 {
 			t.Fatalf("expected 1 secrets file, got %d", len(opts.SecretsFile))
@@ -76,7 +78,9 @@ severity:
 		if _, err := tmpFile.WriteString(profileContent); err != nil {
 			t.Fatalf("could not write profile: %v", err)
 		}
-		tmpFile.Close()
+		if err := tmpFile.Close(); err != nil {
+			t.Fatalf("could not close temp file: %v", err)
+		}
 
 		opts := &types.Options{}
 		tempPath, err := processInlineSecretsFromProfile(tmpFile.Name(), opts)
@@ -220,14 +224,18 @@ secrets:
 	if _, err := tmpFile.WriteString(profileContent); err != nil {
 		t.Fatalf("could not write profile: %v", err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("could not close temp file: %v", err)
+	}
 
 	opts := &types.Options{}
 	tempPath, err := processInlineSecretsFromProfile(tmpFile.Name(), opts)
 	if err != nil {
 		t.Fatalf("processInlineSecretsFromProfile failed: %v", err)
 	}
-	defer os.Remove(tempPath)
+	defer func() {
+		_ = os.Remove(tempPath)
+	}()
 
 	data, err := os.ReadFile(opts.SecretsFile[0])
 	if err != nil {
