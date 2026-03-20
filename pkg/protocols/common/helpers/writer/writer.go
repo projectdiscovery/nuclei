@@ -10,7 +10,7 @@ import (
 )
 
 // WriteResult is a helper for writing results to the output
-func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progress progress.Progress, issuesClient reporting.Client) bool {
+func WriteResult(data *output.InternalWrappedEvent, out output.Writer, progress progress.Progress, issuesClient reporting.Client) bool {
 	// Handle the case where no result found for the template.
 	// In this case, we just show misc information about the failed
 	// match for the template.
@@ -24,7 +24,7 @@ func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progre
 				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
 			}
 		}
-		if err := output.Write(result); err != nil {
+		if err := out.Write(result); err != nil {
 			if errors.Is(err, output.ErrHoneypotSuppressed) {
 				continue
 			}
