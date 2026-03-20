@@ -150,6 +150,9 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
 			input.ApplyPayloadInitialTransformation = analyzer.ApplyInitialTransformation
+			if request.Analyzer.Parameters == nil {
+				request.Analyzer.Parameters = make(map[string]interface{})
+			}
 			input.AnalyzerParams = request.Analyzer.Parameters
 		}
 		err := rule.Execute(input)
