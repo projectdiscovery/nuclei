@@ -22,6 +22,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 
 	var tagStack []string
 	inScript := false
+	inNonJSScript := false
 	inStyle := false
 	inRCDATA := false
 
@@ -89,7 +90,16 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			case "script":
 				// FIX #2: Only treat actual JavaScript MIME types as executable script
 				// Non-JavaScript types (JSON, JSON-LD, etc.) are treated as data blocks
-				inScript = isJavaScriptMIMEType(currentScriptType)
+				isJS := isJavaScriptMIMEType(currentScriptType)
+				inScript = isJS
+				inNonJSScript = !isJS
+				// If marker is in tag name and it's a non-JS script, use ContextRawText
+				if !isJS && strings.Contains(strings.ToLower(tagName), markerLower) {
+					reflections = append(reflections, ReflectionInfo{
+						Context: ContextRawText,
+						TagName: tagNameLower,
+					})
+				}
 			case "style":
 				inStyle = true
 			default:
@@ -154,6 +164,7 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 			switch tagNameLower {
 			case "script":
 				inScript = false
+				inNonJSScript = false
 			case "style":
 				inStyle = false
 			default:
@@ -191,13 +202,13 @@ func DetectReflections(body string, marker string) []ReflectionInfo {
 					Context: ContextStyle,
 					TagName: "style",
 				})
-			} else if inRCDATA {
+			} else if inRCDATA || inNonJSScript {
 				tag := ""
 				if len(tagStack) > 0 {
 					tag = tagStack[len(tagStack)-1]
 				}
 				reflections = append(reflections, ReflectionInfo{
-					Context: ContextHTMLText,
+					Context: ContextRawText,
 					TagName: tag,
 				})
 			} else {

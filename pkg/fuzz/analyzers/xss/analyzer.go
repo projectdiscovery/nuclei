@@ -160,15 +160,16 @@ func (a *Analyzer) replayAndVerify(options *analyzers.Options, payload string, r
 		return false, "", errors.Wrap(err, "could not set value in component")
 	}
 
+	// Restore original value after rebuild so subsequent replays start from clean state
+	// Install defer BEFORE Rebuild() in case it fails - otherwise mutated component leaks
+	defer func() {
+		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
+	}()
+
 	rebuilt, err := gr.Component.Rebuild()
 	if err != nil {
 		return false, "", errors.Wrap(err, "could not rebuild request")
 	}
-
-	// Restore original value after rebuild so subsequent replays start from clean state
-	defer func() {
-		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
-	}()
 
 	gologger.Verbose().Msgf("[%s] Replaying with payload for %s context: %s", a.Name(), reflection.Context, rebuilt.String())
 
@@ -254,6 +255,7 @@ func detectCharacterSurvival(body string, canary string) CharacterSet {
 		DoubleQuote:  strings.Contains(bodyLower, canaryLower+`<>"`),
 		SingleQuote:  strings.Contains(bodyLower, canaryLower+`<>"'`),
 		ForwardSlash: strings.Contains(bodyLower, canaryLower+strings.ToLower(canaryChars)), // full canary+chars survived
+		Backtick:     strings.Contains(body, canary+"`"), // backtick is case-sensitive
 	}
 }
 
@@ -315,6 +317,9 @@ func selectPayloads(reflection *ReflectionInfo, chars CharacterSet) []string {
 		}
 		if chars.DoubleQuote {
 			candidates = append(candidates, `";alert(1)//`)
+		}
+		if chars.Backtick {
+			candidates = append(candidates, "`;alert(1)//")
 		}
 		if chars.LessThan && chars.GreaterThan {
 			candidates = append(candidates, `</script><img src=x onerror=alert(1)>`)

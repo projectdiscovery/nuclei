@@ -22,6 +22,8 @@ const (
 	ContextScriptString
 	// ContextStyle means the marker is inside a style block
 	ContextStyle
+	// ContextRawText means the marker is inside a raw-text container (non-JS script, RCDATA elements)
+	ContextRawText
 )
 
 // String returns the string representation of the context
@@ -43,6 +45,8 @@ func (c Context) String() string {
 		return "script_string"
 	case ContextStyle:
 		return "style"
+	case ContextRawText:
+		return "raw_text"
 	default:
 		return "unknown"
 	}
@@ -62,6 +66,8 @@ func (c Context) priority() int {
 		return 2
 	case ContextStyle:
 		return 1
+	case ContextRawText:
+		return 0
 	case ContextHTMLComment:
 		return 0
 	default:
@@ -79,15 +85,16 @@ type ReflectionInfo struct {
 
 // CharacterSet tracks which XSS-critical characters survived encoding
 type CharacterSet struct {
-	LessThan    bool // <
-	GreaterThan bool // >
-	DoubleQuote bool // "
-	SingleQuote bool // '
+	LessThan     bool // <
+	GreaterThan  bool // >
+	DoubleQuote  bool // "
+	SingleQuote  bool // '
 	ForwardSlash bool // /
+	Backtick     bool // `
 }
 
 // canaryChars are the characters appended to the canary to check survival
-const canaryChars = `<>"'/`
+const canaryChars = `<>"'/` + "`"
 
 // eventHandlers is a set of known HTML event handler attribute names
 var eventHandlers = map[string]struct{}{

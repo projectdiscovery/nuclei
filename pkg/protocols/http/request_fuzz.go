@@ -150,10 +150,9 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
 			input.ApplyPayloadInitialTransformation = analyzer.ApplyInitialTransformation
-			if request.Analyzer.Parameters == nil {
-				request.Analyzer.Parameters = make(map[string]interface{})
-			}
-			input.AnalyzerParams = request.Analyzer.Parameters
+			// Use a local empty map to avoid racing with parallel fuzz runs
+			// Do not mutate the shared request.Analyzer.Parameters
+			input.AnalyzerParams = make(map[string]interface{})
 		}
 		err := rule.Execute(input)
 		if err == nil {
