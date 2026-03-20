@@ -387,7 +387,7 @@ func classifyAttributeContext(attrName, attrValue, tagName string) XSSContext {
 	}
 
 	if _, ok := urlAttrs[attrName]; ok {
-		trimmed := strings.TrimSpace(strings.ToLower(attrValue))
+		trimmed := stripC0Controls(strings.TrimSpace(strings.ToLower(attrValue)))
 		if strings.HasPrefix(trimmed, "javascript:") ||
 			strings.HasPrefix(trimmed, "vbscript:") ||
 			strings.HasPrefix(trimmed, "data:text/html") ||
@@ -406,6 +406,20 @@ func classifyAttributeContext(attrName, attrValue, tagName string) XSSContext {
 	}
 
 	return ContextHTMLAttribute
+}
+
+// stripC0Controls removes all C0 control characters (0x00-0x1F) and DEL (0x7F)
+// from the string. Per the WHATWG URL spec, browsers silently strip these
+// characters from URI schemes before interpretation, so an attacker can bypass
+// naive prefix checks by inserting them (e.g. "java\x00script:" is treated as
+// "javascript:" by browsers).
+func stripC0Controls(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r <= 0x1F || r == 0x7F {
+			return -1 // drop the character
+		}
+		return r
+	}, s)
 }
 
 // containsMarker does a case-insensitive substring check.
