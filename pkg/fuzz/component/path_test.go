@@ -107,7 +107,7 @@ func TestPathComponent_RebuildDoesNotMutateOriginal(t *testing.T) {
 
 		rebuilt, err := path.Rebuild()
 		require.NoError(t, err)
-		fuzzedPaths = append(fuzzedPaths, rebuilt.URL.Path)
+		fuzzedPaths = append(fuzzedPaths, rebuilt.Path)
 
 		// Reset value back to original
 		err = path.SetValue(key, original)
