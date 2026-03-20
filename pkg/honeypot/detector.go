@@ -2,6 +2,7 @@ package honeypot
 
 import (
 	"fmt"
+	"sort"
 	"net"
 	"strings"
 	"sync"
@@ -199,6 +200,7 @@ func normalizeHost(raw string) string {
 // FormatSummary returns a human-readable summary of all flagged hosts.
 func (d *Detector) FormatSummary() string {
 	flagged := d.Summary()
+	sort.Strings(flagged)
 	if len(flagged) == 0 {
 		return ""
 	}

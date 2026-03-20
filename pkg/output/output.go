@@ -90,6 +90,11 @@ type StandardWriter struct {
 	resultCount atomic.Int32
 }
 
+// ErrHoneypotSuppressed is returned by Write() when a result is suppressed
+// because the host was flagged as a honeypot. Callers should check for this
+// error to avoid inflating match counters.
+var ErrHoneypotSuppressed = errors.New("result suppressed: host flagged as honeypot")
+
 var _ Writer = &StandardWriter{}
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -320,7 +325,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		}
 		w.honeypotDetector.RecordMatch(host, event.TemplateID)
 		if w.honeypotDetector.ShouldSuppress(host) {
-			return nil
+			return ErrHoneypotSuppressed
 		}
 	}
 

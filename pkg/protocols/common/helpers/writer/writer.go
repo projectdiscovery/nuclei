@@ -1,6 +1,8 @@
 package writer
 
 import (
+	"errors"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -23,6 +25,9 @@ func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progre
 			}
 		}
 		if err := output.Write(result); err != nil {
+			if errors.Is(err, output.ErrHoneypotSuppressed) {
+				continue
+			}
 			gologger.Warning().Msgf("Could not write output event: %s\n", err)
 		}
 		if !matched {
