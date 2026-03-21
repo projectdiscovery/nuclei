@@ -277,6 +277,24 @@ func TestAnalyzeReflectionContext(t *testing.T) {
 			marker:   marker,
 			expected: ContextScript,
 		},
+		{
+			name:     "tab (0x09) mid-scheme in javascript: URI",
+			body:     "<a href=\"java\x09script:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "LF (0x0A) mid-scheme in javascript: URI",
+			body:     "<a href=\"java\x0ascript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "CR (0x0D) mid-scheme in javascript: URI",
+			body:     "<a href=\"java\x0dscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
 
 		// === ScriptData Context (non-executable script) ===
 		{
