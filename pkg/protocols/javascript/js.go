@@ -554,19 +554,19 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		}
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
+	results, execErr := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
 			Source:          &request.Code,
 			Context:         input.Context(),
 		})
-	if err != nil {
+	if execErr != nil {
 		// shouldn't fail even if it returned error instead create a failure event
-		results = compiler.ExecuteResult{"success": false, "error": err.Error()}
+		results = compiler.ExecuteResult{"success": false, "error": execErr.Error()}
 	}
 	request.options.Progress.IncrementRequests()
-	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
+	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), execErr)
 	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.options.TemplateID, hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
@@ -589,9 +589,9 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
-	data, err := request.generateEventData(input, values, hostPort)
-	if err != nil {
-		return err
+	data, dataErr := request.generateEventData(input, values, hostPort)
+	if dataErr != nil {
+		return dataErr
 	}
 
 	// add and get values from templatectx
@@ -613,7 +613,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			wrappedEvent.OperatorsResult.PayloadValues = payload
 		})
 		callback(event)
-		return err
+		return execErr
 	}
 
 	if request.options.Interactsh != nil {

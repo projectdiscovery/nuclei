@@ -209,6 +209,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
 			gologger.Warning().Msgf("dialers with executionId %s not found, skipping IPv6 resolution", executionId)
+			// fall through: IPv4 path below will add a default entry if IPV4 is enabled
 		} else {
 			dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 			if err == nil && len(dnsData.AAAA) > 0 {
@@ -219,8 +220,9 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 			}
 		}
 	}
-	if i.ipOptions.IPV4 {
+	if i.ipOptions.IPV4 || (!i.ipOptions.IPV4 && !i.ipOptions.IPV6) {
 		// if IPV4 is enabled do not specify ip let dialer handle it
+		// also add default entry if neither IPV4 nor IPV6 resolved successfully
 		ips = append(ips, "")
 	}
 
@@ -416,6 +418,7 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
 			gologger.Warning().Msgf("dialers with executionId %s not found, falling back to default for ScanAllIPs", executionId)
+			// fall through to default path below
 		} else {
 			dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 			if err == nil {
@@ -432,7 +435,7 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 							continue
 						}
 						metaInput := contextargs.NewMetaInput()
-						metaInput.Input = value
+						metaInput.Input = URL
 						metaInput.CustomIP = ip
 						i.delItem(metaInput)
 					}
@@ -453,6 +456,7 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
 			gologger.Warning().Msgf("dialers with executionId %s not found, skipping IPv6 resolution", executionId)
+			// fall through: IPv4 path below will add a default entry if IPV4 is enabled
 		} else {
 			dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 			if err == nil && len(dnsData.AAAA) > 0 {
@@ -463,8 +467,9 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 			}
 		}
 	}
-	if i.ipOptions.IPV4 {
+	if i.ipOptions.IPV4 || (!i.ipOptions.IPV4 && !i.ipOptions.IPV6) {
 		// if IPV4 is enabled do not specify ip let dialer handle it
+		// also add default entry if neither IPV4 nor IPV6 resolved successfully
 		ips = append(ips, "")
 	}
 
