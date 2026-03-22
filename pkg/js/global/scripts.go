@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"fmt"
 	"math/rand"
 	"net"
 	"reflect"
@@ -125,7 +126,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			executionId := ctx.Value("executionId").(string)
 			dialer := protocolstate.GetDialersWithId(executionId)
 			if dialer == nil {
-				panic("dialers with executionId " + executionId + " not found")
+				return false, fmt.Errorf("dialers with executionId %s not found", executionId)
 			}
 
 			conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, port))
@@ -156,7 +157,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			executionId := ctx.Value("executionId").(string)
 			dialer := protocolstate.GetDialersWithId(executionId)
 			if dialer == nil {
-				panic("dialers with executionId " + executionId + " not found")
+				return false, fmt.Errorf("dialers with executionId %s not found", executionId)
 			}
 
 			conn, err := dialer.Fastdialer.Dial(ctx, "udp", net.JoinHostPort(host, port))
