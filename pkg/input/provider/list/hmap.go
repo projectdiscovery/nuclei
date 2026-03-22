@@ -225,6 +225,11 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		// also add default entry if neither IPV4 nor IPV6 resolved successfully
 		ips = append(ips, "")
 	}
+	// Safety net: always add target with default entry if all resolution paths failed
+	// (e.g. IPv6-only mode when dialers are unavailable)
+	if len(ips) == 0 {
+		ips = append(ips, "")
+	}
 
 	for _, ip := range ips {
 		metaInput := contextargs.NewMetaInput()
@@ -470,6 +475,11 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	if i.ipOptions.IPV4 || (!i.ipOptions.IPV4 && !i.ipOptions.IPV6) {
 		// if IPV4 is enabled do not specify ip let dialer handle it
 		// also add default entry if neither IPV4 nor IPV6 resolved successfully
+		ips = append(ips, "")
+	}
+	// Safety net: always remove target with default entry if all resolution paths failed
+	// (e.g. IPv6-only mode when dialers are unavailable)
+	if len(ips) == 0 {
 		ips = append(ips, "")
 	}
 
