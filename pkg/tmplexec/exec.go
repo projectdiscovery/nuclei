@@ -271,6 +271,15 @@ func getErrorCause(err error) string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	// --- Tech-stack based template filtering ---
+	if tc := e.options.HostTechCache; tc != nil {
+		tags := e.options.TemplateInfo.Tags.ToSlice()
+		if tc.ShouldSkipTemplate(ctx.Input.MetaInput.Input, tags) {
+			return nil, nil
+		}
+	}
+	// --- end filtering ---
+
 	var errx error
 	if e.options.Flow != "" {
 		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, e.results, e.program)

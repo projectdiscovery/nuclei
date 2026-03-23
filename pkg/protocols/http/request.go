@@ -922,6 +922,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	}
 
+	if resp != nil {
+    if serverHdr := resp.Header.Get("Server"); serverHdr != "" {
+        if tc := request.options.HostTechCache; tc != nil {
+            tc.RecordServerHeader(input.MetaInput.Input, serverHdr)
+        }
+    }
+	}
+	
+
 	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", request.options.TemplateID, formedURL)
 	request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 

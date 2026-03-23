@@ -5,6 +5,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/hosttechcache"
 )
 
 // Engine is an executer for running Nuclei Templates/Workflows.
@@ -21,6 +22,7 @@ type Engine struct {
 	executerOpts *protocols.ExecutorOptions
 	Callback     func(*output.ResultEvent) // Executed on results
 	Logger       *gologger.Logger
+	HostTechCache	*hosttechcache.HostTechCache
 }
 
 // New returns a new Engine instance
@@ -30,6 +32,9 @@ func New(options *types.Options) *Engine {
 		Logger:  options.Logger,
 	}
 	engine.workPool = engine.GetWorkPool()
+	if !options.DisableTechStackFiltering {
+		engine.HostTechCache = hosttechcache.NewHostTechCache()
+	}
 	return engine
 }
 

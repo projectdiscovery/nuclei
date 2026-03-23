@@ -1,9 +1,7 @@
 package core
 
 import (
-	"net/http"
 	"context"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -46,68 +44,6 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 			results.CompareAndSwap(false, match)
 		}(v)
 	}
-}
-
-// detectApacheServer probes the target to check if it's running Apache
-func (e *Engine) detectApacheServer(ctx context.Context, value *contextargs.MetaInput) bool {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	// Try both http and https
-	schemes := []string{"http://", "https://"}
-	for _, scheme := range schemes {
-		url := scheme + value.Input
-		
-		req, err := http.NewRequestWithContext(ctx, "HEAD", url, nil)
-		if err != nil {
-			continue
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			continue
-		}
-		defer resp.Body.Close()
-
-		// Check Server header for Apache
-		serverHeader := resp.Header.Get("Server")
-		if strings.Contains(strings.ToLower(serverHeader), "apache") {
-			e.options.Logger.Info().Msgf("Apache server detected on %s (Server: %s)", value.Input, serverHeader)
-			return true
-		}
-	}
-
-	return false
-}
-
-// checks if a template is Apache-specific
-func (e *Engine) isApacheTemplate(template *templates.Template) bool {
-	if template == nil || template.Info.Name == "" {
-		return false
-	}
-
-	// check template name, ID, and tags for Apache indicators
-	templateStr := strings.ToLower(template.ID + " " + template.Info.Name)
-
-	// check if template is Apache-related
-	apacheKeywords := []string{"apache", "httpd"}
-	for _, keyword := range apacheKeywords {
-		if strings.Contains(templateStr, keyword) {
-			return true
-		}
-	}
-
-	// check tags
-	for _, tag := range template.Info.Tags.ToSlice() {
-		if strings.Contains(strings.ToLower(tag), "apache") {
-			return true
-		}
-	}
-	return false
 }
 
 // executeTemplateWithTargets executes a given template on x targets (with a internal targetpool(i.e concurrency))
@@ -174,14 +110,6 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 						return
 					}
 
-					isApache := e.detectApacheServer(ctx, t.value)
-					
-					// skip non-Apache templates if Apache detected
-					if isApache && !e.isApacheTemplate(template) {
-						e.options.Logger.Debug().Msgf("[%s] Skipping non-Apache template for %s (Apache server detected)",
-							e.executerOpts.Colorizer.BrightBlue(template.ID), t.value.Input)
-						return
-					}
 					match, err := e.executeTemplateOnInput(ctx, template, t.value)
 					if err != nil {
 						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), t.value.Input, err)
@@ -259,28 +187,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 // executeTemplatesOnTarget execute given templates on given single target
 func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*templates.Template, target *contextargs.MetaInput, results *atomic.Bool) {
 	// all templates are executed on single target
-/*
-	isApache := e.detectApacheServer(ctx, target)
 
-	// Filter templates if Apache was detected
-	templatesToRun := alltemplates
-	if isApache {
-		var apacheTemplates []*templates.Template
-		var skippedCount int
-		for _, tpl := range alltemplates {
-			if e.isApacheTemplate(tpl) {
-				apacheTemplates = append(apacheTemplates, tpl)
-			} else {
-				skippedCount++
-			}
-		}
-		templatesToRun = apacheTemplates
-		if skippedCount > 0 {
-			e.options.Logger.Info().Msgf("Filtered out %d non-Apache templates for %s", skippedCount, target.Input)
-		}
-	}
-		*/
-	
 	// wp is workpool that contains different waitgroups for
 	// headless and non-headless templates
 	// global waitgroup should not be used here

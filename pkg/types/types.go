@@ -132,6 +132,9 @@ type Options struct {
 	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
+	// DisableTechStackFiltering disables the automatic per-host template
+	// filtering based on HTTP response headers (e.g. Server: Apache).
+	DisableTechStackFiltering bool `yaml:"disable-tech-filter,omitempty"`
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel

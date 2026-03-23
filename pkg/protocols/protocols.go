@@ -39,6 +39,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	unitutils "github.com/projectdiscovery/utils/unit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/hosttechcache"
 )
 
 var (
@@ -89,6 +90,7 @@ type ExecutorOptions struct {
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	HostTechCache *hosttechcache.HostTechCache
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -277,6 +279,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Browser:             e.Browser,
 		Interactsh:          e.Interactsh,
 		HostErrorsCache:     e.HostErrorsCache,
+		HostTechCache:		 e.HostTechCache,
 		StopAtFirstMatch:    e.StopAtFirstMatch,
 		Variables:           e.Variables,
 		Constants:           e.Constants,
@@ -472,4 +475,5 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.GlobalMatchers = n.GlobalMatchers
 	e.Logger = n.Logger
 	e.CustomFastdialer = n.CustomFastdialer
+	e.HostTechCache   = n.HostTechCache
 }
