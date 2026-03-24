@@ -27,7 +27,7 @@ func (o *oracleCustomDialer) dialWithCtx(ctx context.Context, network, address s
 }
 
 func (o *oracleCustomDialer) Dial(network, address string) (net.Conn, error) {
-	return o.dialWithCtx(context.TODO(), network, address)
+	return o.dialWithCtx(context.Background(), network, address)
 }
 
 func (o *oracleCustomDialer) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {

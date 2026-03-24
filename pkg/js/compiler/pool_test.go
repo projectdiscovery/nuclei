@@ -22,7 +22,7 @@ func TestAddWithContextRespectsDeadline(t *testing.T) {
 	pool.Add()
 	defer pool.Done()
 
-	// Try to acquire with a short deadline — should fail fast, not hang.
+	// Try to acquire with a short deadline, should fail fast and not hang.
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 

@@ -36,11 +36,11 @@ type (
 // ```
 func (c *SMBClient) ConnectSMBInfoMode(ctx context.Context, host string, port int) (*smb.SMBLog, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnectSMBInfoMode(executionId, host, port)
+	return memoizedconnectSMBInfoMode(ctx, executionId, host, port)
 }
 
 // @memo
-func connectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog, error) {
+func connectSMBInfoMode(ctx context.Context, executionId string, host string, port int) (*smb.SMBLog, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
@@ -49,7 +49,7 @@ func connectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog,
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func connectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog,
 	}
 
 	// try to negotiate SMBv1
-	conn, err = dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err = dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	return memoizedcollectSMBv2Metadata(executionId, host, port, 5*time.Second)
+	return memoizedcollectSMBv2Metadata(ctx, executionId, host, port, 5*time.Second)
 }
 
 // ListShares tries to connect to provided host and port
@@ -112,11 +112,11 @@ func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int
 // ```
 func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user, password string) ([]string, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedlistShares(executionId, host, port, user, password)
+	return memoizedlistShares(ctx, executionId, host, port, user, password)
 }
 
 // @memo
-func listShares(executionId string, host string, port int, user string, password string) ([]string, error) {
+func listShares(ctx context.Context, executionId string, host string, port int, user string, password string) ([]string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
@@ -126,7 +126,7 @@ func listShares(executionId string, host string, port int, user string, password
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}

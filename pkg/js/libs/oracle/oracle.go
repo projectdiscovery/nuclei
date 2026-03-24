@@ -48,11 +48,11 @@ type (
 // ```
 func (c *OracleClient) IsOracle(ctx context.Context, host string, port int) (IsOracleResponse, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisOracle(executionId, host, port)
+	return memoizedisOracle(ctx, executionId, host, port)
 }
 
 // @memo
-func isOracle(executionId string, host string, port int) (IsOracleResponse, error) {
+func isOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -61,7 +61,7 @@ func isOracle(executionId string, host string, port int) (IsOracleResponse, erro
 	}
 
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

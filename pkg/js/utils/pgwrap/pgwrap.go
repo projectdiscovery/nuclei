@@ -27,7 +27,7 @@ func (p *pgDial) Dial(network, address string) (net.Conn, error) {
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
-	return dialers.Fastdialer.Dial(context.TODO(), network, address)
+	return dialers.Fastdialer.Dial(context.Background(), network, address)
 }
 
 func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {

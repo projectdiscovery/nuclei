@@ -20,11 +20,11 @@ import (
 // ```
 func GetServerInfo(ctx context.Context, host string, port int) (string, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedgetServerInfo(executionId, host, port)
+	return memoizedgetServerInfo(ctx, executionId, host, port)
 }
 
 // @memo
-func getServerInfo(executionId string, host string, port int) (string, error) {
+func getServerInfo(ctx context.Context, executionId string, host string, port int) (string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return "", protocolstate.ErrHostDenied.Msgf(host)
@@ -40,13 +40,13 @@ func getServerInfo(executionId string, host string, port int) (string, error) {
 	}()
 
 	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(ctx)
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
@@ -62,11 +62,11 @@ func getServerInfo(executionId string, host string, port int) (string, error) {
 // ```
 func Connect(ctx context.Context, host string, port int, password string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnect(executionId, host, port, password)
+	return memoizedconnect(ctx, executionId, host, port, password)
 }
 
 // @memo
-func connect(executionId string, host string, port int, password string) (bool, error) {
+func connect(ctx context.Context, executionId string, host string, port int, password string) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
@@ -81,12 +81,12 @@ func connect(executionId string, host string, port int, password string) (bool, 
 		_ = client.Close()
 	}()
 
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return false, err
 	}
 	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(ctx)
 	if infoCmd.Err() != nil {
 		return false, infoCmd.Err()
 	}
@@ -102,11 +102,11 @@ func connect(executionId string, host string, port int, password string) (bool, 
 // ```
 func GetServerInfoAuth(ctx context.Context, host string, port int, password string) (string, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedgetServerInfoAuth(executionId, host, port, password)
+	return memoizedgetServerInfoAuth(ctx, executionId, host, port, password)
 }
 
 // @memo
-func getServerInfoAuth(executionId string, host string, port int, password string) (string, error) {
+func getServerInfoAuth(ctx context.Context, executionId string, host string, port int, password string) (string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return "", protocolstate.ErrHostDenied.Msgf(host)
@@ -122,13 +122,13 @@ func getServerInfoAuth(executionId string, host string, port int, password strin
 	}()
 
 	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Info(context.TODO())
+	infoCmd := client.Info(ctx)
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
@@ -144,11 +144,11 @@ func getServerInfoAuth(executionId string, host string, port int, password strin
 // ```
 func IsAuthenticated(ctx context.Context, host string, port int) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisAuthenticated(executionId, host, port)
+	return memoizedisAuthenticated(ctx, executionId, host, port)
 }
 
 // @memo
-func isAuthenticated(executionId string, host string, port int) (bool, error) {
+func isAuthenticated(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	plugin := pluginsredis.REDISPlugin{}
 	timeout := 5 * time.Second
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -156,7 +156,7 @@ func isAuthenticated(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}
@@ -194,13 +194,13 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	}()
 
 	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Eval(context.Background(), script, []string{})
+	infoCmd := client.Eval(ctx, script, []string{})
 
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
