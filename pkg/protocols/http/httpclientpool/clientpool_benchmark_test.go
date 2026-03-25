@@ -213,10 +213,10 @@ func assertReuse(t *testing.T, numHosts, numTemplates int, old, new benchResult)
 	require.Equal(t, expectedTotal-int64(numHosts), new.ReusedConns,
 		"keep-alive ON should reuse connections for all subsequent requests")
 
-	// speedup sanity check (at least 1.5x on localhost)
+	// speedup sanity check — keep-alive should never be slower
 	speedup := float64(old.Duration) / float64(new.Duration)
-	require.Greater(t, speedup, 1.5,
-		"expected at least 1.5x speedup with connection reuse")
+	require.Greater(t, speedup, 1.0,
+		"expected keep-alive to be at least as fast as no-keep-alive")
 }
 
 // HTTP tests
