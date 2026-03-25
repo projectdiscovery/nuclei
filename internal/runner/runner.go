@@ -198,7 +198,7 @@ func New(options *types.Options) (*Runner, error) {
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
 		var err error
-		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
+		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{}, "")
 		if err != nil {
 			return nil, err
 		}
@@ -426,6 +426,11 @@ func (r *Runner) Close() {
 	}
 	if r.httpStats != nil {
 		r.httpStats.DisplayTopStats(r.options.NoColor)
+	}
+	if newConns, reusedConns := httpclientpool.GetConnectionStats(); newConns+reusedConns > 0 {
+		total := newConns + reusedConns
+		ratio := float64(reusedConns) / float64(total) * 100
+		gologger.Info().Msgf("HTTP connections: %d total, %d new, %d reused (%.1f%%)", total, newConns, reusedConns, ratio)
 	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {

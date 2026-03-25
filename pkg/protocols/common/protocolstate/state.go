@@ -176,9 +176,10 @@ func initDialers(options *types.Options) error {
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
 	httpClientPool := mapsutil.NewSyncLockMap(
-		// evicts inactive httpclientpool entries after 24 hours
-		// of inactivity (long running instances)
-		mapsutil.WithEviction[string, *retryablehttp.Client](24*time.Hour, 12*time.Hour),
+		// Per-host HTTP clients are evicted after 90 seconds of inactivity.
+		// Combined with IdleConnTimeout on each transport, this ensures
+		// connections to already-scanned hosts are cleaned up promptly.
+		mapsutil.WithEviction[string, *retryablehttp.Client](90*time.Second, 30*time.Second),
 	)
 
 	dialersInstance := &Dialers{

@@ -24,7 +24,6 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -485,8 +484,10 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		}
 	}
 
-	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && r.options.Options.ScanStrategy != scanstrategy.HostSpray.String() {
+	// Per-host clients always have keep-alive enabled for connection reuse.
+	// Only force-close connections when a template explicitly disables keep-alive.
+	if r.request.connConfiguration != nil && r.request.connConfiguration.Connection != nil &&
+		r.request.connConfiguration.Connection.DisableKeepAlive && req.Header.Get("Connection") == "" {
 		req.Close = true
 	}
 

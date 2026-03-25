@@ -40,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
@@ -830,34 +831,22 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
 				return errSignature
 			}
-			httpclient := request.httpClient
 
-			// this will be assigned/updated if this specific request has a custom configuration
-			var modifiedConfig *httpclientpool.Configuration
-
-			// check for cookie related configuration
+			connConfig := request.connConfiguration
 			if input.CookieJar != nil {
-				connConfiguration := request.connConfiguration.Clone()
-				connConfiguration.Connection.SetCookieJar(input.CookieJar)
-				modifiedConfig = connConfiguration
+				connConfig = connConfig.Clone()
+				connConfig.Connection.SetCookieJar(input.CookieJar)
 			}
-			// check for request updatedTimeout annotation
-			updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
-			if ok {
-				if modifiedConfig == nil {
-					connConfiguration := request.connConfiguration.Clone()
-					modifiedConfig = connConfiguration
+			if updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout); ok {
+				if connConfig == request.connConfiguration {
+					connConfig = connConfig.Clone()
 				}
-
-				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
+				connConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			if modifiedConfig != nil {
-				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
-				if err != nil {
-					return errors.Wrap(err, "could not get http client")
-				}
-				httpclient = client
+			httpclient, clientErr := httpclientpool.Get(request.options.Options, connConfig, hostname)
+			if clientErr != nil {
+				return errors.Wrap(clientErr, "could not get http client")
 			}
 
 			resp, err = httpclient.Do(generatedRequest.request)
@@ -1020,7 +1009,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
 			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
 				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
-				HttpClient:         request.httpClient,
+				HttpClient:         request.getHTTPClientForHost(hostname),
 				ResponseTimeDelay:  duration,
 				AnalyzerParameters: request.Analyzer.Parameters,
 			})
@@ -1160,6 +1149,16 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 			event.InternalEvent["error"] = err.Error()
 		}
 	}
+}
+
+// getHTTPClientForHost returns a per-host HTTP client, falling back to a
+// host-agnostic client if the lookup fails.
+func (request *Request) getHTTPClientForHost(host string) *retryablehttp.Client {
+	client, err := httpclientpool.Get(request.options.Options, request.connConfiguration, host)
+	if err != nil {
+		client, _ = httpclientpool.Get(request.options.Options, request.connConfiguration, "")
+	}
+	return client
 }
 
 // addCNameIfAvailable adds the cname to the event if available
