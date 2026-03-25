@@ -227,11 +227,10 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 
 	maxIdleConns := 4
 	maxIdleConnsPerHost := 4
-	maxConnsPerHost := 25
+	maxConnsPerHost := 0 // unlimited by default; the SPM handler controls concurrency
 	if configuration.Threads > 0 {
 		maxIdleConnsPerHost = configuration.Threads
 		maxIdleConns = configuration.Threads
-		maxConnsPerHost = configuration.Threads
 	}
 
 	disableKeepAlives := configuration.Connection != nil && configuration.Connection.DisableKeepAlive
