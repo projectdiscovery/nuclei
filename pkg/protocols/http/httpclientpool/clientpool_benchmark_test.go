@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/http/httptrace"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -424,4 +425,106 @@ func BenchmarkHostSpray_HTTPS_KeepAliveOn(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		runHostSpray(servers, 20, keepAliveOnFactory)
 	}
+}
+
+// Goroutine leak tests
+
+// waitForGoroutineCount waits until the goroutine count drops to target or below,
+// up to a timeout. Returns the final count.
+func waitForGoroutineCount(target, maxWaitMs int) int {
+	for waited := 0; waited < maxWaitMs; waited += 50 {
+		runtime.GC()
+		n := runtime.NumGoroutine()
+		if n <= target {
+			return n
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return runtime.NumGoroutine()
+}
+
+func TestConnTrackingTransportForwardsCloseIdleConnections(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "ok")
+	}))
+	defer server.Close()
+
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: 4,
+		IdleConnTimeout:     30 * time.Second,
+	}
+	wrapped := &connTrackingTransport{base: transport}
+	client := &http.Client{Transport: wrapped}
+
+	runtime.GC()
+	time.Sleep(100 * time.Millisecond)
+	before := runtime.NumGoroutine()
+
+	for i := 0; i < 20; i++ {
+		require.NoError(t, doRequest(client, server.URL))
+	}
+
+	// CloseIdleConnections must propagate through the wrapper
+	client.CloseIdleConnections()
+	after := waitForGoroutineCount(before+2, 2000)
+
+	require.LessOrEqual(t, after, before+2,
+		"CloseIdleConnections did not propagate through connTrackingTransport: before=%d after=%d", before, after)
+}
+
+func TestConnTrackingTransportNoLeakHTTP(t *testing.T) {
+	servers := startHTTPServers(5)
+	defer closeServers(servers)
+
+	runtime.GC()
+	time.Sleep(100 * time.Millisecond)
+	before := runtime.NumGoroutine()
+
+	for round := 0; round < 3; round++ {
+		transport := &http.Transport{
+			MaxIdleConnsPerHost: 4,
+			IdleConnTimeout:     30 * time.Second,
+		}
+		client := &http.Client{Transport: &connTrackingTransport{base: transport}}
+
+		for _, s := range servers {
+			for i := 0; i < 10; i++ {
+				require.NoError(t, doRequest(client, s.URL))
+			}
+		}
+		client.CloseIdleConnections()
+	}
+
+	after := waitForGoroutineCount(before+2, 2000)
+	require.LessOrEqual(t, after, before+2,
+		"goroutine leak after HTTP requests: before=%d after=%d", before, after)
+}
+
+func TestConnTrackingTransportNoLeakHTTPS(t *testing.T) {
+	servers := startTLSServers(5)
+	defer closeServers(servers)
+
+	runtime.GC()
+	time.Sleep(100 * time.Millisecond)
+	before := runtime.NumGoroutine()
+
+	for round := 0; round < 3; round++ {
+		transport := &http.Transport{
+			MaxIdleConnsPerHost: 4,
+			IdleConnTimeout:     30 * time.Second,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: &connTrackingTransport{base: transport}}
+
+		for _, s := range servers {
+			for i := 0; i < 10; i++ {
+				require.NoError(t, doRequest(client, s.URL))
+			}
+		}
+		client.CloseIdleConnections()
+	}
+
+	after := waitForGoroutineCount(before+2, 2000)
+	require.LessOrEqual(t, after, before+2,
+		"goroutine leak after HTTPS requests: before=%d after=%d", before, after)
 }

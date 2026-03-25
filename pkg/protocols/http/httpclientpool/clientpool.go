@@ -66,6 +66,13 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 	return t.base.RoundTrip(req)
 }
 
+func (t *connTrackingTransport) CloseIdleConnections() {
+	type closeIdler interface{ CloseIdleConnections() }
+	if ci, ok := t.base.(closeIdler); ok {
+		ci.CloseIdleConnections()
+	}
+}
+
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
 	if options.ShouldFollowHTTPRedirects() {
