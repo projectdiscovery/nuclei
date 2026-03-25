@@ -92,6 +92,8 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 		}
 		runtime.RemoveContextValue("executionId")
 		runtime.RemoveContextValue("ctx")
+		runtime.RemoveContextValue("timeoutVariants")
+		runtime.RemoveContextValue("proxyURL")
 	}()
 
 	// set template ctx
@@ -103,6 +105,14 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 
 	runtime.SetContextValue("executionId", opts.ExecutionId)
 	runtime.SetContextValue("ctx", ctx)
+	// inject timeout variants so JS libraries can use the user-specified timeout
+	if opts.TimeoutVariants != nil {
+		runtime.SetContextValue("timeoutVariants", opts.TimeoutVariants)
+	}
+	// inject proxy URL so JS libraries can route connections through the proxy
+	if opts.ProxyURL != "" {
+		runtime.SetContextValue("proxyURL", opts.ProxyURL)
+	}
 	enableRequire(runtime)
 
 	// register extra callbacks if any
