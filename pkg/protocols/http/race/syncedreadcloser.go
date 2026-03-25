@@ -30,7 +30,7 @@ func NewSyncedReadCloser(r io.ReadCloser) *SyncedReadCloser {
 		_ = r.Close()
 	}()
 	s.length = int64(len(s.data))
-	s.openGate = make(chan struct{})
+	s.openGate = make(chan struct{}, 1)
 	s.enableBlocking = true
 	return &s
 }
@@ -49,13 +49,19 @@ func (s *SyncedReadCloser) SetOpenGate(status bool) {
 
 // OpenGate opens the gate allowing all requests to be completed
 func (s *SyncedReadCloser) OpenGate() {
-	s.openGate <- struct{}{}
+	select {
+	case s.openGate <- struct{}{}:
+	default:
+	}
 }
 
 // OpenGateAfter schedules gate to be opened after a duration
 func (s *SyncedReadCloser) OpenGateAfter(d time.Duration) {
 	time.AfterFunc(d, func() {
-		s.openGate <- struct{}{}
+		select {
+		case s.openGate <- struct{}{}:
+		default:
+		}
 	})
 }
 
@@ -86,6 +92,10 @@ func (s *SyncedReadCloser) Read(p []byte) (n int, err error) {
 	// If the data fits in the buffer blocks awaiting the sync instruction
 	if s.p+int64(len(p)) >= s.length && s.enableBlocking {
 		<-s.openGate
+		// Once the gate opens, disable blocking so that subsequent reads
+		// (e.g. after the retryablehttp client seeks back and re-reads)
+		// pass through without deadlocking.
+		s.enableBlocking = false
 	}
 	n = copy(p, s.data[s.p:])
 	s.p += int64(n)
