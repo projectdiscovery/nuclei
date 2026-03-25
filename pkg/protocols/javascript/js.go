@@ -169,6 +169,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		opts := &compiler.ExecuteOptions{
 			ExecutionId:     request.options.Options.ExecutionId,
 			TimeoutVariants: request.options.Options.GetTimeouts(),
+			ProxyURL:        request.options.Options.AliveHttpProxy,
 			Source:          &request.Init,
 		}
 		// register 'export' function to export variables from init code
@@ -405,6 +406,7 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			&compiler.ExecuteOptions{
 				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
+				ProxyURL:        requestOptions.Options.AliveHttpProxy,
 				Source:          &request.PreCondition,
 			},
 		)
@@ -642,6 +644,7 @@ func (request *Request) executeRequestWithPayloads(
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
+			ProxyURL:        requestOptions.Options.AliveHttpProxy,
 			Source:          &request.Code,
 		},
 	)
