@@ -445,7 +445,7 @@ func waitForGoroutineCount(target, maxWaitMs int) int {
 
 func TestConnTrackingTransportForwardsCloseIdleConnections(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}))
 	defer server.Close()
 
