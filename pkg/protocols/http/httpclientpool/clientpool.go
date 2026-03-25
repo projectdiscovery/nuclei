@@ -29,10 +29,7 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-var (
-	forceMaxRedirects int
-	connStats         ConnectionStats
-)
+var connStats ConnectionStats
 
 // ConnectionStats tracks HTTP connection reuse across the scan.
 type ConnectionStats struct {
@@ -72,16 +69,6 @@ func (t *connTrackingTransport) CloseIdleConnections() {
 		ci.CloseIdleConnections()
 	}
 }
-
-// Init initializes the clientpool implementation
-func Init(options *types.Options) error {
-	if options.ShouldFollowHTTPRedirects() {
-		forceMaxRedirects = options.MaxRedirects
-	}
-
-	return nil
-}
-
 // ConnectionConfiguration contains the custom configuration options for a connection
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
@@ -258,14 +245,16 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
 
-	if forceMaxRedirects > 0 {
+	if options.ShouldFollowHTTPRedirects() {
 		switch {
 		case options.FollowHostRedirects:
 			redirectFlow = FollowSameHostRedirect
 		default:
 			redirectFlow = FollowAllRedirect
 		}
-		maxRedirects = forceMaxRedirects
+		if options.MaxRedirects > 0 {
+			maxRedirects = options.MaxRedirects
+		}
 	}
 	if options.DisableRedirects {
 		options.FollowRedirects = false
