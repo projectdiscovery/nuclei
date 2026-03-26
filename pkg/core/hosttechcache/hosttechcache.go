@@ -3,6 +3,7 @@ package hosttechcache
 import (
 	"strings"
 	"sync"
+	"github.com/projectdiscovery/gologger"
 )
 
 // TechHint represents a detected technology on a host that can be used
@@ -47,11 +48,16 @@ func (c *HostTechCache) RecordServerHeader(host, serverHeader string) {
 	defer c.mu.Unlock()
 
 	if len(requiredTags) == 0 {
-		// Unrecognised server — clear any existing hint so the old
-		// technology detection doesn't persist after a redirect/overwrite.
+		if _, exists := c.hints[host]; exists {
+			gologger.Debug().Msgf("[tech-filter] CLEARED hint for host '%s' (unrecognised Server header: '%s')",
+				host, serverHeader)
+		}
 		delete(c.hints, host)
 		return
 	}
+
+	gologger.Debug().Msgf("[tech-filter] RECORDED hint for host '%s' — Server: '%s' → required tags: %v",
+		host, serverHeader, requiredTags)
 
 	hint := &TechHint{Tags: make(map[string]struct{}, len(requiredTags))}
 	for _, t := range requiredTags {

@@ -274,8 +274,14 @@ func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.
 	// --- Tech-stack based template filtering ---
 	if tc := e.options.HostTechCache; tc != nil {
 		tags := e.options.TemplateInfo.Tags.ToSlice()
-		if tc.ShouldSkipTemplate(ctx.Input.MetaInput.Input, tags) {
+		host := ctx.Input.MetaInput.Input
+		if tc.ShouldSkipTemplate(host, tags) {
+			gologger.Debug().Msgf("[tech-filter] SKIPPED template '%s' (tags: %v) for host '%s' — no matching tech hint",
+				e.options.TemplateID, tags, host)
 			return nil, nil
+		} else {
+			gologger.Debug().Msgf("[tech-filter] ALLOWED template '%s' (tags: %v) for host '%s'",
+				e.options.TemplateID, tags, host)
 		}
 	}
 	// --- end filtering ---
