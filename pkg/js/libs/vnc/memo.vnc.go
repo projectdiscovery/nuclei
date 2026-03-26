@@ -11,7 +11,7 @@ import (
 )
 
 func memoizedisVNC(ctx context.Context, executionId string, host string, port int) (IsVNCResponse, error) {
-	hash := "isVNC" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isVNC" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isVNC(ctx, executionId, host, port)

@@ -11,7 +11,7 @@ import (
 )
 
 func memoizedisPoP3(ctx context.Context, executionId string, host string, port int) (IsPOP3Response, error) {
-	hash := "isPoP3" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isPoP3" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isPoP3(ctx, executionId, host, port)

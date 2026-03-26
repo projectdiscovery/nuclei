@@ -11,7 +11,7 @@ import (
 )
 
 func memoizedisRDP(ctx context.Context, executionId string, host string, port int) (IsRDPResponse, error) {
-	hash := "isRDP" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isRDP" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isRDP(ctx, executionId, host, port)
@@ -27,7 +27,7 @@ func memoizedisRDP(ctx context.Context, executionId string, host string, port in
 }
 
 func memoizedcheckRDPAuth(ctx context.Context, executionId string, host string, port int) (CheckRDPAuthResponse, error) {
-	hash := "checkRDPAuth" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "checkRDPAuth" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return checkRDPAuth(ctx, executionId, host, port)
@@ -43,7 +43,7 @@ func memoizedcheckRDPAuth(ctx context.Context, executionId string, host string, 
 }
 
 func memoizedcheckRDPEncryption(ctx context.Context, executionId string, host string, port int) (RDPEncryptionResponse, error) {
-	hash := "checkRDPEncryption" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "checkRDPEncryption" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return checkRDPEncryption(ctx, executionId, host, port)

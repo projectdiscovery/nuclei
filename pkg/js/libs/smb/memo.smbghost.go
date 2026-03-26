@@ -12,7 +12,7 @@ import (
 )
 
 func memoizeddetectSMBGhost(ctx context.Context, executionId string, host string, port int) (bool, error) {
-	hash := "detectSMBGhost" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "detectSMBGhost" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return detectSMBGhost(ctx, executionId, host, port)

@@ -82,7 +82,7 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 		_ = db.Close()
 	}()
 
-	_, err = db.Exec("select 1")
+	_, err = db.ExecContext(ctx, "select 1")
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "connect: connection refused"):
@@ -192,7 +192,7 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

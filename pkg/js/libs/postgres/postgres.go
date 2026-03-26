@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net"
 	"strings"
@@ -12,8 +11,7 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"   //nolint:staticcheck // need to call init
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap" //nolint:staticcheck
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -128,7 +126,7 @@ func executeQuery(ctx context.Context, executionId string, host string, port int
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable&executionId=%s", username, password, target, dbName, executionId)
-	db, err := sql.Open(pgwrap.PGWrapDriver, connStr)
+	db, err := pgwrap.OpenDB(ctx, executionId, connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +134,7 @@ func executeQuery(ctx context.Context, executionId string, host string, port int
 		_ = db.Close()
 	}()
 
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

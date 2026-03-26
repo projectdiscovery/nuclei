@@ -11,7 +11,7 @@ import (
 )
 
 func memoizedisOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
-	hash := "isOracle" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isOracle" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isOracle(ctx, executionId, host, port)

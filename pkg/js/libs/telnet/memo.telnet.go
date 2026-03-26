@@ -11,7 +11,7 @@ import (
 )
 
 func memoizedisTelnet(ctx context.Context, executionId string, host string, port int) (IsTelnetResponse, error) {
-	hash := "isTelnet" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isTelnet" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isTelnet(ctx, executionId, host, port)
