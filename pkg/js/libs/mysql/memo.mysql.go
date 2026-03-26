@@ -11,7 +11,7 @@ import (
 )
 
 func memoizedisMySQL(ctx context.Context, executionId string, host string, port int) (bool, error) {
-	hash := "isMySQL" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "isMySQL" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isMySQL(ctx, executionId, host, port)
@@ -27,7 +27,7 @@ func memoizedisMySQL(ctx context.Context, executionId string, host string, port 
 }
 
 func memoizedfingerprintMySQL(ctx context.Context, executionId string, host string, port int) (MySQLInfo, error) {
-	hash := "fingerprintMySQL" + ":" + fmt.Sprint(ctx) + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+	hash := "fingerprintMySQL" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return fingerprintMySQL(ctx, executionId, host, port)
