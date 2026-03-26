@@ -9,8 +9,6 @@ import (
 
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 

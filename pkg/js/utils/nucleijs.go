@@ -51,18 +51,18 @@ func (j *NucleiJS) ExecutionId() string {
 	return executionId.(string)
 }
 
-// Context returns the deadline context from the goja runtime, or
-// context.TODO() if none is set.
+// Context returns the execution context from the goja runtime, or
+// context.Background() if none is set.
 func (j *NucleiJS) Context() context.Context {
 	if j == nil || j.vm == nil {
-		return context.TODO()
+		return context.Background()
 	}
 	if ctx, ok := j.vm.GetContextValue("ctx"); ok {
 		if c, valid := ctx.(context.Context); valid {
 			return c
 		}
 	}
-	return context.TODO()
+	return context.Background()
 }
 
 // see: https://arc.net/l/quote/wpenftpc for throwing docs
