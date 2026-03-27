@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/kitabisa/go-ci"
 	"github.com/logrusorgru/aurora"
@@ -22,7 +25,14 @@ var (
 	mainNucleiBinary = flag.String("main", "", "Main Branch Nuclei Binary")
 	devNucleiBinary  = flag.String("dev", "", "Dev Branch Nuclei Binary")
 	testcases        = flag.String("testcases", "", "Test cases file for nuclei functional tests")
+	workers          = flag.Int("workers", defaultWorkerCount(), "Workers for nuclei functional tests")
 )
+
+type functionalTestResult struct {
+	index    int
+	testCase string
+	err      error
+}
 
 func main() {
 	flag.Parse()
@@ -37,20 +47,18 @@ func main() {
 }
 
 func runFunctionalTests(debug bool) (error, bool) {
-	file, err := os.Open(*testcases)
+	testCaseList, err := loadTestCases(*testcases)
 	if err != nil {
 		return errors.Wrap(err, "could not open test cases"), true
 	}
-	defer func() {
-		_ = file.Close()
-	}()
 
-	errored, failedTestCases := runTestCases(file, debug)
+	errored, failedTestCases := runTestCases(testCaseList, debug, *workers)
 
-	if ci.IsCI() {
+	if ci.IsCI() && len(failedTestCases) > 0 {
 		fmt.Println("::group::Failed tests with debug")
 		for _, failedTestCase := range failedTestCases {
-			_ = runTestCase(failedTestCase, true)
+			result := runTestCase(-1, failedTestCase, true)
+			printTestCaseResult(result)
 		}
 		fmt.Println("::endgroup::")
 	}
@@ -58,65 +66,126 @@ func runFunctionalTests(debug bool) (error, bool) {
 	return nil, errored
 }
 
-func runTestCases(file *os.File, debug bool) (bool, []string) {
-	errored := false
-	var failedTestCases []string
+func defaultWorkerCount() int {
+	if value := strings.TrimSpace(os.Getenv("FUNCTIONAL_TEST_WORKERS")); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err == nil && parsed > 0 {
+			return parsed
+		}
+	}
+	return min(4, max(1, runtime.NumCPU()))
+}
 
+func loadTestCases(testCasesFile string) ([]string, error) {
+	file, err := os.Open(testCasesFile)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	var loaded []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		testCase := strings.TrimSpace(scanner.Text())
-		if testCase == "" {
+		if testCase == "" || strings.HasPrefix(testCase, "#") {
 			continue
 		}
-		// skip comments
-		if strings.HasPrefix(testCase, "#") {
-			continue
-		}
-		if runTestCase(testCase, debug) {
+		loaded = append(loaded, testCase)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return loaded, nil
+}
+
+func runTestCases(testCases []string, debug bool, workerCount int) (bool, []string) {
+	results := executeTestCases(testCases, debug, workerCount)
+	errored := false
+	failedTestCases := make([]string, 0)
+
+	for _, result := range results {
+		printTestCaseResult(result)
+		if result.err != nil {
 			errored = true
-			failedTestCases = append(failedTestCases, testCase)
+			failedTestCases = append(failedTestCases, result.testCase)
 		}
 	}
 	return errored, failedTestCases
 }
 
-func runTestCase(testCase string, debug bool) bool {
-	if err := runIndividualTestCase(testCase, debug); err != nil {
-		fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, testCase, err)
-		return true
-	} else {
-		fmt.Printf("%s Test \"%s\" passed!\n", success, testCase)
+func executeTestCases(testCases []string, debug bool, workerCount int) []functionalTestResult {
+	results := make([]functionalTestResult, len(testCases))
+	if len(testCases) == 0 {
+		return results
 	}
-	return false
+
+	if workerCount <= 1 {
+		for index, testCase := range testCases {
+			results[index] = runTestCase(index, testCase, debug)
+		}
+		return results
+	}
+
+	jobIndexes := make(chan int)
+	resultChan := make(chan functionalTestResult, len(testCases))
+	workerTotal := min(workerCount, len(testCases))
+
+	var workerGroup sync.WaitGroup
+	workerGroup.Add(workerTotal)
+	for range workerTotal {
+		go func() {
+			defer workerGroup.Done()
+			for index := range jobIndexes {
+				resultChan <- runTestCase(index, testCases[index], debug)
+			}
+		}()
+	}
+
+	for index := range testCases {
+		jobIndexes <- index
+	}
+	close(jobIndexes)
+
+	workerGroup.Wait()
+	close(resultChan)
+
+	for result := range resultChan {
+		results[result.index] = result
+	}
+
+	return results
+}
+
+func runTestCase(index int, testCase string, debug bool) functionalTestResult {
+	result := functionalTestResult{index: index, testCase: testCase}
+	if err := runIndividualTestCase(testCase, debug); err != nil {
+		result.err = err
+	}
+	return result
+}
+
+func printTestCaseResult(result functionalTestResult) {
+	if result.err != nil {
+		fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed: %s\n", failed, result.testCase, result.err)
+		return
+	}
+	fmt.Printf("%s Test \"%s\" passed!\n", success, result.testCase)
 }
 
 func runIndividualTestCase(testcase string, debug bool) error {
-	quoted := false
-
-	// split upon unquoted spaces
-	parts := strings.FieldsFunc(testcase, func(r rune) bool {
-		if r == '"' {
-			quoted = !quoted
-		}
-		return !quoted && r == ' '
-	})
-
-	// Quoted strings containing spaces are expressions and must have trailing \" removed
-	for index, part := range parts {
-		if strings.Contains(part, " ") {
-			parts[index] = strings.Trim(part, "\"")
-		}
-	}
+	parts := splitTestCaseArgs(testcase)
 
 	var finalArgs []string
 	if len(parts) > 1 {
 		finalArgs = parts[1:]
 	}
-	mainOutput, err := testutils.RunNucleiBinaryAndGetLoadedTemplates(*mainNucleiBinary, debug, finalArgs)
+	mainOutput, err := testutils.RunNucleiBinaryWithEnvAndGetLoadedTemplates(*mainNucleiBinary, debug, nil, finalArgs)
 	if err != nil {
 		return errors.Wrap(err, "could not run nuclei main test")
 	}
-	devOutput, err := testutils.RunNucleiBinaryAndGetLoadedTemplates(*devNucleiBinary, debug, finalArgs)
+	devOutput, err := testutils.RunNucleiBinaryWithEnvAndGetLoadedTemplates(*devNucleiBinary, debug, nil, finalArgs)
 	if err != nil {
 		return errors.Wrap(err, "could not run nuclei dev test")
 	}
@@ -124,4 +193,21 @@ func runIndividualTestCase(testcase string, debug bool) error {
 		return nil
 	}
 	return fmt.Errorf("%s main is not equal to %s dev", mainOutput, devOutput)
+}
+
+func splitTestCaseArgs(testcase string) []string {
+	quoted := false
+
+	parts := strings.FieldsFunc(testcase, func(r rune) bool {
+		if r == '"' {
+			quoted = !quoted
+		}
+		return !quoted && r == ' '
+	})
+
+	for index, part := range parts {
+		parts[index] = strings.Trim(part, "\"'")
+	}
+
+	return parts
 }

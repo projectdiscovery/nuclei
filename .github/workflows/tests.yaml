@@ -109,6 +109,7 @@ jobs:
     needs: ["tests"]
     env:
       GITHUB_TOKEN: "${{ github.token }}"
+      FUNCTIONAL_TEST_WORKERS: "4"
     strategy:
       fail-fast: false
       matrix:

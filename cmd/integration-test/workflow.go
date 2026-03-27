@@ -38,7 +38,7 @@ func init() {
 		templates.TemplateSignerLFA()
 
 		// testCertFile and testKeyFile are declared in code.go
-		tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
+		tsigner, err := signer.NewTemplateSignerFromFiles(integrationTestPath(testCertFile), integrationTestPath(testKeyFile))
 		if err != nil {
 			panic(err)
 		}
@@ -49,7 +49,7 @@ func init() {
 			"workflow/code-template-2.yaml",
 		}
 		for _, templatePath := range templatesToSign {
-			if err := templates.SignTemplate(tsigner, templatePath); err != nil {
+			if err := ensureSignedTemplate(tsigner, integrationTestPath(templatePath)); err != nil {
 				log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
 			}
 		}

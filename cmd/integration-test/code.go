@@ -45,12 +45,12 @@ func init() {
 	// in order to sign them for testing purposes
 	templates.TemplateSignerLFA()
 
-	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
+	tsigner, err := signer.NewTemplateSignerFromFiles(integrationTestPath(testCertFile), integrationTestPath(testKeyFile))
 	if err != nil {
 		panic(err)
 	}
 
-	testcertpath, _ = filepath.Abs(testCertFile)
+	testcertpath, _ = filepath.Abs(integrationTestPath(testCertFile))
 
 	for _, v := range codeTestCases {
 		templatePath := v.Path
@@ -61,7 +61,7 @@ func init() {
 			continue
 		}
 
-		templatePath, err := filepath.Abs(templatePath)
+		templatePath, err := filepath.Abs(integrationTestPath(templatePath))
 		if err != nil {
 			panic(err)
 		}
@@ -74,11 +74,23 @@ func init() {
 		if _, ok := testCase.(*codePyNoSig); ok {
 			continue
 		}
-		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
+		if err := ensureSignedTemplate(tsigner, templatePath); err != nil {
 			log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
 		}
 	}
 
+}
+
+func ensureSignedTemplate(tsigner *signer.TemplateSigner, templatePath string) error {
+	bin, err := os.ReadFile(templatePath)
+	if err != nil {
+		return err
+	}
+	existingSignature, _ := signer.ExtractSignatureAndContent(bin)
+	if len(existingSignature) > 0 {
+		return nil
+	}
+	return templates.SignTemplate(tsigner, templatePath)
 }
 
 func getEnvValues() []string {

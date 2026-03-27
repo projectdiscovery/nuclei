@@ -26,6 +26,13 @@ var (
 	}
 )
 
+func buildCommandEnv(env []string) []string {
+	commandEnv := append([]string{}, os.Environ()...)
+	commandEnv = append(commandEnv, ExtraEnvVars...)
+	commandEnv = append(commandEnv, env...)
+	return commandEnv
+}
+
 // RunNucleiTemplateAndGetResults returns a list of results for a template
 func RunNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
 	return RunNucleiAndGetResults(true, template, url, debug, extra...)
@@ -60,10 +67,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "1")
 	cmd.Args = append(cmd.Args, "-interactions-cooldown-period", "10")
 	cmd.Args = append(cmd.Args, "-allow-local-file-access")
-	if env != nil {
-		cmd.Env = append(os.Environ(), env...)
-	}
-	cmd.Env = append(cmd.Env, ExtraEnvVars...)
+	cmd.Env = buildCommandEnv(env)
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
@@ -97,7 +101,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 // RunNucleiWithArgsAndGetResults returns result,and runtime errors
 func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei", args...)
-	cmd.Env = append(cmd.Env, ExtraEnvVars...)
+	cmd.Env = buildCommandEnv(nil)
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
@@ -131,14 +135,13 @@ func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error
 func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
 	extra = append(extra, ExtraDebugArgs...)
-	cmd.Env = append(os.Environ(), env...)
+	cmd.Env = buildCommandEnv(env)
 	cmd.Args = append(cmd.Args, extra...)
 	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "1")
 	cmd.Args = append(cmd.Args, "-interactions-cooldown-period", "10")
 	cmd.Args = append(cmd.Args, "-allow-local-file-access")
 	cmd.Args = append(cmd.Args, "-nc") // disable color
-	cmd.Env = append(cmd.Env, ExtraEnvVars...)
 	dataOutput, err := cmd.CombinedOutput()
 	if debug {
 		fmt.Println(string(dataOutput))
@@ -166,8 +169,7 @@ func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]str
 func RunNucleiArgsWithEnvAndGetResults(debug bool, env []string, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
 	extra = append(extra, ExtraDebugArgs...)
-	cmd.Env = append(os.Environ(), env...)
-	cmd.Env = append(cmd.Env, ExtraEnvVars...)
+	cmd.Env = buildCommandEnv(env)
 	cmd.Args = append(cmd.Args, extra...)
 	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "5")
@@ -205,8 +207,12 @@ var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded[^:]*: (\
 
 // RunNucleiBinaryAndGetLoadedTemplates returns a list of results for a template
 func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args []string) (string, error) {
+	return RunNucleiBinaryWithEnvAndGetLoadedTemplates(nucleiBinary, debug, nil, args)
+}
+
+func RunNucleiBinaryWithEnvAndGetLoadedTemplates(nucleiBinary string, debug bool, env []string, args []string) (string, error) {
 	cmd := exec.Command(nucleiBinary, args...)
-	cmd.Env = append(cmd.Env, ExtraEnvVars...)
+	cmd.Env = buildCommandEnv(env)
 	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
@@ -228,7 +234,7 @@ func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args 
 func RunNucleiBinaryAndGetCombinedOutput(debug bool, args []string) (string, error) {
 	args = append(args, "-interactions-cooldown-period", "10", "-interactions-poll-duration", "1")
 	cmd := exec.Command("./nuclei", args...)
-	cmd.Env = append(cmd.Env, ExtraEnvVars...)
+	cmd.Env = buildCommandEnv(nil)
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		fmt.Println(cmd.String())

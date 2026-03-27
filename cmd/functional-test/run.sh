@@ -1,9 +1,14 @@
 #!/bin/bash
 
-if [ "${RUNNER_OS}" == "Windows" ]; then
+set -euo pipefail
+
+export NUCLEI_CONFIG_DIR="$PWD/.nuclei-config"
+
+EXT=""
+if [ "${RUNNER_OS:-}" == "Windows" ]; then
     EXT=".exe"
-elif [ "${RUNNER_OS}" == "macOS" ]; then
-    if [ "${CI}" == "true" ]; then
+elif [ "${RUNNER_OS:-}" == "macOS" ]; then
+    if [ "${CI:-}" == "true" ]; then
         sudo sysctl -w kern.maxfiles{,perproc}=524288
         sudo launchctl limit maxfiles 65536 524288
     fi
@@ -12,8 +17,8 @@ elif [ "${RUNNER_OS}" == "macOS" ]; then
     ulimit -n 65536 || true
 fi
 
-mkdir -p .nuclei-config/nuclei/
-touch .nuclei-config/nuclei/.nuclei-ignore
+mkdir -p "$NUCLEI_CONFIG_DIR"
+touch "$NUCLEI_CONFIG_DIR/.nuclei-ignore"
 
 echo "::group::Building functional-test binary"
 go build -o "functional-test${EXT}"
@@ -38,6 +43,6 @@ echo "::endgroup::"
 echo "Starting Nuclei functional test"
 eval "./functional-test${EXT} -main ./nuclei${EXT} -dev ./nuclei-dev${EXT} -testcases testcases.txt"
 
-if [ "${RUNNER_OS}" == "macOS" ]; then
+if [ "${RUNNER_OS:-}" == "macOS" ]; then
     ulimit -n "${ORIGINAL_ULIMIT}" || true
 fi
