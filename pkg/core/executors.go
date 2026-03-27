@@ -229,6 +229,26 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 	ctxArgs.MetaInput = value
 	scanCtx := scan.NewScanContext(ctx, ctxArgs)
 
+	// --- Tech-stack based template filtering ---
+	e.options.Logger.Warning().Msgf("trying to skip")
+	// If the host's Server response header has already been observed (e.g. "Apache"),
+	// skip templates that carry none of the required tags for that technology.
+	// The cache is populated by pkg/protocols/http/request.go after the first HTTP
+	// response is received for a host, so the very first template always executes
+	// normally; filtering takes effect from the second template onward.
+	if e.executerOpts.HostTechCache != nil {
+		tags := template.Info.Tags.ToSlice()
+		if e.executerOpts.HostTechCache.ShouldSkipTemplate(value.Input, tags) {
+			e.options.Logger.Debug().Msgf(
+				"[%s] Skipping \"%s\": tech-stack filter (host server header excludes this template)",
+				template.ID, value.Input,
+			)
+			e.options.Logger.Warning().Msgf("trying skip success")
+			return false, nil
+		}
+	}
+	// --- end tech-stack filtering ---
+
 	switch template.Type() {
 	case types.WorkflowProtocol:
 		return e.executeWorkflow(scanCtx, template.CompiledWorkflow), nil

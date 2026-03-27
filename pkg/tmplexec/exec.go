@@ -271,6 +271,9 @@ func getErrorCause(err error) string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+    gologger.Debug().Msgf("trying ExecuteWithResults - go logger")
+	ctx.LogWarning("trying ExecuteWithResults - ctx logger")
+	e.options.Logger.Warning().Msgf("trying ExecuteWithResults - e looger")
 	// --- Tech-stack based template filtering ---
 	if tc := e.options.HostTechCache; tc != nil {
 		tags := e.options.TemplateInfo.Tags.ToSlice()
@@ -278,8 +281,10 @@ func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.
 		if tc.ShouldSkipTemplate(host, tags) {
 			gologger.Debug().Msgf("[tech-filter] SKIPPED template '%s' (tags: %v) for host '%s' — no matching tech hint",
 				e.options.TemplateID, tags, host)
+			e.options.Logger.Warning().Msgf("tryting skip-success")
 			return nil, nil
 		} else {
+			e.options.Logger.Warning().Msgf("tryting skip-success not needed")
 			gologger.Debug().Msgf("[tech-filter] ALLOWED template '%s' (tags: %v) for host '%s'",
 				e.options.TemplateID, tags, host)
 		}
