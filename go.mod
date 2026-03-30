@@ -73,7 +73,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
 	github.com/getkin/kin-openapi v0.132.0
-	github.com/go-git/go-git/v5 v5.16.5
+	github.com/go-git/go-git/v5 v5.17.1
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/go-pg/pg/v10 v10.15.0
@@ -229,7 +229,7 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.6.2 // indirect
+	github.com/go-git/go-billy/v5 v5.8.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
