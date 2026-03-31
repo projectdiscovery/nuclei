@@ -18,9 +18,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testheadless"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/testheadless"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	envutil "github.com/projectdiscovery/utils/env"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -582,16 +582,17 @@ func TestActionWaitDialog(t *testing.T) {
 			<title>Nuclei Test Page</title>
 		</head>
 		<body>
-		<script type="text/javascript">
-		const urlParams = new URLSearchParams(window.location.search);
-		const scriptContent = urlParams.get('script');
-		if (scriptContent) {
-		  const scriptElement = document.createElement('script');
-		  scriptElement.textContent = scriptContent;
-
-		  document.body.appendChild(scriptElement);
-		}
-		</script>
+			<button id="trigger" onclick="alert(1)">Trigger</button>
+			<script type="text/javascript">
+			const urlParams = new URLSearchParams(window.location.search);
+			const autoClick = urlParams.get('autoclick') === 'true';
+			const delay = Number(urlParams.get('delay') || '0');
+			if (autoClick) {
+			  window.setTimeout(() => {
+			    document.getElementById('trigger').click();
+			  }, delay);
+			}
+			</script>
 		</body>
 	</html>`
 
@@ -599,15 +600,16 @@ func TestActionWaitDialog(t *testing.T) {
 		actions := []*Action{
 			{
 				ActionType: ActionTypeHolder{ActionType: ActionNavigate},
-				Data:       map[string]string{"url": "{{BaseURL}}/?script=alert%281%29"},
+				Data:       map[string]string{"url": "{{BaseURL}}/?autoclick=true&delay=500"},
 			},
 			{
 				ActionType: ActionTypeHolder{ActionType: ActionWaitDialog},
 				Name:       "test",
+				Data:       map[string]string{"max-duration": "2s"},
 			},
 		}
 
-		testHeadlessSimpleResponse(t, response, actions, 1*time.Second, func(page *Page, err error, out ActionData) {
+		testHeadlessSimpleResponse(t, response, actions, 2*time.Second, func(page *Page, err error, out ActionData) {
 			require.Nil(t, err, "could not run page actions")
 
 			test, ok := out["test"].(bool)
@@ -620,11 +622,12 @@ func TestActionWaitDialog(t *testing.T) {
 		actions := []*Action{
 			{
 				ActionType: ActionTypeHolder{ActionType: ActionNavigate},
-				Data:       map[string]string{"url": "{{BaseURL}}/?script=foo"},
+				Data:       map[string]string{"url": "{{BaseURL}}"},
 			},
 			{
 				ActionType: ActionTypeHolder{ActionType: ActionWaitDialog},
 				Name:       "test",
+				Data:       map[string]string{"max-duration": "1s"},
 			},
 		}
 

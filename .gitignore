@@ -29,8 +29,7 @@
 /scrapefunc
 /scrapefuncs
 /tsgen
-/integration_tests/integration-test
-/integration_tests/nuclei
+*.test
 
 # Templates
 /*.yaml

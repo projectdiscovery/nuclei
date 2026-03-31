@@ -2,6 +2,7 @@
 GOCMD := go
 GOBUILD := $(GOCMD) build
 GOBUILD_OUTPUT := 
+GOBUILD_OUTPUT_EXT := 
 GOBUILD_PACKAGES := 
 GOBUILD_ADDITIONAL_ARGS := 
 GOMOD := $(GOCMD) mod
@@ -16,22 +17,26 @@ ifneq ($(shell go env GOOS),darwin)
 	LDFLAGS += -extldflags "-static"
 endif
 
+ifeq ($(shell go env GOOS),windows)
+	GOBUILD_OUTPUT_EXT := .exe
+endif
+
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs fuzz fuzz-ci fuzz-tools
 .PHONY: devtools-tsgen docs docgen dsl-docs functional go-build lint lint-strict fuzzplayground syntax-docs
-.PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
+.PHONY: integration integration-debug jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
 .PHONY: tidy ts verify download vet template-validate build-fuzz discover-fuzz-packages
 
 all: build
 
 clean:
-	rm -f '${GOBUILD_OUTPUT}' 2>/dev/null
+	rm -f '${GOBUILD_OUTPUT}${GOBUILD_OUTPUT_EXT}' 2>/dev/null
 
 go-build: clean
 go-build:
 	CGO_ENABLED=0 $(GOBUILD) -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
-		 -o '${GOBUILD_OUTPUT}' $(GOBUILD_PACKAGES)
+		 -o '${GOBUILD_OUTPUT}${GOBUILD_OUTPUT_EXT}' $(GOBUILD_PACKAGES)
 
-build: GOFLAGS = -v -pgo=auto
+build: GOFLAGS = -pgo=auto
 build: GOBUILD_OUTPUT = ./bin/nuclei
 build: GOBUILD_PACKAGES = cmd/nuclei/main.go
 build: go-build
@@ -42,7 +47,7 @@ build-test: GOBUILD_PACKAGES = ./cmd/nuclei/
 build-test: clean
 build-test:
 	CGO_ENABLED=0 $(GOCMD) test -c -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
-		 -o '${GOBUILD_OUTPUT}' ${GOBUILD_PACKAGES}
+		 -o '${GOBUILD_OUTPUT}${GOBUILD_OUTPUT_EXT}' ${GOBUILD_PACKAGES}
 
 build-stats: GOBUILD_OUTPUT = ./bin/nuclei-stats
 build-stats: GOBUILD_PACKAGES = cmd/nuclei/main.go
@@ -77,15 +82,24 @@ syntax-docs: docgen
 syntax-docs:
 	./bin/docgen SYNTAX-REFERENCE.md nuclei-jsonschema.json
 
-test: GOFLAGS = -race -v -timeout 30m -count 1
+test: GOFLAGS = -race -v -timeout 1h -count 1
 test:
 	$(GOTEST) $(GOFLAGS) ./...
 
 integration:
-	cd integration_tests; bash run.sh
+	$(GOTEST) -tags=integration -timeout 1h ./internal/tests/integration
 
-functional:
-	cd cmd/functional-test; bash run.sh
+integration-debug:
+	$(GOTEST) -tags=integration ./internal/tests/integration -v $(GO_TEST_ARGS) -args $(INTEGRATION_ARGS)
+
+functional: build
+	@release_binary="$$(command -v nuclei.exe 2>/dev/null || command -v nuclei 2>/dev/null)"; \
+	if [ -z "$$release_binary" ]; then \
+		echo "release nuclei binary not found on PATH"; \
+		exit 1; \
+	fi; \
+	RELEASE_BINARY="$$release_binary" DEV_BINARY="$(PWD)/bin/nuclei" \
+		$(GOTEST) -tags=functional -timeout 1h ./internal/tests/functional
 
 tidy:
 	$(GOMOD) tidy
