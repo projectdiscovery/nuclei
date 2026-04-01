@@ -128,9 +128,17 @@ func (c *Configuration) HasStandardOptions() bool {
 
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
+	rawHttpOptionsCopy := *rawhttp.DefaultOptions
+	if options.Options.AliveHttpProxy != "" {
+		rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
+	} else if options.Options.AliveSocksProxy != "" {
+		rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
+	}
+	rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
+
 	dialers := protocolstate.GetDialersWithId(options.Options.ExecutionId)
 	if dialers == nil {
-		panic("dialers not initialized for execution id: " + options.Options.ExecutionId)
+		return rawhttp.NewClient(&rawHttpOptionsCopy)
 	}
 
 	// Lock the dialers to avoid a race when setting RawHTTPClient
@@ -141,15 +149,9 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 		return dialers.RawHTTPClient
 	}
 
-	rawHttpOptionsCopy := *rawhttp.DefaultOptions
-	if options.Options.AliveHttpProxy != "" {
-		rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
-	} else if options.Options.AliveSocksProxy != "" {
-		rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
-	} else if dialers.Fastdialer != nil {
+	if rawHttpOptionsCopy.Proxy == "" && dialers.Fastdialer != nil {
 		rawHttpOptionsCopy.FastDialer = dialers.Fastdialer
 	}
-	rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
 	dialers.RawHTTPClient = rawhttp.NewClient(&rawHttpOptionsCopy)
 	return dialers.RawHTTPClient
 }

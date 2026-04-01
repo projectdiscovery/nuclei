@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 func TestNormalizeHost(t *testing.T) {
@@ -208,5 +211,14 @@ func TestMaxRedirects(t *testing.T) {
 	}
 	if err := checkFn3(req, via4); err != nil {
 		t.Errorf("should allow within default maxRedirects (10) with 9 via requests, got: %v", err)
+	}
+}
+
+func TestGetRawHTTPWithoutInitializedDialers(t *testing.T) {
+	executorOptions := &protocols.ExecutorOptions{Options: &types.Options{ExecutionId: "missing-dialer-id", Timeout: 5}}
+
+	client := GetRawHTTP(executorOptions)
+	if client == nil {
+		t.Fatalf("expected rawhttp client, got nil")
 	}
 }
