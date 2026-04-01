@@ -606,7 +606,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 				// if applicable mark the host as unresponsive
 				reqKitErr := errkit.FromError(execReqErr)
-				reqKitErr.Msgf("got err while executing %v", generatedHttpRequest.URL())
+				reqKitErr.Msgf("got err while executing %q", generatedHttpRequest.URL())
 
 				requestErr = reqKitErr
 				request.options.Progress.IncrementFailedRequestsBy(1)
@@ -716,7 +716,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				generatedRequest.request.ContentLength = length
 			} else {
 				// log error and continue
-				gologger.Verbose().Msgf("[%v] Could not read request body while forcing transfer encoding: %s\n", request.options.TemplateID, err)
+				gologger.Verbose().Msgf("[%v] Could not read request body while forcing transfer encoding: %s", request.options.TemplateID, err)
 				err = nil
 			}
 		}
@@ -741,12 +741,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
 			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
+				gologger.Warning().Msgf("[%s] Could not make HTTP request for %q: %v", request.options.TemplateID, input.MetaInput.Input, varErr)
 				return ErrMissingVars
 			}
 		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
 			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
+				gologger.Warning().Msgf("[%s] Could not make HTTP request for %q: %v", request.options.TemplateID, input.MetaInput.Input, varErr)
 				return ErrMissingVars
 			}
 		}
@@ -946,7 +946,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	}
 
-	gologger.Verbose().Msgf("[%s] Sent HTTP request to %s", request.options.TemplateID, formedURL)
+	gologger.Verbose().Msgf("[%s] Sent HTTP request to %q", request.options.TemplateID, formedURL)
 	request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 
 	duration := time.Since(timeStart)
@@ -1025,7 +1025,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				AnalyzerParameters: request.Analyzer.Parameters,
 			})
 			if err != nil {
-				gologger.Warning().Msgf("Could not analyze response: %v\n", err)
+				gologger.Warning().Msgf("Could not analyze response: %v", err)
 			}
 			if analysisMatched {
 				finalEvent["analyzer_details"] = analysisDetails

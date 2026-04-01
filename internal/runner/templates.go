@@ -24,7 +24,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 		panic("not a template")
 	}
 	if err != nil {
-		r.Logger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
+		r.Logger.Error().Msgf("Could not parse file '%s': %s", tplPath, err)
 	} else {
 		r.verboseTemplate(tpl)
 	}

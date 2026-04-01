@@ -109,7 +109,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
 	var err error
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("DNS Protocol request variables: %s\n", vardump.DumpVariables(vars))
+		gologger.Debug().Msgf("DNS protocol request variables: %s", vardump.DumpVariables(vars))
 	}
 
 	// Compile each request for the template based on the URL
@@ -123,7 +123,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	dnsClient := request.dnsClient
 	if varErr := expressions.ContainsUnresolvedVariables(request.Resolvers...); varErr != nil {
 		if dnsClient, varErr = request.getDnsClient(request.options, metadata); varErr != nil {
-			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+			gologger.Warning().Msgf("[%s] Could not make DNS request for %q: %s", request.options.TemplateID, domain, varErr)
 			return nil
 		}
 	}
@@ -137,11 +137,11 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
-		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, question, varErr)
+		gologger.Warning().Msgf("[%s] Could not make DNS request for %q: %s", request.options.TemplateID, question, varErr)
 		return nil
 	}
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, question)
+		msg := fmt.Sprintf("[%s] Dumped DNS request for %q", request.options.TemplateID, question)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Str("domain", domain).Msg(msg)
 			gologger.Print().Msgf("%s", requestString)
@@ -166,7 +166,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	}
 
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, question)
+	gologger.Verbose().Msgf("[%s] Sent DNS request to %s", request.options.TemplateID, question)
 
 	// perform trace if necessary
 	var traceData *retryabledns.TraceData
@@ -245,6 +245,6 @@ func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols
 			traceData = hex.Dump([]byte(traceData))
 		}
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, traceData, cliOptions.NoColor, hexDump)
-		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
+		gologger.Debug().Msgf("[%s] Dumped DNS trace data for %q\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
 }

@@ -100,12 +100,12 @@ func ParseOptions(options *types.Options) {
 			return nil
 		})
 		if err != nil {
-			options.Logger.Error().Msgf("%s\n", err)
+			options.Logger.Error().Msg(err.Error())
 		}
 		os.Exit(0)
 	}
 	if options.StoreResponseDir != DefaultDumpTrafficOutputFolder && !options.StoreResponse {
-		options.Logger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
+		options.Logger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically")
 		options.StoreResponse = true
 	}
 	// Validate the options passed by the user and if any

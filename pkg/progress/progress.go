@@ -101,7 +101,7 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 		// Note: this is needed and is responsible for the tick event
 		p.stats.GetStatResponse(p.tickDuration, func(s string, err error) error {
 			if err != nil {
-				gologger.Warning().Msgf("Could not read statistics: %s\n", err)
+				gologger.Warning().Msgf("Could not read statistics: %s", err)
 			}
 			return nil
 		})

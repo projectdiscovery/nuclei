@@ -109,7 +109,7 @@ func (i *HttpInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 		return callback(metaInput)
 	}, i.inputFile)
 	if err != nil {
-		gologger.Warning().Msgf("Could not parse input file while iterating: %s\n", err)
+		gologger.Warning().Msgf("Could not parse input file while iterating: %s", err)
 	}
 }
 

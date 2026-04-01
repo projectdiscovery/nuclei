@@ -92,7 +92,7 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 	val, err := formats.ReadOpenAPIVarDumpFile()
 	if err != nil && !errors.Is(err, formats.ErrNoVarsDumpFile) {
 		// log error and continue
-		gologger.Error().Msgf("Could not read vars dump file: %s\n", err)
+		gologger.Error().Msgf("Could not read vars dump file: %s", err)
 	}
 	extraVars := make(map[string]interface{})
 	if val != nil {

@@ -44,9 +44,9 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 	if !request.ShouldFuzzTarget(input) {
 		urlx, _ := input.MetaInput.URL()
 		if urlx != nil {
-			gologger.Verbose().Msgf("[%s] fuzz: target(%s) not applicable for fuzzing\n", request.options.TemplateID, urlx.String())
+			gologger.Verbose().Msgf("[%s] fuzz: %q not applicable for fuzzing", request.options.TemplateID, urlx.String())
 		} else {
-			gologger.Verbose().Msgf("[%s] fuzz: target(%s) not applicable for fuzzing\n", request.options.TemplateID, input.MetaInput.Input)
+			gologger.Verbose().Msgf("[%s] fuzz: %q not applicable for fuzzing", request.options.TemplateID, input.MetaInput.Input)
 		}
 		return nil
 	}
@@ -70,13 +70,13 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			// in case of any error, return it
 			if fuzz.IsErrRuleNotApplicable(err) {
 				// log and fail silently
-				gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
+				gologger.Verbose().Msgf("[%s] fuzz: %s", request.options.TemplateID, err)
 				return nil
 			}
 			if errors.Is(err, ErrMissingVars) {
 				return err
 			}
-			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s", request.options.TemplateID, err)
 		}
 		return nil
 	}
@@ -103,13 +103,13 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		// in case of any error, return it
 		if fuzz.IsErrRuleNotApplicable(err) {
 			// log and fail silently
-			gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: %s", request.options.TemplateID, err)
 			return nil
 		}
 		if errors.Is(err, ErrMissingVars) {
 			return err
 		}
-		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
+		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s", request.options.TemplateID, err)
 	}
 	return nil
 }
@@ -158,7 +158,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 			continue
 		}
 		if fuzz.IsErrRuleNotApplicable(err) {
-			gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
+			gologger.Verbose().Msgf("[%s] fuzz: %s", request.options.TemplateID, err)
 			continue
 		}
 		if err == types.ErrNoMoreRequests {
@@ -232,7 +232,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		return false
 	}
 	if requestErr != nil {
-		gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
+		gologger.Verbose().Msgf("[%s] Error occurred in request: %s", request.options.TemplateID, requestErr)
 	}
 	if request.options.HostErrorsCache != nil {
 		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, requestErr)
@@ -257,12 +257,12 @@ func (request *Request) ShouldFuzzTarget(input *contextargs.Context) bool {
 		dataMap := request.filterDataMap(input)
 		// dump if svd is enabled
 		if request.options.Options.ShowVarDump {
-			gologger.Debug().Msgf("Fuzz Filter Variables: \n%s\n", vardump.DumpVariables(dataMap))
+			gologger.Debug().Msgf("Fuzz filter variables: \n%s", vardump.DumpVariables(dataMap))
 		}
 		isMatch, _ := request.Match(dataMap, filter)
 		status = append(status, isMatch)
 		if request.options.Options.MatcherStatus {
-			gologger.Debug().Msgf("[%s] [%s] Filter => %s : %v", input.MetaInput.Target(), request.options.TemplateID, operators.GetMatcherName(filter, index), isMatch)
+			gologger.Debug().Msgf("[%s] Filter for %q => %s : %v", request.options.TemplateID, input.MetaInput.Target(), operators.GetMatcherName(filter, index), isMatch)
 		}
 	}
 	if len(status) == 0 {
@@ -275,7 +275,7 @@ func (request *Request) ShouldFuzzTarget(input *contextargs.Context) bool {
 		matched = operators.EvalBoolSlice(status, false)
 	}
 	if request.options.Options.MatcherStatus {
-		gologger.Debug().Msgf("[%s] [%s] Final Filter Status =>  %v", input.MetaInput.Target(), request.options.TemplateID, matched)
+		gologger.Debug().Msgf("[%s] Final filter status for %q => %v", request.options.TemplateID, input.MetaInput.Target(), matched)
 	}
 	return matched
 }

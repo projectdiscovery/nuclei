@@ -15,7 +15,7 @@ import (
 func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecutorOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
 		if err := parseWorkflow(preprocessor, workflow, options, loader); err != nil {
-			gologger.Warning().Msgf("Could not parse workflow %s: %v\n", path, err)
+			gologger.Warning().Msgf("Could not parse %q workflow template: %v", path, err)
 			continue
 		}
 	}
@@ -36,7 +36,7 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 	}
 	for _, subtemplates := range workflow.Subtemplates {
 		if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
-			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+			gologger.Warning().Msgf("Could not parse %q workflow template: %v", workflow.Template, err)
 			continue
 		}
 	}
@@ -48,7 +48,7 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 		}
 		for _, subtemplates := range matcher.Subtemplates {
 			if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
-				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+				gologger.Warning().Msgf("Could not parse %q workflow template: %v", workflow.Template, err)
 				continue
 			}
 		}
@@ -74,14 +74,14 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	for _, path := range paths {
 		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
-			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
+			gologger.Warning().Msgf("Could not parse %q workflow template: %v", path, err)
 			continue
 		}
 		if template == nil {
 			continue
 		}
 		if template.Executer == nil {
-			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
+			gologger.Warning().Msgf("Could not parse %q workflow template: no executer found", path)
 			continue
 		}
 
@@ -103,12 +103,12 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 				// prevents adding to workflow's executer list and suppresses
 				// warning messages.
 				if !options.Options.Validate {
-					gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
+					gologger.Warning().Msgf("The code flag not found, skipping code template from %q workflow template", path)
 				}
 				continue
 			} else if !template.Verified {
 				// unverified code templates are not allowed in workflows
-				gologger.Warning().Msgf("skipping unverified code template from workflow: %v\n", path)
+				gologger.Warning().Msgf("Skipping unverified code template from %q workflow template", path)
 				continue
 			}
 		}

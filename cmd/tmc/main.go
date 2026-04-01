@@ -126,7 +126,7 @@ func main() {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 	}
 	if err := process(opts); err != nil {
-		gologger.Error().Msgf("could not process: %s\n", err)
+		gologger.Error().Msgf("could not process: %s", err)
 	}
 }
 

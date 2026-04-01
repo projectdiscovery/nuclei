@@ -562,13 +562,13 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 
 	if fileutil.FileExists(filePath) {
 		// return custom error as overwriting files is not supported
-		return errkit.Newf("failed to write screenshot, file %v already exists", filePath)
+		return errkit.Newf("failed to write screenshot, file %q already exists", filePath)
 	}
 	err = os.WriteFile(filePath, data, 0540)
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
 	}
-	gologger.Info().Msgf("Screenshot successfully saved at %v\n", filePath)
+	gologger.Info().Msgf("Screenshot successfully saved to %q", filePath)
 	return nil
 }
 

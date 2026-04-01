@@ -137,14 +137,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	ports := request.getPorts()
 	for _, port := range ports {
 		if strings.Contains(port, "{{") {
-			return errkit.New("'Port' variable cannot contain any dsl expressions")
+			return errkit.New("'Port' variable cannot contain any DSL expressions")
 		}
 	}
 
 	if request.Init != "" {
 		// execute init code if any
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Debug().Msgf("[%s] Executing Template Init\n", request.TemplateID)
+			gologger.Debug().Msgf("[%s] Executing template initialization", request.TemplateID)
 			var highlightFormatter = "terminal256"
 			if request.options.Options.NoColor {
 				highlightFormatter = "text"
@@ -222,19 +222,19 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 		initCompiled, err := compiler.SourceAutoMode(request.Init, false)
 		if err != nil {
-			return errkit.Newf("could not compile init code: %s", err)
+			return errkit.Newf("could not compile initialization code: %s", err)
 		}
 		result, err := request.options.JsCompiler.ExecuteWithOptions(initCompiled, args, opts)
 		if err != nil {
-			return errkit.Newf("could not execute pre-condition: %s", err)
+			return errkit.Newf("could not execute initialization code: %s", err)
 		}
 		if types.ToString(result["error"]) != "" {
-			gologger.Warning().Msgf("[%s] Init failed with error %v\n", request.TemplateID, result["error"])
+			gologger.Warning().Msgf("[%s] Could not execute initialization: %v", request.TemplateID, result["error"])
 			return nil
 		} else {
 			if request.options.Options.Debug || request.options.Options.DebugResponse {
-				gologger.Debug().Msgf("[%s] Init executed successfully\n", request.TemplateID)
-				gologger.Debug().Msgf("[%s] Init result: %v\n", request.TemplateID, result["response"])
+				gologger.Debug().Msgf("[%s] Initialization executed successfully", request.TemplateID)
+				gologger.Debug().Msgf("[%s] Initialization result: %v", request.TemplateID, result["response"])
 			}
 		}
 	}
@@ -310,7 +310,7 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
 	// idea is to reduce redundant dials to http ports
 	if err := input.UseNetworkPort(port, request.getExcludePorts()); err != nil {
-		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+		gologger.Debug().Msgf("Could not use network port from constants: %s", err)
 	}
 
 	hostPort, err := getAddress(input.MetaInput.Input)
@@ -354,14 +354,14 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 	templateCtx.Merge(payloadValues)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("JavaScript Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("JavaScript protocol request variables: %s", vardump.DumpVariables(payloadValues))
 	}
 
 	if request.PreCondition != "" {
 		payloads := generators.MergeMaps(payloadValues, previous)
 
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Debug().Msgf("[%s] Executing Precondition for request\n", request.TemplateID)
+			gologger.Debug().Msgf("[%s] Executing pre-condition for request", request.TemplateID)
 			var highlightFormatter = "terminal256"
 			if requestOptions.Options.NoColor {
 				highlightFormatter = "text"
@@ -387,16 +387,16 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 		if err == nil && result.GetSuccess() {
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
 				request.options.Progress.IncrementRequests()
-				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
+				gologger.Debug().Msgf("[%s] Pre-condition for request was satisfied", request.TemplateID)
 			}
 		} else {
 			var outError error
 			// if js code failed to execute
 			if err != nil {
-				outError = errkit.Append(errkit.New("pre-condition not satisfied skipping template execution"), err)
+				outError = errkit.Append(errkit.New("pre-condition not satisfied, skipping template execution"), err)
 			} else {
 				// execution successful but pre-condition returned false
-				outError = errkit.New("pre-condition not satisfied skipping template execution")
+				outError = errkit.New("pre-condition not satisfied, skipping template execution")
 			}
 			results := map[string]interface{}(result)
 			results["error"] = outError.Error()
@@ -442,7 +442,7 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 				callback(result)
 			}, requestOptions, interactshURLs); err != nil {
 				if errkit.IsNetworkPermanentErr(err) {
-					// gologger.Verbose().Msgf("Could not execute request: %s\n", err)
+					// gologger.Verbose().Msgf("Could not execute request: %s", err)
 					return err
 				}
 			}
@@ -488,7 +488,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 			// resize check point - nop if there are no changes
 			if shouldFollowGlobal && sg.Size != request.options.Options.PayloadConcurrency {
 				if err := sg.Resize(ctxParent, request.options.Options.PayloadConcurrency); err != nil {
-					gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+					gologger.Warning().Msgf("Could not resize workpool: %s", err)
 				}
 			}
 
@@ -564,10 +564,10 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	}
 	request.options.Progress.IncrementRequests()
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.options.TemplateID, hostPort)
+	gologger.Verbose().Msgf("[%s] Sent JavaScript request to %s", request.options.TemplateID, hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Javascript request for %s:\nVariables:\n %v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(argsCopy.Args))
+		msg := fmt.Sprintf("[%s] Dumped JavaScript request variables: %v", requestOptions.TemplateID, vardump.DumpVariables(argsCopy.Args))
 
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
@@ -593,7 +593,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Javascript response for %s:\n%v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(results))
+		msg := fmt.Sprintf("[%s] Dumped JavaScript response for %s:\n%v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(results))
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
 		}
@@ -852,7 +852,7 @@ func prettyPrint(templateId string, buff string) {
 			final = append(final, "\t"+v)
 		}
 	}
-	gologger.Debug().Msgf(" [%v] Javascript Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
+	gologger.Debug().Msgf(" [%v] JavaScript code:\n%v", templateId, strings.Join(final, "\n"))
 }
 
 // UpdateOptions replaces this request's options with a new copy

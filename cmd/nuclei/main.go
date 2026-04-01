@@ -99,7 +99,7 @@ func main() {
 					if err != templates.ErrNotATemplate {
 						// skip warnings and errors as given items are not templates
 						errorCounter++
-						options.Logger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
+						options.Logger.Error().Msgf("Could not sign %q template: %s", iterItem, err)
 					}
 				} else {
 					successCounter++
@@ -108,10 +108,10 @@ func main() {
 				return nil
 			})
 			if err != nil {
-				options.Logger.Error().Msgf("%s\n", err)
+				options.Logger.Error().Msg(err.Error())
 			}
 		}
-		options.Logger.Info().Msgf("All templates signatures were elaborated success=%d failed=%d\n", successCounter, errorCounter)
+		options.Logger.Info().Msgf("All templates signatures were elaborated success=%d failed=%d", successCounter, errorCounter)
 		return
 	}
 
@@ -122,7 +122,7 @@ func main() {
 		createProfileFile := func(ext, profileType string) *os.File {
 			f, err := os.Create(memProfile + ext)
 			if err != nil {
-				options.Logger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+				options.Logger.Fatal().Msgf("Could not create %s profile %q file: %v", profileType, f.Name(), err)
 			}
 			return f
 		}
@@ -136,18 +136,18 @@ func main() {
 
 		// Start tracing
 		if err := trace.Start(traceFile); err != nil {
-			options.Logger.Fatal().Msgf("profile: could not start trace: %v", err)
+			options.Logger.Fatal().Msgf("Could not start trace: %v", err)
 		}
 
 		// Start CPU profiling
 		if err := pprof.StartCPUProfile(cpuProfileFile); err != nil {
-			options.Logger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+			options.Logger.Fatal().Msgf("Could not start CPU profile: %v", err)
 		}
 
 		defer func() {
 			// Start heap memory snapshot
 			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
-				options.Logger.Fatal().Msgf("profile: could not write memory profile: %v", err)
+				options.Logger.Fatal().Msgf("Could not write memory profile: %v", err)
 			}
 
 			pprof.StopCPUProfile()
@@ -192,7 +192,7 @@ func main() {
 				options.Logger.Info().Msgf("Uploading scan results to cloud...")
 			}
 			nucleiRunner.Close()
-			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			options.Logger.Info().Msgf("Creating resume file: %s", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if err != nil {
 				return errkit.Wrap(err, "couldn't create crash resume file")
@@ -210,7 +210,7 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		<-c
-		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
+		options.Logger.Info().Msgf("CTRL+C pressed: Exiting")
 		if options.DASTServer {
 			nucleiRunner.Close()
 			os.Exit(1)
@@ -222,10 +222,10 @@ func main() {
 		}
 		nucleiRunner.Close()
 		if options.ShouldSaveResume() {
-			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			options.Logger.Info().Msgf("Creating resume file: %s", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if err != nil {
-				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
+				options.Logger.Error().Msgf("Couldn't create resume file: %s", err)
 			}
 		}
 		for _, f := range inlineSecretsTempFiles {
@@ -629,7 +629,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 						if strVal, ok := value.(string); ok {
 							err = options.Vars.Set(strVal)
 							if err != nil {
-								gologger.Warning().Msgf("Could not set variable from config file: %s\n", err)
+								gologger.Warning().Msgf("Could not set variable from config file: %s", err)
 							}
 						} else {
 							gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
@@ -741,25 +741,25 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 	if err != nil {
 		// something went wrong either dir is not readable or something else went wrong upstream in `goflags`
 		// warn and exit in this case
-		options.Logger.Warning().Msgf("Could not read config file: %s\n", err)
+		options.Logger.Warning().Msgf("Could not read config file: %s", err)
 		return
 	}
 	cfgFile := config.DefaultConfig.GetFlagsConfigFilePath()
 	if !fileutil.FileExists(cfgFile) {
 		if !fileutil.FileExists(defaultCfgFile) {
 			// if default config does not exist, warn and exit
-			options.Logger.Warning().Msgf("missing default config file : %s", defaultCfgFile)
+			options.Logger.Warning().Msgf("Missing default config %q file", defaultCfgFile)
 			return
 		}
 		// if does not exist copy it from the default config
 		if err = fileutil.CopyFile(defaultCfgFile, cfgFile); err != nil {
-			options.Logger.Warning().Msgf("Could not copy config file: %s\n", err)
+			options.Logger.Warning().Msgf("Could not copy config file: %s", err)
 		}
 		return
 	}
 	// if config file exists, merge it with the default config
 	if err = flagset.MergeConfigFile(cfgFile); err != nil {
-		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
+		options.Logger.Warning().Msgf("Could not merge config file with flags: %s", err)
 	}
 }
 
@@ -780,19 +780,19 @@ func printVersion() {
 // printTemplateVersion prints the nuclei template version and exits.
 func printTemplateVersion() {
 	cfg := config.DefaultConfig
-	options.Logger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", cfg.TemplateVersion, cfg.TemplatesDirectory)
+	options.Logger.Info().Msgf("Public nuclei-templates version: %s (%q)", cfg.TemplateVersion, cfg.TemplatesDirectory)
 
 	if fileutil.FolderExists(cfg.CustomS3TemplatesDirectory) {
-		options.Logger.Info().Msgf("Custom S3 templates location: %s\n", cfg.CustomS3TemplatesDirectory)
+		options.Logger.Info().Msgf("Custom S3 templates location: %s", cfg.CustomS3TemplatesDirectory)
 	}
 	if fileutil.FolderExists(cfg.CustomGitHubTemplatesDirectory) {
-		options.Logger.Info().Msgf("Custom GitHub templates location: %s ", cfg.CustomGitHubTemplatesDirectory)
+		options.Logger.Info().Msgf("Custom GitHub templates location: %s", cfg.CustomGitHubTemplatesDirectory)
 	}
 	if fileutil.FolderExists(cfg.CustomGitLabTemplatesDirectory) {
-		options.Logger.Info().Msgf("Custom GitLab templates location: %s ", cfg.CustomGitLabTemplatesDirectory)
+		options.Logger.Info().Msgf("Custom GitLab templates location: %s", cfg.CustomGitLabTemplatesDirectory)
 	}
 	if fileutil.FolderExists(cfg.CustomAzureTemplatesDirectory) {
-		options.Logger.Info().Msgf("Custom Azure templates location: %s ", cfg.CustomAzureTemplatesDirectory)
+		options.Logger.Info().Msgf("Custom Azure templates location: %s", cfg.CustomAzureTemplatesDirectory)
 	}
 	os.Exit(0)
 }
@@ -858,7 +858,7 @@ func findProfilePathById(profileId, templatesDir string) string {
 		return nil
 	})
 	if err != nil && err.Error() != "FOUND" {
-		options.Logger.Error().Msgf("%s\n", err)
+		options.Logger.Error().Msg(err.Error())
 	}
 	return profilePath
 }

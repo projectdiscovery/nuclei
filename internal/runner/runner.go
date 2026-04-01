@@ -51,10 +51,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -124,7 +124,7 @@ func New(options *types.Options) (*Runner, error) {
 	if config.DefaultConfig.CanCheckForUpdates() {
 		if err := installer.NucleiVersionCheck(); err != nil {
 			if options.Verbose || options.Debug {
-				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", err)
+				runner.Logger.Error().Msgf("nuclei version check failed: %s", err)
 			}
 		}
 
@@ -141,15 +141,15 @@ func New(options *types.Options) (*Runner, error) {
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
 		}
 		if err := tm.FreshInstallIfNotExists(); err != nil {
-			runner.Logger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
+			runner.Logger.Warning().Msgf("Failed to install nuclei-templates: %s", err)
 		}
 		if err := tm.UpdateIfOutdated(); err != nil {
-			runner.Logger.Warning().Msgf("failed to update nuclei templates: %s\n", err)
+			runner.Logger.Warning().Msgf("Failed to update nuclei-templates: %s", err)
 		}
 
 		if config.DefaultConfig.NeedsIgnoreFileUpdate() {
 			if err := installer.UpdateIgnoreFile(); err != nil {
-				runner.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+				runner.Logger.Warning().Msgf("Failed to update nuclei ignore file: %s", err)
 			}
 		}
 
@@ -157,7 +157,7 @@ func New(options *types.Options) (*Runner, error) {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
 			if !config.DefaultConfig.NeedsTemplateUpdate() {
-				runner.Logger.Info().Msgf("No new updates found for nuclei templates")
+				runner.Logger.Info().Msgf("No new updates found for nuclei-templates")
 			}
 			// manually trigger update of custom templates
 			if ctm != nil {
@@ -184,7 +184,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	if options.Headless {
 		if engine.MustDisableSandbox() {
-			runner.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
+			runner.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
 		}
 		browser, err := engine.New(options)
 		if err != nil {
@@ -397,7 +397,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.Logger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
+		runner.Logger.Warning().Msg("The rate-limit-minute flag is deprecated, use rate-limit-duration flag instead")
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
@@ -481,14 +481,14 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	creds, err := h.GetCreds()
 	if err != nil {
 		if err != pdcpauth.ErrNoCreds && !HideAutoSaveMsg {
-			r.Logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
+			r.Logger.Verbose().Msgf("Could not get credentials for cloud upload: %s", err)
 		}
-		r.pdcpUploadErrMsg = fmt.Sprintf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
+		r.pdcpUploadErrMsg = fmt.Sprintf("To view results on Cloud Dashboard, configure API key from %s", pdcpauth.DashBoardURL)
 		return writer
 	}
 	uploadWriter, err := pdcp.NewUploadWriter(context.Background(), r.Logger, creds)
 	if err != nil {
-		r.pdcpUploadErrMsg = fmt.Sprintf("PDCP (%v) Auto-Save Failed: %s\n", pdcpauth.DashBoardURL, err)
+		r.pdcpUploadErrMsg = fmt.Sprintf("PDCP (%s) auto-save failed: %s\n", pdcpauth.DashBoardURL, err)
 		return writer
 	}
 	if r.options.ScanID != "" {
@@ -886,7 +886,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if tmplCount == 0 && workflowCount == 0 {
 		// if dast flag is used print explicit warning
 		if r.options.DAST {
-			r.Logger.Print().Msgf("[%v] No DAST templates found", aurora.BrightYellow("WRN"))
+			r.Logger.Warning().Msg("No DAST templates found")
 		}
 		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
 	} else {
@@ -901,7 +901,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	updateutils.Aurora = r.colorizer
 	versionInfo := func(version, latestVersion, versionType string) string {
 		if !cfg.CanCheckForUpdates() {
-			return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))
+			return fmt.Sprintf("Current %s version: %v (%s) - remove disable-update-check flag for updates", versionType, version, r.colorizer.BrightYellow("unknown"))
 		}
 		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
 	}
@@ -910,7 +910,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	gologger.Info().Msg(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
-			r.Logger.Warning().Msgf("%s", r.pdcpUploadErrMsg)
+			r.Logger.Warning().Msg(r.pdcpUploadErrMsg)
 		} else {
 			r.Logger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcpauth.DashBoardURL)
 		}
@@ -928,7 +928,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			value := v.Load()
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					r.Logger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
+					r.Logger.Warning().Msgf("Loading %d unsigned templates for scan. Use with caution.", value)
 				} else {
 					r.Logger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
@@ -993,11 +993,11 @@ func UploadResultsToCloud(options *types.Options) error {
 		var r output.ResultEvent
 		err := dec.Decode(&r)
 		if err != nil {
-			options.Logger.Warning().Msgf("Could not decode jsonl: %s\n", err)
+			options.Logger.Warning().Msgf("Could not decode jsonl: %s", err)
 			continue
 		}
 		if err = uploadWriter.Write(&r); err != nil {
-			options.Logger.Warning().Msgf("[%s] failed to upload: %s\n", r.TemplateID, err)
+			options.Logger.Warning().Msgf("[%s] Failed to upload: %s", r.TemplateID, err)
 		}
 	}
 	uploadWriter.Close()

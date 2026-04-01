@@ -99,9 +99,9 @@ func (s *Agent) monitorWorker(cancel context.CancelFunc) {
 		cancel()
 		dumpID := xid.New().String()
 		stackTraceFile := fmt.Sprintf("nuclei-stacktrace-%s.dump", dumpID)
-		gologger.Error().Msgf("Detected hanging goroutine (count=%d/%d) = %s\n", current, s.goroutineCount, stackTraceFile)
+		gologger.Error().Msgf("Detected hanging goroutine (count=%d/%d), stack trace saved to %q", current, s.goroutineCount, stackTraceFile)
 		if err := os.WriteFile(stackTraceFile, currentStack, permissionutil.ConfigFilePermission); err != nil {
-			gologger.Error().Msgf("Could not write stack trace for goroutines: %s\n", err)
+			gologger.Error().Msgf("Could not write stack trace for goroutines: %s", err)
 		}
 
 		s.lock.Lock()
@@ -109,7 +109,7 @@ func (s *Agent) monitorWorker(cancel context.CancelFunc) {
 		s.lock.Unlock()
 		for _, callback := range callbacks {
 			if err := callback(dumpID); err != nil {
-				gologger.Error().Msgf("Stack monitor callback error: %s\n", err)
+				gologger.Error().Msgf("Stack monitor callback error: %s", err)
 			}
 		}
 

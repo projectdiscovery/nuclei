@@ -15,7 +15,7 @@ func init() {
 		UserCert: keys.NucleiCert,
 	}
 	if err := h.ParseUserCert(); err != nil {
-		gologger.Error().Msgf("Could not parse pd nuclei certificate: %s\n", err)
+		gologger.Error().Msgf("Could not parse nuclei certificate: %s", err)
 		return
 	}
 	DefaultTemplateVerifiers = append(DefaultTemplateVerifiers, &TemplateSigner{handler: h})
@@ -24,7 +24,7 @@ func init() {
 	usr := &KeyHandler{}
 	if err := usr.ReadCert(CertEnvVarName, config.DefaultConfig.GetKeysDir()); err == nil {
 		if err := usr.ParseUserCert(); err != nil {
-			gologger.Error().Msgf("malformed user cert found: %s\n", err)
+			gologger.Error().Msgf("Malformed user certificate found: %s", err)
 			return
 		}
 		DefaultTemplateVerifiers = append(DefaultTemplateVerifiers, &TemplateSigner{handler: usr})

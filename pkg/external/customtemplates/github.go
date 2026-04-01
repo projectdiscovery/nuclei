@@ -35,9 +35,9 @@ func (customTemplate *customTemplateGitHubRepo) Download(ctx context.Context) {
 	if !fileutil.FolderExists(clonePath) {
 		err := customTemplate.cloneRepo(clonePath, customTemplate.githubToken)
 		if err != nil {
-			gologger.Error().Msgf("%s", err)
+			gologger.Error().Msg(err.Error())
 		} else {
-			gologger.Info().Msgf("Repo %s/%s cloned successfully at %s", customTemplate.owner, customTemplate.reponame, clonePath)
+			gologger.Info().Msgf("Repository %s/%s cloned successfully at %s", customTemplate.owner, customTemplate.reponame, clonePath)
 		}
 		return
 	}
@@ -73,17 +73,17 @@ func (customTemplate *customTemplateGitHubRepo) handlePullChanges(clonePath stri
 
 // logPullSuccess logs a success message when changes are pulled
 func (customTemplate *customTemplateGitHubRepo) logPullSuccess() {
-	gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
+	gologger.Info().Msgf("Repository %s/%s successfully pulled the changes", customTemplate.owner, customTemplate.reponame)
 }
 
 // logAlreadyUpToDate logs an info message when repo is already up to date
 func (customTemplate *customTemplateGitHubRepo) logAlreadyUpToDate(err error) {
-	gologger.Info().Msgf("%s", err)
+	gologger.Info().Msg(err.Error())
 }
 
 // logPullError logs an error message when pull fails
 func (customTemplate *customTemplateGitHubRepo) logPullError(err error) {
-	gologger.Error().Msgf("%s", err)
+	gologger.Error().Msg(err.Error())
 }
 
 // NewGitHubProviders returns new instance of GitHub providers for downloading custom templates
@@ -98,12 +98,12 @@ func NewGitHubProviders(options *types.Options) ([]*customTemplateGitHubRepo, er
 	for _, repoName := range options.GitHubTemplateRepo {
 		owner, repo, err := getOwnerAndRepo(repoName)
 		if err != nil {
-			gologger.Error().Msgf("%s", err)
+			gologger.Error().Msg(err.Error())
 			continue
 		}
 		githubRepo, err := getGitHubRepo(gitHubClient, owner, repo, options.GitHubToken)
 		if err != nil {
-			gologger.Error().Msgf("%s", err)
+			gologger.Error().Msg(err.Error())
 			continue
 		}
 		customTemplateRepo := &customTemplateGitHubRepo{

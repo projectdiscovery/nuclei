@@ -224,7 +224,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("SSL Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("SSL protocol request variables: %s", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
@@ -254,10 +254,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent SSL request to %s", request.options.TemplateID, hostPort)
+	gologger.Verbose().Msgf("[%s] Sent SSL request to %q", request.options.TemplateID, hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.MetaInput.Input)
+		msg := fmt.Sprintf("[%s] Dumped SSL request for %q", requestOptions.TemplateID, input.MetaInput.Input)
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
 		}

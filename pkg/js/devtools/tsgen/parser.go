@@ -81,7 +81,7 @@ func (p *EntityParser) Parse() error {
 				}
 				entity, err := p.extractFunctionFromNode(fn)
 				if err != nil {
-					gologger.Error().Msgf("Could not extract function %s: %s\n", fn.Name.Name, err)
+					gologger.Error().Msgf("Could not extract function %s: %s", fn.Name.Name, err)
 					return false
 				}
 

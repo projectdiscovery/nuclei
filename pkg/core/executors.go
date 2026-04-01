@@ -39,7 +39,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 				match, err = template.Executer.Execute(ctx)
 			}
 			if err != nil {
-				e.options.Logger.Warning().Msgf("[%s] Could not execute step (self-contained): %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+				e.options.Logger.Warning().Msgf("[%s] Could not execute step (self-contained): %s", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
 			results.CompareAndSwap(false, match)
 		}(v)
@@ -110,7 +110,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 
 					match, err := e.executeTemplateOnInput(ctx, template, t.value)
 					if err != nil {
-						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, t.value.Input, err)
+						e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s", template.ID, t.value.Input, err)
 					}
 					results.CompareAndSwap(false, match)
 				}()
@@ -236,7 +236,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 
 			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
-				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, value.Input, err)
+				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s", template.ID, value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)

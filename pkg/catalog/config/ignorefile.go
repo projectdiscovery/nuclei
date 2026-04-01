@@ -17,7 +17,7 @@ type IgnoreFile struct {
 func ReadIgnoreFile() IgnoreFile {
 	file, err := os.Open(DefaultConfig.GetIgnoreFilePath())
 	if err != nil {
-		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
+		gologger.Error().Msgf("Could not read nuclei-ignore file: %s", err)
 		return IgnoreFile{}
 	}
 	defer func() {
@@ -26,7 +26,7 @@ func ReadIgnoreFile() IgnoreFile {
 
 	ignore := IgnoreFile{}
 	if err := yaml.NewDecoder(file).Decode(&ignore); err != nil {
-		gologger.Error().Msgf("Could not parse nuclei-ignore file: %s\n", err)
+		gologger.Error().Msgf("Could not parse nuclei-ignore file: %s", err)
 		return IgnoreFile{}
 	}
 	return ignore

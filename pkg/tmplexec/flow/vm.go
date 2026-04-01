@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/Mzack9999/goja"
-	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -64,11 +63,11 @@ func registerBuiltins(runtime *goja.Runtime) {
 			arg := call.Argument(0).Export()
 			switch value := arg.(type) {
 			case string:
-				gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), value)
+				gologger.DefaultLogger.Info().Msgf("[%v] %v", "JS", value)
 			case map[string]interface{}:
-				gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), vardump.DumpVariables(value))
+				gologger.DefaultLogger.Info().Msgf("[%v] %v", "JS", vardump.DumpVariables(value))
 			default:
-				gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), value)
+				gologger.DefaultLogger.Info().Msgf("[%v] %v", "JS", value)
 			}
 			return call.Argument(0) // return the same value
 		},

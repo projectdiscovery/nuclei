@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/leslie-qiwa/flat"
-	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 )
@@ -123,7 +122,7 @@ func (v *Value) SetParsedValue(key, value string) bool {
 			origValue = val
 		} else {
 			// make it default warning instead of error
-			gologger.DefaultLogger.Print().Msgf("[%v] unknown type %T for value %s", aurora.BrightYellow("WARN"), v, v)
+			gologger.DefaultLogger.Warning().Msgf("Unknown type %T for value %s", v, v)
 		}
 	}
 	v.parsed.Set(key, origValue)

@@ -106,7 +106,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		component := component.New(componentName)
 		discovered, err := component.Parse(input.BaseRequest)
 		if err != nil {
-			gologger.Verbose().Msgf("Could not parse component %s: %s\n", componentName, err)
+			gologger.Verbose().Msgf("Could not parse %q component: %s", componentName, err)
 			continue
 		}
 		if !discovered {
@@ -141,7 +141,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	}
 	if len(displayDebugFuzzPoints) > 0 {
 		marshalled, _ := json.MarshalIndent(displayDebugFuzzPoints, "", "  ")
-		gologger.Info().Msgf("[%s] Fuzz points for %s [%s]\n%s\n", rule.options.TemplateID, input.Input.MetaInput.Input, input.BaseRequest.Method, string(marshalled))
+		gologger.Info().Msgf("[%s] Fuzz points for %s [%s]\n%s", rule.options.TemplateID, input.Input.MetaInput.Input, input.BaseRequest.Method, string(marshalled))
 	}
 
 	if len(finalComponentList) == 0 {
@@ -183,7 +183,7 @@ mainLoop:
 				if err == io.EOF {
 					return nil
 				}
-				gologger.Warning().Msgf("[%s] Could not execute rule: %s\n", rule.options.TemplateID, err)
+				gologger.Warning().Msgf("[%s] Could not execute rule: %s", rule.options.TemplateID, err)
 				return err
 			}
 		}
