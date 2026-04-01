@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	// reservedPorts contains list of reserved ports for non-network requests in nuclei
-	reservedPorts = []string{"80", "443", "8080", "8443", "8081", "53"}
+	// defaultReservedPorts contains the default list of reserved ports for non-network requests in nuclei
+	defaultReservedPorts = []string{"80", "443", "8080", "8443", "8081", "53"}
 )
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
@@ -109,12 +109,17 @@ func (ctx *Context) Add(key string, v interface{}) {
 
 // UseNetworkPort updates input with required/default network port for that template
 // but is ignored if input/target contains non-http ports like 80,8080,8081 etc
-func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
-	ignorePorts := reservedPorts
-	if excludePorts != "" {
+// Precedence: cliExcludePorts > templateExcludePorts > default reserved ports
+func (ctx *Context) UseNetworkPort(port string, templateExcludePorts string, cliExcludePorts []string) error {
+	ignorePorts := defaultReservedPorts
+
+	if len(cliExcludePorts) > 0 {
+		ignorePorts = cliExcludePorts
+	} else if templateExcludePorts != "" {
 		// TODO: add support for service names like http,https,ssh etc once https://github.com/projectdiscovery/netdb is ready
-		ignorePorts = sliceutil.Dedupe(strings.Split(excludePorts, ","))
+		ignorePorts = sliceutil.Dedupe(strings.Split(templateExcludePorts, ","))
 	}
+
 	if port == "" {
 		// if template does not contain port, do nothing
 		return nil
