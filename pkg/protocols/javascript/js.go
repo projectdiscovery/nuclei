@@ -701,6 +701,7 @@ func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues ma
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		return nil, err
 	}
 	// "Port" is a special variable that is considered as network port
 	// and is conditional based on input port and default port specified in input
