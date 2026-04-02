@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -134,11 +135,52 @@ func TestDialHTTPProxy(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("successful HTTPS CONNECT tunnel", func(t *testing.T) {
+		targetPayload := "hello from secure proxy"
+		proxy := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodConnect {
+				http.Error(w, "expected CONNECT", http.StatusMethodNotAllowed)
+				return
+			}
+			hijacker, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "hijacking not supported", http.StatusInternalServerError)
+				return
+			}
+			conn, rw, err := hijacker.Hijack()
+			if err != nil {
+				return
+			}
+			defer conn.Close()
+
+			_, _ = rw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
+			_, _ = rw.WriteString(targetPayload)
+			_ = rw.Flush()
+		}))
+		defer proxy.Close()
+
+		ctx := context.Background()
+		conn, err := dialHTTPProxy(ctx, directDial, proxy.URL, "example.com:443", 5*time.Second)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		buf := make([]byte, 64)
+		n, err := conn.Read(buf)
+		require.NoError(t, err)
+		require.Equal(t, targetPayload, string(buf[:n]))
+	})
+
 	t.Run("unreachable proxy", func(t *testing.T) {
 		ctx := context.Background()
 		_, err := dialHTTPProxy(ctx, directDial, "http://127.0.0.1:1", "example.com:443", 1*time.Second)
 		require.Error(t, err)
 	})
+}
+
+func TestRedactProxyURL(t *testing.T) {
+	require.Equal(t, "http://proxy.example.com:8080", redactProxyURL("http://user:pass@proxy.example.com:8080"))
+	require.Equal(t, "http://proxy.example.com:8080", redactProxyURL("http://proxy.example.com:8080"))
+	require.Equal(t, "<invalid proxy URL>", redactProxyURL("://bad-url"))
 }
 
 // fakeConn is a minimal net.Conn for testing bufferedConn.
