@@ -43,13 +43,28 @@ func dialHTTPProxy(ctx context.Context, dial dialFunc, proxyURL string, address 
 	}
 	proxyAddr := parsed.Host
 	if _, _, splitErr := net.SplitHostPort(proxyAddr); splitErr != nil {
-		// no port specified, default to 8080
-		proxyAddr = proxyAddr + ":8080"
+		defaultPort := "8080"
+		if parsed.Scheme == "https" {
+			defaultPort = "443"
+		}
+		proxyAddr = net.JoinHostPort(proxyAddr, defaultPort)
 	}
 
 	proxyConn, err := dial(ctx, "tcp", proxyAddr)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to proxy %s: %w", proxyAddr, err)
+	}
+	if parsed.Scheme == "https" {
+		config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
+		if hostname := parsed.Hostname(); hostname != "" {
+			config.ServerName = hostname
+		}
+		tlsConn := tls.Client(proxyConn, config)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			proxyConn.Close()
+			return nil, fmt.Errorf("could not establish TLS connection to proxy %s: %w", proxyAddr, err)
+		}
+		proxyConn = tlsConn
 	}
 
 	connectReq := &http.Request{
@@ -98,6 +113,15 @@ func basicAuth(user *url.Userinfo) string {
 	return base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 }
 
+func redactProxyURL(proxyURL string) string {
+	parsed, err := url.Parse(proxyURL)
+	if err != nil {
+		return "<invalid proxy URL>"
+	}
+	parsed.User = nil
+	return parsed.String()
+}
+
 // bufferedConn preserves bytes buffered during the CONNECT handshake.
 type bufferedConn struct {
 	net.Conn
@@ -128,7 +152,7 @@ func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
 	if proxyURL, ok := ctx.Value("proxyURL").(string); ok && proxyURL != "" && protocol == "tcp" {
 		parsed, err := url.Parse(proxyURL)
 		if err != nil {
-			gologger.Warning().Msgf("Could not parse proxy URL '%s': %v, falling back to direct dial\n", proxyURL, err)
+			gologger.Warning().Msgf("Could not parse proxy URL '%s': %v, falling back to direct dial\n", redactProxyURL(proxyURL), err)
 		} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
 			conn, err := dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, timeout)
 			if err != nil {
@@ -136,7 +160,7 @@ func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
 			}
 			return &NetConn{conn: conn, timeout: timeout}, nil
 		} else {
-			gologger.Warning().Msgf("Unsupported proxy scheme '%s' in URL '%s', falling back to direct dial\n", parsed.Scheme, proxyURL)
+			gologger.Warning().Msgf("Unsupported proxy scheme '%s' in URL '%s', falling back to direct dial\n", parsed.Scheme, redactProxyURL(proxyURL))
 		}
 	}
 
@@ -174,7 +198,7 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 	if proxyURL, ok := ctx.Value("proxyURL").(string); ok && proxyURL != "" && protocol == "tcp" {
 		parsed, err := url.Parse(proxyURL)
 		if err != nil {
-			gologger.Warning().Msgf("Could not parse proxy URL '%s': %v, falling back to direct dial\n", proxyURL, err)
+			gologger.Warning().Msgf("Could not parse proxy URL '%s': %v, falling back to direct dial\n", redactProxyURL(proxyURL), err)
 		} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
 			conn, err := dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, timeout)
 			if err != nil {
@@ -187,7 +211,7 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 			}
 			return &NetConn{conn: tlsConn, timeout: timeout}, nil
 		} else {
-			gologger.Warning().Msgf("Unsupported proxy scheme '%s' in URL '%s', falling back to direct dial\n", parsed.Scheme, proxyURL)
+			gologger.Warning().Msgf("Unsupported proxy scheme '%s' in URL '%s', falling back to direct dial\n", parsed.Scheme, redactProxyURL(proxyURL))
 		}
 	}
 
