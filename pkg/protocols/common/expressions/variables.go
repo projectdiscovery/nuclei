@@ -120,9 +120,10 @@ func hasLiteralsOnly(data string) bool {
 	if err != nil {
 		return false
 	}
-	if expr != nil {
-		_, err = expr.Evaluate(nil)
-		return err == nil
+
+	if expr == nil {
+		return true
 	}
-	return true
+
+	return len(expr.Vars()) == 0
 }
