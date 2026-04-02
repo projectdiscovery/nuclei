@@ -5,7 +5,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
+	"net/http"
+	"strings"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -229,22 +231,78 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 	ctxArgs.MetaInput = value
 	scanCtx := scan.NewScanContext(ctx, ctxArgs)
 
+	// CRITICAL: Check if HostTechCache exists
+	if e.HostTechCache == nil {
+		gologger.Warning().Msgf("[tech-filter] ERROR: HostTechCache is NIL! Tech filtering is disabled.")
+	} else {
+		gologger.Warning().Msgf("[tech-filter] HostTechCache is initialized!")
+	}
+
+	// --- Tech-stack probe: ONE-TIME per host ---
+	if e.HostTechCache != nil {
+		// Only probe if we have NO hint for this host yet
+		if !e.HostTechCache.HasHint(value.Input) {
+			gologger.Warning().Msgf("[tech-filter] PROBE: Attempting probe for host '%s'", value.Input)
+			
+			// Send a lightweight HEAD request to detect Server header
+			client := &http.Client{
+				Timeout: 5 * time.Second,
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse // Don't follow redirects
+				},
+			}
+			
+			// Build full URL if needed
+			targetURL := value.Input
+			if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
+				targetURL = "http://" + targetURL
+			}
+			
+			gologger.Warning().Msgf("[tech-filter] PROBE: Sending HEAD to '%s'", targetURL)
+			
+			resp, err := client.Head(targetURL)
+			if err == nil && resp != nil {
+				defer resp.Body.Close()
+				if serverHdr := resp.Header.Get("Server"); serverHdr != "" {
+					gologger.Warning().Msgf("[tech-filter] PROBE SUCCESS: Found Server header '%s' for host '%s'",
+						serverHdr, value.Input)
+					e.HostTechCache.RecordServerHeader(value.Input, serverHdr)
+				} else {
+					gologger.Warning().Msgf("[tech-filter] PROBE: No Server header for host '%s'", value.Input)
+					e.HostTechCache.RecordNoServerHeader(value.Input)
+				}
+			} else {
+				gologger.Warning().Msgf("[tech-filter] PROBE FAILED for host '%s': %v", value.Input, err)
+				e.HostTechCache.RecordNoServerHeader(value.Input)
+			}
+		} else {
+			gologger.Warning().Msgf("[tech-filter] PROBE: Already have hint for host '%s', skipping probe", value.Input)
+		}
+	}
+	// --- end probe ---
+
 	// --- Tech-stack based template filtering ---
-	e.options.Logger.Warning().Msgf("trying to skip")
-	// If the host's Server response header has already been observed (e.g. "Apache"),
-	// skip templates that carry none of the required tags for that technology.
-	// The cache is populated by pkg/protocols/http/request.go after the first HTTP
-	// response is received for a host, so the very first template always executes
-	// normally; filtering takes effect from the second template onward.
-	if e.executerOpts.HostTechCache != nil {
+	gologger.Warning().Msgf("[tech-filter] CHECK: Checking if should skip template '%s' for host '%s'", template.ID, value.Input)
+
+	if e.HostTechCache != nil {
 		tags := template.Info.Tags.ToSlice()
-		if e.executerOpts.HostTechCache.ShouldSkipTemplate(value.Input, tags) {
-			e.options.Logger.Debug().Msgf(
-				"[%s] Skipping \"%s\": tech-stack filter (host server header excludes this template)",
-				template.ID, value.Input,
+		gologger.Warning().Msgf("[tech-filter] Template '%s' has tags: %v", template.ID, tags)
+		
+		if e.HostTechCache.ShouldSkipTemplate(value.Input, tags) {
+			serverHdr := ""
+			if e.HostTechCache.HasHint(value.Input) {
+				serverHdr = e.HostTechCache.GetServerHeader(value.Input)
+			}
+			
+			gologger.Warning().Msgf(
+				"[tech-filter] SKIPPED template '%s' for host '%s' (server='%s', no matching tags)",
+				template.ID, 
+				value.Input,
+				serverHdr,
 			)
-			e.options.Logger.Warning().Msgf("trying skip success")
 			return false, nil
+		} else {
+			gologger.Warning().Msgf("[tech-filter] ALLOW: Template '%s' passed filter for host '%s'", template.ID, value.Input)
 		}
 	}
 	// --- end tech-stack filtering ---

@@ -9,6 +9,8 @@ import (
 // TechHint represents a detected technology on a host that can be used
 // to filter templates before execution.
 type TechHint struct {
+	// ServerHeader stores the original Server header value for logging purposes
+	ServerHeader string
 	// Tags is the set of template tags that are REQUIRED for this host.
 	// A template is skipped unless it contains at least one of these tags,
 	// or the set is empty (meaning: no filtering).
@@ -59,7 +61,11 @@ func (c *HostTechCache) RecordServerHeader(host, serverHeader string) {
 	gologger.Debug().Msgf("[tech-filter] RECORDED hint for host '%s' — Server: '%s' → required tags: %v",
 		host, serverHeader, requiredTags)
 
-	hint := &TechHint{Tags: make(map[string]struct{}, len(requiredTags))}
+	hint := &TechHint{
+	ServerHeader: serverHeader,
+	Tags:         make(map[string]struct{}, len(requiredTags)),
+	}
+
 	for _, t := range requiredTags {
 		hint.Tags[t] = struct{}{}
 	}
@@ -85,4 +91,38 @@ func (c *HostTechCache) ShouldSkipTemplate(host string, templateTags []string) b
 		}
 	}
 	return true // no matching tag found → skip
+}
+
+// HasHint returns true if any hint (including "no recognised tech") has been
+// recorded for this host, so we don't probe the same host twice.
+func (c *HostTechCache) HasHint(host string) bool {
+	c.mu.RLock()
+	_, ok := c.hints[host]
+	c.mu.RUnlock()
+	return ok
+}
+
+
+// RecordNoServerHeader marks that we checked a host but found no Server header
+func (c *HostTechCache) RecordNoServerHeader(host string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	// Create an empty TechHint to indicate we checked but found nothing
+	c.hints[host] = &TechHint{
+		ServerHeader: "",
+		Tags:         make(map[string]struct{}),
+	}
+	gologger.Debug().Msgf("[tech-filter] RECORDED no Server header for host '%s'", host)
+}
+
+// GetServerHeader returns the detected server header for a host
+func (c *HostTechCache) GetServerHeader(host string) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	
+	hint, exists := c.hints[host]
+	if !exists || hint == nil {
+		return ""
+	}
+	return hint.ServerHeader
 }
