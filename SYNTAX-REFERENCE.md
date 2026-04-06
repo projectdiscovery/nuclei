@@ -1457,6 +1457,19 @@ DisableCookie is an optional setting that disables cookie reuse
 
 <div class="dd">
 
+<code>disable-http-cache</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+DisableHTTPCache disables HTTP caching for this request, overriding global cache settings.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>read-all</code>  <i>bool</i>
 
 </div>

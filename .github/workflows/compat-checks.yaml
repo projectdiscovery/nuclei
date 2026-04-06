@@ -16,5 +16,4 @@ jobs:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go/compat-checks@v1
         with:
-          go-version: "stable"
           release-test: true

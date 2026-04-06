@@ -19,6 +19,13 @@ var knownLeaks = []goleak.Option{
 	// net/http transport maintains idle connections which are closed with cooldown
 	// hence they don't count as leaks
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+	// LevelDB goroutines (used by httpcache)
+	goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
+	goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).compactionError"),
+	goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).mCompaction"),
+	goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).mpoolDrain"),
+	goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).tCompaction"),
+	goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb/util.(*BufferPool).drain"),
 }
 
 func TestSimpleNuclei(t *testing.T) {

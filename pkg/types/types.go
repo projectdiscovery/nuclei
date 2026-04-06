@@ -204,6 +204,11 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// EnableHTTPCache enables HTTP caching (RFC 9111) for requests
+	//
+	// NOTE(dwisiswant0): this is experimental and might be enabled by default
+	// in the future releases.
+	EnableHTTPCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -568,6 +573,7 @@ func (options *Options) Copy() *Options {
 		DebugRequests:                  options.DebugRequests,
 		DebugResponse:                  options.DebugResponse,
 		DisableHTTPProbe:               options.DisableHTTPProbe,
+		EnableHTTPCache:                options.EnableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
