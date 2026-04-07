@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -877,7 +878,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	resolvedPath, err := fileutil.ResolveNClean(helperFilePath, config.DefaultConfig.GetTemplateDir())
 	if err == nil {
 		// As per rule 1, if helper file is present in nuclei-templates directory, allow it
-		if strings.HasPrefix(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
+		if filepathutil.IsPathWithinDirectory(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
 			return resolvedPath, nil
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -57,12 +58,13 @@ func TestRequireLocalFileAccessDenied(t *testing.T) {
 func TestRequireTemplateModuleAllowedWithoutLFA(t *testing.T) {
 	originalTemplatesDir := config.DefaultConfig.TemplatesDirectory
 	templatesDir := t.TempDir()
-	config.DefaultConfig.SetTemplatesDir(templatesDir)
+	configuredTemplatesDir, moduleBaseDir := templateDirAlias(t, templatesDir)
+	config.DefaultConfig.SetTemplatesDir(configuredTemplatesDir)
 	t.Cleanup(func() {
 		config.DefaultConfig.SetTemplatesDir(originalTemplatesDir)
 	})
 
-	modulePath := writeModuleFile(t, templatesDir, filepath.Join("helpers", "allowed.js"), `module.exports = { value: "sandbox-ok" };`)
+	modulePath := writeModuleFile(t, moduleBaseDir, filepath.Join("helpers", "allowed.js"), `module.exports = { value: "sandbox-ok" };`)
 	script := fmt.Sprintf(`var helper = require(%q); ExportAs("value", helper.value); true;`, modulePath)
 
 	result, err := executeScript(t, t.Name(), false, script)
@@ -129,6 +131,18 @@ func writeModuleFile(t *testing.T, baseDir string, relativePath string, contents
 	require.NoError(t, os.MkdirAll(filepath.Dir(modulePath), 0o755))
 	require.NoError(t, os.WriteFile(modulePath, []byte(contents), 0o600))
 	return modulePath
+}
+
+func templateDirAlias(t *testing.T, templateDir string) (string, string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return templateDir, templateDir
+	}
+	aliasPath := filepath.Join(t.TempDir(), "templates-link")
+	if err := os.Symlink(templateDir, aliasPath); err != nil {
+		return templateDir, templateDir
+	}
+	return aliasPath, templateDir
 }
 
 type noopWriter struct {
