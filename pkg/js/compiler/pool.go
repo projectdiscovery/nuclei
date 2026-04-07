@@ -48,9 +48,7 @@ const (
 )
 
 var (
-	r                *require.Registry
 	lazyRegistryInit = sync.OnceFunc(func() {
-		r = new(require.Registry) // this can be shared by multiple runtimes
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
@@ -106,16 +104,17 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 	for k, v := range args.Args {
 		_ = runtime.Set(k, v)
 	}
+
+	runtime.SetContextValue("executionId", opts.ExecutionId)
+	runtime.SetContextValue("ctx", opts.Context)
+	enableRequire(runtime)
+
 	// register extra callbacks if any
 	if opts != nil && opts.Callback != nil {
 		if err := opts.Callback(runtime); err != nil {
 			return nil, err
 		}
 	}
-
-	// inject execution id and context
-	runtime.SetContextValue("executionId", opts.ExecutionId)
-	runtime.SetContextValue("ctx", opts.Context)
 
 	// execute the script
 	return runtime.RunProgram(p)
@@ -232,14 +231,32 @@ func InternalGetGeneratorRuntime() *goja.Runtime {
 	return runtime
 }
 
-func getRegistry() *require.Registry {
+func enableRequire(runtime *goja.Runtime) {
 	lazyRegistryInit()
-	return r
+	_ = require.NewRegistry(require.WithLoader(newSourceLoader(runtime))).Enable(runtime)
+}
+
+func newSourceLoader(runtime *goja.Runtime) require.SourceLoader {
+	return func(path string) ([]byte, error) {
+		executionID := ""
+		if value, ok := runtime.GetContextValue("executionId"); ok {
+			if id, ok := value.(string); ok {
+				executionID = id
+			}
+		}
+
+		normalizedPath, err := protocolstate.NormalizePathWithExecutionId(executionID, path)
+		if err != nil {
+			return nil, err
+		}
+
+		return require.DefaultSourceLoader(normalizedPath)
+	}
 }
 
 func createNewRuntime() *goja.Runtime {
 	runtime := protocolstate.NewJSRuntime()
-	_ = getRegistry().Enable(runtime)
+	enableRequire(runtime)
 	// by default import below modules every time
 	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
