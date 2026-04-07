@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -258,6 +257,6 @@ func PrintDeprecatedPathsMsgIfApplicable(isSilent bool) {
 		return
 	}
 	if deprecatedPathsCounter > 0 && !isSilent {
-		config.DefaultConfig.Logger.Print().Msgf("[%v] Found %v template[s] loaded with deprecated paths, update before v3 for continued support.\n", aurora.Yellow("WRN").String(), deprecatedPathsCounter)
+		config.DefaultConfig.Logger.Warning().Msgf("Found %v template[s] loaded with deprecated paths, update before v3 for continued support.", deprecatedPathsCounter)
 	}
 }
