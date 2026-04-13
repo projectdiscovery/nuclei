@@ -466,6 +466,8 @@ type Options struct {
 	InlineTargetsList string `yaml:"targets-inline,omitempty"`
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
+	// ReservedPorts is the list of ports that network templates should not use
+	ReservedPorts goflags.StringSlice
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
 	LoadHelperFileFunction LoadHelperFileFunction
@@ -696,6 +698,7 @@ func (options *Options) Copy() *Options {
 		HttpApiEndpoint:                options.HttpApiEndpoint,
 		InlineTargetsList:              options.InlineTargetsList,
 		ListTemplateProfiles:           options.ListTemplateProfiles,
+		ReservedPorts:                  options.ReservedPorts,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,
 		DoNotCacheTemplates:            options.DoNotCacheTemplates,
