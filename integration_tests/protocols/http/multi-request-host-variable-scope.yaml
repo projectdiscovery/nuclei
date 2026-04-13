@@ -1,0 +1,20 @@
+id: http-multi-request-host-variable-scope
+
+info:
+  name: HTTP multi request host variable scope
+  author: pdteam
+  severity: info
+  description: Ensures request-scoped host variables are derived from each request URL.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+  - method: GET
+    path:
+      - "http://honey.scanme.sh"
+    matchers:
+      - type: dsl
+        dsl:
+          - http_2_host == "http://honey.scanme.sh"
