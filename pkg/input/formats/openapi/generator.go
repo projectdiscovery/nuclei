@@ -55,11 +55,11 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 		} else {
 			// if missing check for validation
 			if opts.SkipFormatValidation {
-				gologger.Verbose().Msgf("openapi: skipping all requests due to missing global auth parameter: %s\n", param.Value.Name)
+				gologger.Verbose().Msgf("openapi: Skipping all requests due to missing global auth parameter: %s", param.Value.Name)
 				return nil
 			} else {
 				// fatal error
-				gologger.Fatal().Msgf("openapi: missing global auth parameter: %s\n", param.Value.Name)
+				gologger.Fatal().Msgf("openapi: Missing global auth parameter: %s\n", param.Value.Name)
 			}
 		}
 	}
@@ -105,15 +105,16 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 					callback:                  callback,
 					missingParamValueCallback: missingParamValueCallback,
 				}); err != nil {
-					gologger.Warning().Msgf("Could not generate requests from op: %s\n", err)
+					gologger.Warning().Msgf("Could not generate requests for %q operation: %s", ov.OperationID, err)
 				}
 			}
 		}
 	}
 
 	if len(missingVarMap) > 0 && !opts.SkipFormatValidation {
-		gologger.Error().Msgf("openapi: Found %d missing parameters, use -skip-format-validation flag to skip requests or update missing parameters generated in %s file,you can also specify these vars using -var flag in (key=value) format\n", len(missingVarMap), formats.DefaultVarDumpFileName)
-		gologger.Verbose().Msgf("openapi: missing params: %+v", mapsutil.GetSortedKeys(missingVarMap))
+		gologger.Error().Msgf("openapi: Found %d missing parameters, use skip-format-validation flag to skip requests or update missing parameters generated in %q file", len(missingVarMap), formats.DefaultVarDumpFileName)
+		gologger.Info().Msg("openapi: You can also specify these vars using var flag in key=value format")
+		gologger.Verbose().Msgf("openapi: Missing params: %+v", mapsutil.GetSortedKeys(missingVarMap))
 		if config.CurrentAppMode == config.AppModeCLI {
 			// generate var dump file
 			vars := &formats.OpenAPIParamsCfgFile{}
@@ -122,7 +123,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 			}
 			vars.OptionalVars = mapsutil.GetSortedKeys(optionalVarMap)
 			if err := formats.WriteOpenAPIVarDumpFile(vars); err != nil {
-				gologger.Error().Msgf("openapi: could not write params file: %s\n", err)
+				gologger.Error().Msgf("openapi: Could not write params file: %s", err)
 			}
 			// exit with status code 1
 			os.Exit(1)
@@ -213,13 +214,13 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				}
 				// skip request if param in path else skip this param only
 				if value.Required {
-					// gologger.Verbose().Msgf("skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
+					// gologger.Verbose().Msgf("skipping request [%s] %s due to missing value (%v)", opts.method, opts.requestPath, value.Name)
 					return nil
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
-						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+						gologger.Verbose().Msgf("openapi: Skipping optional %q param in %q for %s %s request due to missing %q value", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
 					continue
 				}
@@ -229,13 +230,13 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				// when failed to generate example
 				// skip request if param in path else skip this param only
 				if value.Required {
-					gologger.Verbose().Msgf("openapi: skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
+					gologger.Verbose().Msgf("openapi: Skipping %s %s request due to missing %q value", opts.method, opts.requestPath, value.Name)
 					return nil
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
-						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+						gologger.Verbose().Msgf("openapi: Skipping optional %q param in %q for %s %s request due to missing %q value", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
 					continue
 				}
@@ -299,7 +300,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.ContentLength = int64(len(marshalled))
 					cloned.Header.Set("Content-Type", "application/xml")
 				} else {
-					gologger.Warning().Msgf("openapi: could not encode xml")
+					gologger.Warning().Msgf("openapi: Could not encode XML for %s %s request", opts.method, opts.requestPath)
 				}
 			case "application/x-www-form-urlencoded":
 				if values, ok := val.(map[string]interface{}); ok {
@@ -356,7 +357,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.Header.Set("Content-Type", "text/plain")
 				}
 			default:
-				gologger.Verbose().Msgf("openapi: no correct content type found for body: %s\n", content)
+				gologger.Verbose().Msgf("openapi: No correct content type found for body: %s", content)
 				// LOG:	return errors.New("no correct content type found for body")
 				continue
 			}

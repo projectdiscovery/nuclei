@@ -54,7 +54,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 			file, err := os.Open(data)
 			if err != nil {
-				gologger.Error().Msgf("Could not open file path %s: %s\n", data, err)
+				gologger.Error().Msgf("Could not open %q file: %s", data, err)
 				return
 			}
 			defer func() {
@@ -63,23 +63,23 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 			stat, err := file.Stat()
 			if err != nil {
-				gologger.Error().Msgf("Could not stat file path %s: %s\n", data, err)
+				gologger.Error().Msgf("Could not get %q file info: %s", data, err)
 				return
 			}
 			if stat.Size() >= int64(maxSize) {
-				gologger.Verbose().Msgf("Could not process path %s: exceeded max size\n", data)
+				gologger.Verbose().Msgf("Could not process %q file: exceeded max size", data)
 				return
 			}
 
 			buffer, err := io.ReadAll(file)
 			if err != nil {
-				gologger.Error().Msgf("Could not read file path %s: %s\n", data, err)
+				gologger.Error().Msgf("Could not read %q file: %s", data, err)
 				return
 			}
 			dataStr := conversion.String(buffer)
 
 			if err := request.executeRawInput(dataStr, data, input, callback); err != nil {
-				gologger.Error().Msgf("Could not execute raw input %s: %s\n", data, err)
+				gologger.Error().Msgf("Could not execute raw %q input: %s", data, err)
 				return
 			}
 		}(data)
@@ -101,14 +101,14 @@ func (request *Request) executeRawInput(data, inputString string, input *context
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Info().Msgf("[%s] Dumped offline-http request for %s", request.options.TemplateID, data)
+		gologger.Info().Msgf("[%s] Dumped offline-http request for %q:", request.options.TemplateID, data)
 		gologger.Print().Msgf("%s", data)
 	}
-	gologger.Verbose().Msgf("[%s] Sent OFFLINE-HTTP request to %s", request.options.TemplateID, data)
+	gologger.Verbose().Msgf("[%s] Sent offline-http request to %q", request.options.TemplateID, data)
 
 	dumpedResponse, err := httputil.DumpResponse(resp, true)
 	if err != nil {
-		return errors.Wrap(err, "could not dump raw http response")
+		return errors.Wrap(err, "could not dump raw HTTP response")
 	}
 
 	body, err := io.ReadAll(resp.Body)

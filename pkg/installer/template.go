@@ -165,9 +165,9 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	currentVersion := config.DefaultConfig.TemplateVersion
 
 	if config.IsOutdatedVersion(currentVersion, latestVersion) {
-		gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s\n", currentVersion, latestVersion)
+		gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s", currentVersion, latestVersion)
 	} else {
-		gologger.Debug().Msgf("Updating nuclei-templates from %s to %s (forced update)\n", currentVersion, latestVersion)
+		gologger.Debug().Msgf("Updating nuclei-templates from %s to %s (forced update)", currentVersion, latestVersion)
 	}
 
 	// write templates to disk

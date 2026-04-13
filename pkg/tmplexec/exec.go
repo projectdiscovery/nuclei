@@ -141,7 +141,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
 		if !matched.Load() && matcherStatus {
 			if err := e.options.Output.WriteFailure(event); err != nil {
-				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+				gologger.Warning().Msgf("Could not write failure event to output: %s", err)
 			}
 			executed.CompareAndSwap(false, true)
 		}

@@ -76,7 +76,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 		})
 		if err != nil {
 			ctx.LogError(err)
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %q: %s", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
 		}
 		if g.options.HostErrorsCache != nil {
 			g.options.HostErrorsCache.MarkFailedOrRemove(g.options.ProtocolType.String(), ctx.Input, err)

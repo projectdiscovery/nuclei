@@ -80,12 +80,12 @@ func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
 func (w *WorkPool) Refresh(ctx context.Context) {
 	if w.Default.Size != w.config.TypeConcurrency {
 		if err := w.Default.Resize(ctx, w.config.TypeConcurrency); err != nil {
-			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+			gologger.Warning().Msgf("Could not resize workpool: %s", err)
 		}
 	}
 	if w.Headless.Size != w.config.HeadlessTypeConcurrency {
 		if err := w.Headless.Resize(ctx, w.config.HeadlessTypeConcurrency); err != nil {
-			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+			gologger.Warning().Msgf("Could not resize workpool: %s", err)
 		}
 	}
 }

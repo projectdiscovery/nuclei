@@ -276,7 +276,7 @@ func (c *ReportingClient) Close() {
 				if failed > 0 {
 					fmt.Fprintf(&msgBuilder, ", %d failed", failed)
 				}
-				gologger.Info().Msgf("%v", msgBuilder.String())
+				gologger.Info().Msg(msgBuilder.String())
 			}
 		}
 	}

@@ -60,7 +60,7 @@ var (
 		// resize check point
 		if pooljsc.Size != PoolingJsVmConcurrency {
 			if err := pooljsc.Resize(ctx, PoolingJsVmConcurrency); err != nil {
-				gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+				gologger.Warning().Msgf("Could not resize workpool: %s", err)
 			}
 		}
 	}
@@ -262,7 +262,7 @@ func createNewRuntime() *goja.Runtime {
 
 	// Register embedded javascript helpers
 	if err := global.RegisterNativeScripts(runtime); err != nil {
-		gologger.Error().Msgf("Could not register scripts: %s\n", err)
+		gologger.Error().Msgf("Could not register scripts: %s", err)
 	}
 	return runtime
 }

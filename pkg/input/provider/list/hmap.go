@@ -97,13 +97,13 @@ func New(opts *Options) (*ListInputProvider, error) {
 		return nil, initErr
 	}
 	if input.excludedCount > 0 {
-		gologger.Info().Msgf("Number of hosts excluded from input: %d", input.excludedCount)
+		gologger.Info().Msgf("%d hosts excluded from input", input.excludedCount)
 	}
 	if input.dupeCount > 0 {
 		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", input.dupeCount)
 	}
 	if input.skippedCount > 0 {
-		gologger.Info().Msgf("Number of hosts skipped from input due to exclusion: %d", input.skippedCount)
+		gologger.Info().Msgf("%d hosts skipped from input due to exclusion", input.skippedCount)
 	}
 	return input, nil
 }
@@ -118,7 +118,7 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 	if i.hostMapStream != nil {
 		i.hostMapStreamOnce.Do(func() {
 			if err := i.hostMapStream.Process(); err != nil {
-				gologger.Warning().Msgf("error in stream mode processing: %s\n", err)
+				gologger.Warning().Msgf("Error in stream mode processing: %s", err)
 			}
 		})
 	}
@@ -150,9 +150,9 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	if err != nil || (urlx != nil && urlx.Host == "") {
 		gologger.Debug().Label("url").MsgFunc(func() string {
 			if err != nil {
-				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)
+				return fmt.Sprintf("Failed to parse %q URL for skipping IP selection: %v", URL, err)
 			}
-			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
+			return fmt.Sprintf("Failed to parse %q URL for skipping IP selection due to empty hostname", URL)
 		})
 		metaInput := contextargs.NewMetaInput()
 		metaInput.Input = URL
@@ -196,11 +196,11 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 				}
 				return
 			} else {
-				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
+				gologger.Debug().Msgf("scanAllIps: no IPs found for %q, reverting to default", URL)
 			}
 		} else {
 			// failed to scanallips falling back to defaults
-			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
+			gologger.Debug().Msgf("scanAllIps: DNS resolution failed for %q URL: %v", URL, err)
 		}
 	}
 
@@ -217,7 +217,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 			// pick/ prefer 1st
 			ips = append(ips, dnsData.AAAA[0])
 		} else {
-			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %v\n", err)
+			gologger.Warning().Msgf("Target %q does not have IPv6 address, falling back to IPv4: %v", URL, err)
 		}
 	}
 	if i.ipOptions.IPV4 {
@@ -315,7 +315,7 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 		}
 	}
 	if options.Uncover && options.UncoverQuery != nil {
-		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
+		gologger.Info().Msgf("Running uncover query against for %q", strings.Join(options.UncoverEngine, ","))
 		uncoverOpts := &uncoverlib.Options{
 			Agents:        options.UncoverEngine,
 			Queries:       options.UncoverQuery,
@@ -379,7 +379,7 @@ func (i *ListInputProvider) isExcluded(URL string) bool {
 	metaInput.Input = URL
 	key, err := metaInput.MarshalString()
 	if err != nil {
-		gologger.Warning().Msgf("%s\n", err)
+		gologger.Warning().Msg(err.Error())
 		return false
 	}
 
@@ -397,9 +397,9 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	if err != nil || (urlx != nil && urlx.Host == "") {
 		gologger.Debug().Label("url").MsgFunc(func() string {
 			if err != nil {
-				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)
+				return fmt.Sprintf("Failed to parse %q URL for skipping IP selection: %v", URL, err)
 			}
-			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
+			return fmt.Sprintf("Failed to parse %q URL for skipping IP selection due to empty hostname", URL)
 		})
 		metaInput := contextargs.NewMetaInput()
 		metaInput.Input = URL
@@ -443,11 +443,11 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 				}
 				return
 			} else {
-				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
+				gologger.Debug().Msgf("scanAllIps: no IPs found, reverting to default")
 			}
 		} else {
 			// failed to scanallips falling back to defaults
-			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
+			gologger.Debug().Msgf("scanAllIps: DNS resolution failed: %v", err)
 		}
 	}
 
@@ -464,7 +464,7 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 			// pick/ prefer 1st
 			ips = append(ips, dnsData.AAAA[0])
 		} else {
-			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %v\n", err)
+			gologger.Warning().Msgf("Target does not have IPv6 address, falling back to IPv4: %v", err)
 		}
 	}
 	if i.ipOptions.IPV4 {
@@ -489,7 +489,7 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput) {
 	key, err := metaInput.MarshalString()
 	if err != nil {
-		gologger.Warning().Msgf("%s\n", err)
+		gologger.Warning().Msg(err.Error())
 		return
 	}
 	if _, ok := i.hostMap.Get(key); ok {
@@ -560,7 +560,7 @@ func (i *ListInputProvider) delItem(targets ...*contextargs.MetaInput) {
 // setHostMapStream sets item in stream mode
 func (i *ListInputProvider) setHostMapStream(data string) {
 	if _, err := i.hostMapStream.Merge([][]byte{[]byte(data)}); err != nil {
-		gologger.Warning().Msgf("%s\n", err)
+		gologger.Warning().Msg(err.Error())
 		return
 	}
 }

@@ -24,7 +24,7 @@ func WriteResult(data *output.InternalWrappedEvent, out output.Writer, progress 
 			if stderrors.Is(err, output.ErrHoneypotSuppressed) {
 				suppressed = true
 			} else {
-				gologger.Warning().Msgf("Could not write output event: %s\n", err)
+				gologger.Warning().Msgf("Could not write output event: %s", err)
 			}
 		}
 

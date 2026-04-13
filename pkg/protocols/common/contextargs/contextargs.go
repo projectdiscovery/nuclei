@@ -48,7 +48,7 @@ func NewWithMetaInput(ctx context.Context, input *MetaInput) *Context {
 func NewWithInput(ctx context.Context, input string) *Context {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		gologger.Error().Msgf("contextargs: could not create cookie jar: %s\n", err)
+		gologger.Error().Msgf("contextargs: Could not create cookie jar: %s", err)
 	}
 	metaInput := NewMetaInput()
 	metaInput.Input = input

@@ -80,7 +80,7 @@ func New(opts Options) (*Service, error) {
 		_ = file.Close()
 	}
 	if opts.ExecuterOpts.Options.Verbose {
-		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
+		gologger.Verbose().Msgf("Normalized mapping (%d): %v", len(mappingData), mappingData)
 	}
 
 	// get template directories
@@ -125,7 +125,7 @@ func (s *Service) Close() bool {
 
 // Execute automatic scan on each target with -bs host concurrency
 func (s *Service) Execute() error {
-	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
+	gologger.Info().Msgf("Executing automatic scan for %d target(s)", s.target.Count())
 	// setup host concurrency
 	sg, err := syncutil.New(syncutil.WithSize(s.opts.Options.BulkSize))
 	if err != nil {
@@ -163,26 +163,26 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	}
 	finalTags = sliceutil.Dedupe(finalTags)
 
-	gologger.Info().Msgf("Found %d tags and %d matches on detection templates on %v [wappalyzer: %d, detection: %d]\n", len(finalTags), matched, input.Input, len(tagsFromWappalyzer), len(tagsFromDetectTemplates))
+	gologger.Info().Msgf("Found %d tags and %d matches on detection templates for %q [wappalyzer: %d, detection: %d]", len(finalTags), matched, input.Input, len(tagsFromWappalyzer), len(tagsFromDetectTemplates))
 
 	// also include any extra tags passed by user
 	finalTags = append(finalTags, s.opts.Options.Tags...)
 	finalTags = sliceutil.Dedupe(finalTags)
 
 	if len(finalTags) == 0 {
-		gologger.Warning().Msgf("Skipping automatic scan since no tags were found on %v\n", input.Input)
+		gologger.Warning().Msg("Skipping automatic scan since no tags were found")
 		return
 	}
 	if s.opts.Options.VerboseVerbose {
-		gologger.Print().Msgf("Final tags identified for %v: %+v\n", input.Input, finalTags)
+		gologger.Print().Msgf("Final tags identified for %q: %+v\n", input.Input, finalTags)
 	}
 
 	finalTemplates, err := LoadTemplatesWithTags(s.ServiceOpts, s.templateDirs, finalTags, false)
 	if err != nil {
-		gologger.Error().Msgf("%v Error loading templates: %s\n", input.Input, err)
+		gologger.Error().Msgf("Error loading templates for %q: %s", input.Input, err)
 		return
 	}
-	gologger.Info().Msgf("Executing %d templates on %v", len(finalTemplates), input.Input)
+	gologger.Info().Msgf("Executing %d templates for %q", len(finalTemplates), input.Input)
 	eng := core.New(s.opts.Options)
 	execOptions := s.opts.Copy()
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
@@ -220,7 +220,7 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 	for k := range fingerprints {
 		normalized[normalizeAppName(k)] = struct{}{}
 	}
-	gologger.Verbose().Msgf("Found %d fingerprints for %s\n", len(normalized), input.Input)
+	gologger.Verbose().Msgf("Found %d fingerprints for %s", len(normalized), input.Input)
 
 	// normalize fingerprints using mapping data
 	for k := range normalized {
@@ -303,7 +303,7 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 
 			_, err := template.Executer.ExecuteWithResults(ctx)
 			if err != nil {
-				gologger.Verbose().Msgf("[%s] error executing template: %s\n", aurora.BrightYellow(template.ID), err)
+				gologger.Verbose().Msgf("[%s] error executing template: %s", aurora.BrightYellow(template.ID), err)
 				return
 			}
 		}(t)

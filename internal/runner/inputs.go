@@ -63,7 +63,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 
 		if r.options.ProbeConcurrency > 0 && swg.Size != r.options.ProbeConcurrency {
 			if err := swg.Resize(context.Background(), r.options.ProbeConcurrency); err != nil {
-				r.Logger.Error().Msgf("Could not resize workpool: %s\n", err)
+				r.Logger.Error().Msgf("Could not resize workpool: %s", err)
 			}
 		}
 

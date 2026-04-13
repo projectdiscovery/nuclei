@@ -52,7 +52,7 @@ func main() {
 	if err != nil {
 		gologger.Fatal().Msgf("failed to create signer: %s", err)
 	}
-	gologger.Info().Msgf("Template Signer: %v\n", tmplSigner.Identifier())
+	gologger.Info().Msgf("Template Signer: %v", tmplSigner.Identifier())
 
 	// read file
 	bin, err := os.ReadFile(template)
@@ -67,7 +67,7 @@ func main() {
 	gologger.Info().Msgf("Signature Details:")
 	gologger.Info().Msgf("----------------")
 	gologger.Info().Msgf("Signature: %s", sig)
-	gologger.Info().Msgf("Content Hash (SHA256): %s\n", hex.EncodeToString(hash[:]))
+	gologger.Info().Msgf("Content Hash (SHA256): %s", hex.EncodeToString(hash[:]))
 
 	execOpts := defaultExecutorOpts(template)
 
@@ -75,7 +75,7 @@ func main() {
 	if err != nil {
 		gologger.Fatal().Msgf("failed to parse template: %s", err)
 	}
-	gologger.Info().Msgf("Template Verified: %v\n", tmpl.Verified)
+	gologger.Info().Msgf("Template Verified: %v", tmpl.Verified)
 
 	if !tmpl.Verified {
 		gologger.Info().Msgf("------------------------")
@@ -94,7 +94,7 @@ func main() {
 		gologger.Info().Msgf("Updated Signature Details:")
 		gologger.Info().Msgf("------------------------")
 		gologger.Info().Msgf("Signature: %s", sig2)
-		gologger.Info().Msgf("Content Hash (SHA256): %s\n", hex.EncodeToString(hash2[:]))
+		gologger.Info().Msgf("Content Hash (SHA256): %s", hex.EncodeToString(hash2[:]))
 	}
 	gologger.Info().Msgf("✓ Template signed & verified successfully")
 }

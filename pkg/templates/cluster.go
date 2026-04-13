@@ -286,7 +286,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 				_ = writer.WriteResult(clonedEvent, e.options.Output, e.options.Progress, e.options.IssuesClient)
 			} else if !matched && e.options.Options.MatcherStatus {
 				if err := e.options.Output.WriteFailure(clonedEvent); err != nil {
-					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+					gologger.Warning().Msgf("Could not write failure event to output: %s", err)
 				}
 			}
 		}
@@ -323,7 +323,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 				},
 			}
 			if err := e.options.Output.WriteFailure(fakeEvent); err != nil {
-				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+				gologger.Warning().Msgf("Could not write failure event to output: %s", err)
 			}
 		}
 	}

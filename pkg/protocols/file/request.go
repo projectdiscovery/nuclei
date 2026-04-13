@@ -63,7 +63,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			defer wg.Done()
 			fi, err := os.Open(filePath)
 			if err != nil {
-				gologger.Error().Msgf("%s\n", err)
+				gologger.Error().Msg(err.Error())
 				return
 			}
 			defer func() {
@@ -83,7 +83,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						archiveFileName := filepath.Join(filePath, file.Name())
 						reader, err := file.Open()
 						if err != nil {
-							gologger.Error().Msgf("%s\n", err)
+							gologger.Error().Msg(err.Error())
 							return err
 						}
 						defer func() {
@@ -96,7 +96,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 								request.options.Progress.IncrementRequests()
 								return nil
 							}
-							gologger.Error().Msgf("%s\n", err)
+							gologger.Error().Msg(err.Error())
 							// error while elaborating the file
 							request.options.Progress.IncrementFailedRequestsBy(1)
 							return err
@@ -108,7 +108,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						return nil
 					})
 					if err != nil {
-						gologger.Error().Msgf("%s\n", err)
+						gologger.Error().Msg(err.Error())
 						return
 					}
 				case archives.Decompressor:
@@ -116,7 +116,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 					request.options.Progress.AddToTotal(1)
 					reader, err := archiveInstance.OpenReader(stream)
 					if err != nil {
-						gologger.Error().Msgf("%s\n", err)
+						gologger.Error().Msg(err.Error())
 						// error while elaborating the file
 						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
@@ -124,7 +124,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 					fileStat, _ := fi.Stat()
 					tmpFileOut, err := os.CreateTemp("", "")
 					if err != nil {
-						gologger.Error().Msgf("%s\n", err)
+						gologger.Error().Msg(err.Error())
 						// error while elaborating the file
 						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
@@ -140,7 +140,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 					}()
 					_, err = io.Copy(tmpFileOut, reader)
 					if err != nil {
-						gologger.Error().Msgf("%s\n", err)
+						gologger.Error().Msg(err.Error())
 						// error while elaborating the file
 						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
@@ -155,7 +155,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 							request.options.Progress.IncrementRequests()
 							return
 						}
-						gologger.Error().Msgf("%s\n", err)
+						gologger.Error().Msg(err.Error())
 						// error while elaborating the file
 						request.options.Progress.IncrementFailedRequestsBy(1)
 						return
@@ -175,7 +175,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						request.options.Progress.IncrementRequests()
 						return
 					}
-					gologger.Error().Msgf("%s\n", err)
+					gologger.Error().Msg(err.Error())
 					// error while elaborating the file
 					request.options.Progress.IncrementFailedRequestsBy(1)
 					return
@@ -212,7 +212,7 @@ func (request *Request) processFile(filePath string, input *contextargs.Context,
 	}
 	if stat.Size() >= request.maxSize {
 		maxSizeString := units.HumanSize(float64(request.maxSize))
-		gologger.Verbose().Msgf("Limiting %s processed data to %s bytes: exceeded max size\n", filePath, maxSizeString)
+		gologger.Verbose().Msgf("Limiting %q processed data to %s bytes: exceeded max size", filePath, maxSizeString)
 	}
 
 	return request.processReader(file, filePath, input, stat.Size(), previousInternalEvent)
@@ -275,7 +275,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 		currentBytes := bytesCount + n
 		processedBytes := units.BytesSize(float64(currentBytes))
 
-		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
+		gologger.Verbose().Msgf("[%s] Processing %q file chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
 		dslMap := request.responseToDSLMap(lineContent, input.MetaInput.Input, filePath)
 		maps.Copy(dslMap, previous)
 		// add vars to template context
@@ -382,7 +382,7 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 				lineContent = hex.Dump([]byte(lineContent))
 			}
 			highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, lineContent, cliOptions.NoColor, hexDump)
-			gologger.Debug().Msgf("[%s] Dumped match/extract file snippet for %s at line %d\n\n%s", requestOptions.TemplateID, filePath, fileMatch.Line, highlightedResponse)
+			gologger.Debug().Msgf("[%s] Dumped match or extract file snippet for %q at line %d\n\n%s", requestOptions.TemplateID, filePath, fileMatch.Line, highlightedResponse)
 		}
 	}
 }

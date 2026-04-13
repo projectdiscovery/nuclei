@@ -129,7 +129,7 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 	if g.rawRequest != nil {
 		parsed, err := urlutil.ParseAbsoluteURL(g.rawRequest.FullURL, true)
 		if err != nil {
-			gologger.Warning().Msgf("[authprovider] Could not parse URL %s: %s\n", g.rawRequest.FullURL, err)
+			gologger.Warning().Msgf("[authprovider] Could not parse %q URL: %s", g.rawRequest.FullURL, err)
 			return
 		}
 		authStrategies := provider.LookupURLX(parsed)
@@ -229,7 +229,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	finalVars := generators.MergeMaps(allVars, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("HTTP Protocol request variables: %s\n", vardump.DumpVariables(finalVars))
+		gologger.Debug().Msgf("HTTP protocol request variables: %s", vardump.DumpVariables(finalVars))
 	}
 
 	// Note: If possible any changes to current logic (i.e evaluate -> then parse URL)

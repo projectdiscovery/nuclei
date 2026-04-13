@@ -102,7 +102,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 	}
 	if err != nil {
 		// TODO: replace this after scan context is implemented
-		gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
+		gologger.Verbose().Msgf("[%v] Could not get open ports: %s", request.options.TemplateID, err)
 	}
 
 	// stop at first match if requested
@@ -121,7 +121,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
 		// idea is to reduce redundant dials to http ports
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
-			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+			gologger.Debug().Msgf("Could not use network port from constants: %s", err)
 		}
 		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback); err != nil {
 			return err
@@ -186,7 +186,7 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, wrappedCallback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
-			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
+			gologger.Warning().Msgf("[%v] Could not make network request for %q: %s", request.options.TemplateID, actualAddress, err)
 		}
 		if shouldStopAtFirstMatch && atomicBool.Load() {
 			break
@@ -315,7 +315,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	interimValues := generators.MergeMaps(variables, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Network Protocol request variables: %s\n", vardump.DumpVariables(interimValues))
+		gologger.Debug().Msgf("Network protocol request variables: %s", vardump.DumpVariables(interimValues))
 	}
 
 	inputEvents := make(map[string]interface{})
@@ -340,7 +340,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		reqBuilder.Write(dataInBytes)
 
 		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
-			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
+			gologger.Warning().Msgf("[%s] Could not make network request for %q: %v", request.options.TemplateID, actualAddress, err)
 			return nil
 		}
 
@@ -385,7 +385,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 		requestBytes := []byte(reqBuilder.String())
-		msg := fmt.Sprintf("[%s] Dumped Network request for %s\n%s", request.options.TemplateID, actualAddress, hex.Dump(requestBytes))
+		msg := fmt.Sprintf("[%s] Dumped network request for %q:\n%s", request.options.TemplateID, actualAddress, hex.Dump(requestBytes))
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Str("address", actualAddress).Msg(msg)
 		}
@@ -398,7 +398,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	request.options.Output.Request(request.options.TemplatePath, actualAddress, request.Type().String(), err)
-	gologger.Verbose().Msgf("Sent TCP request to %s", actualAddress)
+	gologger.Verbose().Msgf("Sent network request to %s", actualAddress)
 
 	bufferSize := 1024
 	if request.ReadSize != 0 {
@@ -411,7 +411,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.GetTimeouts().TcpReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, err)
+		gologger.Verbose().Msgf("could not read more data from %q: %s", actualAddress, err)
 	}
 	responseBuilder.Write(final)
 
@@ -463,7 +463,7 @@ func dumpResponse(event *output.InternalWrappedEvent, request *Request, response
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		requestBytes := []byte(response)
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, hex.Dump(requestBytes), cliOptions.NoColor, true)
-		msg := fmt.Sprintf("[%s] Dumped Network response for %s\n\n", request.options.TemplateID, actualAddress)
+		msg := fmt.Sprintf("[%s] Dumped network response for %q:\n", request.options.TemplateID, actualAddress)
 		if cliOptions.Debug || cliOptions.DebugResponse {
 			gologger.Debug().Msg(fmt.Sprintf("%s%s", msg, highlightedResponse))
 		}

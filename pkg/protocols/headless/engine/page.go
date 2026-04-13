@@ -89,7 +89,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	variables = generators.MergeMaps(variables, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Headless protocol request variables: %s", vardump.DumpVariables(variables))
 	}
 
 	createdPage := &Page{

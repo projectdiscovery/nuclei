@@ -7,7 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
@@ -437,7 +436,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		}
 		if !template.Verified && len(template.Workflows) == 0 {
 			if config.DefaultConfig.LogAllEvents {
-				gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
+				gologger.DefaultLogger.Warning().Msgf("Template %s is unverified", template.ID)
 			}
 		}
 		return template, nil
@@ -470,7 +469,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	if !template.Verified && len(template.Workflows) == 0 {
 		// workflows are not signed by default
 		if config.DefaultConfig.LogAllEvents {
-			gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
+			gologger.DefaultLogger.Warning().Msgf("Template %s is unverified", template.ID)
 		}
 	}
 
@@ -614,7 +613,7 @@ func applyTemplateVerification(template *Template, data []byte) {
 	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
 		if config.DefaultConfig.LogAllEvents {
-			gologger.Verbose().Msgf("template %v verified by %s : %v", template.ID, verifier.Identifier(), template.Verified)
+			gologger.Verbose().Msgf("[%s] Template verified by %q: %v", template.ID, verifier.Identifier(), template.Verified)
 		}
 		if template.Verified {
 			template.TemplateVerifier = verifier.Identifier()

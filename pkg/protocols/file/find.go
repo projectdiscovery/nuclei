@@ -138,7 +138,7 @@ func (request *Request) validatePath(absPath, item string, inArchive bool) bool 
 	}
 
 	if matchingRule, ok := request.isInDenyList(absPath, item); ok {
-		gologger.Verbose().Msgf("Ignoring path %s due to denylist item %s\n", item, matchingRule)
+		gologger.Verbose().Msgf("Ignoring %q path due to denylist item %s", item, matchingRule)
 		return false
 	}
 

@@ -192,7 +192,7 @@ func NewTemplateSigner(cert, privateKey []byte) (*TemplateSigner, error) {
 	}
 	if err != nil && !SkipGeneratingKeys {
 		if err != ErrNoCertificate && err != ErrNoPrivateKey {
-			gologger.Info().Msgf("Invalid user cert found : %s\n", err)
+			gologger.Info().Msgf("Invalid user cert found : %s", err)
 		}
 		// generating new keys
 		handler.GenerateKeyPair()
