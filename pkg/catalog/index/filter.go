@@ -19,7 +19,7 @@ import (
 // IncludeTemplates and IncludeTags can force inclusion of templates even if
 // they match exclusion criteria.
 type Filter struct {
-	// once ensures that IDs and ExcludedIDs are compiled the firs ttime Matches is called.
+	// once ensures that IDs and ExcludedIDs are compiled the first time Matches is called.
 	once sync.Once
 
 	// Authors to include.
@@ -204,12 +204,13 @@ func matchesID(templateID, pattern string) bool {
 // Compile pre-processes IDs and ExcludeIDs into fast lookup structures.
 // The first time Matches is called, this is called automatically.
 // If IDs or ExcludeIDs are modified after calling Matches, this must be called manually.
+// This method is not thread-safe, so make sure noone is using the filter when calling it.
 func (f *Filter) Compile() {
 	f.includeIDPatterns = nil
 	f.includeIDs = make(map[string]struct{}, len(f.IDs))
 	for _, p := range f.IDs {
 		idOrPattern := strings.ToLower(p)
-		if strings.ContainsAny(idOrPattern, "*?") {
+		if strings.ContainsAny(idOrPattern, "*?[") {
 			f.includeIDPatterns = append(f.includeIDPatterns, idOrPattern)
 		} else {
 			f.includeIDs[idOrPattern] = struct{}{}
@@ -220,7 +221,7 @@ func (f *Filter) Compile() {
 	f.excludeIDs = make(map[string]struct{}, len(f.ExcludeIDs))
 	for _, p := range f.ExcludeIDs {
 		idOrPattern := strings.ToLower(p)
-		if strings.ContainsAny(idOrPattern, "*?") {
+		if strings.ContainsAny(idOrPattern, "*?[") {
 			f.excludeIDPatterns = append(f.excludeIDPatterns, idOrPattern)
 		} else {
 			f.excludeIDs[idOrPattern] = struct{}{}
