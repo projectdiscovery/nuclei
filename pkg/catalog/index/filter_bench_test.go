@@ -5,10 +5,8 @@ import (
 	"testing"
 )
 
-// templateCount simulates a realistic nuclei template corpus size.
 const templateCount = 10_000
 
-// makeMetadataCorpus returns a slice of metadata entries with sequential IDs.
 func makeMetadataCorpus(n int) []*Metadata {
 	corpus := make([]*Metadata, n)
 	for i := range n {
@@ -23,9 +21,7 @@ func makeMetadataCorpus(n int) []*Metadata {
 	return corpus
 }
 
-// mixedFilter builds a realistic filter: exactIDs exact IDs (~1/3 match corpus)
-// + wildcardPatterns glob patterns (no match), reflecting typical usage
-// of nuclei -id flags alongside tag-style wildcards.
+// mixedFilter builds a realistic filter: exactIDs exact IDs (~1/3 match corpus) + wildcardPatterns glob patterns (no match)
 func mixedFilter(exactIDs, wildcardPatterns int) *Filter {
 	ids := make([]string, 0, exactIDs+wildcardPatterns)
 	for i := range exactIDs {
@@ -37,11 +33,7 @@ func mixedFilter(exactIDs, wildcardPatterns int) *Filter {
 	return &Filter{IDs: ids}
 }
 
-// BenchmarkFilterMatches_Mixed benchmarks a realistic mix of exact IDs and
-// wildcard patterns against the full 7000-template corpus.
-// Sub-benchmarks vary the number of wildcard patterns (0-5) at a fixed
-// base of 100 exact IDs, matching typical production invocations.
-func BenchmarkFilterMatches_Mixed(b *testing.B) {
+func BenchmarkFilterMatches(b *testing.B) {
 	corpus := makeMetadataCorpus(templateCount)
 
 	cases := []struct{ exact, wildcards int }{
@@ -68,9 +60,7 @@ func BenchmarkFilterMatches_Mixed(b *testing.B) {
 	}
 }
 
-// BenchmarkFilterMatches_Mixed_Old is the equivalent pre-fix scan for comparison:
-// raw matchesID loop over all IDs+patterns per template.
-func BenchmarkFilterMatches_Mixed_Old(b *testing.B) {
+func BenchmarkFilterMatches_Old(b *testing.B) {
 	corpus := makeMetadataCorpus(templateCount)
 
 	cases := []struct{ exact, wildcards int }{
