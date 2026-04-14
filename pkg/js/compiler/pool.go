@@ -10,7 +10,6 @@ import (
 	"github.com/Mzack9999/goja"
 	"github.com/Mzack9999/goja_nodejs/console"
 	"github.com/Mzack9999/goja_nodejs/require"
-	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -77,7 +76,7 @@ var gojapool = &sync.Pool{
 	},
 }
 
-func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
 	runtime.ClearInterrupt()
 
 	defer func() {
@@ -92,17 +91,6 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 		}
 		runtime.RemoveContextValue("executionId")
 		runtime.RemoveContextValue("ctx")
-	}()
-
-	// TODO(dwisiswant0): remove this once we get the RCA.
-	defer func() {
-		if ci.IsCI() {
-			return
-		}
-
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %s", r)
-		}
 	}()
 
 	// set template ctx
@@ -123,8 +111,14 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 		}
 	}
 
-	resultChan := make(chan gojaRunResult)
+	resultChan := make(chan gojaRunResult, 1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				resultChan <- gojaRunResult{err: fmt.Errorf("panic: %s", r)}
+			}
+		}()
+
 		result, err := runtime.RunProgram(p)
 		resultChan <- gojaRunResult{result, err}
 	}()
