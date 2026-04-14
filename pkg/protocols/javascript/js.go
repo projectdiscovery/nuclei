@@ -15,13 +15,6 @@ import (
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/utils/errkit"
-	iputil "github.com/projectdiscovery/utils/ip"
-	mapsutil "github.com/projectdiscovery/utils/maps"
-	sliceutil "github.com/projectdiscovery/utils/slice"
-	syncutil "github.com/projectdiscovery/utils/sync"
-	urlutil "github.com/projectdiscovery/utils/url"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -40,6 +33,12 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
+	iputil "github.com/projectdiscovery/utils/ip"
+	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
+	syncutil "github.com/projectdiscovery/utils/sync"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Request is a request for the javascript protocol
@@ -381,7 +380,7 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			&compiler.ExecuteOptions{
 				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
-				Source:          &request.PreCondition,
+				Source: &request.PreCondition,
 			},
 		)
 		// if precondition was successful

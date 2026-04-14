@@ -13,9 +13,6 @@ import (
 	"github.com/Mzack9999/goja_nodejs/require"
 	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	syncutil "github.com/projectdiscovery/utils/sync"
-
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
@@ -41,6 +38,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const (
