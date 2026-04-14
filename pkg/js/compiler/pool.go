@@ -13,6 +13,9 @@ import (
 	"github.com/Mzack9999/goja_nodejs/require"
 	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
+
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
@@ -38,8 +41,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const (
@@ -146,6 +147,10 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	if err := pooljsc.AddWithContext(ctx); err != nil {
 		return nil, err
 	}
+
+	runtime := gojapool.Get().(*goja.Runtime)
+	runtime.ClearInterrupt()
+
 	// Watchdog: release the pool slot if the deadline expires while the
 	// goroutine is still running (zombie). ExecFuncWithTwoReturns abandons
 	// the caller on timeout, but the goroutine keeps running and holds its
@@ -154,8 +159,6 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	// Done() call between the watchdog and the normal defer path.
 	var slotReleased atomic.Bool
 	done := make(chan struct{})
-	runtime := gojapool.Get().(*goja.Runtime)
-	runtime.ClearInterrupt()
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -166,14 +169,13 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 			}
 		case <-done:
 			gojapool.Put(runtime)
+			if slotReleased.CompareAndSwap(false, true) {
+				pooljsc.Done()
+			}
 		}
 	}()
-	defer func() {
-		close(done)
-		if slotReleased.CompareAndSwap(false, true) {
-			pooljsc.Done()
-		}
-	}()
+	defer close(done)
+
 	var buff bytes.Buffer
 	opts.exports = make(map[string]interface{})
 

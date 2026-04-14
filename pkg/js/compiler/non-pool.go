@@ -40,14 +40,12 @@ func executeWithoutPooling(ctx context.Context, p *goja.Program, args *ExecuteAr
 				ephemeraljsc.Done()
 			}
 		case <-done:
+			if slotReleased.CompareAndSwap(false, true) {
+				ephemeraljsc.Done()
+			}
 		}
 	}()
-	defer func() {
-		close(done)
-		if slotReleased.CompareAndSwap(false, true) {
-			ephemeraljsc.Done()
-		}
-	}()
+	defer close(done)
 
 	return executeWithRuntime(ctx, runtime, p, args, opts)
 }
