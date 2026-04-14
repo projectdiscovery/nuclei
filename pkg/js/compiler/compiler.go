@@ -6,13 +6,11 @@ import (
 	"fmt"
 
 	"github.com/Mzack9999/goja"
-	"github.com/kitabisa/go-ci"
+	"github.com/projectdiscovery/utils/errkit"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	contextutil "github.com/projectdiscovery/utils/context"
-	"github.com/projectdiscovery/utils/errkit"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -120,20 +118,7 @@ func (c *Compiler) ExecuteWithOptions(ctx context.Context, program *goja.Program
 	ctx, cancel := context.WithTimeoutCause(ctx, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
-	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
-		// TODO(dwisiswant0): remove this once we get the RCA.
-		defer func() {
-			if ci.IsCI() {
-				return
-			}
-
-			if r := recover(); r != nil {
-				err = fmt.Errorf("panic: %v", r)
-			}
-		}()
-
-		return ExecuteProgram(ctx, program, args, opts)
-	})
+	results, err := ExecuteProgram(ctx, program, args, opts)
 	if err != nil {
 		if val, ok := err.(*goja.Exception); ok {
 			if x := val.Unwrap(); x != nil {
