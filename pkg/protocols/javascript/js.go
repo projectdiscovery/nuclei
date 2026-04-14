@@ -15,6 +15,13 @@ import (
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/utils/errkit"
+	iputil "github.com/projectdiscovery/utils/ip"
+	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
+	syncutil "github.com/projectdiscovery/utils/sync"
+	urlutil "github.com/projectdiscovery/utils/url"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -33,12 +40,6 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/utils/errkit"
-	iputil "github.com/projectdiscovery/utils/ip"
-	mapsutil "github.com/projectdiscovery/utils/maps"
-	sliceutil "github.com/projectdiscovery/utils/slice"
-	syncutil "github.com/projectdiscovery/utils/sync"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Request is a request for the javascript protocol
@@ -158,7 +159,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			ExecutionId:     request.options.Options.ExecutionId,
 			TimeoutVariants: request.options.Options.GetTimeouts(),
 			Source:          &request.Init,
-			Context:         context.Background(),
 		}
 		// register 'export' function to export variables from init code
 		// these are saved in args and are available in pre-condition and request code
@@ -224,7 +224,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err != nil {
 			return errkit.Newf("could not compile init code: %s", err)
 		}
-		result, err := request.options.JsCompiler.ExecuteWithOptions(initCompiled, args, opts)
+		result, err := request.options.JsCompiler.ExecuteWithOptions(context.Background(), initCompiled, args, opts)
 		if err != nil {
 			return errkit.Newf("could not execute pre-condition: %s", err)
 		}
@@ -377,12 +377,13 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 		}
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
+		result, err := request.options.JsCompiler.ExecuteWithOptions(target.Context(), request.preConditionCompiled, argsCopy,
 			&compiler.ExecuteOptions{
 				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
-				Source:          &request.PreCondition, Context: target.Context(),
-			})
+				Source:          &request.PreCondition,
+			},
+		)
 		// if precondition was successful
 		if err == nil && result.GetSuccess() {
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
@@ -526,7 +527,16 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	}
 }
 
-func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions, interactshURLs []string) error {
+func (request *Request) executeRequestWithPayloads(
+	hostPort string,
+	input *contextargs.Context,
+	_ string,
+	payload map[string]interface{},
+	previous output.InternalEvent,
+	callback protocols.OutputEventCallback,
+	requestOptions *protocols.ExecutorOptions,
+	interactshURLs []string,
+) error {
 	payloadValues := generators.MergeMaps(payload, previous)
 	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
@@ -551,13 +561,13 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		}
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
+	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
 			Source:          &request.Code,
-			Context:         input.Context(),
-		})
+		},
+	)
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}

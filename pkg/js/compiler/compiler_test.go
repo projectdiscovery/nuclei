@@ -13,10 +13,11 @@ import (
 	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewCompilerConsoleDebug(t *testing.T) {
@@ -34,9 +35,9 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = compiler.ExecuteWithOptions(p, NewExecuteArgs(), &ExecuteOptions{Context: context.Background(),
-		TimeoutVariants: &types.Timeouts{JsCompilerExecutionTimeout: time.Duration(20) * time.Second}},
-	)
+	_, err = compiler.ExecuteWithOptions(t.Context(), p, NewExecuteArgs(), &ExecuteOptions{
+		TimeoutVariants: &types.Timeouts{JsCompilerExecutionTimeout: time.Duration(20) * time.Second},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,19 +93,65 @@ func TestRequireDoesNotReusePrivilegedModuleCacheAcrossExecutions(t *testing.T) 
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: denyExecutionID, AllowLocalFileAccess: false})
 
 	runtime := createNewRuntime()
-	firstValue, err := executeWithRuntime(runtime, program, NewExecuteArgs(), &ExecuteOptions{
+	firstValue, err := executeWithRuntime(t.Context(), runtime, program, NewExecuteArgs(), &ExecuteOptions{
 		ExecutionId: allowExecutionID,
-		Context:     context.Background(),
 	})
 	require.NoError(t, err)
 	require.Equal(t, "outside-ok", firstValue.Export())
 
-	_, err = executeWithRuntime(runtime, program, NewExecuteArgs(), &ExecuteOptions{
+	_, err = executeWithRuntime(t.Context(), runtime, program, NewExecuteArgs(), &ExecuteOptions{
 		ExecutionId: denyExecutionID,
-		Context:     context.Background(),
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "-lfa is not enabled")
+}
+
+func TestNonPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
+	timeout := 300 * time.Millisecond
+
+	infiniteLoop := `while(true) {}`
+	p, err := SourceAutoMode(infiniteLoop, false)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := executeWithoutPooling(ctx, p, NewExecuteArgs(), &ExecuteOptions{Source: &infiniteLoop})
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	case <-time.After(timeout * 5):
+		t.Fatal("runtime did not terminate after context expiry")
+	}
+}
+
+func TestPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
+	timeout := 300 * time.Millisecond
+
+	infiniteLoop := `while(true) {}`
+	p, err := SourceAutoMode(infiniteLoop, false)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := executeWithPoolingProgram(ctx, p, NewExecuteArgs(), &ExecuteOptions{Source: &infiniteLoop})
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	case <-time.After(timeout * 5):
+		t.Fatal("runtime did not terminate after context expiry")
+	}
 }
 
 func executeScript(t *testing.T, executionID string, allowLocalFileAccess bool, script string) (ExecuteResult, error) {
@@ -115,9 +162,8 @@ func executeScript(t *testing.T, executionID string, allowLocalFileAccess bool, 
 	require.NoError(t, err)
 
 	compiler := New()
-	return compiler.ExecuteWithOptions(compiled, NewExecuteArgs(), &ExecuteOptions{
+	return compiler.ExecuteWithOptions(t.Context(), compiled, NewExecuteArgs(), &ExecuteOptions{
 		ExecutionId: executionID,
-		Context:     context.Background(),
 		Source:      &script,
 		TimeoutVariants: &types.Timeouts{
 			JsCompilerExecutionTimeout: 5 * time.Second,

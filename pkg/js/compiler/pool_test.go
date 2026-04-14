@@ -13,7 +13,7 @@ import (
 
 // TestAddWithContextRespectsDeadline verifies that AddWithContext returns an
 // error when the context deadline expires while waiting for a pool slot.
-// Before the fix, Add() used context.Background() and would block indefinitely.
+// Before the fix, Add() used t.Context() and would block indefinitely.
 func TestAddWithContextRespectsDeadline(t *testing.T) {
 	pool, err := syncutil.New(syncutil.WithSize(1))
 	require.NoError(t, err)
@@ -23,7 +23,7 @@ func TestAddWithContextRespectsDeadline(t *testing.T) {
 	defer pool.Done()
 
 	// Try to acquire with a short deadline, should fail fast and not hang.
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
 	start := time.Now()
@@ -47,7 +47,7 @@ func TestWatchdogReleasesSlotOnDeadline(t *testing.T) {
 	pool.Add()
 
 	// Set up the watchdog pattern (same as our fix in pool.go / non-pool.go).
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
 	var slotReleased atomic.Bool
@@ -74,7 +74,7 @@ func TestWatchdogReleasesSlotOnDeadline(t *testing.T) {
 
 	// A new execution should be able to acquire the slot, even though the
 	// "zombie" never called Done() itself.
-	freshCtx, freshCancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	freshCtx, freshCancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer freshCancel()
 	require.NoError(t, pool.AddWithContext(freshCtx),
 		"slot acquisition should succeed after watchdog release")
@@ -96,7 +96,7 @@ func TestPoolExhaustionRecovery(t *testing.T) {
 	// Fill every slot with a "zombie" that blocks for 10s but has a 100ms
 	// deadline. The watchdog should free each slot after ~100ms.
 	for i := range poolSize {
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel()
 
 		require.NoError(t, pool.AddWithContext(ctx), "initial slot acquisition %d", i)

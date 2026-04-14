@@ -13,6 +13,9 @@ import (
 	"github.com/Mzack9999/goja_nodejs/require"
 	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
+
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
@@ -38,8 +41,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const (
@@ -72,7 +73,7 @@ var gojapool = &sync.Pool{
 	},
 }
 
-func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	defer func() {
 		// reset before putting back to pool
 		_ = runtime.GlobalObject().Delete("template") // template ctx
@@ -106,7 +107,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 	}
 
 	runtime.SetContextValue("executionId", opts.ExecutionId)
-	runtime.SetContextValue("ctx", opts.Context)
+	runtime.SetContextValue("ctx", ctx)
 	enableRequire(runtime)
 
 	// register extra callbacks if any
@@ -122,28 +123,28 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 
 // ExecuteProgram executes a compiled program with the default options.
 // it deligates if a particular program should run in a pooled or non-pooled runtime
-func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func ExecuteProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	if opts.Source == nil {
 		// not-recommended anymore
-		return executeWithoutPooling(p, args, opts)
+		return executeWithoutPooling(ctx, p, args, opts)
 	}
 	if !stringsutil.ContainsAny(*opts.Source, exportAsToken, exportToken) {
 		// not-recommended anymore
-		return executeWithoutPooling(p, args, opts)
+		return executeWithoutPooling(ctx, p, args, opts)
 	}
-	return executeWithPoolingProgram(p, args, opts)
+	return executeWithPoolingProgram(ctx, p, args, opts)
 }
 
 // executes the actual js program
-func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
-	sgResizeCheck(opts.Context)
+	sgResizeCheck(ctx)
 
 	// Acquire a pool slot, respecting the execution deadline. Returns
 	// immediately if the context has already expired.
-	if err := pooljsc.AddWithContext(opts.Context); err != nil {
+	if err := pooljsc.AddWithContext(ctx); err != nil {
 		return nil, err
 	}
 	// Watchdog: release the pool slot if the deadline expires while the
@@ -154,13 +155,18 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	// Done() call between the watchdog and the normal defer path.
 	var slotReleased atomic.Bool
 	done := make(chan struct{})
+	runtime := gojapool.Get().(*goja.Runtime)
+	runtime.ClearInterrupt()
 	go func() {
 		select {
-		case <-opts.Context.Done():
+		case <-ctx.Done():
+			runtime.Interrupt(ctx.Err())
+			gojapool.Put(runtime)
 			if slotReleased.CompareAndSwap(false, true) {
 				pooljsc.Done()
 			}
 		case <-done:
+			gojapool.Put(runtime)
 		}
 	}()
 	defer func() {
@@ -169,8 +175,6 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 			pooljsc.Done()
 		}
 	}()
-	runtime := gojapool.Get().(*goja.Runtime)
-	defer gojapool.Put(runtime)
 	var buff bytes.Buffer
 	opts.exports = make(map[string]interface{})
 
@@ -213,7 +217,7 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 			return goja.Null()
 		},
 	})
-	val, err := executeWithRuntime(runtime, p, args, opts)
+	val, err := executeWithRuntime(ctx, runtime, p, args, opts)
 	if err != nil {
 		return nil, err
 	}

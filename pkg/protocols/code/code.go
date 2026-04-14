@@ -16,6 +16,9 @@ import (
 	"github.com/projectdiscovery/gozero"
 	"github.com/projectdiscovery/gozero/sandbox"
 	gozerotypes "github.com/projectdiscovery/gozero/types"
+	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
@@ -31,8 +34,6 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	contextutil "github.com/projectdiscovery/utils/context"
-	"github.com/projectdiscovery/utils/errkit"
 )
 
 const (
@@ -226,14 +227,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		args := compiler.NewExecuteArgs()
 		args.TemplateCtx = allvars
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
+		result, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
 				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
 				Cleanup:         cleanUpPreConditionFunctions,
-				Context:         input.Context(),
 			})
 		if err != nil {
 			return errkit.Newf("could not execute pre-condition: %s", err)

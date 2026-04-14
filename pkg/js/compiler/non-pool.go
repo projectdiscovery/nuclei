@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -15,13 +16,16 @@ var (
 	})
 )
 
-func executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithoutPooling(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	lazyFixedSgInit()
 	// Acquire a pool slot, respecting the execution deadline. Returns
 	// immediately if the context has already expired.
-	if err := ephemeraljsc.AddWithContext(opts.Context); err != nil {
+	if err := ephemeraljsc.AddWithContext(ctx); err != nil {
 		return nil, err
 	}
+
+	runtime := createNewRuntime()
+
 	// Watchdog: release the pool slot if the deadline expires while the
 	// goroutine is still running (zombie). See executeWithPoolingProgram
 	// for the full explanation. The atomic.Bool guarantees exactly one
@@ -30,7 +34,8 @@ func executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOpti
 	done := make(chan struct{})
 	go func() {
 		select {
-		case <-opts.Context.Done():
+		case <-ctx.Done():
+			runtime.Interrupt(ctx.Err())
 			if slotReleased.CompareAndSwap(false, true) {
 				ephemeraljsc.Done()
 			}
@@ -43,6 +48,6 @@ func executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOpti
 			ephemeraljsc.Done()
 		}
 	}()
-	runtime := createNewRuntime()
-	return executeWithRuntime(runtime, p, args, opts)
+
+	return executeWithRuntime(ctx, runtime, p, args, opts)
 }

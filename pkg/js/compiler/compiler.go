@@ -8,11 +8,12 @@ import (
 	"github.com/Mzack9999/goja"
 	"github.com/kitabisa/go-ci"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 var (
@@ -44,8 +45,6 @@ type ExecuteOptions struct {
 
 	// Source is original source of the script
 	Source *string
-
-	Context context.Context
 
 	TimeoutVariants *types.Timeouts
 
@@ -101,9 +100,9 @@ func (e ExecuteResult) GetSuccess() bool {
 }
 
 // ExecuteWithOptions executes a script with the provided options.
-func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
+func (c *Compiler) ExecuteWithOptions(ctx context.Context, program *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	if opts == nil {
-		opts = &ExecuteOptions{Context: context.Background()}
+		opts = &ExecuteOptions{}
 	}
 	if args == nil {
 		args = NewExecuteArgs()
@@ -119,8 +118,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 
 	// execute with context and timeout
-
-	ctx, cancel := context.WithTimeoutCause(opts.Context, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
+	ctx, cancel := context.WithTimeoutCause(ctx, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
@@ -135,12 +133,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 			}
 		}()
 
-		// Propagate the deadline context so that ExecuteProgram (and both
-		// the pooled and non-pooled paths) can use it for slot acquisition
-		// and watchdog goroutines. Without this, opts.Context carries no
-		// deadline and pool slots are held indefinitely by zombie goroutines.
-		opts.Context = ctx
-		return ExecuteProgram(program, args, opts)
+		return ExecuteProgram(ctx, program, args, opts)
 	})
 	if err != nil {
 		if val, ok := err.(*goja.Exception); ok {
@@ -154,7 +147,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	}
 	var res ExecuteResult
 	if opts.exports != nil {
-		res = ExecuteResult(opts.exports)
+		res = opts.exports
 		opts.exports = nil
 	} else {
 		res = NewExecuteResult()
