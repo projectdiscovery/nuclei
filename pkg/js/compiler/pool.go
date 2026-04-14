@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
-	"sync/atomic"
 
 	"github.com/Mzack9999/goja"
 	"github.com/Mzack9999/goja_nodejs/console"
@@ -48,6 +47,11 @@ const (
 	exportAsToken = "ExportAs"
 )
 
+type gojaRunResult struct {
+	result goja.Value
+	err    error
+}
+
 var (
 	lazyRegistryInit = sync.OnceFunc(func() {
 		// autoregister console node module with default printer it uses gologger backend
@@ -74,6 +78,8 @@ var gojapool = &sync.Pool{
 }
 
 func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+	runtime.ClearInterrupt()
+
 	defer func() {
 		// reset before putting back to pool
 		_ = runtime.GlobalObject().Delete("template") // template ctx
@@ -117,8 +123,20 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 		}
 	}
 
-	// execute the script
-	return runtime.RunProgram(p)
+	resultChan := make(chan gojaRunResult)
+	go func() {
+		result, err := runtime.RunProgram(p)
+		resultChan <- gojaRunResult{result, err}
+	}()
+
+	select {
+	case <-ctx.Done():
+		runtime.Interrupt(ctx.Err())
+		r := <-resultChan
+		return r.result, r.err
+	case r := <-resultChan:
+		return r.result, r.err
+	}
 }
 
 // ExecuteProgram executes a compiled program with the default options.
@@ -149,32 +167,10 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	}
 
 	runtime := gojapool.Get().(*goja.Runtime)
-	runtime.ClearInterrupt()
-
-	// Watchdog: release the pool slot if the deadline expires while the
-	// goroutine is still running (zombie). ExecFuncWithTwoReturns abandons
-	// the caller on timeout, but the goroutine keeps running and holds its
-	// slot via defer. The watchdog ensures the slot is freed at the deadline
-	// so the pool doesn't starve. The atomic.Bool guarantees exactly one
-	// Done() call between the watchdog and the normal defer path.
-	var slotReleased atomic.Bool
-	done := make(chan struct{})
-	go func() {
-		select {
-		case <-ctx.Done():
-			runtime.Interrupt(ctx.Err())
-			gojapool.Put(runtime)
-			if slotReleased.CompareAndSwap(false, true) {
-				pooljsc.Done()
-			}
-		case <-done:
-			gojapool.Put(runtime)
-			if slotReleased.CompareAndSwap(false, true) {
-				pooljsc.Done()
-			}
-		}
+	defer func() {
+		gojapool.Put(runtime)
+		pooljsc.Done()
 	}()
-	defer close(done)
 
 	var buff bytes.Buffer
 	opts.exports = make(map[string]interface{})
@@ -184,6 +180,7 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 		_ = runtime.GlobalObject().Delete(exportAsToken)
 		_ = runtime.GlobalObject().Delete(exportToken)
 	}()
+
 	// register export functions
 	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
 		Name:        "Export", // we use string instead of const for documentation generation
@@ -218,6 +215,7 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 			return goja.Null()
 		},
 	})
+
 	val, err := executeWithRuntime(ctx, runtime, p, args, opts)
 	if err != nil {
 		return nil, err

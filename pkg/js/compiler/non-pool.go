@@ -3,7 +3,6 @@ package compiler
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
 	"github.com/Mzack9999/goja"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -23,29 +22,8 @@ func executeWithoutPooling(ctx context.Context, p *goja.Program, args *ExecuteAr
 	if err := ephemeraljsc.AddWithContext(ctx); err != nil {
 		return nil, err
 	}
+	defer ephemeraljsc.Done()
 
 	runtime := createNewRuntime()
-
-	// Watchdog: release the pool slot if the deadline expires while the
-	// goroutine is still running (zombie). See executeWithPoolingProgram
-	// for the full explanation. The atomic.Bool guarantees exactly one
-	// Done() call between the watchdog and the normal defer path.
-	var slotReleased atomic.Bool
-	done := make(chan struct{})
-	go func() {
-		select {
-		case <-ctx.Done():
-			runtime.Interrupt(ctx.Err())
-			if slotReleased.CompareAndSwap(false, true) {
-				ephemeraljsc.Done()
-			}
-		case <-done:
-			if slotReleased.CompareAndSwap(false, true) {
-				ephemeraljsc.Done()
-			}
-		}
-	}()
-	defer close(done)
-
 	return executeWithRuntime(ctx, runtime, p, args, opts)
 }
