@@ -140,7 +140,7 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 
 // ExecuteProgram executes a compiled program with the default options.
 // it deligates if a particular program should run in a pooled or non-pooled runtime
-func ExecuteProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func ExecuteProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
 	if opts.Source == nil {
 		// not-recommended anymore
 		return executeWithoutPooling(ctx, p, args, opts)
@@ -153,7 +153,7 @@ func ExecuteProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opt
 }
 
 // executes the actual js program
-func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
