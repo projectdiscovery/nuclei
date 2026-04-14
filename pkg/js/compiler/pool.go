@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/Mzack9999/goja"
 	"github.com/Mzack9999/goja_nodejs/console"
@@ -111,7 +112,7 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 		}
 	}
 
-	resultChan := make(chan gojaRunResult, 1)
+	resultChan := make(chan gojaRunResult, 2)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -126,8 +127,12 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 	select {
 	case <-ctx.Done():
 		runtime.Interrupt(ctx.Err())
-		r := <-resultChan
-		return r.result, r.err
+		select {
+		case r := <-resultChan:
+			return r.result, r.err
+		case <-time.After(time.Second):
+			return nil, fmt.Errorf("timeout waiting for js runtime to terminate: %w", ctx.Err())
+		}
 	case r := <-resultChan:
 		return r.result, r.err
 	}
