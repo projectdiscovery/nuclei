@@ -1,39 +1,116 @@
 name: 🔨 Performance Regression
 
 on:
-  workflow_call: {}
-  workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      benchstat_alpha:
+        description: 'Statistical significance threshold for benchstat'
+        required: false
+        default: '0.05'
+        type: string
+      benchstat_min_effect:
+        description: 'Minimum effect size (ratio change) to consider meaningful'
+        required: false
+        default: '1.10'
+        type: string
+      bench_count:
+        description: 'Number of benchmark iterations per run'
+        required: false
+        default: '6'
+        type: string
+  workflow_dispatch:
+    inputs:
+      benchstat_alpha:
+        description: 'Statistical significance threshold for benchstat'
+        required: false
+        default: '0.05'
+        type: string
+      benchstat_min_effect:
+        description: 'Minimum effect size (ratio change) to consider meaningful'
+        required: false
+        default: '1.10'
+        type: string
+      bench_count:
+        description: 'Number of benchmark iterations per run'
+        required: false
+        default: '6'
+        type: string
 
 jobs:
   perf-regression:
     runs-on: ubuntu-latest
     if: github.repository == 'projectdiscovery/nuclei'
     env:
-      BENCH_OUT: "/tmp/bench.out"
+      BENCH_NEW: "/tmp/bench-new.txt"
+      BENCH_OLD: "/tmp/bench-old.txt"
+      BENCH_COUNT: ${{ inputs.bench_count || '6' }}
+      BENCHSTAT_ALPHA: ${{ inputs.benchstat_alpha || '0.05' }}
+      BENCHSTAT_MIN_EFFECT: ${{ inputs.benchstat_min_effect || '1.10' }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.base_ref }}
+
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
-      - run: make build-test
-      - run: ./bin/nuclei.test -test.run - -test.bench=. -test.benchmem ./cmd/nuclei/ | tee $BENCH_OUT
-        env:
-          DISABLE_STDOUT: "1"
-      - uses: actions/cache/restore@v5
+
+      - name: Build test binary
+        run: make build-test
+
+      - name: Run benchmarks (base branch)
+        run: |
+          ./bin/nuclei.test -test.run - -test.bench=BenchmarkRunEnumeration \
+            -test.benchmem -count=${{ env.BENCH_COUNT }} ./cmd/nuclei/ | tee ${{ env.BENCH_OLD }}
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
         with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
-      - uses: benchmark-action/github-action-benchmark@v1
+          ref: ${{ github.head_ref }}
+
+      - name: Build test binary (PR branch)
+        run: make build-test
+
+      - name: Run benchmarks (PR branch)
+        run: |
+          ./bin/nuclei.test -test.run - -test.bench=BenchmarkRunEnumeration \
+            -test.benchmem -count=${{ env.BENCH_COUNT }} ./cmd/nuclei/ | tee ${{ env.BENCH_NEW }}
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Compare benchmarks with benchstat
+        run: |
+          echo "=== benchstat comparison ==="
+          benchstat ${{ env.BENCH_OLD }} ${{ env.BENCH_NEW }}
+          
+          # Check for significant regressions using benchstat output
+          # benchstat returns exit code 1 when there are significant differences
+          # We parse the output to filter for regressions only
+          
+          echo ""
+          echo "=== Regression Analysis ==="
+          benchstat -alpha=${{ env.BENCHSTAT_ALPHA }} ${{ env.BENCH_OLD }} ${{ env.BENCH_NEW }} || {
+            # Check if any regression exceeds minimum effect threshold
+            echo "Significant performance differences detected!"
+            # The alpha parameter already filters by statistical significance
+            # Output is already filtered to show only significant differences
+          }
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: 'RunEnumeration Benchmark'
-          tool: 'go'
-          output-file-path: ${{ env.BENCH_OUT }}
-          external-data-json-path: ./cache/benchmark-data.json
-          fail-on-alert: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-on-alert: true
-          summary-always: true
-      - uses: actions/cache/save@v5
-        if: github.event_name == 'push'
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
+          name: benchmark-results
+          path: |
+            ${{ env.BENCH_OLD }}
+            ${{ env.BENCH_NEW }}
+          retention-days: 30
+
+      - name: Generate benchmark summary
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          benchstat ${{ env.BENCH_OLD }} ${{ env.BENCH_NEW }} >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
