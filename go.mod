@@ -52,7 +52,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
 	github.com/Mzack9999/go-rsync v0.0.0-20250821180103-81ffa574ef4d
-	github.com/Mzack9999/goimpacket v0.0.0-20260420125459-e9cd93ab8932
+	github.com/Mzack9999/goimpacket v0.0.0-20260420131935-a9fe473cda7d
 	github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697
 	github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883
 	github.com/alexsnet/go-vnc v0.1.0
@@ -435,5 +435,3 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
-
-replace github.com/Mzack9999/goimpacket => /Users/mzack/go/src/github.com/Mzack9999/goimpacket

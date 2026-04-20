@@ -14,11 +14,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/Mzack9999/goja"
 	gprpc "github.com/Mzack9999/goimpacket/pkg/dcerpc"
 	gpdrs "github.com/Mzack9999/goimpacket/pkg/dcerpc/drsuapi"
 	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
 	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
+	"github.com/Mzack9999/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -127,7 +127,9 @@ func (c *Client) DCSync(target string) (*Secret, error) {
 	if err := rpc.BindAuth(gpdrs.UUID, gpdrs.MajorVersion, gpdrs.MinorVersion, c.creds); err != nil {
 		return nil, fmt.Errorf("drsuapi bind: %w", err)
 	}
-	defer rpc.Transport.Close()
+	defer func() {
+		_ = rpc.Transport.Close()
+	}()
 
 	bind, err := gpdrs.DsBind(rpc)
 	if err != nil {

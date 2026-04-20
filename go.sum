@@ -90,6 +90,8 @@ github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb888350
 github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809/go.mod h1:upgc3Zs45jBDnBT4tVRgRcgm26ABpaP7MoTSdgysca4=
 github.com/Mzack9999/go-rsync v0.0.0-20250821180103-81ffa574ef4d h1:DofPB5AcjTnOU538A/YD86/dfqSNTvQsAXgwagxmpu4=
 github.com/Mzack9999/go-rsync v0.0.0-20250821180103-81ffa574ef4d/go.mod h1:uzdh/m6XQJI7qRvufeBPDa+lj5SVCJO8B9eLxTbtI5U=
+github.com/Mzack9999/goimpacket v0.0.0-20260420131935-a9fe473cda7d h1:xX93NZHxxrHcmN4nn1owvJdr1E/l1kp1Rv7rMr9ly+U=
+github.com/Mzack9999/goimpacket v0.0.0-20260420131935-a9fe473cda7d/go.mod h1:Wvb2f1Aq6NVL4Fza/dPNxv6/canpeizpgmiTCBGMD50=
 github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697 h1:54I+OF5vS4a/rxnUrN5J3hi0VEYKcrTlpc8JosDyP+c=
 github.com/Mzack9999/goja v0.0.0-20250507184235-e46100e9c697/go.mod h1:yNqYRqxYkSROY1J+LX+A0tOSA/6soXQs5m8hZSqYBac=
 github.com/Mzack9999/goja_nodejs v0.0.0-20250507184139-66bcbf65c883 h1:+Is1AS20q3naP+qJophNpxuvx1daFOx9C0kLIuI0GVk=

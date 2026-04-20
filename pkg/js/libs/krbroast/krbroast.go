@@ -14,8 +14,8 @@ package krbroast
 import (
 	"fmt"
 
-	"github.com/Mzack9999/goja"
 	gpkrb "github.com/Mzack9999/goimpacket/pkg/kerberos"
+	"github.com/Mzack9999/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/dcerpc"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
@@ -40,11 +40,13 @@ type ASRepRoastRequest struct {
 // @example
 // ```javascript
 // const krb = require('nuclei/krbroast');
-// const hash = krb.ASRepRoast({
-//   Username: 'svc_jenkins',
-//   Domain:   'acme.local',
-//   KDCHost:  'dc01.acme.local',
-// });
+//
+//	const hash = krb.ASRepRoast({
+//	  Username: 'svc_jenkins',
+//	  Domain:   'acme.local',
+//	  KDCHost:  'dc01.acme.local',
+//	});
+//
 // log(hash);
 // ```
 func ASRepRoast(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
@@ -56,7 +58,7 @@ func ASRepRoast(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
 		nj.ThrowError(fmt.Errorf("invalid ASRepRoastRequest: %w", err))
 	}
 	if req.Username == "" || req.Domain == "" || req.KDCHost == "" {
-		nj.ThrowError(fmt.Errorf("Username, Domain and KDCHost are required"))
+		nj.ThrowError(fmt.Errorf("Username, Domain and KDCHost are required")) //nolint
 	}
 
 	execID := nj.ExecutionId()
@@ -109,14 +111,16 @@ type KerberoastResult struct {
 // @example
 // ```javascript
 // const krb = require('nuclei/krbroast');
-// const r = krb.Kerberoast({
-//   Username:   'lowpriv',
-//   Password:   'P@ss',
-//   Domain:     'acme.local',
-//   KDCHost:    'dc01.acme.local',
-//   SPN:        'MSSQLSvc/sql01.acme.local:1433',
-//   TargetUser: 'svc_sql',
-// });
+//
+//	const r = krb.Kerberoast({
+//	  Username:   'lowpriv',
+//	  Password:   'P@ss',
+//	  Domain:     'acme.local',
+//	  KDCHost:    'dc01.acme.local',
+//	  SPN:        'MSSQLSvc/sql01.acme.local:1433',
+//	  TargetUser: 'svc_sql',
+//	});
+//
 // log(r.Hash);
 // ```
 func Kerberoast(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
@@ -128,7 +132,7 @@ func Kerberoast(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
 		nj.ThrowError(fmt.Errorf("invalid KerberoastRequest: %w", err))
 	}
 	if req.Username == "" || req.Domain == "" || req.KDCHost == "" || req.SPN == "" {
-		nj.ThrowError(fmt.Errorf("Username, Domain, KDCHost and SPN are required"))
+		nj.ThrowError(fmt.Errorf("Username, Domain, KDCHost and SPN are required")) //nolint
 	}
 	if req.Password == "" && req.NTHash == "" {
 		nj.ThrowError(fmt.Errorf("either Password or NTHash must be supplied"))

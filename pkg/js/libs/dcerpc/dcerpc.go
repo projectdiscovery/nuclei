@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Mzack9999/goja"
 	gprpc "github.com/Mzack9999/goimpacket/pkg/dcerpc"
 	gpepm "github.com/Mzack9999/goimpacket/pkg/dcerpc/epmapper"
 	gplsa "github.com/Mzack9999/goimpacket/pkg/dcerpc/lsarpc"
@@ -27,6 +26,7 @@ import (
 	gpsvcctl "github.com/Mzack9999/goimpacket/pkg/dcerpc/svcctl"
 	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
 	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
+	"github.com/Mzack9999/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -221,7 +221,9 @@ func (c *Client) SamrEnumerateUsers() ([]DomainUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rpc.Transport.Close()
+	defer func() {
+		_ = rpc.Transport.Close()
+	}()
 
 	samr := gpsamr.NewSamrClient(rpc, rpc.GetSessionKey())
 	if err := samr.Connect(); err != nil {
@@ -249,7 +251,9 @@ func (c *Client) SamrAddComputer(name, password string) error {
 	if err != nil {
 		return err
 	}
-	defer rpc.Transport.Close()
+	defer func() {
+		_ = rpc.Transport.Close()
+	}()
 
 	samr := gpsamr.NewSamrClient(rpc, rpc.GetSessionKey())
 	if err := samr.Connect(); err != nil {
@@ -303,7 +307,9 @@ func (c *Client) SmbExec(command, share string) (*SmbExecResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open svcctl pipe: %w", err)
 	}
-	defer pf.Close()
+	defer func() {
+		_ = pf.Close()
+	}()
 
 	rpc := gprpc.NewClient(pf)
 	if err := rpc.Bind(gpsvcctl.UUID, gpsvcctl.MajorVersion, gpsvcctl.MinorVersion); err != nil {
@@ -460,7 +466,9 @@ func (c *Client) LsaLookupSids(sids []string) ([]LookupResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rpc.Transport.Close()
+	defer func() {
+		_ = rpc.Transport.Close()
+	}()
 
 	lsa, err := gplsa.NewLsaClient(rpc)
 	if err != nil {
