@@ -25,7 +25,7 @@ import (
 
 // javascriptASRepRoast exercises templates/ad/asrep-roast.yaml end-to-end
 // against a pure-Go mock KDC. The template iterates a list of usernames; the
-// mock KDC returns a valid AS-REP only for the roastable user and KRB-ERRORs
+// mock KDC returns a valid AS-REP only for the roastable user and a KRB-ERROR
 // for the rest, mirroring how a real Active Directory DC behaves.
 type javascriptASRepRoast struct{}
 
