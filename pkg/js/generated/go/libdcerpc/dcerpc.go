@@ -24,6 +24,8 @@ func init() {
 			"DomainUser":    gojs.GetClassConstructor[lib_dcerpc.DomainUser](&lib_dcerpc.DomainUser{}),
 			"LookupResult":  gojs.GetClassConstructor[lib_dcerpc.LookupResult](&lib_dcerpc.LookupResult{}),
 			"SmbExecResult": gojs.GetClassConstructor[lib_dcerpc.SmbExecResult](&lib_dcerpc.SmbExecResult{}),
+			"AtExecResult":  gojs.GetClassConstructor[lib_dcerpc.AtExecResult](&lib_dcerpc.AtExecResult{}),
+			"WmiExecResult": gojs.GetClassConstructor[lib_dcerpc.WmiExecResult](&lib_dcerpc.WmiExecResult{}),
 			"FileEntry":     gojs.GetClassConstructor[lib_dcerpc.FileEntry](&lib_dcerpc.FileEntry{}),
 		},
 	).Register()

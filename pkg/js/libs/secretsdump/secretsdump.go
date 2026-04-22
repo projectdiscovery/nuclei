@@ -1,4 +1,4 @@
-// Package secretsdump exposes mandiant/gopacket's DCSync (DRSUAPI
+// Package secretsdump exposes Mzack9999/goimpacket's DCSync (DRSUAPI
 // IDL_DRSGetNCChanges) primitive to nuclei javascript templates.
 //
 // DCSync requires Replicating Directory Changes / Replicating Directory
@@ -60,7 +60,7 @@ type Client struct {
 // NewClient constructs a DCSync client. The credentials supplied must have
 // "Replicating Directory Changes" rights on the domain head.
 //
-// Constructor: constructor(dc string, domain string, user string, password string)
+// Constructor: constructor(public dc: string, public domain: string, public user: string, public password: string)
 func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	c := &Client{nj: utils.NewNucleiJS(runtime)}
 	c.nj.ObjectSig = "Client(dc, domain, user, password)"

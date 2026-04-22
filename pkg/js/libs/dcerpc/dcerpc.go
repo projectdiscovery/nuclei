@@ -1,31 +1,31 @@
-// Package dcerpc exposes a small subset of the mandiant/gopacket DCE/RPC
+// Package dcerpc exposes a small subset of the Mzack9999/goimpacket DCE/RPC
 // stack to nuclei javascript templates. It is the entry point for AD attack
 // templates that need to talk EPMAPPER / SAMR / LSARPC / SVCCTL / TSCH / WINREG
 // to a domain controller or member server.
 //
 // All host arguments are validated against the per-execution network policy
-// before any traffic is sent. The actual TCP dial is performed via gopacket's
+// before any traffic is sent. The actual TCP dial is performed via goimpacket's
 // transport package, which nuclei rewires to its fastdialer at startup, so
 // proxy / DNS caching / network policy all apply transparently.
 package dcerpc
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
+	gpatexec "github.com/Mzack9999/goimpacket/pkg/atexec"
 	gprpc "github.com/Mzack9999/goimpacket/pkg/dcerpc"
 	gpepm "github.com/Mzack9999/goimpacket/pkg/dcerpc/epmapper"
 	gplsa "github.com/Mzack9999/goimpacket/pkg/dcerpc/lsarpc"
 	gpsamr "github.com/Mzack9999/goimpacket/pkg/dcerpc/samr"
 	gpsvcctl "github.com/Mzack9999/goimpacket/pkg/dcerpc/svcctl"
+	gptsch "github.com/Mzack9999/goimpacket/pkg/dcerpc/tsch"
 	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
 	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
+	gpsmbexec "github.com/Mzack9999/goimpacket/pkg/smbexec"
 	"github.com/Mzack9999/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
@@ -42,7 +42,7 @@ type DomainUser = gpsamr.DomainUser
 type LookupResult = gplsa.LookupResult
 
 type (
-	// Client is a stateful DCE/RPC + SMB client backed by mandiant/gopacket.
+	// Client is a stateful DCE/RPC + SMB client backed by Mzack9999/goimpacket.
 	// One Client wraps one authenticated SMB session against the target host;
 	// individual RPC interfaces (SAMR, LSARPC, EPMAPPER, ...) are bound on
 	// demand by the corresponding helper methods.
@@ -73,7 +73,7 @@ type (
 // NewClient constructs a DCE/RPC client. Authentication is NTLM by default;
 // pass an empty password and use SetHash to enable pass-the-hash.
 //
-// Constructor: constructor(host string, domain string, user string, password string)
+// Constructor: constructor(public host: string, public domain: string, public user: string, public password: string)
 func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	c := &Client{nj: utils.NewNucleiJS(runtime)}
 	c.nj.ObjectSig = "Client(host, domain, user, password)"
@@ -293,9 +293,6 @@ type SmbExecResult struct {
 // ```
 func (c *Client) SmbExec(command, share string) (*SmbExecResult, error) {
 	c.nj.Require(command != "", "command cannot be empty")
-	if share == "" {
-		share = "C$"
-	}
 	if !protocolstate.IsHostAllowed(c.nj.ExecutionId(), c.Host) {
 		return nil, protocolstate.ErrHostDenied.Msgf(c.Host)
 	}
@@ -321,66 +318,74 @@ func (c *Client) SmbExec(command, share string) (*SmbExecResult, error) {
 	}
 	defer sc.Close()
 
-	if err := c.smb.UseShare(share); err != nil {
-		return nil, fmt.Errorf("use share %s: %w", share, err)
-	}
-
-	svcName := randName(8)
-	batchFile := randName(8) + ".bat"
-	outputFile := "__nuclei_" + randName(6)
-
-	// Wrap user command to redirect output to <share>\<outputFile>.
-	// Embed escaped form per Impacket's smbexec.py construction.
-	outputUNC := fmt.Sprintf("\\\\%%COMPUTERNAME%%\\%s\\%s", share, outputFile)
-	wrapped := "%COMSPEC% /Q /c echo (" + escapeForEcho(command) + ") ^> " + outputUNC + " 2^>^&1 > %TEMP%\\" + batchFile +
-		" & %COMSPEC% /Q /c %TEMP%\\" + batchFile +
-		" & del %TEMP%\\" + batchFile
-
-	svcHandle, err := sc.CreateService(svcName, svcName, wrapped,
-		gpsvcctl.SERVICE_WIN32_OWN_PROCESS, gpsvcctl.SERVICE_DEMAND_START, gpsvcctl.ERROR_IGNORE)
+	res, err := gpsmbexec.Exec(sc, c.smb, command, gpsmbexec.Options{
+		Share:   share,
+		Mode:    gpsmbexec.ModeShare,
+		Timeout: 10 * time.Second,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("create service: %w", err)
+		return nil, err
 	}
-	// StartService is expected to time out (the service binary is the command
-	// itself, not a real service), so we ignore the error. We immediately
-	// delete the service to keep the host clean.
-	_ = sc.StartService(svcHandle)
-	_ = sc.DeleteService(svcHandle)
-	_ = sc.CloseServiceHandle(svcHandle)
-
-	// Poll up to 10s for the output file to appear and become readable.
-	var out string
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		s, err := c.smb.Cat(outputFile)
-		if err == nil && s != "" {
-			out = s
-			break
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	_ = c.smb.Rm(outputFile)
-	return &SmbExecResult{ServiceName: svcName, Output: out}, nil
+	return &SmbExecResult{ServiceName: res.ServiceName, Output: res.Output}, nil
 }
 
-// escapeForEcho escapes shell metacharacters that break inside `echo (...) ^> ...`
-// This mirrors Impacket's smbexec.py escapeShell helper.
-func escapeForEcho(s string) string {
-	r := strings.NewReplacer(
-		"^", "^^",
-		"&", "^&",
-		"|", "^|",
-		"<", "^<",
-		">", "^>",
-		"\"", "\\\"",
-	)
-	return r.Replace(s)
+
+// AtExecResult is returned by AtExec.
+type AtExecResult struct {
+	TaskName string `json:"task_name"`
+	Output   string `json:"output"`
 }
 
-func randName(n int) string {
-	b := make([]byte, n)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)[:n]
+// AtExec executes a Windows command on the target host using the Task Scheduler
+// service over the atsvc named pipe (impacket: atexec.py). A one-shot scheduled
+// task is registered as LocalSystem, executed once, and then deleted. The
+// command's stdout/stderr is captured into %windir%\Temp on the chosen share
+// (default ADMIN$) and read back over SMB. Local admin equivalent rights are
+// required on the target.
+//
+// All the heavy lifting (task XML, register / run / poll / cleanup) lives in
+// goimpacket's pkg/atexec library; this wrapper only handles the JS-facing
+// validation and the per-execution network policy enforcement.
+//
+// command - the command line to run (wrapped in cmd.exe /C ... by default).
+// share   - writable share to retrieve the output file from (default "ADMIN$").
+//
+// @example
+// ```javascript
+// const c = new dcerpc.Client('dc01', 'acme.local', 'admin', 'P@ss');
+// const r = c.AtExec('whoami /all', 'ADMIN$');
+// log(r.output);
+// ```
+func (c *Client) AtExec(command, share string) (*AtExecResult, error) {
+	c.nj.Require(command != "", "command cannot be empty")
+	if !protocolstate.IsHostAllowed(c.nj.ExecutionId(), c.Host) {
+		return nil, protocolstate.ErrHostDenied.Msgf(c.Host)
+	}
+	if err := c.connect(); err != nil {
+		return nil, err
+	}
+
+	pf, err := c.smb.OpenPipe("atsvc")
+	if err != nil {
+		return nil, fmt.Errorf("open atsvc pipe: %w", err)
+	}
+	defer func() { _ = pf.Close() }()
+
+	rpc := gprpc.NewClient(pf)
+	if err := rpc.BindAuth(gptsch.UUID, gptsch.MajorVersion, gptsch.MinorVersion, c.creds); err != nil {
+		return nil, fmt.Errorf("tsch bind: %w", err)
+	}
+	ts := gptsch.NewTaskScheduler(rpc)
+
+	res, err := gpatexec.Exec(ts, c.smb, command, gpatexec.Options{
+		Share:     share,
+		Timeout:   15 * time.Second,
+		SessionID: -1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &AtExecResult{TaskName: res.TaskName, Output: res.Output}, nil
 }
 
 // SmbListShares enumerates the SMB shares exposed by the target.
