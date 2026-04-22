@@ -38,8 +38,21 @@ type ConnectionStats struct {
 }
 
 // GetConnectionStats returns the current connection statistics.
+//
+// NOTE: counters are package-global and accumulate across in-process scans.
+// Callers running multiple SDK/embedded executions in the same process should
+// invoke ResetConnectionStats() at the start of each run to avoid reporting
+// totals that mix results from earlier runs.
 func GetConnectionStats() (newConns, reused int64) {
 	return connStats.New.Load(), connStats.Reused.Load()
+}
+
+// ResetConnectionStats clears the package-global new/reused connection counters.
+// Intended to be called at the start of an execution to scope the metrics
+// returned by GetConnectionStats() to a single run.
+func ResetConnectionStats() {
+	connStats.New.Store(0)
+	connStats.Reused.Store(0)
 }
 
 // connTrackingTransport wraps an http.RoundTripper to track connection reuse
@@ -69,6 +82,7 @@ func (t *connTrackingTransport) CloseIdleConnections() {
 		ci.CloseIdleConnections()
 	}
 }
+
 // ConnectionConfiguration contains the custom configuration options for a connection
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
@@ -152,9 +166,16 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.FormatBool(c.DisableCookie))
 	builder.WriteString("c")
 	builder.WriteString(strconv.FormatBool(c.Connection != nil))
-	if c.Connection != nil && c.Connection.CustomMaxTimeout > 0 {
-		builder.WriteString("k")
-		builder.WriteString(c.Connection.CustomMaxTimeout.String())
+	if c.Connection != nil {
+		// keep-alive flag must participate in the hash; otherwise two
+		// configurations differing only in DisableKeepAlive will collide and
+		// return a cached client with the wrong connection-reuse semantics.
+		builder.WriteString("d")
+		builder.WriteString(strconv.FormatBool(c.Connection.DisableKeepAlive))
+		if c.Connection.CustomMaxTimeout > 0 {
+			builder.WriteString("k")
+			builder.WriteString(c.Connection.CustomMaxTimeout.String())
+		}
 	}
 	builder.WriteString("r")
 	builder.WriteString(strconv.FormatInt(int64(c.ResponseHeaderTimeout.Seconds()), 10))

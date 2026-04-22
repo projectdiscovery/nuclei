@@ -696,6 +696,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		fromCache       bool
 		dumpedRequest   []byte
 		projectCacheKey []byte
+		// executingClient is the client that actually performed the HTTP
+		// request, preserving any per-request overrides (cookie jar,
+		// CustomMaxTimeout) applied via connConfig.Clone(). Reused below by
+		// the analyzer so follow-up requests share the same session/timeout.
+		executingClient *retryablehttp.Client
 	)
 
 	// Dump request for variables checks
@@ -816,7 +821,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		})
 	} else {
 		//** For Normal requests **//
-		hostname = generatedRequest.request.Host
+		// Use the dial target (URL.Host) rather than the optional Host-header
+		// override (request.Host), so the per-host pool keys distinct
+		// connection targets even when templates set a custom Host header
+		// against multiple IPs/vhosts.
+		if generatedRequest.request.URL != nil {
+			hostname = generatedRequest.request.URL.Host
+		} else {
+			hostname = generatedRequest.request.Host
+		}
 		formedURL = generatedRequest.request.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if request.options.ProjectFile != nil {
@@ -848,6 +861,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if clientErr != nil {
 				return errors.Wrap(clientErr, "could not get http client")
 			}
+			executingClient = httpclient
 
 			resp, err = httpclient.Do(generatedRequest.request)
 		}
@@ -1007,9 +1021,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
+			// Prefer reusing the exact client that executed the request so
+			// the analyzer inherits any per-request cookie jar / timeout
+			// overrides; fall back to a per-host lookup for paths that did
+			// not go through the standard execution flow (pipeline/unsafe).
+			analyzerClient := executingClient
+			if analyzerClient == nil {
+				analyzerClient = request.getHTTPClientForHost(hostname)
+			}
 			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
 				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
-				HttpClient:         request.getHTTPClientForHost(hostname),
+				HttpClient:         analyzerClient,
 				ResponseTimeDelay:  duration,
 				AnalyzerParameters: request.Analyzer.Parameters,
 			})

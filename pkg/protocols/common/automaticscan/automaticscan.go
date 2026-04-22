@@ -94,7 +94,12 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
-	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{}, "")
+	// Wappalyzer fingerprinting is a stateless GET reused across every target.
+	// Disable the cookie jar to avoid retaining cross-target state and the
+	// associated memory growth from a long-lived shared client.
+	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
+		DisableCookie: true,
+	}, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}

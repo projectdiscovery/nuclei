@@ -99,6 +99,15 @@ func (rt *connTrackingRoundTripper) RoundTrip(req *http.Request) (*http.Response
 	return rt.base.RoundTrip(req)
 }
 
+// CloseIdleConnections forwards to the wrapped transport so test code can
+// rely on the same lifecycle semantics as the production wrapper.
+func (rt *connTrackingRoundTripper) CloseIdleConnections() {
+	type closeIdler interface{ CloseIdleConnections() }
+	if ci, ok := rt.base.(closeIdler); ok {
+		ci.CloseIdleConnections()
+	}
+}
+
 func tracedClient(disableKeepAlive bool, maxIdlePerHost int) (*http.Client, *atomic.Int64, *atomic.Int64) {
 	var newConns, reusedConns atomic.Int64
 	transport := &http.Transport{
@@ -134,26 +143,34 @@ type clientFactory func() (*http.Client, *atomic.Int64, *atomic.Int64)
 type perHostClientFactory func(host string) (*http.Client, *atomic.Int64, *atomic.Int64)
 
 // runTemplateSpray: outer loop = templates, inner loop = hosts (like nuclei template-spray).
-func runTemplateSpray(servers []*httptest.Server, templates int, factory clientFactory) benchResult {
+func runTemplateSpray(tb testing.TB, servers []*httptest.Server, templates int, factory clientFactory) benchResult {
+	tb.Helper()
 	client, newC, reusedC := factory()
 	total := templates * len(servers)
 	start := time.Now()
 	for t := 0; t < templates; t++ {
 		for _, srv := range servers {
-			_ = doRequest(client, srv.URL+fmt.Sprintf("/t%d", t))
+			url := srv.URL + fmt.Sprintf("/t%d", t)
+			if err := doRequest(client, url); err != nil {
+				tb.Fatalf("request to %s failed: %v", url, err)
+			}
 		}
 	}
 	return benchResult{time.Since(start), total, newC.Load(), reusedC.Load()}
 }
 
 // runHostSpray: outer loop = hosts, inner loop = templates (like nuclei host-spray).
-func runHostSpray(servers []*httptest.Server, templates int, factory clientFactory) benchResult {
+func runHostSpray(tb testing.TB, servers []*httptest.Server, templates int, factory clientFactory) benchResult {
+	tb.Helper()
 	client, newC, reusedC := factory()
 	total := templates * len(servers)
 	start := time.Now()
 	for _, srv := range servers {
 		for t := 0; t < templates; t++ {
-			_ = doRequest(client, srv.URL+fmt.Sprintf("/t%d", t))
+			url := srv.URL + fmt.Sprintf("/t%d", t)
+			if err := doRequest(client, url); err != nil {
+				tb.Fatalf("request to %s failed: %v", url, err)
+			}
 		}
 	}
 	return benchResult{time.Since(start), total, newC.Load(), reusedC.Load()}
@@ -161,11 +178,13 @@ func runHostSpray(servers []*httptest.Server, templates int, factory clientFacto
 
 // runConcurrentHostSpray: hosts in parallel (bounded by concurrency), templates
 // sequential per host. Each host gets its own client (the per-host pool model).
-func runConcurrentHostSpray(servers []*httptest.Server, templates, concurrency int, factory perHostClientFactory) benchResult {
+func runConcurrentHostSpray(tb testing.TB, servers []*httptest.Server, templates, concurrency int, factory perHostClientFactory) benchResult {
+	tb.Helper()
 	total := templates * len(servers)
 	var totalNew, totalReused atomic.Int64
 	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
+	var firstErr atomic.Value // stores error
 	start := time.Now()
 	for _, srv := range servers {
 		sem <- struct{}{}
@@ -175,13 +194,20 @@ func runConcurrentHostSpray(servers []*httptest.Server, templates, concurrency i
 			defer func() { <-sem }()
 			client, newC, reusedC := factory(s.URL)
 			for t := 0; t < templates; t++ {
-				_ = doRequest(client, s.URL+fmt.Sprintf("/t%d", t))
+				url := s.URL + fmt.Sprintf("/t%d", t)
+				if err := doRequest(client, url); err != nil {
+					firstErr.CompareAndSwap(nil, fmt.Errorf("request to %s failed: %w", url, err))
+					return
+				}
 			}
 			totalNew.Add(newC.Load())
 			totalReused.Add(reusedC.Load())
 		}(srv)
 	}
 	wg.Wait()
+	if v := firstErr.Load(); v != nil {
+		tb.Fatal(v.(error))
+	}
 	return benchResult{time.Since(start), total, totalNew.Load(), totalReused.Load()}
 }
 
@@ -228,8 +254,8 @@ func TestConnectionReuse_HTTP_TemplateSpray(t *testing.T) {
 	servers := startHTTPServers(numHosts)
 	defer closeServers(servers)
 
-	old := runTemplateSpray(servers, numTemplates, keepAliveOffFactory)
-	new := runTemplateSpray(servers, numTemplates, keepAliveOnFactory)
+	old := runTemplateSpray(t, servers, numTemplates, keepAliveOffFactory)
+	new := runTemplateSpray(t, servers, numTemplates, keepAliveOnFactory)
 
 	logComparison(t, "HTTP/template-spray", old, new)
 	assertReuse(t, numHosts, numTemplates, old, new)
@@ -240,8 +266,8 @@ func TestConnectionReuse_HTTP_HostSpray(t *testing.T) {
 	servers := startHTTPServers(numHosts)
 	defer closeServers(servers)
 
-	old := runHostSpray(servers, numTemplates, keepAliveOffFactory)
-	new := runHostSpray(servers, numTemplates, keepAliveOnFactory)
+	old := runHostSpray(t, servers, numTemplates, keepAliveOffFactory)
+	new := runHostSpray(t, servers, numTemplates, keepAliveOnFactory)
 
 	logComparison(t, "HTTP/host-spray", old, new)
 	assertReuse(t, numHosts, numTemplates, old, new)
@@ -252,8 +278,8 @@ func TestConnectionReuse_HTTP_ConcurrentHostSpray(t *testing.T) {
 	servers := startHTTPServers(numHosts)
 	defer closeServers(servers)
 
-	old := runConcurrentHostSpray(servers, numTemplates, concurrency, perHostKeepAliveOffFactory)
-	new := runConcurrentHostSpray(servers, numTemplates, concurrency, perHostKeepAliveOnFactory)
+	old := runConcurrentHostSpray(t, servers, numTemplates, concurrency, perHostKeepAliveOffFactory)
+	new := runConcurrentHostSpray(t, servers, numTemplates, concurrency, perHostKeepAliveOnFactory)
 
 	logComparison(t, "HTTP/concurrent-host-spray", old, new)
 	assertReuse(t, numHosts, numTemplates, old, new)
@@ -265,8 +291,8 @@ func TestConnectionReuse_HTTPS_TemplateSpray(t *testing.T) {
 	servers := startTLSServers(numHosts)
 	defer closeServers(servers)
 
-	old := runTemplateSpray(servers, numTemplates, keepAliveOffFactory)
-	new := runTemplateSpray(servers, numTemplates, keepAliveOnFactory)
+	old := runTemplateSpray(t, servers, numTemplates, keepAliveOffFactory)
+	new := runTemplateSpray(t, servers, numTemplates, keepAliveOnFactory)
 
 	logComparison(t, "HTTPS/template-spray", old, new)
 	assertReuse(t, numHosts, numTemplates, old, new)
@@ -277,8 +303,8 @@ func TestConnectionReuse_HTTPS_HostSpray(t *testing.T) {
 	servers := startTLSServers(numHosts)
 	defer closeServers(servers)
 
-	old := runHostSpray(servers, numTemplates, keepAliveOffFactory)
-	new := runHostSpray(servers, numTemplates, keepAliveOnFactory)
+	old := runHostSpray(t, servers, numTemplates, keepAliveOffFactory)
+	new := runHostSpray(t, servers, numTemplates, keepAliveOnFactory)
 
 	logComparison(t, "HTTPS/host-spray", old, new)
 	assertReuse(t, numHosts, numTemplates, old, new)
@@ -289,8 +315,8 @@ func TestConnectionReuse_HTTPS_ConcurrentHostSpray(t *testing.T) {
 	servers := startTLSServers(numHosts)
 	defer closeServers(servers)
 
-	old := runConcurrentHostSpray(servers, numTemplates, concurrency, perHostKeepAliveOffFactory)
-	new := runConcurrentHostSpray(servers, numTemplates, concurrency, perHostKeepAliveOnFactory)
+	old := runConcurrentHostSpray(t, servers, numTemplates, concurrency, perHostKeepAliveOffFactory)
+	new := runConcurrentHostSpray(t, servers, numTemplates, concurrency, perHostKeepAliveOnFactory)
 
 	logComparison(t, "HTTPS/concurrent-host-spray", old, new)
 	assertReuse(t, numHosts, numTemplates, old, new)
@@ -304,7 +330,7 @@ func TestConnectionCount_HTTP_ExactCounts(t *testing.T) {
 	servers := startHTTPServers(numHosts)
 	defer closeServers(servers)
 
-	result := runHostSpray(servers, numTemplates, keepAliveOnFactory)
+	result := runHostSpray(t, servers, numTemplates, keepAliveOnFactory)
 	require.Equal(t, int64(numHosts), result.NewConns,
 		"should open exactly %d connections (one per host)", numHosts)
 	require.Equal(t, int64(numHosts*(numTemplates-1)), result.ReusedConns,
@@ -317,7 +343,7 @@ func TestConnectionCount_HTTPS_ExactCounts(t *testing.T) {
 	servers := startTLSServers(numHosts)
 	defer closeServers(servers)
 
-	result := runHostSpray(servers, numTemplates, keepAliveOnFactory)
+	result := runHostSpray(t, servers, numTemplates, keepAliveOnFactory)
 	require.Equal(t, int64(numHosts), result.NewConns,
 		"should open exactly %d TLS connections (one per host)", numHosts)
 	require.Equal(t, int64(numHosts*(numTemplates-1)), result.ReusedConns,
@@ -330,7 +356,7 @@ func TestConnectionCount_KeepAliveOff_NoReuse(t *testing.T) {
 	servers := startHTTPServers(numHosts)
 	defer closeServers(servers)
 
-	result := runHostSpray(servers, numTemplates, keepAliveOffFactory)
+	result := runHostSpray(t, servers, numTemplates, keepAliveOffFactory)
 	require.Equal(t, int64(numHosts*numTemplates), result.NewConns,
 		"with keep-alive off, every request must open a new connection")
 	require.Equal(t, int64(0), result.ReusedConns,
@@ -362,7 +388,7 @@ func BenchmarkTemplateSpray_HTTP_KeepAliveOff(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runTemplateSpray(servers, 20, keepAliveOffFactory)
+		runTemplateSpray(b, servers, 20, keepAliveOffFactory)
 	}
 }
 
@@ -371,7 +397,7 @@ func BenchmarkTemplateSpray_HTTP_KeepAliveOn(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runTemplateSpray(servers, 20, keepAliveOnFactory)
+		runTemplateSpray(b, servers, 20, keepAliveOnFactory)
 	}
 }
 
@@ -380,7 +406,7 @@ func BenchmarkHostSpray_HTTP_KeepAliveOff(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runHostSpray(servers, 20, keepAliveOffFactory)
+		runHostSpray(b, servers, 20, keepAliveOffFactory)
 	}
 }
 
@@ -389,7 +415,7 @@ func BenchmarkHostSpray_HTTP_KeepAliveOn(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runHostSpray(servers, 20, keepAliveOnFactory)
+		runHostSpray(b, servers, 20, keepAliveOnFactory)
 	}
 }
 
@@ -398,7 +424,7 @@ func BenchmarkTemplateSpray_HTTPS_KeepAliveOff(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runTemplateSpray(servers, 20, keepAliveOffFactory)
+		runTemplateSpray(b, servers, 20, keepAliveOffFactory)
 	}
 }
 
@@ -407,7 +433,7 @@ func BenchmarkTemplateSpray_HTTPS_KeepAliveOn(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runTemplateSpray(servers, 20, keepAliveOnFactory)
+		runTemplateSpray(b, servers, 20, keepAliveOnFactory)
 	}
 }
 
@@ -416,7 +442,7 @@ func BenchmarkHostSpray_HTTPS_KeepAliveOff(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runHostSpray(servers, 20, keepAliveOffFactory)
+		runHostSpray(b, servers, 20, keepAliveOffFactory)
 	}
 }
 
@@ -425,7 +451,7 @@ func BenchmarkHostSpray_HTTPS_KeepAliveOn(b *testing.B) {
 	defer closeServers(servers)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		runHostSpray(servers, 20, keepAliveOnFactory)
+		runHostSpray(b, servers, 20, keepAliveOnFactory)
 	}
 }
 

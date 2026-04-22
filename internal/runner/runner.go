@@ -512,6 +512,11 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() error {
+	// Reset connection-reuse counters so the summary logged on Close()
+	// reflects only this run, not totals accumulated across multiple
+	// in-process executions (e.g. SDK / embedded usage).
+	httpclientpool.ResetConnectionStats()
+
 	// If the user has asked for DAST server mode, run the live
 	// DAST fuzzing server.
 	if r.options.DASTServer {

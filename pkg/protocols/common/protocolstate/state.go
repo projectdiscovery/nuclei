@@ -283,7 +283,9 @@ func Close(executionId string) {
 		// Close idle keep-alive connections on all cached HTTP clients
 		// to avoid lingering transport goroutines after shutdown.
 		_ = dialersInstance.HTTPClientPool.Iterate(func(_ string, client *retryablehttp.Client) error {
-			client.HTTPClient.CloseIdleConnections()
+			if client != nil && client.HTTPClient != nil {
+				client.HTTPClient.CloseIdleConnections()
+			}
 			return nil
 		})
 		dialersInstance.HTTPClientPool.Clear()
