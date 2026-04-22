@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/portutil"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -112,8 +113,8 @@ func (ctx *Context) Add(key string, v interface{}) {
 func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 	ignorePorts := reservedPorts
 	if excludePorts != "" {
-		// TODO: add support for service names like http,https,ssh etc once https://github.com/projectdiscovery/netdb is ready
-		ignorePorts = sliceutil.Dedupe(strings.Split(excludePorts, ","))
+		ignorePorts = resolvePortList(strings.Split(excludePorts, ","))
+		ignorePorts = sliceutil.Dedupe(ignorePorts)
 	}
 	if port == "" {
 		// if template does not contain port, do nothing
@@ -182,6 +183,21 @@ func (ctx *Context) Clone() *Context {
 		CookieJar: ctx.CookieJar,
 	}
 	return newCtx
+}
+
+// resolvePortList converts a list of port strings (numeric or service names) to numeric port strings.
+func resolvePortList(ports []string) []string {
+	resolved := make([]string, 0, len(ports))
+	for _, p := range ports {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if r, err := portutil.ResolvePort(p); err == nil {
+			resolved = append(resolved, r)
+		}
+	}
+	return resolved
 }
 
 // GetCopyIfHostOutdated returns a new contextargs if the host is outdated

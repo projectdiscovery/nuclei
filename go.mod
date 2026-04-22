@@ -20,17 +20,16 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
-	github.com/projectdiscovery/fastdialer v0.5.5
+	github.com/projectdiscovery/fastdialer v0.5.6
 	github.com/projectdiscovery/hmap v0.0.100
 	github.com/projectdiscovery/interactsh v1.3.1
 	github.com/projectdiscovery/rawhttp v0.1.90
 	github.com/projectdiscovery/retryabledns v1.0.114
-	github.com/projectdiscovery/retryablehttp-go v1.3.6
+	github.com/projectdiscovery/retryablehttp-go v1.3.8
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.9.2
 	github.com/syndtr/goleveldb v1.0.0
@@ -58,13 +57,13 @@ require (
 	github.com/alexsnet/go-vnc v0.1.0
 	github.com/alitto/pond v1.9.2
 	github.com/antchfx/xmlquery v1.4.4
-	github.com/antchfx/xpath v1.3.5
+	github.com/antchfx/xpath v1.3.6
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
-	github.com/aws/aws-sdk-go-v2 v1.36.5
+	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.29.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.70
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.82
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.82.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.0
 	github.com/bytedance/sonic v1.15.0
 	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/glamour v0.10.0
@@ -73,12 +72,13 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
 	github.com/getkin/kin-openapi v0.132.0
-	github.com/go-git/go-git/v5 v5.16.5
+	github.com/go-git/go-git/v5 v5.18.0
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/go-pg/pg/v10 v10.15.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/goccy/go-json v0.10.5
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
 	github.com/h2non/filetype v1.1.3
 	github.com/invopop/yaml v0.3.1
@@ -93,7 +93,7 @@ require (
 	github.com/microsoft/go-mssqldb v1.9.2
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/dsl v0.8.14
+	github.com/projectdiscovery/dsl v0.8.15
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
@@ -104,15 +104,15 @@ require (
 	github.com/projectdiscovery/httpx v1.9.0
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.35
-	github.com/projectdiscovery/ratelimit v0.0.84
+	github.com/projectdiscovery/networkpolicy v0.1.36
+	github.com/projectdiscovery/ratelimit v0.0.85
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.2.2
 	github.com/projectdiscovery/uncover v1.2.0
 	github.com/projectdiscovery/useragent v0.0.107
-	github.com/projectdiscovery/utils v0.10.0
-	github.com/projectdiscovery/wappalyzergo v0.2.73
+	github.com/projectdiscovery/utils v0.10.1
+	github.com/projectdiscovery/wappalyzergo v0.2.77
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
 	github.com/sijms/go-ora/v2 v2.9.0
@@ -153,20 +153,20 @@ require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.11 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.32 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.36 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.36 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.21 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.21 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.36 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.17 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.22 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.13 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.21 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.21 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.34.0 // indirect
-	github.com/aws/smithy-go v1.22.4 // indirect
+	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -214,7 +214,7 @@ require (
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.8.4 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ericlagergren/decimal v0.0.0-20240411145413-00de7ca16731 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -229,7 +229,7 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.6.2 // indirect
+	github.com/go-git/go-billy/v5 v5.8.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -249,7 +249,6 @@ require (
 	github.com/google/certificate-transparency-go v1.3.2 // indirect
 	github.com/google/go-github/v30 v30.1.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gosimple/slug v1.15.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
@@ -331,7 +330,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/cdncheck v1.2.28 // indirect
+	github.com/projectdiscovery/cdncheck v1.2.32 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
@@ -339,8 +338,7 @@ require (
 	github.com/sashabaranov/go-openai v1.37.0 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/shirou/gopsutil/v4 v4.25.7 // indirect
-	github.com/shoenig/go-m1cpu v0.1.6 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect
@@ -354,8 +352,8 @@ require (
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	github.com/tim-ywliu/nested-logrus-formatter v1.3.2 // indirect
-	github.com/tklauser/go-sysconf v0.3.15 // indirect
-	github.com/tklauser/numcpus v0.10.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.16 // indirect
+	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect

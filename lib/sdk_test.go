@@ -103,3 +103,20 @@ http:
 	err = ne.ExecuteNucleiWithOptsCtx(context.TODO(), []string{"scanme.sh"})
 	require.NoError(t, err, "nuclei execution should not return an error")
 }
+
+func TestWithOptionsRateLimitSetsRuntimeLimiter(t *testing.T) {
+	opts := types.DefaultOptions().Copy()
+	opts.RateLimit = 500
+	opts.RateLimitDuration = time.Second
+
+	ne, err := nuclei.NewNucleiEngineCtx(context.Background(), nuclei.WithOptions(opts))
+	require.NoError(t, err, "could not create nuclei engine")
+	t.Cleanup(func() {
+		ne.Close()
+	})
+
+	execOpts := ne.GetExecuterOptions()
+	require.NotNil(t, execOpts, "executor options should be initialized")
+	require.NotNil(t, execOpts.RateLimiter, "rate limiter should be initialized")
+	require.Equal(t, opts.RateLimit, int(execOpts.RateLimiter.GetLimit()), "runtime limiter should match rate limit from WithOptions")
+}

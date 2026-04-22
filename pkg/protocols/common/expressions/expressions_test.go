@@ -105,3 +105,50 @@ func TestEvaluateDoesNotReinterpretResolvedValues(t *testing.T) {
 		})
 	}
 }
+
+func TestEvaluateDoesNotExecuteHelpersFromResolvedValues(t *testing.T) {
+	var calls int
+
+	withTestHelperFunction(t, "test_side_effect", func(args ...interface{}) (interface{}, error) {
+		calls++
+		return "ok", nil
+	})
+
+	value, err := Evaluate("{{body}}", map[string]interface{}{
+		"body": "{{test_side_effect(1)}}",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "{{test_side_effect(1)}}", value)
+	require.Zero(t, calls)
+}
+
+func TestEvaluateReturnsErrorForInvalidTemplateExpression(t *testing.T) {
+	_, err := Evaluate("{{base64()}}", map[string]interface{}{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, `failed to evaluate expression "base64()"`)
+}
+
+func TestEvaluateErrorDoesNotLeakResolvedValues(t *testing.T) {
+	_, err := Evaluate("{{base64('{{secret_token}}', 'extra')}}", map[string]interface{}{
+		"secret_token": "top-secret-cia-mi6-kgb-mossad-classified",
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, `failed to evaluate expression "base64('{{secret_token}}', 'extra')"`)
+	require.NotContains(t, err.Error(), "top-secret-cia-mi6-kgb-mossad-classified")
+}
+
+func TestEvaluatePlainExpressionsWithMarkerLikeValues(t *testing.T) {
+	value, err := Evaluate("{{body != ''}}", map[string]interface{}{
+		"body": "{{contact_id}}",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "true", value)
+}
+
+func TestEvaluatePreservesVisibleMarkersFromHelperResults(t *testing.T) {
+	value, err := Evaluate("{{concat(body, '-x')}}", map[string]interface{}{
+		"body": "{{contact_id}}",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "{{contact_id}}-x", value)
+}

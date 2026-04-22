@@ -2,6 +2,7 @@
 **/*-cache
 **/*-config
 **/.cache
+**/.gofuzz/
 **/*.DS_Store
 **/*.exe
 .devcontainer
@@ -28,8 +29,7 @@
 /scrapefunc
 /scrapefuncs
 /tsgen
-/integration_tests/integration-test
-/integration_tests/nuclei
+*.test
 
 # Templates
 /*.yaml

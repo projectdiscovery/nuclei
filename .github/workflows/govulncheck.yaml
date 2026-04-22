@@ -18,9 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        with:
+          go-version-file: go.tool.mod
+          cache-dependency-path: go.tool.sum
       - run: |
-          govulncheck -scan package -format sarif ./... | \
+          go tool -modfile=go.tool.mod govulncheck -scan package -format sarif ./... | \
             jq '(.runs[].tool.driver.rules[]?.properties.tags)? |= unique' > $OUTPUT
       - uses: github/codeql-action/upload-sarif@v4
         with:

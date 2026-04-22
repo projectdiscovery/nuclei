@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func newTestRequest(t *testing.T, engine []string, source string) (*Request, *testutils.TemplateInfo) {

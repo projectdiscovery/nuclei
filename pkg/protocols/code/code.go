@@ -226,14 +226,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		args := compiler.NewExecuteArgs()
 		args.TemplateCtx = allvars
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
+		result, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
 				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
 				Cleanup:         cleanUpPreConditionFunctions,
-				Context:         input.Context(),
 			})
 		if err != nil {
 			return errkit.Newf("could not execute pre-condition: %s", err)

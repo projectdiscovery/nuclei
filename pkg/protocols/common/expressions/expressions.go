@@ -1,10 +1,10 @@
 package expressions
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/gologger"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
@@ -53,28 +53,40 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
 	for _, expression := range expressions {
+		originalExpression := expression
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
+
 		// turns expressions (either helper functions+base values or base values)
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
 		if err != nil {
-			gologger.Warning().Msgf("Failed to compile expression '%s': %v", expression, err)
-			continue
+			return data, fmt.Errorf("failed to compile expression %q: %w", originalExpression, err)
 		}
-		// propagate unresolved {{...}} markers from variable values so the
-		// downstream ContainsUnresolvedVariables check can detect them instead
-		// of having encoding functions (e.g. base64) hide them
-		if markers := unresolvedVarMarkers(compiled.Vars(), base); markers != "" {
-			data = replacer.ReplaceOne(data, expression, markers)
-			continue
-		}
+
 		result, err := compiled.Evaluate(base)
 		if err != nil {
-			gologger.Warning().Msgf("Failed to evaluate expression '%s': %v", expression, err)
-			continue
+			return data, fmt.Errorf("failed to evaluate expression %q: %w", originalExpression, err)
 		}
+
+		replacement := result
+		// Preserve unresolved markers only when a helper call would otherwise
+		// hide them from downstream validation. Plain expressions such as
+		// comparisons should evaluate normally.
+		if markers := unresolvedVarMarkers(compiled.Vars(), base); markers != "" {
+			usesFunctions := false
+			for _, token := range compiled.Tokens() {
+				if token.Kind == govaluate.FUNCTION {
+					usesFunctions = true
+					break
+				}
+			}
+			if usesFunctions && ContainsUnresolvedVariables(fmt.Sprint(result)) == nil {
+				replacement = markers
+			}
+		}
+
 		// replace incrementally
-		data = replacer.ReplaceOne(data, expression, result)
+		data = replacer.ReplaceOne(data, expression, replacement)
 	}
 	return data, nil
 }

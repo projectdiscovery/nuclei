@@ -159,8 +159,10 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 	if _, err := strconv.Atoi(parameter); err == nil || (parameter == "" && parameterValue != "") {
 		actualParameter = parameterValue
 	}
-	// If the parameter is frequent, skip it if the option is enabled
-	if rule.options.FuzzParamsFrequency != nil {
+	// If the parameter is frequent, skip it if the option is enabled.
+	// Skip frequency check when parameter is empty (mode: multiple sends
+	// all values at once without a specific parameter name).
+	if rule.options.FuzzParamsFrequency != nil && actualParameter != "" {
 		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
 			actualParameter,
 			httpReq.String(),

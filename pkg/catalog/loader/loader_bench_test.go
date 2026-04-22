@@ -11,7 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func BenchmarkStoreValidateTemplates(b *testing.B) {

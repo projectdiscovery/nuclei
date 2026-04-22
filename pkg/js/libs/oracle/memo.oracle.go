@@ -2,17 +2,19 @@
 package oracle
 
 import (
+	"context"
 	"errors"
+
 	"fmt"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisOracle(executionId string, host string, port int) (IsOracleResponse, error) {
+func memoizedisOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
 	hash := "isOracle" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isOracle(executionId, host, port)
+		return isOracle(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return IsOracleResponse{}, err

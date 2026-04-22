@@ -54,12 +54,12 @@ type (
 	}
 )
 
-func connectWithFastDialer(executionId string, host string, port int) (net.Conn, error) {
+func connectWithFastDialer(ctx context.Context, executionId string, host string, port int) (net.Conn, error) {
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	return dialer.Fastdialer.Dial(context.Background(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	return dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 }
 
 // IsRsync checks if a host is running a Rsync server.
@@ -71,15 +71,15 @@ func connectWithFastDialer(executionId string, host string, port int) (net.Conn,
 // ```
 func IsRsync(ctx context.Context, host string, port int) (IsRsyncResponse, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisRsync(executionId, host, port)
+	return memoizedisRsync(ctx, executionId, host, port)
 }
 
 // @memo
-func isRsync(executionId string, host string, port int) (IsRsyncResponse, error) {
+func isRsync(ctx context.Context, executionId string, host string, port int) (IsRsyncResponse, error) {
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := connectWithFastDialer(executionId, host, port)
+	conn, err := connectWithFastDialer(ctx, executionId, host, port)
 	if err != nil {
 		return resp, err
 	}

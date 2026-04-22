@@ -52,6 +52,17 @@ func main() {
 	if err != nil {
 		gologger.Fatal().Msgf("failed to create signer: %s", err)
 	}
+	certData, err := os.ReadFile(cert)
+	if err != nil {
+		gologger.Fatal().Msgf("failed to read certificate file %s: %s", cert, err)
+	}
+	tmplVerifier, err := signer.NewTemplateSigVerifier(certData)
+	if err != nil {
+		gologger.Fatal().Msgf("failed to create verifier: %s", err)
+	}
+	if err := signer.AddSignerToDefault(tmplVerifier); err != nil {
+		gologger.Fatal().Msgf("failed to register verifier: %s", err)
+	}
 	gologger.Info().Msgf("Template Signer: %v\n", tmplSigner.Identifier())
 
 	// read file
@@ -95,6 +106,14 @@ func main() {
 		gologger.Info().Msgf("------------------------")
 		gologger.Info().Msgf("Signature: %s", sig2)
 		gologger.Info().Msgf("Content Hash (SHA256): %s\n", hex.EncodeToString(hash2[:]))
+
+		tmpl, err = templates.Parse(template, nil, execOpts)
+		if err != nil {
+			gologger.Fatal().Msgf("failed to parse signed template: %s", err)
+		}
+	}
+	if !tmpl.Verified {
+		gologger.Fatal().Msg("template signature could not be verified with the provided certificate")
 	}
 	gologger.Info().Msgf("✓ Template signed & verified successfully")
 }

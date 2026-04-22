@@ -4,8 +4,25 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/stretchr/testify/require"
 )
+
+func withTestHelperFunction(t *testing.T, name string, fn govaluate.ExpressionFunction) {
+	t.Helper()
+
+	originalFn, hadFn := dsl.HelperFunctions[name]
+	dsl.HelperFunctions[name] = fn
+
+	t.Cleanup(func() {
+		if hadFn {
+			dsl.HelperFunctions[name] = originalFn
+			return
+		}
+		delete(dsl.HelperFunctions, name)
+	})
+}
 
 func TestUnresolvedVariablesCheck(t *testing.T) {
 	tests := []struct {
@@ -25,4 +42,16 @@ func TestUnresolvedVariablesCheck(t *testing.T) {
 		err := ContainsUnresolvedVariables(test.data)
 		require.Equal(t, test.err, err, "could not get unresolved variables")
 	}
+}
+
+func TestUnresolvedVariablesCheckDoesNotExecuteHelpers(t *testing.T) {
+	var calls int
+	withTestHelperFunction(t, "test_side_effect", func(args ...interface{}) (interface{}, error) {
+		calls++
+		return "ok", nil
+	})
+
+	err := ContainsUnresolvedVariables("{{test_side_effect(1)}}")
+	require.NoError(t, err)
+	require.Zero(t, calls)
 }

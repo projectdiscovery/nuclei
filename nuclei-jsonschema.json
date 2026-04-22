@@ -1395,7 +1395,7 @@
             }
           ],
           "title": "port to send requests to",
-          "description": "Port to send network requests to"
+          "description": "Port to send network requests to. Supports numeric ports and service names (e.g. ftp, ssh, smtp)"
         },
         "exclude-ports": {
           "type": "string",

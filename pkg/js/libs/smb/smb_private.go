@@ -16,7 +16,7 @@ import (
 
 // collectSMBv2Metadata collects metadata for SMBv2 services.
 // @memo
-func collectSMBv2Metadata(executionId string, host string, port int, timeout time.Duration) (*plugins.ServiceSMB, error) {
+func collectSMBv2Metadata(ctx context.Context, executionId string, host string, port int, timeout time.Duration) (*plugins.ServiceSMB, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
@@ -25,7 +25,7 @@ func collectSMBv2Metadata(executionId string, host string, port int, timeout tim
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,5 @@
+type=binary
+condition=and
+part=raw
+value=50494e47
+value=414243

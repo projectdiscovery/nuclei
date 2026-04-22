@@ -32,7 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
@@ -50,15 +50,19 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 			}
 			return
 		}
+
 		sb := strings.Builder{}
 		fmt.Fprintf(&sb, "[%v] ", event.TemplateID)
+
 		if event.Matched != "" {
 			sb.WriteString(event.Matched)
 		} else {
 			sb.WriteString(event.Host)
 		}
+
 		fmt.Println(sb.String())
 	}
+
 	if e.onFailureCallback != nil {
 		mockoutput.FailureCallback = e.onFailureCallback
 	}
@@ -72,9 +76,11 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	if e.customProgress == nil {
 		e.customProgress = &testutils.MockProgressClient{}
 	}
+
 	if e.hostErrCache == nil && e.opts.ShouldUseHostError() {
 		e.hostErrCache = hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	}
+
 	// setup interactsh
 	if e.interactshOpts != nil {
 		e.interactshOpts.Output = e.customWriter
@@ -82,12 +88,23 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	} else {
 		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
 	}
+
 	if e.rateLimiter == nil {
-		e.rateLimiter = ratelimit.New(ctx, 150, time.Second)
+		if e.opts.RateLimitMinute > 0 {
+			e.opts.RateLimit = e.opts.RateLimitMinute
+			e.opts.RateLimitDuration = time.Minute
+		}
+
+		if e.opts.RateLimit > 0 && e.opts.RateLimitDuration == 0 {
+			e.opts.RateLimitDuration = time.Second
+		}
+		e.rateLimiter = nucleiUtils.GetRateLimiter(ctx, e.opts.RateLimit, e.opts.RateLimitDuration)
 	}
+
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}
 	}
+
 	// these templates are known to have weak matchers
 	// and idea is to disable them to avoid false positives
 	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
