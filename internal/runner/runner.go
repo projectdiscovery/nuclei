@@ -928,7 +928,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			value := v.Load()
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					r.Logger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
+					r.Logger.Warning().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
 				} else {
 					r.Logger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
