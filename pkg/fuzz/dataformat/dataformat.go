@@ -39,7 +39,13 @@ const (
 )
 
 // Get returns the dataformat by name
+// For MultiPartForm, it returns a new instance to avoid concurrent map writes
+// when multiple goroutines access it simultaneously (e.g., during fuzzing with
+// multiple targets).
 func Get(name string) DataFormat {
+	if name == MultiPartFormDataFormat {
+		return NewMultiPartForm()
+	}
 	return dataformats[name]
 }
 
