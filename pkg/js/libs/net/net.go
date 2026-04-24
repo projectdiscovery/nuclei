@@ -61,7 +61,7 @@ func dialHTTPProxy(ctx context.Context, dial dialFunc, proxyURL string, address 
 		}
 		tlsConn := tls.Client(proxyConn, config)
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
-			proxyConn.Close()
+			_ = proxyConn.Close()
 			return nil, fmt.Errorf("could not establish TLS connection to proxy %s: %w", proxyAddr, err)
 		}
 		proxyConn = tlsConn
@@ -79,20 +79,20 @@ func dialHTTPProxy(ctx context.Context, dial dialFunc, proxyURL string, address 
 
 	_ = proxyConn.SetDeadline(time.Now().Add(timeout))
 	if err := connectReq.Write(proxyConn); err != nil {
-		proxyConn.Close()
+		_ = proxyConn.Close()
 		return nil, fmt.Errorf("could not send CONNECT request: %w", err)
 	}
 
 	br := bufio.NewReader(proxyConn)
 	resp, err := http.ReadResponse(br, connectReq)
 	if err != nil {
-		proxyConn.Close()
+		_ = proxyConn.Close()
 		return nil, fmt.Errorf("could not read CONNECT response: %w", err)
 	}
 	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		proxyConn.Close()
+		_ = proxyConn.Close()
 		return nil, fmt.Errorf("proxy CONNECT returned status %d", resp.StatusCode)
 	}
 
@@ -206,7 +206,7 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 			}
 			tlsConn := tls.Client(conn, config)
 			if err := tlsConn.HandshakeContext(ctx); err != nil {
-				conn.Close()
+				_ = conn.Close()
 				return nil, fmt.Errorf("TLS handshake failed: %w", err)
 			}
 			return &NetConn{conn: tlsConn, timeout: timeout}, nil
