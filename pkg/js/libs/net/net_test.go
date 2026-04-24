@@ -24,7 +24,7 @@ func TestGetTimeoutFromContext(t *testing.T) {
 	t.Run("reads TcpReadTimeout", func(t *testing.T) {
 		expected := 15 * time.Second
 		tv := &types.Timeouts{TcpReadTimeout: expected}
-		ctx := context.WithValue(context.Background(), "timeoutVariants", tv)
+		ctx := context.WithValue(context.Background(), "timeoutVariants", tv) // nolint: staticcheck
 		require.Equal(t, expected, getTimeoutFromContext(ctx))
 	})
 }
@@ -70,7 +70,7 @@ func TestDialHTTPProxy(t *testing.T) {
 	t.Run("successful CONNECT tunnel", func(t *testing.T) {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
-		defer ln.Close()
+		defer func() { _ = ln.Close() }()
 
 		targetPayload := "hello from target"
 		go func() {
@@ -78,7 +78,7 @@ func TestDialHTTPProxy(t *testing.T) {
 			if err != nil {
 				return
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			req, err := http.ReadRequest(bufio.NewReader(conn))
 			if err != nil {
@@ -94,7 +94,7 @@ func TestDialHTTPProxy(t *testing.T) {
 		proxyURL := fmt.Sprintf("http://%s", ln.Addr().String())
 		conn, err := dialHTTPProxy(ctx, directDial, proxyURL, "example.com:443", 5*time.Second)
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		buf := make([]byte, 64)
 		n, err := conn.Read(buf)
@@ -105,14 +105,14 @@ func TestDialHTTPProxy(t *testing.T) {
 	t.Run("proxy returns non-200 status", func(t *testing.T) {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
-		defer ln.Close()
+		defer func() { _ = ln.Close() }()
 
 		go func() {
 			conn, err := ln.Accept()
 			if err != nil {
 				return
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			req, err := http.ReadRequest(bufio.NewReader(conn))
 			if err != nil {
@@ -151,7 +151,7 @@ func TestDialHTTPProxy(t *testing.T) {
 			if err != nil {
 				return
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			_, _ = rw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
 			_, _ = rw.WriteString(targetPayload)
@@ -162,7 +162,7 @@ func TestDialHTTPProxy(t *testing.T) {
 		ctx := context.Background()
 		conn, err := dialHTTPProxy(ctx, directDial, proxy.URL, "example.com:443", 5*time.Second)
 		require.NoError(t, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		buf := make([]byte, 64)
 		n, err := conn.Read(buf)
