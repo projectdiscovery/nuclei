@@ -173,19 +173,28 @@ func (e *ExecutorOptions) RateLimitTake() {
 	}
 }
 
-// RateLimitTakeFor acquires one token from the global rate limiter and, if
-// configured, one token from the per-host limiter for host. The global
-// limiter is always taken first so a slow host cannot starve global capacity
-// budgeting.
+// RateLimitTakeFor acquires one token from the appropriate rate limiter for
+// host. When a per-host limiter is configured (i.e. -rate-limit-host > 0)
+// it takes priority over the global limiter and is the only limiter
+// consulted; the global -rate-limit is bypassed.
+//
+// This priority is intentional: -rate-limit defaults to a non-zero value
+// (150 rps), so applying both limiters would silently cap aggregate
+// throughput at the global default and defeat the purpose of opting into
+// a per-host budget. Users who want a strict global ceiling on top of
+// per-host budgets should rely on -rate-limit-host alone (the aggregate
+// is bounded by num_hosts * rate-limit-host).
 //
 // Pass an empty host when no host scope is available (e.g. self-contained
-// templates). In that case behavior matches RateLimitTake.
+// templates); the call falls back to the global limiter so those requests
+// are still paced.
 func (e *ExecutorOptions) RateLimitTakeFor(host string) {
+	if e.HostRateLimiter != nil && host != "" {
+		e.HostRateLimiter.Take(host)
+		return
+	}
 	if e.RateLimiter != nil {
 		e.RateLimiter.Take()
-	}
-	if host != "" {
-		e.HostRateLimiter.Take(host)
 	}
 }
 

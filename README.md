@@ -275,10 +275,10 @@ UNCOVER:
    -ur, -uncover-ratelimit int    override ratelimit of engines with unknown ratelimit (default 60 req/min) (default 60)
 
 RATE-LIMIT:
-   -rl, -rate-limit int                     maximum number of requests to send per second (default 150)
+   -rl, -rate-limit int                     maximum number of requests to send per second (ignored when -rate-limit-host is set) (default 150)
    -rld, -rate-limit-duration value         maximum number of requests to send per second (default 1s)
    -rlm, -rate-limit-minute int             maximum number of requests to send per minute (DEPRECATED)
-   -rlh, -rate-limit-host int               maximum number of requests to send per host per rate-limit-host-duration (0 = disabled)
+   -rlh, -rate-limit-host int               maximum number of requests to send per host per rate-limit-host-duration (0 = disabled, takes priority over -rate-limit)
    -rlhd, -rate-limit-host-duration value   refill interval for the per-host rate limit bucket (default 1s)
    -bs, -bulk-size int                      maximum number of hosts to be analyzed in parallel per template (default 25)
    -c, -concurrency int                     maximum number of templates to be executed in parallel (default 25)
