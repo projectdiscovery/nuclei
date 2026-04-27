@@ -207,6 +207,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute
+   -rlh, -rate-limit-host int         maximum number of requests to send per host per rate-limit-host-duration (0 = disabled)
+   -rlhd, -rate-limit-host-duration value  refill interval for the per-host rate limit bucket (default 1s)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
    -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
    -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)

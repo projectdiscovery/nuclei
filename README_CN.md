@@ -234,6 +234,8 @@ UNCOVER引擎:
 限速：
    -rl, -rate-limit int                  每秒最大请求量（默认：150）
    -rlm, -rate-limit-minute int          每分钟最大请求量
+   -rlh, -rate-limit-host int            每个主机每 rate-limit-host-duration 时间窗口内的最大请求数（0 = 禁用）
+   -rlhd, -rate-limit-host-duration value  每主机限速桶的填充间隔（默认：1秒）
    -bs, -bulk-size int                   每个模板最大并行检测数（默认：25）
    -c, -concurrency int                  并行执行的最大模板数量（默认：25）
    -hbs, -headless-bulk-size int         每个模板并行运行的无头主机最大数量（默认：10）

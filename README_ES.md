@@ -238,6 +238,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               número máximo de peticiones a enviar por segundo (por defecto 150)
    -rlm, -rate-limit-minute int       número máximo de peticiones a enviar por minuto
+   -rlh, -rate-limit-host int         número máximo de peticiones por host por rate-limit-host-duration (0 = desactivado)
+   -rlhd, -rate-limit-host-duration value  intervalo de recarga del bucket de rate-limit por host (por defecto 1s)
    -bs, -bulk-size int                número máximo de hosts a ser analizados en paralelo por plantilla (por defecto 25)
    -c, -concurrency int               número máximo de plantillas a ejecutar en paralelo (por defecto 25)
    -hbs, -headless-bulk-size int      número máximo de hosts headless a ser analizados en paralelo por plantilla (por defecto 10)
