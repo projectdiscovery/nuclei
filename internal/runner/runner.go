@@ -52,6 +52,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
@@ -89,6 +90,7 @@ type Runner struct {
 	issuesClient       reporting.Client
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
+	hostRateLimiter    *hostratelimit.Pool
 	hostErrors         hosterrorscache.CacheInterface
 	resumeCfg          *types.ResumeCfg
 	pprofServer        *pprofutil.PprofServer
@@ -406,6 +408,17 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 
+	if options.RateLimitHost > 0 {
+		hostDuration := options.RateLimitHostDuration
+		if hostDuration == 0 {
+			hostDuration = time.Second
+		}
+		runner.hostRateLimiter = hostratelimit.NewPool(context.Background(), hostratelimit.Options{
+			MaxCount: uint(options.RateLimitHost),
+			Duration: hostDuration,
+		})
+	}
+
 	// Initialization successful, disable cleanup on error
 	cleanupOnError = false
 	return runner, nil
@@ -454,6 +467,7 @@ func (r *Runner) Close() {
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
 	}
+	r.hostRateLimiter.Stop()
 	r.progress.Stop()
 	if r.browser != nil {
 		r.browser.Close()
@@ -517,6 +531,7 @@ func (r *Runner) RunEnumeration() error {
 			Catalog:            r.catalog,
 			IssuesClient:       r.issuesClient,
 			RateLimiter:        r.rateLimiter,
+			HostRateLimiter:    r.hostRateLimiter,
 			Interactsh:         r.interactsh,
 			ProjectFile:        r.projectFile,
 			Browser:            r.browser,
@@ -573,6 +588,7 @@ func (r *Runner) RunEnumeration() error {
 		Catalog:             r.catalog,
 		IssuesClient:        r.issuesClient,
 		RateLimiter:         r.rateLimiter,
+		HostRateLimiter:     r.hostRateLimiter,
 		Interactsh:          r.interactsh,
 		ProjectFile:         r.projectFile,
 		Browser:             r.browser,

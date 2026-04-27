@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
@@ -88,6 +89,10 @@ type ExecutorOptions struct {
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter *ratelimit.Limiter
+	// HostRateLimiter limits requests per target host. Optional: nil when
+	// per-host rate limiting is disabled (the default), in which case
+	// RateLimitTakeFor degenerates to RateLimitTake.
+	HostRateLimiter *hostratelimit.Pool
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
@@ -165,6 +170,22 @@ func (e *ExecutorOptions) RateLimitTake() {
 	*/
 	if e.RateLimiter != nil {
 		e.RateLimiter.Take()
+	}
+}
+
+// RateLimitTakeFor acquires one token from the global rate limiter and, if
+// configured, one token from the per-host limiter for host. The global
+// limiter is always taken first so a slow host cannot starve global capacity
+// budgeting.
+//
+// Pass an empty host when no host scope is available (e.g. self-contained
+// templates). In that case behavior matches RateLimitTake.
+func (e *ExecutorOptions) RateLimitTakeFor(host string) {
+	if e.RateLimiter != nil {
+		e.RateLimiter.Take()
+	}
+	if host != "" {
+		e.HostRateLimiter.Take(host)
 	}
 }
 
@@ -284,6 +305,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		IssuesClient:        e.IssuesClient,
 		Progress:            e.Progress,
 		RateLimiter:         e.RateLimiter,
+		HostRateLimiter:     e.HostRateLimiter,
 		Catalog:             e.Catalog,
 		ProjectFile:         e.ProjectFile,
 		Browser:             e.Browser,
@@ -465,6 +487,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.IssuesClient = n.IssuesClient
 	e.Progress = n.Progress
 	e.RateLimiter = n.RateLimiter
+	e.HostRateLimiter = n.HostRateLimiter
 	e.Catalog = n.Catalog
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser

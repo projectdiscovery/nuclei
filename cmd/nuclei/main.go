@@ -419,6 +419,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
 		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "maximum number of requests to send per second"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute (DEPRECATED)"),
+		flagSet.IntVarP(&options.RateLimitHost, "rate-limit-host", "rlh", 0, "maximum number of requests to send per host per rate-limit-host-duration (0 = disabled)"),
+		flagSet.DurationVarP(&options.RateLimitHostDuration, "rate-limit-host-duration", "rlhd", time.Second, "refill interval for the per-host rate limit bucket"),
 		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
 		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 25, "maximum number of templates to be executed in parallel"),
 		flagSet.IntVarP(&options.HeadlessBulkSize, "headless-bulk-size", "hbs", 10, "maximum number of headless hosts to be analyzed in parallel per template"),

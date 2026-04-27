@@ -71,6 +71,27 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // executeRaceRequest executes race condition request for a URL
+// rateLimitHostKey returns a stable per-host key for rate limiting derived
+// from the input target URL. Returns an empty string if the input cannot
+// be parsed; in that case the per-host limiter (if any) is skipped and
+// only the global rate limiter applies. The key uses URL.Host (host:port)
+// so different ports on the same hostname remain isolated buckets,
+// matching the per-host HTTP client pool keying.
+func rateLimitHostKey(input *contextargs.Context) string {
+	if input == nil || input.MetaInput == nil {
+		return ""
+	}
+	raw := input.MetaInput.Input
+	if raw == "" {
+		return ""
+	}
+	parsed, err := urlutil.ParseAbsoluteURL(raw, false)
+	if err != nil || parsed == nil {
+		return ""
+	}
+	return parsed.Host
+}
+
 func (request *Request) executeRaceRequest(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.MetaInput.Input
 	var generatedRequests []*generatedRequest
@@ -268,7 +289,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					spmHandler.Release()
 					continue
 				}
-				request.options.RateLimitTake()
+				request.options.RateLimitTakeFor(rateLimitHostKey(t.updatedInput))
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 				select {
@@ -533,7 +554,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			request.options.RateLimitTake()
+			request.options.RateLimitTakeFor(rateLimitHostKey(input))
 
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
