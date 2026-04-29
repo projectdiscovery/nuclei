@@ -184,23 +184,6 @@ func (f *Filter) matchesIncludes(m *Metadata) bool {
 	return true
 }
 
-// matchesID checks if template ID matches pattern (supports wildcards).
-// Deprecated: replaced by matchesIncludeID, only here for benchmark (and PR)
-// TODO: Remove before PR merged.
-func matchesID(templateID, pattern string) bool {
-	// Convert to lowercase for case-insensitive matching
-	templateID = strings.ToLower(templateID)
-	pattern = strings.ToLower(pattern)
-
-	if templateID == pattern {
-		return true
-	}
-
-	matched, _ := filepath.Match(pattern, templateID)
-
-	return matched
-}
-
 // Compile pre-processes IDs and ExcludeIDs into fast lookup structures.
 // The first time Matches is called, this is called automatically.
 // If IDs or ExcludeIDs are modified after calling Matches, this must be called manually.

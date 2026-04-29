@@ -59,36 +59,3 @@ func BenchmarkFilterMatches(b *testing.B) {
 		})
 	}
 }
-
-func BenchmarkFilterMatches_Old(b *testing.B) {
-	corpus := makeMetadataCorpus(templateCount)
-
-	cases := []struct{ exact, wildcards int }{
-		{10, 0},
-		{100, 0},
-		{1000, 0},
-		{100, 1},
-		{100, 3},
-		{100, 5},
-	}
-
-	for _, tc := range cases {
-		b.Run(fmt.Sprintf("ids=%d,patterns=%d", tc.exact, tc.wildcards), func(b *testing.B) {
-			b.ReportAllocs()
-
-			ids := mixedFilter(tc.exact, tc.wildcards).IDs
-			for b.Loop() {
-				for _, meta := range corpus {
-					matched := false
-					for _, id := range ids {
-						if matchesID(meta.ID, id) {
-							matched = true
-							break
-						}
-					}
-					_ = matched
-				}
-			}
-		})
-	}
-}
