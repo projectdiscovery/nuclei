@@ -149,6 +149,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 	if fileutil.FileExists(indexFile) {
 		f, err := os.Open(indexFile)
 		if err == nil {
+			defer f.Close()
 			csvReader := csv.NewReader(f)
 			records, err := csvReader.ReadAll()
 			if err == nil {
@@ -156,19 +157,14 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 					if len(v) >= 2 {
 						templateID := v[0]
 						templatePath := v[1]
-						// Normalize path for consistent comparison (handles Windows path issues)
 						normalizedPath := filepath.Clean(templatePath)
-						// Validate that the file actually exists (prevents stale entries from deleted files on Windows)
 						if fileutil.FileExists(normalizedPath) {
 							index[templateID] = normalizedPath
 						}
 					}
 				}
-				// Close file handle before returning
-				_ = f.Close()
 				return index, nil
 			}
-			_ = f.Close()
 		}
 		DefaultConfig.Logger.Error().Msgf("failed to read index file creating new one: %v", err)
 	}
