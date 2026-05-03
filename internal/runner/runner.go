@@ -397,7 +397,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.Logger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
+		fmt.Fprintf(os.Stderr, "[%v] %v\n", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
@@ -616,7 +616,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.ShouldUseHostError() {
 		maxHostError := r.options.MaxHostError
 		if r.options.TemplateThreads > maxHostError {
-			r.Logger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", r.colorizer.BrightYellow("WRN"))
+			fmt.Fprintf(os.Stderr, "[%v] The concurrency value is higher than max-host-error\n", r.colorizer.BrightYellow("WRN"))
 			r.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
 
 			maxHostError = r.options.TemplateThreads
@@ -886,7 +886,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if tmplCount == 0 && workflowCount == 0 {
 		// if dast flag is used print explicit warning
 		if r.options.DAST {
-			r.Logger.Print().Msgf("[%v] No DAST templates found", aurora.BrightYellow("WRN"))
+			fmt.Fprintf(os.Stderr, "[%v] No DAST templates found\n", aurora.BrightYellow("WRN"))
 		}
 		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
 	} else {
