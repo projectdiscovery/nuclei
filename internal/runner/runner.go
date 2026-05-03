@@ -928,7 +928,11 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			value := v.Load()
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					r.Logger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
+					// Write directly to stderr so the warning doesn't end up in
+					// the -j / -jsonl stdout stream and break downstream `jq`
+					// pipelines (#7314). Logger.Print() bypasses level
+					// filtering but routes to stdout, which is the bug.
+					fmt.Fprintf(os.Stderr, "[%v] Loading %d unsigned templates for scan. Use with caution.\n", r.colorizer.BrightYellow("WRN"), value)
 				} else {
 					r.Logger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
