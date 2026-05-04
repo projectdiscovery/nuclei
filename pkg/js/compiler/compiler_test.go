@@ -153,6 +153,58 @@ func TestPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
 	}
 }
 
+// TestPooledRuntimeAbandonedWhenInterruptStuck reproduces the conditions
+// of https://github.com/projectdiscovery/nuclei/issues/7376: a JS program
+// is blocked inside a native Go call and ignores the goja Interrupt(), so
+// the inner goroutine outlives the grace period after a context cancel.
+// Before the fix, the runtime would still be returned to the sync.Pool and
+// reused by the next caller, which would race with the orphan goroutine
+// on goja's per-runtime maps and trigger a fatal "concurrent map read and
+// map write" runtime panic. After the fix, executeWithPoolingProgram must
+// return errRuntimeTerminationTimeout (still wrapping context.DeadlineExceeded
+// for backwards compatibility) and abandon the runtime instead of pooling it.
+func TestPooledRuntimeAbandonedWhenInterruptStuck(t *testing.T) {
+	// A real script using ExportAs so executeWithPoolingProgram (not the
+	// non-pooled fallback) is taken — see ExecuteProgram source-routing.
+	src := `ExportAs("k", "v"); block(); 1`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	// The native Go function blocks until release is closed. We close it
+	// only after the test has observed the timeout error so the orphan
+	// goroutine eventually unwinds and the abandoned runtime is GC-able.
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := executeWithPoolingProgram(ctx, p, NewExecuteArgs(), &ExecuteOptions{
+			Source: &src,
+			Callback: func(rt *goja.Runtime) error {
+				return rt.Set("block", func() {
+					<-release
+				})
+			},
+		})
+		done <- err
+	}()
+
+	// 100ms ctx + 1s goja interrupt grace period + slack
+	select {
+	case err := <-done:
+		require.Error(t, err)
+		require.ErrorIs(t, err, errRuntimeTerminationTimeout,
+			"runtime should be flagged as abandoned when its goroutine outlives the interrupt grace period")
+		require.ErrorIs(t, err, context.DeadlineExceeded,
+			"the underlying context cancellation cause should still be reachable for callers using errors.Is")
+	case <-time.After(5 * time.Second):
+		t.Fatal("executeWithPoolingProgram did not return within the grace period")
+	}
+}
+
 func executeScript(t *testing.T, executionID string, allowLocalFileAccess bool, script string) (ExecuteResult, error) {
 	t.Helper()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: allowLocalFileAccess})
