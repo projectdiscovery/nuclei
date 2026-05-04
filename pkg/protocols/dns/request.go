@@ -122,7 +122,14 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 
 	dnsClient := request.dnsClient
 	if varErr := expressions.ContainsUnresolvedVariables(request.Resolvers...); varErr != nil {
-		if dnsClient, varErr = request.getDnsClient(request.options, metadata); varErr != nil {
+		// Resolve resolver expressions using the full per-request variable
+		// scope (DNS variables + template `variables:` + payloads + template
+		// context + extracted dynamic values + metadata). The previous code
+		// passed the bare `metadata` event which does not contain template
+		// `variables:` declarations, so {{my_var}} resolvers always failed
+		// to resolve. See https://github.com/projectdiscovery/nuclei/issues/7374.
+		resolverVars := generators.MergeMaps(vars, metadata)
+		if dnsClient, varErr = request.getDnsClient(request.options, resolverVars); varErr != nil {
 			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
 			return nil
 		}
