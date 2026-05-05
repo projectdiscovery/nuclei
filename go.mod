@@ -3,7 +3,6 @@ module github.com/projectdiscovery/nuclei/v3
 go 1.25.7
 
 require (
-	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/andygrunwald/go-jira v1.16.1
 	github.com/antchfx/htmlquery v1.3.5
 	github.com/bluele/gcache v0.0.2
@@ -31,7 +30,7 @@ require (
 	github.com/rs/xid v1.6.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/spf13/cast v1.9.2
+	github.com/spf13/cast v1.10.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.50.3
@@ -426,8 +425,11 @@ require (
 require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/go-echarts/go-echarts/v2 v2.6.0
+	github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
+
+replace github.com/projectdiscovery/dsl => github.com/ChrisJr404/dsl v0.8.18-0.20260505142052-693673de4fe2
