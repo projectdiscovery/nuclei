@@ -238,6 +238,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               número máximo de solicitações a serem enviadas por segundo (padrão 150)
    -rlm, -rate-limit-minute int       número máximo de solicitações a serem enviadas por minuto
+   -rlh, -rate-limit-host int         número máximo de solicitações por host por rate-limit-host-duration (0 = desativado)
+   -rlhd, -rate-limit-host-duration value  intervalo de recarga do bucket de rate-limit por host (padrão 1s)
    -bs, -bulk-size int                número máximo de hosts a serem analisados em paralelo por template (padrão 25)
    -c, -concurrency int               número máximo de templates a serem executados em paralelo (padrão 25)
    -hbs, -headless-bulk-size int      número máximo de hosts headless a serem analisados em paralelo por template (padrão 10)

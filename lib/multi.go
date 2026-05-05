@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
@@ -29,17 +30,18 @@ type unsafeOptions struct {
 func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
 	u.executerOpts = &protocols.ExecutorOptions{
-		Output:       base.customWriter,
-		Options:      opts,
-		Progress:     base.customProgress,
-		Catalog:      base.catalog,
-		IssuesClient: base.rc,
-		RateLimiter:  base.rateLimiter,
-		Interactsh:   base.interactshClient,
-		Colorizer:    aurora.NewAurora(true),
-		ResumeCfg:    types.NewResumeCfg(),
-		Parser:       base.parser,
-		Browser:      base.browserInstance,
+		Output:          base.customWriter,
+		Options:         opts,
+		Progress:        base.customProgress,
+		Catalog:         base.catalog,
+		IssuesClient:    base.rc,
+		RateLimiter:     base.rateLimiter,
+		HostRateLimiter: base.hostRateLimiter,
+		Interactsh:      base.interactshClient,
+		Colorizer:       aurora.NewAurora(true),
+		ResumeCfg:       types.NewResumeCfg(),
+		Parser:          base.parser,
+		Browser:         base.browserInstance,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
@@ -52,6 +54,21 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		opts.RateLimitDuration = time.Second
 	}
 	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
+
+	// Per-call ephemeral host rate limiter; the goroutine cost is paid once
+	// per ExecuteNucleiWithOpts invocation and Stop()-ed in
+	// closeEphemeralObjects so we do not leak limiters across calls.
+	if opts.RateLimitHost > 0 {
+		hostDuration := opts.RateLimitHostDuration
+		if hostDuration == 0 {
+			hostDuration = time.Second
+		}
+		u.executerOpts.HostRateLimiter = hostratelimit.NewPool(ctx, hostratelimit.Options{
+			MaxCount: uint(opts.RateLimitHost),
+			Duration: hostDuration,
+		})
+	}
+
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)
 	return u, nil
@@ -62,6 +79,7 @@ func closeEphemeralObjects(u *unsafeOptions) {
 	if u.executerOpts.RateLimiter != nil {
 		u.executerOpts.RateLimiter.Stop()
 	}
+	u.executerOpts.HostRateLimiter.Stop()
 	// dereference all objects that were inherited from base nuclei engine
 	// since these are meant to be closed globally by base nuclei engine
 	u.executerOpts.Output = nil

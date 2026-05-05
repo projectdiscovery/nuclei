@@ -275,16 +275,18 @@ UNCOVER:
    -ur, -uncover-ratelimit int    override ratelimit of engines with unknown ratelimit (default 60 req/min) (default 60)
 
 RATE-LIMIT:
-   -rl, -rate-limit int               maximum number of requests to send per second (default 150)
-   -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
-   -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
-   -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
-   -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
-   -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)
-   -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
-   -jsc, -js-concurrency int          maximum number of javascript runtimes to be executed in parallel (default 120)
-   -pc, -payload-concurrency int      max payload concurrency for each template (default 25)
-   -prc, -probe-concurrency int       http probe concurrency with httpx (default 50)
+   -rl, -rate-limit int                     maximum number of requests to send per second (ignored when -rate-limit-host is set) (default 150)
+   -rld, -rate-limit-duration value         maximum number of requests to send per second (default 1s)
+   -rlm, -rate-limit-minute int             maximum number of requests to send per minute (DEPRECATED)
+   -rlh, -rate-limit-host int               maximum number of requests to send per host per rate-limit-host-duration (0 = disabled, takes priority over -rate-limit)
+   -rlhd, -rate-limit-host-duration value   refill interval for the per-host rate limit bucket (default 1s)
+   -bs, -bulk-size int                      maximum number of hosts to be analyzed in parallel per template (default 25)
+   -c, -concurrency int                     maximum number of templates to be executed in parallel (default 25)
+   -hbs, -headless-bulk-size int            maximum number of headless hosts to be analyzed in parallel per template (default 10)
+   -headc, -headless-concurrency int        maximum number of headless templates to be executed in parallel (default 10)
+   -jsc, -js-concurrency int                maximum number of javascript runtimes to be executed in parallel (default 120)
+   -pc, -payload-concurrency int            max payload concurrency for each template (default 25)
+   -prc, -probe-concurrency int             http probe concurrency with httpx (default 50)
    -tlc, -template-loading-concurrency int  maximum number of concurrent template loading operations (default 50)
 
 OPTIMIZATIONS:

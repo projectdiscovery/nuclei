@@ -205,6 +205,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               초당 보낼 최대 요청 수 (기본값 150)
    -rlm, -rate-limit-minute int       분당 보낼 최대 요청 수
+   -rlh, -rate-limit-host int         호스트당 rate-limit-host-duration 동안 보낼 최대 요청 수 (0 = 비활성)
+   -rlhd, -rate-limit-host-duration value  호스트별 rate-limit 버킷의 리필 간격 (기본값 1s)
    -bs, -bulk-size int                템플릿당 병렬로 분석할 최대 호스트 수 (기본값 25)
    -c, -concurrency int               병렬로 실행할 최대 템플릿 수 (기본값 25)
    -hbs, -headless-bulk-size int      템플릿당 병렬로 분석할 최대 headless 호스트 수 (기본값 10)
