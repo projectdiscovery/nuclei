@@ -316,4 +316,4 @@ This section contains a brief description of all nuclei JS bindings and their us
   And that's it , this automatically converts any slice/array to map and removes duplicates from it and returns a slice/array of unique values
 
 ------
-> Similar to DSL helper functions . we can either use built in functions available with `JavaScript (ECMAScript 5.1)` or use DSL helper functions and its up to user to decide which one to uses
+> Similar to DSL helper functions, we can either use built-in functions available with `JavaScript (ECMAScript 5.1)` or use DSL helper functions, and it's up to the user to decide which one to use.
