@@ -1,0 +1,22 @@
+id: ptr-fingerprint
+
+info:
+  name: PTR Fingerprint
+  author: pdteam
+  severity: info
+  tags: dns,ptr
+
+dns:
+  - name: "{{FQDN}}"
+    type: PTR
+
+    matchers:
+      - type: word
+        words:
+          - "IN\tPTR"
+
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "IN\tPTR\t(.+)"

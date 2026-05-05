@@ -1,0 +1,41 @@
+id: extract-emails
+
+info:
+  name: Extract Email IDs from Response
+  author: pdteam
+  severity: info
+
+
+flow: |
+  http(1)
+  for(let email of template["emails"]) {
+    set("email",email);
+    http(2);
+  }
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    extractors:
+      - type: regex
+        name: emails
+        regex:
+          - '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        internal: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/user/{{base64(email)}}"
+  
+    matchers:
+      - type: word
+        words:
+          - "Welcome"
+    
+    extractors:
+      - type: dsl
+        name: email
+        dsl:
+          - email

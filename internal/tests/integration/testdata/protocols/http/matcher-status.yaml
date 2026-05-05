@@ -1,0 +1,40 @@
+id: matcher-status
+
+info:
+  name: Test Matcher Status
+  author: pdteam
+  severity: critical
+
+variables:
+  username: test
+  password: admin
+  date: 2023-05-31
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/login?username={{username}}&password={{password}}"
+      - "{{BaseURL}}/admin-pannel"
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/dashboard?date={{date}}"
+      - "{{BaseURL}}/signup"
+  
+  - method: POST
+    path:
+      - "{{BaseURL}}/filemanager/upload.php"
+    body: "fldr=&url=file:///etc/passwd"
+
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "matcher status"
+
+      - type: status
+        status:
+          - 200

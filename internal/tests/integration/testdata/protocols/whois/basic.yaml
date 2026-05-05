@@ -1,0 +1,14 @@
+id: basic-whois-example
+
+info:
+  name: test template for WHOIS
+  author: pdteam
+  severity: info
+
+whois:
+  - query: "{{Host}}"
+    extractors:
+      - type: kval
+        kval:
+          - "expiration date"
+          - "registrar"

@@ -1,0 +1,21 @@
+id: condition-flow-no-operators
+info:
+  name: Condition Flow No Operators
+  author: pdteam
+  severity: info
+
+flow: dns() && http()
+
+dns:
+  - name: "{{FQDN}}"
+    type: CNAME
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?ref={{dns_cname}}"
+
+    matchers:
+      - type: word
+        words:
+          - "html>"

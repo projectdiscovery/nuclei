@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>DAST Scan Report</title>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.css" integrity="sha512-ywmPbuxGS4cJ7GxwCX+bCJweeext047ZYU2HP52WWKbpJnF4/Zzfr2Bo19J4CWPXZmleVusQ9d//RB5bq0RP7w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #33ff00;
+            --header-color: #00cc00;
+            --border-color: #1a1a1a;
+            --box-bg: #0f0f0f;
+            --critical: #ff0000;
+            --high: #ff4400;
+            --medium: #ffcc00;
+            --low: #00ff00;
+            --info: #00ccff;
+            --muted: #999999;
+        }
+
+        body {
+            font-family: 'Geist Mono', 'Courier New', monospace;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .report-header {
+            border-bottom: 1px solid var(--text-color);
+            margin-bottom: 20px;
+            padding: 10px 0;
+        }
+
+        .ascii-header {
+            color: var(--header-color);
+            white-space: pre;
+            font-size: 16px;
+            margin-bottom: 15px;
+            line-height: 1.2;
+        }
+
+        .timestamp {
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin: 25px 0;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            background: var(--box-bg);
+        }
+
+        .section-header {
+            color: var(--header-color);
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .terminal-line {
+            font-family: 'Courier New', monospace;
+            margin: 5px 0;
+        }
+
+        .key {
+            color: var(--muted);
+            display: inline-block;
+            width: 200px;
+        }
+
+        .value {
+            color: var(--text-color);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: var(--box-bg);
+            padding: 10px;
+            border-left: 2px solid var(--text-color);
+        }
+
+        .severity-critical { border-left-color: var(--critical); }
+        .severity-high { border-left-color: var(--high); }
+        .severity-medium { border-left-color: var(--medium); }
+        .severity-low { border-left-color: var(--low); }
+        .severity-info { border-left-color: var(--info); }
+
+        .progress-bar {
+            width: 100%;
+            height: 2px;
+            background: var(--border-color);
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--text-color);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Add these new CSS variables for light theme */
+        [data-theme="light"] {
+            --bg-color: #ffffff;
+            --text-color: #2a2a2a;
+            --header-color: #087f5b;
+            --border-color: #e0e0e0;
+            --box-bg: #f8f9fa;
+            --muted: #6c757d;
+            --critical: #dc3545;
+            --high: #fd7e14;
+            --medium: #ffc107;
+            --low: #198754;
+            --info: #0dcaf0;
+        }
+
+        /* Add styles for the controls container */
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .theme-toggle, .json-button {
+            background: var(--box-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: 'Geist Mono', monospace;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 4px;
+        }
+
+        .theme-toggle:hover, .json-button:hover {
+            border-color: var(--text-color);
+            background: var(--border-color);
+        }
+
+        /* Add styles for icons */
+        .theme-icon {
+            font-size: 1.1em;
+        }
+
+        /* Update stat box styles for better light theme contrast */
+        [data-theme="light"] .stat-box {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="light"] .section {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .error-table {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .error-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .error-row:last-child {
+            border-bottom: none;
+        }
+
+        .error-message {
+            flex: 1;
+            padding-right: 20px;
+            word-break: break-word;
+            color: var(--muted);
+        }
+
+        .error-count {
+            white-space: nowrap;
+            color: var(--muted);
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <i class="bi bi-moon-fill theme-icon" id="theme-icon"></i>
+        </button>
+        <button class="json-button" onclick="toggleJSON()">
+            <i class="bi bi-code-slash"></i>
+            JSON
+        </button>
+    </div>
+
+    <div class="report-header">
+        <div class="ascii-header">
+                     __     _
+   ____  __  _______/ /__  (_)
+  / __ \/ / / / ___/ / _ \/ /
+ / / / / /_/ / /__/ /  __/ /
+/_/ /_/\__,_/\___/_/\___/_/   {{.DASTServerInfo.NucleiVersion}}
+
+                projectdiscovery.io
+
+Dynamic Application Security Testing (DAST) API Server
+        </div>
+        <div class="timestamp">[+] Server started at: <span id="datetime">{{.DASTScanStartTime}}</span></div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">[*] Server Configuration</div>
+        <div class="terminal-line"><span class="key">Nuclei Version</span><span class="value">{{.DASTServerInfo.NucleiVersion}}</span></div>
+        <div class="terminal-line"><span class="key">Template Version</span><span class="value">{{.DASTServerInfo.NucleiTemplateVersion}}</span></div>
+        <div class="terminal-line"><span class="key">DAST Server API</span><span class="value">{{.DASTServerInfo.NucleiDastServerAPI}}</span></div>
+        <div class="terminal-line"><span class="key">Auth Status</span><span class="value">{{if .DASTServerInfo.ServerAuthEnabled}}ENABLED{{else}}DISABLED{{end}}</span></div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">[+] Scan Progress</div>      
+        <div class="terminal-line"><span class="key">Total Results</span><span class="value">{{.DASTScanStatistics.TotalMatchedResults}} findings</span></div>
+        <div class="terminal-line"><span class="key">Endpoints In Queue</span><span class="value">{{.DASTScanStatistics.EndpointsInQueue}}</span></div>
+        <div class="terminal-line"><span class="key">Currently Testing</span><span class="value">{{.DASTScanStatistics.EndpointsBeingTested}}</span></div>
+        <div class="terminal-line"><span class="key">Components Tested</span><span class="value">{{.DASTScanStatistics.TotalComponentsTested}}</span></div>
+        <div class="terminal-line"><span class="key">Endpoints Tested</span><span class="value">{{.DASTScanStatistics.TotalEndpointsTested}}</span></div>
+        <div class="terminal-line"><span class="key">Templates Loaded</span><span class="value">{{.DASTScanStatistics.TotalTemplatesLoaded}}</span></div>
+        <div class="terminal-line"><span class="key">Templates Tested</span><span class="value">{{.DASTScanStatistics.TotalTemplatesTested}}</span></div>
+        <div class="terminal-line"><span class="key">Total Requests</span><span class="value">{{.DASTScanStatistics.TotalFuzzedRequests}}</span></div>
+        <div class="terminal-line"><span class="key">Total Errors</span><span class="value">{{.DASTScanStatistics.TotalErroredRequests}}</span></div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">[!] Security Findings</div>
+        <div class="grid">
+            <div class="stat-box severity-critical">
+                <div class="key">Critical</div>
+                <div class="value">{{index .DASTScanSeverityBreakdown "critical"}} findings</div>
+            </div>
+            <div class="stat-box severity-high">
+                <div class="key">High</div>
+                <div class="value">{{index .DASTScanSeverityBreakdown "high"}} findings</div>
+            </div>
+            <div class="stat-box severity-medium">
+                <div class="key">Medium</div>
+                <div class="value">{{index .DASTScanSeverityBreakdown "medium"}} findings</div>
+            </div>
+            <div class="stat-box severity-low">
+                <div class="key">Low</div>
+                <div class="value">{{index .DASTScanSeverityBreakdown "low"}} findings</div>
+            </div>
+            <div class="stat-box severity-info">
+                <div class="key">Info</div>
+                <div class="value">{{index .DASTScanSeverityBreakdown "info"}} findings</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">[-] Status Codes Breakdown</div>
+            <!-- Status Codes Breakdown -->
+            <div class="terminal-line"><span class="key">Response Codes</span></div>
+            {{range $status, $count := .DASTScanStatusStatistics}}
+            <div class="terminal-line"><span class="key">&nbsp;&nbsp;{{$status}}</span><span class="value">{{$count}} times</span></div>
+        {{end}}
+    </div>
+
+    <div class="section">
+        <div class="section-header">[-] Error Breakdown</div>
+        <div class="error-table">
+            {{range $error, $count := .DASTScanErrorStatistics}}
+            <div class="error-row">
+                <div class="error-message">{{$error}}</div>
+                <div class="error-count">{{$count}} times</div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            const currentTheme = body.getAttribute('data-theme');
+            
+            if (currentTheme === 'light') {
+                body.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'dark');
+                themeIcon.className = 'bi bi-moon-fill theme-icon';
+            } else {
+                body.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                themeIcon.className = 'bi bi-sun-fill theme-icon';
+            }
+        }
+
+        // Load saved theme preference
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'light') {
+                document.body.setAttribute('data-theme', 'light');
+                themeIcon.className = 'bi bi-sun-fill theme-icon';
+            }
+        });
+
+        function toggleJSON() {
+            const url = new URL(window.location.href);
+            url.pathname = url.pathname + '.json';
+            window.location.href = url.toString();
+        }
+    </script>
+</body>
+</html>

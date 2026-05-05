@@ -1,0 +1,18 @@
+id: redirect-match-url
+
+info:
+  name: Redirect Match URL
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    stop-at-first-match: true # Confirm stop-at-first-match
+    redirects: true # Confirm redirected URL matched value
+    max-redirects: 3
+    matchers:
+      - type: word
+        words:
+          - "This is test redirects matcher text"

@@ -1,0 +1,23 @@
+id: custom-attack-type
+
+info:
+  name: Custom Attack Type
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?a={{test}}&b={{values}}"
+    payloads:
+      test:
+        - hello
+        - another
+      values:
+        - data
+        - hacking
+    attack: pitchfork
+    matchers:
+      - type: word
+        words:
+          - "This is test custom payload"

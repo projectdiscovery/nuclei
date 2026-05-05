@@ -1,0 +1,48 @@
+id: flow-request-condition
+
+info:
+  name: Flow with request condition (3 raw requests)
+  author: test
+  severity: info
+
+flow: http()
+
+http:
+  - raw:
+      - |
+        GET /step1 HTTP/1.1
+        Host: {{Hostname}}
+
+      - |
+        GET /step2 HTTP/1.1
+        Host: {{Hostname}}
+
+      - |
+        GET /step3?token={{auth}} HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body_1
+        words:
+          - "step1-ok"
+
+      - type: word
+        part: body_2
+        words:
+          - "step2-ok"
+
+      - type: word
+        part: body_3
+        words:
+          - "step3-ok"
+
+    extractors:
+      - type: regex
+        name: auth
+        internal: true
+        part: body_2
+        group: 1
+        regex:
+          - 'token=([a-z0-9]+)'

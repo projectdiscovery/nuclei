@@ -1,0 +1,22 @@
+id: cname-fingerprint
+
+info:
+  name: CNAME Fingerprint
+  author: pdteam
+  severity: info
+  tags: dns,cname
+
+dns:
+  - name: "{{FQDN}}"
+    type: NS
+
+    matchers:
+      - type: word
+        words:
+          - "IN\tCNAME"
+
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "IN\tCNAME\t(.+)"

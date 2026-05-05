@@ -1,0 +1,15 @@
+id: cl-body-without-header
+
+info:
+  name: CL Get Request - Body without header
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: dsl
+        dsl:
+          - "content_length==14"

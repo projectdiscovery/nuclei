@@ -1,0 +1,32 @@
+id: multi-step
+
+info:
+  name: Multi-Step Network Template
+  author: pd-team
+  severity: info
+
+network:
+  - inputs:
+      - data: "FIRST"
+        read: 4
+        name: first
+      - data: "SECOND"
+        read: 4
+        name: second
+    host:
+      - "{{Hostname}}"
+    read-size: 6
+    matchers:
+      - type: word
+        part: first
+        words:
+          - "PING" 
+      - type: word
+        part: second
+        words:
+          - "PONG" 
+      - type: word
+        part: data
+        words:
+          - "NUCLEI" 
+    matchers-condition: and

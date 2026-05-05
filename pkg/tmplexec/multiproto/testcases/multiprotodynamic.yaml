@@ -1,0 +1,22 @@
+id: dns-http-dynamic-values
+
+info:
+  name: multi protocol request with dynamic values
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}" # DNS Request
+    type: a
+
+http:
+  - method: GET # http request
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - body == "ok"
+          - dns_a == '128.199.158.128' # check for A record (extracted information from dns response)
+        condition: and

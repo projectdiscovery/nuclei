@@ -1,0 +1,20 @@
+id: raw-with-params
+
+info:
+  name: Test RAW Params Template
+  author: pdteam
+  severity: info
+# this test is used to check automerge of params in both unsafe & safe requests
+# key1=value1 is added from inputURL
+
+http:
+  - raw:
+      - |
+        GET /?key2=value2 HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+
+    matchers:
+      - type: word
+        words:
+          - "Test is test raw-params-matcher text"

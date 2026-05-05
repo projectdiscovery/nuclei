@@ -1,0 +1,39 @@
+id: path-based-sqli
+
+info:
+  name: Path Based SQLi
+  author: pdteam
+  severity: info
+  description: |
+    This template attempts to find SQL injection vulnerabilities on path based sqli and replacing numerical values with fuzzing payloads.
+    ex: /admin/user/55/profile , /user/15/action/update, /posts/15, /blog/100/data, /page/51/ etc these types of paths are filtered and
+    replaced with sqli path payloads.
+    Note: this is example template, and payloads/matchers need to be modified appropriately.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "GET"'
+        condition: and
+    
+    payloads:
+      pathsqli:
+        - '%20OR%20True'
+    
+    fuzzing:
+      - part: path
+        type: postfix
+        mode: single
+        fuzz:
+          - '{{pathsqli}}'
+
+    matchers:
+      - type: status
+        status: 
+          - 200   
+
+      - type: word
+        words:
+          - "admin"   
+    matchers-condition: and

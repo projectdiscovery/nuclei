@@ -1,0 +1,26 @@
+id: ssh-server-fingerprint
+
+info:
+  name: Fingerprint SSH Server Software
+  author: Ice3man543,tarunKoyalwar
+  severity: info
+  metadata:
+    shodan-query: port:22
+  
+
+javascript:
+  - code: |
+      var m = require("nuclei/ssh");
+      var c = m.SSHClient();
+      var response = c.ConnectSSHInfoMode(Host, Port);
+      to_json(response);
+    args:
+      Host: "{{Host}}"
+      Port: "22"
+
+    extractors:
+      - type: json
+        name: server
+        json:
+          - '.ServerID.Raw'
+        part: response

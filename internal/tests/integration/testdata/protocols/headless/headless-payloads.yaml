@@ -1,0 +1,26 @@
+id: headless-payloads
+
+info:
+  name: headless payloads example
+  author: pdteam
+  severity: info
+  tags: headless
+
+headless:
+  - attack: clusterbomb
+    payloads:
+      aa:
+        - aa
+        - bb
+      bb:
+        - cc
+        - dd
+    steps:
+      - args:
+          url: "{{BaseURL}}?aa={{aa}}&bb={{bb}}"
+        action: navigate
+      - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "test"

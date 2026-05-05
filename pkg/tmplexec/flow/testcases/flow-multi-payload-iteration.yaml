@@ -1,0 +1,53 @@
+id: flow-multi-payload-iteration
+
+info:
+  name: Flow with multiple payload iterations
+  author: test
+  severity: info
+
+flow: http()
+
+http:
+  - raw:
+      - |
+        GET /step1 HTTP/1.1
+        Host: {{Hostname}}
+
+      - |
+        POST /login HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        username={{user}}&password={{pass}}
+
+      - |
+        GET /data?user={{user}} HTTP/1.1
+        Host: {{Hostname}}
+
+    attack: pitchfork
+    payloads:
+      user:
+        - admin
+        - guest
+      pass:
+        - secret1
+        - secret2
+
+    stop-at-first-match: true
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body_1
+        words:
+          - "step1-ok"
+
+      - type: word
+        part: body_2
+        words:
+          - "login-ok"
+
+      - type: word
+        part: body_3
+        words:
+          - "data-ok"

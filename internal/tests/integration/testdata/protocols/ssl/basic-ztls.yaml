@@ -1,0 +1,17 @@
+id: basic-ssl-tls
+
+info:
+  name: Basic SSL Request with ztls
+  author: pdteam
+  severity: info
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+
+    min_version: ssl30
+    max_version: tls12
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "tls_connection == 'ztls'"

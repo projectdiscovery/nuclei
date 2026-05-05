@@ -1,0 +1,32 @@
+id: network-multi-step
+info:
+  name: network multi-step
+  author: tarunKoyalwar
+  severity: high
+  description: |
+    Network multi-step template for testing
+
+
+javascript:
+  - code: |
+      var m = require("nuclei/net");
+      var conn = m.Open("tcp",address);
+      conn.SetTimeout(timeout); // optional timeout
+      conn.Send("FIRST")
+      conn.RecvString(4) // READ 4 bytes i.e PING
+      conn.Send("SECOND")
+      conn.RecvString(4) // READ 4 bytes i.e PONG
+      conn.RecvString(6) // READ 6 bytes i.e NUCLEI
+
+    args:
+      address: "{{Host}}:{{Port}}"
+      Host: "{{Host}}"
+      Port: 5431
+      timeout: 3 # in sec
+
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+          - response == "NUCLEI"
+        condition: and

@@ -1,0 +1,17 @@
+id: basic-disable-redirects
+
+info:
+  name: Basic GET Redirects Request
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    redirects: true
+    max-redirects: 2
+    matchers:
+      - type: word
+        words:
+          - "This is test disable redirects matcher text"

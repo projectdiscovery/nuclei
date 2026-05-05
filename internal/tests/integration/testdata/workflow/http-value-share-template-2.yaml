@@ -1,0 +1,19 @@
+id: value-sharing-template2
+
+info:
+  name: value-sharing-template2
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        GET /path2 HTTP/1.1
+        Host: {{Hostname}}
+        
+        {{extracted}}
+
+    matchers:
+      - type: word
+        words:
+          - "test-value"

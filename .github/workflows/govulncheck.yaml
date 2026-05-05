@@ -1,0 +1,30 @@
+name: 🐛 govulncheck
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly
+  workflow_dispatch: {}
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    if: github.repository == 'projectdiscovery/nuclei'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    env:
+      OUTPUT: "/tmp/results.sarif"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: projectdiscovery/actions/setup/go@v1
+        with:
+          go-version-file: go.tool.mod
+          cache-dependency-path: go.tool.sum
+      - run: |
+          go tool -modfile=go.tool.mod govulncheck -scan package -format sarif ./... | \
+            jq '(.runs[].tool.driver.rules[]?.properties.tags)? |= unique' > $OUTPUT
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: "${{ env.OUTPUT }}"
+          category: "govulncheck"

@@ -1,0 +1,48 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    allow:
+      - dependency-name: "github.com/projectdiscovery/*"
+    groups:
+      modules:
+        patterns: ["github.com/projectdiscovery/*"]
+      security:
+        applies-to: "security-updates"
+        patterns: ["*"]
+        exclude-patterns: ["github.com/projectdiscovery/*"]
+    labels:
+      - "Type: Maintenance"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      workflows:
+        patterns: ["*"]
+        exclude-patterns: ["projectdiscovery/actions/*"]
+    labels:
+      - "Type: Maintenance"
+
+#  # Maintain dependencies for docker
+#  - package-ecosystem: "docker"
+#    directory: "/"
+#    schedule:
+#      interval: "weekly"
+#    target-branch: "dev"
+#    commit-message:
+#      prefix: "chore"
+#      include: "scope"
+#    labels:
+#      - "Type: Maintenance"

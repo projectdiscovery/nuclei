@@ -1,0 +1,17 @@
+id: value-sharing-template1
+
+info:
+  name: value-sharing-template1
+  author: pdteam
+  severity: info
+
+http:
+  - path:
+      - "{{BaseURL}}/path1"
+    extractors:
+      - type: regex
+        part: body
+        name: extracted
+        regex:
+          - 'href="(.*)"'
+        group: 1

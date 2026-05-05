@@ -1,0 +1,37 @@
+id: flow-iterate-one-value-flow
+
+info:
+  name: Test Flow Iterate One Value Flow
+  author: pdteam
+  severity: info
+  description: |
+    If length of template.extracted variable is not know, i.e it could be an array of 1 or more values, then iterate function 
+    should be used to iterate over values because nuclei by default converts array to string if it has only 1 value.
+
+flow: |
+  http(1)
+  for(let value of iterate(template.extracted)){
+    set("value", value)
+    http(2)
+  }
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    extractors:
+      - type: regex
+        name: extracted
+        internal: true
+        regex:
+          - "[ok]+"
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{value}}"
+
+    matchers:
+      - type: word
+        words:
+          - "ok"

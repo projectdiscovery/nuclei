@@ -1,0 +1,27 @@
+// Warning - This is generated code
+package oracle
+
+import (
+	"context"
+	"errors"
+
+	"fmt"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+)
+
+func memoizedisOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
+	hash := "isOracle" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+
+	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
+		return isOracle(ctx, executionId, host, port)
+	})
+	if err != nil {
+		return IsOracleResponse{}, err
+	}
+	if value, ok := v.(IsOracleResponse); ok {
+		return value, nil
+	}
+
+	return IsOracleResponse{}, errors.New("could not convert cached result")
+}

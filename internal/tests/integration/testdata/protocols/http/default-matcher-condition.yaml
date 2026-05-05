@@ -1,0 +1,22 @@
+id: default-matcher-condition
+
+info:
+  name: default-matcher-condition
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        GET /?action=curltest&url={{interactsh-url}} HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"
+
+      - type: status
+        status:
+          - 200

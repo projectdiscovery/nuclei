@@ -1,0 +1,18 @@
+id: cli-with-constants
+
+info:
+  name: Cli Var with Constants
+  author: pdteam
+  severity: info
+
+constants:
+  test: test-in-template
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}?p={{test}}"
+    matchers:
+      - type: word
+        words:
+          - "test-in-template"

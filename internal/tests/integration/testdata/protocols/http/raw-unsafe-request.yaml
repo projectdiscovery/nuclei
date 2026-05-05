@@ -1,0 +1,20 @@
+id: basic-raw-unsafe-request-example
+
+info:
+  name: Test RAW Unsafe Request Template
+  author: pd-team
+  severity: info
+
+http:
+  - raw:
+      - |+
+        GET / HTTP/1.1
+        Host: 
+        Content-Length: 4
+
+    unsafe: true
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "This is test raw-unsafe-matcher test"
