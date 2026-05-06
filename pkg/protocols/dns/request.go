@@ -3,14 +3,13 @@ package dns
 import (
 	"encoding/hex"
 	"fmt"
-	maps0 "maps"
+	"maps"
 	"strings"
 	"sync"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
-	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -189,8 +188,8 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-	maps0.Copy(outputEvent, previous)
-	maps0.Copy(outputEvent, vars)
+	maps.Copy(outputEvent, previous)
+	maps.Copy(outputEvent, vars)
 	// add variables from template context before matching/extraction
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
