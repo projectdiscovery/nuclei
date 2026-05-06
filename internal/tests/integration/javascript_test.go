@@ -34,6 +34,7 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
 	{Path: "protocols/javascript/telnet-auth-test.yaml", TestCase: &javascriptTelnetAuthTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/asrep-roast.yaml", TestCase: &javascriptASRepRoast{}},
 }
 
 var (
