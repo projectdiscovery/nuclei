@@ -24,6 +24,7 @@ var workflowTestcases = []integrationCase{
 	{Path: "workflow/matcher-name.yaml", TestCase: &workflowMatcherName{}},
 	{Path: "workflow/complex-conditions.yaml", TestCase: &workflowComplexConditions{}},
 	{Path: "workflow/http-value-share-workflow.yaml", TestCase: &workflowHttpKeyValueShare{}},
+	{Path: "workflow/race-context-share-workflow.yaml", TestCase: &workflowRaceContextShare{}},
 	{Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
 	{Path: "workflow/code-value-share-workflow.yaml", TestCase: &workflowCodeKeyValueShare{}, DisableOn: isCodeDisabled}, // isCodeDisabled declared in code.go
 	{Path: "workflow/multiprotocol-value-share-workflow.yaml", TestCase: &workflowMultiProtocolKeyValueShare{}},
@@ -149,6 +150,39 @@ func (h *workflowHttpKeyValueShare) Execute(filePath string) error {
 	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
 		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type workflowRaceContextShare struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *workflowRaceContextShare) Execute(filePath string) error {
+	var receivedBodies []string
+	router := httprouter.New()
+	router.GET("/context", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = fmt.Fprintf(w, `{"name":"foo"}`)
+	})
+	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		body, _ := io.ReadAll(r.Body)
+		receivedBodies = append(receivedBodies, string(body))
+		if string(body) != "name=foo" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = fmt.Fprintf(w, "bad")
+			return
+		}
+		_, _ = fmt.Fprintf(w, "ok")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if len(receivedBodies) != 1 || receivedBodies[0] != "name=foo" {
+		return fmt.Errorf("incorrect race subtemplate body: got %v", receivedBodies)
 	}
 
 	return expectResultsCount(results, 1)
