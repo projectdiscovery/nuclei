@@ -133,69 +133,76 @@ func TestDisableMergePath(t *testing.T) {
 }
 
 func TestUnsafeWithFullURL(t *testing.T) {
-	// Test unsafe mode with full URL - should extract relative path
+	// Absolute-form request line (RFC 7230 Section 5.3.2) must reach the wire
+	// verbatim in unsafe mode. See https://github.com/projectdiscovery/nuclei/issues/7382.
 	request, err := Parse(`GET http://127.0.0.1/foo HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Mozilla/5.0
 Connection: close`, parseURL(t, "http://httpbin.org/bar"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with full URL")
-	require.Equal(t, "/foo", request.Path, "Could not extract relative path from full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /foo HTTP/1.1", "UnsafeRawBytes should contain relative path, not full URL")
-	require.NotContains(t, string(request.UnsafeRawBytes), "http://127.0.0.1", "UnsafeRawBytes should not contain full URL")
+	require.Equal(t, "/foo", request.Path, "Path field should hold the relative component for downstream bookkeeping")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://127.0.0.1/foo HTTP/1.1", "UnsafeRawBytes should preserve the absolute URI")
 }
 
 func TestUnsafeWithFullURLAndPath(t *testing.T) {
-	// Test unsafe mode with full URL and target URL that has a path
+	// Even when the target URL has a non-root path, an explicit absolute URI in
+	// the request line should not be merged with it. The user has fully
+	// specified the request target.
 	request, err := Parse(`GET http://127.0.0.1/foo HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Mozilla/5.0
 Connection: close`, parseURL(t, "http://httpbin.org/bar"), true, false)
 	require.Nil(t, err, "could not parse unsafe request with full URL and path merge")
-	require.Equal(t, "/bar/foo", request.Path, "Could not merge path correctly from full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /bar/foo HTTP/1.1", "UnsafeRawBytes should contain merged relative path")
-	require.NotContains(t, string(request.UnsafeRawBytes), "http://127.0.0.1", "UnsafeRawBytes should not contain full URL")
+	require.Equal(t, "/foo", request.Path, "Path field should hold the relative component from the absolute URI, not the merged target path")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://127.0.0.1/foo HTTP/1.1", "UnsafeRawBytes should preserve the absolute URI without path automerge")
 }
 
 func TestUnsafeWithFullURLAndQueryParams(t *testing.T) {
-	// Test unsafe mode with full URL containing query parameters
 	request, err := Parse(`GET http://127.0.0.1/foo?id=123&name=test HTTP/1.1
 Host: {{Hostname}}
 User-Agent: Mozilla/5.0
 Connection: close`, parseURL(t, "http://httpbin.org/bar"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with full URL and query params")
-	require.Equal(t, "/foo?id=123&name=test", request.Path, "Could not extract relative path with query params from full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /foo?id=123&name=test HTTP/1.1", "UnsafeRawBytes should contain relative path with query params")
-	require.NotContains(t, string(request.UnsafeRawBytes), "http://127.0.0.1", "UnsafeRawBytes should not contain full URL")
+	require.Equal(t, "/foo?id=123&name=test", request.Path, "Path field should hold relative component with query params")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://127.0.0.1/foo?id=123&name=test HTTP/1.1", "UnsafeRawBytes should preserve the absolute URI with query params")
 }
 
 func TestUnsafeWithHTTPSFullURL(t *testing.T) {
-	// Test unsafe mode with HTTPS full URL
 	request, err := Parse(`GET https://secure.example.com/api/v1/users HTTP/1.1
 Host: {{Hostname}}
 Authorization: Bearer token123
 Connection: close`, parseURL(t, "https://target.com/test"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with HTTPS full URL")
-	require.Equal(t, "/api/v1/users", request.Path, "Could not extract relative path from HTTPS full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /api/v1/users HTTP/1.1", "UnsafeRawBytes should contain relative path")
-	require.NotContains(t, string(request.UnsafeRawBytes), "https://secure.example.com", "UnsafeRawBytes should not contain full URL")
+	require.Equal(t, "/api/v1/users", request.Path, "Path field should hold relative component from HTTPS full URL")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET https://secure.example.com/api/v1/users HTTP/1.1", "UnsafeRawBytes should preserve the HTTPS absolute URI")
 }
 
 func TestUnsafeWithFullURLRootPath(t *testing.T) {
-	// Test unsafe mode with full URL pointing to root path
-	// When disable-path-automerge is true and path is /, it becomes empty string (expected behavior)
 	request, err := Parse(`GET http://example.com/ HTTP/1.1
 Host: {{Hostname}}
 Connection: close`, parseURL(t, "http://target.com/api"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with full URL root path")
-	// With disable-path-automerge=true and root path, it becomes empty per existing logic
-	require.Equal(t, "", request.Path, "Root path with disable-path-automerge should be empty")
+	require.Equal(t, "/", request.Path, "Path field should hold the relative root from the absolute URI")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://example.com/ HTTP/1.1", "UnsafeRawBytes should preserve the absolute URI with root path")
 
-	// Test with disable-path-automerge=false
 	request, err = Parse(`GET http://example.com/ HTTP/1.1
 Host: {{Hostname}}
 Connection: close`, parseURL(t, "http://target.com/api"), true, false)
 	require.Nil(t, err, "could not parse unsafe request with full URL root path and merge")
-	require.Equal(t, "/api", request.Path, "Should merge with target path when automerge enabled")
+	require.Equal(t, "/", request.Path, "Path field should hold the relative root regardless of automerge")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://example.com/ HTTP/1.1", "UnsafeRawBytes should preserve the absolute URI even with automerge enabled")
+}
+
+// TestUnsafeWithFullURLAndPort reproduces the scenario from
+// https://github.com/projectdiscovery/nuclei/issues/7382 where the request
+// line contains an absolute URI with an explicit port. The scheme, host, and
+// port must all reach the wire intact.
+func TestUnsafeWithFullURLAndPort(t *testing.T) {
+	request, err := Parse(`GET http://example.com:80/foo HTTP/1.1
+Host: 127.0.0.1`, parseURL(t, "http://127.0.0.1:8000"), true, false)
+	require.Nil(t, err, "could not parse unsafe request with full URL containing port")
+	require.Equal(t, "/foo", request.Path, "Path field should hold relative component from absolute URI with port")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://example.com:80/foo HTTP/1.1", "UnsafeRawBytes should preserve scheme, host, and port verbatim")
 }
 
 func TestSafeWithFullURL(t *testing.T) {

@@ -39,19 +39,14 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	}
 
 	// handle full URLs first (before checking unsafe flag) to extract relative path
+	hadFullURI := false
 	if strings.HasPrefix(rawrequest.Path, "http://") || strings.HasPrefix(rawrequest.Path, "https://") {
 		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
 		if err != nil {
 			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
 		}
-		prevPath := rawrequest.Path
+		hadFullURI = true
 		relPath := urlx.GetRelativePath()
-
-		// NOTE(dwisiswant0): Use rel path instead if unsafe.
-		// See https://github.com/projectdiscovery/nuclei/issues/6558.
-		if unsafe {
-			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
-		}
 
 		// rotate full URL with rel path
 		rawrequest.Path = relPath
@@ -65,6 +60,14 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			inputURL.Params.IncludeEquals = true
 			rawrequest.Path = inputURL.GetRelativePath()
 		}
+
+	// If the request line carries an absolute URI (RFC 7230 Section 5.3.2)
+	// in unsafe mode, leave UnsafeRawBytes untouched so the request reaches
+	// the wire verbatim. Path-automerge with the input URL is intentionally
+	// skipped because the user fully specified the request target.
+	// See https://github.com/projectdiscovery/nuclei/issues/7382.
+	case unsafe && hadFullURI:
+		// no-op: keep UnsafeRawBytes as-is
 
 	// If unsafe changes must be made in raw request string itself
 	case unsafe:
