@@ -235,7 +235,7 @@ func AnalyzeReflectionContext(responseBody, marker string) (XSSContext, error) {
 		return ContextUnknown, nil
 	}
 
-	markerLower := strings.ToLower(marker)
+	markerLower := strings.ToLower(strings.TrimSpace(marker))
 
 	// bail early if the marker isn't anywhere in the body
 	if !strings.Contains(strings.ToLower(responseBody), markerLower) {
