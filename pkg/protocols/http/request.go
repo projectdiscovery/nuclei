@@ -874,24 +874,25 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// converts whitespace and other chars that cannot be printed to url encoded values
 	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
-	// Dump the requests containing all headers
-	if !generatedRequest.original.Race {
-		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
+	// Dump the request a second time so debug/store output reflects any
+	// post-auth headers applied by ApplyAuth(). Skipped entirely when no
+	// debug/store consumer needs the dump -- the pre-flight dump above
+	// already populates dumpedRequest for failure-path logging.
+	if !generatedRequest.original.Race && (request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse) {
+		postAuthDump, dumpError := dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
 		}
+		dumpedRequest = postAuthDump
 		dumpedRequestString := string(dumpedRequest)
-		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
+		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
-			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				gologger.Info().Msg(msg)
-				gologger.Print().Msgf("%s", dumpedRequestString)
-			}
-			if request.options.Options.StoreResponse {
-				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
-			}
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msg(msg)
+			gologger.Print().Msgf("%s", dumpedRequestString)
+		}
+		if request.options.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
 		}
 	}
 
