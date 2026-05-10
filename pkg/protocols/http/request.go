@@ -269,8 +269,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					continue
 				}
 				request.options.RateLimitTake()
-				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
+				// Cached at Compile time; avoids walking the matcher/extractor graph per worker iteration.
+				hasInteractMatchers := request.hasInteractMatchers
+				needsRequestEvent := request.needsRequestEvent
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
@@ -531,7 +532,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
-			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+			// Cached at Compile time.
+			hasInteractMatchers := request.hasInteractMatchers
 
 			request.options.RateLimitTake()
 
@@ -569,7 +571,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
-				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
+				// Cached at Compile time.
+				needsRequestEvent := request.needsRequestEvent
 				if (hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
