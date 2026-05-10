@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/bodycache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -43,7 +44,21 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	case matchers.XPathMatcher:
-		return matcher.Result(matcher.MatchXPath(item)), []string{}
+		// Share the parsed HTML/XML tree across all xpath matchers + extractors
+		// targeting the same response via bodycache.
+		cache := bodycache.From(data)
+		if strings.HasPrefix(item, "<?xml") {
+			doc, err := cache.XMLNode(item)
+			if err != nil {
+				return false, []string{}
+			}
+			return matcher.Result(matcher.MatchXMLNode(doc)), []string{}
+		}
+		doc, err := cache.HTMLNode(item)
+		if err != nil {
+			return false, []string{}
+		}
+		return matcher.Result(matcher.MatchHTMLNode(doc)), []string{}
 	}
 	return false, []string{}
 }
@@ -72,9 +87,28 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.XPathExtractor:
-		return extractor.ExtractXPath(item)
+		// Share parsed HTML/XML across xpath extractors and matchers via bodycache.
+		cache := bodycache.From(data)
+		if strings.HasPrefix(item, "<?xml") {
+			doc, err := cache.XMLNode(item)
+			if err != nil {
+				return make(map[string]struct{})
+			}
+			return extractor.ExtractXMLNode(doc)
+		}
+		doc, err := cache.HTMLNode(item)
+		if err != nil {
+			return make(map[string]struct{})
+		}
+		return extractor.ExtractHTMLNode(doc)
 	case extractors.JSONExtractor:
-		return extractor.ExtractJSON(item)
+		// Share unmarshaled JSON value across json extractors via bodycache.
+		cache := bodycache.From(data)
+		obj, err := cache.JSONObject(item)
+		if err != nil {
+			return make(map[string]struct{})
+		}
+		return extractor.ExtractJSONObject(obj)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
 	}
