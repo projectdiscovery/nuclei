@@ -35,6 +35,9 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
 	{Path: "protocols/javascript/telnet-auth-test.yaml", TestCase: &javascriptTelnetAuthTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/asrep-roast.yaml", TestCase: &javascriptASRepRoast{}},
+	{Path: "protocols/javascript/wmi-command.yaml", TestCase: &javascriptWMICommand{}},
+	{Path: "protocols/javascript/goexec-redaction.yaml", TestCase: &javascriptGoExecRedaction{}},
+	{Path: "protocols/javascript/goexec-modules.yaml", TestCase: &javascriptGoExecModules{}},
 }
 
 var (
@@ -168,6 +171,36 @@ type javascriptNoPortArgs struct{}
 
 func (j *javascriptNoPortArgs) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "yo.dawg", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type javascriptWMICommand struct{}
+
+func (j *javascriptWMICommand) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-eh", "203.0.113.10")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type javascriptGoExecRedaction struct{}
+
+func (j *javascriptGoExecRedaction) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-eh", "203.0.113.10")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type javascriptGoExecModules struct{}
+
+func (j *javascriptGoExecModules) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-eh", "203.0.113.10")
 	if err != nil {
 		return err
 	}

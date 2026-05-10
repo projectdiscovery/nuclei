@@ -1,0 +1,53 @@
+id: javascript-goexec-modules
+
+info:
+  name: JavaScript GoExec Helper Modules
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      const wmi = require("nuclei/wmi");
+      const tsch = require("nuclei/tsch");
+      const scmr = require("nuclei/scmr");
+      const dcom = require("nuclei/dcom");
+
+      const target = "203.0.113.10";
+      const auth = wmi.Auth.password("CORP\\auditor", "goexec-modules-secret");
+      const options = { timeout: 1, output: false };
+
+      const results = [
+        new wmi.Client(target, auth).command("whoami", options),
+        new tsch.Client(target, auth).demand("\\NucleiTask", "cmd.exe", "/c whoami", options),
+        new scmr.Client(target, auth).create("NucleiService", "cmd.exe", "/c whoami", options),
+        new dcom.Client(target, auth).mmc("cmd.exe", "/c whoami", options),
+      ];
+      Export(to_json(results));
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        condition: and
+        words:
+          - "module"
+          - "wmi"
+          - "tsch"
+          - "scmr"
+          - "dcom"
+          - "method"
+          - "command"
+          - "demand"
+          - "create"
+          - "mmc"
+          - "network policy"
+          - "203.0.113.10"
+      - type: word
+        part: response
+        negative: true
+        words:
+          - "goexec-modules-secret"
