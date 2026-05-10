@@ -188,6 +188,11 @@ type Request struct {
 	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
 	HostRedirects bool `yaml:"host-redirects,omitempty" json:"host-redirects,omitempty" jsonschema:"title=follow same host http redirects,description=Specifies whether redirects to the same host should be followed by the HTTP Client"`
 	// description: |
+	//   ProtocolRedirects specifies whether only redirects within the same protocol should be followed.
+	//
+	//   When set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked.
+	ProtocolRedirects bool `yaml:"protocol-redirects,omitempty" json:"protocol-redirects,omitempty" jsonschema:"title=follow same protocol http redirects,description=Specifies whether only same-protocol redirects should be followed by the HTTP Client"`
+	// description: |
 	//   Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 	//
 	//   All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
@@ -336,6 +341,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	if request.HostRedirects || options.Options.FollowHostRedirects {
 		connectionConfiguration.RedirectFlow = httpclientpool.FollowSameHostRedirect
+	}
+	if request.ProtocolRedirects {
+		connectionConfiguration.RedirectFlow = httpclientpool.FollowSameSchemeRedirect
 	}
 
 	// If we have request level timeout, ignore http client timeouts
