@@ -1501,6 +1501,21 @@ This can be used in conjunction with `max-redirects` to control the HTTP request
 
 <div class="dd">
 
+<code>protocol-redirects</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+ProtocolRedirects specifies whether only redirects within the same protocol should be followed.
+
+When set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>pipeline</code>  <i>bool</i>
 
 </div>
