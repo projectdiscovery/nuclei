@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -75,27 +74,19 @@ func (p *Parser) CompiledCount() int {
 	return len(p.compiledTemplatesCache.items.Map)
 }
 
-func checkOpenFileError(err error) bool {
-	if err != nil && strings.Contains(err.Error(), "too many open files") {
-		panic(err)
-	}
-	return false
-}
-
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
 func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	tagFilter, ok := t.(*TagFilter)
 	if !ok {
-		panic("not a *TagFilter")
+		return false, fmt.Errorf("invalid type: expected *TagFilter, got %T", t)
 	}
 	t, templateParseError := p.ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
-		checkOpenFileError(templateParseError)
 		return false, errkit.Newf("Could not load template %s: %s", templatePath, templateParseError)
 	}
 	template, ok := t.(*Template)
 	if !ok {
-		panic("not a template")
+		return false, fmt.Errorf("invalid type: expected *Template, got %T", t)
 	}
 
 	if len(template.Workflows) > 0 {
@@ -110,7 +101,6 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
-		checkOpenFileError(err)
 		return ret, errkit.Newf("Could not load template %s: %s", templatePath, err)
 	}
 	// if template loaded then check the template for optional fields to add warnings
@@ -118,7 +108,6 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 		validationWarning := validateTemplateOptionalFields(template)
 		if validationWarning != nil {
 			stats.Increment(SyntaxWarningStats)
-			checkOpenFileError(validationWarning)
 			return ret, errkit.Newf("Could not load template %s: %s", templatePath, validationWarning)
 		}
 	}
@@ -201,7 +190,7 @@ func (p *Parser) LoadWorkflow(templatePath string, catalog catalog.Catalog) (boo
 
 	template, ok := t.(*Template)
 	if !ok {
-		panic("not a template")
+		return false, fmt.Errorf("invalid type: expected *Template, got %T", t)
 	}
 
 	if len(template.Workflows) > 0 {

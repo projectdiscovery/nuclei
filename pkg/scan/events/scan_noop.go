@@ -6,7 +6,8 @@ package events
 func AddScanEvent(event ScanEvent) {
 }
 
-func InitWithConfig(config *ScanConfig, statsDirectory string) {
+func InitWithConfig(config *ScanConfig, statsDirectory string) error {
+	return nil
 }
 
 func Close() {

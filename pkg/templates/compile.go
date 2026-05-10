@@ -153,19 +153,22 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 }
 
 // getParser returns a cached parser instance
-func getParser(options *protocols.ExecutorOptions) *Parser {
+func getParser(options *protocols.ExecutorOptions) (*Parser, error) {
 	parser, ok := options.Parser.(*Parser)
 	if !ok || parser == nil {
-		panic("invalid parser")
+		return nil, fmt.Errorf("invalid parser type: expected *Parser, got %T", options.Parser)
 	}
 
-	return parser
+	return parser, nil
 }
 
 // Parse parses a yaml request template file
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 func Parse(filePath string, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, error) {
-	parser := getParser(options)
+	parser, err := getParser(options)
+	if err != nil {
+		return nil, err
+	}
 
 	if !options.DoNotCache {
 		if value, _, _ := parser.compiledTemplatesCache.Has(filePath); value != nil {

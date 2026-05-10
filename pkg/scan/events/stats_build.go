@@ -28,27 +28,28 @@ type ScanStatsWorker struct {
 }
 
 // Init initializes the scan stats worker
-func InitWithConfig(config *ScanConfig, statsDirectory string) {
+func InitWithConfig(config *ScanConfig, statsDirectory string) error {
 	currentTime := time.Now().Format("20060102150405")
 	dirName := fmt.Sprintf("nuclei-stats-%s", currentTime)
 	err := os.Mkdir(dirName, 0755)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	// save the config to the directory
 	bin, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = os.WriteFile(filepath.Join(dirName, ConfigFile), bin, 0755)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defaultWorker = &ScanStatsWorker{config: config, m: &sync.Mutex{}, directory: dirName}
 	err = defaultWorker.initEventsFile()
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // initEventsFile initializes the events file for the worker
@@ -67,10 +68,7 @@ func (s *ScanStatsWorker) AddScanEvent(event ScanEvent) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	err := s.enc.Encode(event)
-	if err != nil {
-		panic(err)
-	}
+	_ = s.enc.Encode(event)
 }
 
 // AddScanEvent adds a scan event to the worker

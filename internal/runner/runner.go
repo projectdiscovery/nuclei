@@ -727,7 +727,7 @@ func (r *Runner) RunEnumeration() error {
 	// during execution a directory with 2 files will be created in the current directory
 	// config.json - containing below info
 	// events.jsonl - containing all start and end times of all templates
-	events.InitWithConfig(&events.ScanConfig{
+	if err := events.InitWithConfig(&events.ScanConfig{
 		Name:                "nuclei-stats", // make this configurable
 		TargetCount:         int(r.inputProvider.Count()),
 		TemplatesCount:      len(store.Templates()) + len(store.Workflows()),
@@ -735,7 +735,9 @@ func (r *Runner) RunEnumeration() error {
 		PayloadConcurrency:  r.options.PayloadConcurrency,
 		JsConcurrency:       r.options.JsConcurrency,
 		Retries:             r.options.Retries,
-	}, "")
+	}, ""); err != nil {
+		return errors.Wrap(err, "could not initialize stats worker")
+	}
 
 	if r.dastServer != nil {
 		go func() {
