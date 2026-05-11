@@ -3,7 +3,7 @@ package extractors
 import (
 	"regexp"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/itchyny/gojq"
 )
 

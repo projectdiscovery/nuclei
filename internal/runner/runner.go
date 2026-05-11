@@ -30,6 +30,7 @@ import (
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
+	aurorav4 "github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/ratelimit"
 
@@ -51,10 +52,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -225,6 +226,10 @@ func New(options *types.Options) (*Runner, error) {
 
 	// output coloring
 	useColor := !options.NoColor
+	// TODO: migrate the colorizer (and all consumers via runner.colorizer / templates.Colorizer)
+	// to github.com/logrusorgru/aurora/v4. projectdiscovery/utils >= v0.11.0 already uses v4,
+	// which forced the aurorav4 shim around updateutils.Aurora below. Once everything is on v4
+	// the v2 import and that shim can be removed.
 	runner.colorizer = aurora.NewAurora(useColor)
 	templates.Colorizer = runner.colorizer
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
@@ -898,7 +903,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	cfg := config.DefaultConfig
 
-	updateutils.Aurora = r.colorizer
+	updateutils.Aurora = aurorav4.New(aurorav4.WithColors(!r.options.NoColor))
 	versionInfo := func(version, latestVersion, versionType string) string {
 		if !cfg.CanCheckForUpdates() {
 			return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))

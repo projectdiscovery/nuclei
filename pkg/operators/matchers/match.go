@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
