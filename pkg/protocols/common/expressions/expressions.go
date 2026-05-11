@@ -45,6 +45,17 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 func evaluate(data string, base map[string]interface{}) (string, error) {
 	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
 
+	// Filter out expressions that are exact variable names in base
+	// these are simple variable references handled by replacer.Replace and
+	// evaluating them as govaluate expressions can misparse hyphens as subtraction
+	filtered := make([]string, 0, len(expressions))
+	for _, expr := range expressions {
+		if _, ok := base[expr]; !ok {
+			filtered = append(filtered, expr)
+		}
+	}
+	expressions = filtered
+
 	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
 	data = replacer.Replace(data, base)
 
