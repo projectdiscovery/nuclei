@@ -122,6 +122,14 @@ func TestEvaluateDoesNotExecuteHelpersFromResolvedValues(t *testing.T) {
 	require.Zero(t, calls)
 }
 
+func TestEvaluateHyphenatedPlaceholderNames(t *testing.T) {
+	value, err := Evaluate("foo-bar: {{foo-bar}}", map[string]interface{}{
+		"foo-bar": "baz",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "foo-bar: baz", value)
+}
+
 func TestEvaluateReturnsErrorForInvalidTemplateExpression(t *testing.T) {
 	_, err := Evaluate("{{base64()}}", map[string]interface{}{})
 	require.Error(t, err)
