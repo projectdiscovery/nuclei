@@ -109,6 +109,8 @@ github.com/PuerkitoBio/goquery v1.11.0 h1:jZ7pwMQXIITcUXNH83LLk+txlaEy6NVOfTuP43
 github.com/PuerkitoBio/goquery v1.11.0/go.mod h1:wQHgxUOU3JGuj3oD/QFfxUdlzW6xPHfqyHre6VMY4DQ=
 github.com/RedTeamPentesting/adauth v0.5.0 h1:yKTLAeP2hrer9Bez4qM+fFqeVUuHfS5UhYE3WwMmxyU=
 github.com/RedTeamPentesting/adauth v0.5.0/go.mod h1:9gHAk9qi+kZt5+orAgpE+oHFu32ijpvl4l7CYjg1aJc=
+github.com/RedTeamPentesting/adauth v0.5.4-0.20260511073005-3d18e8a5a687 h1:HHkHNwakgAFX3qlMm88c090vIYNFWiO5+4WyAr0xJuM=
+github.com/RedTeamPentesting/adauth v0.5.4-0.20260511073005-3d18e8a5a687/go.mod h1:l6FRaC2TliS/JMNWskO3J1tmrcKJyOaMFhWC6hHeWno=
 github.com/RumbleDiscovery/rumble-tools v0.0.0-20201105153123-f2adbb3244d2/go.mod h1:jD2+mU+E2SZUuAOHZvZj4xP4frlOo+N/YrXDvASFhkE=
 github.com/STARRY-S/zip v0.2.3 h1:luE4dMvRPDOWQdeDdUxUoZkzUIpTccdKdhHHsQJ1fm4=
 github.com/STARRY-S/zip v0.2.3/go.mod h1:lqJ9JdeRipyOQJrYSOtpNAiaesFO6zVDsE8GIGFaoSk=
