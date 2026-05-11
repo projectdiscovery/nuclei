@@ -75,6 +75,52 @@ func ExampleThreadSafeNucleiEngine() {
 	// [caa-fingerprint] honey.scanme.sh
 }
 
+// ExampleWithPDCPUpload shows how to upload findings to the PDCP dashboard
+// from an SDK-driven scan, matching the CLI's -dashboard / -scan-id / -team-id
+// flags. Credentials come from PDCP_API_KEY or
+// ~/.config/nuclei/.pdcp/credentials.yaml; if they are missing the engine
+// continues without uploading.
+//
+// Pass an existing scanID to append to that scan; pass an empty string to let
+// the server create a new scan on first upload.
+func ExampleWithPDCPUpload() {
+	ne, err := nuclei.NewNucleiEngine(
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"self-signed-ssl"}}),
+		nuclei.WithPDCPUpload("" /* scanID */, "" /* teamID, "" = personal */),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer ne.Close()
+	ne.LoadTargets([]string{"scanme.sh"}, false)
+	if err := ne.ExecuteWithCallback(nil); err != nil {
+		panic(err)
+	}
+}
+
+// ExampleWithConfigFile shows how to ingest a CLI-style `-config` YAML file
+// from SDK code, which is useful when a control plane (or pd-agent) wants to
+// hand the engine the same configuration shape the CLI accepts.
+//
+// WithConfigFile only writes fields the YAML explicitly sets — other fields
+// retain the engine's default values or any value set by With* options
+// earlier in the chain. To override a YAML-set value, apply the With* option
+// AFTER WithConfigFile.
+func ExampleWithConfigFile() {
+	ne, err := nuclei.NewNucleiEngine(
+		nuclei.WithConfigFile("nuclei.yaml"),
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"self-signed-ssl"}}),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer ne.Close()
+	ne.LoadTargets([]string{"scanme.sh"}, false)
+	if err := ne.ExecuteWithCallback(nil); err != nil {
+		panic(err)
+	}
+}
+
 func TestMain(m *testing.M) {
 	// this file only contains testtables examples https://go.dev/blog/examples
 	// and actual functionality test are in sdk_test.go

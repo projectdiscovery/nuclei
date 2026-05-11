@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -298,21 +299,44 @@ func validateDASTOptions(options *types.Options) error {
 	return nil
 }
 
+// LoadReportingOptionsFromBytes parses YAML reporting-config bytes into a
+// *reporting.Options, applying the same env-var expansion the CLI applies
+// when loading -report-config. Used by both createReportingOptions (CLI) and
+// the SDK's WithReportingConfig* options so the two paths stay in sync.
+func LoadReportingOptionsFromBytes(data []byte) (*reporting.Options, error) {
+	reportingOptions := &reporting.Options{}
+	if err := yaml.DecodeAndValidate(bytes.NewReader(data), reportingOptions); err != nil {
+		return nil, errors.Wrap(err, "could not parse reporting config file")
+	}
+	Walk(reportingOptions, expandEndVars)
+	return reportingOptions, nil
+}
+
 func createReportingOptions(options *types.Options) (*reporting.Options, error) {
 	var reportingOptions = &reporting.Options{}
 	if options.ReportingConfig != "" {
-		file, err := os.Open(options.ReportingConfig)
+		data, err := os.ReadFile(options.ReportingConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
-		defer func() {
-			_ = file.Close()
-		}()
-
-		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
-			return nil, errors.Wrap(err, "could not parse reporting config file")
+		reportingOptions, err = LoadReportingOptionsFromBytes(data)
+		if err != nil {
+			return nil, err
 		}
-		Walk(reportingOptions, expandEndVars)
+	}
+	ApplyExporterOptionsFromTypes(reportingOptions, options)
+	return reportingOptions, nil
+}
+
+// ApplyExporterOptionsFromTypes overlays exporter configuration sourced from
+// *types.Options (CLI flags / -config YAML keys like markdown-export,
+// sarif-export, json-export, jsonl-export, pdf-export, omit-raw,
+// MARKDOWN_EXPORT_SORT_MODE) onto an existing *reporting.Options. Mirrors the
+// exporter wiring createReportingOptions does for the CLI so SDK callers who
+// set these via WithConfigFile/WithOptions get the same behaviour.
+func ApplyExporterOptionsFromTypes(reportingOptions *reporting.Options, options *types.Options) {
+	if reportingOptions == nil {
+		return
 	}
 	if options.MarkdownExportDirectory != "" {
 		reportingOptions.MarkdownExporter = &markdown.Options{
@@ -357,7 +381,6 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 
 	reportingOptions.OmitRaw = options.OmitRawRequests
 	reportingOptions.ExecutionId = options.ExecutionId
-	return reportingOptions, nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen

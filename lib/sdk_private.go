@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -32,7 +33,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
@@ -71,6 +71,17 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.customWriter = output.NewMultiWriter(e.customWriter, mockoutput)
 	} else {
 		e.customWriter = mockoutput
+	}
+
+	// wrap with PDCP upload writer when cloud upload is requested. mirrors the
+	// CLI's setupPDCPUpload wiring and preserves the "ScanID implicitly enables
+	// upload" semantics — that branch lives inside runner.SetupPDCPUpload itself.
+	if e.opts.EnableCloudUpload || e.opts.ScanID != "" {
+		wrapped, msg := runner.SetupPDCPUpload(ctx, e.Logger, e.opts, e.customWriter)
+		e.customWriter = wrapped
+		if msg != "" && !runner.HideAutoSaveMsg {
+			e.Logger.Warning().Msgf("%s", msg)
+		}
 	}
 
 	if e.customProgress == nil {
@@ -170,8 +181,17 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if err := reporting.CreateConfigIfNotExists(); err != nil {
 		return err
 	}
-	// we don't support reporting config in sdk mode
-	if e.rc, err = reporting.New(&reporting.Options{}, "", false); err != nil {
+	ropts := e.reportingOpts
+	if ropts == nil {
+		ropts = &reporting.Options{}
+	}
+	// Wire exporter fields sourced from e.opts (markdown-export, sarif-export,
+	// json-export, jsonl-export, pdf-export, omit-raw, MARKDOWN_EXPORT_SORT_MODE)
+	// onto the reporting.Options. Mirrors createReportingOptions in the CLI so
+	// SDK callers who set these via WithConfigFile/WithOptions get the same
+	// exporter wiring the CLI does.
+	runner.ApplyExporterOptionsFromTypes(ropts, e.opts)
+	if e.rc, err = reporting.New(ropts, e.opts.ReportingDB, false); err != nil {
 		return err
 	}
 	e.interactshOpts.IssuesClient = e.rc

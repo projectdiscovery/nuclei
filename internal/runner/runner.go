@@ -51,10 +51,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -469,39 +469,51 @@ func (r *Runner) Close() {
 // setupPDCPUpload sets up the PDCP upload writer
 // by creating a new writer and returning it
 func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
+	wrapped, msg := SetupPDCPUpload(context.Background(), r.Logger, r.options, writer)
+	r.pdcpUploadErrMsg = msg
+	return wrapped
+}
+
+// SetupPDCPUpload wraps writer with the PDCP upload writer when cloud upload is
+// enabled. It mirrors the CLI behavior: when opts.ScanID is set, upload is
+// implicitly enabled. When upload is disabled or the writer cannot be created
+// (e.g. missing credentials), the original writer is returned along with a
+// human-readable status message that callers can surface to the user.
+//
+// The ctx controls the upload writer's lifetime and must outlive the scan; pass
+// context.Background() if the upload should run independently of any per-scan
+// context.
+func SetupPDCPUpload(ctx context.Context, logger *gologger.Logger, opts *types.Options, writer output.Writer) (output.Writer, string) {
 	// if scanid is given implicitly consider that scan upload is enabled
-	if r.options.ScanID != "" {
-		r.options.EnableCloudUpload = true
+	if opts.ScanID != "" {
+		opts.EnableCloudUpload = true
 	}
-	if !r.options.EnableCloudUpload && !EnableCloudUpload {
-		r.pdcpUploadErrMsg = "Scan results upload to cloud is disabled."
-		return writer
+	if !opts.EnableCloudUpload && !EnableCloudUpload {
+		return writer, "Scan results upload to cloud is disabled."
 	}
 	h := &pdcpauth.PDCPCredHandler{}
 	creds, err := h.GetCreds()
 	if err != nil {
 		if err != pdcpauth.ErrNoCreds && !HideAutoSaveMsg {
-			r.Logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
+			logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
 		}
-		r.pdcpUploadErrMsg = fmt.Sprintf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
-		return writer
+		return writer, fmt.Sprintf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
 	}
-	uploadWriter, err := pdcp.NewUploadWriter(context.Background(), r.Logger, creds)
+	uploadWriter, err := pdcp.NewUploadWriter(ctx, logger, creds)
 	if err != nil {
-		r.pdcpUploadErrMsg = fmt.Sprintf("PDCP (%v) Auto-Save Failed: %s\n", pdcpauth.DashBoardURL, err)
-		return writer
+		return writer, fmt.Sprintf("PDCP (%v) Auto-Save Failed: %s\n", pdcpauth.DashBoardURL, err)
 	}
-	if r.options.ScanID != "" {
+	if opts.ScanID != "" {
 		// ignore and use empty scan id if invalid
-		_ = uploadWriter.SetScanID(r.options.ScanID)
+		_ = uploadWriter.SetScanID(opts.ScanID)
 	}
-	if r.options.ScanName != "" {
-		uploadWriter.SetScanName(r.options.ScanName)
+	if opts.ScanName != "" {
+		uploadWriter.SetScanName(opts.ScanName)
 	}
-	if r.options.TeamID != "" {
-		uploadWriter.SetTeamID(r.options.TeamID)
+	if opts.TeamID != "" {
+		uploadWriter.SetTeamID(opts.TeamID)
 	}
-	return output.NewMultiWriter(writer, uploadWriter)
+	return output.NewMultiWriter(writer, uploadWriter), ""
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
