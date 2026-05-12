@@ -29,7 +29,6 @@ rate-limit: 99
 
 	ne, err := NewNucleiEngine(
 		WithConfigFile(cfgPath),
-		DisableUpdateCheck(),
 	)
 	require.NoError(t, err)
 	defer ne.Close()
@@ -55,7 +54,6 @@ func TestWithConfigBytes(t *testing.T) {
 
 	ne, err := NewNucleiEngine(
 		WithConfigBytes(cfg),
-		DisableUpdateCheck(),
 	)
 	require.NoError(t, err)
 	defer ne.Close()
@@ -74,7 +72,6 @@ func TestWithConfigFile_PreservesDefaults(t *testing.T) {
 
 	ne, err := NewNucleiEngine(
 		WithConfigFile(cfgPath),
-		DisableUpdateCheck(),
 	)
 	require.NoError(t, err)
 	defer ne.Close()
@@ -94,7 +91,6 @@ func TestWithConfigFile_DoesNotClobberPriorOptions(t *testing.T) {
 	ne, err := NewNucleiEngine(
 		WithGlobalRateLimit(99, time.Second),
 		WithConfigFile(cfgPath),
-		DisableUpdateCheck(),
 	)
 	require.NoError(t, err)
 	defer ne.Close()
@@ -118,7 +114,6 @@ func TestWithReportingConfigFile(t *testing.T) {
 
 	ne, err := NewNucleiEngine(
 		WithReportingConfigFile(rcPath),
-		DisableUpdateCheck(),
 	)
 	require.NoError(t, err)
 	defer ne.Close()
@@ -139,7 +134,6 @@ func TestWithReportingConfigBytes(t *testing.T) {
 `)
 	ne, err := NewNucleiEngine(
 		WithReportingConfigBytes(rc),
-		DisableUpdateCheck(),
 	)
 	require.NoError(t, err)
 	defer ne.Close()
@@ -155,7 +149,6 @@ func TestWithReportingConfigBytes_InvalidYAML(t *testing.T) {
 	rc := []byte("this: is: not: valid: yaml: ::::\n")
 	_, err := NewNucleiEngine(
 		WithReportingConfigBytes(rc),
-		DisableUpdateCheck(),
 	)
 	require.Error(t, err)
 }
@@ -163,7 +156,7 @@ func TestWithReportingConfigBytes_InvalidYAML(t *testing.T) {
 // ExecuteNucleiWithOpts must reject With* options gated on e.mode == threadSafe;
 // tmpEngine is built with mode=threadSafe in multi.go.
 func TestPerScanOptions_RejectIncompatibleOptions(t *testing.T) {
-	ne, err := NewThreadSafeNucleiEngineCtx(context.Background(), DisableUpdateCheck())
+	ne, err := NewThreadSafeNucleiEngineCtx(context.Background())
 	require.NoError(t, err)
 	defer ne.Close()
 
