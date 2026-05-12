@@ -93,8 +93,8 @@ func ExampleWithPDCPUpload() {
 	}
 }
 
-// ExampleWithConfigFile ingests a CLI-style -config YAML from SDK code. Only
-// YAML-set fields are written; apply With* after WithConfigFile to override.
+// ExampleWithConfigFile ingests a RuntimeConfig YAML (tags, severity,
+// exclude-tags, headers, vars, etc.) and merges it into the engine options.
 func ExampleWithConfigFile() {
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithConfigFile("nuclei.yaml"),

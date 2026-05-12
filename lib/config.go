@@ -1,6 +1,7 @@
 package nuclei
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
+	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -574,56 +576,123 @@ func WithPDCPUpload(scanID, teamID string) NucleiSDKOptions {
 	}
 }
 
-// WithConfigFile loads a nuclei -config style YAML into the engine options.
-// Only fields the YAML explicitly sets are written; other fields keep prior
-// values. Apply With* AFTER WithConfigFile to override YAML values.
+// RuntimeConfig is the set of nuclei config options exposed via the SDK.
+type RuntimeConfig struct {
+	Authors           []string `yaml:"author,omitempty"`
+	Tags              []string `yaml:"tags,omitempty"`
+	ExcludeTags       []string `yaml:"exclude-tags,omitempty"`
+	IncludeTags       []string `yaml:"include-tags,omitempty"`
+	IncludeIds        []string `yaml:"template-id,omitempty"`
+	ExcludeIds        []string `yaml:"exclude-id,omitempty"`
+	IncludeTemplates  []string `yaml:"include-templates,omitempty"`
+	ExcludedTemplates []string `yaml:"exclude-templates,omitempty"`
+	ExcludeMatchers   []string `yaml:"exclude-matchers,omitempty"`
+	Severities        []string `yaml:"severity,omitempty"`
+	ExcludeSeverities []string `yaml:"exclude-severity,omitempty"`
+	Protocols         []string `yaml:"type,omitempty"`
+	ExcludeProtocols  []string `yaml:"exclude-type,omitempty"`
+	IncludeConditions []string `yaml:"template-condition,omitempty"`
+	Headers           []string `yaml:"header,omitempty"`
+	Variables         []string `yaml:"var,omitempty"`
+	InteractshServer  string   `yaml:"interactsh-server,omitempty"`
+	InteractshToken   string   `yaml:"interactsh-token,omitempty"`
+	Socks5Proxy       []string `yaml:"socks5-proxy,omitempty"`
+	// Scalar knobs use *int so omitted YAML keys preserve the engine's
+	// existing value instead of forcing it to zero.
+	RateLimit     *int `yaml:"rate-limit,omitempty"`
+	BulkSize      *int `yaml:"bulk-size,omitempty"`
+	Concurrency   *int `yaml:"concurrency,omitempty"` // maps to opts.TemplateThreads
+	Timeout       *int `yaml:"timeout,omitempty"`
+	Retries       *int `yaml:"retries,omitempty"`
+	RateLimitHost *int `yaml:"rate-limit-host,omitempty"`
+}
+
+// MergeOptions appends/sets the configuration onto opts.
 //
-// Limitation: YAML keys set to the goflags default value are indistinguishable
-// from "unset" by the diff and are silently dropped. Use the explicit With*
-// option when this matters.
-//
-// If the YAML sets `report-config: <path>`, that file is also loaded into the
-// reporting options unless WithReportingConfig* was already used.
-func WithConfigFile(path string) NucleiSDKOptions {
-	return func(e *NucleiEngine) error {
-		if err := overlayConfigFromFile(e.opts, path); err != nil {
-			return errkit.Wrap(err, "could not merge nuclei config file")
-		}
-		return loadImplicitReportingConfig(e)
+// RateLimitHost is stored on the struct for downstream consumers but is NOT
+// applied to *types.Options — there is no equivalent field on nuclei's
+// runtime options today. Callers needing per-host rate limiting must wire it
+// outside the engine.
+func (s *RuntimeConfig) MergeOptions(opts *pkgtypes.Options) {
+	opts.Authors = append(opts.Authors, s.Authors...)
+	opts.Tags = append(opts.Tags, s.Tags...)
+	opts.ExcludeTags = append(opts.ExcludeTags, s.ExcludeTags...)
+	opts.IncludeTags = append(opts.IncludeTags, s.IncludeTags...)
+	opts.IncludeIds = append(opts.IncludeIds, s.IncludeIds...)
+	opts.ExcludeIds = append(opts.ExcludeIds, s.ExcludeIds...)
+	opts.IncludeTemplates = append(opts.IncludeTemplates, s.IncludeTemplates...)
+	opts.ExcludedTemplates = append(opts.ExcludedTemplates, s.ExcludedTemplates...)
+	opts.ExcludeMatchers = append(opts.ExcludeMatchers, s.ExcludeMatchers...)
+	opts.IncludeConditions = append(opts.IncludeConditions, s.IncludeConditions...)
+	if s.InteractshServer != "" {
+		opts.InteractshURL = s.InteractshServer
+	}
+	if s.InteractshToken != "" {
+		opts.InteractshToken = s.InteractshToken
+	}
+	for _, v := range s.Severities {
+		_ = opts.Severities.Set(v)
+	}
+	for _, v := range s.ExcludeSeverities {
+		_ = opts.ExcludeSeverities.Set(v)
+	}
+	for _, v := range s.Protocols {
+		_ = opts.Protocols.Set(v)
+	}
+	for _, v := range s.ExcludeProtocols {
+		_ = opts.ExcludeProtocols.Set(v)
+	}
+	for _, v := range s.Headers {
+		opts.CustomHeaders = append(opts.CustomHeaders, v)
+	}
+	for _, v := range s.Variables {
+		_ = opts.Vars.Set(v)
+	}
+	opts.Proxy = append(opts.Proxy, s.Socks5Proxy...)
+
+	if s.RateLimit != nil {
+		opts.RateLimit = *s.RateLimit
+	}
+	if s.BulkSize != nil {
+		opts.BulkSize = *s.BulkSize
+	}
+	if s.Concurrency != nil {
+		opts.TemplateThreads = *s.Concurrency
+	}
+	if s.Timeout != nil {
+		opts.Timeout = *s.Timeout
+	}
+	if s.Retries != nil {
+		opts.Retries = *s.Retries
 	}
 }
 
-// WithConfigBytes is WithConfigFile from memory. Same merge semantics and the
-// same flag-default silent-drop limitation apply.
-//
-// Spills bytes to a 0600 temp file (goflags has no in-memory merge API). If
-// the YAML carries secrets, the disk-spill window is short but non-zero.
+// WithConfigFile decodes a RuntimeConfig YAML at path and merges it into
+// the engine options. Matches the schema Aurora server emits.
+func WithConfigFile(path string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return errkit.Wrap(err, "could not open nuclei config file")
+		}
+		return applyRuntimeConfigFromBytes(e, data)
+	}
+}
+
+// WithConfigBytes is WithConfigFile from memory.
 func WithConfigBytes(data []byte) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		// goflags has no in-memory merge; tmp-file fallback.
-		tmp, err := os.CreateTemp("", "nuclei-sdk-config-*.yaml")
-		if err != nil {
-			return errkit.Wrap(err, "could not create temp file for nuclei config bytes")
-		}
-		tmpPath := tmp.Name()
-		defer func() { _ = os.Remove(tmpPath) }()
-		// CreateTemp defaults to 0600 on Unix but not Windows; enforce explicitly.
-		if err := os.Chmod(tmpPath, 0o600); err != nil {
-			_ = tmp.Close()
-			return errkit.Wrap(err, "could not restrict permissions on temp file for nuclei config bytes")
-		}
-		if _, err := tmp.Write(data); err != nil {
-			_ = tmp.Close()
-			return errkit.Wrap(err, "could not write nuclei config bytes to temp file")
-		}
-		if err := tmp.Close(); err != nil {
-			return errkit.Wrap(err, "could not close temp file for nuclei config bytes")
-		}
-		if err := overlayConfigFromFile(e.opts, tmpPath); err != nil {
-			return errkit.Wrap(err, "could not merge nuclei config bytes")
-		}
-		return loadImplicitReportingConfig(e)
+		return applyRuntimeConfigFromBytes(e, data)
 	}
+}
+
+func applyRuntimeConfigFromBytes(e *NucleiEngine, data []byte) error {
+	cfg := &RuntimeConfig{}
+	if err := yaml.NewDecoder(bytes.NewReader(data)).Decode(cfg); err != nil {
+		return errkit.Wrap(err, "could not parse nuclei config")
+	}
+	cfg.MergeOptions(e.opts)
+	return nil
 }
 
 // WithReportingConfigFile loads a nuclei -report-config style YAML file
@@ -631,7 +700,16 @@ func WithConfigBytes(data []byte) NucleiSDKOptions {
 // reporting options. Equivalent to -report-config <path> on the CLI.
 func WithReportingConfigFile(path string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		return loadReportingConfigFromPath(e, path)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return errkit.Wrap(err, "could not open reporting config file")
+		}
+		ropts, err := runner.LoadReportingOptionsFromBytes(data)
+		if err != nil {
+			return errkit.Wrap(err, "could not parse reporting config file")
+		}
+		e.reportingOpts = ropts
+		return nil
 	}
 }
 

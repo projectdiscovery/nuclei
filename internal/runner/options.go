@@ -313,25 +313,18 @@ func LoadReportingOptionsFromBytes(data []byte) (*reporting.Options, error) {
 func createReportingOptions(options *types.Options) (*reporting.Options, error) {
 	var reportingOptions = &reporting.Options{}
 	if options.ReportingConfig != "" {
-		data, err := os.ReadFile(options.ReportingConfig)
+		file, err := os.Open(options.ReportingConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
-		reportingOptions, err = LoadReportingOptionsFromBytes(data)
-		if err != nil {
-			return nil, err
-		}
-	}
-	ApplyExporterOptionsFromTypes(reportingOptions, options)
-	return reportingOptions, nil
-}
+		defer func() {
+			_ = file.Close()
+		}()
 
-// ApplyExporterOptionsFromTypes wires exporter fields from *types.Options
-// (markdown/sarif/json/jsonl/pdf-export, omit-raw, sort-mode) onto an existing
-// *reporting.Options. No-op when no exporter fields are set.
-func ApplyExporterOptionsFromTypes(reportingOptions *reporting.Options, options *types.Options) {
-	if reportingOptions == nil {
-		return
+		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
+			return nil, errors.Wrap(err, "could not parse reporting config file")
+		}
+		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
 		reportingOptions.MarkdownExporter = &markdown.Options{
@@ -376,6 +369,7 @@ func ApplyExporterOptionsFromTypes(reportingOptions *reporting.Options, options 
 
 	reportingOptions.OmitRaw = options.OmitRawRequests
 	reportingOptions.ExecutionId = options.ExecutionId
+	return reportingOptions, nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen

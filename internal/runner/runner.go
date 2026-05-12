@@ -287,9 +287,7 @@ func New(options *types.Options) (*Runner, error) {
 		runner.honeypotDetector = hpDetector
 	}
 	// setup a proxy writer to automatically upload results to PDCP
-	wrapped, pdcpMsg := SetupPDCPUpload(context.Background(), runner.Logger, runner.options, outputWriter)
-	runner.output = wrapped
-	runner.pdcpUploadErrMsg = pdcpMsg
+	runner.output = runner.setupPDCPUpload(outputWriter)
 	if options.HTTPStats {
 		runner.httpStats = outputstats.NewTracker()
 		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))
@@ -468,42 +466,42 @@ func (r *Runner) Close() {
 	events.Close()
 }
 
-// SetupPDCPUpload wraps writer with the PDCP upload writer when cloud upload
-// is enabled (implicitly enabled when opts.ScanID is set). On disable or
-// failure it returns the original writer plus a user-facing status message.
-// ctx controls the upload writer lifetime; pass context.Background() to
-// outlive any per-scan context.
-func SetupPDCPUpload(ctx context.Context, logger *gologger.Logger, opts *types.Options, writer output.Writer) (output.Writer, string) {
+// setupPDCPUpload sets up the PDCP upload writer
+// by creating a new writer and returning it
+func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	// if scanid is given implicitly consider that scan upload is enabled
-	if opts.ScanID != "" {
-		opts.EnableCloudUpload = true
+	if r.options.ScanID != "" {
+		r.options.EnableCloudUpload = true
 	}
-	if !opts.EnableCloudUpload && !EnableCloudUpload {
-		return writer, "Scan results upload to cloud is disabled."
+	if !r.options.EnableCloudUpload && !EnableCloudUpload {
+		r.pdcpUploadErrMsg = "Scan results upload to cloud is disabled."
+		return writer
 	}
 	h := &pdcpauth.PDCPCredHandler{}
 	creds, err := h.GetCreds()
 	if err != nil {
 		if err != pdcpauth.ErrNoCreds && !HideAutoSaveMsg {
-			logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
+			r.Logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
 		}
-		return writer, fmt.Sprintf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
+		r.pdcpUploadErrMsg = fmt.Sprintf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
+		return writer
 	}
-	uploadWriter, err := pdcp.NewUploadWriter(ctx, logger, creds)
+	uploadWriter, err := pdcp.NewUploadWriter(context.Background(), r.Logger, creds)
 	if err != nil {
-		return writer, fmt.Sprintf("PDCP (%v) Auto-Save Failed: %s\n", pdcpauth.DashBoardURL, err)
+		r.pdcpUploadErrMsg = fmt.Sprintf("PDCP (%v) Auto-Save Failed: %s\n", pdcpauth.DashBoardURL, err)
+		return writer
 	}
-	if opts.ScanID != "" {
+	if r.options.ScanID != "" {
 		// ignore and use empty scan id if invalid
-		_ = uploadWriter.SetScanID(opts.ScanID)
+		_ = uploadWriter.SetScanID(r.options.ScanID)
 	}
-	if opts.ScanName != "" {
-		uploadWriter.SetScanName(opts.ScanName)
+	if r.options.ScanName != "" {
+		uploadWriter.SetScanName(r.options.ScanName)
 	}
-	if opts.TeamID != "" {
-		uploadWriter.SetTeamID(opts.TeamID)
+	if r.options.TeamID != "" {
+		uploadWriter.SetTeamID(r.options.TeamID)
 	}
-	return output.NewMultiWriter(writer, uploadWriter), ""
+	return output.NewMultiWriter(writer, uploadWriter)
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
