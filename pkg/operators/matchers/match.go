@@ -7,8 +7,10 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
+	"golang.org/x/net/html"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/bodycache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -52,9 +54,22 @@ func (matcher *Matcher) MatchSize(length int) bool {
 }
 
 // MatchWords matches a word check against a corpus.
+//
+// For case-insensitive matchers we look up the lower-cased corpus in the
+// per-response bodycache (when present) so that multiple word matchers
+// against the same body avoid redundant ToLower allocations. Words
+// themselves are lower-cased once at compile time.
 func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (bool, []string) {
 	if matcher.CaseInsensitive {
-		corpus = strings.ToLower(corpus)
+		if data != nil {
+			if bc, ok := data[bodycache.Key].(*bodycache.Cache); ok && bc != nil {
+				corpus = bc.Lowered(corpus)
+			} else {
+				corpus = strings.ToLower(corpus)
+			}
+		} else {
+			corpus = strings.ToLower(corpus)
+		}
 	}
 
 	var matchedWords []string
@@ -253,25 +268,32 @@ func (matcher *Matcher) MatchXPath(corpus string) bool {
 	return matcher.MatchHTML(corpus)
 }
 
-// MatchHTML matches items from HTML using XPath selectors
+// MatchHTML matches items from HTML using XPath selectors. Parses corpus on
+// every call. Callers that already have a parsed node should prefer
+// MatchHTMLNode to avoid redundant parses (see pkg/operators/common/bodycache).
 func (matcher *Matcher) MatchHTML(corpus string) bool {
 	doc, err := htmlquery.Parse(strings.NewReader(corpus))
 	if err != nil {
 		return false
 	}
+	return matcher.MatchHTMLNode(doc)
+}
 
+// MatchHTMLNode matches items from a pre-parsed HTML node using XPath
+// selectors. Used by the protocol Match dispatch in conjunction with the
+// per-response body cache so multiple xpath matchers against the same
+// response share one parse.
+func (matcher *Matcher) MatchHTMLNode(doc *html.Node) bool {
+	if doc == nil {
+		return false
+	}
 	matches := 0
-
 	for _, k := range matcher.XPath {
 		nodes, err := htmlquery.QueryAll(doc, k)
 		if err != nil {
 			continue
 		}
-
-		// Continue if the xpath doesn't return any nodes
 		if len(nodes) == 0 {
-			// If we are in an AND request and a match failed,
-			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
 			case ANDCondition:
 				return false
@@ -279,36 +301,38 @@ func (matcher *Matcher) MatchHTML(corpus string) bool {
 				continue
 			}
 		}
-
-		// If the condition was an OR, return on the first match.
 		if matcher.condition == ORCondition && !matcher.MatchAll {
 			return true
 		}
-
 		matches = matches + len(nodes)
 	}
 	return matches > 0
 }
 
-// MatchXML matches items from XML using XPath selectors
+// MatchXML matches items from XML using XPath selectors. Parses corpus on
+// every call. Callers that already have a parsed node should prefer
+// MatchXMLNode to avoid redundant parses.
 func (matcher *Matcher) MatchXML(corpus string) bool {
 	doc, err := xmlquery.Parse(strings.NewReader(corpus))
 	if err != nil {
 		return false
 	}
+	return matcher.MatchXMLNode(doc)
+}
 
+// MatchXMLNode matches items from a pre-parsed XML node using XPath
+// selectors.
+func (matcher *Matcher) MatchXMLNode(doc *xmlquery.Node) bool {
+	if doc == nil {
+		return false
+	}
 	matches := 0
-
 	for _, k := range matcher.XPath {
 		nodes, err := xmlquery.QueryAll(doc, k)
 		if err != nil {
 			continue
 		}
-
-		// Continue if the xpath doesn't return any nodes
 		if len(nodes) == 0 {
-			// If we are in an AND request and a match failed,
-			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
 			case ANDCondition:
 				return false
@@ -316,14 +340,11 @@ func (matcher *Matcher) MatchXML(corpus string) bool {
 				continue
 			}
 		}
-
-		// If the condition was an OR, return on the first match.
 		if matcher.condition == ORCondition && !matcher.MatchAll {
 			return true
 		}
 		matches = matches + len(nodes)
 	}
-
 	return matches > 0
 }
 

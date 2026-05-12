@@ -4,9 +4,6 @@ import (
 	"errors"
 	"regexp"
 	"strings"
-
-	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 )
 
 var (
@@ -116,7 +113,7 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 }
 
 func hasLiteralsOnly(data string) bool {
-	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
+	expr, err := compileExprWithFunctions(data)
 	if err != nil {
 		return false
 	}

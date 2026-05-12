@@ -269,8 +269,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					continue
 				}
 				request.options.RateLimitTake()
-				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
+				// Cached at Compile time; avoids walking the matcher/extractor graph per worker iteration.
+				hasInteractMatchers := request.hasInteractMatchers
+				needsRequestEvent := request.needsRequestEvent
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
@@ -531,7 +532,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
-			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+			// Cached at Compile time.
+			hasInteractMatchers := request.hasInteractMatchers
 
 			request.options.RateLimitTake()
 
@@ -569,7 +571,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
-				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
+				// Cached at Compile time.
+				needsRequestEvent := request.needsRequestEvent
 				if (hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
@@ -871,24 +874,25 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// converts whitespace and other chars that cannot be printed to url encoded values
 	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
-	// Dump the requests containing all headers
-	if !generatedRequest.original.Race {
-		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
+	// Dump the request a second time so debug/store output reflects any
+	// post-auth headers applied by ApplyAuth(). Skipped entirely when no
+	// debug/store consumer needs the dump -- the pre-flight dump above
+	// already populates dumpedRequest for failure-path logging.
+	if !generatedRequest.original.Race && (request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse) {
+		postAuthDump, dumpError := dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
 		}
+		dumpedRequest = postAuthDump
 		dumpedRequestString := string(dumpedRequest)
-		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
+		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
-			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				gologger.Info().Msg(msg)
-				gologger.Print().Msgf("%s", dumpedRequestString)
-			}
-			if request.options.Options.StoreResponse {
-				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
-			}
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msg(msg)
+			gologger.Print().Msgf("%s", dumpedRequestString)
+		}
+		if request.options.Options.StoreResponse {
+			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
 		}
 	}
 

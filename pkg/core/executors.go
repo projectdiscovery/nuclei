@@ -90,7 +90,14 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		value *contextargs.MetaInput
 	}
 
-	tasks := make(chan task)
+	// Buffered to workerCount so the producer (target.Iterate) does not block
+	// on every send when workers are momentarily busy. This keeps the input
+	// iterator advancing and reduces tail latency on slow targets.
+	taskBuf := workerCount
+	if taskBuf < 1 {
+		taskBuf = 1
+	}
+	tasks := make(chan task, taskBuf)
 	var workersWg sync.WaitGroup
 	workersWg.Add(workerCount)
 	for i := 0; i < workerCount; i++ {
