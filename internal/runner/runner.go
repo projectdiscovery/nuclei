@@ -479,8 +479,7 @@ func SetupPDCPUpload(ctx context.Context, logger *gologger.Logger, opts *types.O
 		opts.EnableCloudUpload = true
 	}
 	if !opts.EnableCloudUpload && !EnableCloudUpload {
-		// Empty msg here lets the CLI's displayExecutionInfo fall through to
-		// the dashboard hint Info line instead of warning on every default run.
+		// Empty msg lets displayExecutionInfo show the dashboard hint instead of warning.
 		return writer, ""
 	}
 	h := &pdcpauth.PDCPCredHandler{}
