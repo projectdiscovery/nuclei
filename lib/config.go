@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"reflect"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -105,7 +104,7 @@ type InteractshOpts interactsh.Options
 func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		// WithInteractshOptions can be used when creating ThreadSafeNucleiEngine but not after it's initialized
-		if e.isThreadSafe() && e.interactshOpts != nil {
+		if e.mode == threadSafe && e.interactshOpts != nil {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithInteractshOptions")
 		}
 		optsPtr := &opts
@@ -226,7 +225,7 @@ type StatsOptions struct {
 // Note: callback is executed in a separate goroutine
 func EnableStatsWithOpts(opts StatsOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.isThreadSafe() {
+		if e.mode == threadSafe {
 			return errkit.Wrap(ErrOptionsNotSupported, "EnableStatsWithOpts")
 		}
 		if opts.Interval == 0 {
@@ -254,7 +253,7 @@ type VerbosityOptions struct {
 // and does not affect SDK output
 func WithVerbosity(opts VerbosityOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.isThreadSafe() {
+		if e.mode == threadSafe {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithVerbosity")
 		}
 		e.opts.Verbose = opts.Verbose
@@ -288,7 +287,7 @@ type NetworkConfig struct {
 func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		// WithNetworkConfig can be used when creating ThreadSafeNucleiEngine but not after it's initialized
-		if e.isThreadSafe() && e.hostErrCache != nil {
+		if e.mode == threadSafe && e.hostErrCache != nil {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithNetworkConfig")
 		}
 		e.opts.NoHostErrors = opts.DisableMaxHostErr
@@ -319,7 +318,7 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 // WithProxy allows setting proxy options
 func WithProxy(proxy []string, proxyInternalRequests bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.isThreadSafe() {
+		if e.mode == threadSafe {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithProxy")
 		}
 		e.opts.Proxy = proxy
@@ -344,7 +343,7 @@ type OutputWriter output.Writer
 // if outputWriter is used callback will be ignored
 func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.isThreadSafe() {
+		if e.mode == threadSafe {
 			return errkit.Wrap(ErrOptionsNotSupported, "UseOutputWriter")
 		}
 		e.customWriter = writer
@@ -359,7 +358,7 @@ type StatsWriter progress.Progress
 // which can be used to write stats somewhere (ex: send to webserver etc)
 func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.isThreadSafe() {
+		if e.mode == threadSafe {
 			return errkit.Wrap(ErrOptionsNotSupported, "UseStatsWriter")
 		}
 		e.customProgress = writer
@@ -373,7 +372,7 @@ func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 // as it may cause unexpected results due to compatibility issues
 func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(newVersion string)) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.isThreadSafe() {
+		if e.mode == threadSafe {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithTemplateUpdateCallback")
 		}
 		e.disableTemplatesAutoUpgrade = disableTemplatesAutoUpgrade
@@ -385,7 +384,7 @@ func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(
 // WithSandboxOptions allows setting supported sandbox options
 func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.isThreadSafe() {
+		if e.mode == threadSafe {
 			return errkit.Wrap(ErrOptionsNotSupported, "WithSandboxOptions")
 		}
 		e.opts.AllowLocalFileAccess = allowLocalFileAccess
@@ -605,9 +604,6 @@ func WithPDCPUpload(scanID, teamID string) NucleiSDKOptions {
 // WithReportingConfigFile/Bytes wins over this implicit lookup.
 func WithConfigFile(path string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafePerScan {
-			return errkit.Wrap(ErrOptionsNotSupported, "WithConfigFile")
-		}
 		if err := overlayConfigFromFile(e.opts, path); err != nil {
 			return errkit.Wrap(err, "could not merge nuclei config file")
 		}
@@ -629,9 +625,6 @@ func WithConfigFile(path string) NucleiSDKOptions {
 // — consider whether your threat model accepts it.
 func WithConfigBytes(data []byte) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafePerScan {
-			return errkit.Wrap(ErrOptionsNotSupported, "WithConfigBytes")
-		}
 		// goflags exposes no MergeConfigBytes/MergeConfigReader, so fall back
 		// to writing the YAML to a temp file and letting MergeConfigFile do
 		// its thing. The temp file is removed before the option returns.
@@ -667,19 +660,7 @@ func WithConfigBytes(data []byte) NucleiSDKOptions {
 // reporting options. Equivalent to -report-config <path> on the CLI.
 func WithReportingConfigFile(path string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafePerScan {
-			return errkit.Wrap(ErrOptionsNotSupported, "WithReportingConfigFile")
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return errkit.Wrap(err, "could not open reporting config file")
-		}
-		ropts, err := runner.LoadReportingOptionsFromBytes(data)
-		if err != nil {
-			return errkit.Wrap(err, "could not parse reporting config file")
-		}
-		e.reportingOpts = ropts
-		return nil
+		return loadReportingConfigFromPath(e, path)
 	}
 }
 
@@ -690,91 +671,12 @@ func WithReportingConfigFile(path string) NucleiSDKOptions {
 // trackers/exporters configured — equivalent to skipping the option entirely.
 func WithReportingConfigBytes(data []byte) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafePerScan {
-			return errkit.Wrap(ErrOptionsNotSupported, "WithReportingConfigBytes")
-		}
 		ropts, err := runner.LoadReportingOptionsFromBytes(data)
 		if err != nil {
 			return errkit.Wrap(err, "could not parse reporting config bytes")
 		}
 		e.reportingOpts = ropts
 		return nil
-	}
-}
-
-// loadImplicitReportingConfig mirrors the CLI behaviour where setting
-// `report-config: <path>` inside the main -config file is enough to activate
-// reporting. We skip the lookup when reportingOpts was already set by an
-// explicit WithReportingConfig* option earlier in the chain.
-func loadImplicitReportingConfig(e *NucleiEngine) error {
-	if e.opts.ReportingConfig == "" || e.reportingOpts != nil {
-		return nil
-	}
-	data, err := os.ReadFile(e.opts.ReportingConfig)
-	if err != nil {
-		return errkit.Wrap(err, "could not open implicit reporting config file")
-	}
-	ropts, err := runner.LoadReportingOptionsFromBytes(data)
-	if err != nil {
-		return errkit.Wrap(err, "could not parse implicit reporting config file")
-	}
-	e.reportingOpts = ropts
-	return nil
-}
-
-// newConfigFlagSet builds a goflags.FlagSet bound to the given *types.Options
-// using the same flag inventory the CLI exposes. Used by the config-overlay
-// helper to materialise both a "flag-defaults only" baseline and a
-// "flag-defaults + YAML" overlay so they can be diffed reflectively.
-func newConfigFlagSet(opts *pkgtypes.Options) *goflags.FlagSet {
-	fs := goflags.NewFlagSet()
-	fs.CaseSensitive = true
-	runner.BindOptionFlags(fs, opts)
-	return fs
-}
-
-// overlayConfigFromFile applies only the YAML-set fields from path into dst.
-//
-// goflags writes the flag-registered default into the bound pointer at
-// registration time, so binding directly to dst would clobber dst's existing
-// values. Instead we build two scratch *types.Options:
-//   - baseline: flag-defaults only (no YAML merged).
-//   - overlay:  flag-defaults + YAML overrides.
-//
-// Fields where baseline != overlay are the ones the YAML touched; those fields
-// (and only those) are copied into dst.
-func overlayConfigFromFile(dst *pkgtypes.Options, path string) error {
-	baseline := &pkgtypes.Options{}
-	_ = newConfigFlagSet(baseline)
-
-	overlay := &pkgtypes.Options{}
-	fs := newConfigFlagSet(overlay)
-	if err := fs.MergeConfigFile(path); err != nil {
-		return err
-	}
-
-	applyOverlay(dst, baseline, overlay)
-	return nil
-}
-
-// applyOverlay copies any field from overlay into dst where overlay differs
-// from baseline. Unexported / non-settable fields are skipped.
-func applyOverlay(dst, baseline, overlay *pkgtypes.Options) {
-	dstV := reflect.ValueOf(dst).Elem()
-	baseV := reflect.ValueOf(baseline).Elem()
-	overV := reflect.ValueOf(overlay).Elem()
-
-	for i := 0; i < dstV.NumField(); i++ {
-		df := dstV.Field(i)
-		if !df.CanSet() {
-			continue
-		}
-		bf := baseV.Field(i)
-		of := overV.Field(i)
-		if reflect.DeepEqual(bf.Interface(), of.Interface()) {
-			continue
-		}
-		df.Set(of)
 	}
 }
 

@@ -123,7 +123,7 @@ func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *outpu
 // Note: Not all options are thread-safe. this method will throw error if you try to use non-thread-safe options
 func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, targets []string, opts ...NucleiSDKOptions) error {
 	baseOpts := e.eng.opts.Copy()
-	tmpEngine := &NucleiEngine{opts: baseOpts, mode: threadSafePerScan}
+	tmpEngine := &NucleiEngine{opts: baseOpts, mode: threadSafe}
 	for _, option := range opts {
 		if err := option(tmpEngine); err != nil {
 			return err

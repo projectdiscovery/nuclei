@@ -287,7 +287,9 @@ func New(options *types.Options) (*Runner, error) {
 		runner.honeypotDetector = hpDetector
 	}
 	// setup a proxy writer to automatically upload results to PDCP
-	runner.output = runner.setupPDCPUpload(outputWriter)
+	wrapped, pdcpMsg := SetupPDCPUpload(context.Background(), runner.Logger, runner.options, outputWriter)
+	runner.output = wrapped
+	runner.pdcpUploadErrMsg = pdcpMsg
 	if options.HTTPStats {
 		runner.httpStats = outputstats.NewTracker()
 		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))
@@ -464,14 +466,6 @@ func (r *Runner) Close() {
 
 	//this is no-op unless nuclei is built with stats build tag
 	events.Close()
-}
-
-// setupPDCPUpload sets up the PDCP upload writer
-// by creating a new writer and returning it
-func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
-	wrapped, msg := SetupPDCPUpload(context.Background(), r.Logger, r.options, writer)
-	r.pdcpUploadErrMsg = msg
-	return wrapped
 }
 
 // SetupPDCPUpload wraps writer with the PDCP upload writer when cloud upload is

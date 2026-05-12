@@ -166,9 +166,9 @@ func TestWithReportingConfigBytes_InvalidYAML(t *testing.T) {
 }
 
 // TestPerScanOptions_RejectIncompatibleOptions asserts that ExecuteNucleiWithOptsCtx
-// rejects With* options that don't make sense in per-scan ephemeral mode.
-// Prior to the threadSafePerScan split this was guaranteed by the e.mode == threadSafe
-// gate; this test prevents future regressions on the same surface.
+// rejects With* options that don't make sense on the ephemeral tmpEngine —
+// those options gate on e.mode == threadSafe, and tmpEngine inherits that mode
+// from its parent.
 func TestPerScanOptions_RejectIncompatibleOptions(t *testing.T) {
 	ne, err := NewThreadSafeNucleiEngineCtx(context.Background(), DisableUpdateCheck())
 	require.NoError(t, err)

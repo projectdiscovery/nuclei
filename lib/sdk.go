@@ -52,12 +52,6 @@ type engineMode uint
 const (
 	singleInstance engineMode = iota
 	threadSafe
-	// threadSafePerScan marks the ephemeral *NucleiEngine that
-	// ExecuteNucleiWithOptsCtx builds to overlay per-scan options. Options that
-	// only make sense at engine-construction time (e.g. WithConfigFile, which
-	// would mutate state already baked into the parent's reporting client) use
-	// this to reject application after the parent engine is initialized.
-	threadSafePerScan
 )
 
 // NucleiEngine is the Engine/Client for nuclei which
@@ -103,14 +97,6 @@ type NucleiEngine struct {
 
 	// Temporary directory for SDK-managed template files
 	tmpDir string
-}
-
-// isThreadSafe reports whether the engine is in either threadSafe construction
-// mode or threadSafePerScan ephemeral mode. Options that don't make sense in
-// thread-safe usage should reject both — splitting the enum without this helper
-// silently bypasses the existing per-option gates.
-func (e *NucleiEngine) isThreadSafe() bool {
-	return e.mode == threadSafe || e.mode == threadSafePerScan
 }
 
 // LoadAllTemplates loads all nuclei template based on given options
