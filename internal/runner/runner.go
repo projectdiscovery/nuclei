@@ -479,7 +479,9 @@ func SetupPDCPUpload(ctx context.Context, logger *gologger.Logger, opts *types.O
 		opts.EnableCloudUpload = true
 	}
 	if !opts.EnableCloudUpload && !EnableCloudUpload {
-		return writer, "Scan results upload to cloud is disabled."
+		// Empty msg here lets the CLI's displayExecutionInfo fall through to
+		// the dashboard hint Info line instead of warning on every default run.
+		return writer, ""
 	}
 	h := &pdcpauth.PDCPCredHandler{}
 	creds, err := h.GetCreds()
