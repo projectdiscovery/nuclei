@@ -65,10 +65,8 @@ func TestWithConfigBytes(t *testing.T) {
 	require.Equal(t, 3, opts.BulkSize)
 }
 
-// TestWithConfigFile_PreservesDefaults asserts that DefaultOptions() values
-// survive a WithConfigFile call when the YAML doesn't mention those keys.
-// Regression guard: prior implementation bound flag defaults directly into
-// e.opts, clobbering Timeout (5 → 10), ResponseReadSize (10MB → 0), etc.
+// Regression: prior direct-bind impl clobbered DefaultOptions values
+// (Timeout 5→10, ResponseReadSize 10MB→0) when the YAML didn't mention them.
 func TestWithConfigFile_PreservesDefaults(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "nuclei.yaml")
@@ -87,9 +85,7 @@ func TestWithConfigFile_PreservesDefaults(t *testing.T) {
 	require.Equal(t, 10*unitutils.Mega, opts.ResponseReadSize, "DefaultOptions ResponseReadSize must survive")
 }
 
-// TestWithConfigFile_DoesNotClobberPriorOptions asserts that a With* option
-// applied BEFORE WithConfigFile keeps its value when the YAML doesn't mention
-// that field.
+// A With* option set before WithConfigFile must survive when YAML omits the field.
 func TestWithConfigFile_DoesNotClobberPriorOptions(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "nuclei.yaml")
@@ -154,8 +150,7 @@ func TestWithReportingConfigBytes(t *testing.T) {
 	require.Equal(t, "test-user", ropts.GitHub.Username)
 }
 
-// TestWithReportingConfigBytes_InvalidYAML asserts the option returns a
-// useful error rather than silently producing an empty config.
+// Invalid YAML must return an error, not a silently empty config.
 func TestWithReportingConfigBytes_InvalidYAML(t *testing.T) {
 	rc := []byte("this: is: not: valid: yaml: ::::\n")
 	_, err := NewNucleiEngine(
@@ -165,10 +160,8 @@ func TestWithReportingConfigBytes_InvalidYAML(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TestPerScanOptions_RejectIncompatibleOptions asserts that ExecuteNucleiWithOptsCtx
-// rejects With* options that don't make sense on the ephemeral tmpEngine —
-// those options gate on e.mode == threadSafe, and tmpEngine inherits that mode
-// from its parent.
+// ExecuteNucleiWithOpts must reject With* options gated on e.mode == threadSafe;
+// tmpEngine is built with mode=threadSafe in multi.go.
 func TestPerScanOptions_RejectIncompatibleOptions(t *testing.T) {
 	ne, err := NewThreadSafeNucleiEngineCtx(context.Background(), DisableUpdateCheck())
 	require.NoError(t, err)

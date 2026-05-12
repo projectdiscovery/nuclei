@@ -468,15 +468,11 @@ func (r *Runner) Close() {
 	events.Close()
 }
 
-// SetupPDCPUpload wraps writer with the PDCP upload writer when cloud upload is
-// enabled. It mirrors the CLI behavior: when opts.ScanID is set, upload is
-// implicitly enabled. When upload is disabled or the writer cannot be created
-// (e.g. missing credentials), the original writer is returned along with a
-// human-readable status message that callers can surface to the user.
-//
-// The ctx controls the upload writer's lifetime and must outlive the scan; pass
-// context.Background() if the upload should run independently of any per-scan
-// context.
+// SetupPDCPUpload wraps writer with the PDCP upload writer when cloud upload
+// is enabled (implicitly enabled when opts.ScanID is set). On disable or
+// failure it returns the original writer plus a user-facing status message.
+// ctx controls the upload writer lifetime; pass context.Background() to
+// outlive any per-scan context.
 func SetupPDCPUpload(ctx context.Context, logger *gologger.Logger, opts *types.Options, writer output.Writer) (output.Writer, string) {
 	// if scanid is given implicitly consider that scan upload is enabled
 	if opts.ScanID != "" {

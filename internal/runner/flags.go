@@ -17,15 +17,10 @@ import (
 	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
-// BindOptionFlags registers every flag whose underlying storage is a field of
-// the shared *types.Options. The CLI uses this in readConfig() and the SDK
-// uses it from WithConfigFile/WithConfigBytes so config-file ingestion has a
-// single source of truth.
-//
-// CLI-only flags backed by local state (-version, -templates-version,
-// -disable-update-check, -update, -auth, -config, -profile, -profile-mem,
-// -fuzz, -reset) are intentionally NOT bound here; they remain in the CLI
-// layer so they keep working without affecting SDK callers.
+// BindOptionFlags registers every flag whose storage is a field of *types.Options.
+// Shared by the CLI's readConfig() and the SDK's WithConfigFile/Bytes so both
+// paths see the same flag inventory. CLI-only flags backed by local state
+// (-version, -update, -config, -profile, -auth, etc.) stay in the CLI layer.
 func BindOptionFlags(flagSet *goflags.FlagSet, options *types.Options) {
 	flagSet.CreateGroup("input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.CommaSeparatedStringSliceOptions),

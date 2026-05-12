@@ -557,16 +557,10 @@ func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
 	}
 }
 
-// WithPDCPUpload enables uploading scan findings to the PDCP cloud dashboard,
-// matching the CLI's -dashboard / -scan-id / -team-id behavior.
-//
-// Credentials are read via pdcpauth.PDCPCredHandler (PDCP_API_KEY environment
-// variable or ~/.config/nuclei/.pdcp/credentials.yaml). If credentials are
-// missing or the upload writer cannot be created, the engine logs a warning
-// and continues running scans without uploading.
-//
-// Passing a non-empty scanID implicitly enables upload (mirroring -scan-id on
-// the CLI). teamID may be empty to default to the personal workspace.
+// WithPDCPUpload uploads findings to the PDCP dashboard, matching the CLI's
+// `-dashboard -scan-id -team-id`. Credentials come from PDCP_API_KEY or
+// ~/.config/nuclei/.pdcp/credentials.yaml; missing creds log a warning and
+// scans continue. A non-empty scanID implicitly enables upload.
 func WithPDCPUpload(scanID, teamID string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.EnableCloudUpload = true
@@ -580,28 +574,16 @@ func WithPDCPUpload(scanID, teamID string) NucleiSDKOptions {
 	}
 }
 
-// WithConfigFile loads a nuclei `-config` style YAML file and merges its
-// values into the engine options, mirroring `nuclei -config <path>` on the
-// CLI.
+// WithConfigFile loads a nuclei -config style YAML into the engine options.
+// Only fields the YAML explicitly sets are written; other fields keep prior
+// values. Apply With* AFTER WithConfigFile to override YAML values.
 //
-// Semantics: only fields the YAML explicitly sets are written. Other fields
-// retain the engine's default values or values set by `With*` options earlier
-// in the chain. To override a YAML-set field, apply the corresponding `With*`
-// option AFTER WithConfigFile.
+// Limitation: YAML keys set to the goflags default value are indistinguishable
+// from "unset" by the diff and are silently dropped. Use the explicit With*
+// option when this matters.
 //
-// Known limitation: the YAML→fields diff is computed against the flag system's
-// default values. If the YAML sets a key to a value that happens to equal that
-// flag default, the diff cannot tell it apart from "not set" and the value is
-// silently dropped. This affects any key where the goflags default differs
-// from the engine's `DefaultOptions()` value (e.g. `timeout: 10` cannot
-// override the engine's default Timeout of 5). When precise control matters,
-// use the explicit `With*` option instead of relying on the YAML key.
-//
-// If the loaded config sets `report-config: <path>`, the reporting YAML at
-// that path is also loaded into the engine's reporting options — matching the
-// CLI's behaviour where setting `report-config:` in the main config file is
-// enough to activate reporting. A reporting config set explicitly via
-// WithReportingConfigFile/Bytes wins over this implicit lookup.
+// If the YAML sets `report-config: <path>`, that file is also loaded into the
+// reporting options unless WithReportingConfig* was already used.
 func WithConfigFile(path string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if err := overlayConfigFromFile(e.opts, path); err != nil {
@@ -611,32 +593,21 @@ func WithConfigFile(path string) NucleiSDKOptions {
 	}
 }
 
-// WithConfigBytes is like WithConfigFile but reads the config from memory.
-// Useful when the YAML arrives over the wire (e.g. from a control plane).
+// WithConfigBytes is WithConfigFile from memory. Same merge semantics and the
+// same flag-default silent-drop limitation apply.
 //
-// Same field-merge semantics as WithConfigFile — only YAML-set keys are
-// applied; unset fields keep prior values. The same flag-default silent-drop
-// limitation applies.
-//
-// Note: this option spills the supplied bytes to a process-private temp file
-// because the underlying goflags library lacks an in-memory merge API. The
-// file is created with 0600 permissions and removed when the option returns.
-// If the YAML contains secrets, that disk-spill window is short but non-zero
-// — consider whether your threat model accepts it.
+// Spills bytes to a 0600 temp file (goflags has no in-memory merge API). If
+// the YAML carries secrets, the disk-spill window is short but non-zero.
 func WithConfigBytes(data []byte) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		// goflags exposes no MergeConfigBytes/MergeConfigReader, so fall back
-		// to writing the YAML to a temp file and letting MergeConfigFile do
-		// its thing. The temp file is removed before the option returns.
+		// goflags has no in-memory merge; tmp-file fallback.
 		tmp, err := os.CreateTemp("", "nuclei-sdk-config-*.yaml")
 		if err != nil {
 			return errkit.Wrap(err, "could not create temp file for nuclei config bytes")
 		}
 		tmpPath := tmp.Name()
 		defer func() { _ = os.Remove(tmpPath) }()
-		// Go's os.CreateTemp defaults to 0600 on Unix but not on Windows;
-		// chmod explicitly so secrets in the YAML aren't world-readable
-		// during the brief disk-spill window.
+		// CreateTemp defaults to 0600 on Unix but not Windows; enforce explicitly.
 		if err := os.Chmod(tmpPath, 0o600); err != nil {
 			_ = tmp.Close()
 			return errkit.Wrap(err, "could not restrict permissions on temp file for nuclei config bytes")
@@ -664,11 +635,8 @@ func WithReportingConfigFile(path string) NucleiSDKOptions {
 	}
 }
 
-// WithReportingConfigBytes is like WithReportingConfigFile but reads from
-// memory. Useful when the YAML arrives over the wire.
-//
-// Passing nil or an empty slice yields an empty reporting.Options with no
-// trackers/exporters configured — equivalent to skipping the option entirely.
+// WithReportingConfigBytes is WithReportingConfigFile from memory. Passing
+// nil/empty produces an empty reporting.Options (no-op).
 func WithReportingConfigBytes(data []byte) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		ropts, err := runner.LoadReportingOptionsFromBytes(data)

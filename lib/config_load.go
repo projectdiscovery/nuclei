@@ -10,9 +10,8 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 )
 
-// loadReportingConfigFromPath reads a -report-config style YAML at path, parses
-// it via runner.LoadReportingOptionsFromBytes, and stores the result on e.
-// Shared between WithReportingConfigFile and loadImplicitReportingConfig.
+// loadReportingConfigFromPath reads + parses a -report-config YAML at path
+// and stores the result on e.
 func loadReportingConfigFromPath(e *NucleiEngine, path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -26,10 +25,9 @@ func loadReportingConfigFromPath(e *NucleiEngine, path string) error {
 	return nil
 }
 
-// loadImplicitReportingConfig mirrors the CLI behaviour where setting
-// `report-config: <path>` inside the main -config file is enough to activate
-// reporting. We skip the lookup when reportingOpts was already set by an
-// explicit WithReportingConfig* option earlier in the chain.
+// loadImplicitReportingConfig loads the reporting YAML pointed at by
+// opts.ReportingConfig, matching the CLI's `report-config:` behaviour. Skipped
+// when an explicit WithReportingConfig* already set reportingOpts.
 func loadImplicitReportingConfig(e *NucleiEngine) error {
 	if e.opts.ReportingConfig == "" || e.reportingOpts != nil {
 		return nil
@@ -37,10 +35,8 @@ func loadImplicitReportingConfig(e *NucleiEngine) error {
 	return loadReportingConfigFromPath(e, e.opts.ReportingConfig)
 }
 
-// newConfigFlagSet builds a goflags.FlagSet bound to the given *types.Options
-// using the same flag inventory the CLI exposes. Used by the config-overlay
-// helper to materialise both a "flag-defaults only" baseline and a
-// "flag-defaults + YAML" overlay so they can be diffed reflectively.
+// newConfigFlagSet binds the shared flag inventory to opts. Used to build the
+// baseline and overlay structs for the reflection-based YAML diff.
 func newConfigFlagSet(opts *pkgtypes.Options) *goflags.FlagSet {
 	fs := goflags.NewFlagSet()
 	fs.CaseSensitive = true
@@ -48,16 +44,12 @@ func newConfigFlagSet(opts *pkgtypes.Options) *goflags.FlagSet {
 	return fs
 }
 
-// overlayConfigFromFile applies only the YAML-set fields from path into dst.
+// overlayConfigFromFile applies only YAML-set fields from path into dst.
 //
-// goflags writes the flag-registered default into the bound pointer at
-// registration time, so binding directly to dst would clobber dst's existing
-// values. Instead we build two scratch *types.Options:
-//   - baseline: flag-defaults only (no YAML merged).
-//   - overlay:  flag-defaults + YAML overrides.
-//
-// Fields where baseline != overlay are the ones the YAML touched; those fields
-// (and only those) are copied into dst.
+// goflags writes flag defaults into the bound pointer at registration, so
+// binding directly to dst would clobber existing values. We diff a baseline
+// (flag-defaults only) against an overlay (flag-defaults + YAML); fields that
+// differ are the ones the YAML touched and get copied into dst.
 func overlayConfigFromFile(dst *pkgtypes.Options, path string) error {
 	baseline := &pkgtypes.Options{}
 	_ = newConfigFlagSet(baseline)

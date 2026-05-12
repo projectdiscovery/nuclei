@@ -300,9 +300,7 @@ func validateDASTOptions(options *types.Options) error {
 }
 
 // LoadReportingOptionsFromBytes parses YAML reporting-config bytes into a
-// *reporting.Options, applying the same env-var expansion the CLI applies
-// when loading -report-config. Used by both createReportingOptions (CLI) and
-// the SDK's WithReportingConfig* options so the two paths stay in sync.
+// *reporting.Options with env-var expansion, matching the CLI's -report-config.
 func LoadReportingOptionsFromBytes(data []byte) (*reporting.Options, error) {
 	reportingOptions := &reporting.Options{}
 	if err := yaml.DecodeAndValidate(bytes.NewReader(data), reportingOptions); err != nil {
@@ -328,12 +326,9 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 	return reportingOptions, nil
 }
 
-// ApplyExporterOptionsFromTypes overlays exporter configuration sourced from
-// *types.Options (CLI flags / -config YAML keys like markdown-export,
-// sarif-export, json-export, jsonl-export, pdf-export, omit-raw,
-// MARKDOWN_EXPORT_SORT_MODE) onto an existing *reporting.Options. Mirrors the
-// exporter wiring createReportingOptions does for the CLI so SDK callers who
-// set these via WithConfigFile/WithOptions get the same behaviour.
+// ApplyExporterOptionsFromTypes wires exporter fields from *types.Options
+// (markdown/sarif/json/jsonl/pdf-export, omit-raw, sort-mode) onto an existing
+// *reporting.Options. No-op when no exporter fields are set.
 func ApplyExporterOptionsFromTypes(reportingOptions *reporting.Options, options *types.Options) {
 	if reportingOptions == nil {
 		return

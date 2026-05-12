@@ -75,14 +75,9 @@ func ExampleThreadSafeNucleiEngine() {
 	// [caa-fingerprint] honey.scanme.sh
 }
 
-// ExampleWithPDCPUpload shows how to upload findings to the PDCP dashboard
-// from an SDK-driven scan, matching the CLI's -dashboard / -scan-id / -team-id
-// flags. Credentials come from PDCP_API_KEY or
-// ~/.config/nuclei/.pdcp/credentials.yaml; if they are missing the engine
-// continues without uploading.
-//
-// Pass an existing scanID to append to that scan; pass an empty string to let
-// the server create a new scan on first upload.
+// ExampleWithPDCPUpload uploads findings to the PDCP dashboard from SDK code,
+// matching `-dashboard -scan-id -team-id` on the CLI. Pass an existing scanID
+// to append; pass empty to let the server create a new scan.
 func ExampleWithPDCPUpload() {
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"self-signed-ssl"}}),
@@ -98,14 +93,8 @@ func ExampleWithPDCPUpload() {
 	}
 }
 
-// ExampleWithConfigFile shows how to ingest a CLI-style `-config` YAML file
-// from SDK code, which is useful when a control plane (or pd-agent) wants to
-// hand the engine the same configuration shape the CLI accepts.
-//
-// WithConfigFile only writes fields the YAML explicitly sets — other fields
-// retain the engine's default values or any value set by With* options
-// earlier in the chain. To override a YAML-set value, apply the With* option
-// AFTER WithConfigFile.
+// ExampleWithConfigFile ingests a CLI-style -config YAML from SDK code. Only
+// YAML-set fields are written; apply With* after WithConfigFile to override.
 func ExampleWithConfigFile() {
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithConfigFile("nuclei.yaml"),

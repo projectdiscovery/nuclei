@@ -73,9 +73,7 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.customWriter = mockoutput
 	}
 
-	// wrap with PDCP upload writer when cloud upload is requested. mirrors the
-	// CLI's setupPDCPUpload wiring and preserves the "ScanID implicitly enables
-	// upload" semantics — that branch lives inside runner.SetupPDCPUpload itself.
+	// SetupPDCPUpload implicitly enables upload when ScanID is set.
 	if e.opts.EnableCloudUpload || e.opts.ScanID != "" {
 		wrapped, msg := runner.SetupPDCPUpload(ctx, e.Logger, e.opts, e.customWriter)
 		e.customWriter = wrapped
@@ -185,11 +183,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if ropts == nil {
 		ropts = &reporting.Options{}
 	}
-	// Wire exporter fields sourced from e.opts (markdown-export, sarif-export,
-	// json-export, jsonl-export, pdf-export, omit-raw, MARKDOWN_EXPORT_SORT_MODE)
-	// onto the reporting.Options. Mirrors createReportingOptions in the CLI so
-	// SDK callers who set these via WithConfigFile/WithOptions get the same
-	// exporter wiring the CLI does.
+	// Wire exporter fields from e.opts; mirrors the CLI's createReportingOptions.
 	runner.ApplyExporterOptionsFromTypes(ropts, e.opts)
 	if e.rc, err = reporting.New(ropts, e.opts.ReportingDB, false); err != nil {
 		return err
