@@ -124,7 +124,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/mongodb v0.37.0
 	github.com/yassinebenaid/godump v0.11.1
 	github.com/zmap/zgrab2 v0.1.8
-	gitlab.com/gitlab-org/api/client-go v0.130.1
+	gitlab.com/gitlab-org/api/client-go v1.9.1
 	go.mongodb.org/mongo-driver v1.17.9
 	golang.org/x/term v0.42.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -425,7 +425,7 @@ require (
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.44.0
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
 )
