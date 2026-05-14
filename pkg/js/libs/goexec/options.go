@@ -110,6 +110,14 @@ func MergeOptions(base ExecutionOptions, raw interface{}) ExecutionOptions {
 	return base
 }
 
+// mergeStruct overlays non-zero fields from opts on top of base.
+//
+// Boolean fields are one-way: a `true` in opts sets the corresponding base
+// field to true, but a `false` is treated as "unset" (because a Go struct has
+// no way to distinguish unset from a literal false) and therefore leaves the
+// base value alone. Callers that need to flip a true base back to false must
+// either mutate the base struct directly or use the map-based merge path
+// (where key presence is meaningful).
 func mergeStruct(base, opts ExecutionOptions) ExecutionOptions {
 	if opts.Timeout != 0 {
 		base.Timeout = opts.Timeout

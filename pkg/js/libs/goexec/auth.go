@@ -155,7 +155,10 @@ func (a *Auth) validate() error {
 	switch {
 	case selected == 0 && !a.kerberos:
 		return ErrMissingAuth
-	case selected > 1 && !a.kerberos:
+	case selected > 1:
+		// goexec/adauth always picks a single credential source. Allowing
+		// more than one (even when kerberos is true) is almost certainly a
+		// template mistake that would otherwise be silently truncated.
 		return ErrMultipleCredentialModes
 	case a.username == "" && a.mode != modeCCache:
 		return ErrMissingUsername

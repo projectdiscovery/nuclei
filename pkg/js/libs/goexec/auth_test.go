@@ -20,6 +20,8 @@ func TestAuthValidationModes(t *testing.T) {
 		{name: "missing auth", auth: &Auth{}, wantErr: true},
 		{name: "missing username", auth: Password("", "secret"), wantErr: true},
 		{name: "multiple non kerberos", auth: &Auth{username: "u", password: "p", ntHash: "h"}, wantErr: true},
+		{name: "multiple kerberos options", auth: Kerberos("auditor@CORP.LOCAL", map[string]interface{}{"password": "p", "ntHash": "h"}), wantErr: true},
+		{name: "aes plus password", auth: AESKey("auditor@CORP.LOCAL", "00112233445566778899aabbccddeeff", map[string]interface{}{"password": "p"}), wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
