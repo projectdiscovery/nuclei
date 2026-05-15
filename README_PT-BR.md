@@ -3,7 +3,7 @@
   <a href="https://nuclei.projectdiscovery.io"><img src="static/nuclei-logo.png" width="200px" alt="Nuclei"></a>
 </h1>
 
-<h4 align="center">Scanner de vulnerabilidades rápido e personalizável baseado em uma DSL simples baseada em YAML.</h4>
+<h4 align="center">Scanner de vulnerabilidades rápido e personalizável, alimentado pela comunidade global de segurança e construído sobre uma DSL simples baseada em YAML.</h4>
 
 
 <p align="center">
@@ -37,9 +37,17 @@
 
 ---
 
-O Nuclei é utilizado para enviar solicitações para vários alvos baseados em um modelo, resultando em zero falsos positivos e proporcionando uma varredura rápida em um grande número de hosts. O Nuclei oferece suporte a uma variedade de protocolos, incluindo TCP, DNS, HTTP, SSL, Arquivo, Whois, Websocket, Headless, Código, entre outros. Com modelos poderosos e flexíveis, o Nuclei pode ser usado para modelar todos os tipos de verificações de segurança.
+O Nuclei é um scanner de vulnerabilidades moderno e de alto desempenho que utiliza templates simples baseados em YAML. Ele permite projetar cenários de detecção de vulnerabilidades personalizados que simulam condições do mundo real, resultando em zero falsos positivos. Encontre vulnerabilidades em suas aplicações, APIs, redes, DNS e configurações de cloud.
 
-Temos um [repositório dedicado](https://github.com/projectdiscovery/nuclei-templates) que abriga vários tipos de modelos de vulnerabilidades, contribuídos por **mais de 300** pesquisadores e engenheiros de segurança.
+- Formato YAML simples para criar e customizar templates de vulnerabilidade
+- Contribuído por milhares de profissionais de segurança para lidar com vulnerabilidades em tendência
+- Redução de falsos positivos ao simular etapas reais para verificar uma vulnerabilidade
+- Processamento paralelo ultrarrápido e agrupamento de requisições (request clustering)
+- Integração com pipelines de CI/CD para detecção de vulnerabilidades e testes de regressão
+- Suporte a múltiplos protocolos: TCP, DNS, HTTP, SSL, WHOIS, JavaScript, Code e mais
+- Integração com Jira, Splunk, GitHub, Elastic e GitLab
+
+Temos um [repositório dedicado](https://github.com/projectdiscovery/nuclei-templates) que abriga vários tipos de modelos de vulnerabilidades, contribuídos por **milhares** de pesquisadores e engenheiros de segurança.
 
 ## Como funciona
 
@@ -297,9 +305,9 @@ UPDATE:
    -duc, -disable-update-check       desativa a verificação automática de atualizações do nuclei/templates
 
 HONEYPOT:
-   -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration
-   -hpt, -honeypot-threshold int     number of distinct template IDs required to flag a honeypot host (default 15)
-   -shp, -suppress-honeypot          suppress output for flagged honeypot hosts
+   -hpd, -honeypot-detect          detecta possíveis hosts honeypot com base na concentração de correspondências
+   -hpt, -honeypot-threshold int   número de IDs de template distintos necessários para sinalizar um host como honeypot (padrão 15)
+   -shp, -suppress-honeypot        suprime a saída para hosts sinalizados como honeypot
 
 STATISTICS:
    -stats                    exibe estatísticas sobre o scan em execução
@@ -349,11 +357,13 @@ O guia completo sobre como usar o Nuclei como biblioteca/SDK está disponível e
 
 Você pode acessar a documentação principal do Nuclei em https://docs.projectdiscovery.io/tools/nuclei/ e obter mais informações sobre o Nuclei na nuvem com a [ProjectDiscovery Cloud Platform](https://cloud.projectdiscovery.io).
 
-Consulte https://docs.projectdiscovery.io/tools/nuclei/resources para acessaar mais recursos e vídeos sobre o Nuclei!
+Além disso, oferecemos um plano gratuito de cloud com limites mensais generosos — sem necessidade de assinatura. Consulte a [documentação](https://docs.projectdiscovery.io) para mais detalhes.
+
+Consulte https://docs.projectdiscovery.io/tools/nuclei/resources para acessar mais recursos e vídeos sobre o Nuclei!
 
 ### Créditos
 
-Obrigado a todos os incríveis [contribuidores da comunidade que enviaram em PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors) e mantêm este projeto atualizado. :heart:
+Obrigado a todos os incríveis [contribuidores da comunidade que enviaram PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors) e mantêm este projeto atualizado. :heart:
 
 Se você tem uma ideia ou algum tipo de melhoria, sinta-se à vontade para contribuir e participar do projeto. Envie seu PR!
 
