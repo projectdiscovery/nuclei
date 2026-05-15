@@ -44,14 +44,11 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		if err != nil {
 			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
 		}
-		prevPath := rawrequest.Path
 		relPath := urlx.GetRelativePath()
 
-		// NOTE(dwisiswant0): Use rel path instead if unsafe.
-		// See https://github.com/projectdiscovery/nuclei/issues/6558.
-		if unsafe {
-			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
-		}
+		// FIX: Do not replace the full URL in UnsafeRawBytes when unsafe=true.
+		// Users expect absolute-form requests to be preserved in unsafe mode.
+		// See https://github.com/projectdiscovery/nuclei/issues/7382.
 
 		// rotate full URL with rel path
 		rawrequest.Path = relPath

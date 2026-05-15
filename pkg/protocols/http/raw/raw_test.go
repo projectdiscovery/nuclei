@@ -140,8 +140,7 @@ User-Agent: Mozilla/5.0
 Connection: close`, parseURL(t, "http://httpbin.org/bar"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with full URL")
 	require.Equal(t, "/foo", request.Path, "Could not extract relative path from full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /foo HTTP/1.1", "UnsafeRawBytes should contain relative path, not full URL")
-	require.NotContains(t, string(request.UnsafeRawBytes), "http://127.0.0.1", "UnsafeRawBytes should not contain full URL")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://127.0.0.1/foo HTTP/1.1", "UnsafeRawBytes should preserve full URL in unsafe mode (issue #7382)")
 }
 
 func TestUnsafeWithFullURLAndPath(t *testing.T) {
@@ -152,8 +151,7 @@ User-Agent: Mozilla/5.0
 Connection: close`, parseURL(t, "http://httpbin.org/bar"), true, false)
 	require.Nil(t, err, "could not parse unsafe request with full URL and path merge")
 	require.Equal(t, "/bar/foo", request.Path, "Could not merge path correctly from full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /bar/foo HTTP/1.1", "UnsafeRawBytes should contain merged relative path")
-	require.NotContains(t, string(request.UnsafeRawBytes), "http://127.0.0.1", "UnsafeRawBytes should not contain full URL")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://127.0.0.1/bar/foo HTTP/1.1", "UnsafeRawBytes should contain merged path but preserve full URL (issue #7382)")
 }
 
 func TestUnsafeWithFullURLAndQueryParams(t *testing.T) {
@@ -164,8 +162,7 @@ User-Agent: Mozilla/5.0
 Connection: close`, parseURL(t, "http://httpbin.org/bar"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with full URL and query params")
 	require.Equal(t, "/foo?id=123&name=test", request.Path, "Could not extract relative path with query params from full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /foo?id=123&name=test HTTP/1.1", "UnsafeRawBytes should contain relative path with query params")
-	require.NotContains(t, string(request.UnsafeRawBytes), "http://127.0.0.1", "UnsafeRawBytes should not contain full URL")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET http://127.0.0.1/foo?id=123&name=test HTTP/1.1", "UnsafeRawBytes should preserve full URL with query params (issue #7382)")
 }
 
 func TestUnsafeWithHTTPSFullURL(t *testing.T) {
@@ -176,8 +173,7 @@ Authorization: Bearer token123
 Connection: close`, parseURL(t, "https://target.com/test"), true, true)
 	require.Nil(t, err, "could not parse unsafe request with HTTPS full URL")
 	require.Equal(t, "/api/v1/users", request.Path, "Could not extract relative path from HTTPS full URL in unsafe mode")
-	require.Contains(t, string(request.UnsafeRawBytes), "GET /api/v1/users HTTP/1.1", "UnsafeRawBytes should contain relative path")
-	require.NotContains(t, string(request.UnsafeRawBytes), "https://secure.example.com", "UnsafeRawBytes should not contain full URL")
+	require.Contains(t, string(request.UnsafeRawBytes), "GET https://secure.example.com/api/v1/users HTTP/1.1", "UnsafeRawBytes should preserve full HTTPS URL (issue #7382)")
 }
 
 func TestUnsafeWithFullURLRootPath(t *testing.T) {
