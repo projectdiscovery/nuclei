@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -277,7 +278,7 @@ func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.File
 
 	newPath := filepath.Clean(filepath.Join(templateDir, relPath))
 
-	if !strings.HasPrefix(newPath, templateDir) {
+	if !filepathutil.IsPathWithinDirectory(newPath, templateDir) {
 		// we don't allow LFI
 		return ""
 	}

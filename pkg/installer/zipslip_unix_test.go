@@ -58,6 +58,9 @@ func TestZipSlip(t *testing.T) {
 			"nuclei-templates/././../cve/test.yaml",
 			"nuclei-templates/.././../cve/test.yaml",
 			"nuclei-templates/.././../cve/../test.yaml",
+			// path-prefix bypass: resolves to sibling path (e.g. /tmp/templates-evil)
+			// and must be rejected even though it starts with /tmp/templates as a string prefix
+			"nuclei-templates/../templates-evil/pwn.yaml",
 		}
 		tm := TemplateManager{}
 
