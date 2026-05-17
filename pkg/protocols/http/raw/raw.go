@@ -39,22 +39,20 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	}
 
 	// handle full URLs first (before checking unsafe flag) to extract relative path
+	fullURLInRequest := false
 	if strings.HasPrefix(rawrequest.Path, "http://") || strings.HasPrefix(rawrequest.Path, "https://") {
 		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
 		if err != nil {
 			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
 		}
-		prevPath := rawrequest.Path
-		relPath := urlx.GetRelativePath()
 
-		// NOTE(dwisiswant0): Use rel path instead if unsafe.
-		// See https://github.com/projectdiscovery/nuclei/issues/6558.
-		if unsafe {
-			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
-		}
+		// NOTE: In unsafe mode, preserve the full URL in UnsafeRawBytes.
+		// The bytes.Replace was truncating URLs when users specified absolute-form
+		// requests (e.g., for SSRF testing). See #7382.
+		fullURLInRequest = true
 
 		// rotate full URL with rel path
-		rawrequest.Path = relPath
+		rawrequest.Path = urlx.GetRelativePath()
 	}
 
 	switch {
@@ -68,6 +66,13 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 
 	// If unsafe changes must be made in raw request string itself
 	case unsafe:
+		// If the original request had a full URL, preserve it as-is in UnsafeRawBytes.
+		// Do not merge paths or replace bytes. See #7382.
+		if fullURLInRequest {
+			// Path already set to relative path above, nothing else to do
+			break
+		}
+
 		prevPath := rawrequest.Path
 		cloned := inputURL.Clone()
 		cloned.Params.IncludeEquals = true
