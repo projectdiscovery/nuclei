@@ -3,9 +3,30 @@ package raw
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
+
+func TestApplyAuthStrategy_QueryAuth_PersistsParams(t *testing.T) {
+	r := &Request{
+		FullURL: "https://example.com/api/resource",
+		Headers: map[string]string{},
+	}
+	strategy := authx.NewQueryAuthStrategy(&authx.Secret{
+		Type: "query",
+		Params: []authx.KV{
+			{Key: "api_key", Value: "s3cret"},
+			{Key: "tenant", Value: "acme"},
+		},
+	})
+	r.ApplyAuthStrategy(strategy)
+
+	parsed, err := urlutil.Parse(r.FullURL)
+	require.NoError(t, err, "fixed URL must parse")
+	require.Equal(t, "s3cret", parsed.Params.Get("api_key"), "QueryAuthStrategy must persist api_key on r.FullURL")
+	require.Equal(t, "acme", parsed.Params.Get("tenant"), "QueryAuthStrategy must persist tenant on r.FullURL")
+}
 
 func TestTryFillCustomHeaders_BufferDetached(t *testing.T) {
 	r := &Request{

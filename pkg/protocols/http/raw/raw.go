@@ -340,6 +340,7 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 		for _, p := range s.Data.Params {
 			parsed.Params.Add(p.Key, p.Value)
 		}
+		r.FullURL = parsed.String()
 	case *authx.CookiesAuthStrategy:
 		buff := bufferPool.Get().(*bytes.Buffer)
 		buff.Reset()
