@@ -111,7 +111,7 @@ require (
 	github.com/projectdiscovery/networkpolicy v0.1.37
 	github.com/projectdiscovery/ratelimit v0.0.86
 	github.com/projectdiscovery/rdap v0.9.0
-	github.com/projectdiscovery/sarif v0.0.1
+	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.2.2
 	github.com/projectdiscovery/uncover v1.2.0
 	github.com/projectdiscovery/useragent v0.0.107
