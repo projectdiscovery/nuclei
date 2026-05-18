@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/gcache"
+	"github.com/projectdiscovery/govaluate"
 )
 
 var (

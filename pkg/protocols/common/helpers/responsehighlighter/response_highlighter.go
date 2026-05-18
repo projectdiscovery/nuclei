@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 )

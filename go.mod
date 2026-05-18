@@ -3,7 +3,6 @@ module github.com/projectdiscovery/nuclei/v3
 go 1.25.7
 
 require (
-	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/andygrunwald/go-jira v1.16.1
 	github.com/antchfx/htmlquery v1.3.5
 	github.com/bluele/gcache v0.0.2
@@ -15,17 +14,17 @@ require (
 	github.com/itchyny/gojq v0.12.17
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/logrusorgru/aurora v2.0.3+incompatible
+	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/miekg/dns v1.1.68
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.1.2
-	github.com/projectdiscovery/fastdialer v0.5.6
+	github.com/projectdiscovery/clistats v0.1.3
+	github.com/projectdiscovery/fastdialer v0.5.7
 	github.com/projectdiscovery/hmap v0.0.100
 	github.com/projectdiscovery/interactsh v1.3.1
 	github.com/projectdiscovery/rawhttp v0.1.90
 	github.com/projectdiscovery/retryabledns v1.0.114
-	github.com/projectdiscovery/retryablehttp-go v1.3.10
+	github.com/projectdiscovery/retryablehttp-go v1.3.11
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -90,6 +89,7 @@ require (
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.11.2
+	github.com/logrusorgru/aurora/v4 v4.0.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/maypok86/otter/v2 v2.2.1
 	github.com/mholt/archives v0.1.5
@@ -97,26 +97,27 @@ require (
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/dsl v0.8.17
+	github.com/projectdiscovery/dsl v0.8.18
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.74
 	github.com/projectdiscovery/gologger v1.1.68
 	github.com/projectdiscovery/gostruct v0.0.2
+	github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e
 	github.com/projectdiscovery/gozero v0.1.1-0.20251027191944-a4ea43320b81
 	github.com/projectdiscovery/httpx v1.9.0
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.37
-	github.com/projectdiscovery/ratelimit v0.0.86
+	github.com/projectdiscovery/networkpolicy v0.1.38
+	github.com/projectdiscovery/ratelimit v0.0.87
 	github.com/projectdiscovery/rdap v0.9.0
-	github.com/projectdiscovery/sarif v0.0.1
+	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.2.2
 	github.com/projectdiscovery/uncover v1.2.0
 	github.com/projectdiscovery/useragent v0.0.107
-	github.com/projectdiscovery/utils v0.10.1
-	github.com/projectdiscovery/wappalyzergo v0.2.79
+	github.com/projectdiscovery/utils v0.11.0
+	github.com/projectdiscovery/wappalyzergo v0.2.81
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -287,7 +288,6 @@ require (
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/libdns/libdns v1.1.1 // indirect
-	github.com/logrusorgru/aurora/v4 v4.0.0 // indirect
 	github.com/lor00x/goldap v0.0.0-20240304151906-8d785c64d1c8 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250827001030-24949be3fa54 // indirect
@@ -339,7 +339,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/cdncheck v1.2.34 // indirect
+	github.com/projectdiscovery/cdncheck v1.2.36 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect

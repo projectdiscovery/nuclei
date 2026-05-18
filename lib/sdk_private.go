@@ -11,7 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
@@ -213,7 +213,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		IssuesClient:       e.rc,
 		RateLimiter:        e.rateLimiter,
 		Interactsh:         e.interactshClient,
-		Colorizer:          aurora.NewAurora(true),
+		Colorizer:          aurora.New(aurora.WithColors(true)),
 		ResumeCfg:          types.NewResumeCfg(),
 		Browser:            e.browserInstance,
 		Parser:             e.parser,
