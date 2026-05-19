@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -296,6 +297,17 @@ func validateDASTOptions(options *types.Options) error {
 		return fmt.Errorf("DAST server token must be at least 16 characters long")
 	}
 	return nil
+}
+
+// LoadReportingOptionsFromBytes parses YAML reporting-config bytes into a
+// *reporting.Options with env-var expansion, matching the CLI's -report-config.
+func LoadReportingOptionsFromBytes(data []byte) (*reporting.Options, error) {
+	reportingOptions := &reporting.Options{}
+	if err := yaml.DecodeAndValidate(bytes.NewReader(data), reportingOptions); err != nil {
+		return nil, errors.Wrap(err, "could not parse reporting config file")
+	}
+	Walk(reportingOptions, expandEndVars)
+	return reportingOptions, nil
 }
 
 func createReportingOptions(options *types.Options) (*reporting.Options, error) {

@@ -15,7 +15,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
+	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -32,10 +34,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
+	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 )
 
 // applyRequiredDefaults to options
@@ -71,6 +73,34 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.customWriter = output.NewMultiWriter(e.customWriter, mockoutput)
 	} else {
 		e.customWriter = mockoutput
+	}
+
+	// Inline PDCP upload wiring; mirrors the CLI's setupPDCPUpload without
+	// pulling it into the exported runner surface.
+	if e.opts.ScanID != "" {
+		e.opts.EnableCloudUpload = true
+	}
+	if e.opts.EnableCloudUpload {
+		creds, err := (&pdcpauth.PDCPCredHandler{}).GetCreds()
+		if err != nil {
+			if err != pdcpauth.ErrNoCreds {
+				e.Logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
+			}
+			e.Logger.Warning().Msgf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
+		} else if uploadWriter, err := pdcp.NewUploadWriter(ctx, e.Logger, creds); err != nil {
+			e.Logger.Warning().Msgf("PDCP (%v) Auto-Save Failed: %s", pdcpauth.DashBoardURL, err)
+		} else {
+			if e.opts.ScanID != "" {
+				_ = uploadWriter.SetScanID(e.opts.ScanID)
+			}
+			if e.opts.ScanName != "" {
+				uploadWriter.SetScanName(e.opts.ScanName)
+			}
+			if e.opts.TeamID != "" {
+				uploadWriter.SetTeamID(e.opts.TeamID)
+			}
+			e.customWriter = output.NewMultiWriter(e.customWriter, uploadWriter)
+		}
 	}
 
 	if e.customProgress == nil {
@@ -170,8 +200,11 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if err := reporting.CreateConfigIfNotExists(); err != nil {
 		return err
 	}
-	// we don't support reporting config in sdk mode
-	if e.rc, err = reporting.New(&reporting.Options{}, "", false); err != nil {
+	ropts := e.reportingOpts
+	if ropts == nil {
+		ropts = &reporting.Options{}
+	}
+	if e.rc, err = reporting.New(ropts, "", false); err != nil {
 		return err
 	}
 	e.interactshOpts.IssuesClient = e.rc
