@@ -71,7 +71,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (request *Request) executeRaceRequest(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.MetaInput.Input
 	var generatedRequests []*generatedRequest
 
@@ -84,7 +84,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		return nil
 	}
 	ctx := request.newContext(input)
-	requestForDump, err := generator.Make(ctx, input, inputData, payloads, nil)
+	requestForDump, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 			break
 		}
 		ctx := request.newContext(input)
-		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, nil)
+		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			return err
 		}
@@ -510,7 +510,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
-		return request.executeRaceRequest(input, dynamicValues, callback)
+		return request.executeRaceRequest(input, dynamicValues, previous, callback)
 	}
 
 	// verify if fuzz elaboration was requested

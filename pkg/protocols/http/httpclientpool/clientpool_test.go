@@ -170,6 +170,85 @@ func TestFollowAllRedirect(t *testing.T) {
 	}
 }
 
+func TestFollowSameSchemeRedirect(t *testing.T) {
+	tests := []struct {
+		name        string
+		oldURL      string
+		newURL      string
+		shouldAllow bool
+	}{
+		// same scheme should be allowed
+		{"http to http", "http://example.com/a", "http://example.com/b", true},
+		{"https to https", "https://example.com/a", "https://example.com/b", true},
+		{"http to http different host", "http://example.com/a", "http://other.com/b", true},
+		{"https to https different host", "https://example.com/a", "https://other.com/b", true},
+
+		// cross-scheme should be blocked
+		{"http to https", "http://example.com/a", "https://example.com/b", false},
+		{"https to http", "https://example.com/a", "http://example.com/b", false},
+		{"http to https different host", "http://example.com/a", "https://other.com/b", false},
+		{"https to http different host", "https://example.com/a", "http://other.com/b", false},
+
+		// same scheme with ports
+		{"http with port to http", "http://example.com:8080/a", "http://example.com:9090/b", true},
+		{"https with port to https", "https://example.com:8443/a", "https://example.com:443/b", true},
+		{"http with port to https", "http://example.com:80/a", "https://example.com:443/b", false},
+
+		// ipv4
+		{"ipv4 http to http", "http://127.0.0.1/a", "http://127.0.0.1/b", true},
+		{"ipv4 http to https", "http://127.0.0.1/a", "https://127.0.0.1/b", false},
+
+		// ipv6
+		{"ipv6 https to https", "https://[::1]/a", "https://[::1]/b", true},
+		{"ipv6 https to http", "https://[::1]/a", "http://[::1]/b", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			checkFn := makeCheckRedirectFunc(FollowSameSchemeRedirect, 10)
+			oldReq, _ := http.NewRequest("GET", tt.oldURL, nil)
+			newReq, _ := http.NewRequest("GET", tt.newURL, nil)
+			err := checkFn(newReq, []*http.Request{oldReq})
+			allowed := err == nil
+			if allowed != tt.shouldAllow {
+				t.Errorf("redirect from %q to %q: allowed=%v, want %v", tt.oldURL, tt.newURL, allowed, tt.shouldAllow)
+			}
+		})
+	}
+}
+
+func TestFollowSameSchemeRedirectChain(t *testing.T) {
+	checkFn := makeCheckRedirectFunc(FollowSameSchemeRedirect, 10)
+
+	// multi-hop chain within same scheme should work
+	req1, _ := http.NewRequest("GET", "http://example.com/a", nil)
+	req2, _ := http.NewRequest("GET", "http://example.com/b", nil)
+	req3, _ := http.NewRequest("GET", "http://example.com/c", nil)
+	err := checkFn(req3, []*http.Request{req1, req2})
+	if err != nil {
+		t.Errorf("same-scheme redirect chain should be allowed, got: %v", err)
+	}
+
+	// chain where last hop changes scheme should be blocked
+	req4, _ := http.NewRequest("GET", "https://example.com/d", nil)
+	err = checkFn(req4, []*http.Request{req1, req2})
+	if err == nil {
+		t.Errorf("cross-scheme redirect at end of chain should be blocked")
+	}
+}
+
+func TestFollowSameSchemeRedirectMaxRedirects(t *testing.T) {
+	checkFn := makeCheckRedirectFunc(FollowSameSchemeRedirect, 2)
+
+	req, _ := http.NewRequest("GET", "http://example.com/c", nil)
+	via := make([]*http.Request, 3)
+	for i := range via {
+		via[i], _ = http.NewRequest("GET", "http://example.com/"+string(rune('a'+i)), nil)
+	}
+	if err := checkFn(req, via); err == nil {
+		t.Errorf("should block after exceeding maxRedirects=2 with 3 via requests")
+	}
+}
+
 func TestMaxRedirects(t *testing.T) {
 	// Exceeding explicit max
 	checkFn := makeCheckRedirectFunc(FollowAllRedirect, 2)

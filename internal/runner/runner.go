@@ -397,7 +397,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.Logger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
+		runner.Logger.Warning().Msg("rate limit per minute is deprecated - use rate-limit-duration")
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
@@ -616,7 +616,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.ShouldUseHostError() {
 		maxHostError := r.options.MaxHostError
 		if r.options.TemplateThreads > maxHostError {
-			r.Logger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", r.colorizer.BrightYellow("WRN"))
+			r.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
 			r.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
 
 			maxHostError = r.options.TemplateThreads
@@ -886,7 +886,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if tmplCount == 0 && workflowCount == 0 {
 		// if dast flag is used print explicit warning
 		if r.options.DAST {
-			r.Logger.Print().Msgf("[%v] No DAST templates found", aurora.BrightYellow("WRN"))
+			r.Logger.Warning().Msg("No DAST templates found")
 		}
 		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
 	} else {
@@ -928,7 +928,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			value := v.Load()
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					r.Logger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
+					r.Logger.Warning().Msgf("Loading %d unsigned templates for scan. Use with caution.", value)
 				} else {
 					r.Logger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
@@ -1012,7 +1012,7 @@ type WalkFunc func(reflect.Value, reflect.StructField)
 // reflect.Value and reflect.Type properties of the value in the struct.
 func Walk(s interface{}, callback WalkFunc) {
 	structValue := reflect.ValueOf(s)
-	if structValue.Kind() == reflect.Ptr {
+	if structValue.Kind() == reflect.Pointer {
 		structValue = structValue.Elem()
 	}
 	if structValue.Kind() != reflect.Struct {
@@ -1026,7 +1026,7 @@ func Walk(s interface{}, callback WalkFunc) {
 		}
 		if field.Kind() == reflect.Struct {
 			Walk(field.Addr().Interface(), callback)
-		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+		} else if field.Kind() == reflect.Pointer && field.Elem().Kind() == reflect.Struct {
 			Walk(field.Interface(), callback)
 		} else {
 			callback(field, fieldType)

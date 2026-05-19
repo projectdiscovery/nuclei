@@ -11,5 +11,9 @@ func (request *Request) validate() error {
 		return errors.New("'redirects' and 'host-redirects' can't be used together")
 	}
 
+	if request.ProtocolRedirects && !request.Redirects && !request.HostRedirects {
+		return errors.New("'protocol-redirects' requires 'redirects' or 'host-redirects' to be enabled")
+	}
+
 	return nil
 }

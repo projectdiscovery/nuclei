@@ -17,9 +17,13 @@ import (
 	syncutil "github.com/projectdiscovery/utils/sync"
 
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcerpc"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcom"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkerberos"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbforge"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbroast"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libldap"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmysql"
@@ -30,12 +34,16 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/librdp"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libredis"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/librsync"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libscmr"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libsecretsdump"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libsmb"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libsmtp"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libssh"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libstructs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtelnet"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtsch"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libvnc"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libwmi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
@@ -322,7 +330,7 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 		return ""
 	}
 	kind := reflect.TypeOf(value).Kind()
-	if kind == reflect.Struct || kind == reflect.Ptr && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
+	if kind == reflect.Struct || kind == reflect.Pointer && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
 		// in this case we must use JSON.stringify to convert to string
 		// because json.Marshal() utilizes json tags when marshalling
 		// but goja has custom implementation of json.Marshal() which does not
@@ -337,7 +345,7 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 		}
 		// unlikely but if to_json threw some error use native json.Marshal
 		val := value
-		if kind == reflect.Ptr {
+		if kind == reflect.Pointer {
 			val = reflect.ValueOf(value).Elem().Interface()
 		}
 		bin, err := json.Marshal(val)
