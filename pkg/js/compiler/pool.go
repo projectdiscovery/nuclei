@@ -97,7 +97,23 @@ var gojapool = &sync.Pool{
 	},
 }
 
-func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
+// executeWithRuntime runs program p on runtime. When the goroutine that
+// actually executes the program fails to terminate within the grace period
+// after a context-driven interrupt, the runtime is abandoned (see
+// errRuntimeTerminationTimeout) and onOrphanExit is invoked from a reaper
+// goroutine once the orphaned goroutine eventually returns. Callers that
+// hold a concurrency slot or other resource on behalf of this runtime can
+// use onOrphanExit to defer the release of that resource until the orphan
+// is truly gone, instead of freeing it eagerly and letting fresh callers
+// race the abandoned runtime. Pass nil if there is nothing to release.
+func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions, onOrphanExit func()) (goja.Value, error) {
+	if args == nil {
+		args = NewExecuteArgs()
+	}
+	if opts == nil {
+		opts = &ExecuteOptions{}
+	}
+
 	runtime.ClearInterrupt()
 
 	// set template ctx
@@ -112,7 +128,7 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 	enableRequire(runtime)
 
 	// register extra callbacks if any
-	if opts != nil && opts.Callback != nil {
+	if opts.Callback != nil {
 		if err := opts.Callback(runtime); err != nil {
 			// Inner goroutine has not been spawned yet — safe to clean up
 			// synchronously and return the runtime to the pool.
@@ -145,8 +161,19 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 			// being interrupted. We MUST NOT touch the runtime any more —
 			// doing so (cleanup, reuse, Put back to the pool) would race
 			// with the orphan goroutine still mutating goja's per-runtime
-			// state and trigger a fatal map race. Return a sentinel so
-			// the caller can abandon the runtime instead of recycling it.
+			// state and trigger a fatal map race. Hand the runtime off to
+			// a reaper goroutine that waits for the orphan to actually
+			// finish before releasing any caller-owned resource (typically
+			// the pool concurrency slot). If the orphan never finishes
+			// (e.g. a native callback that blocks forever) the slot stays
+			// held — which is exactly the behaviour we want, because the
+			// stuck callback is still consuming runtime resources.
+			if onOrphanExit != nil {
+				go func() {
+					<-resultChan
+					onOrphanExit()
+				}()
+			}
 			return nil, fmt.Errorf("%w: %w", errRuntimeTerminationTimeout, ctx.Err())
 		}
 	case r = <-resultChan:
@@ -206,13 +233,19 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	// runtimeAbandoned is set to true when executeWithRuntime returns
 	// errRuntimeTerminationTimeout, signalling that an orphan goroutine
 	// is still running on this runtime. In that case we drop the runtime
-	// instead of returning it to the pool — Go's GC will reclaim it once
-	// the orphan goroutine eventually exits.
+	// instead of returning it to the pool (Go's GC will reclaim it once
+	// the orphan goroutine eventually exits) and we transfer ownership
+	// of the concurrency slot to a reaper goroutine inside
+	// executeWithRuntime, which releases it via pooljsc.Done once the
+	// orphan actually exits. Releasing the slot eagerly here would let a
+	// stream of stuck callbacks bypass PoolingJsVmConcurrency and trade
+	// the original map-race crash for unbounded resource growth.
 	runtimeAbandoned := false
 	defer func() {
-		if !runtimeAbandoned {
-			gojapool.Put(runtime)
+		if runtimeAbandoned {
+			return
 		}
+		gojapool.Put(runtime)
 		pooljsc.Done()
 	}()
 
@@ -264,7 +297,7 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 		},
 	})
 
-	val, err := executeWithRuntime(ctx, runtime, p, args, opts)
+	val, err := executeWithRuntime(ctx, runtime, p, args, opts, pooljsc.Done)
 	if err != nil {
 		if errors.Is(err, errRuntimeTerminationTimeout) {
 			runtimeAbandoned = true

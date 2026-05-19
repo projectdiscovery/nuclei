@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/Mzack9999/goja"
@@ -22,8 +23,23 @@ func executeWithoutPooling(ctx context.Context, p *goja.Program, args *ExecuteAr
 	if err := ephemeraljsc.AddWithContext(ctx); err != nil {
 		return nil, err
 	}
-	defer ephemeraljsc.Done()
+	// When the runtime is abandoned (an orphan goroutine outlived the
+	// interrupt grace period) ownership of the concurrency slot is
+	// transferred to a reaper inside executeWithRuntime which calls
+	// ephemeraljsc.Done after the orphan goroutine eventually exits;
+	// releasing the slot eagerly would let stuck callbacks bypass
+	// NonPoolingVMConcurrency.
+	slotOwnedByReaper := false
+	defer func() {
+		if !slotOwnedByReaper {
+			ephemeraljsc.Done()
+		}
+	}()
 
 	runtime := createNewRuntime()
-	return executeWithRuntime(ctx, runtime, p, args, opts)
+	val, runErr := executeWithRuntime(ctx, runtime, p, args, opts, ephemeraljsc.Done)
+	if errors.Is(runErr, errRuntimeTerminationTimeout) {
+		slotOwnedByReaper = true
+	}
+	return val, runErr
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -94,13 +95,13 @@ func TestRequireDoesNotReusePrivilegedModuleCacheAcrossExecutions(t *testing.T) 
 	runtime := createNewRuntime()
 	firstValue, err := executeWithRuntime(t.Context(), runtime, program, NewExecuteArgs(), &ExecuteOptions{
 		ExecutionId: allowExecutionID,
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.Equal(t, "outside-ok", firstValue.Export())
 
 	_, err = executeWithRuntime(t.Context(), runtime, program, NewExecuteArgs(), &ExecuteOptions{
 		ExecutionId: denyExecutionID,
-	})
+	}, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "-lfa is not enabled")
 }
@@ -151,6 +152,51 @@ func TestPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
 	case <-time.After(timeout * 5):
 		t.Fatal("runtime did not terminate after context expiry")
 	}
+}
+
+// TestPooledRuntimeAbandonedReleasesSlotOnlyAfterOrphanExits verifies that
+// when a runtime is abandoned because its goja goroutine outlived the
+// interrupt grace period, executeWithPoolingProgram does NOT release the
+// concurrency slot eagerly. Releasing it eagerly would let a stream of
+// stuck callbacks bypass PoolingJsVmConcurrency and trade the original
+// map-race crash for unbounded resource growth. The slot must stay held
+// by the reaper goroutine until the orphan goroutine actually exits.
+func TestPooledRuntimeAbandonedReleasesSlotOnlyAfterOrphanExits(t *testing.T) {
+	src := `ExportAs("k","v"); block(); 1`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseOrphan := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseOrphan)
+
+	lazySgInit()
+	initialCurrent := pooljsc.Current()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err = executeWithPoolingProgram(ctx, p, NewExecuteArgs(), &ExecuteOptions{
+		Source: &src,
+		Callback: func(rt *goja.Runtime) error {
+			return rt.Set("block", func() {
+				<-release
+			})
+		},
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, errRuntimeTerminationTimeout,
+		"runtime should be flagged as abandoned when its goroutine outlives the interrupt grace period")
+
+	require.GreaterOrEqual(t, pooljsc.Current(), initialCurrent+1,
+		"abandoned runtime must keep its concurrency slot held by the reaper while the orphan is still alive")
+
+	releaseOrphan()
+
+	require.Eventually(t, func() bool {
+		return pooljsc.Current() == initialCurrent
+	}, 5*time.Second, 10*time.Millisecond, "concurrency slot must be released once the orphan goroutine exits")
 }
 
 // TestPooledRuntimeAbandonedWhenInterruptStuck reproduces the conditions
