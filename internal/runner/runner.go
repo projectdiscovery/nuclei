@@ -29,7 +29,7 @@ import (
 	pprofutil "github.com/projectdiscovery/utils/pprof"
 	updateutils "github.com/projectdiscovery/utils/update"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/ratelimit"
 
@@ -85,7 +85,7 @@ type Runner struct {
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog
 	progress           progress.Progress
-	colorizer          aurora.Aurora
+	colorizer          *aurora.Aurora
 	issuesClient       reporting.Client
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
@@ -225,7 +225,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// output coloring
 	useColor := !options.NoColor
-	runner.colorizer = aurora.NewAurora(useColor)
+	runner.colorizer = aurora.New(aurora.WithColors(useColor))
 	templates.Colorizer = runner.colorizer
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 

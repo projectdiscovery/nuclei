@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 )
 
 func TestRegexCache_SetGet(t *testing.T) {

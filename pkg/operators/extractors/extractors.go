@@ -3,8 +3,8 @@ package extractors
 import (
 	"regexp"
 
-	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
+	"github.com/projectdiscovery/govaluate"
 )
 
 // Extractor is used to extract part of response using a regex.

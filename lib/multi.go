@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -36,7 +36,7 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		IssuesClient: base.rc,
 		RateLimiter:  base.rateLimiter,
 		Interactsh:   base.interactshClient,
-		Colorizer:    aurora.NewAurora(true),
+		Colorizer:    aurora.New(aurora.WithColors(true)),
 		ResumeCfg:    types.NewResumeCfg(),
 		Parser:       base.parser,
 		Browser:      base.browserInstance,
