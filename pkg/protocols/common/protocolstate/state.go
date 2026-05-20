@@ -176,9 +176,10 @@ func initDialers(options *types.Options) error {
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
 	httpClientPool := mapsutil.NewSyncLockMap(
-		// evicts inactive httpclientpool entries after 24 hours
-		// of inactivity (long running instances)
-		mapsutil.WithEviction[string, *retryablehttp.Client](24*time.Hour, 12*time.Hour),
+		// Per-host HTTP clients are evicted after 90 seconds of inactivity.
+		// Combined with IdleConnTimeout on each transport, this ensures
+		// connections to already-scanned hosts are cleaned up promptly.
+		mapsutil.WithEviction[string, *retryablehttp.Client](90*time.Second, 30*time.Second),
 	)
 
 	dialersInstance := &Dialers{
@@ -279,6 +280,15 @@ func Close(executionId string) {
 	}
 
 	if dialersInstance != nil {
+		// Close idle keep-alive connections on all cached HTTP clients
+		// to avoid lingering transport goroutines after shutdown.
+		_ = dialersInstance.HTTPClientPool.Iterate(func(_ string, client *retryablehttp.Client) error {
+			if client != nil && client.HTTPClient != nil {
+				client.HTTPClient.CloseIdleConnections()
+			}
+			return nil
+		})
+		dialersInstance.HTTPClientPool.Clear()
 		dialersInstance.Fastdialer.Close()
 	}
 

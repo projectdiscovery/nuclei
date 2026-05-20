@@ -22,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
-	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
@@ -95,11 +94,12 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
+	// Wappalyzer fingerprinting is a stateless GET reused across every target.
+	// Disable the cookie jar to avoid retaining cross-target state and the
+	// associated memory growth from a long-lived shared client.
 	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
-		Connection: &httpclientpool.ConnectionConfiguration{
-			DisableKeepAlive: httputil.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
-		},
-	})
+		DisableCookie: true,
+	}, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}

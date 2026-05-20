@@ -7,10 +7,12 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,11 +24,64 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
+
+var connStats ConnectionStats
+
+// ConnectionStats tracks HTTP connection reuse across the scan.
+type ConnectionStats struct {
+	New    atomic.Int64
+	Reused atomic.Int64
+}
+
+// GetConnectionStats returns the current connection statistics.
+//
+// NOTE: counters are package-global and accumulate across in-process scans.
+// Callers running multiple SDK/embedded executions in the same process should
+// invoke ResetConnectionStats() at the start of each run to avoid reporting
+// totals that mix results from earlier runs.
+func GetConnectionStats() (newConns, reused int64) {
+	return connStats.New.Load(), connStats.Reused.Load()
+}
+
+// ResetConnectionStats clears the package-global new/reused connection counters.
+// Intended to be called at the start of an execution to scope the metrics
+// returned by GetConnectionStats() to a single run.
+func ResetConnectionStats() {
+	connStats.New.Store(0)
+	connStats.Reused.Store(0)
+}
+
+// connTrackingTransport wraps an http.RoundTripper to track connection reuse
+// via httptrace. Every request gets a GotConn callback that increments the
+// appropriate counter before delegating to the underlying transport.
+type connTrackingTransport struct {
+	base http.RoundTripper
+}
+
+func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	trace := &httptrace.ClientTrace{
+		GotConn: func(info httptrace.GotConnInfo) {
+			if info.Reused {
+				connStats.Reused.Add(1)
+			} else {
+				connStats.New.Add(1)
+			}
+		},
+	}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	return t.base.RoundTrip(req)
+}
+
+func (t *connTrackingTransport) CloseIdleConnections() {
+	type closeIdler interface{ CloseIdleConnections() }
+	if ci, ok := t.base.(closeIdler); ok {
+		ci.CloseIdleConnections()
+	}
+}
 
 // ConnectionConfiguration contains the custom configuration options for a connection
 type ConnectionConfiguration struct {
@@ -111,9 +166,16 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.FormatBool(c.DisableCookie))
 	builder.WriteString("c")
 	builder.WriteString(strconv.FormatBool(c.Connection != nil))
-	if c.Connection != nil && c.Connection.CustomMaxTimeout > 0 {
-		builder.WriteString("k")
-		builder.WriteString(c.Connection.CustomMaxTimeout.String())
+	if c.Connection != nil {
+		// keep-alive flag must participate in the hash; otherwise two
+		// configurations differing only in DisableKeepAlive will collide and
+		// return a cached client with the wrong connection-reuse semantics.
+		builder.WriteString("d")
+		builder.WriteString(strconv.FormatBool(c.Connection.DisableKeepAlive))
+		if c.Connection.CustomMaxTimeout > 0 {
+			builder.WriteString("k")
+			builder.WriteString(c.Connection.CustomMaxTimeout.String())
+		}
 	}
 	builder.WriteString("r")
 	builder.WriteString(strconv.FormatInt(int64(c.ResponseHeaderTimeout.Seconds()), 10))
@@ -154,21 +216,15 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	return dialers.RawHTTPClient
 }
 
-// Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
-	if configuration.HasStandardOptions() {
-		dialers := protocolstate.GetDialersWithId(options.ExecutionId)
-		if dialers == nil {
-			return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
-		}
-		return dialers.DefaultHTTPClient, nil
-	}
-
-	return wrappedGet(options, configuration)
+// Get creates or gets a client for the protocol based on custom configuration.
+// The host parameter scopes the client to a specific target, enabling per-host
+// connection reuse with keep-alive. Pass an empty string for non-scanning uses.
+func Get(options *types.Options, configuration *Configuration, host string) (*retryablehttp.Client, error) {
+	return wrappedGet(options, configuration, host)
 }
 
 // wrappedGet wraps a get operation without normal client check
-func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
+func wrappedGet(options *types.Options, configuration *Configuration, host string) (*retryablehttp.Client, error) {
 	var err error
 
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
@@ -177,27 +233,28 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	hash := configuration.Hash()
+	if host != "" {
+		hash += ":" + host
+	}
 	if client, ok := dialers.HTTPClientPool.Get(hash); ok {
 		return client, nil
 	}
 
-	// Multiple Host
-	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
-	disableKeepAlives := true
-	maxIdleConns := 0
-	maxConnsPerHost := 0
-	maxIdleConnsPerHost := -1
-	// do not split given timeout into chunks for retry
-	// because this won't work on slow hosts
+	// Each client is scoped to a single host, so we optimize for connection
+	// reuse: keep-alive always on, small idle pool, and an idle timeout that
+	// lets the transport reclaim unused connections automatically.
+	retryableHttpOptions := retryablehttp.DefaultOptionsSingle
 	retryableHttpOptions.NoAdjustTimeout = true
 
-	if configuration.Threads > 0 || options.ScanStrategy == scanstrategy.HostSpray.String() {
-		// Single host
-		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
-		disableKeepAlives = false
-		maxIdleConnsPerHost = 500
-		maxConnsPerHost = 500
+	maxIdleConns := 4
+	maxIdleConnsPerHost := 4
+	maxConnsPerHost := 0 // unlimited by default; the SPM handler controls concurrency
+	if configuration.Threads > 0 {
+		maxIdleConnsPerHost = configuration.Threads
+		maxIdleConns = configuration.Threads
 	}
+
+	disableKeepAlives := configuration.Connection != nil && configuration.Connection.DisableKeepAlive
 
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
 	retryableHttpOptions.RetryMax = options.Retries
@@ -209,7 +266,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	maxRedirects := configuration.MaxRedirects
 
 	if options.ShouldFollowHTTPRedirects() {
-		// by default we enable general redirects following
 		switch {
 		case options.FollowHostRedirects:
 			redirectFlow = FollowSameHostRedirect
@@ -227,30 +283,23 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		maxRedirects = 0
 	}
 
-	// override connection's settings if required
-	if configuration.Connection != nil {
-		disableKeepAlives = configuration.Connection.DisableKeepAlive
-	}
-
 	// Set the base TLS configuration definition
 	tlsConfig := &tls.Config{
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS10,
-		ClientSessionCache: tls.NewLRUClientSessionCache(1024),
+		ClientSessionCache: tls.NewLRUClientSessionCache(128),
 	}
 
 	if options.SNI != "" {
 		tlsConfig.ServerName = options.SNI
 	}
 
-	// Add the client certificate authentication to the request if it's configured
 	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create client certificate")
 	}
 
-	// responseHeaderTimeout is max timeout for response headers to be read
 	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
 	if configuration.ResponseHeaderTimeout != 0 {
 		responseHeaderTimeout = configuration.ResponseHeaderTimeout
@@ -281,6 +330,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		MaxConnsPerHost:       maxConnsPerHost,
 		TLSClientConfig:       tlsConfig,
 		DisableKeepAlives:     disableKeepAlives,
+		IdleConnTimeout:       30 * time.Second,
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
@@ -322,6 +372,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		}
 	}
 
+	// Each per-host client gets its own default cookie jar. This is safe
+	// because cookies are domain-scoped per RFC 6265, and same-host iterations
+	// (workflows, multi-step templates) hit the same cached client so cookies
+	// are retained across requests. Explicit jars from input.CookieJar bypass
+	// the cache entirely for full isolation.
 	var jar *cookiejar.Jar
 	if configuration.Connection != nil && configuration.Connection.HasCookieJar() {
 		jar = configuration.Connection.GetCookieJar()
@@ -332,7 +387,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	httpclient := &http.Client{
-		Transport:     transport,
+		Transport:     &connTrackingTransport{base: transport},
 		CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
 	}
 	if !configuration.NoTimeout {
@@ -347,8 +402,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	// Only add to client pool if we don't have a cookie jar in place.
-	if jar == nil {
+	// Cache the client unless it has an explicit per-request cookie jar.
+	// Default jars (from DisableCookie=false) are fine to cache since they
+	// just provide standard cookie handling within a host's connection pool.
+	hasExplicitJar := configuration.Connection != nil && configuration.Connection.HasCookieJar()
+	if !hasExplicitJar {
 		if err := dialers.HTTPClientPool.Set(hash, client); err != nil {
 			return nil, err
 		}

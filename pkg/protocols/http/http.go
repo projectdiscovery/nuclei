@@ -25,10 +25,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
-	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
-	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -143,10 +141,9 @@ type Request struct {
 	options           *protocols.ExecutorOptions
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
-	customHeaders     map[string]string
-	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	httpClient        *retryablehttp.Client
-	rawhttpClient     *rawhttp.Client
+	customHeaders map[string]string
+	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
+	rawhttpClient *rawhttp.Client
 	dialer            *fastdialer.Dialer
 
 	// description: |
@@ -315,10 +312,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		MaxRedirects:  request.MaxRedirects,
 		NoTimeout:     false,
 		DisableCookie: request.DisableCookie,
-		Connection: &httpclientpool.ConnectionConfiguration{
-			DisableKeepAlive: httputil.ShouldDisableKeepAlive(options.Options),
-		},
-		RedirectFlow: httpclientpool.DontFollowRedirect,
+		Connection:    &httpclientpool.ConnectionConfiguration{},
+		RedirectFlow:  httpclientpool.DontFollowRedirect,
 	}
 	var customTimeout int
 	if request.Analyzer != nil && request.Analyzer.Name == "time_delay" {
@@ -353,13 +348,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	request.connConfiguration = connectionConfiguration
-
-	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
-	if err != nil {
-		return errors.Wrap(err, "could not get dns client")
-	}
 	request.customHeaders = make(map[string]string)
-	request.httpClient = client
 
 	dialer, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
 		CustomDialer: options.CustomFastdialer,
