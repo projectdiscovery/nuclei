@@ -11,7 +11,7 @@ on:
 
 jobs:
   memogen:
-    if: ${{ !endsWith(github.actor, '[bot]') }}
+    if: ${{ github.repository == 'projectdiscovery/nuclei' && !endsWith(github.actor, '[bot]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
