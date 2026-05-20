@@ -11,7 +11,7 @@ import (
 
 {{range .Functions}}
     {{ .SignatureWithPrefix "memoized" }} {
-        hash := "{{ .Name }}" {{range .Params}} + ":" + fmt.Sprint({{.Name}}) {{end}}
+        hash := "{{ .Name }}" {{range .Params}}{{if ne .Type "&{context Context}"}} + ":" + fmt.Sprint({{.Name}}){{end}}{{end}}
 
         v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
             return {{.Name}}({{.ParamsNames}})

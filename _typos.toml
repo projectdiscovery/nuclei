@@ -9,13 +9,13 @@ extend-exclude = [
     "README_PT-BR.md",
     "README_TR.md",
     # Test fixtures and data files
-    "integration_tests/",
+    "internal/tests/integration/testdata/",
     "pkg/input/formats/testdata/",
     "pkg/output/stats/waf/",
     # Deserialization test data
     "pkg/protocols/common/helpers/deserialization/testdata/",
     # Certificate/encoded data in test utilities
-    "pkg/testutils/integration.go",
+    "internal/tests/testutils/integration.go",
     # Vendor directory
     "vendor/",
     # Go checksum file
@@ -31,6 +31,8 @@ AllowdTypes = "AllowdTypes"
 ExludedDastTmplStats = "ExludedDastTmplStats"
 
 [default.extend-words]
+# External package API (fileutil.IsWriteable)
+Writeable = "Writeable" # TODO(dwisiswant0): Fix in upstream.
 # Variable name used for flow annotations
 fo = "fo"
 # Serbian test data in XML

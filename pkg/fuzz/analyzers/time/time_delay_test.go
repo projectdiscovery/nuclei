@@ -7,6 +7,10 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/stretchr/testify/require"
 )
 
 // This test suite verifies the timing dependency detection algorithm by testing various scenarios:
@@ -497,4 +501,111 @@ func TestSmallErrorDependence(t *testing.T) {
 	if !match {
 		t.Fatalf("Expected match for small error case. Reason: %s", reason)
 	}
+}
+
+// copyHeaders replicates the header-copy logic from Analyze's reqSender closure.
+// It copies all headers from src to dst, skipping the fuzzed key when the
+// component is a header component.
+func copyHeaders(dst, src *retryablehttp.Request, componentName, fuzzedKey string) {
+	for k, vs := range src.Header {
+		if componentName == "header" && k == fuzzedKey {
+			continue
+		}
+		dst.Header[k] = vs
+	}
+}
+
+func TestRebuildFromClonedComponentLosesPostParseHeaders(t *testing.T) {
+	rawReq, _ := retryablehttp.NewRequest("GET", "http://example.com/?id=1", nil)
+
+	q := component.NewQuery()
+	parsed, err := q.Parse(rawReq)
+	require.True(t, parsed)
+	require.NoError(t, err)
+
+	// in the real flow the component is cloned before custom headers are
+	// injected, so the clone's internal request has no custom headers
+	cloned := q.Clone()
+
+	rawReq.Header.Set("Cookie", "session=abc123")
+	rawReq.Header.Set("Authorization", "Bearer tok")
+
+	err = cloned.SetValue("id", "2")
+	require.NoError(t, err)
+
+	rebuilt, err := cloned.Rebuild()
+	require.NoError(t, err)
+
+	require.Empty(t, rebuilt.Header.Get("Cookie"), "cloned component rebuild should not have post-parse headers")
+	require.Empty(t, rebuilt.Header.Get("Authorization"))
+}
+
+func TestHeaderCopyRestoresCustomHeaders(t *testing.T) {
+	rawReq, _ := retryablehttp.NewRequest("GET", "http://example.com/?id=1", nil)
+
+	q := component.NewQuery()
+	parsed, err := q.Parse(rawReq)
+	require.True(t, parsed)
+	require.NoError(t, err)
+
+	cloned := q.Clone()
+
+	// simulate post-parse header injection on the live request
+	rawReq.Header.Set("Cookie", "session=abc123")
+	rawReq.Header.Set("Authorization", "Bearer tok")
+	rawReq.Header.Set("X-Custom", "value")
+
+	err = cloned.SetValue("id", "2")
+	require.NoError(t, err)
+	rebuilt, err := cloned.Rebuild()
+	require.NoError(t, err)
+
+	copyHeaders(rebuilt, rawReq, cloned.Name(), "")
+
+	require.Equal(t, "session=abc123", rebuilt.Header.Get("Cookie"))
+	require.Equal(t, "Bearer tok", rebuilt.Header.Get("Authorization"))
+	require.Equal(t, "value", rebuilt.Header.Get("X-Custom"))
+}
+
+func TestHeaderCopySkipsFuzzedKey(t *testing.T) {
+	rawReq, _ := retryablehttp.NewRequest("GET", "http://example.com/", nil)
+	rawReq.Header.Set("X-Inject", "original-value")
+	rawReq.Header.Set("Cookie", "session=abc123")
+
+	h := component.NewHeader()
+	parsed, err := h.Parse(rawReq)
+	require.True(t, parsed)
+	require.NoError(t, err)
+
+	fuzzedKey := "X-Inject"
+	err = h.SetValue(fuzzedKey, "sleep(5)")
+	require.NoError(t, err)
+	rebuilt, err := h.Rebuild()
+	require.NoError(t, err)
+
+	copyHeaders(rebuilt, rawReq, h.Name(), fuzzedKey)
+
+	require.Equal(t, "sleep(5)", rebuilt.Header.Get("X-Inject"), "fuzzed header should keep the payload")
+	require.Equal(t, "session=abc123", rebuilt.Header.Get("Cookie"), "non-fuzzed headers should be copied")
+}
+
+func TestHeaderCopyWithMultipleValues(t *testing.T) {
+	rawReq, _ := retryablehttp.NewRequest("GET", "http://example.com/?q=1", nil)
+
+	q := component.NewQuery()
+	parsed, err := q.Parse(rawReq)
+	require.True(t, parsed)
+	require.NoError(t, err)
+
+	cloned := q.Clone()
+
+	rawReq.Header.Add("X-Multi", "val1")
+	rawReq.Header.Add("X-Multi", "val2")
+
+	rebuilt, err := cloned.Rebuild()
+	require.NoError(t, err)
+
+	copyHeaders(rebuilt, rawReq, cloned.Name(), "")
+
+	require.Equal(t, []string{"val1", "val2"}, rebuilt.Header.Values("X-Multi"))
 }

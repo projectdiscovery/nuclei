@@ -6,13 +6,11 @@ import (
 	"fmt"
 
 	"github.com/Mzack9999/goja"
-	"github.com/kitabisa/go-ci"
+	"github.com/projectdiscovery/utils/errkit"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	contextutil "github.com/projectdiscovery/utils/context"
-	"github.com/projectdiscovery/utils/errkit"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -44,8 +42,6 @@ type ExecuteOptions struct {
 
 	// Source is original source of the script
 	Source *string
-
-	Context context.Context
 
 	TimeoutVariants *types.Timeouts
 
@@ -101,9 +97,9 @@ func (e ExecuteResult) GetSuccess() bool {
 }
 
 // ExecuteWithOptions executes a script with the provided options.
-func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
+func (c *Compiler) ExecuteWithOptions(ctx context.Context, program *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	if opts == nil {
-		opts = &ExecuteOptions{Context: context.Background()}
+		opts = &ExecuteOptions{}
 	}
 	if args == nil {
 		args = NewExecuteArgs()
@@ -119,24 +115,10 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 
 	// execute with context and timeout
-
-	ctx, cancel := context.WithTimeoutCause(opts.Context, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
+	ctx, cancel := context.WithTimeoutCause(ctx, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
-	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
-		// TODO(dwisiswant0): remove this once we get the RCA.
-		defer func() {
-			if ci.IsCI() {
-				return
-			}
-
-			if r := recover(); r != nil {
-				err = fmt.Errorf("panic: %v", r)
-			}
-		}()
-
-		return ExecuteProgram(program, args, opts)
-	})
+	results, err := ExecuteProgram(ctx, program, args, opts)
 	if err != nil {
 		if val, ok := err.(*goja.Exception); ok {
 			if x := val.Unwrap(); x != nil {
@@ -149,7 +131,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	}
 	var res ExecuteResult
 	if opts.exports != nil {
-		res = ExecuteResult(opts.exports)
+		res = opts.exports
 		opts.exports = nil
 	} else {
 		res = NewExecuteResult()

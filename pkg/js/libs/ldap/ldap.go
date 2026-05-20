@@ -1,7 +1,6 @@
 package ldap
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -92,12 +91,13 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 		panic("dialers with executionId " + executionId + " not found")
 	}
 
+	dialCtx := c.nj.Context()
 	var conn net.Conn
 	if u.Scheme == "ldapi" {
 		if u.Path == "" || u.Path == "/" {
 			u.Path = "/var/run/slapd/ldapi"
 		}
-		conn, err = dialers.Fastdialer.Dial(context.TODO(), "unix", u.Path)
+		conn, err = dialers.Fastdialer.Dial(dialCtx, "unix", u.Path)
 		c.nj.HandleError(err, "failed to connect to ldap server")
 	} else {
 		host, port, err := net.SplitHostPort(u.Host)
@@ -116,12 +116,12 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 			if port == "" {
 				port = ldap.DefaultLdapPort
 			}
-			conn, err = dialers.Fastdialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+			conn, err = dialers.Fastdialer.Dial(dialCtx, "udp", net.JoinHostPort(host, port))
 		case "ldap":
 			if port == "" {
 				port = ldap.DefaultLdapPort
 			}
-			conn, err = dialers.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+			conn, err = dialers.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, port))
 		case "ldaps":
 			if port == "" {
 				port = ldap.DefaultLdapsPort
@@ -130,7 +130,7 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 			if c.cfg.ServerName != "" {
 				serverName = c.cfg.ServerName
 			}
-			conn, err = dialers.Fastdialer.DialTLSWithConfig(context.TODO(), "tcp", net.JoinHostPort(host, port),
+			conn, err = dialers.Fastdialer.DialTLSWithConfig(dialCtx, "tcp", net.JoinHostPort(host, port),
 				&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, ServerName: serverName})
 		default:
 			err = fmt.Errorf("unsupported ldap url schema %v", u.Scheme)

@@ -454,7 +454,7 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 }
 ```
 
-That's it, you've added a new protocol to Nuclei. The next good step would be to write integration tests which are described in `integration-tests` and `cmd/integration-tests` directories.
+That's it, you've added a new protocol to Nuclei. The next good step would be to add native integration coverage under `internal/tests/integration` and run it with `go test -tags=integration ./internal/tests/integration`.
 
 
 ## Profiling and Tracing

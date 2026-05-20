@@ -28,19 +28,6 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-var (
-	forceMaxRedirects int
-)
-
-// Init initializes the clientpool implementation
-func Init(options *types.Options) error {
-	if options.ShouldFollowHTTPRedirects() {
-		forceMaxRedirects = options.MaxRedirects
-	}
-
-	return nil
-}
-
 // ConnectionConfiguration contains the custom configuration options for a connection
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
@@ -221,7 +208,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
 
-	if forceMaxRedirects > 0 {
+	if options.ShouldFollowHTTPRedirects() {
 		// by default we enable general redirects following
 		switch {
 		case options.FollowHostRedirects:
@@ -229,7 +216,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		default:
 			redirectFlow = FollowAllRedirect
 		}
-		maxRedirects = forceMaxRedirects
+		if options.MaxRedirects > 0 {
+			maxRedirects = options.MaxRedirects
+		}
 	}
 	if options.DisableRedirects {
 		options.FollowRedirects = false
@@ -373,6 +362,7 @@ const (
 	DontFollowRedirect RedirectFlow = iota
 	FollowSameHostRedirect
 	FollowAllRedirect
+	FollowSameSchemeRedirect
 )
 
 const defaultMaxRedirects = 10
@@ -385,21 +375,44 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 		case DontFollowRedirect:
 			return http.ErrUseLastResponse
 		case FollowSameHostRedirect:
-			var newHost = req.URL.Host
-			var oldHost = via[0].Host
-			if oldHost == "" {
-				oldHost = via[0].URL.Host
+			var newHost = normalizeHost(req.URL)
+			var oldHost string
+			if via[0].Host != "" {
+				oldHost = normalizeHost(&url.URL{Scheme: via[0].URL.Scheme, Host: via[0].Host})
+			} else {
+				oldHost = normalizeHost(via[0].URL)
 			}
 			if newHost != oldHost {
-				// Tell the http client to not follow redirect
 				return http.ErrUseLastResponse
 			}
 			return checkMaxRedirects(req, via, maxRedirects)
 		case FollowAllRedirect:
 			return checkMaxRedirects(req, via, maxRedirects)
+		case FollowSameSchemeRedirect:
+			previousScheme := via[len(via)-1].URL.Scheme
+			if req.URL.Scheme != previousScheme {
+				return http.ErrUseLastResponse
+			}
+			return checkMaxRedirects(req, via, maxRedirects)
 		}
 		return nil
 	}
+}
+
+// normalizeHost strips default ports (80 for http, 443 for https) from
+// the URL host so that "example.com:80" and "example.com" compare equal.
+func normalizeHost(u *url.URL) string {
+	host, port, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return u.Host
+	}
+	if (u.Scheme == "http" && port == "80") || (u.Scheme == "https" && port == "443") {
+		if strings.Contains(host, ":") {
+			return "[" + host + "]"
+		}
+		return host
+	}
+	return u.Host
 }
 
 func checkMaxRedirects(req *http.Request, via []*http.Request, maxRedirects int) error {

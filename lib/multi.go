@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -29,18 +29,17 @@ type unsafeOptions struct {
 func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
 	u.executerOpts = &protocols.ExecutorOptions{
-		Output:          base.customWriter,
-		Options:         opts,
-		Progress:        base.customProgress,
-		Catalog:         base.catalog,
-		IssuesClient:    base.rc,
-		RateLimiter:     base.rateLimiter,
-		Interactsh:      base.interactshClient,
-		HostErrorsCache: base.hostErrCache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-		Parser:          base.parser,
-		Browser:         base.browserInstance,
+		Output:       base.customWriter,
+		Options:      opts,
+		Progress:     base.customProgress,
+		Catalog:      base.catalog,
+		IssuesClient: base.rc,
+		RateLimiter:  base.rateLimiter,
+		Interactsh:   base.interactshClient,
+		Colorizer:    aurora.New(aurora.WithColors(true)),
+		ResumeCfg:    types.NewResumeCfg(),
+		Parser:       base.parser,
+		Browser:      base.browserInstance,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache

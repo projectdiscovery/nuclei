@@ -28,11 +28,11 @@ const (
 // ```
 func (c *SMBClient) DetectSMBGhost(ctx context.Context, host string, port int) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizeddetectSMBGhost(executionId, host, port)
+	return memoizeddetectSMBGhost(ctx, executionId, host, port)
 }
 
 // @memo
-func detectSMBGhost(executionId string, host string, port int) (bool, error) {
+func detectSMBGhost(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
@@ -42,7 +42,7 @@ func detectSMBGhost(executionId string, host string, port int) (bool, error) {
 	if dialer == nil {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", addr)
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", addr)
 	if err != nil {
 		return false, err
 

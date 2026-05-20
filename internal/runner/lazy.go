@@ -109,11 +109,9 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		var finalErr error
 		ctx.OnResult = func(e *output.InternalWrappedEvent) {
 			if e == nil {
-				finalErr = fmt.Errorf("no result found for template: %s", d.TemplatePath)
 				return
 			}
 			if !e.HasOperatorResult() {
-				finalErr = fmt.Errorf("no result found for template: %s", d.TemplatePath)
 				return
 			}
 			// dynamic values
@@ -133,19 +131,15 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 					data[k] = v[0]
 				}
 			}
-			if len(data) == 0 {
-				if e.OperatorsResult.Matched {
-					finalErr = fmt.Errorf("match found but no (dynamic/extracted) values found for template: %s", d.TemplatePath)
-				} else {
-					finalErr = fmt.Errorf("no match or (dynamic/extracted) values found for template: %s", d.TemplatePath)
-				}
-			}
 			// log result of template in result file/screen
 			_ = writer.WriteResult(e, opts.ExecOpts.Output, opts.ExecOpts.Progress, opts.ExecOpts.IssuesClient)
 		}
 		_, execErr := tmpl.Executer.ExecuteWithResults(ctx)
 		if execErr != nil {
 			finalErr = execErr
+		}
+		if finalErr == nil && len(data) == 0 {
+			finalErr = fmt.Errorf("no extracted values found for template: %s", d.TemplatePath)
 		}
 		// store extracted result in auth context
 		d.Extracted = data

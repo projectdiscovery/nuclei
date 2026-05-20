@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -258,6 +259,13 @@ type Options struct {
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
 	StopAtFirstMatch bool
+
+	// HoneypotDetection enables detection of potential honeypots based on match concentration.
+	HoneypotDetection bool
+	// HoneypotThreshold is the number of distinct template IDs required to flag a host as a potential honeypot.
+	HoneypotThreshold int
+	// SuppressHoneypotResults suppresses output writing for flagged honeypot hosts.
+	SuppressHoneypotResults bool
 	// Stream the input without sorting
 	Stream bool
 	// NoMeta disables display of metadata for the matches
@@ -454,6 +462,8 @@ type Options struct {
 	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
+	// InlineTargetsList holds inline multiline target list from a template profile
+	InlineTargetsList string `yaml:"targets-inline,omitempty"`
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
@@ -586,6 +596,9 @@ func (options *Options) Copy() *Options {
 		HangMonitor:                    options.HangMonitor,
 		Stdin:                          options.Stdin,
 		StopAtFirstMatch:               options.StopAtFirstMatch,
+		HoneypotDetection:              options.HoneypotDetection,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		SuppressHoneypotResults:        options.SuppressHoneypotResults,
 		Stream:                         options.Stream,
 		NoMeta:                         options.NoMeta,
 		Timestamp:                      options.Timestamp,
@@ -681,6 +694,7 @@ func (options *Options) Copy() *Options {
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
+		InlineTargetsList:              options.InlineTargetsList,
 		ListTemplateProfiles:           options.ListTemplateProfiles,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,
@@ -864,7 +878,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	resolvedPath, err := fileutil.ResolveNClean(helperFilePath, config.DefaultConfig.GetTemplateDir())
 	if err == nil {
 		// As per rule 1, if helper file is present in nuclei-templates directory, allow it
-		if strings.HasPrefix(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
+		if filepathutil.IsPathWithinDirectory(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
 			return resolvedPath, nil
 		}
 	}
