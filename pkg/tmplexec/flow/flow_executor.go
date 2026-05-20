@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"strconv"
@@ -299,14 +300,19 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 	defer func() {
 		_ = reader.Close()
 	}()
-	bin, err := io.ReadAll(reader)
-	if err != nil {
-		return values, err
-	}
-	for line := range strings.SplitSeq(string(bin), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			values = append(values, line)
+	// Stream the helper file line-by-line instead of loading it whole into memory:
+	// helper files for flow templates can be large (wordlists, payload corpora).
+	br := bufio.NewReader(reader)
+	for {
+		line, readErr := br.ReadString('\n')
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			values = append(values, trimmed)
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return values, readErr
 		}
 	}
 	return values, nil

@@ -282,4 +282,3 @@ func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
 }
-

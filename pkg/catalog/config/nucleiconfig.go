@@ -351,17 +351,12 @@ func (c *Config) IsDebugArgEnabled(arg string) bool {
 // parseDebugArgs from string
 func (c *Config) parseDebugArgs(data string) {
 	// use space as separator instead of commas
-	tmp := strings.FieldsSeq(data)
-	for v := range tmp {
+	for v := range strings.FieldsSeq(data) {
 		key := v
 		value := ""
 		// if it is key value pair then split it
-		if strings.Contains(v, "=") {
-			parts := strings.SplitN(v, "=", 2)
-			if len(parts) != 2 {
-				continue
-			}
-			key, value = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		if k, val, ok := strings.Cut(v, "="); ok {
+			key, value = strings.TrimSpace(k), strings.TrimSpace(val)
 		}
 		if value == "false" || value == "0" {
 			// if false or disabled then skip
