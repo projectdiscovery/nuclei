@@ -565,13 +565,13 @@ func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, err
 		checksums, err := os.ReadFile(checksumFilePath)
 		if err == nil {
 			allChecksums := make(map[string]string)
-			for _, v := range strings.Split(string(checksums), ";") {
+			for v := range strings.SplitSeq(string(checksums), ";") {
 				v = strings.TrimSpace(v)
-				tmparr := strings.Split(v, ",")
-				if len(tmparr) != 2 {
+				name, hash, ok := strings.Cut(v, ",")
+				if !ok {
 					continue
 				}
-				allChecksums[tmparr[0]] = tmparr[1]
+				allChecksums[name] = hash
 			}
 			return allChecksums, nil
 		}

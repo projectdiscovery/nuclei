@@ -200,7 +200,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// parse ports and validate
 	if request.Port != "" {
 		seen := make(map[string]struct{})
-		for _, port := range strings.Split(request.Port, ",") {
+		for port := range strings.SplitSeq(request.Port, ",") {
 			port = strings.TrimSpace(port)
 			if port == "" {
 				continue
@@ -282,4 +282,3 @@ func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
 }
-

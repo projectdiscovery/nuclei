@@ -100,8 +100,7 @@ func IsTemplateWithRoot(fpath, rootDir string) bool {
 	// Only check components if pathToCheck is NOT absolute
 	// This avoids false positives on parent directories for absolute paths
 	if !filepath.IsAbs(pathToCheck) {
-		parts := strings.Split(pathToCheck, string(os.PathSeparator))
-		for _, p := range parts {
+		for p := range strings.SplitSeq(pathToCheck, string(os.PathSeparator)) {
 			for _, excluded := range knownMiscDirectories {
 				if strings.EqualFold(p, excluded) {
 					return false
