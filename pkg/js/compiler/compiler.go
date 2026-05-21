@@ -45,6 +45,11 @@ type ExecuteOptions struct {
 
 	TimeoutVariants *types.Timeouts
 
+	// ProxyURL is the HTTP proxy URL to use for network connections via
+	// HTTP CONNECT. SOCKS proxies are handled by the fastdialer layer
+	// and should not be passed here.
+	ProxyURL string
+
 	// Manually exported objects
 	exports map[string]interface{}
 }

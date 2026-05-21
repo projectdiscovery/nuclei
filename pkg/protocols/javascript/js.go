@@ -157,6 +157,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		opts := &compiler.ExecuteOptions{
 			ExecutionId:     request.options.Options.ExecutionId,
 			TimeoutVariants: request.options.Options.GetTimeouts(),
+			ProxyURL:        request.options.Options.AliveHttpProxy,
 			Source:          &request.Init,
 		}
 		// register 'export' function to export variables from init code
@@ -332,6 +333,18 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port
 
+	// Expose custom headers from CLI flags (-H) as a map for JS templates.
+	if len(requestOptions.Options.CustomHeaders) > 0 {
+		headers := make(map[string]string)
+		for _, h := range requestOptions.Options.CustomHeaders {
+			parts := strings.SplitN(h, ":", 2)
+			if len(parts) == 2 {
+				headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			}
+		}
+		payloadValues["custom_headers"] = headers
+	}
+
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.Constants, templateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
@@ -380,7 +393,8 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			&compiler.ExecuteOptions{
 				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
-				Source: &request.PreCondition,
+				ProxyURL:        requestOptions.Options.AliveHttpProxy,
+				Source:          &request.PreCondition,
 			},
 		)
 		// if precondition was successful
@@ -564,6 +578,7 @@ func (request *Request) executeRequestWithPayloads(
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
+			ProxyURL:        requestOptions.Options.AliveHttpProxy,
 			Source:          &request.Code,
 		},
 	)
