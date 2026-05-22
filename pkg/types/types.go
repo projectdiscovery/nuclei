@@ -897,7 +897,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
 	// and both of them are present in user home directory, allow it
 	// Review: should we keep this rule ? add extra option to disable this ?
-	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
+	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && filepathutil.IsPathWithinDirectory(helperFilePath, filepath.Dir(templatePath)) {
 		return helperFilePath, nil
 	}
 
@@ -922,5 +922,8 @@ func (options *Options) GetExecutionID() string {
 // isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
-	return strings.HasPrefix(path, homeDir)
+	if homeDir == "" {
+		return false
+	}
+	return filepathutil.IsPathWithinDirectory(path, homeDir)
 }

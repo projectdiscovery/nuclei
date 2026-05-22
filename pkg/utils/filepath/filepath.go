@@ -39,10 +39,35 @@ func canonicalizePath(path string) string {
 	}
 	if resolvedPath, err := filepath.EvalSymlinks(canonicalPath); err == nil {
 		canonicalPath = resolvedPath
+	} else {
+		canonicalPath = resolveExistingPathPrefix(canonicalPath)
 	}
 	canonicalPath = filepath.Clean(canonicalPath)
 	if runtime.GOOS == "windows" {
 		canonicalPath = strings.ToLower(canonicalPath)
 	}
 	return canonicalPath
+}
+
+func resolveExistingPathPrefix(path string) string {
+	cleaned := filepath.Clean(path)
+	current := cleaned
+	var missing []string
+
+	for {
+		resolved, err := filepath.EvalSymlinks(current)
+		if err == nil {
+			for i := len(missing) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, missing[i])
+			}
+			return resolved
+		}
+
+		parent := filepath.Dir(current)
+		if parent == current {
+			return cleaned
+		}
+		missing = append(missing, filepath.Base(current))
+		current = parent
+	}
 }

@@ -68,4 +68,9 @@ func TestIsPathWithinDirectoryWithSymlinkedDirectory(t *testing.T) {
 	if !IsPathWithinDirectory(childFile, aliasDir) {
 		t.Fatalf("expected %q to be inside symlinked dir %q", childFile, aliasDir)
 	}
+
+	missingChildFile := filepath.Join(aliasDir, "helpers", "missing.js")
+	if !IsPathWithinDirectory(missingChildFile, realDir) {
+		t.Fatalf("expected non-existent child %q to be inside real dir %q", missingChildFile, realDir)
+	}
 }

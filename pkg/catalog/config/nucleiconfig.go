@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/projectdiscovery/utils/errkit"
@@ -70,11 +71,14 @@ func (c *Config) IsCustomTemplate(templatePath string) bool {
 	}
 
 	for _, dir := range customDirs {
-		if strings.HasPrefix(templatePath, dir) {
+		if dir != "" && filepathutil.IsPathWithinDirectory(templatePath, dir) {
 			return true
 		}
 	}
-	return !strings.HasPrefix(templatePath, c.TemplatesDirectory)
+	if c.TemplatesDirectory == "" {
+		return false
+	}
+	return !filepathutil.IsPathWithinDirectory(templatePath, c.TemplatesDirectory)
 }
 
 // WriteVersionCheckData writes version check data to config file

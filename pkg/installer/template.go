@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -277,12 +278,12 @@ func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.File
 
 	newPath := filepath.Clean(filepath.Join(templateDir, relPath))
 
-	if !strings.HasPrefix(newPath, templateDir) {
+	if !filepathutil.IsPathWithinDirectory(newPath, templateDir) || !filepathutil.IsPathWithinDirectory(filepath.Dir(newPath), templateDir) {
 		// we don't allow LFI
 		return ""
 	}
 
-	if newPath == templateDir || newPath == templateDir+string(os.PathSeparator) {
+	if filepath.Clean(newPath) == filepath.Clean(templateDir) {
 		// skip writing the folder itself since it already exists
 		return ""
 	}
@@ -468,10 +469,8 @@ func (t *TemplateManager) cleanupOrphanedTemplates(dir string, writtenPaths *map
 		absPath = filepath.Clean(absPath)
 
 		// Skip custom template directories
-		for _, customDir := range customDirAbs {
-			if strings.HasPrefix(absPath, customDir) {
-				return nil
-			}
+		if filepathutil.IsPathWithinAnyDirectory(absPath, customDirAbs...) {
+			return nil
 		}
 
 		// Only process template files
@@ -617,7 +616,7 @@ func (t *TemplateManager) calculateChecksumMap(dir string) (map[string]string, e
 			return err
 		}
 		// skip checksums of custom templates i.e github and s3
-		if stringsutil.HasPrefixAny(path, config.DefaultConfig.GetAllCustomTemplateDirs()...) {
+		if filepathutil.IsPathWithinAnyDirectory(path, config.DefaultConfig.GetAllCustomTemplateDirs()...) {
 			return nil
 		}
 

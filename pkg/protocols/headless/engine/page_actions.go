@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -527,17 +528,8 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		return errkit.Newf("could not clean output screenshot path %s", to)
 	}
 
-	// allow if targetPath is child of current working directory
-	if !protocolstate.IsLfaAllowed(p.options.Options) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return errkit.Wrap(err, "could not get current working directory")
-		}
-
-		if !strings.HasPrefix(to, cwd) {
-			// writing outside of cwd requires -lfa flag
-			return ErrLFAccessDenied
-		}
+	if err := p.isScreenshotPathAllowed(to); err != nil {
+		return err
 	}
 
 	mkdir, err := p.getActionArg(act, "mkdir")
@@ -570,6 +562,45 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 	gologger.Info().Msgf("Screenshot successfully saved at %v\n", filePath)
 	return nil
+}
+
+func (p *Page) isScreenshotPathAllowed(to string) error {
+	if protocolstate.IsLfaAllowed(p.options.Options) {
+		return nil
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return errkit.Wrap(err, "could not get current working directory")
+	}
+
+	if !isScreenshotPathWithinDirectory(to, cwd) {
+		// writing outside of cwd requires -lfa flag
+		return ErrLFAccessDenied
+	}
+
+	return nil
+}
+
+func isScreenshotPathWithinDirectory(to, cwd string) bool {
+	if !filepathutil.IsPathWithinDirectory(to, cwd) {
+		return false
+	}
+
+	existingParent := filepath.Dir(to)
+	for {
+		if _, err := os.Stat(existingParent); err == nil {
+			return filepathutil.IsPathWithinDirectory(existingParent, cwd)
+		} else if !os.IsNotExist(err) {
+			return false
+		}
+
+		parent := filepath.Dir(existingParent)
+		if parent == existingParent {
+			return false
+		}
+		existingParent = parent
+	}
 }
 
 // InputElement executes input element actions for an element.

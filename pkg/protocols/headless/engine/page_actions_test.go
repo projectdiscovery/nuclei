@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -246,6 +247,57 @@ func TestActionScreenshotToDir(t *testing.T) {
 			t.Logf("got error %v while deleting temp file", err)
 		}
 	})
+}
+
+func TestActionScreenshotDeniesSiblingPrefixPathWithoutLFA(t *testing.T) {
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	sibling := cwd + "-evil"
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+	require.NoError(t, os.MkdirAll(sibling, 0700))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	filePath := filepath.Join(sibling, "test.png")
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
+	err = page.isScreenshotPathAllowed(filePath)
+	require.ErrorIs(t, err, ErrLFAccessDenied)
+
+	err = page.isScreenshotPathAllowed(filepath.Join(cwd, "test.png"))
+	require.NoError(t, err)
+}
+
+func TestActionScreenshotDeniesSymlinkedParentOutsideCWDWithoutLFA(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is not reliable on all Windows runners")
+	}
+
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	outside := filepath.Join(tmpDir, "outside")
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+	require.NoError(t, os.MkdirAll(outside, 0700))
+
+	linkPath := filepath.Join(cwd, "link")
+	require.NoError(t, os.Symlink(outside, linkPath))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
+	err = page.isScreenshotPathAllowed(filepath.Join(linkPath, "test.png"))
+	require.ErrorIs(t, err, ErrLFAccessDenied)
 }
 
 func TestActionTimeInput(t *testing.T) {

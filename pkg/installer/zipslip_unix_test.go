@@ -58,6 +58,7 @@ func TestZipSlip(t *testing.T) {
 			"nuclei-templates/././../cve/test.yaml",
 			"nuclei-templates/.././../cve/test.yaml",
 			"nuclei-templates/.././../cve/../test.yaml",
+			"nuclei-templates/../templates-evil/test.yaml",
 		}
 		tm := TemplateManager{}
 
@@ -66,5 +67,30 @@ func TestZipSlip(t *testing.T) {
 			writePath := tm.getAbsoluteFilePath(configuredTemplateDirectory, filePathFromZip, tmp)
 			require.Equal(t, "", writePath, filePathFromZip)
 		}
+	})
+
+	t.Run("positive scenarios", func(t *testing.T) {
+		filePathsFromZip := map[string]string{
+			"nuclei-templates/cves/test.yaml": filepath.Join(configuredTemplateDirectory, "cves", "test.yaml"),
+			"nuclei-templates/test.yaml":      filepath.Join(configuredTemplateDirectory, "test.yaml"),
+		}
+		tm := TemplateManager{}
+
+		for filePathFromZip, expectedWritePath := range filePathsFromZip {
+			var tmp fs.FileInfo = &tempFileInfo{name: filePathFromZip}
+			writePath := tm.getAbsoluteFilePath(configuredTemplateDirectory, filePathFromZip, tmp)
+			require.Equal(t, expectedWritePath, writePath, filePathFromZip)
+		}
+	})
+
+	t.Run("positive symlinked template directory", func(t *testing.T) {
+		realDir := t.TempDir()
+		aliasDir := filepath.Join(t.TempDir(), "templates-link")
+		require.NoError(t, os.Symlink(realDir, aliasDir))
+
+		tm := TemplateManager{}
+		var tmp fs.FileInfo = &tempFileInfo{name: "nuclei-templates/cves/test.yaml"}
+		writePath := tm.getAbsoluteFilePath(aliasDir, "nuclei-templates/cves/test.yaml", tmp)
+		require.Equal(t, filepath.Join(aliasDir, "cves", "test.yaml"), writePath)
 	})
 }
