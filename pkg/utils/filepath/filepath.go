@@ -19,6 +19,19 @@ func IsPathWithinDirectory(path string, directory string) bool {
 	return relativePath == "." || (relativePath != ".." && !strings.HasPrefix(relativePath, ".."+string(filepath.Separator)))
 }
 
+// IsPathWithinAnyDirectory returns true when path resolves inside any directory.
+func IsPathWithinAnyDirectory(path string, directories ...string) bool {
+	for _, directory := range directories {
+		if directory == "" {
+			continue
+		}
+		if IsPathWithinDirectory(path, directory) {
+			return true
+		}
+	}
+	return false
+}
+
 func canonicalizePath(path string) string {
 	canonicalPath, err := filepath.Abs(path)
 	if err != nil {

@@ -30,6 +30,22 @@ func TestIsPathWithinDirectory(t *testing.T) {
 	}
 }
 
+func TestIsPathWithinAnyDirectory(t *testing.T) {
+	baseDir := t.TempDir()
+	otherDir := t.TempDir()
+	childFile := filepath.Join(baseDir, "child.txt")
+	if err := os.WriteFile(childFile, []byte("ok"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if !IsPathWithinAnyDirectory(childFile, "", otherDir, baseDir) {
+		t.Fatalf("expected %q to be inside one of the allowed directories", childFile)
+	}
+	if IsPathWithinAnyDirectory(filepath.Join(t.TempDir(), "outside.txt"), "", otherDir, baseDir) {
+		t.Fatal("expected outside path not to be inside allowed directories")
+	}
+}
+
 func TestIsPathWithinDirectoryWithSymlinkedDirectory(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation is not reliable on all Windows runners")
