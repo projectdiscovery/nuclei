@@ -106,6 +106,48 @@ func TestRequireDoesNotReusePrivilegedModuleCacheAcrossExecutions(t *testing.T) 
 	require.Contains(t, err.Error(), "-lfa is not enabled")
 }
 
+func TestExecuteWithRuntimeCleansUpAfterCallbackPanic(t *testing.T) {
+	program, err := goja.Compile("", `1`, false)
+	require.NoError(t, err)
+
+	runtime := createNewRuntime()
+	args := NewExecuteArgs()
+	args.Args["arg"] = "value"
+	args.TemplateCtx["template-key"] = "template-value"
+
+	cleanupCalled := false
+	panicValue := "callback panic"
+
+	func() {
+		defer func() {
+			require.Equal(t, panicValue, recover())
+		}()
+
+		_, _ = executeWithRuntime(t.Context(), runtime, program, args, &ExecuteOptions{
+			ExecutionId: "callback-panic-cleanup",
+			Callback: func(rt *goja.Runtime) error {
+				require.NoError(t, rt.Set("callbackState", "partial"))
+				panic(panicValue)
+			},
+			Cleanup: func(rt *goja.Runtime) {
+				cleanupCalled = true
+				_ = rt.GlobalObject().Delete("callbackState")
+			},
+		}, nil)
+		t.Fatal("executeWithRuntime did not panic")
+	}()
+
+	require.True(t, cleanupCalled)
+	require.Nil(t, runtime.Get("template"))
+	require.Nil(t, runtime.Get("arg"))
+	require.Nil(t, runtime.Get("callbackState"))
+
+	_, ok := runtime.GetContextValue("executionId")
+	require.False(t, ok)
+	_, ok = runtime.GetContextValue("ctx")
+	require.False(t, ok)
+}
+
 func TestNonPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
 	timeout := 300 * time.Millisecond
 

@@ -114,6 +114,14 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 		opts = &ExecuteOptions{}
 	}
 
+	runtimeAbandoned := false
+	defer func() {
+		if runtimeAbandoned {
+			return
+		}
+		cleanupRuntime(runtime, args, opts)
+	}()
+
 	runtime.ClearInterrupt()
 
 	// set template ctx
@@ -130,9 +138,6 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 	// register extra callbacks if any
 	if opts.Callback != nil {
 		if err := opts.Callback(runtime); err != nil {
-			// Inner goroutine has not been spawned yet — safe to clean up
-			// synchronously and return the runtime to the pool.
-			cleanupRuntime(runtime, args, opts)
 			return nil, err
 		}
 	}
@@ -168,6 +173,7 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 			// (e.g. a native callback that blocks forever) the slot stays
 			// held — which is exactly the behaviour we want, because the
 			// stuck callback is still consuming runtime resources.
+			runtimeAbandoned = true
 			if onOrphanExit != nil {
 				go func() {
 					<-resultChan
@@ -182,7 +188,6 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 
 	// At this point the inner goroutine has returned, so it is safe to
 	// touch the runtime again from this goroutine.
-	cleanupRuntime(runtime, args, opts)
 	return r.result, r.err
 }
 
