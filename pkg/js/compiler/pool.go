@@ -3,6 +3,7 @@ package compiler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -60,6 +61,17 @@ type gojaRunResult struct {
 	err    error
 }
 
+// errRuntimeTerminationTimeout is returned by executeWithRuntime when the
+// goroutine running goja.Runtime.RunProgram fails to terminate within the
+// grace period after an interrupt was raised. When this error is returned
+// the runtime MUST NOT be touched (no cleanup, no reuse, no Put back to
+// the pool) because the orphaned goroutine is still operating on it; any
+// concurrent access would race with goja's per-runtime state and can
+// trigger a fatal "concurrent map read and map write" runtime panic.
+//
+// See https://github.com/projectdiscovery/nuclei/issues/7376.
+var errRuntimeTerminationTimeout = errors.New("nuclei js runtime: program failed to terminate after interrupt")
+
 var (
 	lazyRegistryInit = sync.OnceFunc(func() {
 		// autoregister console node module with default printer it uses gologger backend
@@ -85,22 +97,32 @@ var gojapool = &sync.Pool{
 	},
 }
 
-func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
-	runtime.ClearInterrupt()
+// executeWithRuntime runs program p on runtime. When the goroutine that
+// actually executes the program fails to terminate within the grace period
+// after a context-driven interrupt, the runtime is abandoned (see
+// errRuntimeTerminationTimeout) and onOrphanExit is invoked from a reaper
+// goroutine once the orphaned goroutine eventually returns. Callers that
+// hold a concurrency slot or other resource on behalf of this runtime can
+// use onOrphanExit to defer the release of that resource until the orphan
+// is truly gone, instead of freeing it eagerly and letting fresh callers
+// race the abandoned runtime. Pass nil if there is nothing to release.
+func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions, onOrphanExit func()) (goja.Value, error) {
+	if args == nil {
+		args = NewExecuteArgs()
+	}
+	if opts == nil {
+		opts = &ExecuteOptions{}
+	}
 
+	runtimeAbandoned := false
 	defer func() {
-		// reset before putting back to pool
-		_ = runtime.GlobalObject().Delete("template") // template ctx
-		// remove all args
-		for k := range args.Args {
-			_ = runtime.GlobalObject().Delete(k)
+		if runtimeAbandoned {
+			return
 		}
-		if opts != nil && opts.Cleanup != nil {
-			opts.Cleanup(runtime)
-		}
-		runtime.RemoveContextValue("executionId")
-		runtime.RemoveContextValue("ctx")
+		cleanupRuntime(runtime, args, opts)
 	}()
+
+	runtime.ClearInterrupt()
 
 	// set template ctx
 	_ = runtime.Set("template", args.TemplateCtx)
@@ -114,13 +136,13 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 	enableRequire(runtime)
 
 	// register extra callbacks if any
-	if opts != nil && opts.Callback != nil {
+	if opts.Callback != nil {
 		if err := opts.Callback(runtime); err != nil {
 			return nil, err
 		}
 	}
 
-	resultChan := make(chan gojaRunResult, 2)
+	resultChan := make(chan gojaRunResult, 1)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -132,18 +154,57 @@ func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Prog
 		resultChan <- gojaRunResult{result, err}
 	}()
 
+	var r gojaRunResult
 	select {
 	case <-ctx.Done():
 		runtime.Interrupt(ctx.Err())
 		select {
-		case r := <-resultChan:
-			return r.result, r.err
+		case r = <-resultChan:
+			// inner goroutine terminated cleanly after the interrupt
 		case <-time.After(time.Second):
-			return nil, fmt.Errorf("timeout waiting for js runtime to terminate: %w", ctx.Err())
+			// The goroutine running RunProgram is still alive even after
+			// being interrupted. We MUST NOT touch the runtime any more —
+			// doing so (cleanup, reuse, Put back to the pool) would race
+			// with the orphan goroutine still mutating goja's per-runtime
+			// state and trigger a fatal map race. Hand the runtime off to
+			// a reaper goroutine that waits for the orphan to actually
+			// finish before releasing any caller-owned resource (typically
+			// the pool concurrency slot). If the orphan never finishes
+			// (e.g. a native callback that blocks forever) the slot stays
+			// held — which is exactly the behaviour we want, because the
+			// stuck callback is still consuming runtime resources.
+			runtimeAbandoned = true
+			if onOrphanExit != nil {
+				go func() {
+					<-resultChan
+					onOrphanExit()
+				}()
+			}
+			return nil, fmt.Errorf("%w: %w", errRuntimeTerminationTimeout, ctx.Err())
 		}
-	case r := <-resultChan:
-		return r.result, r.err
+	case r = <-resultChan:
+		// normal termination
 	}
+
+	// At this point the inner goroutine has returned, so it is safe to
+	// touch the runtime again from this goroutine.
+	return r.result, r.err
+}
+
+// cleanupRuntime resets the per-execution state of a goja runtime so that
+// it can be safely reused by a subsequent caller. It MUST only be called
+// once the goroutine that ran RunProgram on this runtime has returned;
+// otherwise it races with that goroutine on goja's internal maps.
+func cleanupRuntime(runtime *goja.Runtime, args *ExecuteArgs, opts *ExecuteOptions) {
+	_ = runtime.GlobalObject().Delete("template") // template ctx
+	for k := range args.Args {
+		_ = runtime.GlobalObject().Delete(k)
+	}
+	if opts != nil && opts.Cleanup != nil {
+		opts.Cleanup(runtime)
+	}
+	runtime.RemoveContextValue("executionId")
+	runtime.RemoveContextValue("ctx")
 }
 
 // ExecuteProgram executes a compiled program with the default options.
@@ -174,7 +235,21 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	}
 
 	runtime := gojapool.Get().(*goja.Runtime)
+	// runtimeAbandoned is set to true when executeWithRuntime returns
+	// errRuntimeTerminationTimeout, signalling that an orphan goroutine
+	// is still running on this runtime. In that case we drop the runtime
+	// instead of returning it to the pool (Go's GC will reclaim it once
+	// the orphan goroutine eventually exits) and we transfer ownership
+	// of the concurrency slot to a reaper goroutine inside
+	// executeWithRuntime, which releases it via pooljsc.Done once the
+	// orphan actually exits. Releasing the slot eagerly here would let a
+	// stream of stuck callbacks bypass PoolingJsVmConcurrency and trade
+	// the original map-race crash for unbounded resource growth.
+	runtimeAbandoned := false
 	defer func() {
+		if runtimeAbandoned {
+			return
+		}
 		gojapool.Put(runtime)
 		pooljsc.Done()
 	}()
@@ -183,6 +258,10 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	opts.exports = make(map[string]interface{})
 
 	defer func() {
+		if runtimeAbandoned {
+			// Don't touch the runtime: the orphan goroutine still owns it.
+			return
+		}
 		// remove below functions from runtime
 		_ = runtime.GlobalObject().Delete(exportAsToken)
 		_ = runtime.GlobalObject().Delete(exportToken)
@@ -223,8 +302,12 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 		},
 	})
 
-	val, err := executeWithRuntime(ctx, runtime, p, args, opts)
+	val, err := executeWithRuntime(ctx, runtime, p, args, opts, pooljsc.Done)
 	if err != nil {
+		if errors.Is(err, errRuntimeTerminationTimeout) {
+			runtimeAbandoned = true
+			gologger.Warning().Msgf("js runtime did not terminate after interrupt; abandoning it to avoid concurrent use: %s", err)
+		}
 		return nil, err
 	}
 	if val.Export() != nil {
