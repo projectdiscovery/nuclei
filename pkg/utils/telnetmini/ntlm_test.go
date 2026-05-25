@@ -6,20 +6,17 @@ import (
 	"testing"
 )
 
-// buildChallenge constructs a minimal well-formed NTLM type-2 challenge message
-// of exactly headerLen bytes, wrapped in the telnet framing expected by ParseNTLMResponse.
+// buildChallenge constructs a minimal NTLM type-2 challenge message of exactly
+// headerLen bytes, wrapped in the telnet framing expected by ParseNTLMResponse.
 func buildChallenge(headerLen int) []byte {
 	ntlm := make([]byte, headerLen)
 
-	// NTLMSSP\0 signature (8 bytes)
 	copy(ntlm[0:], "NTLMSSP\x00")
 
-	// Message type 2 (Challenge) at offset 8
 	if headerLen >= 12 {
 		binary.LittleEndian.PutUint32(ntlm[8:12], 2)
 	}
 
-	// Wrap with telnet framing: prefix + Sub-option End terminator
 	var out []byte
 	out = append(out, ntlm...)
 	out = append(out, 0xFF, 0xF0)
@@ -35,16 +32,10 @@ func buildValidChallenge() []byte {
 	copy(ntlm[0:], "NTLMSSP\x00")
 	binary.LittleEndian.PutUint32(ntlm[8:12], 2)
 
-	// Target name: len=6, max len=6, offset=48
 	binary.LittleEndian.PutUint16(ntlm[12:14], uint16(len(targetName)))
 	binary.LittleEndian.PutUint16(ntlm[14:16], uint16(len(targetName)))
 	binary.LittleEndian.PutUint32(ntlm[16:20], 48)
 
-	// Negotiate flags at 20 (4 bytes) – zero is fine for this test
-	// Server challenge at 24 (8 bytes) – zero
-	// Reserved at 32 (8 bytes) – zero
-
-	// Target info: len=0, offset=48 (no target info block)
 	binary.LittleEndian.PutUint16(ntlm[40:42], 0)
 	binary.LittleEndian.PutUint32(ntlm[44:48], 48)
 
@@ -67,7 +58,24 @@ func TestParseNTLMResponse_Valid(t *testing.T) {
 	}
 }
 
+// TestParseNTLMResponse_Minimal48Bytes verifies that a challenge with exactly
+// 48 bytes (the minimum valid fixed-header size, no target name or info) is
+// accepted — confirming the boundary condition of the len<48 guard.
+func TestParseNTLMResponse_Minimal48Bytes(t *testing.T) {
+	data := buildChallenge(48)
+	resp, err := ParseNTLMResponse(data)
+	if err != nil {
+		t.Fatalf("48-byte challenge should be valid, got error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response for 48-byte challenge")
+	}
+}
+
 func TestParseNTLMResponse_ErrorCases(t *testing.T) {
+	wrongTypeChallenge := buildChallenge(48)
+	binary.LittleEndian.PutUint32(wrongTypeChallenge[8:12], 1)
+
 	tests := []struct {
 		name    string
 		input   []byte
@@ -95,7 +103,7 @@ func TestParseNTLMResponse_ErrorCases(t *testing.T) {
 		},
 		{
 			name:    "wrong message type",
-			input:   append(func() []byte { b := make([]byte, 48); copy(b, "NTLMSSP\x00"); binary.LittleEndian.PutUint32(b[8:12], 1); return b }(), 0xFF, 0xF0),
+			input:   wrongTypeChallenge,
 			wantErr: "expected NTLM challenge message",
 		},
 	}
