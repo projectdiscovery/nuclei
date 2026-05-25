@@ -883,22 +883,33 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 		}
 	}
 
-	// CleanPath resolves using CWD and cleans the path
-	helperFilePath, err = fileutil.CleanPath(helperFilePath)
-	if err != nil {
-		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
-	}
-
-	templatePath, err = fileutil.CleanPath(templatePath)
+	// templatePath must be absolute for the rule-2 sandbox checks below.
+	cleanedTemplatePath, err := fileutil.CleanPath(templatePath)
 	if err != nil {
 		return "", errkit.Wrapf(err, "could not clean template path %v", templatePath)
+	}
+
+	// Resolve relative helper paths against the template's own directory
+	// rather than the process CWD. fileutil.CleanPath on a relative path
+	// uses os.Getwd(), which silently turns a helper reference like
+	// "payloads.txt" into "<cwd>/payloads.txt"; that disagrees with how
+	// templates expect helpers to be looked up (relative to the template
+	// file itself) and makes rule 2 effectively unreachable unless the
+	// process happens to be running from the template's directory.
+	cleanedHelperPath := helperFilePath
+	if !filepath.IsAbs(cleanedHelperPath) {
+		cleanedHelperPath = filepath.Join(filepath.Dir(cleanedTemplatePath), cleanedHelperPath)
+	}
+	cleanedHelperPath, err = fileutil.CleanPath(cleanedHelperPath)
+	if err != nil {
+		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
 	}
 
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
 	// and both of them are present in user home directory, allow it
 	// Review: should we keep this rule ? add extra option to disable this ?
-	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && filepathutil.IsPathWithinDirectory(helperFilePath, filepath.Dir(templatePath)) {
-		return helperFilePath, nil
+	if isHomeDir(cleanedHelperPath) && isHomeDir(cleanedTemplatePath) && filepathutil.IsPathWithinDirectory(cleanedHelperPath, filepath.Dir(cleanedTemplatePath)) {
+		return cleanedHelperPath, nil
 	}
 
 	// all other cases are denied

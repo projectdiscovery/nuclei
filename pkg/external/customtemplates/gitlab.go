@@ -92,9 +92,22 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 		// the location. The project path is attacker-controllable on a
 		// malicious or self-hosted GitLab server, so it must be validated for
 		// containment before we MkdirAll into it.
-		projectOutputPath, err := safeProjectOutputPath(location, project.Path)
+		//
+		// Use PathWithNamespace (e.g. "group/sub/repo") rather than the bare
+		// repo slug Path so that two configured projects sharing a slug in
+		// different namespaces land in distinct directories and cannot
+		// silently overwrite each other's templates. PathWithNamespace is
+		// still server-controlled, so it goes through the same containment
+		// check as before.
+		projectKey := project.PathWithNamespace
+		if projectKey == "" {
+			// Defensive fallback for older API responses where
+			// PathWithNamespace might not be populated.
+			projectKey = project.Path
+		}
+		projectOutputPath, err := safeProjectOutputPath(location, projectKey)
 		if err != nil {
-			gologger.Error().Msgf("Skipping unsafe GitLab project path %q: %v", project.Path, err)
+			gologger.Error().Msgf("Skipping unsafe GitLab project path %q: %v", projectKey, err)
 			continue
 		}
 

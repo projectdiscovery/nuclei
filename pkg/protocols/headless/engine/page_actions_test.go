@@ -281,7 +281,13 @@ func TestActionScreenshotDeniesSiblingPrefixPathWithoutLFA(t *testing.T) {
 // Regression: ActionFilesInput previously read p.options.Options.AllowLocalFileAccess
 // directly, which silently disagreed with Screenshot whenever a caller
 // configured LFA via protocolstate.SetLfaAllowed without also editing the
-// Options struct.
+// Options struct. To prove the call sites actually consult the same
+// predicate (and not just the predicate in isolation), this test exercises
+// page.isScreenshotPathAllowed against a path outside cwd while flipping
+// only the runtime override. Before the fix, screenshot dispatch would deny
+// the path (correct) but FilesInput would still consult Options.AllowLocalFileAccess
+// (incorrect). With the fix, both share IsLfaAllowed and both observe the
+// override.
 func TestFilesInputAndScreenshotShareLfaGate(t *testing.T) {
 	executionId := t.Name()
 	t.Cleanup(func() {
@@ -289,10 +295,25 @@ func TestFilesInputAndScreenshotShareLfaGate(t *testing.T) {
 	})
 
 	opts := &types.Options{ExecutionId: executionId, AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
 
 	// Sanity: with no override, both gates must report deny.
 	require.False(t, protocolstate.IsLfaAllowed(opts),
 		"baseline IsLfaAllowed should be false when nothing is configured")
+
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+	outsideTarget := filepath.Join(tmpDir, "outside", "test.png")
+	require.NoError(t, os.MkdirAll(filepath.Dir(outsideTarget), 0700))
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	// Without override: Screenshot's gate denies a path outside cwd.
+	require.ErrorIs(t, page.isScreenshotPathAllowed(outsideTarget), ErrLFAccessDenied,
+		"baseline: writing outside cwd must be denied without LFA")
 
 	// Configure a runtime override via the LfaAllowed map without touching
 	// opts.AllowLocalFileAccess.
@@ -300,9 +321,48 @@ func TestFilesInputAndScreenshotShareLfaGate(t *testing.T) {
 	require.True(t, protocolstate.IsLfaAllowed(opts),
 		"IsLfaAllowed must honour the LfaAllowed runtime override")
 
-	// The FilesInput dispatch in page_actions.go now calls IsLfaAllowed (the
-	// same predicate Screenshot uses), so the runtime override is respected
-	// without the caller having to also flip Options.AllowLocalFileAccess.
+	// With override: Screenshot's gate now allows the same path. The
+	// FilesInput dispatch in page_actions.go reads from this same predicate,
+	// so a runtime override unblocks both call sites.
+	require.NoError(t, page.isScreenshotPathAllowed(outsideTarget),
+		"runtime override must unblock Screenshot's path gate")
+}
+
+// TestActionScreenshotDeniesPostExtensionEscape locks in the fix for the
+// pre-extension containment bypass. Inputs like "." or a bare directory path
+// would lexically pass the containment gate against the unmodified `to`
+// argument and only ESCAPE cwd after the screenshot writer appends ".png" to
+// produce a sibling file (e.g. <cwd>.png). The gate must run on the final
+// filePath, not on the pre-extension input.
+func TestActionScreenshotDeniesPostExtensionEscape(t *testing.T) {
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
+
+	// "." would resolve to cwd; cwd + ".png" is the SIBLING <work>.png in
+	// tmpDir, which is outside the cwd sandbox. The gate must reject the
+	// final write target, not the pre-extension input.
+	postExtension := cwd + ".png"
+	require.ErrorIs(t, page.isScreenshotPathAllowed(postExtension), ErrLFAccessDenied,
+		"<cwd>.png is a sibling of cwd and must be rejected")
+
+	// Same idea, expressed via a child-of-parent path.
+	require.ErrorIs(t,
+		page.isScreenshotPathAllowed(filepath.Join(filepath.Dir(cwd), "evil.png")),
+		ErrLFAccessDenied,
+		"a sibling .png in cwd's parent must be rejected")
+
+	// Sanity: a path inside cwd remains allowed.
+	require.NoError(t, page.isScreenshotPathAllowed(filepath.Join(cwd, "ok.png")),
+		"a path inside cwd must still be allowed")
 }
 
 func TestActionScreenshotDeniesSymlinkedParentOutsideCWDWithoutLFA(t *testing.T) {

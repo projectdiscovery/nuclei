@@ -533,7 +533,16 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		return errkit.Newf("could not clean output screenshot path %s", to)
 	}
 
-	if err := p.isScreenshotPathAllowed(to); err != nil {
+	// Build the final write path (with .png) BEFORE running any containment
+	// gate. Otherwise inputs like "." or a bare directory name pass the gate
+	// against `to` and then the .png suffix moves the actual write outside
+	// cwd (e.g. <cwd>.png is a sibling of cwd and not contained by it).
+	filePath := to
+	if !strings.HasSuffix(filePath, ".png") {
+		filePath += ".png"
+	}
+
+	if err := p.isScreenshotPathAllowed(filePath); err != nil {
 		return err
 	}
 
@@ -543,18 +552,12 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 
 	// edgecase create directory if mkdir=true and path contains directory
-	if mkdir == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
-		// creates new directory if needed based on path `to`
+	if mkdir == "true" && stringsutil.ContainsAny(filePath, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
+		// creates new directory if needed based on the final filePath
 		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
-		if err := os.MkdirAll(filepath.Dir(to), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(filePath), 0700); err != nil {
 			return errkit.Wrap(err, "failed to create directory while writing screenshot")
 		}
-	}
-
-	// actual file path to write
-	filePath := to
-	if !strings.HasSuffix(filePath, ".png") {
-		filePath += ".png"
 	}
 
 	if fileutil.FileExists(filePath) {
