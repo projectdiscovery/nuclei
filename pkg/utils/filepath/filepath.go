@@ -8,7 +8,17 @@ import (
 
 // IsPathWithinDirectory returns true when path resolves inside directory.
 // Both values are canonicalized to handle symlinks and platform-specific case rules.
+//
+// As a fail-closed safety net, an empty path or empty directory ALWAYS returns
+// false. filepath.Abs("") returns the process working directory, which would
+// otherwise turn an unset/missing argument into a silent CWD-relative sandbox
+// — a footgun that callers must not rely on. Callers that need to anchor on
+// the working directory must pass it explicitly via os.Getwd().
 func IsPathWithinDirectory(path string, directory string) bool {
+	if path == "" || directory == "" {
+		return false
+	}
+
 	canonicalPath := canonicalizePath(path)
 	canonicalDirectory := canonicalizePath(directory)
 

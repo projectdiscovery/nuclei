@@ -129,7 +129,12 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 		case ActionWaitDialog:
 			err = p.HandleDialog(act, outData)
 		case ActionFilesInput:
-			if p.options.Options.AllowLocalFileAccess {
+			// Use the same canonical predicate used by the screenshot action
+			// rather than reading Options.AllowLocalFileAccess directly so the
+			// two file-touching actions cannot disagree about whether LFA is
+			// enabled (e.g. when callers use protocolstate.SetLfaAllowed
+			// without also flipping the field on Options).
+			if protocolstate.IsLfaAllowed(p.options.Options) {
 				err = p.FilesInput(act, outData)
 			} else {
 				err = ErrLFAccessDenied

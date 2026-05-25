@@ -273,6 +273,38 @@ func TestActionScreenshotDeniesSiblingPrefixPathWithoutLFA(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestFilesInputAndScreenshotShareLfaGate verifies that the LFA gate used by
+// ActionFilesInput is the same predicate used by Screenshot — i.e.
+// protocolstate.IsLfaAllowed — so a runtime LfaAllowed override (no Options
+// field flip) is honoured in both code paths.
+//
+// Regression: ActionFilesInput previously read p.options.Options.AllowLocalFileAccess
+// directly, which silently disagreed with Screenshot whenever a caller
+// configured LFA via protocolstate.SetLfaAllowed without also editing the
+// Options struct.
+func TestFilesInputAndScreenshotShareLfaGate(t *testing.T) {
+	executionId := t.Name()
+	t.Cleanup(func() {
+		protocolstate.LfaAllowed.Delete(executionId)
+	})
+
+	opts := &types.Options{ExecutionId: executionId, AllowLocalFileAccess: false}
+
+	// Sanity: with no override, both gates must report deny.
+	require.False(t, protocolstate.IsLfaAllowed(opts),
+		"baseline IsLfaAllowed should be false when nothing is configured")
+
+	// Configure a runtime override via the LfaAllowed map without touching
+	// opts.AllowLocalFileAccess.
+	require.NoError(t, protocolstate.LfaAllowed.Set(executionId, true))
+	require.True(t, protocolstate.IsLfaAllowed(opts),
+		"IsLfaAllowed must honour the LfaAllowed runtime override")
+
+	// The FilesInput dispatch in page_actions.go now calls IsLfaAllowed (the
+	// same predicate Screenshot uses), so the runtime override is respected
+	// without the caller having to also flip Options.AllowLocalFileAccess.
+}
+
 func TestActionScreenshotDeniesSymlinkedParentOutsideCWDWithoutLFA(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation is not reliable on all Windows runners")

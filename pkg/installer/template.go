@@ -265,7 +265,16 @@ func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.File
 	if index == -1 {
 		// zip files does not have directory at all , in this case log error but continue
 		gologger.Warning().Msgf("failed to get directory name from uri: %s", uri)
-		return filepath.Join(templateDir, uri)
+		// Even in this fallback path the entry name comes from a downloaded
+		// archive, so we must still verify it cannot escape templateDir.
+		// On Windows in particular, an entry named "..\\foo" has no slash but
+		// is a parent reference that filepath.Join+Clean will happily resolve
+		// to outside the configured templates directory.
+		fallbackPath := filepath.Clean(filepath.Join(templateDir, uri))
+		if !filepathutil.IsPathWithinDirectory(fallbackPath, templateDir) {
+			return ""
+		}
+		return fallbackPath
 	}
 	// separator is also included in rootDir
 	rootDirectory := uri[:index+1]

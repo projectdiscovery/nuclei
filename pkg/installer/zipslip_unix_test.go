@@ -69,6 +69,17 @@ func TestZipSlip(t *testing.T) {
 		}
 	})
 
+	t.Run("positive no-slash fallback", func(t *testing.T) {
+		// Entry names with no slash exercise the fallback branch in
+		// getAbsoluteFilePath. Legitimate single-name entries must still be
+		// written into templateDir (regression test for the containment check
+		// added to that branch).
+		tm := TemplateManager{}
+		var tmp fs.FileInfo = &tempFileInfo{name: "single-file.yaml"}
+		writePath := tm.getAbsoluteFilePath(configuredTemplateDirectory, "single-file.yaml", tmp)
+		require.Equal(t, filepath.Join(configuredTemplateDirectory, "single-file.yaml"), writePath)
+	})
+
 	t.Run("positive scenarios", func(t *testing.T) {
 		filePathsFromZip := map[string]string{
 			"nuclei-templates/cves/test.yaml": filepath.Join(configuredTemplateDirectory, "cves", "test.yaml"),
