@@ -142,6 +142,43 @@ func FuzzIsPathWithinDirectory(f *testing.F) {
 	})
 }
 
+// TestIsPathWithinDirectoryRejectsSiblingPrefix locks in the invariant
+// this whole helper exists to enforce: a sibling directory whose path
+// happens to share a textual prefix with the trusted directory (e.g.
+// "/trusted-dir" vs "/trusted-dir-evil") must never satisfy containment.
+// The original lexical strings.HasPrefix checks scattered across the
+// codebase failed exactly this case; documenting it at the source — not
+// just at every call site — is what callers should rely on.
+func TestIsPathWithinDirectoryRejectsSiblingPrefix(t *testing.T) {
+	baseDir := t.TempDir()
+	siblingDir := baseDir + "-evil"
+	if err := os.MkdirAll(siblingDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	siblingFile := filepath.Join(siblingDir, "payload.txt")
+	if err := os.WriteFile(siblingFile, []byte("not yours"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if IsPathWithinDirectory(siblingFile, baseDir) {
+		t.Fatalf("sibling-prefix path %q must NOT be reported inside %q",
+			siblingFile, baseDir)
+	}
+	if IsPathWithinDirectory(siblingDir, baseDir) {
+		t.Fatalf("sibling-prefix dir %q must NOT be reported inside %q",
+			siblingDir, baseDir)
+	}
+
+	// Non-existent sibling-prefix path: same answer. Canonicalization must
+	// still reject because the existing prefix it walks up to is the
+	// sibling directory itself, not a child of baseDir.
+	missingInSibling := filepath.Join(siblingDir, "does", "not", "exist.txt")
+	if IsPathWithinDirectory(missingInSibling, baseDir) {
+		t.Fatalf("non-existent sibling-prefix %q must NOT be reported inside %q",
+			missingInSibling, baseDir)
+	}
+}
+
 func TestIsPathWithinDirectoryWithSymlinkedDirectory(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation is not reliable on all Windows runners")
