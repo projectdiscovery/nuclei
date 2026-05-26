@@ -128,6 +128,7 @@ func TestNetwork(t *testing.T) {
 				return
 			}
 			if string(data) == "FIRST" {
+				time.Sleep(integrationDurationObservationDelay)
 				_, _ = conn.Write([]byte("PING"))
 			}
 
@@ -137,6 +138,7 @@ func TestNetwork(t *testing.T) {
 				return
 			}
 			if string(data) == "SECOND" {
+				time.Sleep(integrationDurationObservationDelay)
 				_, _ = conn.Write([]byte("PONG"))
 			}
 			_, _ = conn.Write([]byte("NUCLEI"))

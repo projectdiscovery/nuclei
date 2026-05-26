@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gobwas/ws/wsutil"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
@@ -47,8 +48,10 @@ func TestWebSocket(t *testing.T) {
 				}
 				switch string(msg) {
 				case "hello":
+					time.Sleep(integrationDurationObservationDelay)
 					_ = wsutil.WriteServerMessage(conn, op, []byte("world"))
 				case "status":
+					time.Sleep(integrationDurationObservationDelay)
 					_ = wsutil.WriteServerMessage(conn, op, []byte("ready"))
 				default:
 					return
