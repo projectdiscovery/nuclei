@@ -18,6 +18,9 @@ import (
 	"github.com/projectdiscovery/utils/reader"
 )
 
+// Keep duration assertions above the timer granularity of fast local sockets on Windows.
+const durationObservationDelay = 10 * time.Millisecond
+
 func TestNetworkStepDurations(t *testing.T) {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
@@ -35,6 +38,7 @@ func TestNetworkStepDurations(t *testing.T) {
 			errState.Set(fmt.Errorf("invalid first data received: %s", string(data)))
 			return
 		}
+		time.Sleep(durationObservationDelay)
 		_, _ = conn.Write([]byte("PING"))
 
 		data, err = reader.ConnReadNWithTimeout(conn, 6, 5*time.Second)
@@ -46,6 +50,7 @@ func TestNetworkStepDurations(t *testing.T) {
 			errState.Set(fmt.Errorf("invalid second data received: %s", string(data)))
 			return
 		}
+		time.Sleep(durationObservationDelay)
 		_, _ = conn.Write([]byte("PONG"))
 		_, _ = conn.Write([]byte("NUCLEI"))
 	})

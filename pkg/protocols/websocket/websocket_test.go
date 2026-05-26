@@ -3,10 +3,14 @@ package websocket
 import (
 	"context"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/stretchr/testify/require"
 
@@ -18,6 +22,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
+
+// Keep duration assertions above the timer granularity of fast local sockets on Windows.
+const durationObservationDelay = 10 * time.Millisecond
 
 // resolveAddress mirrors the path resolution logic in executeRequestWithPayloads.
 // it parses the template address and the input URL then applies the path rule.
@@ -280,8 +287,10 @@ func TestWebSocketDurationFields(t *testing.T) {
 			}
 			switch string(msg) {
 			case "hello":
+				time.Sleep(durationObservationDelay)
 				_ = wsutil.WriteServerMessage(conn, op, []byte("world"))
 			case "status":
+				time.Sleep(durationObservationDelay)
 				_ = wsutil.WriteServerMessage(conn, op, []byte("ready"))
 			default:
 				return
@@ -336,7 +345,7 @@ func TestWebSocketDurationFields(t *testing.T) {
 }
 
 func TestWebSocketNoInputDuration(t *testing.T) {
-	server := testutils.NewWebsocketServer("", func(conn net.Conn) {}, func(origin string) bool { return true })
+	server := newDelayedUpgradeWebsocketServer(durationObservationDelay)
 	defer server.Close()
 
 	options := testutils.DefaultOptions
@@ -362,6 +371,24 @@ func TestWebSocketNoInputDuration(t *testing.T) {
 	require.NotEmpty(t, gotEvent)
 	requireWebsocketDurationField(t, gotEvent, "duration")
 	require.NotContains(t, gotEvent, "duration_1")
+}
+
+func newDelayedUpgradeWebsocketServer(delay time.Duration) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(delay)
+
+		conn, _, _, err := ws.UpgradeHTTP(r, w)
+		if err != nil {
+			return
+		}
+
+		go func() {
+			defer func() {
+				_ = conn.Close()
+			}()
+			time.Sleep(delay)
+		}()
+	}))
 }
 
 func requireWebsocketDurationField(t *testing.T, event output.InternalEvent, key string) {
