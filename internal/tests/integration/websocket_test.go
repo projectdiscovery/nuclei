@@ -38,6 +38,35 @@ func TestWebSocket(t *testing.T) {
 		}
 	})
 
+	t.Run("Duration", func(t *testing.T) {
+		connHandler := func(conn net.Conn) {
+			for {
+				msg, op, err := wsutil.ReadClientData(conn)
+				if err != nil {
+					return
+				}
+				switch string(msg) {
+				case "hello":
+					_ = wsutil.WriteServerMessage(conn, op, []byte("world"))
+				case "status":
+					_ = wsutil.WriteServerMessage(conn, op, []byte("ready"))
+				default:
+					return
+				}
+			}
+		}
+		server := testutils.NewWebsocketServer("", connHandler, func(origin string) bool { return true })
+		defer server.Close()
+
+		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/websocket/duration.yaml", strings.ReplaceAll(server.URL, "http", "ws"), suite.debug)
+		if err != nil {
+			t.Fatalf("duration websocket request failed: %v", err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("CSWSH", func(t *testing.T) {
 		server := testutils.NewWebsocketServer("", func(conn net.Conn) {}, func(origin string) bool { return true })
 		defer server.Close()

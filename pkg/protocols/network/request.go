@@ -318,6 +318,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	inputEvents := make(map[string]interface{})
+	var stepDurations []time.Duration
 
 	for _, input := range request.Inputs {
 		dataInBytes := []byte(input.Data)
@@ -352,6 +353,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			}
 		}
 
+		timeStart := time.Now()
 		if _, err := conn.Write(dataInBytes); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
@@ -363,6 +365,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			if err != nil {
 				return errkit.Wrap(err, "could not read response from connection")
 			}
+			stepDurations = append(stepDurations, time.Since(timeStart))
 
 			responseBuilder.Write(buffer)
 
@@ -377,6 +380,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{input.Name: bufferStr}, request.Extract)
 				maps.Copy(payloads, values)
 			}
+		} else {
+			stepDurations = append(stepDurations, time.Since(timeStart))
 		}
 	}
 
@@ -407,15 +412,16 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		bufferSize = -1
 	}
 
-	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.GetTimeouts().TcpReadTimeout)
-	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, err)
+	final, readErr := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.GetTimeouts().TcpReadTimeout)
+	if readErr != nil {
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), readErr)
+		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, readErr)
 	}
 	responseBuilder.Write(final)
 
 	response := responseBuilder.String()
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final), response, input.MetaInput.Input, actualAddress)
+	addDurationFields(outputEvent, stepDurations)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
@@ -455,6 +461,14 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	dumpResponse(event, request, response, actualAddress, address)
 
 	return nil
+}
+
+func addDurationFields(event output.InternalEvent, durations []time.Duration) {
+	for i, duration := range durations {
+		seconds := duration.Seconds()
+		event[fmt.Sprintf("duration_%d", i+1)] = seconds
+		event["duration"] = seconds
+	}
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, request *Request, response string, actualAddress, address string) {

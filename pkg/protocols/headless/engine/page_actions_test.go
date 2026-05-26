@@ -539,6 +539,25 @@ func TestActionSleep(t *testing.T) {
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
 		require.Nil(t, err, "could not run page actions")
 		require.True(t, page.Page().MustElement("button").MustVisible(), "could not get button")
+		require.Len(t, page.ActionDurations, 2)
+		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.GreaterOrEqual(t, page.ActionDurations[1], 2*time.Second)
+	})
+}
+
+func TestActionWaitEventDuration(t *testing.T) {
+	response := `<html><body>loaded</body></html>`
+
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitEvent}, Data: map[string]string{"event": "Page.loadEventFired", "max-duration": "5s"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+		require.Len(t, page.ActionDurations, 2)
+		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.Greater(t, page.ActionDurations[1], time.Duration(0))
 	})
 }
 

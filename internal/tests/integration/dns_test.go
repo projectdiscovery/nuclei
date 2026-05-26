@@ -20,6 +20,16 @@ func TestDNS(t *testing.T) {
 		}
 	})
 
+	t.Run("Duration", func(t *testing.T) {
+		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/dns/duration.yaml", "one.one.one.one", suite.debug)
+		if err != nil {
+			t.Fatalf("dns duration request failed: %v", err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("AAAA", func(t *testing.T) {
 		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/dns/aaaa.yaml", "one.one.one.one", suite.debug)
 		if err != nil {

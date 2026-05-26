@@ -47,9 +47,14 @@ const (
 func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (outData ActionData, err error) {
 	outData = make(ActionData)
 
+	type deferredWaitFunc struct {
+		actionIndex int
+		run         func() error
+	}
+
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
-	waitFuncs := make([]func() error, 0)
+	waitFuncs := make([]deferredWaitFunc, 0)
 
 	// avoid any future panics caused due to go-rod library
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -64,16 +69,26 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 	}()
 
 	for _, act := range actions {
+		executed := true
+		actionIndex := len(p.ActionDurations)
+		timeStart := time.Now()
+		var deferredWaitDuration time.Duration
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
 			err = p.NavigateURL(act, outData)
 			if err == nil {
 				// if navigation successful trigger all waitFuncs (if any)
 				for _, waitFunc := range waitFuncs {
-					if waitFunc != nil {
-						if err := waitFunc(); err != nil {
+					if waitFunc.run != nil {
+						waitStart := time.Now()
+						if err := waitFunc.run(); err != nil {
+							waitDuration := time.Since(waitStart)
+							addActionDuration(p.ActionDurations, waitFunc.actionIndex, waitDuration)
 							return nil, errkit.Wrap(err, "error occurred while executing waitFunc")
 						}
+						waitDuration := time.Since(waitStart)
+						addActionDuration(p.ActionDurations, waitFunc.actionIndex, waitDuration)
+						deferredWaitDuration += waitDuration
 					}
 				}
 
@@ -123,7 +138,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 			var waitFunc func() error
 			waitFunc, err = p.WaitEvent(act, outData)
 			if waitFunc != nil {
-				waitFuncs = append(waitFuncs, waitFunc)
+				waitFuncs = append(waitFuncs, deferredWaitFunc{actionIndex: actionIndex, run: waitFunc})
 			}
 		case ActionWaitDialog:
 			err = p.HandleDialog(act, outData)
@@ -152,13 +167,22 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 		case ActionWaitVisible:
 			err = p.WaitVisible(act, outData)
 		default:
-			continue
+			executed = false
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "error occurred executing action")
 		}
+		if executed {
+			p.ActionDurations = append(p.ActionDurations, max(time.Since(timeStart)-deferredWaitDuration, 0))
+		}
 	}
 	return outData, nil
+}
+
+func addActionDuration(durations []time.Duration, index int, duration time.Duration) {
+	if index >= 0 && index < len(durations) {
+		durations[index] += duration
+	}
 }
 
 type rule struct {

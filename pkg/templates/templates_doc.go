@@ -460,7 +460,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 38)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 39)
 	HTTPRequestDoc.Fields[0].Name = "path"
 	HTTPRequestDoc.Fields[0].Type = "[]string"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -614,71 +614,76 @@ func init() {
 	HTTPRequestDoc.Fields[24].Note = ""
 	HTTPRequestDoc.Fields[24].Description = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
 	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client."
-	HTTPRequestDoc.Fields[25].Name = "pipeline"
+	HTTPRequestDoc.Fields[25].Name = "protocol-redirects"
 	HTTPRequestDoc.Fields[25].Type = "bool"
 	HTTPRequestDoc.Fields[25].Note = ""
-	HTTPRequestDoc.Fields[25].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
-	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
-	HTTPRequestDoc.Fields[26].Name = "unsafe"
+	HTTPRequestDoc.Fields[25].Description = "ProtocolRedirects specifies whether only redirects within the same protocol should be followed.\n\nWhen set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked."
+	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "ProtocolRedirects specifies whether only redirects within the same protocol should be followed."
+	HTTPRequestDoc.Fields[26].Name = "pipeline"
 	HTTPRequestDoc.Fields[26].Type = "bool"
 	HTTPRequestDoc.Fields[26].Note = ""
-	HTTPRequestDoc.Fields[26].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
-	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
-	HTTPRequestDoc.Fields[27].Name = "race"
+	HTTPRequestDoc.Fields[26].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
+	HTTPRequestDoc.Fields[27].Name = "unsafe"
 	HTTPRequestDoc.Fields[27].Type = "bool"
 	HTTPRequestDoc.Fields[27].Note = ""
-	HTTPRequestDoc.Fields[27].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
-	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
-	HTTPRequestDoc.Fields[28].Name = "req-condition"
+	HTTPRequestDoc.Fields[27].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
+	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
+	HTTPRequestDoc.Fields[28].Name = "race"
 	HTTPRequestDoc.Fields[28].Type = "bool"
 	HTTPRequestDoc.Fields[28].Note = ""
-	HTTPRequestDoc.Fields[28].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
-	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
-	HTTPRequestDoc.Fields[29].Name = "stop-at-first-match"
+	HTTPRequestDoc.Fields[28].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
+	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
+	HTTPRequestDoc.Fields[29].Name = "req-condition"
 	HTTPRequestDoc.Fields[29].Type = "bool"
 	HTTPRequestDoc.Fields[29].Note = ""
-	HTTPRequestDoc.Fields[29].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[30].Name = "skip-variables-check"
+	HTTPRequestDoc.Fields[29].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
+	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
+	HTTPRequestDoc.Fields[30].Name = "stop-at-first-match"
 	HTTPRequestDoc.Fields[30].Type = "bool"
 	HTTPRequestDoc.Fields[30].Note = ""
-	HTTPRequestDoc.Fields[30].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[31].Name = "iterate-all"
+	HTTPRequestDoc.Fields[30].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[31].Name = "skip-variables-check"
 	HTTPRequestDoc.Fields[31].Type = "bool"
 	HTTPRequestDoc.Fields[31].Note = ""
-	HTTPRequestDoc.Fields[31].Description = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[31].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[32].Name = "digest-username"
-	HTTPRequestDoc.Fields[32].Type = "string"
+	HTTPRequestDoc.Fields[31].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[31].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[32].Name = "iterate-all"
+	HTTPRequestDoc.Fields[32].Type = "bool"
 	HTTPRequestDoc.Fields[32].Note = ""
-	HTTPRequestDoc.Fields[32].Description = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[32].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[33].Name = "digest-password"
+	HTTPRequestDoc.Fields[32].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[32].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[33].Name = "digest-username"
 	HTTPRequestDoc.Fields[33].Type = "string"
 	HTTPRequestDoc.Fields[33].Note = ""
-	HTTPRequestDoc.Fields[33].Description = "DigestAuthPassword specifies the password for digest authentication"
-	HTTPRequestDoc.Fields[33].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
-	HTTPRequestDoc.Fields[34].Name = "disable-path-automerge"
-	HTTPRequestDoc.Fields[34].Type = "bool"
+	HTTPRequestDoc.Fields[33].Description = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[33].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[34].Name = "digest-password"
+	HTTPRequestDoc.Fields[34].Type = "string"
 	HTTPRequestDoc.Fields[34].Note = ""
-	HTTPRequestDoc.Fields[34].Description = "DisablePathAutomerge disables merging target url path with raw request path"
-	HTTPRequestDoc.Fields[34].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
-	HTTPRequestDoc.Fields[35].Name = "pre-condition"
-	HTTPRequestDoc.Fields[35].Type = "[]matchers.Matcher"
+	HTTPRequestDoc.Fields[34].Description = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[34].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[35].Name = "disable-path-automerge"
+	HTTPRequestDoc.Fields[35].Type = "bool"
 	HTTPRequestDoc.Fields[35].Note = ""
-	HTTPRequestDoc.Fields[35].Description = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
-	HTTPRequestDoc.Fields[35].Comments[encoder.LineComment] = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
-	HTTPRequestDoc.Fields[36].Name = "pre-condition-operator"
-	HTTPRequestDoc.Fields[36].Type = "string"
+	HTTPRequestDoc.Fields[35].Description = "DisablePathAutomerge disables merging target url path with raw request path"
+	HTTPRequestDoc.Fields[35].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
+	HTTPRequestDoc.Fields[36].Name = "pre-condition"
+	HTTPRequestDoc.Fields[36].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[36].Note = ""
-	HTTPRequestDoc.Fields[36].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
-	HTTPRequestDoc.Fields[36].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
-	HTTPRequestDoc.Fields[37].Name = "global-matchers"
-	HTTPRequestDoc.Fields[37].Type = "bool"
+	HTTPRequestDoc.Fields[36].Description = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[36].Comments[encoder.LineComment] = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[37].Name = "pre-condition-operator"
+	HTTPRequestDoc.Fields[37].Type = "string"
 	HTTPRequestDoc.Fields[37].Note = ""
-	HTTPRequestDoc.Fields[37].Description = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
-	HTTPRequestDoc.Fields[37].Comments[encoder.LineComment] = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
+	HTTPRequestDoc.Fields[37].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+	HTTPRequestDoc.Fields[37].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+	HTTPRequestDoc.Fields[38].Name = "global-matchers"
+	HTTPRequestDoc.Fields[38].Type = "bool"
+	HTTPRequestDoc.Fields[38].Note = ""
+	HTTPRequestDoc.Fields[38].Description = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
+	HTTPRequestDoc.Fields[38].Comments[encoder.LineComment] = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
@@ -870,6 +875,7 @@ func init() {
 	ANALYZERSAnalyzerTemplateDoc.Fields[0].Comments[encoder.LineComment] = "Name is the name of the analyzer to use"
 	ANALYZERSAnalyzerTemplateDoc.Fields[0].Values = []string{
 		"time_delay",
+		"xss_context",
 	}
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Name = "parameters"
 	ANALYZERSAnalyzerTemplateDoc.Fields[1].Type = "map[string]interface{}"
@@ -1084,6 +1090,10 @@ func init() {
 		{
 			Key:   "request",
 			Value: "Request contains the DNS request in text format",
+		},
+		{
+			Key:   "duration",
+			Value: "Protocol operation duration in seconds",
 		},
 		{
 			Key:   "type",
@@ -1356,6 +1366,10 @@ func init() {
 			Value: "Network request made from the client",
 		},
 		{
+			Key:   "duration",
+			Value: "Latest measured operation duration in seconds",
+		},
+		{
 			Key:   "body,all,data",
 			Value: "Network response received from server (default)",
 		},
@@ -1402,7 +1416,7 @@ func init() {
 	NETWORKRequestDoc.Fields[6].Name = "port"
 	NETWORKRequestDoc.Fields[6].Type = "string"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overridden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
+	NETWORKRequestDoc.Fields[6].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overridden if target/input contains\n non-http(s) ports like 80,8080,8081 etc. Supports both numeric ports and IANA service names (e.g. ftp, ssh, smtp)."
 	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = " description: |"
 	NETWORKRequestDoc.Fields[7].Name = "exclude-ports"
 	NETWORKRequestDoc.Fields[7].Type = "string"
@@ -1529,6 +1543,10 @@ func init() {
 		{
 			Key:   "req",
 			Value: "Headless request made from the client",
+		},
+		{
+			Key:   "duration",
+			Value: "Latest measured operation duration in seconds",
 		},
 		{
 			Key:   "resp,body,data",
@@ -1729,6 +1747,10 @@ func init() {
 			Value: "Timestamp is the time when the request was made",
 		},
 		{
+			Key:   "duration",
+			Value: "Protocol operation duration in seconds",
+		},
+		{
 			Key:   "response",
 			Value: "JSON SSL protocol handshake details",
 		},
@@ -1889,6 +1911,10 @@ func init() {
 			Value: "Websocket request made to the server",
 		},
 		{
+			Key:   "duration",
+			Value: "Latest measured operation duration in seconds",
+		},
+		{
 			Key:   "response",
 			Value: "Websocket response received from the server",
 		},
@@ -1967,6 +1993,24 @@ func init() {
 		{
 			TypeName:  "Template",
 			FieldName: "whois",
+		},
+	}
+	WHOISRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "response",
+			Value: "WHOIS response data",
+		},
+		{
+			Key:   "duration",
+			Value: "Protocol operation duration in seconds",
 		},
 	}
 	WHOISRequestDoc.Fields = make([]encoder.Doc, 3)

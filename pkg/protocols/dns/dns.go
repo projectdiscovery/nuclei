@@ -108,6 +108,7 @@ var RequestPartDefinitions = map[string]string{
 	"host":          "Host is the input to the template",
 	"matched":       "Matched is the input which was matched upon",
 	"request":       "Request contains the DNS request in text format",
+	"duration":      "Protocol operation duration in seconds",
 	"type":          "Type is the type of request made",
 	"rcode":         "Rcode field returned for the DNS request",
 	"question":      "Question contains the DNS question field",

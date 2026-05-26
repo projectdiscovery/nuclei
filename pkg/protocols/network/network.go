@@ -114,6 +114,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":       "Matched is the input which was matched upon",
 	"type":          "Type is the type of request made",
 	"request":       "Network request made from the client",
+	"duration":      "Latest measured operation duration in seconds",
 	"body,all,data": "Network response received from server (default)",
 	"raw":           "Full Network protocol data",
 }
@@ -282,4 +283,3 @@ func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
 }
-

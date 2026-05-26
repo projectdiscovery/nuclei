@@ -139,7 +139,9 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
+	timeStart := time.Now()
 	out, page, err := instance.Run(input, request.Steps, payloads, options)
+	runDuration := time.Since(timeStart)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -187,6 +189,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	statusCode := out.GetOrDefault("status_code", "").(string)
 
 	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	addHeadlessDurationFields(outputEvent, page.ActionDurations, runDuration)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
@@ -220,6 +223,18 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return types.ErrNoMoreRequests
 	}
 	return nil
+}
+
+func addHeadlessDurationFields(event output.InternalEvent, actionDurations []time.Duration, runDuration time.Duration) {
+	if len(actionDurations) == 0 {
+		event["duration"] = runDuration.Seconds()
+		return
+	}
+	for i, duration := range actionDurations {
+		seconds := duration.Seconds()
+		event[fmt.Sprintf("duration_%d", i+1)] = seconds
+		event["duration"] = seconds
+	}
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecutorOptions, responseBody string, input string) {

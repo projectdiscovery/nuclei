@@ -6,6 +6,7 @@ import (
 	"maps"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
@@ -160,6 +161,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	request.options.RateLimitTake()
 
 	// Send the request to the target servers
+	timeStart := time.Now()
 	response, err := dnsClient.Do(compiledRequest)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
@@ -182,9 +184,10 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 		}
 	}
+	duration := time.Since(timeStart)
 
 	// Create the output event
-	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData, duration)
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)

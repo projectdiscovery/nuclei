@@ -1,10 +1,21 @@
 package websocket
 
 import (
+	"context"
+	"net"
 	"net/url"
+	"strings"
 	"testing"
 
+	"github.com/gobwas/ws/wsutil"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -258,4 +269,106 @@ func TestGetAddress(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestWebSocketDurationFields(t *testing.T) {
+	connHandler := func(conn net.Conn) {
+		for {
+			msg, op, err := wsutil.ReadClientData(conn)
+			if err != nil {
+				return
+			}
+			switch string(msg) {
+			case "hello":
+				_ = wsutil.WriteServerMessage(conn, op, []byte("world"))
+			case "status":
+				_ = wsutil.WriteServerMessage(conn, op, []byte("ready"))
+			default:
+				return
+			}
+		}
+	}
+	server := testutils.NewWebsocketServer("", connHandler, func(origin string) bool { return true })
+	defer server.Close()
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	target := strings.ReplaceAll(server.URL, "http", "ws")
+	request := &Request{
+		ID:      "duration-ws",
+		Address: target,
+		Inputs: []*Input{
+			{Data: "hello", Name: "first"},
+			{Data: "status", Name: "second"},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-websocket-duration",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOpts.IsMultiProtocol = true
+	require.NoError(t, request.Compile(executerOpts))
+	require.Equal(t, "duration-ws", request.GetID())
+
+	var gotEvent output.InternalEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), target)
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, gotEvent)
+	requireWebsocketDurationField(t, gotEvent, "duration")
+	requireWebsocketDurationField(t, gotEvent, "duration_1")
+	requireWebsocketDurationField(t, gotEvent, "duration_2")
+	require.Equal(t, gotEvent["duration_2"], gotEvent["duration"])
+	extractor := &extractors.Extractor{
+		Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+		DSL:  []string{"duration_2"},
+	}
+	require.NoError(t, extractor.CompileExtractors())
+	require.NotEmpty(t, request.Extract(gotEvent, extractor))
+
+	values := executerOpts.GetTemplateCtx(ctxArgs.MetaInput).GetAll()
+	require.Equal(t, gotEvent["duration"], values["duration-ws_duration"])
+	require.Equal(t, gotEvent["duration_1"], values["duration-ws_duration_1"])
+	require.Equal(t, gotEvent["duration_2"], values["duration-ws_duration_2"])
+}
+
+func TestWebSocketNoInputDuration(t *testing.T) {
+	server := testutils.NewWebsocketServer("", func(conn net.Conn) {}, func(origin string) bool { return true })
+	defer server.Close()
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	target := strings.ReplaceAll(server.URL, "http", "ws")
+	request := &Request{
+		ID:      "duration-ws-handshake",
+		Address: target,
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-websocket-handshake-duration",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var gotEvent output.InternalEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), target)
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, gotEvent)
+	requireWebsocketDurationField(t, gotEvent, "duration")
+	require.NotContains(t, gotEvent, "duration_1")
+}
+
+func requireWebsocketDurationField(t *testing.T, event output.InternalEvent, key string) {
+	t.Helper()
+
+	value, ok := event[key].(float64)
+	require.Truef(t, ok, "expected %s to be a float64 duration", key)
+	require.Greater(t, value, float64(0))
+	require.Less(t, value, float64(60))
 }

@@ -35,6 +35,7 @@ type Page struct {
 	mutex              *sync.RWMutex
 	History            []HistoryData
 	InteractshURLs     []string
+	ActionDurations    []time.Duration
 	payloads           map[string]interface{}
 	variables          map[string]interface{}
 	lastActionNavigate *Action
