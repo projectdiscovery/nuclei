@@ -101,7 +101,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.74
+	github.com/projectdiscovery/goflags v0.1.75-0.20260128114615-b0f98a3a8e6e
 	github.com/projectdiscovery/gologger v1.1.68
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e
