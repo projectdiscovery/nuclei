@@ -257,6 +257,7 @@ FUZZING:
    -fuzz                               enable loading fuzzing templates (Deprecated: use -dast instead)
    -dast                               enable / run dast (fuzz) nuclei templates
    -dts, -dast-server                  enable dast server mode (live fuzzing)
+   -proxy-server                       alias for -dast-server (live fuzzing)
    -dtr, -dast-report                  write dast scan report to file
    -dtst, -dast-server-token string    dast server token (optional)
    -dtsa, -dast-server-address string  dast server address (default "localhost:9055")

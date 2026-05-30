@@ -59,3 +59,12 @@ func TestParseHeadlessOptionalArguments(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateOptionsProxyServerAliasesDASTServer(t *testing.T) {
+	options := &types.Options{ProxyServer: true}
+
+	err := ValidateOptions(options)
+
+	require.NoError(t, err)
+	require.True(t, options.DASTServer)
+}

@@ -450,6 +450,8 @@ type Options struct {
 	DAST bool
 	// DASTServer is the flag to start nuclei as a DAST server
 	DASTServer bool
+	// ProxyServer is a user-facing alias for DASTServer.
+	ProxyServer bool
 	// DASTServerToken is the token optional for the dast server
 	DASTServerToken string
 	// DASTServerAddress is the address for the dast server
@@ -688,6 +690,7 @@ func (options *Options) Copy() *Options {
 		ProbeConcurrency:               options.ProbeConcurrency,
 		DAST:                           options.DAST,
 		DASTServer:                     options.DASTServer,
+		ProxyServer:                    options.ProxyServer,
 		DASTServerToken:                options.DASTServerToken,
 		DASTServerAddress:              options.DASTServerAddress,
 		DASTReport:                     options.DASTReport,
