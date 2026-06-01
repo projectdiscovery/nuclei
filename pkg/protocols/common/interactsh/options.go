@@ -45,6 +45,10 @@ type Options struct {
 	DisableHttpFallback bool
 	// NoInteractsh disables the engine
 	NoInteractsh bool
+	// LocalCallbackListen is the local HTTP callback listen address.
+	LocalCallbackListen string
+	// LocalCallbackURL is the externally reachable local HTTP callback URL.
+	LocalCallbackURL string
 	// NoColor disables printing colors for matches
 	NoColor bool
 	// Logger is the shared logging instance

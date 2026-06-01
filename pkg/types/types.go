@@ -86,6 +86,10 @@ type Options struct {
 	InteractshURL string
 	// Interactsh Authorization header value for self-hosted servers
 	InteractshToken string
+	// LocalCallbackListen is the local HTTP callback listen address for offline OAST testing.
+	LocalCallbackListen string
+	// LocalCallbackURL is the externally reachable local HTTP callback URL for offline OAST testing.
+	LocalCallbackURL string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
 	// ExcludeTargets URLs/Domains to exclude from scanning
@@ -513,6 +517,8 @@ func (options *Options) Copy() *Options {
 		ProjectPath:                    options.ProjectPath,
 		InteractshURL:                  options.InteractshURL,
 		InteractshToken:                options.InteractshToken,
+		LocalCallbackListen:            options.LocalCallbackListen,
+		LocalCallbackURL:               options.LocalCallbackURL,
 		Targets:                        options.Targets,
 		ExcludeTargets:                 options.ExcludeTargets,
 		TargetsFilePath:                options.TargetsFilePath,
