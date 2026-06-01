@@ -2,6 +2,7 @@ package interactsh
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -61,6 +62,33 @@ func TestLocalCallbackMakePlaceholdersUsesPathID(t *testing.T) {
 	require.Equal(t, client.localCallback.hostname(), data["interactsh-server"])
 }
 
+func TestLocalCallbackInterfaceChoosesPort(t *testing.T) {
+	interfaceName := localCallbackTestInterface(t)
+	client := newLocalCallbackTestClientWithInterface(t, interfaceName, 0)
+
+	generatedURL, err := client.NewURLWithData("{{interactsh-url}}")
+	require.NoError(t, err)
+
+	parsed, err := parseCallbackURL(generatedURL)
+	require.NoError(t, err)
+	_, port, err := net.SplitHostPort(parsed.Host)
+	require.NoError(t, err)
+	require.NotEmpty(t, port)
+	require.NotEqual(t, "0", port)
+
+	id := client.interactionIDFromURL(generatedURL)
+	response, err := http.Get("http://" + generatedURL)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, response.Body)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+
+	require.Eventually(t, func() bool {
+		interactions, err := client.interactions.Get(id)
+		return err == nil && len(interactions) == 1 && interactions[0].Protocol == "http"
+	}, time.Second, 10*time.Millisecond)
+}
+
 func TestParseCallbackURLSupportsSchemeLessHostPort(t *testing.T) {
 	parsed, err := parseCallbackURL("10.10.14.251:8080/callback")
 	require.NoError(t, err)
@@ -71,20 +99,68 @@ func TestParseCallbackURLSupportsSchemeLessHostPort(t *testing.T) {
 
 func newLocalCallbackTestClient(t *testing.T, listenAddress, callbackURL string) *Client {
 	t.Helper()
+	return newLocalCallbackTestClientWithOptions(t, listenAddress, callbackURL, "", 0)
+}
+
+func newLocalCallbackTestClientWithInterface(t *testing.T, interfaceName string, port int) *Client {
+	t.Helper()
+	return newLocalCallbackTestClientWithOptions(t, "", "", interfaceName, port)
+}
+
+func newLocalCallbackTestClientWithOptions(t *testing.T, listenAddress, callbackURL, interfaceName string, port int) *Client {
+	t.Helper()
 	if listenAddress == "" {
-		listenAddress = "127.0.0.1:0"
+		if callbackURL == "" && interfaceName == "" {
+			listenAddress = "127.0.0.1:0"
+		}
 	}
 	client, err := New(&Options{
-		CacheSize:           10,
-		Eviction:            time.Second,
-		CooldownPeriod:      0,
-		PollDuration:        10 * time.Millisecond,
-		LocalCallbackListen: listenAddress,
-		LocalCallbackURL:    callbackURL,
+		CacheSize:              10,
+		Eviction:               time.Second,
+		CooldownPeriod:         0,
+		PollDuration:           10 * time.Millisecond,
+		LocalCallbackListen:    listenAddress,
+		LocalCallbackURL:       callbackURL,
+		LocalCallbackInterface: interfaceName,
+		LocalCallbackPort:      port,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		client.Close()
 	})
 	return client
+}
+
+func localCallbackTestInterface(t *testing.T) string {
+	t.Helper()
+	for _, name := range []string{"lo", "lo0"} {
+		iface, err := net.InterfaceByName(name)
+		if err == nil && interfaceHasIPv4Address(t, iface) {
+			return iface.Name
+		}
+	}
+	ifaces, err := net.Interfaces()
+	require.NoError(t, err)
+	for _, iface := range ifaces {
+		if interfaceHasIPv4Address(t, &iface) {
+			return iface.Name
+		}
+	}
+	t.Skip("no interface with an IPv4 address available")
+	return ""
+}
+
+func interfaceHasIPv4Address(t *testing.T, iface *net.Interface) bool {
+	t.Helper()
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return false
+	}
+	for _, addr := range addrs {
+		ip := ipFromInterfaceAddress(addr)
+		if ip != nil && ip.To4() != nil && !ip.IsUnspecified() {
+			return true
+		}
+	}
+	return false
 }

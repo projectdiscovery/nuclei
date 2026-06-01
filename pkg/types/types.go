@@ -90,6 +90,10 @@ type Options struct {
 	LocalCallbackListen string
 	// LocalCallbackURL is the externally reachable local HTTP callback URL for offline OAST testing.
 	LocalCallbackURL string
+	// LocalCallbackInterface is the network interface to use for offline OAST testing.
+	LocalCallbackInterface string
+	// LocalCallbackPort is the local HTTP callback port when LocalCallbackInterface is used.
+	LocalCallbackPort int
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
 	// ExcludeTargets URLs/Domains to exclude from scanning
@@ -519,6 +523,8 @@ func (options *Options) Copy() *Options {
 		InteractshToken:                options.InteractshToken,
 		LocalCallbackListen:            options.LocalCallbackListen,
 		LocalCallbackURL:               options.LocalCallbackURL,
+		LocalCallbackInterface:         options.LocalCallbackInterface,
+		LocalCallbackPort:              options.LocalCallbackPort,
 		Targets:                        options.Targets,
 		ExcludeTargets:                 options.ExcludeTargets,
 		TargetsFilePath:                options.TargetsFilePath,

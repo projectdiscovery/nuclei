@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,13 @@ import (
 
 const localCallbackMaxBody = 1024 * 1024
 
+type localCallbackOptions struct {
+	listenAddress string
+	callbackURL   string
+	interfaceName string
+	port          int
+}
+
 type localCallbackServer struct {
 	callbackBase  *url.URL
 	httpServer    *http.Server
@@ -25,24 +33,31 @@ type localCallbackServer struct {
 	onInteraction func(*server.Interaction)
 }
 
-func newLocalCallbackServer(listenAddress, callbackURL string, onInteraction func(*server.Interaction)) (*localCallbackServer, error) {
-	if listenAddress == "" && callbackURL == "" {
-		return nil, fmt.Errorf("local callback listen address or URL is required")
+func newLocalCallbackServer(options localCallbackOptions, onInteraction func(*server.Interaction)) (*localCallbackServer, error) {
+	if options.listenAddress == "" && options.callbackURL == "" && options.interfaceName == "" {
+		return nil, fmt.Errorf("local callback listen address, URL, or interface is required")
 	}
-	if listenAddress == "" {
-		parsed, err := parseCallbackURL(callbackURL)
+	if options.listenAddress == "" && options.interfaceName != "" {
+		listenAddress, err := listenAddressFromInterface(options.interfaceName, options.port)
 		if err != nil {
 			return nil, err
 		}
-		listenAddress = parsed.Host
+		options.listenAddress = listenAddress
+	}
+	if options.listenAddress == "" {
+		parsed, err := parseCallbackURL(options.callbackURL)
+		if err != nil {
+			return nil, err
+		}
+		options.listenAddress = parsed.Host
 	}
 
-	listener, err := net.Listen("tcp", listenAddress)
+	listener, err := net.Listen("tcp", options.listenAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	callbackBase, err := callbackURLForListener(callbackURL, listener.Addr().String())
+	callbackBase, err := callbackURLForListener(options.callbackURL, listener.Addr().String())
 	if err != nil {
 		_ = listener.Close()
 		return nil, err
@@ -61,6 +76,49 @@ func newLocalCallbackServer(listenAddress, callbackURL string, onInteraction fun
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return server, nil
+}
+
+func listenAddressFromInterface(interfaceName string, port int) (string, error) {
+	if port < 0 || port > 65535 {
+		return "", fmt.Errorf("callback port must be between 0 and 65535")
+	}
+	iface, err := net.InterfaceByName(interfaceName)
+	if err != nil {
+		return "", fmt.Errorf("could not find callback interface %q: %w", interfaceName, err)
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return "", fmt.Errorf("could not get addresses for callback interface %q: %w", interfaceName, err)
+	}
+
+	var firstIPv6 net.IP
+	for _, addr := range addrs {
+		ip := ipFromInterfaceAddress(addr)
+		if ip == nil || ip.IsUnspecified() {
+			continue
+		}
+		if ipv4 := ip.To4(); ipv4 != nil {
+			return net.JoinHostPort(ipv4.String(), strconv.Itoa(port)), nil
+		}
+		if firstIPv6 == nil {
+			firstIPv6 = ip
+		}
+	}
+	if firstIPv6 != nil {
+		return net.JoinHostPort(firstIPv6.String(), strconv.Itoa(port)), nil
+	}
+	return "", fmt.Errorf("could not find a usable IP address for callback interface %q", interfaceName)
+}
+
+func ipFromInterfaceAddress(addr net.Addr) net.IP {
+	switch typed := addr.(type) {
+	case *net.IPNet:
+		return typed.IP
+	case *net.IPAddr:
+		return typed.IP
+	default:
+		return nil
+	}
 }
 
 func parseCallbackURL(callbackURL string) (*url.URL, error) {

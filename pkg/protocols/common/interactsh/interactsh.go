@@ -82,8 +82,13 @@ func (c *Client) poll() error {
 		// do not init if disabled
 		return ErrInteractshClientNotInitialized
 	}
-	if c.options.LocalCallbackListen != "" || c.options.LocalCallbackURL != "" {
-		localCallback, err := newLocalCallbackServer(c.options.LocalCallbackListen, c.options.LocalCallbackURL, c.handleInteraction)
+	if c.options.LocalCallbackListen != "" || c.options.LocalCallbackURL != "" || c.options.LocalCallbackInterface != "" {
+		localCallback, err := newLocalCallbackServer(localCallbackOptions{
+			listenAddress: c.options.LocalCallbackListen,
+			callbackURL:   c.options.LocalCallbackURL,
+			interfaceName: c.options.LocalCallbackInterface,
+			port:          c.options.LocalCallbackPort,
+		}, c.handleInteraction)
 		if err != nil {
 			return errkit.Wrap(err, "could not create local callback server")
 		}
