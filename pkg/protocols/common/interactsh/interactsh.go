@@ -132,14 +132,15 @@ func (c *Client) handleInteraction(interaction *server.Interaction) {
 	if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
 		gologger.DefaultLogger.Print().Msgf("[Interactsh]: got interaction of %v for request %v and error %v", interaction, request, err)
 	}
+	interactions := c.interactionVariants(interaction)
 	if errors.Is(err, gcache.KeyNotFoundError) || request == nil {
 		// If we don't have any request for this ID, add it to temporary
 		// lru cache, so we can correlate when we get an add request.
 		items, err := c.interactions.Get(interaction.UniqueID)
 		if errkit.Is(err, gcache.KeyNotFoundError) || items == nil {
-			_ = c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
+			_ = c.interactions.SetWithExpire(interaction.UniqueID, interactions, defaultInteractionDuration)
 		} else {
-			items = append(items, interaction)
+			items = append(items, interactions...)
 			_ = c.interactions.SetWithExpire(interaction.UniqueID, items, defaultInteractionDuration)
 		}
 		return
@@ -151,7 +152,20 @@ func (c *Client) handleInteraction(interaction *server.Interaction) {
 		}
 	}
 
-	_ = c.processInteractionForRequest(interaction, request)
+	for _, current := range interactions {
+		if c.processInteractionForRequest(current, request) {
+			return
+		}
+	}
+}
+
+func (c *Client) interactionVariants(interaction *server.Interaction) []*server.Interaction {
+	if c.localCallback == nil || !strings.EqualFold(interaction.Protocol, "http") {
+		return []*server.Interaction{interaction}
+	}
+	dnsInteraction := *interaction
+	dnsInteraction.Protocol = "dns"
+	return []*server.Interaction{interaction, &dnsInteraction}
 }
 
 // requestShouldStopAtFirstmatch checks if further interactions should be stopped

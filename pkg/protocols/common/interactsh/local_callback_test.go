@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,17 +38,21 @@ func TestLocalCallbackReceivesHTTPInteraction(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		interactions, err := client.interactions.Get(id)
-		if err != nil || len(interactions) != 1 {
+		if err != nil {
 			return false
 		}
-		interaction := interactions[0]
-		return interaction.Protocol == "http" &&
-			interaction.UniqueID == id &&
-			interaction.RemoteAddress != "" &&
-			strings.Contains(interaction.RawRequest, "POST /"+id+"?source=test HTTP/1.1") &&
-			strings.Contains(interaction.RawRequest, "X-Nuclei-Test: local-callback") &&
-			strings.Contains(interaction.RawRequest, "local-callback-body") &&
-			strings.Contains(interaction.RawResponse, "HTTP/1.1 200 OK")
+		for _, interaction := range interactions {
+			if interaction.Protocol == "http" &&
+				interaction.UniqueID == id &&
+				interaction.RemoteAddress != "" &&
+				strings.Contains(interaction.RawRequest, "POST /"+id+"?source=test HTTP/1.1") &&
+				strings.Contains(interaction.RawRequest, "X-Nuclei-Test: local-callback") &&
+				strings.Contains(interaction.RawRequest, "local-callback-body") &&
+				strings.Contains(interaction.RawResponse, "HTTP/1.1 200 OK") {
+				return true
+			}
+		}
+		return false
 	}, time.Second, 10*time.Millisecond)
 }
 
@@ -85,7 +93,61 @@ func TestLocalCallbackInterfaceChoosesPort(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		interactions, err := client.interactions.Get(id)
-		return err == nil && len(interactions) == 1 && interactions[0].Protocol == "http"
+		if err != nil {
+			return false
+		}
+		for _, interaction := range interactions {
+			if interaction.Protocol == "http" {
+				return true
+			}
+		}
+		return false
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestLocalCallbackHTTPInteractionSatisfiesDNSMatcher(t *testing.T) {
+	client := newLocalCallbackTestClient(t, "", "")
+
+	generatedURL, err := client.NewURLWithData("{{interactsh-url}}")
+	require.NoError(t, err)
+
+	operator := &operators.Operators{
+		Matchers: []*matchers.Matcher{{
+			Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+			DSL:  []string{`interactsh_protocol == "dns"`},
+		}},
+		MatchersCondition: "and",
+	}
+	require.NoError(t, operator.Compile())
+
+	requestData := &RequestData{
+		Event: &output.InternalWrappedEvent{InternalEvent: output.InternalEvent{
+			templateIdAttribute: "local-callback-dns-compatible-test",
+		}},
+		Operators: operator,
+		MatchFunc: func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+			return matcher.Result(matcher.MatchDSL(data)), []string{}
+		},
+		ExtractFunc: func(map[string]interface{}, *extractors.Extractor) map[string]struct{} {
+			return nil
+		},
+		MakeResultFunc: func(*output.InternalWrappedEvent) []*output.ResultEvent {
+			return nil
+		},
+	}
+	client.RequestEvent([]string{generatedURL}, requestData)
+
+	response, err := http.Get("http://" + generatedURL)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, response.Body)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+
+	require.Eventually(t, func() bool {
+		requestData.Event.RLock()
+		defer requestData.Event.RUnlock()
+		return requestData.Event.OperatorsResult != nil &&
+			requestData.Event.InternalEvent["interactsh_protocol"] == "dns"
 	}, time.Second, 10*time.Millisecond)
 }
 
