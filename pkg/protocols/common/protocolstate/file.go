@@ -54,7 +54,7 @@ func NormalizePathWithExecutionId(executionId string, filePath string) (string, 
 	return NormalizePath(options, filePath)
 }
 
-// Normalizepath normalizes path and returns absolute path
+// NormalizePath normalizes path and returns absolute path
 // it returns error if path is not allowed
 // this respects the sandbox rules and only loads files from
 // allowed directories
