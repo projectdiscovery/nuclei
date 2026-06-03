@@ -502,6 +502,7 @@ func (options *Options) Copy() *Options {
 		ExcludedTemplates:              options.ExcludedTemplates,
 		ExcludeMatchers:                options.ExcludeMatchers,
 		CustomHeaders:                  options.CustomHeaders,
+		UserAgentTag:                   options.UserAgentTag,
 		Vars:                           options.Vars,
 		Severities:                     options.Severities,
 		ExcludeSeverities:              options.ExcludeSeverities,
