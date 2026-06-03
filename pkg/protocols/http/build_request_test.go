@@ -17,6 +17,8 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
+// TestTaggedUserAgent verifies the ua-tag is appended to the randomized
+// User-Agent when set, and that the UA is left untagged when no tag is given.
 func TestTaggedUserAgent(t *testing.T) {
 	untagged := taggedUserAgent("")
 	require.NotEmpty(t, untagged, "should return a randomized user agent")
