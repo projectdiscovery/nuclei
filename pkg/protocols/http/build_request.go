@@ -468,6 +468,16 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	return generatedRequest, nil
 }
 
+// taggedUserAgent returns a randomized User-Agent value, with the optional ua-tag
+// appended (space-separated) when set, so every http request can be attributed.
+func taggedUserAgent(tag string) string {
+	raw := useragent.PickRandom().Raw
+	if tag != "" {
+		raw = raw + " " + tag
+	}
+	return raw
+}
+
 // fillRequest fills various headers in the request with values
 func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	// Set the header values requested
@@ -505,8 +515,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		}
 	}
 	if !r.request.Unsafe {
-		userAgent := useragent.PickRandom()
-		httputil.SetHeader(req, "User-Agent", userAgent.Raw)
+		httputil.SetHeader(req, "User-Agent", taggedUserAgent(r.options.Options.UserAgentTag))
 	}
 
 	// Only set these headers on non-raw requests

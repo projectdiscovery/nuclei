@@ -217,6 +217,7 @@ CONFIGURATIONS:
    -dr, -disable-redirects               disable redirects for http templates
    -rc, -report-config string            nuclei reporting module configuration file
    -H, -header string[]                  custom header/cookie to include in all http request in header:value format (cli, file)
+   -uat, -ua-tag string                  tag appended to the randomized User-Agent on every http request
    -V, -var value                        custom vars in key=value format
    -r, -resolvers string                 file containing resolver list for nuclei
    -sr, -system-resolvers                use system DNS resolving as error fallback

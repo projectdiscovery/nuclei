@@ -2,19 +2,31 @@ package http
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
+
+func TestTaggedUserAgent(t *testing.T) {
+	untagged := taggedUserAgent("")
+	require.NotEmpty(t, untagged, "should return a randomized user agent")
+	require.False(t, strings.HasSuffix(untagged, " "), "no trailing space when no tag is set")
+
+	const tag = "scanner-xyz/1.0"
+	tagged := taggedUserAgent(tag)
+	require.True(t, strings.HasSuffix(tagged, " "+tag), "tag should be appended to the randomized user agent")
+	require.Greater(t, len(tagged), len(tag)+1, "a randomized user agent should precede the tag")
+}
 
 func TestMakeRequestFromModal(t *testing.T) {
 	options := testutils.DefaultOptions

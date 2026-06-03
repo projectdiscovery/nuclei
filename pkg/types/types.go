@@ -58,6 +58,9 @@ type Options struct {
 	ExcludeMatchers goflags.StringSlice
 	// CustomHeaders is the list of custom global headers to send with each request.
 	CustomHeaders goflags.StringSlice
+	// UserAgentTag is appended (space-separated) to the randomized User-Agent on every
+	// http request, so all generated traffic can be attributed to the given value.
+	UserAgentTag string
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
 	// Severities filters templates based on their severity and only run the matching ones.
