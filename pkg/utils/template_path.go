@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"strings"
+	"path/filepath"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 )
 
 const (
@@ -15,8 +16,11 @@ const (
 // TemplatePathURL returns the Path and URL for the provided template
 func TemplatePathURL(fullPath, templateId, templateVerifier string) (path string, url string) {
 	configData := config.DefaultConfig
-	if configData.TemplatesDirectory != "" && strings.HasPrefix(fullPath, configData.TemplatesDirectory) {
-		path = strings.TrimPrefix(strings.TrimPrefix(fullPath, configData.TemplatesDirectory), "/")
+	if configData.TemplatesDirectory != "" && filepathutil.IsPathWithinDirectory(fullPath, configData.GetTemplateDir()) {
+		relPath, err := filepath.Rel(configData.GetTemplateDir(), fullPath)
+		if err == nil && relPath != "." {
+			path = relPath
+		}
 	}
 	if templateVerifier == keys.PDVerifier {
 		url = TemplatesRepoURL + templateId
