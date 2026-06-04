@@ -216,6 +216,49 @@ info:
 		require.FileExists(t, customTemplate, "custom template should be preserved")
 	})
 
+	t.Run("removes orphaned templates from custom dir sibling prefixes", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-custom-prefix-test-*")
+		require.NoError(t, err)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
+
+		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
+		require.NoError(t, err)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
+
+		config.DefaultConfig.SetConfigDir(cfgdir)
+		config.DefaultConfig.SetTemplatesDir(tmpDir)
+
+		customGitHubDir := filepath.Join(tmpDir, "github", "owner", "repo")
+		require.NoError(t, os.MkdirAll(customGitHubDir, 0755))
+		customTemplate := filepath.Join(customGitHubDir, "custom-template.yaml")
+		require.NoError(t, os.WriteFile(customTemplate, []byte(`id: custom-template
+info:
+  name: Custom Template
+  author: test
+  severity: info`), 0644))
+
+		siblingDir := filepath.Join(tmpDir, "github-evil")
+		require.NoError(t, os.MkdirAll(siblingDir, 0755))
+		siblingTemplate := filepath.Join(siblingDir, "orphaned-template.yaml")
+		require.NoError(t, os.WriteFile(siblingTemplate, []byte(`id: orphaned-template
+info:
+  name: Orphaned Template
+  author: test
+  severity: info`), 0644))
+
+		writtenPaths := mapsutil.NewSyncLockMap[string, struct{}]()
+
+		err = tm.cleanupOrphanedTemplates(tmpDir, writtenPaths)
+		require.NoError(t, err)
+
+		require.FileExists(t, customTemplate, "custom template should be preserved")
+		require.NoFileExists(t, siblingTemplate, "custom directory sibling prefix should not be preserved")
+	})
+
 	t.Run("skips non-template files", func(t *testing.T) {
 		// Create temporary directories
 		tmpDir, err := os.MkdirTemp("", "nuclei-cleanup-nontemplate-test-*")
@@ -328,6 +371,46 @@ info:
 
 		// Verify template was NOT removed (it was in written paths)
 		require.FileExists(t, template1, "template should be preserved when in written paths")
+	})
+
+	t.Run("checksums custom dir sibling prefixes", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "nuclei-checksum-custom-prefix-test-*")
+		require.NoError(t, err)
+		defer func() {
+			_ = os.RemoveAll(tmpDir)
+		}()
+
+		cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
+		require.NoError(t, err)
+		defer func() {
+			_ = os.RemoveAll(cfgdir)
+		}()
+
+		config.DefaultConfig.SetConfigDir(cfgdir)
+		config.DefaultConfig.SetTemplatesDir(tmpDir)
+
+		customGitHubDir := filepath.Join(tmpDir, "github")
+		require.NoError(t, os.MkdirAll(customGitHubDir, 0755))
+		customTemplate := filepath.Join(customGitHubDir, "custom-template.yaml")
+		require.NoError(t, os.WriteFile(customTemplate, []byte(`id: custom-template
+info:
+  name: Custom Template
+  author: test
+  severity: info`), 0644))
+
+		siblingDir := filepath.Join(tmpDir, "github-evil")
+		require.NoError(t, os.MkdirAll(siblingDir, 0755))
+		siblingTemplate := filepath.Join(siblingDir, "sibling-template.yaml")
+		require.NoError(t, os.WriteFile(siblingTemplate, []byte(`id: sibling-template
+info:
+  name: Sibling Template
+  author: test
+  severity: info`), 0644))
+
+		checksums, err := tm.calculateChecksumMap(tmpDir)
+		require.NoError(t, err)
+		require.NotContains(t, checksums, customTemplate, "custom template should be excluded")
+		require.Contains(t, checksums, siblingTemplate, "custom directory sibling prefix should be checksummed")
 	})
 
 	t.Run("handles empty templates directory", func(t *testing.T) {
