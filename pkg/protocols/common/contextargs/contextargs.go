@@ -108,9 +108,16 @@ func (ctx *Context) Add(key string, v interface{}) {
 	}
 }
 
-// UseNetworkPort updates input with required/default network port for that template
-// but is ignored if input/target contains non-http ports like 80,8080,8081 etc
-// Precedence: cliExcludePorts > templateExcludePorts > default reserved ports
+// Replace the input port with the template port when the input has no port or
+// when its port is in the active reserved-port list.
+//
+// The active reserved-port list is selected by precedence:
+//   - CLI flag -reserved-ports, when provided
+//   - template exclude-ports field, when provided
+//   - defaultReservedPorts otherwise
+//
+// This reduces redundant dials to HTTP ports when running network templates
+// aimed at other services.
 func (ctx *Context) UseNetworkPort(port string, templateExcludePorts string, cliExcludePorts []string) error {
 	ignorePorts := defaultReservedPorts
 
