@@ -181,7 +181,6 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	yaml.StrictSyntax = !options.NoStrictSyntax
-	templates.NoStrictJSON = options.NoStrictSyntax
 
 	if options.Headless {
 		if engine.MustDisableSandbox() {

@@ -121,8 +121,8 @@ func TestLoadTemplate(t *testing.T) {
 	// That meant `-validate` would pass templates that contained typoed fields
 	// or HTTP-only fields on a network.Request block, which then failed at
 	// runtime with the unknown-field error. Strict mode is the default and
-	// must be opt-out via [NoStrictJSON] (set from the runner's
-	// `-no-strict-syntax` flag).
+	// must be opt-out via the parser's [Parser.NoStrictSyntax] field (set
+	// from the runner's `-no-strict-syntax` flag).
 	t.Run("strictJSONRejectsUnknownFields", func(t *testing.T) {
 		const tmpl = `{
   "id": "JSON-UNKNOWN-FIELD",
@@ -143,28 +143,89 @@ func TestLoadTemplate(t *testing.T) {
   }]
 }`
 		dir := t.TempDir()
-		path := filepath.Join(dir, "tmpl.json")
-		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+		strictPath := filepath.Join(dir, "tmpl-strict.json")
+		require.NoError(t, os.WriteFile(strictPath, []byte(tmpl), 0o600))
 
 		// Strict mode (default): unknown fields must be rejected.
-		prev := NoStrictJSON
-		t.Cleanup(func() { NoStrictJSON = prev })
-
-		NoStrictJSON = false
 		strictParser := NewParser()
-		_, err := strictParser.ParseTemplate(path, disk.NewCatalog(""))
+		_, err := strictParser.ParseTemplate(strictPath, disk.NewCatalog(""))
 		require.Error(t, err, "expected strict JSON decode to reject unknown fields")
 		require.Contains(t, err.Error(), "unknown field", "expected unknown-field error, got: %v", err)
 
-		// Lax mode: when NoStrictJSON is set (via the -no-strict-syntax flag)
-		// the same template must still parse, preserving the historical opt-out.
-		NoStrictJSON = true
+		// Lax mode: when the parser opts out via NoStrictSyntax (set from the
+		// `-no-strict-syntax` flag) the same template must still parse.
 		laxParser := NewParser()
 		laxParser.NoStrictSyntax = true
 		laxPath := filepath.Join(dir, "tmpl-lax.json")
 		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
 		_, err = laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
-		require.NoError(t, err, "NoStrictJSON should allow unknown fields")
+		require.NoError(t, err, "NoStrictSyntax should allow unknown fields")
+	})
+
+	// json.Decoder by design only consumes one top-level value. Without an
+	// explicit EOF check, concatenated JSON documents would silently load
+	// only the first — e.g. `{"id":"safe"...}{"id":"hijack"...}` would scan
+	// under the safe id while the second document is ignored.
+	t.Run("strictJSONRejectsTrailingData", func(t *testing.T) {
+		const tmpl = `{
+  "id": "JSON-TRAILING-DATA",
+  "info": {
+    "name": "trailing data regression",
+    "author": "anonymous",
+    "severity": "info"
+  },
+  "http": [{
+    "method": "GET",
+    "path": ["{{BaseURL}}"],
+    "matchers": [{"type": "word", "words": ["HTTP"]}]
+  }]
+}
+{"id":"HIJACK","info":{"name":"x","author":"y","severity":"high"}}
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.json")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		_, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.Error(t, err, "expected strict JSON to reject trailing data")
+		require.Contains(t, err.Error(), "trailing data", "expected trailing-data error, got: %v", err)
+	})
+
+	// Strictness is a per-parser setting (not a process global) so two
+	// parsers in the same process with different `-no-strict-syntax` values
+	// must not interfere with each other. Cf. concurrent-engines support
+	// introduced in #6322.
+	t.Run("strictJSONIsPerParser", func(t *testing.T) {
+		const tmpl = `{
+  "id": "JSON-PER-PARSER",
+  "info": {
+    "name": "per-parser strictness",
+    "author": "anonymous",
+    "severity": "info"
+  },
+  "http": [{
+    "method": "GET",
+    "path": ["{{BaseURL}}"],
+    "matchers": [{"type": "word", "words": ["HTTP"]}],
+    "bogus_field": "ignore me"
+  }]
+}`
+		dir := t.TempDir()
+		strictPath := filepath.Join(dir, "per-parser-strict.json")
+		laxPath := filepath.Join(dir, "per-parser-lax.json")
+		require.NoError(t, os.WriteFile(strictPath, []byte(tmpl), 0o600))
+		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
+
+		strictParser := NewParser()
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+
+		_, strictErr := strictParser.ParseTemplate(strictPath, disk.NewCatalog(""))
+		_, laxErr := laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
+
+		require.Error(t, strictErr, "strict parser must reject unknown field")
+		require.Contains(t, strictErr.Error(), "unknown field")
+		require.NoError(t, laxErr, "lax parser must accept the same template")
 	})
 
 	t.Run("invalidTemplateID", func(t *testing.T) {

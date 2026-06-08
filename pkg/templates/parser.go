@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -167,9 +166,7 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		if p.NoStrictSyntax {
 			err = json.Unmarshal(data, template)
 		} else {
-			dec := json.NewDecoder(bytes.NewReader(data))
-			dec.DisallowUnknownFields()
-			err = dec.Decode(template)
+			err = template.unmarshalJSONStrict(data)
 		}
 	case config.YAML:
 		if data != nil {
