@@ -38,14 +38,28 @@ func TestMatchSSRFSignature(t *testing.T) {
 			wantHit: true,
 		},
 		{
-			name:    "gcp compute metadata",
-			body:    `{"computeMetadata":{"v1":{"instance":{}}}}`,
+			name:    "gcp compute metadata recursive response",
+			body:    `{"hostname":"vm.c.proj.internal","machineType":"projects/1/machineTypes/e2-medium","serviceAccounts":{"default":{"email":"x@developer.gserviceaccount.com"}}}`,
 			wantSvc: "GCP instance metadata",
 			wantHit: true,
 		},
 		{
 			name:    "benign body no metadata",
 			body:    `<html><body>welcome to the dashboard, instance-id of order is 5</body></html>`,
+			wantHit: false,
+		},
+		{
+			// Regression: an app that merely reflects the injected GCP payload URL
+			// (which contains "computeMetadata") must NOT be flagged. Only a real
+			// metadata *response* (structural JSON keys) counts.
+			name:    "reflected gcp payload url is not a hit",
+			body:    `<html><body>you searched for: http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true</body></html>`,
+			wantHit: false,
+		},
+		{
+			// Regression: reflected AWS metadata URL alone is not disclosure.
+			name:    "reflected aws payload url is not a hit",
+			body:    `<html><body>fetched http://169.254.169.254/latest/meta-data/ failed</body></html>`,
 			wantHit: false,
 		},
 		{

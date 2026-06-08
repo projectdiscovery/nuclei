@@ -79,8 +79,12 @@ func MatchSSRFSignature(body string) (string, bool) {
 		return "AWS IMDS metadata", true
 	}
 	// GCP metadata recursive responses carry these structural keys together.
-	if strings.Contains(body, "computeMetadata") ||
-		(strings.Contains(body, "\"machineType\"") && strings.Contains(body, "\"serviceAccounts\"")) {
+	// NOTE: we deliberately do NOT match a bare "computeMetadata" substring: it
+	// appears in the injected request URL itself (…/computeMetadata/v1/…), so an
+	// application that merely reflects the payload would otherwise be a false
+	// positive. Requiring response-only JSON keys keeps this in-band signal high
+	// confidence.
+	if strings.Contains(body, "\"machineType\"") && strings.Contains(body, "\"serviceAccounts\"") {
 		return "GCP instance metadata", true
 	}
 	return "", false

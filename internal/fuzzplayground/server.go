@@ -55,6 +55,15 @@ func registerAnalyzerRoutes(e *echo.Echo) {
 	e.GET("/analyzer/crlf", analyzerCRLFHandler)
 	e.GET("/analyzer/cors", analyzerCORSHandler)
 	e.GET("/analyzer/host-header", analyzerHostHeaderHandler)
+
+	// Benign counterparts: these reflect or echo input but are NOT vulnerable,
+	// so the analyzers must NOT raise a finding against them (false-positive
+	// guard at the CLI level).
+	e.GET("/analyzer/safe/reflect", analyzerSafeReflectHandler)
+	e.GET("/analyzer/safe/redirect", analyzerSafeRedirectHandler)
+	e.GET("/analyzer/safe/cors", analyzerSafeCORSHandler)
+	e.GET("/analyzer/safe/headers", analyzerSafeHeadersHandler)
+	e.GET("/analyzer/safe/host", analyzerSafeHostHandler)
 }
 
 // reArithmeticTemplate emulates a real template engine: it matches an arithmetic
@@ -169,6 +178,38 @@ func analyzerHostHeaderHandler(ctx echo.Context) error {
 		host = ctx.Request().Host
 	}
 	return ctx.HTML(http.StatusOK, fmt.Sprintf(`<a href="https://%s/reset?token=abc">reset</a>`, host))
+}
+
+// --- Benign handlers (must not trigger any analyzer) -----------------------
+
+// analyzerSafeReflectHandler reflects q verbatim with no evaluation, no DB, no
+// command execution and no file access; it is the benign counterpart for the
+// ssti, sqli, cmdi, lfi and ssrf analyzers.
+func analyzerSafeReflectHandler(ctx echo.Context) error {
+	return ctx.HTML(http.StatusOK, fmt.Sprintf(bodyTemplate, "you searched for: "+ctx.QueryParam("q")))
+}
+
+// analyzerSafeRedirectHandler always redirects to a fixed trusted location,
+// ignoring user input.
+func analyzerSafeRedirectHandler(ctx echo.Context) error {
+	return ctx.Redirect(http.StatusFound, "/home")
+}
+
+// analyzerSafeCORSHandler only ever allows a single trusted origin.
+func analyzerSafeCORSHandler(ctx echo.Context) error {
+	ctx.Response().Header().Set("Access-Control-Allow-Origin", "https://trusted.example.com")
+	return ctx.String(http.StatusOK, "ok")
+}
+
+// analyzerSafeHeadersHandler returns static headers and never reflects input.
+func analyzerSafeHeadersHandler(ctx echo.Context) error {
+	ctx.Response().Header().Set("X-Static", "constant")
+	return ctx.String(http.StatusOK, "ok")
+}
+
+// analyzerSafeHostHandler always builds links from a fixed, trusted host.
+func analyzerSafeHostHandler(ctx echo.Context) error {
+	return ctx.HTML(http.StatusOK, `<a href="https://app.example.com/reset?token=abc">reset</a>`)
 }
 
 var bodyTemplate = `<html>

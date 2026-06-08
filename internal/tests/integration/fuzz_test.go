@@ -41,21 +41,34 @@ var fuzzingTestCases = []integrationCase{
 	// detection is delegated to a built-in analyzer, against the dedicated
 	// analyzer bench in the fuzz playground. A finding is produced only when the
 	// analyzer (not a static matcher) confirms the vulnerability.
-	{Path: "fuzz/analyzer-sqli.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/sqli?q=en"}},
-	{Path: "fuzz/analyzer-ssti.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/ssti?q=test"}},
-	{Path: "fuzz/analyzer-lfi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/lfi?q=home.txt"}},
-	{Path: "fuzz/analyzer-cmdi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/cmdi?q=127.0.0.1"}},
-	{Path: "fuzz/analyzer-ssrf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/ssrf?q=https://example.com/a.png"}},
-	{Path: "fuzz/analyzer-open-redirect.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/redirect?q=/dashboard"}},
-	{Path: "fuzz/analyzer-crlf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/crlf?q=/home"}},
-	{Path: "fuzz/analyzer-cors.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/cors?q=x"}},
-	{Path: "fuzz/analyzer-host-header.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/host-header?q=x"}},
+	{Path: "fuzz/analyzer-sqli.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/sqli?q=en", expectedResults: 1}},
+	{Path: "fuzz/analyzer-ssti.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/ssti?q=test", expectedResults: 1}},
+	{Path: "fuzz/analyzer-lfi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/lfi?q=home.txt", expectedResults: 1}},
+	{Path: "fuzz/analyzer-cmdi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/cmdi?q=127.0.0.1", expectedResults: 1}},
+	{Path: "fuzz/analyzer-ssrf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/ssrf?q=https://example.com/a.png", expectedResults: 1}},
+	{Path: "fuzz/analyzer-open-redirect.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/redirect?q=/dashboard", expectedResults: 1}},
+	{Path: "fuzz/analyzer-crlf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/crlf?q=/home", expectedResults: 1}},
+	{Path: "fuzz/analyzer-cors.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/cors?q=x", expectedResults: 1}},
+	{Path: "fuzz/analyzer-host-header.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/host-header?q=x", expectedResults: 1}},
+
+	// Negative cases: the same analyzer templates against benign routes must
+	// produce zero findings (false-positive guard at the CLI level).
+	{Path: "fuzz/analyzer-sqli.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/reflect?q=en", expectedResults: 0}},
+	{Path: "fuzz/analyzer-ssti.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/reflect?q=test", expectedResults: 0}},
+	{Path: "fuzz/analyzer-lfi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/reflect?q=home.txt", expectedResults: 0}},
+	{Path: "fuzz/analyzer-cmdi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/reflect?q=127.0.0.1", expectedResults: 0}},
+	{Path: "fuzz/analyzer-ssrf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/reflect?q=https://example.com/a.png", expectedResults: 0}},
+	{Path: "fuzz/analyzer-open-redirect.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/redirect?q=/dashboard", expectedResults: 0}},
+	{Path: "fuzz/analyzer-crlf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/headers?q=/home", expectedResults: 0}},
+	{Path: "fuzz/analyzer-cors.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/cors?q=x", expectedResults: 0}},
+	{Path: "fuzz/analyzer-host-header.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/host?q=x", expectedResults: 0}},
 }
 
 // analyzerFuzzTestCase runs an analyzer-driven fuzzing template against the
-// running fuzz playground (localhost:8082) and expects exactly one finding.
+// running fuzz playground (localhost:8082) and asserts the number of findings.
 type analyzerFuzzTestCase struct {
-	route string
+	route           string
+	expectedResults int
 }
 
 func (a *analyzerFuzzTestCase) Execute(filePath string) error {
@@ -64,7 +77,7 @@ func (a *analyzerFuzzTestCase) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectResultsCount(results, a.expectedResults)
 }
 
 type genericFuzzTestCase struct {
