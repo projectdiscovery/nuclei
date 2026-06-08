@@ -2,8 +2,11 @@ package authx
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/autologin"
 	"github.com/projectdiscovery/utils/errkit"
 )
@@ -110,6 +113,7 @@ func (d *Dynamic) SetAutoLoginCallback(rt *AutoLoginRuntimeOptions) {
 			session *autologin.Session
 			err     error
 		)
+		engine := autoLoginEngineName(d.AutoLogin.Headless)
 		if d.AutoLogin.Headless {
 			// The browser engine runs JS, so it handles SPA / multi-step / SSO
 			// login pages the HTTP form submitter cannot.
@@ -118,7 +122,10 @@ func (d *Dynamic) SetAutoLoginCallback(rt *AutoLoginRuntimeOptions) {
 			session, err = autologin.Login(context.Background(), d.autoLoginClient, cfg)
 		}
 		if err != nil {
-			return err
+			// Surface a clear, actionable failure at scan start (prefetch) and on
+			// every lazy re-authentication.
+			gologger.Warning().Msgf("auto-login (%s) failed for %s: %s", engine, cfg.LoginURL, err)
+			return errkit.Wrapf(err, "auto-login (%s) failed for %s", engine, cfg.LoginURL)
 		}
 
 		// Expose extracted values for observability / downstream templating.
@@ -133,8 +140,46 @@ func (d *Dynamic) SetAutoLoginCallback(rt *AutoLoginRuntimeOptions) {
 			d.Extracted["token"] = session.Token
 		}
 
-		return d.applyAutoLoginSession(session)
+		if applyErr := d.applyAutoLoginSession(session); applyErr != nil {
+			gologger.Warning().Msgf("auto-login (%s) for %s: %s", engine, cfg.LoginURL, applyErr)
+			return errkit.Wrapf(applyErr, "auto-login (%s) for %s", engine, cfg.LoginURL)
+		}
+		gologger.Info().Msgf("auto-login (%s) succeeded for %s: %s", engine, cfg.LoginURL, summarizeSession(session))
+		return nil
 	}
+}
+
+// autoLoginEngineName returns a human-readable engine label for log messages.
+func autoLoginEngineName(headless bool) string {
+	if headless {
+		return "headless"
+	}
+	return "http"
+}
+
+// summarizeSession produces a concise human-readable summary of what an
+// auto-login captured, for the success log line.
+func summarizeSession(session *autologin.Session) string {
+	if session == nil {
+		return "no session"
+	}
+	var parts []string
+	if n := len(session.Cookies); n > 0 {
+		parts = append(parts, fmt.Sprintf("%d cookie(s)", n))
+	}
+	if session.Token != "" {
+		parts = append(parts, "bearer token")
+	}
+	if n := len(session.LocalStorage); n > 0 {
+		parts = append(parts, fmt.Sprintf("%d localStorage item(s)", n))
+	}
+	if n := len(session.SessionStorage); n > 0 {
+		parts = append(parts, fmt.Sprintf("%d sessionStorage item(s)", n))
+	}
+	if len(parts) == 0 {
+		return "no usable session material"
+	}
+	return strings.Join(parts, ", ")
 }
 
 // applyAutoLoginSession builds the concrete applied secret(s) from a captured

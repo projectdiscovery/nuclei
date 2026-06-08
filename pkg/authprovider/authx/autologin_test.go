@@ -56,6 +56,24 @@ func TestApplyAutoLoginSession_Empty(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestSummarizeSession(t *testing.T) {
+	require.Equal(t, "no session", summarizeSession(nil))
+	require.Equal(t, "no usable session material", summarizeSession(&autologin.Session{}))
+	require.Equal(t, "2 cookie(s)", summarizeSession(&autologin.Session{
+		Cookies: []*http.Cookie{{Name: "a"}, {Name: "b"}},
+	}))
+	require.Equal(t, "1 cookie(s), bearer token, 2 localStorage item(s)", summarizeSession(&autologin.Session{
+		Cookies:      []*http.Cookie{{Name: "a"}},
+		Token:        "jwt",
+		LocalStorage: map[string]string{"x": "1", "y": "2"},
+	}))
+}
+
+func TestAutoLoginEngineName(t *testing.T) {
+	require.Equal(t, "headless", autoLoginEngineName(true))
+	require.Equal(t, "http", autoLoginEngineName(false))
+}
+
 func TestApplyAutoLoginSession_WebStorageCaptured(t *testing.T) {
 	d := newAutoLoginDynamic()
 	require.NoError(t, d.Validate())

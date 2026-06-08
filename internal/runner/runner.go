@@ -620,6 +620,11 @@ func (r *Runner) RunEnumeration() error {
 		// Turnkey auto-login from CLI flags (-auth-login-url): build an in-memory
 		// auto-login secret scoped to the login host, no secrets file needed.
 		if r.options.AuthLoginURL != "" {
+			engine := "http"
+			if r.options.AuthHeadless {
+				engine = "headless"
+			}
+			r.Logger.Info().Msgf("Auto-login enabled (%s engine) for %s", engine, r.options.AuthLoginURL)
 			store, err := autoLoginStoreFromOptions(r.options)
 			if err != nil {
 				return errors.Wrap(err, "could not build auto-login auth provider")
