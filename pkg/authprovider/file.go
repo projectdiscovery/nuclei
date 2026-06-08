@@ -26,7 +26,19 @@ func NewFileAuthProvider(path string, callback authx.LazyFetchSecret, autoLoginO
 	if err != nil {
 		return nil, err
 	}
-	if len(store.Secrets) == 0 && len(store.Dynamic) == 0 {
+	return newProviderFromStore(path, store, callback, autoLoginOpts)
+}
+
+// NewStoreAuthProvider builds an auth provider from an already-constructed Authx
+// store (e.g. one assembled from CLI flags rather than read from a file).
+func NewStoreAuthProvider(store *authx.Authx, callback authx.LazyFetchSecret, autoLoginOpts *authx.AutoLoginRuntimeOptions) (AuthProvider, error) {
+	return newProviderFromStore("", store, callback, autoLoginOpts)
+}
+
+// newProviderFromStore validates the store, installs fetch callbacks and builds
+// the domain lookup indexes shared by the file- and store-based constructors.
+func newProviderFromStore(path string, store *authx.Authx, callback authx.LazyFetchSecret, autoLoginOpts *authx.AutoLoginRuntimeOptions) (AuthProvider, error) {
+	if store == nil || (len(store.Secrets) == 0 && len(store.Dynamic) == 0) {
 		return nil, ErrNoSecrets
 	}
 	if callback == nil {

@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
@@ -95,6 +96,35 @@ func buildAutoLoginRuntimeOptions(opts *types.Options) *authx.AutoLoginRuntimeOp
 		rt.CustomHeaders[key] = value
 	}
 	return rt
+}
+
+// autoLoginStoreFromOptions assembles an in-memory Authx store containing a
+// single auto-login dynamic secret built from the -auth-login-url flag set. The
+// captured session is scoped to the login URL's host.
+func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
+	u, err := url.Parse(opts.AuthLoginURL)
+	if err != nil {
+		return nil, errkit.Wrap(err, "invalid -auth-login-url")
+	}
+	if u.Host == "" {
+		return nil, errkit.New("invalid -auth-login-url: missing host")
+	}
+	return &authx.Authx{
+		ID: "cli-auto-login",
+		Dynamic: []authx.Dynamic{
+			{
+				Secret: &authx.Secret{Domains: []string{u.Host}},
+				AutoLogin: &authx.AutoLoginConfig{
+					LoginURL:      opts.AuthLoginURL,
+					Username:      opts.AuthUsername,
+					Password:      opts.AuthPassword,
+					UsernameField: opts.AuthUsernameField,
+					PasswordField: opts.AuthPasswordField,
+					Headless:      opts.AuthHeadless,
+				},
+			},
+		},
+	}, nil
 }
 
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets

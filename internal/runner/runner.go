@@ -593,25 +593,50 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
-		// Clone options so GetAuthTmplStore can modify them without affecting the original
-		authOptions := r.options.Copy()
-		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
-		if err != nil {
-			return errors.Wrap(err, "failed to load dynamic auth templates")
+	if (len(r.options.SecretsFile) > 0 || r.options.AuthLoginURL != "") && !r.options.Validate {
+		autoLoginOpts := buildAutoLoginRuntimeOptions(r.options)
+		var providers []authprovider.AuthProvider
+
+		if len(r.options.SecretsFile) > 0 {
+			// Clone options so GetAuthTmplStore can modify them without affecting the original
+			authOptions := r.options.Copy()
+			authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
+			if err != nil {
+				return errors.Wrap(err, "failed to load dynamic auth templates")
+			}
+			authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
+			authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
+				TemplateStore: authTmplStore,
+				ExecOpts:      executorOpts,
+			})
+			authOpts.AutoLoginOptions = autoLoginOpts
+			fileProvider, err := authprovider.NewAuthProvider(authOpts)
+			if err != nil {
+				return errors.Wrap(err, "could not create auth provider")
+			}
+			providers = append(providers, fileProvider)
 		}
-		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
-		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
-			TemplateStore: authTmplStore,
-			ExecOpts:      executorOpts,
-		})
-		authOpts.AutoLoginOptions = buildAutoLoginRuntimeOptions(r.options)
-		// initialize auth provider
-		provider, err := authprovider.NewAuthProvider(authOpts)
-		if err != nil {
-			return errors.Wrap(err, "could not create auth provider")
+
+		// Turnkey auto-login from CLI flags (-auth-login-url): build an in-memory
+		// auto-login secret scoped to the login host, no secrets file needed.
+		if r.options.AuthLoginURL != "" {
+			store, err := autoLoginStoreFromOptions(r.options)
+			if err != nil {
+				return errors.Wrap(err, "could not build auto-login auth provider")
+			}
+			cliProvider, err := authprovider.NewStoreAuthProvider(store, nil, autoLoginOpts)
+			if err != nil {
+				return errors.Wrap(err, "could not create auto-login auth provider")
+			}
+			providers = append(providers, cliProvider)
 		}
-		executorOpts.AuthProvider = provider
+
+		switch len(providers) {
+		case 1:
+			executorOpts.AuthProvider = providers[0]
+		default:
+			executorOpts.AuthProvider = authprovider.NewMultiAuthProvider(providers...)
+		}
 	}
 
 	if r.options.ShouldUseHostError() {

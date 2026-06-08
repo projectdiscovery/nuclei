@@ -514,6 +514,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("Authentication", "Authentication",
 		flagSet.StringSliceVarP(&options.SecretsFile, "secret-file", "sf", nil, "path to config file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
+		flagSet.StringVarP(&options.AuthLoginURL, "auth-login-url", "alu", "", "login page url for turnkey auto-login authenticated scan"),
+		flagSet.StringVarP(&options.AuthUsername, "auth-username", "au", "", "username for auto-login (-auth-login-url)"),
+		flagSet.StringVarP(&options.AuthPassword, "auth-password", "ap", "", "password for auto-login (-auth-login-url)"),
+		flagSet.StringVarP(&options.AuthUsernameField, "auth-username-field", "auf", "", "override the detected username form field name for auto-login"),
+		flagSet.StringVarP(&options.AuthPasswordField, "auth-password-field", "apf", "", "override the detected password form field name for auto-login"),
+		flagSet.BoolVarP(&options.AuthHeadless, "auth-headless", "ah", false, "drive auto-login through a real browser (JS/SPA/SSO login pages)"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:

@@ -432,6 +432,20 @@ type Options struct {
 	SecretsFile goflags.StringSlice
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
+	// AuthLoginURL is the login page URL for turnkey auto-login (template-free
+	// authenticated scanning). When set, nuclei detects the login form, submits
+	// the credentials and applies the captured session to the scan.
+	AuthLoginURL string
+	// AuthUsername / AuthPassword are the credentials submitted to AuthLoginURL.
+	AuthUsername string
+	AuthPassword string
+	// AuthUsernameField / AuthPasswordField optionally override the detected
+	// login form field names.
+	AuthUsernameField string
+	AuthPasswordField string
+	// AuthHeadless drives the auto-login through a real browser (for JS-rendered
+	// / SPA / multi-step login pages).
+	AuthHeadless bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
