@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
@@ -70,6 +71,78 @@ var fuzzingTestCases = []integrationCase{
 	{Path: "fuzz/analyzer-header-sqli.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
 	{Path: "fuzz/analyzer-body-sqli.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
 	{Path: "fuzz/analyzer-cookie-ssti.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
+
+	// Crawl-to-fuzz via the katana input format: each analyzer template is driven
+	// against a one-line katana JSONL crawl entry for the matching playground
+	// endpoint, exercising the full crawl -> input-format -> fuzz -> analyzer
+	// pipeline through the CLI (-im katana ... -dast) across GET-query,
+	// GET-with-cookie and POST-JSON-body crawl shapes. (nuclei DAST scopes
+	// fuzzing to one request per host, so each case uses its own crawl entry.)
+	{Path: "fuzz/analyzer-sqli.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/sqli?q=en", expectedResults: 1}},
+	{Path: "fuzz/analyzer-ssti.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/ssti?q=test", expectedResults: 1}},
+	{Path: "fuzz/analyzer-lfi.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/lfi?q=home.txt", expectedResults: 1}},
+	{Path: "fuzz/analyzer-cmdi.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/cmdi?q=127.0.0.1", expectedResults: 1}},
+	{Path: "fuzz/analyzer-ssrf.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/ssrf?q=https://example.com/a.png", expectedResults: 1}},
+	{Path: "fuzz/analyzer-open-redirect.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/redirect?q=/dashboard", expectedResults: 1}},
+	{Path: "fuzz/analyzer-crlf.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/crlf?q=/home", expectedResults: 1}},
+	{Path: "fuzz/analyzer-cors.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/cors?q=x", expectedResults: 1}},
+	{Path: "fuzz/analyzer-host-header.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/host-header?q=x", expectedResults: 1}},
+	{Path: "fuzz/analyzer-cookie-ssti.yaml", TestCase: &analyzerKatanaTestCase{method: "GET", endpoint: "http://localhost:8082/analyzer/cookie/ssti", headers: map[string]string{"Cookie": "lang=en"}, expectedResults: 1}},
+	{Path: "fuzz/analyzer-body-sqli.yaml", TestCase: &analyzerKatanaTestCase{method: "POST", endpoint: "http://localhost:8082/analyzer/body/sqli", headers: map[string]string{"Content-Type": "application/json"}, body: `{"name":"en"}`, expectedResults: 1}},
+}
+
+// analyzerKatanaTestCase drives an analyzer template against a katana JSONL
+// crawl entry for the matching playground endpoint, exercising the full crawl
+// -> input-format -> fuzz -> analyzer pipeline through the CLI
+// (-im katana ... -dast).
+type analyzerKatanaTestCase struct {
+	method          string
+	endpoint        string
+	headers         map[string]string
+	body            string
+	expectedResults int
+}
+
+func (a *analyzerKatanaTestCase) Execute(filePath string) error {
+	crawlFile, cleanup, err := writeKatanaCrawlEntry(a.method, a.endpoint, a.headers, a.body)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-t", filePath, "-l", crawlFile, "-im", "katana", "-dast")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, a.expectedResults)
+}
+
+// writeKatanaCrawlEntry writes a single katana JSONL crawl record to a temp file
+// and returns its path plus a cleanup func.
+func writeKatanaCrawlEntry(method, endpoint string, headers map[string]string, body string) (string, func(), error) {
+	record := map[string]any{
+		"request": map[string]any{
+			"method":   method,
+			"endpoint": endpoint,
+			"headers":  headers,
+			"body":     body,
+		},
+	}
+	line, err := json.Marshal(record)
+	if err != nil {
+		return "", func() {}, err
+	}
+	f, err := os.CreateTemp("", "analyzer-katana-*.jsonl")
+	if err != nil {
+		return "", func() {}, err
+	}
+	if _, err := f.Write(append(line, '\n')); err != nil {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+		return "", func() {}, err
+	}
+	_ = f.Close()
+	return f.Name(), func() { _ = os.Remove(f.Name()) }, nil
 }
 
 const analyzerPositionsTargetFile = "fuzz/testData/analyzer-positions.proxify.yaml"
