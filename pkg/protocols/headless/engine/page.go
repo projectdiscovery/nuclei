@@ -12,6 +12,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
@@ -51,6 +52,9 @@ type Options struct {
 	Timeout       time.Duration
 	DisableCookie bool
 	Options       *types.Options
+	// AuthProvider supplies credentials (headers/cookies) that are injected into
+	// the browser so authenticated headless scans work like HTTP ones. May be nil.
+	AuthProvider authprovider.AuthProvider
 }
 
 // Run runs a list of actions by creating a new page in the browser.
@@ -180,6 +184,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 			}
 		}
 	}
+
+	// inject authentication (headers/cookies) from the auth provider, if any,
+	// before any navigation occurs so authenticated areas are reachable.
+	createdPage.applyAuthStrategies()
 
 	data, err := createdPage.ExecuteActions(ctx, actions)
 	if err != nil {
