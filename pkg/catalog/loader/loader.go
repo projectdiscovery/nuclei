@@ -788,10 +788,16 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	}
 
 	// noteExcludedByTag surfaces a template the index filter dropped because it
-	// carries an excluded tag (e.g. the .nuclei-ignore defaults). Without it the
-	// exclusion is silent at every verbosity level.
+	// carries a tag from the .nuclei-ignore defaults. Without it the exclusion is
+	// silent at every verbosity level.
+	//
+	// indexFilter.ExcludeTags is a merge of CLI -exclude-tags and the ignore-file
+	// tags, so it must be matched against the ignore-file tags specifically:
+	// otherwise user-requested -exclude-tags drops would be mislabeled as
+	// .nuclei-ignore exclusions.
+	ignoreFileTags := config.ReadIgnoreFile().Tags
 	noteExcludedByTag := func(templatePath string, metadata *index.Metadata) {
-		if len(indexFilter.ExcludeTags) == 0 || !slices.ContainsFunc(indexFilter.ExcludeTags, metadata.HasTag) {
+		if len(ignoreFileTags) == 0 || !slices.ContainsFunc(ignoreFileTags, metadata.HasTag) {
 			return
 		}
 

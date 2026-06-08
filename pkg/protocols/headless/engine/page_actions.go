@@ -286,7 +286,7 @@ func (p *Page) ActionAddHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionAddHeader,
 		Part:   part,
 		Args:   args,
@@ -314,7 +314,7 @@ func (p *Page) ActionSetHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetHeader,
 		Part:   part,
 		Args:   args,
@@ -337,7 +337,7 @@ func (p *Page) ActionDeleteHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionDeleteHeader,
 		Part:   part,
 		Args:   args,
@@ -360,7 +360,7 @@ func (p *Page) ActionSetBody(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetBody,
 		Part:   part,
 		Args:   args,
@@ -383,7 +383,7 @@ func (p *Page) ActionSetMethod(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetMethod,
 		Part:   part,
 		Args:   args,
