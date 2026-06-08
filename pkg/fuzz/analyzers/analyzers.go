@@ -35,6 +35,8 @@ type AnalyzerTemplate struct {
 	//   - crlf
 	//   - ssrf
 	//   - cors
+	//   - cmdi
+	//   - host_header_injection
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
