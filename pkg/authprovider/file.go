@@ -21,7 +21,7 @@ type FileAuthProvider struct {
 }
 
 // NewFileAuthProvider creates a new file based auth provider
-func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvider, error) {
+func NewFileAuthProvider(path string, callback authx.LazyFetchSecret, autoLoginOpts *authx.AutoLoginRuntimeOptions) (AuthProvider, error) {
 	store, err := authx.GetAuthDataFromFile(path)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvi
 		if dynamic.AutoLogin != nil {
 			// Auto-login resolves its session via the form-login engine rather
 			// than a template, so it uses a dedicated callback.
-			dynamic.SetAutoLoginCallback(nil)
+			dynamic.SetAutoLoginCallback(autoLoginOpts)
 		} else {
 			dynamic.SetLazyFetchCallback(callback)
 		}

@@ -61,8 +61,14 @@ type Config struct {
 	UseInstalledChrome bool
 	// Proxy routes browser traffic through the given proxy URL.
 	Proxy string
-	// ChromeWSURL connects to an existing browser over CDP instead of launching one.
-	ChromeWSURL string
+	// CDPEndpoint connects to an existing browser over the Chrome DevTools
+	// Protocol instead of launching one.
+	CDPEndpoint string
+	// UserAgent overrides the browser's User-Agent for the login navigation.
+	UserAgent string
+	// CustomHeaders are extra headers sent with the headless login requests
+	// (e.g. global -H headers from the scan).
+	CustomHeaders map[string]string
 	// SettleTime is how long to wait for the post-submit navigation / SPA to
 	// settle before capturing the session. Defaults to 5s.
 	SettleTime time.Duration

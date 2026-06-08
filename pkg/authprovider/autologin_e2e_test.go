@@ -123,7 +123,7 @@ dynamic:
 	require.NoError(t, os.WriteFile(secretsPath, []byte(secrets), 0o644))
 
 	// callback is nil: auto-login dynamics need no template store.
-	provider, err := NewFileAuthProvider(secretsPath, nil)
+	provider, err := NewFileAuthProvider(secretsPath, nil, nil)
 	require.NoError(t, err)
 
 	// Pre-fetch performs the real form login.

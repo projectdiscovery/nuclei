@@ -48,7 +48,7 @@ func writeSecretsFile(t *testing.T) string {
 // non-matching domains yield nothing. This is the browser-free core of the
 // headless+auth integration and runs reliably in CI.
 func TestHeadlessAuthFusion_RealProvider_E2E(t *testing.T) {
-	provider, err := authprovider.NewFileAuthProvider(writeSecretsFile(t), nil)
+	provider, err := authprovider.NewFileAuthProvider(writeSecretsFile(t), nil, nil)
 	require.NoError(t, err)
 
 	t.Run("matching domain materializes header and cookie", func(t *testing.T) {

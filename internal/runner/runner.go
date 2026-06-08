@@ -605,6 +605,7 @@ func (r *Runner) RunEnumeration() error {
 			TemplateStore: authTmplStore,
 			ExecOpts:      executorOpts,
 		})
+		authOpts.AutoLoginOptions = buildAutoLoginRuntimeOptions(r.options)
 		// initialize auth provider
 		provider, err := authprovider.NewAuthProvider(authOpts)
 		if err != nil {

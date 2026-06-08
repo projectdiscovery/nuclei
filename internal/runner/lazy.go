@@ -64,6 +64,39 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 	return store, nil
 }
 
+// buildAutoLoginRuntimeOptions maps scan-level options into the auto-login
+// runtime options so a (headless) auto-login uses the same identity and network
+// path as the scan: user-agent and custom headers (-H), proxy, CDP endpoint and
+// Chrome settings.
+func buildAutoLoginRuntimeOptions(opts *types.Options) *authx.AutoLoginRuntimeOptions {
+	rt := &authx.AutoLoginRuntimeOptions{
+		Proxy:              opts.AliveHttpProxy,
+		CDPEndpoint:        opts.CDPEndpoint,
+		UseInstalledChrome: opts.UseInstalledChrome,
+		ShowBrowser:        opts.ShowBrowser,
+	}
+	for _, header := range opts.CustomHeaders {
+		parts := strings.SplitN(header, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if key == "" || value == "" {
+			continue
+		}
+		if strings.EqualFold(key, "User-Agent") {
+			rt.UserAgent = value
+			continue
+		}
+		if rt.CustomHeaders == nil {
+			rt.CustomHeaders = map[string]string{}
+		}
+		rt.CustomHeaders[key] = value
+	}
+	return rt
+}
+
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets
 func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret {
 	return func(d *authx.Dynamic) error {

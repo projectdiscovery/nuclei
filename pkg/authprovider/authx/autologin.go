@@ -55,16 +55,33 @@ func (a *AutoLoginConfig) Validate() error {
 	return nil
 }
 
+// AutoLoginRuntimeOptions carries scan-level browser configuration (from
+// types.Options) into the auto-login engine so a headless login uses the same
+// identity (user-agent, headers), network path (proxy, CDP endpoint) and Chrome
+// settings as the scan. Per-secret YAML fields take precedence over these.
+type AutoLoginRuntimeOptions struct {
+	HTTPClient         *http.Client
+	UserAgent          string
+	CustomHeaders      map[string]string
+	Proxy              string
+	CDPEndpoint        string
+	UseInstalledChrome bool
+	ShowBrowser        bool
+}
+
 // SetAutoLoginCallback installs the fetch callback that performs the form-based
 // auto-login and renders the captured session into the secret. Unlike
 // SetLazyFetchCallback, it does not run the template-substitution wrapper: the
 // applied secret is built directly from the captured cookies/token, so it is
 // simply overwritten on each (re-)authentication.
 //
-// client is an optional template HTTP client whose Transport (proxy/TLS) is
-// reused for the login requests; pass nil for defaults.
-func (d *Dynamic) SetAutoLoginCallback(client *http.Client) {
-	d.autoLoginClient = client
+// rt carries optional scan-level browser/runtime options (user-agent, headers,
+// proxy, CDP endpoint, HTTP client); pass nil for defaults.
+func (d *Dynamic) SetAutoLoginCallback(rt *AutoLoginRuntimeOptions) {
+	if rt == nil {
+		rt = &AutoLoginRuntimeOptions{}
+	}
+	d.autoLoginClient = rt.HTTPClient
 	d.fetchCallback = func(d *Dynamic) error {
 		if d.AutoLogin == nil {
 			return errkit.New("auto-login callback invoked without auto-login config")
@@ -78,9 +95,12 @@ func (d *Dynamic) SetAutoLoginCallback(client *http.Client) {
 			TokenRegex:         d.AutoLogin.TokenRegex,
 			ExtraFields:        kvSliceToMap(d.AutoLogin.ExtraFields),
 			Headless:           d.AutoLogin.Headless,
-			ShowBrowser:        d.AutoLogin.ShowBrowser,
-			UseInstalledChrome: d.AutoLogin.UseInstalledChrome,
-			Proxy:              d.AutoLogin.Proxy,
+			ShowBrowser:        d.AutoLogin.ShowBrowser || rt.ShowBrowser,
+			UseInstalledChrome: d.AutoLogin.UseInstalledChrome || rt.UseInstalledChrome,
+			Proxy:              firstNonEmpty(d.AutoLogin.Proxy, rt.Proxy),
+			CDPEndpoint:        rt.CDPEndpoint,
+			UserAgent:          rt.UserAgent,
+			CustomHeaders:      rt.CustomHeaders,
 		}
 		var (
 			session *autologin.Session
@@ -139,6 +159,16 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 		return errkit.New("auto-login produced no applicable session (no cookies or token)")
 	}
 	return nil
+}
+
+// firstNonEmpty returns the first non-empty string argument.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // kvSliceToMap converts a slice of KV pairs to a map for the autologin engine.

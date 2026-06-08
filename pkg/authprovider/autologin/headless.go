@@ -65,13 +65,33 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 		return nil, errkit.Wrap(err, "auto-login(headless): failed to create incognito context")
 	}
 
-	page, err := incognito.Page(proto.TargetCreateTarget{URL: cfg.LoginURL})
+	page, err := incognito.Page(proto.TargetCreateTarget{})
 	if err != nil {
-		return nil, errkit.Wrap(err, "auto-login(headless): failed to open login page")
+		return nil, errkit.Wrap(err, "auto-login(headless): failed to open page")
 	}
 	defer func() { _ = page.Close() }()
 	page = page.Context(ctx).Timeout(timeout)
 
+	// Apply UA / custom headers before navigating so the login request carries
+	// the same identity as the scan.
+	if cfg.UserAgent != "" {
+		if uaErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: cfg.UserAgent}); uaErr != nil {
+			return nil, errkit.Wrap(uaErr, "auto-login(headless): failed to set user-agent")
+		}
+	}
+	if len(cfg.CustomHeaders) > 0 {
+		pairs := make([]string, 0, len(cfg.CustomHeaders)*2)
+		for k, v := range cfg.CustomHeaders {
+			pairs = append(pairs, k, v)
+		}
+		if _, hErr := page.SetExtraHeaders(pairs); hErr != nil {
+			return nil, errkit.Wrap(hErr, "auto-login(headless): failed to set custom headers")
+		}
+	}
+
+	if err := page.Navigate(cfg.LoginURL); err != nil {
+		return nil, errkit.Wrap(err, "auto-login(headless): failed to navigate to login page")
+	}
 	if err := page.WaitLoad(); err != nil {
 		return nil, errkit.Wrap(err, "auto-login(headless): login page failed to load")
 	}
@@ -159,8 +179,8 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 // cleanup func. A system-installed Chrome is preferred when available to avoid
 // triggering a managed-browser download.
 func launchBrowser(cfg Config) (*rod.Browser, func(), error) {
-	if cfg.ChromeWSURL != "" {
-		b := rod.New().ControlURL(cfg.ChromeWSURL)
+	if cfg.CDPEndpoint != "" {
+		b := rod.New().ControlURL(cfg.CDPEndpoint)
 		if err := b.Connect(); err != nil {
 			return nil, nil, err
 		}
