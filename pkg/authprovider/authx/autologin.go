@@ -32,6 +32,16 @@ type AutoLoginConfig struct {
 	// TokenRegex, when set, extracts a bearer token (first capture group) from
 	// the final response body for token-based logins that don't set a cookie.
 	TokenRegex string `json:"token-regex" yaml:"token-regex"`
+
+	// Headless drives a real browser for the login instead of the HTTP engine,
+	// enabling JS-rendered / SPA / multi-step / SSO login pages.
+	Headless bool `json:"headless" yaml:"headless"`
+	// ShowBrowser runs the headless browser headful (debugging only).
+	ShowBrowser bool `json:"show-browser" yaml:"show-browser"`
+	// UseInstalledChrome forces a system-installed Chrome for the headless login.
+	UseInstalledChrome bool `json:"use-installed-chrome" yaml:"use-installed-chrome"`
+	// Proxy routes the headless login's browser traffic through this proxy URL.
+	Proxy string `json:"proxy" yaml:"proxy"`
 }
 
 // Validate validates the auto-login configuration.
@@ -60,15 +70,29 @@ func (d *Dynamic) SetAutoLoginCallback(client *http.Client) {
 			return errkit.New("auto-login callback invoked without auto-login config")
 		}
 		cfg := autologin.Config{
-			LoginURL:      d.AutoLogin.LoginURL,
-			Username:      d.AutoLogin.Username,
-			Password:      d.AutoLogin.Password,
-			UsernameField: d.AutoLogin.UsernameField,
-			PasswordField: d.AutoLogin.PasswordField,
-			TokenRegex:    d.AutoLogin.TokenRegex,
-			ExtraFields:   kvSliceToMap(d.AutoLogin.ExtraFields),
+			LoginURL:           d.AutoLogin.LoginURL,
+			Username:           d.AutoLogin.Username,
+			Password:           d.AutoLogin.Password,
+			UsernameField:      d.AutoLogin.UsernameField,
+			PasswordField:      d.AutoLogin.PasswordField,
+			TokenRegex:         d.AutoLogin.TokenRegex,
+			ExtraFields:        kvSliceToMap(d.AutoLogin.ExtraFields),
+			Headless:           d.AutoLogin.Headless,
+			ShowBrowser:        d.AutoLogin.ShowBrowser,
+			UseInstalledChrome: d.AutoLogin.UseInstalledChrome,
+			Proxy:              d.AutoLogin.Proxy,
 		}
-		session, err := autologin.Login(context.Background(), d.autoLoginClient, cfg)
+		var (
+			session *autologin.Session
+			err     error
+		)
+		if d.AutoLogin.Headless {
+			// The browser engine runs JS, so it handles SPA / multi-step / SSO
+			// login pages the HTTP form submitter cannot.
+			session, err = autologin.LoginHeadless(context.Background(), cfg)
+		} else {
+			session, err = autologin.Login(context.Background(), d.autoLoginClient, cfg)
+		}
 		if err != nil {
 			return err
 		}

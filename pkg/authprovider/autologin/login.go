@@ -45,9 +45,27 @@ type Config struct {
 	// TokenRegex, when set, is applied to the final response body to extract a
 	// bearer/session token (first capture group). This enables token-based
 	// logins that return the token in the response body rather than a cookie.
+	// For headless logins it is also matched against window.localStorage.
 	TokenRegex string
 	// Timeout bounds the whole login flow. Defaults to 30s when zero.
 	Timeout time.Duration
+
+	// The following fields apply only to the headless engine (LoginHeadless).
+
+	// Headless drives a real browser (go-rod) instead of the HTTP engine,
+	// enabling JS-rendered / SPA / multi-step login pages.
+	Headless bool
+	// ShowBrowser runs the browser headful (useful for debugging).
+	ShowBrowser bool
+	// UseInstalledChrome forces using a system-installed Chrome binary.
+	UseInstalledChrome bool
+	// Proxy routes browser traffic through the given proxy URL.
+	Proxy string
+	// ChromeWSURL connects to an existing browser over CDP instead of launching one.
+	ChromeWSURL string
+	// SettleTime is how long to wait for the post-submit navigation / SPA to
+	// settle before capturing the session. Defaults to 5s.
+	SettleTime time.Duration
 }
 
 // Session is the captured result of a successful auto-login.
