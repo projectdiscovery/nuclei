@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"bytes"
 	"io"
 	"path/filepath"
 	"strconv"
@@ -559,11 +560,28 @@ func (template *Template) MarshalJSON() ([]byte, error) {
 	return out, multierr.Append(marshalErr, errValidate)
 }
 
+// NoStrictJSON disables strict JSON schema validation when unmarshaling
+// templates from JSON. When false (the default), unknown fields are rejected,
+// matching the strict YAML decode path used by [yaml.UnmarshalStrict].
+//
+// This package-level toggle mirrors the YAML strict-mode pattern: the decoder
+// for the outer JSON document cannot propagate strictness through a custom
+// [Template.UnmarshalJSON], so the option is consulted directly from the
+// inner unmarshal call. Set from the runner alongside Parser.NoStrictSyntax.
+var NoStrictJSON bool
+
 // UnmarshalJSON forces recursive struct validation after unmarshal operation
 func (template *Template) UnmarshalJSON(data []byte) error {
 	type Alias Template
 	alias := &Alias{}
-	err := json.Unmarshal(data, alias)
+	var err error
+	if NoStrictJSON {
+		err = json.Unmarshal(data, alias)
+	} else {
+		dec := json.NewDecoder(bytes.NewReader(data))
+		dec.DisallowUnknownFields()
+		err = dec.Decode(alias)
+	}
 	if err != nil {
 		return err
 	}

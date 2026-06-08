@@ -3,6 +3,8 @@ package templates
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -111,6 +113,59 @@ func TestLoadTemplate(t *testing.T) {
 			require.Equal(t, tc.isValid, success)
 		})
 	}
+
+	// Regression test for projectdiscovery/nuclei#7448.
+	//
+	// Templates loaded from JSON used to silently accept unknown fields because
+	// [Template.UnmarshalJSON] delegated to a non-strict json.Unmarshal call.
+	// That meant `-validate` would pass templates that contained typoed fields
+	// or HTTP-only fields on a network.Request block, which then failed at
+	// runtime with the unknown-field error. Strict mode is the default and
+	// must be opt-out via [NoStrictJSON] (set from the runner's
+	// `-no-strict-syntax` flag).
+	t.Run("strictJSONRejectsUnknownFields", func(t *testing.T) {
+		const tmpl = `{
+  "id": "JSON-UNKNOWN-FIELD",
+  "info": {
+    "name": "strict json regression",
+    "author": "anonymous",
+    "severity": "info",
+    "tags": "test"
+  },
+  "tcp": [{
+    "host": ["{{Hostname}}"],
+    "port": "80",
+    "name": "first_read",
+    "req-condition": true,
+    "bogus_field_42": "anything",
+    "inputs": [{"data": "X"}],
+    "matchers": [{"type": "word", "words": ["HTTP"]}]
+  }]
+}`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.json")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		// Strict mode (default): unknown fields must be rejected.
+		prev := NoStrictJSON
+		t.Cleanup(func() { NoStrictJSON = prev })
+
+		NoStrictJSON = false
+		strictParser := NewParser()
+		_, err := strictParser.ParseTemplate(path, disk.NewCatalog(""))
+		require.Error(t, err, "expected strict JSON decode to reject unknown fields")
+		require.Contains(t, err.Error(), "unknown field", "expected unknown-field error, got: %v", err)
+
+		// Lax mode: when NoStrictJSON is set (via the -no-strict-syntax flag)
+		// the same template must still parse, preserving the historical opt-out.
+		NoStrictJSON = true
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		laxPath := filepath.Join(dir, "tmpl-lax.json")
+		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
+		_, err = laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
+		require.NoError(t, err, "NoStrictJSON should allow unknown fields")
+	})
 
 	t.Run("invalidTemplateID", func(t *testing.T) {
 		tt := []struct {
