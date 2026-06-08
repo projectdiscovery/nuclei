@@ -2,6 +2,7 @@ package authx
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,12 @@ type Dynamic struct {
 	Input        string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted    map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 
+	// AutoLogin, when set, replaces the template-based login (TemplatePath) with
+	// a turnkey form-based auto-login: nuclei fetches the login page, detects the
+	// form and submits the supplied credentials, capturing the session
+	// automatically. It is mutually exclusive with TemplatePath.
+	AutoLogin *AutoLoginConfig `json:"auto-login" yaml:"auto-login"`
+
 	// RefreshInterval, when set (e.g. "15m"), causes the session to be
 	// re-authenticated automatically once the rendered secret is older than the
 	// interval. When empty/zero the session is fetched once and never expires by time.
@@ -67,6 +74,9 @@ type Dynamic struct {
 	fetchState *fetchState `json:"-" yaml:"-"`
 	// refreshInterval is the parsed form of RefreshInterval.
 	refreshInterval time.Duration `json:"-" yaml:"-"`
+	// autoLoginClient is an optional template HTTP client (proxy/TLS) reused for
+	// auto-login requests. nil means use the autologin engine's defaults.
+	autoLoginClient *http.Client `json:"-" yaml:"-"`
 	// origSecret/origSecrets hold pristine copies of the secret templates (with
 	// their {{var}} placeholders intact) captured before the first fetch. They are
 	// used to re-render the secret on each re-authentication, since substitution
@@ -113,6 +123,40 @@ func (d *Dynamic) Validate() error {
 	// NOTE: Validate() must not be called concurrently with Fetch()/GetStrategies().
 	// Re-validating resets fetch state and allows re-fetching.
 	d.fetchState = &fetchState{}
+
+	// Auto-login is a template-free alternative to TemplatePath. When set, it is
+	// validated on its own and the template/variables requirements do not apply;
+	// domains (used for scoping the captured session) are still required.
+	if d.AutoLogin != nil {
+		if d.TemplatePath != "" {
+			return errkit.New("auto-login and template are mutually exclusive for dynamic secret")
+		}
+		if err := d.AutoLogin.Validate(); err != nil {
+			return err
+		}
+		domains, domainsRegex := d.GetDomainAndDomainRegex()
+		if len(domains) == 0 && len(domainsRegex) == 0 {
+			return errkit.New("domains or domains-regex are required for auto-login dynamic secret")
+		}
+		if d.RefreshInterval != "" {
+			dur, err := time.ParseDuration(d.RefreshInterval)
+			if err != nil {
+				return errkit.New("invalid refresh-interval %q for dynamic secret: %s", d.RefreshInterval, err)
+			}
+			if dur < 0 {
+				return errkit.New("refresh-interval cannot be negative for dynamic secret")
+			}
+			d.refreshInterval = dur
+		}
+		// The applied secret is built from the captured session at fetch time, so
+		// skip the (pre-fetch) Secret.Validate which would reject the still-empty
+		// cookies/token. We only need its domains, captured above.
+		if d.Secret != nil {
+			d.skipCookieParse = true
+		}
+		return nil
+	}
+
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}

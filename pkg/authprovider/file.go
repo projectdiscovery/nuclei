@@ -29,8 +29,14 @@ func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvi
 	if len(store.Secrets) == 0 && len(store.Dynamic) == 0 {
 		return nil, ErrNoSecrets
 	}
-	if len(store.Dynamic) > 0 && callback == nil {
-		return nil, errkit.New("lazy fetch callback is required for dynamic secrets")
+	if callback == nil {
+		// The lazy fetch callback is only required for template-based dynamic
+		// secrets; auto-login dynamics resolve their session without a template.
+		for _, dynamic := range store.Dynamic {
+			if dynamic.AutoLogin == nil {
+				return nil, errkit.New("lazy fetch callback is required for dynamic secrets")
+			}
+		}
 	}
 	for _, secret := range store.Secrets {
 		if err := secret.Validate(); err != nil {
@@ -45,7 +51,13 @@ func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvi
 			errorErr.Msgf("invalid dynamic in file: %s", path)
 			return nil, errorErr
 		}
-		dynamic.SetLazyFetchCallback(callback)
+		if dynamic.AutoLogin != nil {
+			// Auto-login resolves its session via the form-login engine rather
+			// than a template, so it uses a dedicated callback.
+			dynamic.SetAutoLoginCallback(nil)
+		} else {
+			dynamic.SetLazyFetchCallback(callback)
+		}
 		store.Dynamic[i] = dynamic
 	}
 	f := &FileAuthProvider{Path: path, store: store}

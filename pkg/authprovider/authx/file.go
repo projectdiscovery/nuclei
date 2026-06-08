@@ -227,6 +227,11 @@ func GetTemplatePathsFromSecretFile(file string) ([]string, error) {
 	}
 	var paths []string
 	for _, dynamic := range auth.Dynamic {
+		// Auto-login dynamics have no template path; skip them so we don't try to
+		// load an empty template.
+		if dynamic.TemplatePath == "" {
+			continue
+		}
 		paths = append(paths, dynamic.TemplatePath)
 	}
 	return paths, nil
