@@ -13,6 +13,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -69,6 +70,20 @@ func newDastApp() *httptest.Server {
 		if strings.ContainsAny(dec, "'\"") {
 			sqlErr(w)
 			return
+		}
+		fmt.Fprint(w, "ok")
+	})
+
+	// SQLi in a JSON body parameter (name) on a POST route. We inspect the
+	// decoded field value (not the structural JSON quotes) so the baseline
+	// request stays benign and only an injected quote triggers the error.
+	mux.HandleFunc("/account", func(w http.ResponseWriter, r *http.Request) {
+		var m map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&m); err == nil {
+			if name, ok := m["name"].(string); ok && strings.ContainsAny(name, "'\"") {
+				sqlErr(w)
+				return
+			}
 		}
 		fmt.Fprint(w, "ok")
 	})
@@ -180,6 +195,14 @@ type pipelineResult struct {
 // returning whether the engine produced a finding driven by the analyzer.
 func runPipeline(t *testing.T, opts *types.Options, analyzer, part string, targetURL string, keys []string) pipelineResult {
 	t.Helper()
+	return runPipelineCtx(t, opts, analyzer, part, keys, contextargs.NewWithInput(context.Background(), targetURL))
+}
+
+// runPipelineCtx is the shared core: it accepts a fully built input context
+// (URL-based or ReqResp-based, e.g. from a katana crawl) and runs the real
+// fuzzing+analyzer template against it.
+func runPipelineCtx(t *testing.T, opts *types.Options, analyzer, part string, keys []string, ctxArgs *contextargs.Context) pipelineResult {
+	t.Helper()
 
 	templateID := "dast-" + analyzer + "-" + part
 	rule := &fuzz.Rule{
@@ -216,7 +239,6 @@ func runPipeline(t *testing.T, opts *types.Options, analyzer, part string, targe
 	var res pipelineResult
 	metadata := make(output.InternalEvent)
 	previous := make(output.InternalEvent)
-	ctxArgs := contextargs.NewWithInput(context.Background(), targetURL)
 	err := req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
 			res.matched = true
