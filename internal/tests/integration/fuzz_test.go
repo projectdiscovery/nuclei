@@ -62,6 +62,31 @@ var fuzzingTestCases = []integrationCase{
 	{Path: "fuzz/analyzer-crlf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/headers?q=/home", expectedResults: 0}},
 	{Path: "fuzz/analyzer-cors.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/cors?q=x", expectedResults: 0}},
 	{Path: "fuzz/analyzer-host-header.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/safe/host?q=x", expectedResults: 0}},
+
+	// Non-query positions: each template fuzzes a different request component
+	// (path / header / body / cookie) of a captured request and relies on an
+	// analyzer for detection. Driven via the proxify-format capture file.
+	{Path: "fuzz/analyzer-path-sqli.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
+	{Path: "fuzz/analyzer-header-sqli.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
+	{Path: "fuzz/analyzer-body-sqli.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
+	{Path: "fuzz/analyzer-cookie-ssti.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
+}
+
+const analyzerPositionsTargetFile = "fuzz/testData/analyzer-positions.proxify.yaml"
+
+// analyzerPositionTestCase runs an analyzer-driven template that fuzzes a
+// non-query component against the captured analyzer-bench requests. Only the
+// request matching the template's fuzzed component produces a finding.
+type analyzerPositionTestCase struct {
+	expectedResults int
+}
+
+func (a *analyzerPositionTestCase) Execute(filePath string) error {
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-t", filePath, "-l", analyzerPositionsTargetFile, "-im", "yaml", "-dast")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, a.expectedResults)
 }
 
 // analyzerFuzzTestCase runs an analyzer-driven fuzzing template against the

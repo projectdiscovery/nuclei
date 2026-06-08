@@ -1,0 +1,37 @@
+id: analyzer-cookie-ssti
+
+info:
+  name: Cookie-position SSTI via analyzer
+  author: pdteam
+  severity: critical
+  description: |
+    Drives the ssti analyzer while fuzzing the "lang" cookie value, proving the
+    analyzer works on the cookie component through the real pipeline. SSTI is
+    used (not SQLi) because cookie value sanitization strips SQLi quote payloads.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "GET"'
+          - 'len(cookie) > 0'
+        condition: and
+
+    payloads:
+      seed:
+        - "en"
+
+    fuzzing:
+      - part: cookie
+        type: replace
+        mode: single
+        keys:
+          - "lang"
+        fuzz:
+          - "{{seed}}"
+    analyzer:
+      name: ssti
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

@@ -2,6 +2,7 @@
 package fuzzplayground
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -64,6 +65,13 @@ func registerAnalyzerRoutes(e *echo.Echo) {
 	e.GET("/analyzer/safe/cors", analyzerSafeCORSHandler)
 	e.GET("/analyzer/safe/headers", analyzerSafeHeadersHandler)
 	e.GET("/analyzer/safe/host", analyzerSafeHostHandler)
+
+	// Non-query positions: prove the analyzers fuzz path / header / cookie / body
+	// components through the real pipeline, not just query parameters.
+	e.GET("/analyzer/path/sqli/:id", analyzerPathSQLiHandler)
+	e.GET("/analyzer/header/sqli", analyzerHeaderSQLiHandler)
+	e.POST("/analyzer/body/sqli", analyzerBodySQLiHandler)
+	e.GET("/analyzer/cookie/ssti", analyzerCookieSSTIHandler)
 }
 
 // reArithmeticTemplate emulates a real template engine: it matches an arithmetic
@@ -210,6 +218,56 @@ func analyzerSafeHeadersHandler(ctx echo.Context) error {
 // analyzerSafeHostHandler always builds links from a fixed, trusted host.
 func analyzerSafeHostHandler(ctx echo.Context) error {
 	return ctx.HTML(http.StatusOK, `<a href="https://app.example.com/reset?token=abc">reset</a>`)
+}
+
+// --- Non-query position handlers -------------------------------------------
+
+// sqliFromValue runs the value through the real sqlite query so a quote yields a
+// genuine "unrecognized token" error that the sqli_error analyzer fingerprints.
+func sqliFromValue(ctx echo.Context, value string) error {
+	posts, err := getUnsanitizedPostsByLang(db, value)
+	if err != nil {
+		return ctx.String(http.StatusInternalServerError, err.Error())
+	}
+	return ctx.JSON(http.StatusOK, posts)
+}
+
+// analyzerPathSQLiHandler is error-based SQLi on a path segment (:id).
+func analyzerPathSQLiHandler(ctx echo.Context) error {
+	return sqliFromValue(ctx, ctx.Param("id"))
+}
+
+// analyzerHeaderSQLiHandler is error-based SQLi on the X-Search request header.
+func analyzerHeaderSQLiHandler(ctx echo.Context) error {
+	return sqliFromValue(ctx, ctx.Request().Header.Get("X-Search"))
+}
+
+// analyzerBodySQLiHandler is error-based SQLi on the JSON body "name" field.
+func analyzerBodySQLiHandler(ctx echo.Context) error {
+	var payload struct {
+		Name string `json:"name"`
+	}
+	body, _ := io.ReadAll(ctx.Request().Body)
+	_ = json.Unmarshal(body, &payload)
+	return sqliFromValue(ctx, payload.Name)
+}
+
+// analyzerCookieSSTIHandler evaluates arithmetic template expressions found in
+// the "lang" cookie. SSTI (not SQLi) is used here because Go's cookie value
+// sanitization strips the quotes SQLi relies on, whereas SSTI payload
+// characters ({ } * $) are cookie-legal.
+func analyzerCookieSSTIHandler(ctx echo.Context) error {
+	val := "en"
+	if c, err := ctx.Cookie("lang"); err == nil {
+		val = c.Value
+	}
+	out := reArithmeticTemplate.ReplaceAllStringFunc(val, func(m string) string {
+		sub := reArithmeticTemplate.FindStringSubmatch(m)
+		a, _ := strconv.Atoi(sub[1])
+		b, _ := strconv.Atoi(sub[2])
+		return strconv.Itoa(a * b)
+	})
+	return ctx.HTML(http.StatusOK, fmt.Sprintf(bodyTemplate, "lang="+out))
 }
 
 var bodyTemplate = `<html>
