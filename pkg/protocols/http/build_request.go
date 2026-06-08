@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -137,6 +138,36 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 		// rawhttp request format ( which we probably should have )
 		for _, strategy := range authStrategies {
 			g.rawRequest.ApplyAuthStrategy(strategy)
+		}
+	}
+}
+
+// NotifyResponse forwards the response status code to any auth strategies that
+// inspect responses (e.g. dynamic secrets), so an expired session can be
+// detected and re-authenticated before the next request.
+func (g *generatedRequest) NotifyResponse(provider authprovider.AuthProvider, resp *http.Response) {
+	if provider == nil || resp == nil {
+		return
+	}
+	var target *urlutil.URL
+	switch {
+	case g.request != nil:
+		target = g.request.URL
+	case g.rawRequest != nil:
+		parsed, err := urlutil.ParseAbsoluteURL(g.rawRequest.FullURL, true)
+		if err != nil {
+			return
+		}
+		target = parsed
+	}
+	if target == nil {
+		return
+	}
+	for _, strategy := range provider.LookupURLX(target) {
+		if inspector, ok := strategy.(authx.ResponseInspector); ok {
+			if inspector.OnResponse(resp.StatusCode) {
+				gologger.Verbose().Msgf("[authprovider] Session expired (status %d) for %s, will re-authenticate\n", resp.StatusCode, target.Host)
+			}
 		}
 	}
 }
