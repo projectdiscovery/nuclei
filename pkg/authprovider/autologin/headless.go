@@ -98,35 +98,13 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 	// Give client-side scripts a chance to render the form.
 	_ = rod.Try(func() { page.Timeout(settle).MustWaitStable() })
 
-	// Prefer field names detected from the rendered DOM; fall back to type-based
-	// selectors for SPA inputs that carry no name attribute.
-	var detected *LoginForm
-	if html, herr := page.HTML(); herr == nil {
-		detected, _ = DetectLoginForm(html, loginURL)
-	}
-
-	passEl := locatePasswordField(page, cfg, detected)
-	if passEl == nil {
-		return nil, errkit.Wrap(ErrNoLoginForm, "auto-login(headless): no password field found in rendered page")
-	}
-	if userEl := locateUsernameField(page, cfg, detected); userEl != nil && cfg.Username != "" {
-		if err := typeInto(userEl, cfg.Username); err != nil {
-			return nil, errkit.Wrap(err, "auto-login(headless): failed to type username")
+	if len(cfg.Steps) > 0 {
+		// Explicit multi-step flow (username-first / SSO / consent screens).
+		if err := runLoginSteps(ctx, page, cfg, settle); err != nil {
+			return nil, err
 		}
-	}
-	if err := typeInto(passEl, cfg.Password); err != nil {
-		return nil, errkit.Wrap(err, "auto-login(headless): failed to type password")
-	}
-
-	// Submit: click a submit control if present, otherwise press Enter in the
-	// password field.
-	if btn := findVisible(page, `button[type="submit"]`, `input[type="submit"]`, `button:not([type])`, `[role="button"]`); btn != nil {
-		_ = btn.ScrollIntoView()
-		if err := btn.Click(proto.InputMouseButtonLeft, 1); err != nil {
-			return nil, errkit.Wrap(err, "auto-login(headless): failed to click submit")
-		}
-	} else if err := passEl.Type(input.Enter); err != nil {
-		return nil, errkit.Wrap(err, "auto-login(headless): failed to submit form")
+	} else if err := autoFillAndSubmit(page, cfg, loginURL); err != nil {
+		return nil, err
 	}
 
 	// Wait for the post-submit navigation / SPA state to settle.
@@ -217,6 +195,161 @@ func launchBrowser(cfg Config) (*rod.Browser, func(), error) {
 		return nil, nil, err
 	}
 	return b, func() { _ = b.Close(); l.Kill() }, nil
+}
+
+// autoFillAndSubmit runs the default single-shot login: detect the password
+// (and username) field, type the credentials and submit.
+func autoFillAndSubmit(page *rod.Page, cfg Config, loginURL *url.URL) error {
+	// Prefer field names detected from the rendered DOM; fall back to type-based
+	// selectors for SPA inputs that carry no name attribute.
+	var detected *LoginForm
+	if html, herr := page.HTML(); herr == nil {
+		detected, _ = DetectLoginForm(html, loginURL)
+	}
+
+	passEl := locatePasswordField(page, cfg, detected)
+	if passEl == nil {
+		return errkit.Wrap(ErrNoLoginForm, "auto-login(headless): no password field found in rendered page")
+	}
+	if userEl := locateUsernameField(page, cfg, detected); userEl != nil && cfg.Username != "" {
+		if err := typeInto(userEl, cfg.Username); err != nil {
+			return errkit.Wrap(err, "auto-login(headless): failed to type username")
+		}
+	}
+	if err := typeInto(passEl, cfg.Password); err != nil {
+		return errkit.Wrap(err, "auto-login(headless): failed to type password")
+	}
+	return submitForm(page, passEl)
+}
+
+// submitForm clicks a submit control if present, otherwise presses Enter in the
+// given field element.
+func submitForm(page *rod.Page, fallbackField *rod.Element) error {
+	if btn := findVisible(page, `button[type="submit"]`, `input[type="submit"]`, `button:not([type])`, `[role="button"]`); btn != nil {
+		_ = btn.ScrollIntoView()
+		if err := btn.Click(proto.InputMouseButtonLeft, 1); err != nil {
+			return errkit.Wrap(err, "auto-login(headless): failed to click submit")
+		}
+		return nil
+	}
+	if fallbackField != nil {
+		if err := fallbackField.Type(input.Enter); err != nil {
+			return errkit.Wrap(err, "auto-login(headless): failed to submit form")
+		}
+	}
+	return nil
+}
+
+// runLoginSteps executes an explicit multi-step login flow.
+func runLoginSteps(ctx context.Context, page *rod.Page, cfg Config, settle time.Duration) error {
+	for i, step := range cfg.Steps {
+		action := strings.ToLower(strings.TrimSpace(step.Action))
+		switch action {
+		case "navigate":
+			if err := page.Navigate(step.Value); err != nil {
+				return errkit.Wrapf(err, "login step %d (navigate): failed", i)
+			}
+			_ = page.WaitLoad()
+		case "fill", "input", "type":
+			el := findVisible(page, byName(step.Selector), step.Selector)
+			if el == nil {
+				return errkit.Newf("login step %d (fill): element not found: %s", i, step.Selector)
+			}
+			if err := typeInto(el, expandCredentials(step.Value, cfg)); err != nil {
+				return errkit.Wrapf(err, "login step %d (fill): failed", i)
+			}
+		case "click":
+			el := findVisible(page, step.Selector)
+			if el == nil {
+				return errkit.Newf("login step %d (click): element not found: %s", i, step.Selector)
+			}
+			_ = el.ScrollIntoView()
+			if err := el.Click(proto.InputMouseButtonLeft, 1); err != nil {
+				return errkit.Wrapf(err, "login step %d (click): failed", i)
+			}
+		case "waitvisible":
+			if err := waitVisible(ctx, page, step.Selector, settle); err != nil {
+				return errkit.Wrapf(err, "login step %d (waitvisible)", i)
+			}
+		case "wait":
+			d := settle
+			if step.Value != "" {
+				if pd, perr := time.ParseDuration(step.Value); perr == nil {
+					d = pd
+				}
+			}
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		case "press":
+			key, kerr := keyFromName(step.Value)
+			if kerr != nil {
+				return errkit.Wrapf(kerr, "login step %d (press)", i)
+			}
+			if step.Selector != "" {
+				el := findVisible(page, byName(step.Selector), step.Selector)
+				if el == nil {
+					return errkit.Newf("login step %d (press): element not found: %s", i, step.Selector)
+				}
+				if err := el.Type(key); err != nil {
+					return errkit.Wrapf(err, "login step %d (press): failed", i)
+				}
+			} else if err := page.Keyboard.Type(key); err != nil {
+				return errkit.Wrapf(err, "login step %d (press): failed", i)
+			}
+		case "submit":
+			if err := submitForm(page, findVisible(page, `input[type="password"]`)); err != nil {
+				return errkit.Wrapf(err, "login step %d (submit)", i)
+			}
+		default:
+			return errkit.Newf("login step %d: unknown action %q", i, step.Action)
+		}
+		// Let the page settle between steps so the next selector is present.
+		_ = rod.Try(func() { page.Timeout(settle).MustWaitStable() })
+	}
+	return nil
+}
+
+// expandCredentials substitutes the {{username}}/{{password}} placeholders in a
+// step value with the configured credentials.
+func expandCredentials(value string, cfg Config) string {
+	value = strings.ReplaceAll(value, "{{username}}", cfg.Username)
+	value = strings.ReplaceAll(value, "{{password}}", cfg.Password)
+	return value
+}
+
+// keyFromName maps a friendly key name to a go-rod input key.
+func keyFromName(name string) (input.Key, error) {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "", "enter", "return":
+		return input.Enter, nil
+	case "tab":
+		return input.Tab, nil
+	case "escape", "esc":
+		return input.Escape, nil
+	case "space":
+		return input.Space, nil
+	default:
+		return 0, errkit.Newf("unsupported key %q (supported: enter, tab, escape, space)", name)
+	}
+}
+
+// waitVisible polls until the selector becomes visible or the timeout elapses.
+func waitVisible(ctx context.Context, page *rod.Page, selector string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if findVisible(page, selector) != nil {
+			return nil
+		}
+		select {
+		case <-time.After(150 * time.Millisecond):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return errkit.Newf("timeout waiting for element to become visible: %s", selector)
 }
 
 // locatePasswordField finds the password input, honoring an explicit override

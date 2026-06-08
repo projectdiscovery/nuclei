@@ -131,6 +131,76 @@ func TestLoginHeadless_JSRenderedForm(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+// twoStepLoginPage is a username-first flow: the password field is hidden until
+// the "Next" button is clicked, mimicking Google/Microsoft-style logins.
+const twoStepLoginPage = `<html><head><title>Login</title></head><body>
+<form id="f" action="/login" method="post">
+  <input type="email" name="email" id="email">
+  <button type="button" id="next">Next</button>
+  <div id="pwwrap" style="display:none">
+    <input type="password" name="password" id="password">
+    <button type="submit" id="submit">Sign in</button>
+  </div>
+</form>
+<script>
+  document.getElementById('next').addEventListener('click', function () {
+    document.getElementById('pwwrap').style.display = 'block';
+  });
+</script></body></html>`
+
+func TestLoginHeadless_MultiStep(t *testing.T) {
+	requireChrome(t)
+
+	app := newJSLoginApp()
+	srv := httptest.NewServer(func() http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprint(w, twoStepLoginPage)
+				return
+			}
+			_ = r.ParseForm()
+			if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprint(w, twoStepLoginPage)
+				return
+			}
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
+			app.mu.Lock()
+			app.sessions["sess-dave"] = true
+			app.mu.Unlock()
+			http.Redirect(w, r, "/dashboard", http.StatusFound)
+		})
+		mux.HandleFunc("/dashboard", app.handleDashboard)
+		return mux
+	}())
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   srv.URL + "/login",
+		Username:   "dave@example.com",
+		Password:   "p@ss",
+		SettleTime: 1 * time.Second,
+		Steps: []LoginStep{
+			{Action: "fill", Selector: "#email", Value: "{{username}}"},
+			{Action: "click", Selector: "#next"},
+			{Action: "waitvisible", Selector: "#password"},
+			{Action: "fill", Selector: "#password", Value: "{{password}}"},
+			{Action: "click", Selector: "#submit"},
+		},
+	})
+	require.NoError(t, err)
+
+	names := map[string]string{}
+	for _, c := range session.Cookies {
+		names[c.Name] = c.Value
+	}
+	require.Contains(t, names, "session", "multi-step login should capture the session cookie")
+}
+
 func TestLoginHeadless_WrongPasswordFails(t *testing.T) {
 	requireChrome(t)
 

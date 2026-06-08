@@ -42,6 +42,9 @@ type AutoLoginConfig struct {
 	UseInstalledChrome bool `json:"use-installed-chrome" yaml:"use-installed-chrome"`
 	// Proxy routes the headless login's browser traffic through this proxy URL.
 	Proxy string `json:"proxy" yaml:"proxy"`
+	// Steps, when set, drives an explicit multi-step headless login flow
+	// (username-first / SSO / consent screens) instead of single-shot detection.
+	Steps []autologin.LoginStep `json:"steps" yaml:"steps"`
 }
 
 // Validate validates the auto-login configuration.
@@ -101,6 +104,7 @@ func (d *Dynamic) SetAutoLoginCallback(rt *AutoLoginRuntimeOptions) {
 			CDPEndpoint:        rt.CDPEndpoint,
 			UserAgent:          rt.UserAgent,
 			CustomHeaders:      rt.CustomHeaders,
+			Steps:              d.AutoLogin.Steps,
 		}
 		var (
 			session *autologin.Session

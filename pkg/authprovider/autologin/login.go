@@ -72,6 +72,24 @@ type Config struct {
 	// SettleTime is how long to wait for the post-submit navigation / SPA to
 	// settle before capturing the session. Defaults to 5s.
 	SettleTime time.Duration
+	// Steps, when non-empty, drives an explicit multi-step headless login
+	// (e.g. username-first / SSO consent flows) instead of the single-shot
+	// auto-detect-and-submit path. Ignored by the HTTP engine.
+	Steps []LoginStep
+}
+
+// LoginStep is a single action in an explicit multi-step headless login flow.
+// In Value, the placeholders {{username}} and {{password}} are substituted with
+// the configured credentials so secrets stay out of the step list.
+type LoginStep struct {
+	// Action is one of: navigate, fill, click, waitvisible, wait, press, submit.
+	Action string `json:"action" yaml:"action"`
+	// Selector is a CSS selector (or, for fill/press, an input name) the action
+	// targets. Unused by navigate/wait.
+	Selector string `json:"selector" yaml:"selector"`
+	// Value is the action argument: a URL (navigate), text to type (fill), a key
+	// name such as "enter"/"tab" (press) or a duration like "2s" (wait).
+	Value string `json:"value" yaml:"value"`
 }
 
 // Session is the captured result of a successful auto-login.
