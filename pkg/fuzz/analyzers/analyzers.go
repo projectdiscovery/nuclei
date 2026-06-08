@@ -33,6 +33,8 @@ type AnalyzerTemplate struct {
 	//   - lfi
 	//   - open_redirect
 	//   - crlf
+	//   - ssrf
+	//   - cors
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
