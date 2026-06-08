@@ -40,6 +40,11 @@ type fetchState struct {
 	// re-authentication observe the same, freshly-captured storage.
 	webStorageLocal   map[string]string
 	webStorageSession map[string]string
+	// autoLoginSecrets holds extra applied secrets derived from an auto-login
+	// session (e.g. a bearer token captured alongside a session cookie). They
+	// live on the shared fetchState rather than the per-copy Dynamic.Secrets
+	// slice so every domain-scoped value-copy applies the same captured session.
+	autoLoginSecrets []*Secret
 }
 
 var (
@@ -360,6 +365,11 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 			strategies = append(strategies, s)
 		}
 	}
+	for _, secret := range d.fetchState.autoLoginSecrets {
+		if s := secret.GetStrategy(); s != nil {
+			strategies = append(strategies, s)
+		}
+	}
 	return strategies
 }
 
@@ -384,6 +394,11 @@ func (d *Dynamic) ApplyStrategies(apply func(AuthStrategy)) {
 		}
 	}
 	for _, secret := range d.Secrets {
+		if s := secret.GetStrategy(); s != nil {
+			apply(s)
+		}
+	}
+	for _, secret := range d.fetchState.autoLoginSecrets {
 		if s := secret.GetStrategy(); s != nil {
 			apply(s)
 		}

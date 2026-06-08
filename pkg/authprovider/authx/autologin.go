@@ -197,11 +197,14 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 	d.Secret.Token = ""
 	d.Secrets = nil
 
-	// Stash captured web storage (headless logins only) on the shared fetchState
-	// so the headless engine can replay it into scan pages. Reset each re-auth.
+	// Stash captured web storage (headless logins only) and any extra derived
+	// secrets on the shared fetchState so every domain-scoped value-copy and a
+	// re-authentication observe the same, freshly-captured session. Reset both
+	// each re-auth.
 	if d.fetchState != nil {
 		d.fetchState.webStorageLocal = session.LocalStorage
 		d.fetchState.webStorageSession = session.SessionStorage
+		d.fetchState.autoLoginSecrets = nil
 	}
 
 	hasCookies := len(session.Cookies) > 0
@@ -224,9 +227,10 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 		for _, c := range session.Cookies {
 			d.Secret.Cookies = append(d.Secret.Cookies, Cookie{Key: c.Name, Value: c.Value})
 		}
-		if hasToken {
-			// Apply the token as an additional bearer header secret.
-			d.Secrets = append(d.Secrets, &Secret{
+		if hasToken && d.fetchState != nil {
+			// Apply the token as an additional bearer header secret on the shared
+			// fetchState so it reaches every domain the secret is scoped to.
+			d.fetchState.autoLoginSecrets = append(d.fetchState.autoLoginSecrets, &Secret{
 				Type:    string(BearerTokenAuth),
 				Domains: d.Secret.Domains,
 				Token:   session.Token,

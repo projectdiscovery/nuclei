@@ -41,16 +41,20 @@ func TestApplyAutoLoginSession_TokenOnly(t *testing.T) {
 
 func TestApplyAutoLoginSession_CookiesAndToken(t *testing.T) {
 	d := newAutoLoginDynamic()
+	require.NoError(t, d.Validate())
 	err := d.applyAutoLoginSession(&autologin.Session{
 		Cookies: []*http.Cookie{{Name: "session", Value: "abc"}},
 		Token:   "jwt-123",
 	})
 	require.NoError(t, err)
 	require.Equal(t, string(CookiesAuth), d.Secret.Type)
-	require.Len(t, d.Secrets, 1, "token should be applied as an additional bearer secret")
-	require.Equal(t, string(BearerTokenAuth), d.Secrets[0].Type)
-	require.Equal(t, "jwt-123", d.Secrets[0].Token)
-	require.Equal(t, []string{"app.example.com"}, d.Secrets[0].Domains)
+	// The bearer lives on the shared fetchState (so it reaches every scoped
+	// domain), not on the per-copy Secrets slice.
+	require.Empty(t, d.Secrets, "bearer must not live on the per-copy Secrets slice")
+	require.Len(t, d.fetchState.autoLoginSecrets, 1, "token should be applied as an additional bearer secret")
+	require.Equal(t, string(BearerTokenAuth), d.fetchState.autoLoginSecrets[0].Type)
+	require.Equal(t, "jwt-123", d.fetchState.autoLoginSecrets[0].Token)
+	require.Equal(t, []string{"app.example.com"}, d.fetchState.autoLoginSecrets[0].Domains)
 }
 
 func TestApplyAutoLoginSession_Empty(t *testing.T) {
@@ -90,8 +94,11 @@ func TestDynamic_WebStorage_ConcurrentReauth(t *testing.T) {
 	// Each (re)auth captures a fresh storage map, simulating a new session.
 	d.fetchCallback = func(dyn *Dynamic) error {
 		n := gen.Add(1)
+		// Cookie + token + storage so every shared-state write path (Secret,
+		// fetchState.autoLoginSecrets, webStorage) is exercised under -race.
 		return dyn.applyAutoLoginSession(&autologin.Session{
 			Cookies:      []*http.Cookie{{Name: "session", Value: fmt.Sprintf("v%d", n)}},
+			Token:        fmt.Sprintf("token-%d", n),
 			LocalStorage: map[string]string{"jwt": fmt.Sprintf("token-%d", n)},
 		})
 	}
@@ -121,6 +128,8 @@ func TestDynamic_WebStorage_ConcurrentReauth(t *testing.T) {
 					for k, v := range session {
 						_ = k + v
 					}
+					// Also materialize strategies (reads shared autoLoginSecrets).
+					_ = strategy.Dynamic.GetStrategies()
 				case 2:
 					strategy.Dynamic.ApplyStrategies(func(AuthStrategy) {})
 				default:
@@ -134,6 +143,45 @@ func TestDynamic_WebStorage_ConcurrentReauth(t *testing.T) {
 	// After the storm, a fresh fetch must still yield a consistent session.
 	local, _ := strategy.WebStorage()
 	require.NotEmpty(t, local["jwt"], "storage must remain populated after concurrent re-auth")
+}
+
+// TestAutoLogin_MultiDomain_BearerSharedAcrossCopies reproduces a sharing bug:
+// the auto-login session (cookie + bearer token) must be applied on *every*
+// domain the secret is scoped to, not just the one whose DynamicAuthStrategy
+// copy happened to trigger the login. init() creates one value-copy per domain,
+// all sharing *Secret and *fetchState; the extra bearer secret must be visible
+// to sibling copies too.
+func TestAutoLogin_MultiDomain_BearerSharedAcrossCopies(t *testing.T) {
+	d := &Dynamic{
+		Secret:    &Secret{Domains: []string{"app.example.com", "api.example.com"}},
+		AutoLogin: &AutoLoginConfig{LoginURL: "https://app.example.com/login", Password: "x"},
+	}
+	require.NoError(t, d.Validate())
+	d.fetchCallback = func(dyn *Dynamic) error {
+		return dyn.applyAutoLoginSession(&autologin.Session{
+			Cookies: []*http.Cookie{{Name: "session", Value: "abc"}},
+			Token:   "jwt-123",
+		})
+	}
+
+	// Mirror init(): one copy per domain, sharing the pointers.
+	copyApp := &DynamicAuthStrategy{Dynamic: *d}
+	copyAPI := &DynamicAuthStrategy{Dynamic: *d}
+
+	// The app-domain copy triggers the login.
+	appStrategies := copyApp.Dynamic.GetStrategies()
+	require.Len(t, appStrategies, 2, "app domain must get cookie + bearer")
+
+	// The api-domain copy (login already done, shared fetchState) must ALSO see
+	// both the cookie and the bearer token.
+	apiStrategies := copyAPI.Dynamic.GetStrategies()
+	require.Len(t, apiStrategies, 2, "api domain must also get cookie + bearer (shared session)")
+
+	// Concretely, the bearer must be applied to a request on the api domain.
+	req, _ := http.NewRequest(http.MethodGet, "https://api.example.com/data", nil)
+	copyAPI.Apply(req)
+	require.Equal(t, "Bearer jwt-123", req.Header.Get("Authorization"), "bearer token must reach the api domain")
+	require.NotEmpty(t, req.Header.Get("Cookie"), "session cookie must reach the api domain")
 }
 
 func TestApplyAutoLoginSession_WebStorageCaptured(t *testing.T) {
@@ -175,19 +223,20 @@ func TestApplyAutoLoginSession_StorageOnly(t *testing.T) {
 
 func TestApplyAutoLoginSession_ReauthReplaces(t *testing.T) {
 	d := newAutoLoginDynamic()
+	require.NoError(t, d.Validate())
 	// First auth: cookies + token (creates an extra bearer secret).
 	require.NoError(t, d.applyAutoLoginSession(&autologin.Session{
 		Cookies: []*http.Cookie{{Name: "session", Value: "v1"}},
 		Token:   "jwt-1",
 	}))
-	require.Len(t, d.Secrets, 1)
+	require.Len(t, d.fetchState.autoLoginSecrets, 1)
 
 	// Re-auth: cookies only -> the previous bearer secret and cookies must be
 	// fully replaced, not appended.
 	require.NoError(t, d.applyAutoLoginSession(&autologin.Session{
 		Cookies: []*http.Cookie{{Name: "session", Value: "v2"}},
 	}))
-	require.Empty(t, d.Secrets, "stale bearer secret must be cleared on re-auth")
+	require.Empty(t, d.fetchState.autoLoginSecrets, "stale bearer secret must be cleared on re-auth")
 	require.Len(t, d.Secret.Cookies, 1)
 	require.Equal(t, "v2", d.Secret.Cookies[0].Value, "cookie value must be refreshed")
 }
