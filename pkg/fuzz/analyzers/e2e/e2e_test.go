@@ -435,6 +435,108 @@ func TestBodyComponentCMDi_E2E(t *testing.T) {
 	require.Contains(t, reason, "cmdi")
 }
 
+// ---------------------------------------------------------------------------
+// Component breadth: the same analyzer must work across all fuzzable component
+// types (query already covered above; here header, cookie and path).
+// ---------------------------------------------------------------------------
+
+// sqlErrorIf returns a handler that emits a MySQL error when value contains a
+// quote, else a benign page. extract pulls the relevant value from the request.
+func sqlErrorIf(extract func(*http.Request) string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.ContainsAny(extract(r), "'\"") {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax")
+			return
+		}
+		fmt.Fprint(w, "ok")
+	}
+}
+
+func grFor(t *testing.T, raw *retryablehttp.Request, comp component.Component, key, origValue string) fuzz.GeneratedRequest {
+	t.Helper()
+	parsed, err := comp.Parse(raw)
+	require.NoError(t, err)
+	require.True(t, parsed, "%s component must parse", comp.Name())
+	return fuzz.GeneratedRequest{
+		Request:       raw,
+		Component:     comp,
+		Parameter:     key,
+		Key:           key,
+		Value:         origValue,
+		OriginalValue: origValue,
+	}
+}
+
+func TestSQLi_HeaderComponent_E2E(t *testing.T) {
+	srv := httptest.NewServer(sqlErrorIf(func(r *http.Request) string { return r.Header.Get("X-Search") }))
+	defer srv.Close()
+
+	raw, err := retryablehttp.NewRequest(http.MethodGet, srv.URL+"/", nil)
+	require.NoError(t, err)
+	raw.Header.Set("X-Search", "term")
+
+	matched, _ := run(t, "sqli_error", grFor(t, raw, component.NewHeader(), "X-Search", "term"), newClient(true))
+	require.True(t, matched, "sqli must be detected when fuzzing a header component")
+}
+
+func TestSSTI_CookieComponent_E2E(t *testing.T) {
+	// SQL quote payloads can't survive in a cookie value (Go strips RFC6265
+	// forbidden bytes), so we demonstrate cookie-component fuzzing with SSTI,
+	// whose payload characters ({ } * $) are cookie-legal.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := r.Cookie("lang")
+		val := "en"
+		if err == nil {
+			val = c.Value
+		}
+		out := reTpl.ReplaceAllStringFunc(val, func(m string) string {
+			sub := reTpl.FindStringSubmatch(m)
+			return fmt.Sprintf("%d", atoi(sub[1])*atoi(sub[2]))
+		})
+		fmt.Fprintf(w, "<html><body>lang=%s</body></html>", out)
+	}))
+	defer srv.Close()
+
+	raw, err := retryablehttp.NewRequest(http.MethodGet, srv.URL+"/", nil)
+	require.NoError(t, err)
+	raw.Header.Set("Cookie", "lang=en")
+
+	matched, _ := run(t, "ssti", grFor(t, raw, component.NewCookie(), "lang", "en"), newClient(true))
+	require.True(t, matched, "ssti must be detected when fuzzing a cookie component")
+}
+
+func TestSQLi_PathComponent_E2E(t *testing.T) {
+	// any quote anywhere in the decoded path triggers the error
+	srv := httptest.NewServer(sqlErrorIf(func(r *http.Request) string {
+		dec, _ := url.PathUnescape(r.URL.EscapedPath())
+		return dec
+	}))
+	defer srv.Close()
+
+	raw, err := retryablehttp.NewRequest(http.MethodGet, srv.URL+"/user/75/profile", nil)
+	require.NoError(t, err)
+
+	path := component.NewPath()
+	parsed, err := path.Parse(raw)
+	require.NoError(t, err)
+	require.True(t, parsed)
+
+	// locate the path segment whose value is "75"
+	var key string
+	require.NoError(t, path.Iterate(func(k string, v interface{}) error {
+		if fmt.Sprint(v) == "75" {
+			key = k
+		}
+		return nil
+	}))
+	require.NotEmpty(t, key, "expected to find the id path segment")
+
+	gr := fuzz.GeneratedRequest{Request: raw, Component: path, Parameter: key, Key: key, Value: "75", OriginalValue: "75"}
+	matched, _ := run(t, "sqli_error", gr, newClient(true))
+	require.True(t, matched, "sqli must be detected when fuzzing a path component")
+}
+
 func atoi(s string) int {
 	n := 0
 	for _, r := range s {

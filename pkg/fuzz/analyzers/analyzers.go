@@ -92,6 +92,13 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 			if gr.Component.Name() == "header" && k == gr.Key {
 				continue
 			}
+			// don't clobber headers the component itself manages on the rebuilt
+			// request (e.g. Cookie for the cookie component, Content-Type/Length
+			// for the body component); only restore headers that Rebuild dropped
+			// (most importantly post-parse auth headers).
+			if len(rebuilt.Header.Values(k)) > 0 {
+				continue
+			}
 			rebuilt.Header[k] = vs
 		}
 	}
