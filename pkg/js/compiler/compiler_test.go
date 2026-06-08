@@ -148,6 +148,84 @@ func TestExecuteWithRuntimeCleansUpAfterCallbackPanic(t *testing.T) {
 	require.False(t, ok)
 }
 
+func TestExecuteWithRuntimeCallbackErrorCleansInitializedState(t *testing.T) {
+	program, err := goja.Compile("", `1`, false)
+	require.NoError(t, err)
+
+	runtime := createNewRuntime()
+	args := NewExecuteArgs()
+	args.Args["arg"] = "value"
+	args.TemplateCtx["marker"] = "template"
+
+	cleanupCalled := false
+	callbackErr := fmt.Errorf("callback setup failed")
+
+	_, err = executeWithRuntime(t.Context(), runtime, program, args, &ExecuteOptions{
+		ExecutionId: "callback-error-cleanup",
+		Callback: func(rt *goja.Runtime) error {
+			require.Equal(t, "value", rt.Get("arg").String())
+			_, ok := rt.GetContextValue("ctx")
+			require.True(t, ok)
+			require.NoError(t, rt.Set("callbackState", "partial"))
+			return callbackErr
+		},
+		Cleanup: func(rt *goja.Runtime) {
+			cleanupCalled = true
+			_ = rt.GlobalObject().Delete("callbackState")
+		},
+	}, nil)
+	require.ErrorIs(t, err, callbackErr)
+	require.True(t, cleanupCalled)
+	require.Nil(t, runtime.Get("template"))
+	require.Nil(t, runtime.Get("arg"))
+	require.Nil(t, runtime.Get("callbackState"))
+
+	_, ok := runtime.GetContextValue("executionId")
+	require.False(t, ok)
+	_, ok = runtime.GetContextValue("ctx")
+	require.False(t, ok)
+}
+
+func TestExecuteWithRuntimePromptInterruptCleansAndAllowsReuse(t *testing.T) {
+	program, err := goja.Compile("", `while (true) {}`, false)
+	require.NoError(t, err)
+
+	runtime := createNewRuntime()
+	args := NewExecuteArgs()
+	args.Args["arg"] = "value"
+	args.TemplateCtx["marker"] = "template"
+
+	cleanupCalled := false
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err = executeWithRuntime(ctx, runtime, program, args, &ExecuteOptions{
+		ExecutionId: "prompt-interrupt-cleanup",
+		Cleanup: func(rt *goja.Runtime) {
+			cleanupCalled = true
+			_ = rt.GlobalObject().Delete("cleanupState")
+		},
+	}, nil)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.NotErrorIs(t, err, errRuntimeTerminationTimeout)
+	require.True(t, cleanupCalled)
+	require.Nil(t, runtime.Get("template"))
+	require.Nil(t, runtime.Get("arg"))
+
+	_, ok := runtime.GetContextValue("executionId")
+	require.False(t, ok)
+	_, ok = runtime.GetContextValue("ctx")
+	require.False(t, ok)
+
+	reuseProgram, err := goja.Compile("", `typeof arg === "undefined" && template.marker === undefined`, false)
+	require.NoError(t, err)
+	value, err := executeWithRuntime(t.Context(), runtime, reuseProgram, NewExecuteArgs(), &ExecuteOptions{
+		ExecutionId: "prompt-interrupt-reuse",
+	}, nil)
+	require.NoError(t, err)
+	require.True(t, value.ToBoolean())
+}
+
 func TestNonPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
 	timeout := 300 * time.Millisecond
 
@@ -172,6 +250,57 @@ func TestNonPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
 	}
 }
 
+func TestNonPooledNormalExecutionReleasesSlot(t *testing.T) {
+	src := `1`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	lazyFixedSgInit()
+	initialCurrent := ephemeraljsc.Current()
+
+	value, err := executeWithoutPooling(t.Context(), p, NewExecuteArgs(), &ExecuteOptions{Source: &src})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), value.Export())
+	require.Equal(t, initialCurrent, ephemeraljsc.Current())
+}
+
+func TestNonPooledRuntimeAbandonedWhenNativeCallbackStuck(t *testing.T) {
+	src := `block(); 1`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseOrphan := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseOrphan)
+
+	lazyFixedSgInit()
+	initialCurrent := ephemeraljsc.Current()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err = executeWithoutPooling(ctx, p, NewExecuteArgs(), &ExecuteOptions{
+		Source: &src,
+		Callback: func(rt *goja.Runtime) error {
+			return rt.Set("block", func() {
+				<-release
+			})
+		},
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, errRuntimeTerminationTimeout)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.GreaterOrEqual(t, ephemeraljsc.Current(), initialCurrent+1,
+		"abandoned non-pooled runtime must keep its concurrency slot while the orphan is still alive")
+
+	releaseOrphan()
+
+	require.Eventually(t, func() bool {
+		return ephemeraljsc.Current() == initialCurrent
+	}, 5*time.Second, 10*time.Millisecond, "non-pooled slot must be released once the orphan goroutine exits")
+}
+
 func TestPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
 	timeout := 300 * time.Millisecond
 
@@ -194,6 +323,80 @@ func TestPooledRuntimeTerminatesOnContextExpiry(t *testing.T) {
 	case <-time.After(timeout * 5):
 		t.Fatal("runtime did not terminate after context expiry")
 	}
+}
+
+func TestPooledRuntimeNormalExecutionCleansStateBeforeReuse(t *testing.T) {
+	src := `Export("ok"); ExportAs("named", arg); true`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	runtime := createNewRuntime()
+	useRuntimePool(t, runtime)
+
+	lazySgInit()
+	initialCurrent := pooljsc.Current()
+
+	args := NewExecuteArgs()
+	args.Args["arg"] = "value"
+	args.TemplateCtx["marker"] = "template"
+
+	cleanupCalled := false
+	value, err := executeWithPoolingProgram(t.Context(), p, args, &ExecuteOptions{
+		Source:      &src,
+		ExecutionId: "pooled-cleanup",
+		Callback: func(rt *goja.Runtime) error {
+			require.NoError(t, rt.Set("callbackState", "temporary"))
+			return nil
+		},
+		Cleanup: func(rt *goja.Runtime) {
+			cleanupCalled = true
+			_ = rt.GlobalObject().Delete("callbackState")
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "ok", value.Export())
+	require.True(t, cleanupCalled)
+	require.Equal(t, initialCurrent, pooljsc.Current())
+
+	require.Nil(t, runtime.Get("template"))
+	require.Nil(t, runtime.Get("arg"))
+	require.Nil(t, runtime.Get("callbackState"))
+	require.Nil(t, runtime.Get(exportToken))
+	require.Nil(t, runtime.Get(exportAsToken))
+	_, ok := runtime.GetContextValue("executionId")
+	require.False(t, ok)
+	_, ok = runtime.GetContextValue("ctx")
+	require.False(t, ok)
+}
+
+func TestPooledCallbackErrorReleasesSlotAndCleansExportHelpers(t *testing.T) {
+	src := `ExportAs("named", "value"); true`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	runtime := createNewRuntime()
+	useRuntimePool(t, runtime)
+
+	lazySgInit()
+	initialCurrent := pooljsc.Current()
+	callbackErr := fmt.Errorf("callback setup failed")
+
+	_, err = executeWithPoolingProgram(t.Context(), p, NewExecuteArgs(), &ExecuteOptions{
+		Source: &src,
+		Callback: func(rt *goja.Runtime) error {
+			require.NoError(t, rt.Set("callbackState", "temporary"))
+			return callbackErr
+		},
+		Cleanup: func(rt *goja.Runtime) {
+			_ = rt.GlobalObject().Delete("callbackState")
+		},
+	})
+	require.ErrorIs(t, err, callbackErr)
+	require.Equal(t, initialCurrent, pooljsc.Current())
+
+	require.Nil(t, runtime.Get("callbackState"))
+	require.Nil(t, runtime.Get(exportToken))
+	require.Nil(t, runtime.Get(exportAsToken))
 }
 
 // TestPooledRuntimeAbandonedReleasesSlotOnlyAfterOrphanExits verifies that
@@ -293,6 +496,182 @@ func TestPooledRuntimeAbandonedWhenInterruptStuck(t *testing.T) {
 	}
 }
 
+func TestSessionAbandonmentSkipsFinalizeCleanupAndNormalRelease(t *testing.T) {
+	src := `block(); "done"`
+	p, err := goja.Compile("", src, false)
+	require.NoError(t, err)
+
+	runtime := createNewRuntime()
+	args := NewExecuteArgs()
+	args.Args["arg"] = "value"
+
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseOrphan := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseOrphan)
+
+	abandonedSlotReleased := make(chan struct{})
+	cleanupCalled := false
+	pathCleanupCalled := false
+	finalizeCalled := false
+	returnCalled := false
+	releaseCalled := false
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	session := newSession(sessionConfig{
+		ctx:     ctx,
+		runtime: runtime,
+		program: p,
+		args:    args,
+		opts: &ExecuteOptions{
+			Callback: func(rt *goja.Runtime) error {
+				return rt.Set("block", func() {
+					<-release
+				})
+			},
+			Cleanup: func(rt *goja.Runtime) {
+				cleanupCalled = true
+			},
+		},
+		prepareRuntime: func(rt *goja.Runtime) error {
+			return rt.Set("pathState", "temporary")
+		},
+		cleanupRuntime: func(rt *goja.Runtime) {
+			pathCleanupCalled = true
+		},
+		finalizeResult: func(rt *goja.Runtime, val goja.Value) (goja.Value, error) {
+			finalizeCalled = true
+			return val, nil
+		},
+		returnRuntime: func(rt *goja.Runtime) {
+			returnCalled = true
+		},
+		releaseSlot: func() {
+			releaseCalled = true
+		},
+		releaseAbandonedSlot: func() {
+			close(abandonedSlotReleased)
+		},
+	})
+
+	_, err = session.run()
+	require.ErrorIs(t, err, errRuntimeTerminationTimeout)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.False(t, cleanupCalled)
+	require.False(t, pathCleanupCalled)
+	require.False(t, finalizeCalled)
+	require.False(t, returnCalled)
+	require.False(t, releaseCalled)
+
+	releaseOrphan()
+	select {
+	case <-abandonedSlotReleased:
+	case <-time.After(5 * time.Second):
+		t.Fatal("abandoned slot was not released after orphan exit")
+	}
+}
+
+func TestPooledRuntimeAbandonmentSkipsCleanupAndRuntimeAccess(t *testing.T) {
+	src := `ExportAs("before", "value"); block(); 1`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	args := NewExecuteArgs()
+	args.Args["arg"] = "value"
+	args.TemplateCtx["marker"] = "template"
+
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseOrphan := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseOrphan)
+
+	report := make(chan []string, 1)
+	cleanupCalled := false
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err = executeWithPoolingProgram(ctx, p, args, &ExecuteOptions{
+		Source: &src,
+		Callback: func(rt *goja.Runtime) error {
+			return rt.Set("block", func() {
+				<-release
+				template := rt.Get("template").ToObject(rt)
+				exportType := "missing"
+				if _, ok := goja.AssertFunction(rt.Get(exportToken)); ok {
+					exportType = "function"
+				}
+				exportAsType := "missing"
+				if _, ok := goja.AssertFunction(rt.Get(exportAsToken)); ok {
+					exportAsType = "function"
+				}
+				report <- []string{
+					exportType,
+					exportAsType,
+					template.Get("marker").String(),
+					rt.Get("arg").String(),
+				}
+			})
+		},
+		Cleanup: func(rt *goja.Runtime) {
+			cleanupCalled = true
+		},
+	})
+	require.ErrorIs(t, err, errRuntimeTerminationTimeout)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.False(t, cleanupCalled, "caller cleanup must not touch an abandoned runtime")
+
+	releaseOrphan()
+
+	select {
+	case got := <-report:
+		require.Equal(t, []string{"function", "function", "template", "value"}, got)
+	case <-time.After(5 * time.Second):
+		t.Fatal("orphaned runtime did not report state after release")
+	}
+}
+
+func TestPooledAbandonedRuntimeIsNotReused(t *testing.T) {
+	src := `ExportAs("before", "value"); abandonedSentinel = "leaked"; block(); 1`
+	p, err := SourceAutoMode(src, false)
+	require.NoError(t, err)
+
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseOrphan := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseOrphan)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err = executeWithPoolingProgram(ctx, p, NewExecuteArgs(), &ExecuteOptions{
+		Source: &src,
+		Callback: func(rt *goja.Runtime) error {
+			return rt.Set("block", func() {
+				<-release
+			})
+		},
+	})
+	require.ErrorIs(t, err, errRuntimeTerminationTimeout)
+
+	releaseOrphan()
+
+	reuseSrc := `ExportAs("seen", typeof abandonedSentinel); true`
+	reuseProgram, err := SourceAutoMode(reuseSrc, false)
+	require.NoError(t, err)
+
+	result, err := New().ExecuteWithOptions(t.Context(), reuseProgram, NewExecuteArgs(), &ExecuteOptions{
+		Source: &reuseSrc,
+		TimeoutVariants: &types.Timeouts{
+			JsCompilerExecutionTimeout: 5 * time.Second,
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "undefined", result["seen"])
+}
+
 func executeScript(t *testing.T, executionID string, allowLocalFileAccess bool, script string) (ExecuteResult, error) {
 	t.Helper()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: allowLocalFileAccess})
@@ -328,6 +707,22 @@ func templateDirAlias(t *testing.T, templateDir string) (string, string) {
 		return templateDir, templateDir
 	}
 	return aliasPath, templateDir
+}
+
+func useRuntimePool(t *testing.T, runtime *goja.Runtime) {
+	t.Helper()
+
+	previousPool := gojapool
+	pool := &sync.Pool{
+		New: func() interface{} {
+			return runtime
+		},
+	}
+	pool.Put(runtime)
+	gojapool = pool
+	t.Cleanup(func() {
+		gojapool = previousPool
+	})
 }
 
 type noopWriter struct {
