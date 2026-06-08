@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -786,6 +787,20 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 		}
 	}
 
+	// noteExcludedByTag surfaces a template the index filter dropped because it
+	// carries an excluded tag (e.g. the .nuclei-ignore defaults). Without it the
+	// exclusion is silent at every verbosity level.
+	noteExcludedByTag := func(templatePath string, metadata *index.Metadata) {
+		if len(indexFilter.ExcludeTags) == 0 || !slices.ContainsFunc(indexFilter.ExcludeTags, metadata.HasTag) {
+			return
+		}
+
+		stats.Increment(templates.TemplatesExcludedStats)
+		if config.DefaultConfig.LogAllEvents {
+			store.logger.Print().Msgf("[%v] %v excluded from default run using .nuclei-ignore\n", aurora.Yellow("WRN").String(), templatePath)
+		}
+	}
+
 	typesOpts := store.config.ExecutorOptions.Options
 	concurrency := typesOpts.TemplateLoadingConcurrency
 	if concurrency <= 0 {
@@ -820,6 +835,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 				if cachedMetadata, found := store.metadataIndex.Get(templatePath); found {
 					metadata = cachedMetadata
 					if !indexFilter.Matches(metadata) {
+						noteExcludedByTag(templatePath, metadata)
 						return
 					}
 					// NOTE(dwisiswant0): else, tagFilter probably exists (for
@@ -842,6 +858,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 					}
 
 					if metadata != nil && !indexFilter.Matches(metadata) {
+						noteExcludedByTag(templatePath, metadata)
 						return
 					}
 				}
