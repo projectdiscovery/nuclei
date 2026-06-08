@@ -74,10 +74,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}()
 
 	for _, probe := range probes {
-		if err := gr.Component.SetValue(gr.Key, probe.Payload); err != nil {
-			return false, "", err
-		}
-		rebuilt, err := gr.Component.Rebuild()
+		rebuilt, err := analyzers.SetValueAndRebuild(gr, probe.Payload)
 		if err != nil {
 			return false, "", err
 		}

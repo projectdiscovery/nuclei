@@ -29,6 +29,8 @@ type AnalyzerTemplate struct {
 	//   - time_delay
 	//   - xss_context
 	//   - ssti
+	//   - sqli_error
+	//   - lfi
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
@@ -63,6 +65,31 @@ type Options struct {
 	HttpClient         *retryablehttp.Client
 	ResponseTimeDelay  time.Duration
 	AnalyzerParameters map[string]interface{}
+}
+
+// SetValueAndRebuild sets value on the fuzzed component, rebuilds the request,
+// and re-applies headers from the original generated request that Rebuild()
+// drops. Rebuild() only carries headers present at parse time, so post-parse
+// injections (most importantly authentication headers) are lost without this.
+// Sharing this keeps every analyzer consistent and authenticated-scan safe.
+func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.Request, error) {
+	if err := gr.Component.SetValue(gr.Key, value); err != nil {
+		return nil, err
+	}
+	rebuilt, err := gr.Component.Rebuild()
+	if err != nil {
+		return nil, err
+	}
+	if gr.Request != nil {
+		for k, vs := range gr.Request.Header {
+			// don't clobber the header we are actively fuzzing
+			if gr.Component.Name() == "header" && k == gr.Key {
+				continue
+			}
+			rebuilt.Header[k] = vs
+		}
+	}
+	return rebuilt, nil
 }
 
 var (
