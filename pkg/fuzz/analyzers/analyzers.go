@@ -31,6 +31,8 @@ type AnalyzerTemplate struct {
 	//   - ssti
 	//   - sqli_error
 	//   - lfi
+	//   - open_redirect
+	//   - crlf
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer
