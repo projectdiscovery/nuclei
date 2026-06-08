@@ -34,6 +34,12 @@ type fetchState struct {
 	stale     bool      // whether the session must be re-authenticated on next fetch
 	fetchedAt time.Time // time of the last successful/attempted fetch
 	err       error     // error from the most recent fetch attempt
+	// webStorageLocal/webStorageSession hold browser web storage captured by a
+	// headless auto-login, to be replayed into headless scan pages. Stored here
+	// (on the shared fetchState pointer) so all Dynamic value-copies and a
+	// re-authentication observe the same, freshly-captured storage.
+	webStorageLocal   map[string]string
+	webStorageSession map[string]string
 }
 
 var (
@@ -345,10 +351,14 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	}
 	var strategies []AuthStrategy
 	if d.Secret != nil {
-		strategies = append(strategies, d.GetStrategy())
+		if s := d.GetStrategy(); s != nil {
+			strategies = append(strategies, s)
+		}
 	}
 	for _, secret := range d.Secrets {
-		strategies = append(strategies, secret.GetStrategy())
+		if s := secret.GetStrategy(); s != nil {
+			strategies = append(strategies, s)
+		}
 	}
 	return strategies
 }
@@ -456,6 +466,23 @@ func (d *Dynamic) NotifyResponse(statusCode int) bool {
 	}
 	d.MarkStale()
 	return true
+}
+
+// WebStorage returns the browser web storage (localStorage/sessionStorage)
+// captured by a headless auto-login, fetching the session first if needed. It
+// returns nil maps when no storage was captured (e.g. HTTP auto-login or a
+// fetch error).
+func (d *Dynamic) WebStorage() (map[string]string, map[string]string) {
+	_ = d.Fetch(false)
+	if d.fetchState == nil {
+		return nil, nil
+	}
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
+	if d.fetchState.err != nil {
+		return nil, nil
+	}
+	return d.fetchState.webStorageLocal, d.fetchState.webStorageSession
 }
 
 // IsExpired reports whether the session is currently considered expired/stale.

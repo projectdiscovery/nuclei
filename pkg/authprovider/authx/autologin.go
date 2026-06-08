@@ -152,10 +152,25 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 	d.Secret.Token = ""
 	d.Secrets = nil
 
+	// Stash captured web storage (headless logins only) on the shared fetchState
+	// so the headless engine can replay it into scan pages. Reset each re-auth.
+	if d.fetchState != nil {
+		d.fetchState.webStorageLocal = session.LocalStorage
+		d.fetchState.webStorageSession = session.SessionStorage
+	}
+
 	hasCookies := len(session.Cookies) > 0
 	hasToken := session.Token != ""
+	hasStorage := len(session.LocalStorage) > 0 || len(session.SessionStorage) > 0
+	if !hasCookies && !hasToken && !hasStorage {
+		return errkit.New("auto-login produced no applicable session (no cookies, token or web storage)")
+	}
 	if !hasCookies && !hasToken {
-		return errkit.New("auto-login produced no applicable session (no cookies or token)")
+		// Storage-only session (e.g. a pure localStorage-JWT SPA): there is no
+		// HTTP-applicable secret, but the headless engine will replay the storage.
+		// Leave the secret type empty so it yields no HTTP strategy.
+		d.Secret.Type = ""
+		return nil
 	}
 
 	switch {

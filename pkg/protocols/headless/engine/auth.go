@@ -1,12 +1,15 @@
 package engine
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -58,6 +61,90 @@ func (p *Page) applyAuthStrategies() {
 			p.ctx.CookieJar.SetCookies(u, cookies)
 		}
 	}
+}
+
+// applyAuthWebStorage seeds browser web storage (localStorage/sessionStorage)
+// captured by a headless auto-login into the page. Because web storage is
+// origin-scoped and only exists once a document for the origin is loaded, it is
+// injected via an on-new-document script (guarded by origin) that runs before
+// page scripts on every navigation — so client-side code that reads its token
+// from storage behaves as if logged in.
+func (p *Page) applyAuthWebStorage() {
+	if p.options == nil || p.options.AuthProvider == nil || p.inputURL == nil {
+		return
+	}
+	local, session := resolveBrowserStorage(p.options.AuthProvider, p.inputURL)
+	if len(local) == 0 && len(session) == 0 {
+		return
+	}
+	origin := ""
+	if u := p.inputURL.URL; u != nil {
+		origin = u.Scheme + "://" + u.Host
+	}
+	js := buildStorageInjectorJS(origin, local, session)
+	if js == "" {
+		return
+	}
+	if _, err := p.page.EvalOnNewDocument(js); err != nil {
+		gologger.Warning().Msgf("headless: could not seed web storage for %s: %s", p.inputURL.String(), err)
+	}
+}
+
+// resolveBrowserStorage merges the web storage carried by any
+// BrowserStorageProvider strategy resolved for the target URL.
+func resolveBrowserStorage(provider authprovider.AuthProvider, target *urlutil.URL) (local map[string]string, session map[string]string) {
+	if provider == nil || target == nil {
+		return nil, nil
+	}
+	for _, strategy := range provider.LookupURLX(target) {
+		sp, ok := strategy.(authx.BrowserStorageProvider)
+		if !ok {
+			continue
+		}
+		l, s := sp.WebStorage()
+		for k, v := range l {
+			if local == nil {
+				local = map[string]string{}
+			}
+			local[k] = v
+		}
+		for k, v := range s {
+			if session == nil {
+				session = map[string]string{}
+			}
+			session[k] = v
+		}
+	}
+	return local, session
+}
+
+// buildStorageInjectorJS builds an on-new-document script that, only when the
+// document origin matches, seeds the given localStorage/sessionStorage items.
+func buildStorageInjectorJS(origin string, local, session map[string]string) string {
+	localJSON, err := json.Marshal(local)
+	if err != nil {
+		return ""
+	}
+	sessionJSON, err := json.Marshal(session)
+	if err != nil {
+		return ""
+	}
+	originJSON, err := json.Marshal(origin)
+	if err != nil {
+		return ""
+	}
+	// EvalOnNewDocument evaluates the source directly (it is not invoked as a
+	// function), so this must be a self-executing statement. It is defensive: it
+	// no-ops on origin mismatch and swallows errors (e.g. storage disabled) so it
+	// can never break the navigation.
+	return fmt.Sprintf(`(function () {
+  try {
+    if (%s && window.location && window.location.origin !== %s) { return; }
+    var l = %s, s = %s, k;
+    for (k in l) { try { window.localStorage.setItem(k, l[k]); } catch (e) {} }
+    for (k in s) { try { window.sessionStorage.setItem(k, s[k]); } catch (e) {} }
+  } catch (e) {}
+})();`, originJSON, originJSON, localJSON, sessionJSON)
 }
 
 // resolveAuthMaterial resolves the auth strategies for the given URL into a flat

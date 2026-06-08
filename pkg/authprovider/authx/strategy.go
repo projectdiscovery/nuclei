@@ -26,8 +26,9 @@ type ResponseInspector interface {
 }
 
 var (
-	_ AuthStrategy      = &DynamicAuthStrategy{}
-	_ ResponseInspector = &DynamicAuthStrategy{}
+	_ AuthStrategy           = &DynamicAuthStrategy{}
+	_ ResponseInspector      = &DynamicAuthStrategy{}
+	_ BrowserStorageProvider = &DynamicAuthStrategy{}
 )
 
 // DynamicAuthStrategy is an auth strategy for dynamic secrets
@@ -55,4 +56,10 @@ func (d *DynamicAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 // re-authentication when the code signals an expired session.
 func (d *DynamicAuthStrategy) OnResponse(statusCode int) bool {
 	return d.Dynamic.NotifyResponse(statusCode)
+}
+
+// WebStorage exposes the browser web storage captured by a headless auto-login
+// so the headless engine can replay it into scan pages.
+func (d *DynamicAuthStrategy) WebStorage() (map[string]string, map[string]string) {
+	return d.Dynamic.WebStorage()
 }

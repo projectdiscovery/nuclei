@@ -56,6 +56,43 @@ func TestApplyAutoLoginSession_Empty(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestApplyAutoLoginSession_WebStorageCaptured(t *testing.T) {
+	d := newAutoLoginDynamic()
+	require.NoError(t, d.Validate())
+	d.SetAutoLoginCallback(nil)
+	// Stub the fetch to bypass the network and simulate a headless capture.
+	d.fetchCallback = func(dyn *Dynamic) error {
+		return dyn.applyAutoLoginSession(&autologin.Session{
+			Cookies:        []*http.Cookie{{Name: "session", Value: "abc"}},
+			LocalStorage:   map[string]string{"jwt": "eyJ..."},
+			SessionStorage: map[string]string{"csrf": "tok"},
+		})
+	}
+
+	local, session := d.WebStorage()
+	require.Equal(t, map[string]string{"jwt": "eyJ..."}, local)
+	require.Equal(t, map[string]string{"csrf": "tok"}, session)
+
+	// And the DynamicAuthStrategy must surface the same storage to the engine.
+	strat := &DynamicAuthStrategy{Dynamic: *d}
+	l2, s2 := strat.WebStorage()
+	require.Equal(t, "eyJ...", l2["jwt"])
+	require.Equal(t, "tok", s2["csrf"])
+}
+
+func TestApplyAutoLoginSession_StorageOnly(t *testing.T) {
+	d := newAutoLoginDynamic()
+	require.NoError(t, d.Validate())
+	// Storage-only session (pure localStorage-JWT SPA): no HTTP secret, but the
+	// session is still valid because storage will be replayed by the engine.
+	err := d.applyAutoLoginSession(&autologin.Session{
+		LocalStorage: map[string]string{"jwt": "x"},
+	})
+	require.NoError(t, err)
+	require.Empty(t, d.Secret.Type, "storage-only session yields no HTTP strategy")
+	require.Equal(t, map[string]string{"jwt": "x"}, d.fetchState.webStorageLocal)
+}
+
 func TestApplyAutoLoginSession_ReauthReplaces(t *testing.T) {
 	d := newAutoLoginDynamic()
 	// First auth: cookies + token (creates an extra bearer secret).

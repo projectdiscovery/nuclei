@@ -188,6 +188,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	// inject authentication (headers/cookies) from the auth provider, if any,
 	// before any navigation occurs so authenticated areas are reachable.
 	createdPage.applyAuthStrategies()
+	// seed any captured browser web storage (e.g. localStorage JWTs from a
+	// headless auto-login) before page scripts run on navigation.
+	createdPage.applyAuthWebStorage()
 
 	data, err := createdPage.ExecuteActions(ctx, actions)
 	if err != nil {
