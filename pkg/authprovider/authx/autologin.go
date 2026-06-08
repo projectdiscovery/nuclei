@@ -137,10 +137,11 @@ func (d *Dynamic) SetAutoLoginCallback(rt *AutoLoginRuntimeOptions) {
 	}
 }
 
-// applyAutoLoginSession builds the concrete applied secret from a captured
-// session. Cookies take precedence (the common form-login case); a bare token
-// is applied as bearer auth. The applied fields are reset first so a
-// re-authentication fully replaces the previous session.
+// applyAutoLoginSession builds the concrete applied secret(s) from a captured
+// session. Cookies are applied as a cookie secret; an extracted token is applied
+// as a bearer header. When both are present (common for SPAs that set a session
+// cookie *and* a localStorage JWT) both are applied. The applied fields are
+// reset first so a re-authentication fully replaces the previous session.
 func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 	if d.Secret == nil {
 		d.Secret = &Secret{}
@@ -149,18 +150,31 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 	d.Secret.Headers = nil
 	d.Secret.Cookies = nil
 	d.Secret.Token = ""
+	d.Secrets = nil
+
+	hasCookies := len(session.Cookies) > 0
+	hasToken := session.Token != ""
+	if !hasCookies && !hasToken {
+		return errkit.New("auto-login produced no applicable session (no cookies or token)")
+	}
 
 	switch {
-	case len(session.Cookies) > 0:
+	case hasCookies:
 		d.Secret.Type = string(CookiesAuth)
 		for _, c := range session.Cookies {
 			d.Secret.Cookies = append(d.Secret.Cookies, Cookie{Key: c.Name, Value: c.Value})
 		}
-	case session.Token != "":
+		if hasToken {
+			// Apply the token as an additional bearer header secret.
+			d.Secrets = append(d.Secrets, &Secret{
+				Type:    string(BearerTokenAuth),
+				Domains: d.Secret.Domains,
+				Token:   session.Token,
+			})
+		}
+	default: // token only
 		d.Secret.Type = string(BearerTokenAuth)
 		d.Secret.Token = session.Token
-	default:
-		return errkit.New("auto-login produced no applicable session (no cookies or token)")
 	}
 	return nil
 }

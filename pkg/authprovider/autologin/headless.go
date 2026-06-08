@@ -2,6 +2,7 @@ package autologin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -116,20 +117,27 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 		session.FinalURL = info.URL
 	}
 
-	// Capture cookies from the browser for the login + final hosts.
+	// Capture cookies and web storage from the browser for the login + final hosts.
 	session.Cookies = capturePageCookies(page, cfg.LoginURL, session.FinalURL)
 	session.CookieHeader = renderCookieHeader(session.Cookies)
+	session.LocalStorage = readStorage(page, "localStorage")
+	session.SessionStorage = readStorage(page, "sessionStorage")
 
-	// Token extraction: search the rendered body and localStorage.
+	// Token extraction: search the rendered body and web storage.
 	if tokenRe != nil {
-		haystack := ""
+		var haystack strings.Builder
 		if html, herr := page.HTML(); herr == nil {
-			haystack = html
+			haystack.WriteString(html)
 		}
-		if ls := readLocalStorage(page); ls != "" {
-			haystack += "\n" + ls
+		for _, store := range []map[string]string{session.LocalStorage, session.SessionStorage} {
+			for k, v := range store {
+				haystack.WriteString("\n")
+				haystack.WriteString(k)
+				haystack.WriteString("=")
+				haystack.WriteString(v)
+			}
 		}
-		if m := tokenRe.FindStringSubmatch(haystack); len(m) > 1 {
+		if m := tokenRe.FindStringSubmatch(haystack.String()); len(m) > 1 {
 			session.Token = m[1]
 		}
 	}
@@ -452,11 +460,23 @@ func capturePageCookies(page *rod.Page, urls ...string) []*http.Cookie {
 	return out
 }
 
-// readLocalStorage returns a JSON dump of window.localStorage, or "" on failure.
-func readLocalStorage(page *rod.Page) string {
-	obj, err := page.Eval(`() => JSON.stringify(window.localStorage)`)
+// readStorage returns the given web storage area (localStorage/sessionStorage)
+// as a map, or nil on failure.
+func readStorage(page *rod.Page, area string) map[string]string {
+	obj, err := page.Eval(fmt.Sprintf(`() => JSON.stringify(window.%s)`, area))
 	if err != nil || obj == nil {
-		return ""
+		return nil
 	}
-	return obj.Value.Str()
+	raw := obj.Value.Str()
+	if raw == "" {
+		return nil
+	}
+	out := map[string]string{}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

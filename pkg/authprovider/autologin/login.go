@@ -100,6 +100,11 @@ type Session struct {
 	CookieHeader string
 	// Token is a token extracted via Config.TokenRegex, if any.
 	Token string
+	// LocalStorage / SessionStorage hold the browser storage captured after a
+	// headless login (always empty for the HTTP engine). They let token-based
+	// SPAs surface their session even when it lives in web storage.
+	LocalStorage   map[string]string
+	SessionStorage map[string]string
 	// FinalURL / FinalStatus describe where the login flow landed.
 	FinalURL    string
 	FinalStatus int
