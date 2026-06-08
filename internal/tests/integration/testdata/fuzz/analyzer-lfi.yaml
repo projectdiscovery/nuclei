@@ -1,0 +1,29 @@
+id: analyzer-lfi
+
+info:
+  name: Local File Inclusion via analyzer
+  author: pdteam
+  severity: high
+  description: |
+    Drives the built-in lfi analyzer through the real fuzzing pipeline. The
+    analyzer injects path-traversal payloads and confirms a finding when known
+    file-content signatures (e.g. /etc/passwd, win.ini) appear.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "home.txt"
+    analyzer:
+      name: lfi
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

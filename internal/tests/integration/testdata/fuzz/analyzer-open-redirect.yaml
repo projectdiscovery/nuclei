@@ -1,0 +1,29 @@
+id: analyzer-open-redirect
+
+info:
+  name: Open Redirect via analyzer
+  author: pdteam
+  severity: medium
+  description: |
+    Drives the built-in open_redirect analyzer through the real fuzzing
+    pipeline. The analyzer injects an unresolvable canary host and confirms when
+    the application redirects to it via the Location header or final URL.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "/dashboard"
+    analyzer:
+      name: open_redirect
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

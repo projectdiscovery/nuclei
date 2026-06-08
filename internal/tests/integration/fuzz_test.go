@@ -36,6 +36,35 @@ var fuzzingTestCases = []integrationCase{
 	{Path: "fuzz/fuzz-body-params-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-xml-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-generic-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 4}},
+
+	// Analyzer-driven DAST cases: each runs a real fuzzing template whose
+	// detection is delegated to a built-in analyzer, against the dedicated
+	// analyzer bench in the fuzz playground. A finding is produced only when the
+	// analyzer (not a static matcher) confirms the vulnerability.
+	{Path: "fuzz/analyzer-sqli.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/sqli?q=en"}},
+	{Path: "fuzz/analyzer-ssti.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/ssti?q=test"}},
+	{Path: "fuzz/analyzer-lfi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/lfi?q=home.txt"}},
+	{Path: "fuzz/analyzer-cmdi.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/cmdi?q=127.0.0.1"}},
+	{Path: "fuzz/analyzer-ssrf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/ssrf?q=https://example.com/a.png"}},
+	{Path: "fuzz/analyzer-open-redirect.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/redirect?q=/dashboard"}},
+	{Path: "fuzz/analyzer-crlf.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/crlf?q=/home"}},
+	{Path: "fuzz/analyzer-cors.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/cors?q=x"}},
+	{Path: "fuzz/analyzer-host-header.yaml", TestCase: &analyzerFuzzTestCase{route: "/analyzer/host-header?q=x"}},
+}
+
+// analyzerFuzzTestCase runs an analyzer-driven fuzzing template against the
+// running fuzz playground (localhost:8082) and expects exactly one finding.
+type analyzerFuzzTestCase struct {
+	route string
+}
+
+func (a *analyzerFuzzTestCase) Execute(filePath string) error {
+	target := "http://localhost:8082" + a.route
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, target, debug, "-dast")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }
 
 type genericFuzzTestCase struct {
