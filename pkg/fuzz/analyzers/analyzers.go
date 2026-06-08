@@ -28,6 +28,7 @@ type AnalyzerTemplate struct {
 	// values:
 	//   - time_delay
 	//   - xss_context
+	//   - ssti
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer

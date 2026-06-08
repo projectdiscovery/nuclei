@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/ssti"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 
