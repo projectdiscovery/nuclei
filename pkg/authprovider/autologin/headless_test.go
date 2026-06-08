@@ -201,6 +201,56 @@ func TestLoginHeadless_MultiStep(t *testing.T) {
 	require.Contains(t, names, "session", "multi-step login should capture the session cookie")
 }
 
+// spaTokenPage is a pure-SPA login: on submit JS validates the credentials
+// client-side, stores a JWT in localStorage (no cookie at all) and swaps in a
+// logged-in view. This is the canonical "token lives in web storage" case that
+// motivates storage capture/replay.
+const spaTokenPage = `<html><head><title>SPA</title></head><body>
+<form id="f">
+  <input type="email" name="email" id="email">
+  <input type="password" name="password" id="password">
+  <button type="submit" id="submit">Sign in</button>
+</form>
+<script>
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('email').value;
+    var pw = document.getElementById('password').value;
+    if (email === 'dave@example.com' && pw === 'p@ss') {
+      window.localStorage.setItem('auth_token', 'eyJhbGciOiJI.payload.sig');
+      window.sessionStorage.setItem('csrf', 'abc123');
+      document.body.innerHTML = '<h1>welcome dave</h1>';
+    } else {
+      document.body.innerHTML += '<p>bad creds</p>';
+    }
+  });
+</script></body></html>`
+
+func TestLoginHeadless_LocalStorageToken(t *testing.T) {
+	requireChrome(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, spaTokenPage)
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   srv.URL + "/login",
+		Username:   "dave@example.com",
+		Password:   "p@ss",
+		TokenRegex: `(eyJ[A-Za-z0-9._-]+)`,
+		SettleTime: 1500 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.Empty(t, session.Cookies, "SPA login sets no cookie")
+	require.Equal(t, "eyJhbGciOiJI.payload.sig", session.Token, "token must be extracted from localStorage")
+	require.Equal(t, "eyJhbGciOiJI.payload.sig", session.LocalStorage["auth_token"], "localStorage must be captured")
+	require.Equal(t, "abc123", session.SessionStorage["csrf"], "sessionStorage must be captured")
+}
+
 func TestLoginHeadless_WrongPasswordFails(t *testing.T) {
 	requireChrome(t)
 

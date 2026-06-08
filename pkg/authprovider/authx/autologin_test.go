@@ -1,7 +1,10 @@
 package authx
 
 import (
+	"fmt"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/autologin"
@@ -72,6 +75,65 @@ func TestSummarizeSession(t *testing.T) {
 func TestAutoLoginEngineName(t *testing.T) {
 	require.Equal(t, "headless", autoLoginEngineName(true))
 	require.Equal(t, "http", autoLoginEngineName(false))
+}
+
+// TestDynamic_WebStorage_ConcurrentReauth exercises the locking contract that
+// storage replay relies on: readers (the headless engine) call WebStorage while
+// re-authentication concurrently rewrites the captured storage on the shared
+// fetchState. Must be run under -race.
+func TestDynamic_WebStorage_ConcurrentReauth(t *testing.T) {
+	d := newAutoLoginDynamic()
+	d.ReauthStatusCodes = []int{401}
+	require.NoError(t, d.Validate())
+
+	var gen atomic.Int64
+	// Each (re)auth captures a fresh storage map, simulating a new session.
+	d.fetchCallback = func(dyn *Dynamic) error {
+		n := gen.Add(1)
+		return dyn.applyAutoLoginSession(&autologin.Session{
+			Cookies:      []*http.Cookie{{Name: "session", Value: fmt.Sprintf("v%d", n)}},
+			LocalStorage: map[string]string{"jwt": fmt.Sprintf("token-%d", n)},
+		})
+	}
+
+	// Share the session across value-copies, as the real provider does.
+	strategy := &DynamicAuthStrategy{Dynamic: *d}
+
+	var wg sync.WaitGroup
+	const workers = 8
+	const iterations = 200
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for i := 0; i < iterations; i++ {
+				switch id % 4 {
+				case 0:
+					// Force a re-auth (rewrites the storage map under the write lock).
+					strategy.Dynamic.MarkStale()
+					_ = strategy.Dynamic.Fetch(false)
+				case 1:
+					// Read + iterate storage the way resolveBrowserStorage does.
+					local, session := strategy.WebStorage()
+					for k, v := range local {
+						_ = k + v
+					}
+					for k, v := range session {
+						_ = k + v
+					}
+				case 2:
+					strategy.Dynamic.ApplyStrategies(func(AuthStrategy) {})
+				default:
+					_ = strategy.Dynamic.NotifyResponse(401)
+				}
+			}
+		}(w)
+	}
+	wg.Wait()
+
+	// After the storm, a fresh fetch must still yield a consistent session.
+	local, _ := strategy.WebStorage()
+	require.NotEmpty(t, local["jwt"], "storage must remain populated after concurrent re-auth")
 }
 
 func TestApplyAutoLoginSession_WebStorageCaptured(t *testing.T) {

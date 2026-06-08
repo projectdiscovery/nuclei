@@ -54,3 +54,19 @@ func TestBuildAutoLoginRuntimeOptions(t *testing.T) {
 	require.True(t, rt.UseInstalledChrome)
 	require.True(t, rt.ShowBrowser)
 }
+
+func TestBuildAutoLoginRuntimeOptions_SocksProxyFallback(t *testing.T) {
+	// With only a SOCKS proxy configured, the auto-login must still pick it up
+	// (regression: previously only AliveHttpProxy was threaded).
+	rt := buildAutoLoginRuntimeOptions(&types.Options{
+		AliveSocksProxy: "socks5://127.0.0.1:1080",
+	})
+	require.Equal(t, "socks5://127.0.0.1:1080", rt.Proxy)
+
+	// HTTP proxy takes precedence when both are set.
+	rt = buildAutoLoginRuntimeOptions(&types.Options{
+		AliveHttpProxy:  "http://127.0.0.1:8080",
+		AliveSocksProxy: "socks5://127.0.0.1:1080",
+	})
+	require.Equal(t, "http://127.0.0.1:8080", rt.Proxy)
+}

@@ -3,6 +3,7 @@ package autologin
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/utils/errkit"
+	"golang.org/x/net/proxy"
 )
 
 // maxBodyRead caps how much of the login/landing page we read into memory for
@@ -143,8 +145,18 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 		timeout = 30 * time.Second
 	}
 	client := &http.Client{Jar: jar, Timeout: timeout}
-	if base != nil && base.Transport != nil {
+	switch {
+	case base != nil && base.Transport != nil:
+		// Reuse the template client's transport (proxy/TLS) when provided.
 		client.Transport = base.Transport
+	case cfg.Proxy != "":
+		// Otherwise honor an explicitly configured proxy so a proxied scan does
+		// not bypass the proxy during HTTP auto-login.
+		tr, perr := proxyTransport(cfg.Proxy)
+		if perr != nil {
+			return nil, perr
+		}
+		client.Transport = tr
 	}
 
 	// 1. Fetch the login page (this also seeds the jar with any pre-login CSRF
@@ -241,6 +253,40 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 		return nil, errkit.Wrapf(ErrLoginFailed, "final status %d at %s", finalStatus, finalURLStr)
 	}
 	return session, nil
+}
+
+// proxyTransport builds an http.Transport that routes through the given proxy.
+// It supports http/https proxies (via CONNECT) and socks5/socks5h proxies.
+func proxyTransport(rawProxy string) (*http.Transport, error) {
+	u, err := url.Parse(rawProxy)
+	if err != nil {
+		return nil, errkit.Wrap(err, "auto-login: invalid proxy url")
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https":
+		return &http.Transport{Proxy: http.ProxyURL(u)}, nil
+	case "socks5", "socks5h":
+		var auth *proxy.Auth
+		if u.User != nil {
+			password, _ := u.User.Password()
+			auth = &proxy.Auth{User: u.User.Username(), Password: password}
+		}
+		dialer, derr := proxy.SOCKS5("tcp", u.Host, auth, proxy.Direct)
+		if derr != nil {
+			return nil, errkit.Wrap(derr, "auto-login: invalid socks5 proxy")
+		}
+		tr := &http.Transport{}
+		if ctxDialer, ok := dialer.(proxy.ContextDialer); ok {
+			tr.DialContext = ctxDialer.DialContext
+		} else {
+			tr.DialContext = func(_ context.Context, network, addr string) (net.Conn, error) {
+				return dialer.Dial(network, addr)
+			}
+		}
+		return tr, nil
+	default:
+		return nil, errkit.Newf("auto-login: unsupported proxy scheme %q", u.Scheme)
+	}
 }
 
 // collectCookies gathers unique cookies the jar holds for any of the given URLs.

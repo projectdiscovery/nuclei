@@ -70,8 +70,15 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 // path as the scan: user-agent and custom headers (-H), proxy, CDP endpoint and
 // Chrome settings.
 func buildAutoLoginRuntimeOptions(opts *types.Options) *authx.AutoLoginRuntimeOptions {
+	// Mirror the proxy precedence used everywhere else in the codebase (HTTP
+	// proxy first, SOCKS as fallback) so a SOCKS-proxied scan does not silently
+	// bypass the proxy during auto-login.
+	proxy := opts.AliveHttpProxy
+	if proxy == "" {
+		proxy = opts.AliveSocksProxy
+	}
 	rt := &authx.AutoLoginRuntimeOptions{
-		Proxy:              opts.AliveHttpProxy,
+		Proxy:              proxy,
 		CDPEndpoint:        opts.CDPEndpoint,
 		UseInstalledChrome: opts.UseInstalledChrome,
 		ShowBrowser:        opts.ShowBrowser,
