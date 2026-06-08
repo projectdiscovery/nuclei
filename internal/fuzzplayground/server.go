@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -34,7 +35,140 @@ func GetPlaygroundServer() *echo.Echo {
 	e.GET("/user/:id/profile", userProfileHandler)
 	e.POST("/user", patchUnsanitizedUserHandler)
 	e.GET("/blog/posts", getPostsHandler)
+
+	registerAnalyzerRoutes(e)
 	return e
+}
+
+// registerAnalyzerRoutes wires a dedicated, analyzer-friendly test bench used by
+// the fuzzer "analyzer" templates. Each endpoint is genuinely vulnerable but
+// responds purely in-band and deterministically (no external network egress),
+// so the corresponding analyzer's generic probes reliably trigger detection in
+// CI. The query parameter is always "q" to keep the templates uniform.
+func registerAnalyzerRoutes(e *echo.Echo) {
+	e.GET("/analyzer/sqli", analyzerSQLiHandler)
+	e.GET("/analyzer/ssti", analyzerSSTIHandler)
+	e.GET("/analyzer/lfi", analyzerLFIHandler)
+	e.GET("/analyzer/cmdi", analyzerCMDiHandler)
+	e.GET("/analyzer/ssrf", analyzerSSRFHandler)
+	e.GET("/analyzer/redirect", analyzerRedirectHandler)
+	e.GET("/analyzer/crlf", analyzerCRLFHandler)
+	e.GET("/analyzer/cors", analyzerCORSHandler)
+	e.GET("/analyzer/host-header", analyzerHostHeaderHandler)
+}
+
+// reArithmeticTemplate emulates a real template engine: it matches an arithmetic
+// multiplication wrapped in a delimiter pair (EL ${}, Jinja {{}}, #{}, *{},
+// Razor @(), ERB <%= %>, Smarty {}) and replaces the WHOLE delimited expression
+// with its product, preserving any surrounding text (e.g. the analyzer's
+// sentinels), exactly as a vulnerable engine would.
+var reArithmeticTemplate = regexp.MustCompile(`(?:\$\{|\{\{|#\{|\*\{|@\(|<%=|\{)\s*(\d+)\s*\*\s*(\d+)\s*(?:\}\}|%>|\}|\))`)
+
+// analyzerCmdiSeparators are shell metacharacter sequences followed by the `id`
+// command that the cmdi analyzer injects; presence of any indicates the input
+// reached a shell.
+var analyzerCmdiSeparators = []string{";id", "|id", "||id", "&&id", "&id", "`id`", "$(id)", "\nid"}
+
+// analyzerSQLiHandler is vulnerable to error-based SQLi via the real sqlite DB:
+// a quote in q breaks the query and surfaces a genuine "unrecognized token"
+// sqlite error, which the sqli_error analyzer fingerprints.
+func analyzerSQLiHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	posts, err := getUnsanitizedPostsByLang(db, q)
+	if err != nil {
+		return ctx.String(http.StatusInternalServerError, err.Error())
+	}
+	return ctx.JSON(http.StatusOK, posts)
+}
+
+// analyzerSSTIHandler evaluates arithmetic template expressions in q.
+func analyzerSSTIHandler(ctx echo.Context) error {
+	out := reArithmeticTemplate.ReplaceAllStringFunc(ctx.QueryParam("q"), func(m string) string {
+		sub := reArithmeticTemplate.FindStringSubmatch(m)
+		a, _ := strconv.Atoi(sub[1])
+		b, _ := strconv.Atoi(sub[2])
+		return strconv.Itoa(a * b)
+	})
+	return ctx.HTML(http.StatusOK, fmt.Sprintf(bodyTemplate, out))
+}
+
+// analyzerLFIHandler returns file contents for path-traversal payloads in q.
+func analyzerLFIHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	switch {
+	case strings.Contains(q, "etc/passwd"):
+		return ctx.String(http.StatusOK, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
+	case strings.Contains(strings.ToLower(q), "win.ini"):
+		return ctx.String(http.StatusOK, "; for 16-bit app support\r\n[fonts]\r\n")
+	default:
+		return ctx.String(http.StatusOK, "file not found")
+	}
+}
+
+// analyzerCMDiHandler simulates a shell that concatenates q: an injected
+// separator followed by `id` yields command output.
+func analyzerCMDiHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	for _, sep := range analyzerCmdiSeparators {
+		if strings.Contains(q, sep) {
+			return ctx.String(http.StatusOK, "uid=0(root) gid=0(root) groups=0(root)")
+		}
+	}
+	return ctx.String(http.StatusOK, fmt.Sprintf("ping output for %s", q))
+}
+
+// analyzerSSRFHandler simulates an in-band SSRF: requesting a cloud metadata
+// endpoint returns the (mock) instance identity document. It does NOT perform a
+// real outbound request, keeping the test hermetic.
+func analyzerSSRFHandler(ctx echo.Context) error {
+	q := ctx.QueryParam("q")
+	if strings.Contains(q, "169.254.169.254") || strings.Contains(q, "metadata.google.internal") {
+		return ctx.String(http.StatusOK, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
+	}
+	return ctx.String(http.StatusOK, "fetched: nothing interesting")
+}
+
+// analyzerRedirectHandler reflects q straight into the Location header.
+func analyzerRedirectHandler(ctx echo.Context) error {
+	return ctx.Redirect(http.StatusFound, ctx.QueryParam("q"))
+}
+
+// analyzerCRLFHandler naively builds response headers from q, splitting on
+// newlines — a textbook response-splitting bug.
+func analyzerCRLFHandler(ctx echo.Context) error {
+	for _, line := range strings.Split(ctx.QueryParam("q"), "\n") {
+		line = strings.TrimRight(line, "\r")
+		idx := strings.Index(line, ": ")
+		if idx <= 0 || strings.ContainsAny(line[:idx], " \t") {
+			continue
+		}
+		name, val := line[:idx], line[idx+2:]
+		if strings.EqualFold(name, "Set-Cookie") {
+			ctx.Response().Header().Add("Set-Cookie", val)
+		} else {
+			ctx.Response().Header().Set(name, val)
+		}
+	}
+	return ctx.String(http.StatusOK, "ok")
+}
+
+// analyzerCORSHandler reflects an arbitrary Origin and allows credentials.
+func analyzerCORSHandler(ctx echo.Context) error {
+	if origin := ctx.Request().Header.Get("Origin"); origin != "" {
+		ctx.Response().Header().Set("Access-Control-Allow-Origin", origin)
+		ctx.Response().Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+	return ctx.String(http.StatusOK, "ok")
+}
+
+// analyzerHostHeaderHandler reflects the (attacker-controlled) X-Forwarded-Host
+// into an absolute link in the body, without performing any outbound request.
+func analyzerHostHeaderHandler(ctx echo.Context) error {
+	host := ctx.Request().Header.Get("X-Forwarded-Host")
+	if host == "" {
+		host = ctx.Request().Host
+	}
+	return ctx.HTML(http.StatusOK, fmt.Sprintf(`<a href="https://%s/reset?token=abc">reset</a>`, host))
 }
 
 var bodyTemplate = `<html>
@@ -60,6 +194,16 @@ func indexHandler(ctx echo.Context) error {
 	<li><a href="/user/75/profile">User Profile Page SQLI (path parameter)</a></li>
 	<li><a href="/user">POST on /user SQLI (body parameter)</a></li>
 	<li><a href="/blog/posts">SQLI in cookie lang parameter value (eg. lang=en)</a></li>
+
+	<li><a href="/analyzer/sqli?q=en">Analyzer bench: SQLi (query)</a></li>
+	<li><a href="/analyzer/ssti?q=test">Analyzer bench: SSTI (query)</a></li>
+	<li><a href="/analyzer/lfi?q=home.txt">Analyzer bench: LFI (query)</a></li>
+	<li><a href="/analyzer/cmdi?q=127.0.0.1">Analyzer bench: CMDi (query)</a></li>
+	<li><a href="/analyzer/ssrf?q=https://example.com">Analyzer bench: SSRF (query)</a></li>
+	<li><a href="/analyzer/redirect?q=/dashboard">Analyzer bench: Open Redirect (query)</a></li>
+	<li><a href="/analyzer/crlf?q=/home">Analyzer bench: CRLF (query)</a></li>
+	<li><a href="/analyzer/cors?q=x">Analyzer bench: CORS (query)</a></li>
+	<li><a href="/analyzer/host-header?q=x">Analyzer bench: Host Header Injection (query)</a></li>
 	
 	</ul>
 `))
