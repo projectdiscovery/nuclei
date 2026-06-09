@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,6 +44,31 @@ func TestCacheCheck(t *testing.T) {
 		cache.MarkFailedOrRemove(protoType, ctx, nil) // nil error should remove the host from cache
 		got := cache.Check(protoType, ctx)
 		require.False(t, got)
+	})
+}
+
+func TestCacheCheckTimeout(t *testing.T) {
+	// A host that consistently times out (request deadline exceeded) is
+	// unresponsive and must be skipped once MaxHostError consecutive timeouts
+	// are recorded. Production surfaces these as ErrKindNetworkTemporary.
+	cache := New(3, DefaultMaxHostsCount, nil)
+	err := errkit.New("context deadline exceeded (Client.Timeout exceeded while awaiting headers)").
+		SetKind(errkit.ErrKindNetworkTemporary)
+
+	t.Run("flagged after threshold", func(t *testing.T) {
+		ctx := newCtxArgs(t.Name())
+		for i := 1; i <= 3; i++ {
+			cache.MarkFailed(protoType, ctx, err)
+		}
+		require.True(t, cache.Check(protoType, ctx), "host with repeated timeouts must be skipped")
+	})
+
+	t.Run("reset on success keeps a live host", func(t *testing.T) {
+		ctx := newCtxArgs(t.Name())
+		cache.MarkFailed(protoType, ctx, err)
+		cache.MarkFailed(protoType, ctx, err)
+		cache.MarkFailedOrRemove(protoType, ctx, nil) // a successful response resets the host
+		require.False(t, cache.Check(protoType, ctx), "a host that responded must not be skipped")
 	})
 }
 

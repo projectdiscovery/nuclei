@@ -300,8 +300,11 @@ func (c *Cache) checkError(protoType string, err error) bool {
 		// and are due to template logic
 		return false
 	case errkit.ErrKindNetworkTemporary:
-		// these should not be counted as host errors
-		return false
+		// a single temporary error (timeout, i/o reset) is transient, but a host
+		// that produces them on every request with no success in between is
+		// unresponsive. Count it; MarkFailedOrRemove resets the host on the next
+		// successful response, so only consecutive failures reach MaxHostError.
+		return true
 	case errkit.ErrKindNetworkPermanent:
 		// these should be counted as host errors
 		return true
