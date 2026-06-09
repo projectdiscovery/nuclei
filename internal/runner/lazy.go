@@ -1,9 +1,11 @@
 package runner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
@@ -64,6 +66,72 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 		return nil, errkit.Wrap(err, "failed to initialize dynamic auth templates store")
 	}
 	return store, nil
+}
+
+// captureOnceStoreFromOptions launches a visible browser at -auth-login-url,
+// lets the user log in manually (pressing Enter in the terminal when done) and
+// builds an in-memory static auth store from the captured session (cookies and
+// an optional token), scoped to the login host. Unlike auto-login this captures
+// a point-in-time session with no automated re-authentication.
+func captureOnceStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
+	u, err := url.Parse(opts.AuthLoginURL)
+	if err != nil {
+		return nil, errkit.Wrap(err, "invalid -auth-login-url")
+	}
+	if u.Host == "" {
+		return nil, errkit.New("capture-once: -auth-login-url is required and must include a host")
+	}
+
+	rt := buildAutoLoginRuntimeOptions(opts)
+	cfg := autologin.Config{
+		LoginURL:           opts.AuthLoginURL,
+		Proxy:              rt.Proxy,
+		CDPEndpoint:        rt.CDPEndpoint,
+		UseInstalledChrome: rt.UseInstalledChrome,
+		UserAgent:          rt.UserAgent,
+		CustomHeaders:      rt.CustomHeaders,
+	}
+
+	ready := func() error {
+		fmt.Fprintf(os.Stderr, "[auth-capture] Log in to %s in the opened browser window, then press Enter here to capture the session...", opts.AuthLoginURL)
+		reader := bufio.NewReader(os.Stdin)
+		_, rerr := reader.ReadString('\n')
+		return rerr
+	}
+
+	session, err := autologin.CaptureOnce(context.Background(), cfg, ready)
+	if err != nil {
+		return nil, err
+	}
+
+	var secrets []authx.Secret
+	if len(session.Cookies) > 0 {
+		cookies := make([]authx.Cookie, 0, len(session.Cookies))
+		for _, c := range session.Cookies {
+			cookies = append(cookies, authx.Cookie{Key: c.Name, Value: c.Value})
+		}
+		secrets = append(secrets, authx.Secret{
+			Type:    string(authx.CookiesAuth),
+			Domains: []string{u.Host},
+			Cookies: cookies,
+		})
+	}
+	if session.Token != "" {
+		secrets = append(secrets, authx.Secret{
+			Type:    string(authx.BearerTokenAuth),
+			Domains: []string{u.Host},
+			Token:   session.Token,
+		})
+	}
+	if len(secrets) == 0 {
+		return nil, errkit.New("capture-once: captured session had no replayable cookies or token")
+	}
+	for i := range secrets {
+		if err := secrets[i].Validate(); err != nil {
+			return nil, errkit.Wrap(err, "capture-once: invalid captured secret")
+		}
+	}
+	return &authx.Authx{ID: "cli-capture-once", Secrets: secrets}, nil
 }
 
 // buildAutoLoginRuntimeOptions maps scan-level options into the auto-login

@@ -521,6 +521,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.AuthPasswordField, "auth-password-field", "apf", "", "override the detected password form field name for auto-login"),
 		flagSet.BoolVarP(&options.AuthHeadless, "auth-headless", "ah", false, "drive auto-login through a real browser (JS/SPA/SSO login pages)"),
 		flagSet.StringVarP(&options.AuthRecording, "auth-recording", "ar", "", "path to a chrome devtools recorder json login flow to replay for auto-login"),
+		flagSet.BoolVarP(&options.AuthCapture, "auth-capture", "ac", false, "open a browser to log in manually once, then capture the session for the scan"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:

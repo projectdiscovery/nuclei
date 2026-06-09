@@ -450,6 +450,10 @@ type Options struct {
 	// JSON export of a login, replayed headless to acquire the session (implies
 	// a headless auto-login).
 	AuthRecording string
+	// AuthCapture launches a visible browser at -auth-login-url for a one-time
+	// manual login; the resulting session (cookies/token) is captured and used
+	// for the scan. There is no automated re-authentication.
+	AuthCapture bool
 	// FormatUseRequiredOnly only uses required fields when generating requests
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation

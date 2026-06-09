@@ -593,7 +593,7 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if (len(r.options.SecretsFile) > 0 || r.options.AuthLoginURL != "" || r.options.AuthRecording != "") && !r.options.Validate {
+	if (len(r.options.SecretsFile) > 0 || r.options.AuthLoginURL != "" || r.options.AuthRecording != "" || r.options.AuthCapture) && !r.options.Validate {
 		autoLoginOpts := buildAutoLoginRuntimeOptions(r.options)
 		var providers []authprovider.AuthProvider
 
@@ -638,6 +638,24 @@ func (r *Runner) RunEnumeration() error {
 				return errors.Wrap(err, "could not create auto-login auth provider")
 			}
 			providers = append(providers, cliProvider)
+		}
+
+		// Capture-once: open a visible browser for a one-time manual login and
+		// build a static session store from the captured cookies/token.
+		if r.options.AuthCapture {
+			if r.options.AuthLoginURL == "" {
+				return errors.New("-auth-capture requires -auth-login-url (the page to open for manual login)")
+			}
+			r.Logger.Info().Msgf("Capture-once login enabled for %s", r.options.AuthLoginURL)
+			store, err := captureOnceStoreFromOptions(r.options)
+			if err != nil {
+				return errors.Wrap(err, "could not capture login session")
+			}
+			captureProvider, err := authprovider.NewStoreAuthProvider(store, nil, autoLoginOpts)
+			if err != nil {
+				return errors.Wrap(err, "could not create capture-once auth provider")
+			}
+			providers = append(providers, captureProvider)
 		}
 
 		switch len(providers) {
