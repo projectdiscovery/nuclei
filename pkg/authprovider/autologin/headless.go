@@ -227,25 +227,50 @@ func autoFillAndSubmit(page *rod.Page, cfg Config, loginURL *url.URL) error {
 	if err := typeInto(passEl, cfg.Password); err != nil {
 		return errkit.Wrap(err, "auto-login(headless): failed to type password")
 	}
-	return submitForm(page, passEl)
+	settle := cfg.SettleTime
+	if settle <= 0 {
+		settle = 5 * time.Second
+	}
+	// Let the framework register the typed input and validate the form (which
+	// often gates the submit button) before attempting to submit.
+	_ = rod.Try(func() { page.Timeout(settle).MustWaitStable() })
+	return submitForm(page, passEl, settle)
 }
 
-// submitForm clicks a submit control if present, otherwise presses Enter in the
-// given field element.
-func submitForm(page *rod.Page, fallbackField *rod.Element) error {
+// submitForm submits a login form. It prefers clicking a submit control, but
+// frameworks frequently keep that control disabled until the form validates, so
+// the click is bounded by interactable-wait: if the button never becomes
+// interactable (or the click fails) it falls back to pressing Enter in the
+// given field, which reliably triggers native/framework form submission.
+func submitForm(page *rod.Page, fallbackField *rod.Element, settle time.Duration) error {
+	clickTimeout := settle
+	if clickTimeout <= 0 {
+		clickTimeout = 5 * time.Second
+	}
 	if btn := findVisible(page, `button[type="submit"]`, `input[type="submit"]`, `button:not([type])`, `[role="button"]`); btn != nil {
-		_ = btn.ScrollIntoView()
-		if err := btn.Click(proto.InputMouseButtonLeft, 1); err != nil {
-			return errkit.Wrap(err, "auto-login(headless): failed to click submit")
+		// Bound the interactable-wait so a permanently-disabled button can't hang
+		// the whole login; on failure we fall through to Enter-to-submit.
+		clickErr := rod.Try(func() {
+			b := btn.Timeout(clickTimeout)
+			b.MustWaitInteractable()
+			_ = b.ScrollIntoView()
+			b.MustClick()
+		})
+		if clickErr == nil {
+			return nil
 		}
-		return nil
+		if fallbackField == nil {
+			return errkit.Wrapf(ErrLoginFailed, "auto-login(headless): submit button never became interactable: %s", clickErr)
+		}
+		// fall through to Enter-to-submit
 	}
 	if fallbackField != nil {
 		if err := fallbackField.Type(input.Enter); err != nil {
 			return errkit.Wrap(err, "auto-login(headless): failed to submit form")
 		}
+		return nil
 	}
-	return nil
+	return errkit.Wrap(ErrLoginFailed, "auto-login(headless): no submit control found and no field to submit")
 }
 
 // runLoginSteps executes an explicit multi-step login flow.
@@ -308,7 +333,7 @@ func runLoginSteps(ctx context.Context, page *rod.Page, cfg Config, settle time.
 				return errkit.Wrapf(err, "login step %d (press): failed", i)
 			}
 		case "submit":
-			if err := submitForm(page, findVisible(page, `input[type="password"]`)); err != nil {
+			if err := submitForm(page, findVisible(page, `input[type="password"]`), settle); err != nil {
 				return errkit.Wrapf(err, "login step %d (submit)", i)
 			}
 		default:
