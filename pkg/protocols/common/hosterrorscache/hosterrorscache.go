@@ -280,7 +280,7 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 	return finalValue
 }
 
-var reCheckError = regexp.MustCompile(`(no address found for host|could not resolve host|connection refused|connection reset by peer|could not connect to any address found for host|timeout awaiting response headers)`)
+var reCheckError = regexp.MustCompile(`(no address found for host|could not resolve host|connection refused|connection reset by peer|could not connect to any address found for host|timeout awaiting response headers|i/o timeout)`)
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.

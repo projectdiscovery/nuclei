@@ -72,6 +72,21 @@ func TestCacheCheckTimeout(t *testing.T) {
 	})
 }
 
+func TestCacheCheckRawHTTPTimeout(t *testing.T) {
+	// rawhttp/unsafe templates surface read timeouts as a plain-string error
+	// ("ReadStatusLine: ... i/o timeout") that errkit cannot classify, so it
+	// reaches the regex fallback. A host that produces these on every request
+	// must still be skipped.
+	cache := New(3, DefaultMaxHostsCount, nil)
+	err := errors.New("ReadStatusLine: read tcp 127.0.0.1:60087->127.0.0.1:18080: i/o timeout")
+
+	ctx := newCtxArgs(t.Name())
+	for i := 1; i <= 3; i++ {
+		cache.MarkFailed(protoType, ctx, err)
+	}
+	require.True(t, cache.Check(protoType, ctx), "host with repeated rawhttp i/o timeouts must be skipped")
+}
+
 func TestTrackErrors(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount, []string{"custom error"})
 
