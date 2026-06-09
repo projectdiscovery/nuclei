@@ -230,6 +230,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
+			// Let any dynamic auth secret inspect the navigation status so an
+			// expired session (reauth-status-codes) is re-authenticated before
+			// the next headless navigation, matching the HTTP protocol.
+			createdPage.notifyAuthResponse(resp.StatusCode)
 			defer func() {
 				_ = resp.Body.Close()
 			}()

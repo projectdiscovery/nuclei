@@ -63,6 +63,24 @@ func (p *Page) applyAuthStrategies() {
 	}
 }
 
+// notifyAuthResponse forwards the main navigation response status to any auth
+// strategies that inspect responses (e.g. dynamic/auto-login secrets), so an
+// expired session (a status listed in reauth-status-codes) is marked stale and
+// re-authenticated before the next headless navigation. This mirrors the HTTP
+// protocol's NotifyResponse behaviour.
+func (p *Page) notifyAuthResponse(statusCode int) {
+	if p.options == nil || p.options.AuthProvider == nil || p.inputURL == nil {
+		return
+	}
+	for _, strategy := range p.options.AuthProvider.LookupURLX(p.inputURL) {
+		if inspector, ok := strategy.(authx.ResponseInspector); ok {
+			if inspector.OnResponse(statusCode) {
+				gologger.Verbose().Msgf("[authprovider] Session expired (status %d) for %s, will re-authenticate", statusCode, p.inputURL.Host)
+			}
+		}
+	}
+}
+
 // applyAuthWebStorage seeds browser web storage (localStorage/sessionStorage)
 // captured by a headless auto-login into the page. Because web storage is
 // origin-scoped and only exists once a document for the origin is loaded, it is
