@@ -6,11 +6,24 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+// requireDisplay skips headful (visible-browser) tests when no display server is
+// available, e.g. headless Linux CI. macOS and Windows always provide one, but
+// capture-once forces a visible browser which cannot start without an X/Wayland
+// display.
+func requireDisplay(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "linux" && os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("no display server ($DISPLAY/$WAYLAND_DISPLAY) available; skipping headful capture-once test")
+	}
+}
 
 // capturePage already "logs the user in" on GET (sets a session cookie and seeds
 // web storage via JS), so a test can drive CaptureOnce without simulating manual
@@ -24,6 +37,7 @@ const capturePage = `<html><head><title>App</title></head><body>
 
 func TestCaptureOnce_E2E(t *testing.T) {
 	requireChrome(t)
+	requireDisplay(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
@@ -58,6 +72,7 @@ func TestCaptureOnce_E2E(t *testing.T) {
 
 func TestCaptureOnce_ReadyErrorAborts(t *testing.T) {
 	requireChrome(t)
+	requireDisplay(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, "<html><body>login</body></html>")
