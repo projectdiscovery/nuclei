@@ -47,9 +47,9 @@ func tokenForCall(n int32) string {
 
 func applyHeader(t *testing.T, d *Dynamic) string {
 	t.Helper()
-	strat := &DynamicAuthStrategy{Dynamic: *d}
+	strategy := &DynamicAuthStrategy{Dynamic: *d}
 	req, _ := http.NewRequest("GET", "https://example.com", nil)
-	strat.Apply(req)
+	strategy.Apply(req)
 	return req.Header.Get("Authorization")
 }
 
@@ -151,19 +151,19 @@ func TestSessionResponseInspectorInterface(t *testing.T) {
 	var calls atomic.Int32
 	d := newDynamicWithToken(t, &calls)
 	d.ReauthStatusCodes = []int{401}
-	var strat AuthStrategy = &DynamicAuthStrategy{Dynamic: *d}
+	var strategy AuthStrategy = &DynamicAuthStrategy{Dynamic: *d}
 
-	inspector, ok := strat.(ResponseInspector)
+	inspector, ok := strategy.(ResponseInspector)
 	require.True(t, ok, "DynamicAuthStrategy must implement ResponseInspector")
 
 	// establish session via the same shared state
 	req, _ := http.NewRequest("GET", "https://example.com", nil)
-	strat.Apply(req)
+	strategy.Apply(req)
 	require.Equal(t, "Bearer token-1", req.Header.Get("Authorization"))
 
 	require.True(t, inspector.OnResponse(401))
 	req2, _ := http.NewRequest("GET", "https://example.com", nil)
-	strat.Apply(req2)
+	strategy.Apply(req2)
 	require.Equal(t, "Bearer token-2", req2.Header.Get("Authorization"))
 }
 
@@ -201,7 +201,7 @@ func TestSessionConcurrentApplyDuringReauth(t *testing.T) {
 		return nil
 	})
 
-	strat := &DynamicAuthStrategy{Dynamic: *d}
+	strategy := &DynamicAuthStrategy{Dynamic: *d}
 
 	const workers = 16
 	var wg sync.WaitGroup
@@ -218,7 +218,7 @@ func TestSessionConcurrentApplyDuringReauth(t *testing.T) {
 					return
 				default:
 					req, _ := http.NewRequest("GET", "https://example.com", nil)
-					strat.Apply(req)
+					strategy.Apply(req)
 					require.Equal(t, "Bearer tok", req.Header.Get("Authorization"))
 				}
 			}

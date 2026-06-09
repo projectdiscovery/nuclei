@@ -103,15 +103,15 @@ func TestSessionLifecycle_E2E(t *testing.T) {
 		return nil
 	})
 
-	strat := &DynamicAuthStrategy{Dynamic: *d}
-	inspector, ok := AuthStrategy(strat).(ResponseInspector)
+	strategy := &DynamicAuthStrategy{Dynamic: *d}
+	inspector, ok := AuthStrategy(strategy).(ResponseInspector)
 	require.True(t, ok, "DynamicAuthStrategy must implement ResponseInspector")
 
 	// doAPI applies the (possibly re-authenticated) session and calls /api.
 	doAPI := func() int {
 		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api", nil)
 		require.NoError(t, err)
-		strat.Apply(req)
+		strategy.Apply(req)
 		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()

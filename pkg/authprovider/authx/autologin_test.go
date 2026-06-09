@@ -268,8 +268,8 @@ func TestApplyAutoLoginSession_WebStorageCaptured(t *testing.T) {
 	require.Equal(t, map[string]string{"csrf": "tok"}, session)
 
 	// And the DynamicAuthStrategy must surface the same storage to the engine.
-	strat := &DynamicAuthStrategy{Dynamic: *d}
-	l2, s2 := strat.WebStorage()
+	strategy := &DynamicAuthStrategy{Dynamic: *d}
+	l2, s2 := strategy.WebStorage()
 	require.Equal(t, "eyJ...", l2["jwt"])
 	require.Equal(t, "tok", s2["csrf"])
 }
