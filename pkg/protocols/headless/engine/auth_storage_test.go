@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -46,6 +47,35 @@ func TestResolveBrowserStorage(t *testing.T) {
 	local, session := resolveBrowserStorage(provider, target)
 	require.Equal(t, "eyJ.payload.sig", local["jwt"])
 	require.Equal(t, "tok", session["csrf"])
+}
+
+// TestResolveBrowserStorage_FromStaticSecret proves the capture-once parity
+// wiring end to end at the provider layer: a static WebStorage secret (as built
+// from a captured session) flows through a real AuthProvider and is surfaced to
+// the headless storage resolver.
+func TestResolveBrowserStorage_FromStaticSecret(t *testing.T) {
+	store := &authx.Authx{
+		ID: "capture",
+		Secrets: []authx.Secret{{
+			Type:           string(authx.WebStorageAuth),
+			Domains:        []string{"app.example.com"},
+			LocalStorage:   map[string]string{"jwt": "SEEDED"},
+			SessionStorage: map[string]string{"csrf": "TOK"},
+		}},
+	}
+	provider, err := authprovider.NewStoreAuthProvider(store, nil, nil)
+	require.NoError(t, err)
+
+	target, _ := urlutil.Parse("https://app.example.com/dashboard")
+	local, session := resolveBrowserStorage(provider, target)
+	require.Equal(t, "SEEDED", local["jwt"])
+	require.Equal(t, "TOK", session["csrf"])
+
+	// A different host must not receive the captured storage.
+	other, _ := urlutil.Parse("https://other.example.com/")
+	l2, s2 := resolveBrowserStorage(provider, other)
+	require.Nil(t, l2)
+	require.Nil(t, s2)
 }
 
 func TestResolveBrowserStorage_NoStorageStrategies(t *testing.T) {

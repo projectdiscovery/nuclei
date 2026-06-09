@@ -103,7 +103,18 @@ func captureOnceStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 	if err != nil {
 		return nil, err
 	}
+	return captureSessionToStore(session, u.Host)
+}
 
+// captureSessionToStore converts a captured login session into a static auth
+// store scoped to host: cookies as a Cookie secret, an extracted token as a
+// BearerToken secret, and any web storage as a WebStorage secret (replayed into
+// headless scan pages). It is split out from captureOnceStoreFromOptions so the
+// session->store mapping is unit-testable without driving a browser.
+func captureSessionToStore(session *autologin.Session, host string) (*authx.Authx, error) {
+	if session == nil {
+		return nil, errkit.New("capture-once: nil session")
+	}
 	var secrets []authx.Secret
 	if len(session.Cookies) > 0 {
 		cookies := make([]authx.Cookie, 0, len(session.Cookies))
@@ -112,19 +123,29 @@ func captureOnceStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 		}
 		secrets = append(secrets, authx.Secret{
 			Type:    string(authx.CookiesAuth),
-			Domains: []string{u.Host},
+			Domains: []string{host},
 			Cookies: cookies,
 		})
 	}
 	if session.Token != "" {
 		secrets = append(secrets, authx.Secret{
 			Type:    string(authx.BearerTokenAuth),
-			Domains: []string{u.Host},
+			Domains: []string{host},
 			Token:   session.Token,
 		})
 	}
+	if len(session.LocalStorage) > 0 || len(session.SessionStorage) > 0 {
+		// Carry captured web storage so a token-in-web-storage SPA session
+		// replays into headless scan pages (HTTP scans ignore this secret).
+		secrets = append(secrets, authx.Secret{
+			Type:           string(authx.WebStorageAuth),
+			Domains:        []string{host},
+			LocalStorage:   session.LocalStorage,
+			SessionStorage: session.SessionStorage,
+		})
+	}
 	if len(secrets) == 0 {
-		return nil, errkit.New("capture-once: captured session had no replayable cookies or token")
+		return nil, errkit.New("capture-once: captured session had no replayable cookies, token or web storage")
 	}
 	for i := range secrets {
 		if err := secrets[i].Validate(); err != nil {

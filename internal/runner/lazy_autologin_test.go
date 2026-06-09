@@ -1,13 +1,65 @@
 package runner
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/autologin"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCaptureSessionToStore(t *testing.T) {
+	session := &autologin.Session{
+		Cookies:        []*http.Cookie{{Name: "session", Value: "sess-dave"}},
+		Token:          "eyJ.payload.sig",
+		LocalStorage:   map[string]string{"jwt": "eyJ.payload.sig"},
+		SessionStorage: map[string]string{"csrf": "tok"},
+	}
+	store, err := captureSessionToStore(session, "app.example.com")
+	require.NoError(t, err)
+	require.Len(t, store.Secrets, 3, "cookies, token and web storage must each map to a secret")
+
+	byType := map[string]authx.Secret{}
+	for _, s := range store.Secrets {
+		byType[s.Type] = s
+		require.Equal(t, []string{"app.example.com"}, s.Domains, "every secret is scoped to the login host")
+		require.NoError(t, s.Validate())
+	}
+
+	require.Equal(t, "session", byType[string(authx.CookiesAuth)].Cookies[0].Key)
+	require.Equal(t, "eyJ.payload.sig", byType[string(authx.BearerTokenAuth)].Token)
+
+	ws := byType[string(authx.WebStorageAuth)]
+	require.Equal(t, "eyJ.payload.sig", ws.LocalStorage["jwt"])
+	require.Equal(t, "tok", ws.SessionStorage["csrf"])
+
+	// The web storage secret must surface as a BrowserStorageProvider so the
+	// headless engine can seed it into scanned pages.
+	bsp, ok := ws.GetStrategy().(authx.BrowserStorageProvider)
+	require.True(t, ok)
+	local, sess := bsp.WebStorage()
+	require.Equal(t, "eyJ.payload.sig", local["jwt"])
+	require.Equal(t, "tok", sess["csrf"])
+}
+
+func TestCaptureSessionToStore_StorageOnly(t *testing.T) {
+	// A pure token-in-localStorage SPA: no cookies, no extracted token, only
+	// web storage — it must still produce a usable store.
+	session := &autologin.Session{LocalStorage: map[string]string{"jwt": "x"}}
+	store, err := captureSessionToStore(session, "spa.example.com")
+	require.NoError(t, err)
+	require.Len(t, store.Secrets, 1)
+	require.Equal(t, string(authx.WebStorageAuth), store.Secrets[0].Type)
+}
+
+func TestCaptureSessionToStore_Empty(t *testing.T) {
+	_, err := captureSessionToStore(&autologin.Session{}, "app.example.com")
+	require.Error(t, err, "an empty session must not produce a store")
+}
 
 func TestAutoLoginStoreFromOptions_RecordingDerivesHost(t *testing.T) {
 	recording := `{"steps": [
