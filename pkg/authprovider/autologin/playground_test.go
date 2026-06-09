@@ -182,6 +182,81 @@ func TestPlayground_HeadlessSPAToken(t *testing.T) {
 	assertSessionAuthenticates(t, base, session)
 }
 
+// TestPlayground_HeadlessSPATokenAutoDetect proves the engine surfaces a JWT
+// kept in web storage as the session token even when no token-regex is given
+// (the JWT is stored under the conventional "access_token" key).
+func TestPlayground_HeadlessSPATokenAutoDetect(t *testing.T) {
+	requireChrome(t)
+	base := playgroundServer(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   base + "/auth/spa-token-login",
+		Username:   fuzzplayground.AuthUsername,
+		Password:   fuzzplayground.AuthPassword,
+		SettleTime: 1500 * time.Millisecond,
+		// Intentionally no TokenRegex: rely on web-storage JWT auto-detection.
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, session.Token, "JWT in localStorage must be auto-detected without a token-regex")
+	require.NotEmpty(t, session.LocalStorage["access_token"], "localStorage must be captured")
+	assertSessionAuthenticates(t, base, session)
+}
+
+// TestPlayground_HTTPMultiFormPicksLogin proves the form detector selects the
+// credential form on a page that also contains a decoy search form (no
+// password), rather than blindly taking the first <form>.
+func TestPlayground_HTTPMultiFormPicksLogin(t *testing.T) {
+	base := playgroundServer(t)
+	session, err := Login(context.Background(), nil, Config{
+		LoginURL: base + "/auth/multiform-login",
+		Username: fuzzplayground.AuthUsername,
+		Password: fuzzplayground.AuthPassword,
+	})
+	require.NoError(t, err, "detector must pick the login form over the decoy search form")
+	require.Contains(t, cookieNames(session), "PSESSION")
+	assertSessionAuthenticates(t, base, session)
+}
+
+// TestPlayground_HeadlessJSCookieLogin proves cookies set client-side via
+// document.cookie (no Set-Cookie header) are captured from the browser jar.
+func TestPlayground_HeadlessJSCookieLogin(t *testing.T) {
+	requireChrome(t)
+	base := playgroundServer(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   base + "/auth/jscookie-login",
+		Username:   fuzzplayground.AuthUsername,
+		Password:   fuzzplayground.AuthPassword,
+		SettleTime: 1500 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.Contains(t, cookieNames(session), "PSESSION", "JS-set cookie must be captured from the browser")
+	assertSessionAuthenticates(t, base, session)
+}
+
+// TestPlayground_HeadlessDelayedFormLogin proves the engine waits for a login
+// form that is injected asynchronously instead of failing immediately.
+func TestPlayground_HeadlessDelayedFormLogin(t *testing.T) {
+	requireChrome(t)
+	base := playgroundServer(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   base + "/auth/delayed-login",
+		Username:   fuzzplayground.AuthUsername,
+		Password:   fuzzplayground.AuthPassword,
+		SettleTime: 2 * time.Second,
+	})
+	require.NoError(t, err, "engine must wait for the asynchronously-rendered form")
+	require.Contains(t, cookieNames(session), "PSESSION")
+	assertSessionAuthenticates(t, base, session)
+}
+
 func TestPlayground_HeadlessOAuthRedirect(t *testing.T) {
 	requireChrome(t)
 	base := playgroundServer(t)

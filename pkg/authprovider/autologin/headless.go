@@ -105,7 +105,7 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 		if err := runLoginSteps(ctx, page, cfg, settle); err != nil {
 			return nil, err
 		}
-	} else if err := autoFillAndSubmit(page, cfg, loginURL); err != nil {
+	} else if err := autoFillAndSubmit(ctx, page, cfg, loginURL, settle); err != nil {
 		return nil, err
 	}
 
@@ -260,7 +260,12 @@ func launchBrowser(cfg Config) (*rod.Browser, func(), error) {
 
 // autoFillAndSubmit runs the default single-shot login: detect the password
 // (and username) field, type the credentials and submit.
-func autoFillAndSubmit(page *rod.Page, cfg Config, loginURL *url.URL) error {
+func autoFillAndSubmit(ctx context.Context, page *rod.Page, cfg Config, loginURL *url.URL, settle time.Duration) error {
+	// SPA forms are frequently injected after an async tick, so the password
+	// field may not exist immediately after the initial settle. Wait (bounded by
+	// settle) for it to appear before detecting, rather than failing outright.
+	_ = waitVisible(ctx, page, `input[type="password"]`, settle)
+
 	// Prefer field names detected from the rendered DOM; fall back to type-based
 	// selectors for SPA inputs that carry no name attribute.
 	var detected *LoginForm
@@ -279,10 +284,6 @@ func autoFillAndSubmit(page *rod.Page, cfg Config, loginURL *url.URL) error {
 	}
 	if err := typeInto(passEl, cfg.Password); err != nil {
 		return errkit.Wrap(err, "auto-login(headless): failed to type password")
-	}
-	settle := cfg.SettleTime
-	if settle <= 0 {
-		settle = 5 * time.Second
 	}
 	// Let the framework register the typed input and validate the form (which
 	// often gates the submit button) before attempting to submit.

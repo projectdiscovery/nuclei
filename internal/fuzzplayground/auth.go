@@ -221,6 +221,42 @@ func registerAuthRoutes(e *echo.Echo) {
 		return c.Redirect(http.StatusFound, "/auth/dashboard")
 	})
 
+	// 8. Multi-form page: a decoy search form (no password) precedes the real
+	//    login form. The detector must score forms and pick the credential one
+	//    rather than blindly taking the first <form>.
+	e.GET("/auth/multiform-login", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, multiFormLoginPage)
+	})
+
+	// 9. JS-set cookie: login succeeds via XHR that returns the session id in the
+	//    body (no Set-Cookie), and client JS writes document.cookie. The headless
+	//    engine must capture cookies from the browser jar, not just Set-Cookie.
+	e.GET("/auth/jscookie-login", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, jsCookieLoginPage)
+	})
+	e.POST("/auth/api/login-jsbody", func(c echo.Context) error {
+		var body struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
+		}
+		if body.Username == AuthUsername && body.Password == AuthPassword {
+			session, _ := st.issue(AuthUsername)
+			// Deliberately no Set-Cookie: the client sets the cookie via JS.
+			return c.JSON(http.StatusOK, map[string]string{"session": session})
+		}
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+	})
+
+	// 10. Delayed render: the login form is injected after an async tick, so an
+	//     engine that probes for the password field immediately would miss it and
+	//     must wait for it to appear.
+	e.GET("/auth/delayed-login", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, delayedLoginPage)
+	})
+
 	// Protected landing page: the login-success heuristic relies on the final
 	// page having no password field, which this page satisfies.
 	e.GET("/auth/dashboard", func(c echo.Context) error {
@@ -369,3 +405,60 @@ var spaTokenLoginPage = fmt.Sprintf(`<html><head><title>SPA Token Login</title><
     }
   });
 </script></body></html>`, AuthUsername, AuthPassword, jwtFor("spa-static-session"))
+
+// multiFormLoginPage places a decoy search form (no password field) before the
+// real login form to exercise best-form selection over first-form selection.
+const multiFormLoginPage = `<html><head><title>Multi-form Login</title></head><body>
+<form id="search" method="get" action="/auth/api/search">
+  <input type="text" name="q" placeholder="Search">
+  <button type="submit">Search</button>
+</form>
+<hr>
+<form id="login" method="post" action="/auth/form-login">
+  <input type="text" name="username" placeholder="Email">
+  <input type="password" name="password" placeholder="Password">
+  <button type="submit">Sign in</button>
+</form></body></html>`
+
+// jsCookieLoginPage logs in via XHR and sets the session cookie from JS
+// (document.cookie) rather than relying on a Set-Cookie response header.
+const jsCookieLoginPage = `<html><head><title>JS Cookie Login</title></head><body>
+<form id="f">
+  <input type="email" name="username" id="email" placeholder="Email">
+  <input type="password" name="password" id="password" placeholder="Password">
+  <button type="submit" id="submit">Sign in</button>
+</form>
+<script>
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    fetch('/auth/api/login-jsbody', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        username: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.session) {
+        document.cookie = 'PSESSION=' + d.session + '; path=/';
+        document.body.innerHTML = '<h1>Welcome, signed in</h1>';
+      } else {
+        document.body.innerHTML += '<p>login failed</p>';
+      }
+    });
+  });
+</script></body></html>`
+
+// delayedLoginPage injects the login form only after an async tick, simulating a
+// SPA that renders its form after bootstrapping.
+const delayedLoginPage = `<html><head><title>Delayed Login</title></head><body>
+<div id="app"><p>loading...</p></div>
+<script>
+  setTimeout(function () {
+    document.getElementById('app').innerHTML =
+      '<form method="post" action="/auth/form-login">' +
+      '<input type="text" name="username" placeholder="Email">' +
+      '<input type="password" name="password" placeholder="Password">' +
+      '<button type="submit">Sign in</button></form>';
+  }, 700);
+</script></body></html>`
