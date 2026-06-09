@@ -3,6 +3,8 @@ package authx
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -10,6 +12,35 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/autologin"
 	"github.com/stretchr/testify/require"
 )
+
+func TestAutoLoginConfig_Validate_Recording(t *testing.T) {
+	recording := `{"steps": [
+		{"type": "navigate", "url": "https://app.example.com/login"},
+		{"type": "change", "value": "dave", "selectors": [["#user"]]},
+		{"type": "change", "value": "secret", "selectors": [["#pass"]]},
+		{"type": "click", "selectors": [["#submit"]]}
+	]}`
+	path := filepath.Join(t.TempDir(), "login.flow.json")
+	require.NoError(t, os.WriteFile(path, []byte(recording), 0o600))
+
+	// LoginURL intentionally omitted: it must be derived from the recording.
+	cfg := &AutoLoginConfig{Recording: path, Username: "dave", Password: "secret"}
+	require.NoError(t, cfg.Validate())
+
+	require.True(t, cfg.Headless, "a recording must force a headless login")
+	require.Equal(t, "https://app.example.com/login", cfg.LoginURL, "login URL derived from first navigate step")
+	require.Equal(t, []autologin.LoginStep{
+		{Action: "navigate", Value: "https://app.example.com/login"},
+		{Action: "fill", Selector: "#user", Value: "{{username}}"},
+		{Action: "fill", Selector: "#pass", Value: "{{password}}"},
+		{Action: "click", Selector: "#submit"},
+	}, cfg.Steps, "recording must compile to placeholder-parameterized steps")
+}
+
+func TestAutoLoginConfig_Validate_RecordingMissingFile(t *testing.T) {
+	cfg := &AutoLoginConfig{Recording: filepath.Join(t.TempDir(), "nope.json"), Password: "x"}
+	require.Error(t, cfg.Validate(), "a missing recording file must fail validation")
+}
 
 func newAutoLoginDynamic() *Dynamic {
 	return &Dynamic{

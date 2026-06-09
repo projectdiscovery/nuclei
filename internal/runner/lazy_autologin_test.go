@@ -1,11 +1,30 @@
 package runner
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
+
+func TestAutoLoginStoreFromOptions_RecordingDerivesHost(t *testing.T) {
+	recording := `{"steps": [
+		{"type": "navigate", "url": "https://recorded.example.com/signin"},
+		{"type": "change", "value": "bob", "selectors": [["#user"]]}
+	]}`
+	path := filepath.Join(t.TempDir(), "flow.json")
+	require.NoError(t, os.WriteFile(path, []byte(recording), 0o600))
+
+	// No -auth-login-url: the host scope must come from the recording.
+	opts := &types.Options{AuthRecording: path, AuthUsername: "bob", AuthPassword: "p"}
+	store, err := autoLoginStoreFromOptions(opts)
+	require.NoError(t, err)
+	require.Len(t, store.Dynamic, 1)
+	require.Equal(t, []string{"recorded.example.com"}, store.Dynamic[0].Secret.Domains)
+	require.Equal(t, path, store.Dynamic[0].AutoLogin.Recording)
+}
 
 func TestAutoLoginStoreFromOptions(t *testing.T) {
 	opts := &types.Options{

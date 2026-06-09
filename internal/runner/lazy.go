@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/autologin"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -109,12 +110,23 @@ func buildAutoLoginRuntimeOptions(opts *types.Options) *authx.AutoLoginRuntimeOp
 // single auto-login dynamic secret built from the -auth-login-url flag set. The
 // captured session is scoped to the login URL's host.
 func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
-	u, err := url.Parse(opts.AuthLoginURL)
+	// The login URL may be supplied directly (-auth-login-url) or derived from a
+	// recording's first navigate step; resolve the host scope from whichever is
+	// available.
+	loginURL := opts.AuthLoginURL
+	if loginURL == "" && opts.AuthRecording != "" {
+		steps, err := autologin.StepsFromRecordingFile(opts.AuthRecording, opts.AuthUsername, opts.AuthPassword)
+		if err != nil {
+			return nil, err
+		}
+		loginURL = autologin.FirstNavigateURL(steps)
+	}
+	u, err := url.Parse(loginURL)
 	if err != nil {
-		return nil, errkit.Wrap(err, "invalid -auth-login-url")
+		return nil, errkit.Wrap(err, "invalid auto-login url")
 	}
 	if u.Host == "" {
-		return nil, errkit.New("invalid -auth-login-url: missing host")
+		return nil, errkit.New("auto-login: could not determine host (set -auth-login-url or provide a recording with a navigate step)")
 	}
 	return &authx.Authx{
 		ID: "cli-auto-login",
@@ -122,12 +134,13 @@ func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 			{
 				Secret: &authx.Secret{Domains: []string{u.Host}},
 				AutoLogin: &authx.AutoLoginConfig{
-					LoginURL:      opts.AuthLoginURL,
+					LoginURL:      loginURL,
 					Username:      opts.AuthUsername,
 					Password:      opts.AuthPassword,
 					UsernameField: opts.AuthUsernameField,
 					PasswordField: opts.AuthPasswordField,
 					Headless:      opts.AuthHeadless,
+					Recording:     opts.AuthRecording,
 				},
 			},
 		},

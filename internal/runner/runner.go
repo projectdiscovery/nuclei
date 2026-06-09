@@ -593,7 +593,7 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if (len(r.options.SecretsFile) > 0 || r.options.AuthLoginURL != "") && !r.options.Validate {
+	if (len(r.options.SecretsFile) > 0 || r.options.AuthLoginURL != "" || r.options.AuthRecording != "") && !r.options.Validate {
 		autoLoginOpts := buildAutoLoginRuntimeOptions(r.options)
 		var providers []authprovider.AuthProvider
 
@@ -619,12 +619,16 @@ func (r *Runner) RunEnumeration() error {
 
 		// Turnkey auto-login from CLI flags (-auth-login-url): build an in-memory
 		// auto-login secret scoped to the login host, no secrets file needed.
-		if r.options.AuthLoginURL != "" {
+		if r.options.AuthLoginURL != "" || r.options.AuthRecording != "" {
 			engine := "http"
-			if r.options.AuthHeadless {
+			if r.options.AuthHeadless || r.options.AuthRecording != "" {
 				engine = "headless"
 			}
-			r.Logger.Info().Msgf("Auto-login enabled (%s engine) for %s", engine, r.options.AuthLoginURL)
+			target := r.options.AuthLoginURL
+			if target == "" {
+				target = r.options.AuthRecording
+			}
+			r.Logger.Info().Msgf("Auto-login enabled (%s engine) for %s", engine, target)
 			store, err := autoLoginStoreFromOptions(r.options)
 			if err != nil {
 				return errors.Wrap(err, "could not build auto-login auth provider")

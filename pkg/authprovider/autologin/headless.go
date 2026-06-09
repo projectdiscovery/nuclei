@@ -409,7 +409,7 @@ func byName(name string) string {
 // in priority order, or nil if none match.
 func findVisible(page *rod.Page, selectors ...string) *rod.Element {
 	for _, sel := range selectors {
-		els, err := page.Elements(sel)
+		els, err := queryElements(page, sel)
 		if err != nil {
 			continue
 		}
@@ -420,6 +420,21 @@ func findVisible(page *rod.Page, selectors ...string) *rod.Element {
 		}
 	}
 	return nil
+}
+
+// queryElements resolves a selector that may be CSS (default) or XPath. XPath
+// selectors are prefixed with "xpath=" (emitted by the recording importer) or
+// written as a raw "//"/"(//" expression. This lets recorded login flows, whose
+// most stable selector is often an XPath, replay reliably.
+func queryElements(page *rod.Page, sel string) (rod.Elements, error) {
+	switch {
+	case strings.HasPrefix(sel, "xpath="):
+		return page.ElementsX(strings.TrimPrefix(sel, "xpath="))
+	case strings.HasPrefix(sel, "//"), strings.HasPrefix(sel, "(//"):
+		return page.ElementsX(sel)
+	default:
+		return page.Elements(sel)
+	}
 }
 
 // typeInto focuses the element, clears any existing value and types the text so

@@ -48,10 +48,30 @@ type AutoLoginConfig struct {
 	// Steps, when set, drives an explicit multi-step headless login flow
 	// (username-first / SSO / consent screens) instead of single-shot detection.
 	Steps []autologin.LoginStep `json:"steps" yaml:"steps"`
+	// Recording is a path to a Chrome DevTools Recorder / @puppeteer/replay JSON
+	// export of a real login. It is compiled into Steps at validation time, so a
+	// complex login can be authored by recording in a browser instead of writing
+	// steps by hand. Implies a headless login. Recorded credential literals are
+	// replaced with {{username}}/{{password}} placeholders.
+	Recording string `json:"recording" yaml:"recording"`
 }
 
 // Validate validates the auto-login configuration.
 func (a *AutoLoginConfig) Validate() error {
+	// A recording compiles into Steps and drives a headless login. Load it first
+	// so a missing/invalid recording fails fast and so it can supply the login
+	// URL when one isn't given explicitly.
+	if a.Recording != "" {
+		steps, err := autologin.StepsFromRecordingFile(a.Recording, a.Username, a.Password)
+		if err != nil {
+			return err
+		}
+		a.Steps = steps
+		a.Headless = true
+		if a.LoginURL == "" {
+			a.LoginURL = autologin.FirstNavigateURL(steps)
+		}
+	}
 	if a.LoginURL == "" {
 		return errkit.New("login-url is required for auto-login dynamic secret")
 	}

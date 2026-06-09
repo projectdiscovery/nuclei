@@ -446,6 +446,10 @@ type Options struct {
 	// AuthHeadless drives the auto-login through a real browser (for JS-rendered
 	// / SPA / multi-step login pages).
 	AuthHeadless bool
+	// AuthRecording is a path to a Chrome DevTools Recorder / @puppeteer/replay
+	// JSON export of a login, replayed headless to acquire the session (implies
+	// a headless auto-login).
+	AuthRecording string
 	// FormatUseRequiredOnly only uses required fields when generating requests
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
