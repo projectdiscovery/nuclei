@@ -268,3 +268,129 @@ func TestLoginHeadless_WrongPasswordFails(t *testing.T) {
 	})
 	require.ErrorIs(t, err, ErrLoginFailed)
 }
+
+// disabledSubmitPage mimics a framework-validated form (e.g. Angular/Juice
+// Shop): the submit button starts disabled and is only enabled once both fields
+// have received input events. A naive click-immediately submitter hangs on the
+// disabled button; the engine must settle (so the field input enables the
+// button) and wait for the button to become interactable before clicking.
+const disabledSubmitPage = `<html><head><title>Login</title></head><body>
+<form id="f" action="/login" method="post">
+  <input type="email" name="email" id="email">
+  <input type="password" name="password" id="password">
+  <button type="submit" id="submit" disabled>Sign in</button>
+</form>
+<script>
+  var email = document.getElementById('email');
+  var pw = document.getElementById('password');
+  var btn = document.getElementById('submit');
+  function check() { btn.disabled = !(email.value && pw.value); }
+  email.addEventListener('input', check);
+  pw.addEventListener('input', check);
+</script></body></html>`
+
+func TestLoginHeadless_SubmitDisabledUntilValid(t *testing.T) {
+	requireChrome(t)
+
+	app := newJSLoginApp()
+	srv := httptest.NewServer(func() http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprint(w, disabledSubmitPage)
+				return
+			}
+			_ = r.ParseForm()
+			if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprint(w, disabledSubmitPage)
+				return
+			}
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
+			app.mu.Lock()
+			app.sessions["sess-dave"] = true
+			app.mu.Unlock()
+			http.Redirect(w, r, "/dashboard", http.StatusFound)
+		})
+		mux.HandleFunc("/dashboard", app.handleDashboard)
+		return mux
+	}())
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   srv.URL + "/login",
+		Username:   "dave@example.com",
+		Password:   "p@ss",
+		SettleTime: 1500 * time.Millisecond,
+	})
+	require.NoError(t, err, "engine must wait for the submit button to become interactable")
+
+	names := map[string]string{}
+	for _, c := range session.Cookies {
+		names[c.Name] = c.Value
+	}
+	require.Contains(t, names, "session", "login should succeed once the button is enabled")
+}
+
+// enterSubmitPage has no clickable submit control and submits only when Enter is
+// pressed in the password field (common in minimal SPA forms). It exercises the
+// engine's Enter-to-submit fallback when no submit button is found.
+const enterSubmitPage = `<html><head><title>Login</title></head><body>
+<form id="f" action="/login" method="post">
+  <input type="email" name="email" id="email">
+  <input type="password" name="password" id="password">
+</form>
+<script>
+  document.getElementById('password').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { document.getElementById('f').submit(); }
+  });
+</script></body></html>`
+
+func TestLoginHeadless_EnterSubmitFallback(t *testing.T) {
+	requireChrome(t)
+
+	app := newJSLoginApp()
+	srv := httptest.NewServer(func() http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprint(w, enterSubmitPage)
+				return
+			}
+			_ = r.ParseForm()
+			if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprint(w, enterSubmitPage)
+				return
+			}
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
+			app.mu.Lock()
+			app.sessions["sess-dave"] = true
+			app.mu.Unlock()
+			http.Redirect(w, r, "/dashboard", http.StatusFound)
+		})
+		mux.HandleFunc("/dashboard", app.handleDashboard)
+		return mux
+	}())
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   srv.URL + "/login",
+		Username:   "dave@example.com",
+		Password:   "p@ss",
+		SettleTime: 1500 * time.Millisecond,
+	})
+	require.NoError(t, err, "engine must fall back to Enter-to-submit when no submit button exists")
+
+	names := map[string]string{}
+	for _, c := range session.Cookies {
+		names[c.Name] = c.Value
+	}
+	require.Contains(t, names, "session", "Enter-to-submit fallback should log in")
+}
