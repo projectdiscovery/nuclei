@@ -454,6 +454,13 @@ type Options struct {
 	// manual login; the resulting session (cookies/token) is captured and used
 	// for the scan. There is no automated re-authentication.
 	AuthCapture bool
+	// AuthReauthStatusCodes is a comma-separated list of HTTP status codes that
+	// signal an expired session (e.g. "401,403"); when a scan response matches,
+	// the auto-login is re-run before the next request. Empty disables it.
+	AuthReauthStatusCodes string
+	// AuthRefreshInterval, when set (e.g. "15m"), proactively re-runs the
+	// auto-login once the captured session is older than the interval.
+	AuthRefreshInterval string
 	// FormatUseRequiredOnly only uses required fields when generating requests
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation

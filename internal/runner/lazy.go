@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
@@ -217,11 +218,20 @@ func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 	if u.Host == "" {
 		return nil, errkit.New("auto-login: could not determine host (set -auth-login-url or provide a recording with a navigate step)")
 	}
+	reauthCodes, err := parseStatusCodes(opts.AuthReauthStatusCodes)
+	if err != nil {
+		return nil, err
+	}
 	return &authx.Authx{
 		ID: "cli-auto-login",
 		Dynamic: []authx.Dynamic{
 			{
 				Secret: &authx.Secret{Domains: []string{u.Host}},
+				// Session lifecycle: re-run the login on the configured expiry
+				// status codes and/or once the session ages past the interval, so
+				// a long scan does not silently continue with a dead session.
+				RefreshInterval:   opts.AuthRefreshInterval,
+				ReauthStatusCodes: reauthCodes,
 				AutoLogin: &authx.AutoLoginConfig{
 					LoginURL:      loginURL,
 					Username:      opts.AuthUsername,
@@ -234,6 +244,31 @@ func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 			},
 		},
 	}, nil
+}
+
+// parseStatusCodes parses a comma-separated list of HTTP status codes (e.g.
+// "401,403") into a slice of ints. An empty string yields a nil slice.
+func parseStatusCodes(raw string) ([]int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	var codes []int
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		code, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "invalid -auth-reauth-status-codes value %q", part)
+		}
+		if code < 100 || code > 599 {
+			return nil, errkit.New("invalid -auth-reauth-status-codes value %q: must be a valid HTTP status code", part)
+		}
+		codes = append(codes, code)
+	}
+	return codes, nil
 }
 
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets

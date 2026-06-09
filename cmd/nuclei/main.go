@@ -522,6 +522,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.AuthHeadless, "auth-headless", "ah", false, "drive auto-login through a real browser (JS/SPA/SSO login pages)"),
 		flagSet.StringVarP(&options.AuthRecording, "auth-recording", "ar", "", "path to a chrome devtools recorder json login flow to replay for auto-login"),
 		flagSet.BoolVarP(&options.AuthCapture, "auth-capture", "ac", false, "open a browser to log in manually once, then capture the session for the scan"),
+		flagSet.StringVarP(&options.AuthReauthStatusCodes, "auth-reauth-status-codes", "arsc", "", "comma-separated status codes (e.g. 401,403) that trigger an auto-login re-authentication during the scan"),
+		flagSet.StringVarP(&options.AuthRefreshInterval, "auth-refresh-interval", "ari", "", "re-run the auto-login once the captured session is older than this duration (e.g. 15m)"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:

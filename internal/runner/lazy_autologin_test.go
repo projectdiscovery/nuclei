@@ -108,6 +108,58 @@ func TestAutoLoginStoreFromOptions_InvalidURL(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestAutoLoginStoreFromOptions_SessionLifecycle(t *testing.T) {
+	opts := &types.Options{
+		AuthLoginURL:          "https://app.example.com/login",
+		AuthUsername:          "alice",
+		AuthPassword:          "s3cr3t",
+		AuthReauthStatusCodes: "401, 403",
+		AuthRefreshInterval:   "15m",
+	}
+	store, err := autoLoginStoreFromOptions(opts)
+	require.NoError(t, err)
+	dyn := store.Dynamic[0]
+	require.Equal(t, []int{401, 403}, dyn.ReauthStatusCodes, "reauth status codes must be threaded onto the dynamic")
+	require.Equal(t, "15m", dyn.RefreshInterval)
+	// The lifecycle-configured store must validate (refresh-interval is parsed).
+	require.NoError(t, dyn.Validate())
+}
+
+func TestAutoLoginStoreFromOptions_InvalidReauthCodes(t *testing.T) {
+	_, err := autoLoginStoreFromOptions(&types.Options{
+		AuthLoginURL:          "https://app.example.com/login",
+		AuthPassword:          "s3cr3t",
+		AuthReauthStatusCodes: "401,nope",
+	})
+	require.Error(t, err, "non-numeric reauth status code must be rejected")
+}
+
+func TestParseStatusCodes(t *testing.T) {
+	cases := []struct {
+		in      string
+		want    []int
+		wantErr bool
+	}{
+		{"", nil, false},
+		{"   ", nil, false},
+		{"401", []int{401}, false},
+		{"401,403, 419", []int{401, 403, 419}, false},
+		{"401,,403", []int{401, 403}, false},
+		{"abc", nil, true},
+		{"99", nil, true},
+		{"600", nil, true},
+	}
+	for _, tc := range cases {
+		got, err := parseStatusCodes(tc.in)
+		if tc.wantErr {
+			require.Error(t, err, "input %q", tc.in)
+			continue
+		}
+		require.NoError(t, err, "input %q", tc.in)
+		require.Equal(t, tc.want, got, "input %q", tc.in)
+	}
+}
+
 func TestBuildAutoLoginRuntimeOptions(t *testing.T) {
 	opts := &types.Options{
 		CustomHeaders:      []string{"User-Agent: NucleiScan/1.0", "X-Env: staging", "malformed-header"},
