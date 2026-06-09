@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -73,6 +74,32 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 	}
 	defer func() { _ = page.Close() }()
 	page = page.Context(ctx).Timeout(timeout)
+
+	// Passively observe response headers so a token delivered via a response
+	// header (Authorization, X-Auth-Token, ...) during an XHR login is captured,
+	// mirroring the HTTP engine. This is observation-only (no request hijacking)
+	// to avoid interfering with the login flow. The listener stops when the page
+	// is closed (deferred above).
+	var (
+		headerTokenMu sync.Mutex
+		headerToken   string
+	)
+	if err := (proto.NetworkEnable{}).Call(page); err == nil {
+		go page.EachEvent(func(e *proto.NetworkResponseReceived) {
+			if e.Response == nil {
+				return
+			}
+			hdr := make(http.Header, len(e.Response.Headers))
+			for k, v := range e.Response.Headers {
+				hdr.Set(k, v.Str())
+			}
+			if tok := detectHeaderToken(hdr, tokenRe); tok != "" {
+				headerTokenMu.Lock()
+				headerToken = tok
+				headerTokenMu.Unlock()
+			}
+		})()
+	}
 
 	// Apply UA / custom headers before navigating so the login request carries
 	// the same identity as the scan.
@@ -150,6 +177,14 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 	// having to specify a token-regex.
 	if session.Token == "" {
 		session.Token = detectStorageJWT(session.LocalStorage, session.SessionStorage)
+	}
+
+	// Last resort: a token observed in a response header during the login (e.g.
+	// an XHR auth call that returned Authorization / X-Auth-Token).
+	if session.Token == "" {
+		headerTokenMu.Lock()
+		session.Token = headerToken
+		headerTokenMu.Unlock()
 	}
 
 	// Success heuristic: being re-prompted (final page still presents a login

@@ -272,6 +272,28 @@ func TestPlayground_HeadlessDelayedFormLogin(t *testing.T) {
 	assertSessionAuthenticates(t, base, session)
 }
 
+// TestPlayground_HeadlessHeaderTokenLogin proves the headless engine recovers a
+// token that is only ever delivered in an XHR response header (never stored in
+// a cookie or web storage) via passive response-header interception.
+func TestPlayground_HeadlessHeaderTokenLogin(t *testing.T) {
+	requireChrome(t)
+	base := playgroundServer(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   base + "/auth/spa-header-token-login",
+		Username:   fuzzplayground.AuthUsername,
+		Password:   fuzzplayground.AuthPassword,
+		SettleTime: 1500 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.Empty(t, session.Cookies, "header-token SPA sets no cookie")
+	require.Empty(t, session.LocalStorage["token"], "the SPA does not store the token")
+	require.NotEmpty(t, session.Token, "token must be captured from the XHR response header")
+	assertSessionAuthenticates(t, base, session)
+}
+
 func TestPlayground_HeadlessOAuthRedirect(t *testing.T) {
 	requireChrome(t)
 	base := playgroundServer(t)

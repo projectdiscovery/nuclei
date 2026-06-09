@@ -273,6 +273,28 @@ func registerAuthRoutes(e *echo.Echo) {
 		return c.HTML(http.StatusOK, headerTokenLoginPage("Invalid credentials"))
 	})
 
+	// 12. SPA whose XHR login returns the token only in a response header (no
+	//     cookie, no body/storage token). Exercises the headless engine's
+	//     passive response-header interception.
+	e.GET("/auth/spa-header-token-login", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, spaHeaderTokenLoginPage)
+	})
+	e.POST("/auth/api/login-header", func(c echo.Context) error {
+		var body struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
+		}
+		if body.Username == AuthUsername && body.Password == AuthPassword {
+			_, jwt := st.issue(AuthUsername)
+			c.Response().Header().Set("X-Auth-Token", jwt)
+			return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+		}
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+	})
+
 	// Protected landing page: the login-success heuristic relies on the final
 	// page having no password field, which this page satisfies.
 	e.GET("/auth/dashboard", func(c echo.Context) error {
@@ -480,6 +502,32 @@ func headerTokenLoginPage(errMsg string) string {
   <button type="submit">Sign in</button>
 </form></body></html>`, banner)
 }
+
+// spaHeaderTokenLoginPage logs in via XHR; the token comes back only in a
+// response header (the page never reads or stores it), so the session is
+// recoverable only by observing response headers.
+const spaHeaderTokenLoginPage = `<html><head><title>SPA Header Token Login</title></head><body>
+<form id="f">
+  <input type="email" name="username" id="email" placeholder="Email">
+  <input type="password" name="password" id="password" placeholder="Password">
+  <button type="submit" id="submit">Sign in</button>
+</form>
+<script>
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    fetch('/auth/api/login-header', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        username: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.ok) { document.body.innerHTML = '<h1>Welcome, signed in</h1>'; }
+      else { document.body.innerHTML += '<p>login failed</p>'; }
+    });
+  });
+</script></body></html>`
 
 // delayedLoginPage injects the login form only after an async tick, simulating a
 // SPA that renders its form after bootstrapping.
