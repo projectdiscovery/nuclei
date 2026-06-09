@@ -8,6 +8,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -44,10 +45,11 @@ type Config struct {
 	// ExtraFields are additional form values submitted verbatim; they override
 	// any detected field of the same name (e.g. a fixed TOTP or tenant id).
 	ExtraFields map[string]string
-	// TokenRegex, when set, is applied to the final response body to extract a
-	// bearer/session token (first capture group). This enables token-based
-	// logins that return the token in the response body rather than a cookie.
-	// For headless logins it is also matched against window.localStorage.
+	// TokenRegex, when set, is applied to the final response body (and, for the
+	// HTTP engine, response headers) to extract a bearer/session token (first
+	// capture group). This enables token-based logins that return the token in
+	// the response body rather than a cookie. For headless logins it is also
+	// matched against window.localStorage.
 	TokenRegex string
 	// Timeout bounds the whole login flow. Defaults to 30s when zero.
 	Timeout time.Duration
@@ -197,6 +199,7 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 	// 4. Submit the form.
 	var finalBody, finalURLStr string
 	var finalStatus int
+	var finalHeaders http.Header
 	if form.Method == http.MethodGet {
 		actionURL, perr := url.Parse(form.Action)
 		if perr != nil {
@@ -209,9 +212,9 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 			}
 		}
 		actionURL.RawQuery = q.Encode()
-		finalBody, finalURLStr, finalStatus, err = doRequestFull(ctx, client, http.MethodGet, actionURL.String(), "", "")
+		finalBody, finalURLStr, finalStatus, finalHeaders, err = doRequestFull(ctx, client, http.MethodGet, actionURL.String(), "", "")
 	} else {
-		finalBody, finalURLStr, finalStatus, err = doRequestFull(ctx, client, form.Method, form.Action, "application/x-www-form-urlencoded", values.Encode())
+		finalBody, finalURLStr, finalStatus, finalHeaders, err = doRequestFull(ctx, client, form.Method, form.Action, "application/x-www-form-urlencoded", values.Encode())
 	}
 	if err != nil {
 		return nil, errkit.Wrap(err, "auto-login: failed to submit login form")
@@ -222,10 +225,17 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 	session.Cookies = collectCookies(jar, loginURL, form.Action, finalURLStr)
 	session.CookieHeader = renderCookieHeader(session.Cookies)
 
+	// Token extraction: the configured regex against the body first, then the
+	// response headers (regex + well-known auth headers). Many token-based APIs
+	// return the session token in a header (Authorization, X-Auth-Token, ...)
+	// rather than the body or a cookie.
 	if tokenRe != nil {
 		if m := tokenRe.FindStringSubmatch(finalBody); len(m) > 1 {
 			session.Token = m[1]
 		}
+	}
+	if session.Token == "" {
+		session.Token = detectHeaderToken(finalHeaders, tokenRe)
 	}
 
 	// 6. Decide success.
@@ -326,37 +336,87 @@ func renderCookieHeader(cookies []*http.Cookie) string {
 
 // doRequest issues a request and returns only the body (used for the GET page).
 func doRequest(ctx context.Context, client *http.Client, method, rawURL, contentType, body string) (string, error) {
-	b, _, _, err := doRequestFull(ctx, client, method, rawURL, contentType, body)
+	b, _, _, _, err := doRequestFull(ctx, client, method, rawURL, contentType, body)
 	return b, err
 }
 
 // doRequestFull issues a request and returns the (capped) body, the final URL
-// after redirects and the final status code.
-func doRequestFull(ctx context.Context, client *http.Client, method, rawURL, contentType, body string) (string, string, int, error) {
+// after redirects, the final status code and the final response headers.
+func doRequestFull(ctx context.Context, client *http.Client, method, rawURL, contentType, body string) (string, string, int, http.Header, error) {
 	var reader io.Reader
 	if body != "" {
 		reader = strings.NewReader(body)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, reader)
 	if err != nil {
-		return "", "", 0, err
+		return "", "", 0, nil, err
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", 0, err
+		return "", "", 0, nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyRead))
 	if err != nil {
-		return "", "", 0, err
+		return "", "", 0, nil, err
 	}
 	finalURL := rawURL
 	if resp.Request != nil && resp.Request.URL != nil {
 		finalURL = resp.Request.URL.String()
 	}
-	return string(data), finalURL, resp.StatusCode, nil
+	return string(data), finalURL, resp.StatusCode, resp.Header, nil
+}
+
+// tokenHeaderNames are response headers commonly used to deliver a session /
+// bearer token, checked in priority order.
+var tokenHeaderNames = []string{
+	"Authorization",
+	"X-Auth-Token",
+	"X-Access-Token",
+	"Access-Token",
+	"X-Subject-Token",
+	"X-Session-Token",
+	"X-Api-Token",
+}
+
+// detectHeaderToken extracts a session/bearer token from response headers. A
+// configured token-regex is tried first (so a custom header can be targeted),
+// then the well-known token headers in priority order. A leading "Bearer "
+// scheme is stripped from the value.
+func detectHeaderToken(h http.Header, tokenRe *regexp.Regexp) string {
+	if len(h) == 0 {
+		return ""
+	}
+	if tokenRe != nil {
+		names := make([]string, 0, len(h))
+		for name := range h {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			for _, v := range h[name] {
+				if m := tokenRe.FindStringSubmatch(v); len(m) > 1 {
+					return m[1]
+				}
+			}
+		}
+	}
+	for _, name := range tokenHeaderNames {
+		v := strings.TrimSpace(h.Get(name))
+		if v == "" {
+			continue
+		}
+		// Strip a leading auth scheme (e.g. "Bearer <token>").
+		if i := strings.IndexByte(v, ' '); i > 0 && strings.EqualFold(v[:i], "bearer") {
+			v = strings.TrimSpace(v[i+1:])
+		}
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

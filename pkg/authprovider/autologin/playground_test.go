@@ -90,6 +90,21 @@ func TestPlayground_HTTPWrongPasswordFails(t *testing.T) {
 	require.ErrorIs(t, err, ErrLoginFailed)
 }
 
+// TestPlayground_HTTPHeaderTokenLogin proves the HTTP engine extracts a session
+// token delivered in a response header (no cookie, no body token).
+func TestPlayground_HTTPHeaderTokenLogin(t *testing.T) {
+	base := playgroundServer(t)
+	session, err := Login(context.Background(), nil, Config{
+		LoginURL: base + "/auth/header-token-login",
+		Username: fuzzplayground.AuthUsername,
+		Password: fuzzplayground.AuthPassword,
+	})
+	require.NoError(t, err, "the engine must extract the token from the response header")
+	require.Empty(t, session.Cookies, "header-token login sets no cookie")
+	require.NotEmpty(t, session.Token, "token must be read from the X-Auth-Token header")
+	assertSessionAuthenticates(t, base, session)
+}
+
 // --- Headless styles -------------------------------------------------------
 
 func TestPlayground_HeadlessSPALogin(t *testing.T) {

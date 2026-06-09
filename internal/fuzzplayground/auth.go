@@ -257,6 +257,22 @@ func registerAuthRoutes(e *echo.Echo) {
 		return c.HTML(http.StatusOK, delayedLoginPage)
 	})
 
+	// 11. Header-token login: a server-rendered form whose POST returns the
+	//     session token in a response header (no cookie), the token-in-header
+	//     API style. The engine must read the token from the header.
+	e.GET("/auth/header-token-login", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, headerTokenLoginPage(""))
+	})
+	e.POST("/auth/header-token-login", func(c echo.Context) error {
+		if c.FormValue("username") == AuthUsername && c.FormValue("password") == AuthPassword {
+			_, jwt := st.issue(AuthUsername)
+			// Token in a header, deliberately no Set-Cookie.
+			c.Response().Header().Set("X-Auth-Token", jwt)
+			return c.HTML(http.StatusOK, `<html><head><title>Dashboard</title></head><body><h1>Welcome, signed in</h1></body></html>`)
+		}
+		return c.HTML(http.StatusOK, headerTokenLoginPage("Invalid credentials"))
+	})
+
 	// Protected landing page: the login-success heuristic relies on the final
 	// page having no password field, which this page satisfies.
 	e.GET("/auth/dashboard", func(c echo.Context) error {
@@ -448,6 +464,22 @@ const jsCookieLoginPage = `<html><head><title>JS Cookie Login</title></head><bod
     });
   });
 </script></body></html>`
+
+// headerTokenLoginPage is a classic server-rendered form whose POST returns the
+// session token in a response header rather than a cookie or body.
+func headerTokenLoginPage(errMsg string) string {
+	var banner string
+	if errMsg != "" {
+		banner = fmt.Sprintf(`<p class="error">%s</p>`, html.EscapeString(errMsg))
+	}
+	return fmt.Sprintf(`<html><head><title>Header Token Login</title></head><body>
+<h1>Sign in</h1>%s
+<form method="post" action="/auth/header-token-login">
+  <input type="text" name="username" placeholder="Email">
+  <input type="password" name="password" placeholder="Password">
+  <button type="submit">Sign in</button>
+</form></body></html>`, banner)
+}
 
 // delayedLoginPage injects the login form only after an async tick, simulating a
 // SPA that renders its form after bootstrapping.

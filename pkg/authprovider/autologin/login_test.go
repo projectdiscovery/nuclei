@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -345,4 +346,28 @@ func TestLogin_NoFormIsError(t *testing.T) {
 		Password: "y",
 	})
 	require.ErrorIs(t, err, ErrNoLoginForm)
+}
+
+func TestDetectHeaderToken(t *testing.T) {
+	t.Run("strips bearer scheme from Authorization", func(t *testing.T) {
+		h := http.Header{"Authorization": {"Bearer abc.def.ghi"}}
+		require.Equal(t, "abc.def.ghi", detectHeaderToken(h, nil))
+	})
+	t.Run("reads well-known token header", func(t *testing.T) {
+		h := http.Header{"X-Auth-Token": {"tok-123"}}
+		require.Equal(t, "tok-123", detectHeaderToken(h, nil))
+	})
+	t.Run("priority order prefers Authorization over X-Auth-Token", func(t *testing.T) {
+		h := http.Header{"Authorization": {"Bearer first"}, "X-Auth-Token": {"second"}}
+		require.Equal(t, "first", detectHeaderToken(h, nil))
+	})
+	t.Run("token-regex targets a custom header", func(t *testing.T) {
+		h := http.Header{"X-Custom": {"session=zzz999;"}}
+		re := regexp.MustCompile(`session=([^;]+)`)
+		require.Equal(t, "zzz999", detectHeaderToken(h, re))
+	})
+	t.Run("no token headers yields empty", func(t *testing.T) {
+		require.Empty(t, detectHeaderToken(http.Header{"Content-Type": {"text/html"}}, nil))
+		require.Empty(t, detectHeaderToken(nil, nil))
+	})
 }
