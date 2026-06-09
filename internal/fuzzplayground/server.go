@@ -38,6 +38,7 @@ func GetPlaygroundServer() *echo.Echo {
 	e.GET("/blog/posts", getPostsHandler)
 
 	registerAnalyzerRoutes(e)
+	registerAuthRoutes(e)
 	return e
 }
 
