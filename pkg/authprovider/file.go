@@ -216,3 +216,12 @@ func (f *FileAuthProvider) PreFetchSecrets() error {
 	}
 	return nil
 }
+
+// Close drops any in-memory session captured by dynamic (auto-login) secrets so
+// nuclei does not retain live session material after the scan. It is a no-op for
+// static secrets and never contacts the target.
+func (f *FileAuthProvider) Close() {
+	for i := range f.store.Dynamic {
+		f.store.Dynamic[i].Close()
+	}
+}

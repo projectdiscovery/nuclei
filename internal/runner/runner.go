@@ -106,6 +106,7 @@ type Runner struct {
 	httpApiEndpoint *httpapi.Server
 	fuzzStats       *fuzzStats.Tracker
 	dastServer      *server.DASTServer
+	authProvider    authprovider.AuthProvider
 }
 
 // New creates a new client for running the enumeration process.
@@ -458,6 +459,13 @@ func (r *Runner) Close() {
 	if r.browser != nil {
 		r.browser.Close()
 	}
+	// Drop any in-memory auto-login session so nuclei does not retain live
+	// session material after the scan (server-side sessions expire on their own).
+	if r.authProvider != nil {
+		if c, ok := r.authProvider.(interface{ Close() }); ok {
+			c.Close()
+		}
+	}
 	if r.tmpDir != "" {
 		_ = os.RemoveAll(r.tmpDir)
 	}
@@ -664,6 +672,8 @@ func (r *Runner) RunEnumeration() error {
 		default:
 			executorOpts.AuthProvider = authprovider.NewMultiAuthProvider(providers...)
 		}
+		// Retained so Runner.Close can drop captured session material on exit.
+		r.authProvider = executorOpts.AuthProvider
 	}
 
 	if r.options.ShouldUseHostError() {

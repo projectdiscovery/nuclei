@@ -557,3 +557,46 @@ func (d *Dynamic) Error() error {
 	defer d.fetchState.mu.RUnlock()
 	return d.fetchState.err
 }
+
+// Close drops the in-memory session captured for this dynamic secret: the
+// applied cookies/token/headers, any captured web storage and derived secrets,
+// and the extracted values. It does not contact the server (sessions are left
+// to expire on their own); it simply ensures nuclei does not retain live
+// session material after the scan, which matters when nuclei is embedded as a
+// library and the process outlives the scan. The session is also marked
+// unfetched so a later reuse re-authenticates from scratch.
+func (d *Dynamic) Close() {
+	if d.fetchState != nil {
+		d.fetchState.mu.Lock()
+		d.fetchState.webStorageLocal = nil
+		d.fetchState.webStorageSession = nil
+		for _, s := range d.fetchState.autoLoginSecrets {
+			wipeSecretSession(s)
+		}
+		d.fetchState.autoLoginSecrets = nil
+		d.fetchState.fetched = false
+		d.fetchState.stale = false
+		d.fetchState.err = nil
+		d.fetchState.mu.Unlock()
+	}
+	wipeSecretSession(d.Secret)
+	for _, s := range d.Secrets {
+		wipeSecretSession(s)
+	}
+	d.Extracted = nil
+}
+
+// wipeSecretSession zeroes the session-bearing fields of a secret (cookies,
+// token, headers, query params and web storage), leaving non-sensitive scoping
+// fields (type/domains) intact. It is a no-op on nil.
+func wipeSecretSession(s *Secret) {
+	if s == nil {
+		return
+	}
+	s.Headers = nil
+	s.Cookies = nil
+	s.Params = nil
+	s.Token = ""
+	s.LocalStorage = nil
+	s.SessionStorage = nil
+}

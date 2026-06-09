@@ -176,6 +176,41 @@ func TestDynamic_WebStorage_ConcurrentReauth(t *testing.T) {
 	require.NotEmpty(t, local["jwt"], "storage must remain populated after concurrent re-auth")
 }
 
+// TestDynamicClose_WipesCapturedSession verifies that Close drops the in-memory
+// session captured by an auto-login (cookies, bearer token, web storage and
+// extracted values) without contacting the target.
+func TestDynamicClose_WipesCapturedSession(t *testing.T) {
+	d := newAutoLoginDynamic()
+	require.NoError(t, d.Validate())
+	d.fetchCallback = func(dyn *Dynamic) error {
+		return dyn.applyAutoLoginSession(&autologin.Session{
+			Cookies:      []*http.Cookie{{Name: "session", Value: "abc"}},
+			Token:        "jwt-123",
+			LocalStorage: map[string]string{"jwt": "jwt-123"},
+		})
+	}
+	require.NoError(t, d.Fetch(false))
+	d.Extracted = map[string]interface{}{"token": "jwt-123"}
+
+	// Sanity: the session is populated before Close.
+	require.NotEmpty(t, d.Secret.Cookies)
+	local, _ := d.WebStorage()
+	require.NotEmpty(t, local["jwt"])
+
+	d.Close()
+
+	require.Empty(t, d.Secret.Cookies, "cookies must be wiped")
+	require.Empty(t, d.Secret.Token, "token must be wiped")
+	require.Empty(t, d.Secret.Headers, "headers must be wiped")
+	require.Nil(t, d.Extracted, "extracted values must be cleared")
+	require.False(t, d.IsExpired(), "a closed session reports not-expired (unfetched)")
+	require.Equal(t, []string{"app.example.com"}, d.Secret.Domains, "scoping domains must be preserved")
+
+	localAfter, sessionAfter := d.fetchState.webStorageLocal, d.fetchState.webStorageSession
+	require.Nil(t, localAfter, "captured local storage must be cleared")
+	require.Nil(t, sessionAfter, "captured session storage must be cleared")
+}
+
 // TestAutoLogin_MultiDomain_BearerSharedAcrossCopies reproduces a sharing bug:
 // the auto-login session (cookie + bearer token) must be applied on *every*
 // domain the secret is scoped to, not just the one whose DynamicAuthStrategy

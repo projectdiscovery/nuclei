@@ -65,3 +65,14 @@ func (m *MultiAuthProvider) PreFetchSecrets() error {
 	}
 	return nil
 }
+
+// Close releases any in-memory session held by the wrapped providers that
+// support teardown (e.g. auto-login dynamic secrets). Providers that do not
+// implement Close are skipped.
+func (m *MultiAuthProvider) Close() {
+	for _, provider := range m.Providers {
+		if c, ok := provider.(interface{ Close() }); ok {
+			c.Close()
+		}
+	}
+}
