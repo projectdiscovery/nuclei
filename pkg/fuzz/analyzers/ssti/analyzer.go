@@ -12,7 +12,6 @@
 package ssti
 
 import (
-	"io"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -22,10 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
-const (
-	analyzerName         = "ssti"
-	maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
-)
+const analyzerName = "ssti"
 
 // Analyzer implements the analyzers.Analyzer interface for SSTI detection.
 type Analyzer struct{}
@@ -74,21 +70,12 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}()
 
 	for _, probe := range probes {
-		rebuilt, err := analyzers.SetValueAndRebuild(gr, probe.Payload)
-		if err != nil {
-			return false, "", err
-		}
-		resp, err := options.HttpClient.Do(rebuilt)
-		if err != nil {
-			return false, "", err
-		}
-		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
-		_ = resp.Body.Close()
+		body, err := analyzers.SendValueAndReadBody(options, probe.Payload)
 		if err != nil {
 			return false, "", err
 		}
 
-		if DetectEvaluation(string(body), startToken, endToken, product) {
+		if DetectEvaluation(body, startToken, endToken, product) {
 			return true, "ssti: expression evaluated by " + probe.Engine + " (got " + strconv.Itoa(product) + ")", nil
 		}
 	}

@@ -11,17 +11,13 @@
 package cmdi
 
 import (
-	"io"
 	"regexp"
 	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
-const (
-	analyzerName         = "cmdi"
-	maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
-)
+const analyzerName = "cmdi"
 
 // Analyzer implements the analyzers.Analyzer interface for OS command injection.
 type Analyzer struct{}
@@ -80,7 +76,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
 	}()
 
-	baselineBody, err := a.sendAndRead(options, gr.OriginalValue)
+	baselineBody, err := analyzers.SendValueAndReadBody(options, gr.OriginalValue)
 	if err != nil {
 		return false, "", err
 	}
@@ -89,7 +85,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 
 	for _, sep := range commandSeparators {
-		body, err := a.sendAndRead(options, gr.OriginalValue+sep)
+		body, err := analyzers.SendValueAndReadBody(options, gr.OriginalValue+sep)
 		if err != nil {
 			continue
 		}
@@ -98,21 +94,4 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 	}
 	return false, "", nil
-}
-
-func (a *Analyzer) sendAndRead(options *analyzers.Options, value string) (string, error) {
-	rebuilt, err := analyzers.SetValueAndRebuild(options.FuzzGenerated, value)
-	if err != nil {
-		return "", err
-	}
-	resp, err := options.HttpClient.Do(rebuilt)
-	if err != nil {
-		return "", err
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
-	_ = resp.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
 }

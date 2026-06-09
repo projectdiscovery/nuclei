@@ -9,17 +9,13 @@
 package lfi
 
 import (
-	"io"
 	"regexp"
 	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
-const (
-	analyzerName         = "lfi"
-	maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
-)
+const analyzerName = "lfi"
 
 // Analyzer implements the analyzers.Analyzer interface for LFI/path traversal.
 type Analyzer struct{}
@@ -97,7 +93,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 	// Baseline: if the file signature is already present with the original
 	// value, a later match proves nothing, so bail to avoid false positives.
-	baselineBody, err := a.sendAndRead(options, gr.OriginalValue)
+	baselineBody, err := analyzers.SendValueAndReadBody(options, gr.OriginalValue)
 	if err != nil {
 		return false, "", err
 	}
@@ -106,7 +102,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 
 	for _, payload := range traversalPayloads {
-		body, err := a.sendAndRead(options, payload)
+		body, err := analyzers.SendValueAndReadBody(options, payload)
 		if err != nil {
 			return false, "", err
 		}
@@ -115,21 +111,4 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 	}
 	return false, "", nil
-}
-
-func (a *Analyzer) sendAndRead(options *analyzers.Options, value string) (string, error) {
-	rebuilt, err := analyzers.SetValueAndRebuild(options.FuzzGenerated, value)
-	if err != nil {
-		return "", err
-	}
-	resp, err := options.HttpClient.Do(rebuilt)
-	if err != nil {
-		return "", err
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
-	_ = resp.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
 }

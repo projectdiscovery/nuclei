@@ -8,17 +8,13 @@
 package sqli
 
 import (
-	"io"
 	"regexp"
 	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
-const (
-	analyzerName         = "sqli_error"
-	maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
-)
+const analyzerName = "sqli_error"
 
 // Analyzer implements the analyzers.Analyzer interface for error-based SQLi.
 type Analyzer struct{}
@@ -113,7 +109,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 	// Baseline: if the page already shows a DBMS error with the original value,
 	// any later match is meaningless, so we bail to avoid false positives.
-	baselineBody, err := a.sendAndRead(options, gr.OriginalValue)
+	baselineBody, err := analyzers.SendValueAndReadBody(options, gr.OriginalValue)
 	if err != nil {
 		return false, "", err
 	}
@@ -122,7 +118,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 
 	for _, payload := range breakingPayloads {
-		body, err := a.sendAndRead(options, gr.OriginalValue+payload)
+		body, err := analyzers.SendValueAndReadBody(options, gr.OriginalValue+payload)
 		if err != nil {
 			return false, "", err
 		}
@@ -131,21 +127,4 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 	}
 	return false, "", nil
-}
-
-func (a *Analyzer) sendAndRead(options *analyzers.Options, value string) (string, error) {
-	rebuilt, err := analyzers.SetValueAndRebuild(options.FuzzGenerated, value)
-	if err != nil {
-		return "", err
-	}
-	resp, err := options.HttpClient.Do(rebuilt)
-	if err != nil {
-		return "", err
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
-	_ = resp.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	return string(body), nil
 }

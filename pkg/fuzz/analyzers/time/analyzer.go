@@ -115,22 +115,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		replaced := strings.ReplaceAll(gr.OriginalPayload, "[SLEEPTIME]", strconv.Itoa(delay))
 		replaced = a.ApplyInitialTransformation(replaced, options.AnalyzerParameters)
 
-		if err := gr.Component.SetValue(gr.Key, replaced); err != nil {
-			return 0, errors.Wrap(err, "could not set value in component")
-		}
-
-		rebuilt, err := gr.Component.Rebuild()
+		rebuilt, err := analyzers.SetValueAndRebuild(gr, replaced)
 		if err != nil {
-			return 0, errors.Wrap(err, "could not rebuild request")
-		}
-
-		// copy headers from the original request since Rebuild() only
-		// carries headers present at parse time, not post-parse injections
-		for k, vs := range gr.Request.Header {
-			if gr.Component.Name() == "header" && k == gr.Key {
-				continue
-			}
-			rebuilt.Header[k] = vs
+			return 0, errors.Wrap(err, "could not rebuild request with value")
 		}
 
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())

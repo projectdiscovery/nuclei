@@ -1,7 +1,9 @@
 package analyzers
 
 import (
+	"io"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -103,6 +105,40 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 		}
 	}
 	return rebuilt, nil
+}
+
+// MaxResponseBodyBytes bounds how much of a response body an analyzer reads so a
+// hostile or oversized response cannot exhaust memory.
+const MaxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
+
+// DoAndReadBody sends req and returns the response along with its body, bounded
+// by MaxResponseBodyBytes. The body is fully read and closed before returning,
+// so callers may still inspect resp.Header afterwards. resp is nil only when the
+// request itself failed.
+func DoAndReadBody(client *retryablehttp.Client, req *retryablehttp.Request) (*http.Response, string, error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, "", err
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodyBytes))
+	_ = resp.Body.Close()
+	if err != nil {
+		return resp, "", err
+	}
+	return resp, string(body), nil
+}
+
+// SendValueAndReadBody sets value on the fuzzed component, rebuilds the request
+// (restoring auth headers Rebuild drops), sends it, and returns the response
+// body. This is the shared path for body-signature analyzers (sqli, cmdi, ssti,
+// lfi, ssrf), which only inspect the response body.
+func SendValueAndReadBody(options *Options, value string) (string, error) {
+	rebuilt, err := SetValueAndRebuild(options.FuzzGenerated, value)
+	if err != nil {
+		return "", err
+	}
+	_, body, err := DoAndReadBody(options.HttpClient, rebuilt)
+	return body, err
 }
 
 var (

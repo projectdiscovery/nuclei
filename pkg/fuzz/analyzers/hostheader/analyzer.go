@@ -10,7 +10,6 @@
 package hostheader
 
 import (
-	"io"
 	"math/rand"
 	"net/url"
 	"strings"
@@ -20,10 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
 
-const (
-	analyzerName         = "host_header_injection"
-	maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
-)
+const analyzerName = "host_header_injection"
 
 // Analyzer implements the analyzers.Analyzer interface for host-header injection.
 type Analyzer struct{}
@@ -101,17 +97,12 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			rebuilt.Header.Set(header, canary)
 		}
 
-		resp, err := options.HttpClient.Do(rebuilt)
+		resp, body, err := analyzers.DoAndReadBody(options.HttpClient, rebuilt)
 		if err != nil {
 			continue
 		}
 		location := resp.Header.Get("Location")
-		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
-		_ = resp.Body.Close()
-		if err != nil {
-			continue
-		}
-		if ReflectsCanary(string(body), location, canary) {
+		if ReflectsCanary(body, location, canary) {
 			return true, "host header injection: canary host reflected via " + header + " header", nil
 		}
 	}
