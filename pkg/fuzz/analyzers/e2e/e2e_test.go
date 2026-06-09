@@ -104,7 +104,7 @@ func TestSSTI_E2E(t *testing.T) {
 			sub := reTpl.FindStringSubmatch(m)
 			return fmt.Sprintf("%d", atoi(sub[1])*atoi(sub[2]))
 		})
-		fmt.Fprintf(w, "<html><body>%s</body></html>", out)
+		_, _ = fmt.Fprintf(w, "<html><body>%s</body></html>", out)
 	}))
 	defer vuln.Close()
 
@@ -114,7 +114,7 @@ func TestSSTI_E2E(t *testing.T) {
 
 	// benign server reflects the payload verbatim (no evaluation)
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "<html><body>%s</body></html>", qparam(r))
+		_, _ = fmt.Fprintf(w, "<html><body>%s</body></html>", qparam(r))
 	}))
 	defer benign.Close()
 
@@ -131,10 +131,10 @@ func TestSQLi_E2E(t *testing.T) {
 		q := qparam(r)
 		if strings.ContainsAny(q, "'\"`\\") {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '''")
+			_, _ = fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '''")
 			return
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}))
 	defer vuln.Close()
 
@@ -143,7 +143,7 @@ func TestSQLi_E2E(t *testing.T) {
 	require.Contains(t, reason, "MySQL")
 
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "results for %q", qparam(r))
+		_, _ = fmt.Fprintf(w, "results for %q", qparam(r))
 	}))
 	defer benign.Close()
 	matched, _ = run(t, "sqli_error", newGeneratedRequest(t, benign.URL, "q", "test"), newClient(true))
@@ -159,11 +159,11 @@ func TestLFI_E2E(t *testing.T) {
 		q := qparam(r)
 		switch {
 		case strings.Contains(q, "etc/passwd"):
-			fmt.Fprint(w, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
+			_, _ = fmt.Fprint(w, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
 		case strings.Contains(strings.ToLower(q), "win.ini"):
-			fmt.Fprint(w, "; for 16-bit app support\r\n[fonts]\r\n")
+			_, _ = fmt.Fprint(w, "; for 16-bit app support\r\n[fonts]\r\n")
 		default:
-			fmt.Fprint(w, "file not found")
+			_, _ = fmt.Fprint(w, "file not found")
 		}
 	}))
 	defer vuln.Close()
@@ -173,7 +173,7 @@ func TestLFI_E2E(t *testing.T) {
 	require.Contains(t, reason, "/etc/passwd")
 
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "file not found")
+		_, _ = fmt.Fprint(w, "file not found")
 	}))
 	defer benign.Close()
 	matched, _ = run(t, "lfi", newGeneratedRequest(t, benign.URL, "q", "home.txt"), newClient(true))
@@ -188,10 +188,10 @@ func TestSSRF_E2E(t *testing.T) {
 	vuln := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := qparam(r)
 		if strings.Contains(q, "169.254.169.254") || strings.Contains(q, "metadata.google.internal") {
-			fmt.Fprint(w, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
+			_, _ = fmt.Fprint(w, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
 			return
 		}
-		fmt.Fprint(w, "fetched: nothing interesting")
+		_, _ = fmt.Fprint(w, "fetched: nothing interesting")
 	}))
 	defer vuln.Close()
 
@@ -200,7 +200,7 @@ func TestSSRF_E2E(t *testing.T) {
 	require.Contains(t, reason, "AWS")
 
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "fetched ok")
+		_, _ = fmt.Fprint(w, "fetched ok")
 	}))
 	defer benign.Close()
 	matched, _ = run(t, "ssrf", newGeneratedRequest(t, benign.URL, "q", "https://example.com/a.png"), newClient(true))
@@ -217,11 +217,11 @@ func TestCMDi_E2E(t *testing.T) {
 		q := qparam(r)
 		for _, s := range seps {
 			if strings.Contains(q, s) {
-				fmt.Fprint(w, "uid=0(root) gid=0(root) groups=0(root)")
+				_, _ = fmt.Fprint(w, "uid=0(root) gid=0(root) groups=0(root)")
 				return
 			}
 		}
-		fmt.Fprintf(w, "ping output for %s", q)
+		_, _ = fmt.Fprintf(w, "ping output for %s", q)
 	}))
 	defer vuln.Close()
 
@@ -230,7 +230,7 @@ func TestCMDi_E2E(t *testing.T) {
 	require.Contains(t, reason, "cmdi")
 
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "ping output for %s", qparam(r))
+		_, _ = fmt.Fprintf(w, "ping output for %s", qparam(r))
 	}))
 	defer benign.Close()
 	matched, _ = run(t, "cmdi", newGeneratedRequest(t, benign.URL, "q", "127.0.0.1"), newClient(true))
@@ -258,7 +258,7 @@ func TestCRLF_E2E(t *testing.T) {
 				w.Header().Set(name, val)
 			}
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}))
 	defer vuln.Close()
 
@@ -267,7 +267,7 @@ func TestCRLF_E2E(t *testing.T) {
 	require.Contains(t, reason, "crlf")
 
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}))
 	defer benign.Close()
 	matched, _ = run(t, "crlf", newGeneratedRequest(t, benign.URL, "q", "/home"), newClient(false))
@@ -310,7 +310,7 @@ func TestCORS_E2E(t *testing.T) {
 			w.Header().Set("Access-Control-Allow-Origin", origin) // reflects arbitrary origin
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}))
 	defer vuln.Close()
 
@@ -321,7 +321,7 @@ func TestCORS_E2E(t *testing.T) {
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// only allows a single trusted origin
 		w.Header().Set("Access-Control-Allow-Origin", "https://trusted.example.com")
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}))
 	defer benign.Close()
 	matched, _ = run(t, "cors", newGeneratedRequest(t, benign.URL, "q", "x"), newClient(true))
@@ -338,7 +338,7 @@ func TestHostHeader_E2E(t *testing.T) {
 		if host == "" {
 			host = r.Host
 		}
-		fmt.Fprintf(w, `<a href="https://%s/reset?token=abc">reset</a>`, host)
+		_, _ = fmt.Fprintf(w, `<a href="https://%s/reset?token=abc">reset</a>`, host)
 	}))
 	defer vuln.Close()
 
@@ -348,7 +348,7 @@ func TestHostHeader_E2E(t *testing.T) {
 
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// always uses a fixed, trusted host
-		fmt.Fprint(w, `<a href="https://app.example.com/reset?token=abc">reset</a>`)
+		_, _ = fmt.Fprint(w, `<a href="https://app.example.com/reset?token=abc">reset</a>`)
 	}))
 	defer benign.Close()
 	matched, _ = run(t, "host_header_injection", newGeneratedRequest(t, benign.URL, "q", "x"), newClient(true))
@@ -368,15 +368,15 @@ func TestAuthHeaderPreserved_E2E(t *testing.T) {
 	vuln := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer s3cr3t" {
 			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprint(w, "unauthorized")
+			_, _ = fmt.Fprint(w, "unauthorized")
 			return
 		}
 		if strings.ContainsAny(qparam(r), "'\"") {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax")
+			_, _ = fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax")
 			return
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}))
 	defer vuln.Close()
 
@@ -405,11 +405,11 @@ func TestBodyComponentCMDi_E2E(t *testing.T) {
 		s := string(data)
 		for _, sep := range seps {
 			if strings.Contains(s, sep) {
-				fmt.Fprint(w, "uid=0(root) gid=0(root) groups=0(root)")
+				_, _ = fmt.Fprint(w, "uid=0(root) gid=0(root) groups=0(root)")
 				return
 			}
 		}
-		fmt.Fprint(w, "pong")
+		_, _ = fmt.Fprint(w, "pong")
 	}))
 	defer vuln.Close()
 
@@ -446,10 +446,10 @@ func sqlErrorIf(extract func(*http.Request) string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.ContainsAny(extract(r), "'\"") {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax")
+			_, _ = fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax")
 			return
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	}
 }
 
@@ -494,7 +494,7 @@ func TestSSTI_CookieComponent_E2E(t *testing.T) {
 			sub := reTpl.FindStringSubmatch(m)
 			return fmt.Sprintf("%d", atoi(sub[1])*atoi(sub[2]))
 		})
-		fmt.Fprintf(w, "<html><body>lang=%s</body></html>", out)
+		_, _ = fmt.Fprintf(w, "<html><body>lang=%s</body></html>", out)
 	}))
 	defer srv.Close()
 

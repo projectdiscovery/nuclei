@@ -37,7 +37,7 @@ func (a *autoLoginE2EApp) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		http.SetCookie(w, &http.Cookie{Name: "csrftoken", Value: "csrf-secret", Path: "/"})
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<html><body>
+		_, _ = fmt.Fprint(w, `<html><body>
 			<form action="/login" method="post">
 				<input type="hidden" name="csrf" value="csrf-secret">
 				<input type="email" name="email" autocomplete="username">
@@ -55,7 +55,7 @@ func (a *autoLoginE2EApp) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.PostFormValue("email") != "alice@example.com" || r.PostFormValue("password") != "s3cr3t" {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<form action="/login" method="post"><input type="password" name="password"></form>`)
+		_, _ = fmt.Fprint(w, `<form action="/login" method="post"><input type="password" name="password"></form>`)
 		return
 	}
 	a.mu.Lock()
@@ -76,7 +76,7 @@ func (a *autoLoginE2EApp) handleDashboard(w http.ResponseWriter, r *http.Request
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprint(w, "welcome")
+	_, _ = fmt.Fprint(w, "welcome")
 }
 
 func (a *autoLoginE2EApp) expire() {

@@ -55,9 +55,9 @@ func TestApplyAutoLoginSession_CookiesOnly(t *testing.T) {
 		Cookies: []*http.Cookie{{Name: "session", Value: "abc"}},
 	})
 	require.NoError(t, err)
-	require.Equal(t, string(CookiesAuth), d.Secret.Type)
-	require.Len(t, d.Secret.Cookies, 1)
-	require.Equal(t, "session", d.Secret.Cookies[0].Key)
+	require.Equal(t, string(CookiesAuth), d.Type)
+	require.Len(t, d.Cookies, 1)
+	require.Equal(t, "session", d.Cookies[0].Key)
 	require.Empty(t, d.Secrets, "no extra bearer secret when there is no token")
 }
 
@@ -65,8 +65,8 @@ func TestApplyAutoLoginSession_TokenOnly(t *testing.T) {
 	d := newAutoLoginDynamic()
 	err := d.applyAutoLoginSession(&autologin.Session{Token: "jwt-123"})
 	require.NoError(t, err)
-	require.Equal(t, string(BearerTokenAuth), d.Secret.Type)
-	require.Equal(t, "jwt-123", d.Secret.Token)
+	require.Equal(t, string(BearerTokenAuth), d.Type)
+	require.Equal(t, "jwt-123", d.Token)
 	require.Empty(t, d.Secrets)
 }
 
@@ -78,7 +78,7 @@ func TestApplyAutoLoginSession_CookiesAndToken(t *testing.T) {
 		Token:   "jwt-123",
 	})
 	require.NoError(t, err)
-	require.Equal(t, string(CookiesAuth), d.Secret.Type)
+	require.Equal(t, string(CookiesAuth), d.Type)
 	// The bearer lives on the shared fetchState (so it reaches every scoped
 	// domain), not on the per-copy Secrets slice.
 	require.Empty(t, d.Secrets, "bearer must not live on the per-copy Secrets slice")
@@ -193,18 +193,18 @@ func TestDynamicClose_WipesCapturedSession(t *testing.T) {
 	d.Extracted = map[string]interface{}{"token": "jwt-123"}
 
 	// Sanity: the session is populated before Close.
-	require.NotEmpty(t, d.Secret.Cookies)
+	require.NotEmpty(t, d.Cookies)
 	local, _ := d.WebStorage()
 	require.NotEmpty(t, local["jwt"])
 
 	d.Close()
 
-	require.Empty(t, d.Secret.Cookies, "cookies must be wiped")
-	require.Empty(t, d.Secret.Token, "token must be wiped")
-	require.Empty(t, d.Secret.Headers, "headers must be wiped")
+	require.Empty(t, d.Cookies, "cookies must be wiped")
+	require.Empty(t, d.Token, "token must be wiped")
+	require.Empty(t, d.Headers, "headers must be wiped")
 	require.Nil(t, d.Extracted, "extracted values must be cleared")
 	require.False(t, d.IsExpired(), "a closed session reports not-expired (unfetched)")
-	require.Equal(t, []string{"app.example.com"}, d.Secret.Domains, "scoping domains must be preserved")
+	require.Equal(t, []string{"app.example.com"}, d.Domains, "scoping domains must be preserved")
 
 	localAfter, sessionAfter := d.fetchState.webStorageLocal, d.fetchState.webStorageSession
 	require.Nil(t, localAfter, "captured local storage must be cleared")
@@ -283,7 +283,7 @@ func TestApplyAutoLoginSession_StorageOnly(t *testing.T) {
 		LocalStorage: map[string]string{"jwt": "x"},
 	})
 	require.NoError(t, err)
-	require.Empty(t, d.Secret.Type, "storage-only session yields no HTTP strategy")
+	require.Empty(t, d.Type, "storage-only session yields no HTTP strategy")
 	require.Equal(t, map[string]string{"jwt": "x"}, d.fetchState.webStorageLocal)
 }
 
@@ -303,6 +303,6 @@ func TestApplyAutoLoginSession_ReauthReplaces(t *testing.T) {
 		Cookies: []*http.Cookie{{Name: "session", Value: "v2"}},
 	}))
 	require.Empty(t, d.fetchState.autoLoginSecrets, "stale bearer secret must be cleared on re-auth")
-	require.Len(t, d.Secret.Cookies, 1)
-	require.Equal(t, "v2", d.Secret.Cookies[0].Value, "cookie value must be refreshed")
+	require.Len(t, d.Cookies, 1)
+	require.Equal(t, "v2", d.Cookies[0].Value, "cookie value must be refreshed")
 }

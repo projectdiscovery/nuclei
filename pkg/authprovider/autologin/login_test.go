@@ -45,7 +45,7 @@ func (a *loginApp) handleLogin(w http.ResponseWriter, r *http.Request) {
 		csrf := "csrf-" + fmt.Sprint(len(a.sessions)) + "-tok"
 		http.SetCookie(w, &http.Cookie{Name: "csrftoken", Value: csrf, Path: "/"})
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<html><body>
+		_, _ = fmt.Fprintf(w, `<html><body>
 			<form action="/login" method="post">
 				<input type="hidden" name="csrf" value="%s">
 				<input type="text" name="email" autocomplete="username">
@@ -67,7 +67,7 @@ func (a *loginApp) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// Re-render the login form on failure (no session set).
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `<html><body><p>Invalid credentials</p>
+		_, _ = fmt.Fprint(w, `<html><body><p>Invalid credentials</p>
 			<form action="/login" method="post">
 				<input type="text" name="email">
 				<input type="password" name="password">
@@ -95,7 +95,7 @@ func (a *loginApp) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprint(w, "welcome to your dashboard")
+	_, _ = fmt.Fprint(w, "welcome to your dashboard")
 }
 
 func TestLogin_CSRFFormAndSessionCookie(t *testing.T) {
@@ -163,7 +163,7 @@ func tokenApp() *httptest.Server {
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprint(w, `<form action="/api/login" method="post">
+			_, _ = fmt.Fprint(w, `<form action="/api/login" method="post">
 				<input type="text" name="user">
 				<input type="password" name="password">
 			</form>`)
@@ -174,7 +174,7 @@ func tokenApp() *httptest.Server {
 		_ = r.ParseForm()
 		if r.PostFormValue("user") == "carol" && r.PostFormValue("password") == "pw" {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"access_token":"eyJhbGciOiJI.payload.sig","expires_in":3600}`)
+			_, _ = fmt.Fprint(w, `{"access_token":"eyJhbGciOiJI.payload.sig","expires_in":3600}`)
 			return
 		}
 		http.Error(w, "bad creds", http.StatusUnauthorized)
@@ -207,16 +207,16 @@ func getFormApp(user, pass string) *httptest.Server {
 			if q.Get("user") == user && q.Get("password") == pass && q.Get("realm") == "corp" {
 				http.SetCookie(w, &http.Cookie{Name: "session", Value: "ok", Path: "/"})
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, `<html><body>welcome, no form here</body></html>`)
+				_, _ = fmt.Fprint(w, `<html><body>welcome, no form here</body></html>`)
 				return
 			}
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprint(w, `<html><body><form method="get" action="/login">
+			_, _ = fmt.Fprint(w, `<html><body><form method="get" action="/login">
 				<input type="text" name="user"><input type="password" name="password"></form></body></html>`)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<html><body><form method="get" action="/login">
+		_, _ = fmt.Fprint(w, `<html><body><form method="get" action="/login">
 			<input type="hidden" name="realm" value="corp">
 			<input type="text" name="user" autocomplete="username">
 			<input type="password" name="password">
@@ -247,18 +247,18 @@ func extraFieldApp(user, pass string) *httptest.Server {
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprint(w, `<form action="/login" method="post">
+			_, _ = fmt.Fprint(w, `<form action="/login" method="post">
 				<input type="text" name="user"><input type="password" name="password"></form>`)
 			return
 		}
 		_ = r.ParseForm()
 		if r.PostFormValue("user") == user && r.PostFormValue("password") == pass && r.PostFormValue("tenant") == "acme" {
 			http.SetCookie(w, &http.Cookie{Name: "session", Value: "ok", Path: "/"})
-			fmt.Fprint(w, "<html><body>signed in</body></html>")
+			_, _ = fmt.Fprint(w, "<html><body>signed in</body></html>")
 			return
 		}
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<form action="/login" method="post"><input type="password" name="password"></form>`)
+		_, _ = fmt.Fprint(w, `<form action="/login" method="post"><input type="password" name="password"></form>`)
 	})
 	return httptest.NewServer(mux)
 }
@@ -307,17 +307,17 @@ func TestLogin_HTTPProxy(t *testing.T) {
 		atomic.AddInt32(&proxyHits, 1)
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprint(w, `<form action="/login" method="post">
+			_, _ = fmt.Fprint(w, `<form action="/login" method="post">
 				<input type="text" name="user"><input type="password" name="password"></form>`)
 			return
 		}
 		_ = r.ParseForm()
 		if r.PostFormValue("user") == "frank" && r.PostFormValue("password") == "pw" {
 			http.SetCookie(w, &http.Cookie{Name: "session", Value: "ok", Path: "/"})
-			fmt.Fprint(w, "<html><body>signed in</body></html>")
+			_, _ = fmt.Fprint(w, "<html><body>signed in</body></html>")
 			return
 		}
-		fmt.Fprint(w, `<form action="/login" method="post"><input type="password" name="password"></form>`)
+		_, _ = fmt.Fprint(w, `<form action="/login" method="post"><input type="password" name="password"></form>`)
 	})
 	proxySrv := httptest.NewServer(mux)
 	defer proxySrv.Close()
@@ -336,7 +336,7 @@ func TestLogin_HTTPProxy(t *testing.T) {
 
 func TestLogin_NoFormIsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "<html><body>no form here</body></html>")
+		_, _ = fmt.Fprint(w, "<html><body>no form here</body></html>")
 	}))
 	defer srv.Close()
 

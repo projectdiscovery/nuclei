@@ -74,7 +74,7 @@ func TestAutoLoginStoreFromOptions_RecordingDerivesHost(t *testing.T) {
 	store, err := autoLoginStoreFromOptions(opts)
 	require.NoError(t, err)
 	require.Len(t, store.Dynamic, 1)
-	require.Equal(t, []string{"recorded.example.com"}, store.Dynamic[0].Secret.Domains)
+	require.Equal(t, []string{"recorded.example.com"}, store.Dynamic[0].Domains)
 	require.Equal(t, path, store.Dynamic[0].AutoLogin.Recording)
 }
 
@@ -92,7 +92,7 @@ func TestAutoLoginStoreFromOptions(t *testing.T) {
 
 	dyn := store.Dynamic[0]
 	require.NotNil(t, dyn.Secret)
-	require.Equal(t, []string{"app.example.com:8443"}, dyn.Secret.Domains, "session should be scoped to the login host")
+	require.Equal(t, []string{"app.example.com:8443"}, dyn.Domains, "session should be scoped to the login host")
 	require.NotNil(t, dyn.AutoLogin)
 	require.Equal(t, "https://app.example.com:8443/login", dyn.AutoLogin.LoginURL)
 	require.Equal(t, "alice", dyn.AutoLogin.Username)

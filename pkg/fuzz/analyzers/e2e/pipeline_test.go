@@ -50,7 +50,7 @@ func newDastApp() *httptest.Server {
 	}
 	sqlErr := func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '''")
+		_, _ = fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '''")
 	}
 
 	mux := http.NewServeMux()
@@ -61,7 +61,7 @@ func newDastApp() *httptest.Server {
 			sqlErr(w)
 			return
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 
 	// SQLi in path: /user/<id>/profile
@@ -71,7 +71,7 @@ func newDastApp() *httptest.Server {
 			sqlErr(w)
 			return
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 
 	// SQLi in a JSON body parameter (name) on a POST route. We inspect the
@@ -85,7 +85,7 @@ func newDastApp() *httptest.Server {
 				return
 			}
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 
 	// SQLi in cookie value (lang)
@@ -94,7 +94,7 @@ func newDastApp() *httptest.Server {
 			sqlErr(w)
 			return
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 
 	// SSTI in query param (real template-engine-like evaluation)
@@ -103,7 +103,7 @@ func newDastApp() *httptest.Server {
 			sub := reTpl.FindStringSubmatch(m)
 			return fmt.Sprintf("%d", atoi(sub[1])*atoi(sub[2]))
 		})
-		fmt.Fprintf(w, "<html><body>%s</body></html>", out)
+		_, _ = fmt.Fprintf(w, "<html><body>%s</body></html>", out)
 	})
 
 	// LFI / path traversal in query param
@@ -111,31 +111,31 @@ func newDastApp() *httptest.Server {
 		q := r.URL.Query().Get("q")
 		switch {
 		case strings.Contains(q, "etc/passwd"):
-			fmt.Fprint(w, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
+			_, _ = fmt.Fprint(w, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
 		case strings.Contains(strings.ToLower(q), "win.ini"):
-			fmt.Fprint(w, "; for 16-bit app support\r\n[fonts]\r\n")
+			_, _ = fmt.Fprint(w, "; for 16-bit app support\r\n[fonts]\r\n")
 		default:
-			fmt.Fprint(w, "file not found")
+			_, _ = fmt.Fprint(w, "file not found")
 		}
 	})
 
 	// CMDi in query param
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		if containsCmdi(r.URL.Query().Get("q")) {
-			fmt.Fprint(w, "uid=0(root) gid=0(root) groups=0(root)")
+			_, _ = fmt.Fprint(w, "uid=0(root) gid=0(root) groups=0(root)")
 			return
 		}
-		fmt.Fprintf(w, "ping output for %s", r.URL.Query().Get("q"))
+		_, _ = fmt.Fprintf(w, "ping output for %s", r.URL.Query().Get("q"))
 	})
 
 	// SSRF in query param (cloud metadata)
 	mux.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query().Get("q")
 		if strings.Contains(q, "169.254.169.254") || strings.Contains(q, "metadata.google.internal") {
-			fmt.Fprint(w, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
+			_, _ = fmt.Fprint(w, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
 			return
 		}
-		fmt.Fprint(w, "fetched: nothing interesting")
+		_, _ = fmt.Fprint(w, "fetched: nothing interesting")
 	})
 
 	// Open redirect: reflects destination into Location
@@ -159,7 +159,7 @@ func newDastApp() *httptest.Server {
 				w.Header().Set(name, val)
 			}
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 
 	// CORS misconfiguration: reflects arbitrary Origin with credentials
@@ -168,7 +168,7 @@ func newDastApp() *httptest.Server {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 
 	// Host header injection: reflects X-Forwarded-Host into a link
@@ -177,7 +177,7 @@ func newDastApp() *httptest.Server {
 		if host == "" {
 			host = r.Host
 		}
-		fmt.Fprintf(w, `<a href="https://%s/reset?token=abc">reset</a>`, host)
+		_, _ = fmt.Fprintf(w, `<a href="https://%s/reset?token=abc">reset</a>`, host)
 	})
 
 	return httptest.NewServer(mux)
@@ -302,7 +302,7 @@ func TestDastPipeline_NoFalsePositive_E2E(t *testing.T) {
 	testutils.Init(options)
 
 	benign := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "results for %q", r.URL.Query().Get("q"))
+		_, _ = fmt.Fprintf(w, "results for %q", r.URL.Query().Get("q"))
 	}))
 	defer benign.Close()
 

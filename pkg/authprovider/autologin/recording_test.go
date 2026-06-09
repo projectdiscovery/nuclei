@@ -104,13 +104,13 @@ func TestLoginHeadless_FromRecording(t *testing.T) {
 		mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, twoStepLoginPage)
+				_, _ = fmt.Fprint(w, twoStepLoginPage)
 				return
 			}
 			_ = r.ParseForm()
 			if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, twoStepLoginPage)
+				_, _ = fmt.Fprint(w, twoStepLoginPage)
 				return
 			}
 			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})

@@ -98,8 +98,8 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		require.Equal(t, "HeadersAuth", d.Type)
 		require.Equal(t, []string{"api.test.com"}, d.Domains)
 		require.Len(t, d.Headers, 1)
-		require.Equal(t, "X-API-Key", d.Secret.Headers[0].Key)
-		require.Equal(t, "secret-key", d.Secret.Headers[0].Value)
+		require.Equal(t, "X-API-Key", d.Headers[0].Key)
+		require.Equal(t, "secret-key", d.Headers[0].Value)
 
 		// Dynamic fields
 		require.Equal(t, "test-template.yaml", d.TemplatePath)
@@ -529,7 +529,7 @@ func TestSetLazyFetchCallbackAppliesValues(t *testing.T) {
 
 		err := d.Fetch(false)
 		require.NoError(t, err)
-		require.Equal(t, "Bearer jwt-secret-123", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer jwt-secret-123", d.Headers[0].Value)
 	})
 
 	t.Run("applies to secrets array", func(t *testing.T) {

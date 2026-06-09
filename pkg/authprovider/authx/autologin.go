@@ -212,9 +212,9 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 		d.Secret = &Secret{}
 	}
 	// Reset previously applied auth so re-auth replaces (not appends to) it.
-	d.Secret.Headers = nil
-	d.Secret.Cookies = nil
-	d.Secret.Token = ""
+	d.Headers = nil
+	d.Cookies = nil
+	d.Token = ""
 	d.Secrets = nil
 
 	// Stash captured web storage (headless logins only) and any extra derived
@@ -237,28 +237,28 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 		// Storage-only session (e.g. a pure localStorage-JWT SPA): there is no
 		// HTTP-applicable secret, but the headless engine will replay the storage.
 		// Leave the secret type empty so it yields no HTTP strategy.
-		d.Secret.Type = ""
+		d.Type = ""
 		return nil
 	}
 
 	switch {
 	case hasCookies:
-		d.Secret.Type = string(CookiesAuth)
+		d.Type = string(CookiesAuth)
 		for _, c := range session.Cookies {
-			d.Secret.Cookies = append(d.Secret.Cookies, Cookie{Key: c.Name, Value: c.Value})
+			d.Cookies = append(d.Cookies, Cookie{Key: c.Name, Value: c.Value})
 		}
 		if hasToken && d.fetchState != nil {
 			// Apply the token as an additional bearer header secret on the shared
 			// fetchState so it reaches every domain the secret is scoped to.
 			d.fetchState.autoLoginSecrets = append(d.fetchState.autoLoginSecrets, &Secret{
 				Type:    string(BearerTokenAuth),
-				Domains: d.Secret.Domains,
+				Domains: d.Domains,
 				Token:   session.Token,
 			})
 		}
 	default: // token only
-		d.Secret.Type = string(BearerTokenAuth)
-		d.Secret.Token = session.Token
+		d.Type = string(BearerTokenAuth)
+		d.Token = session.Token
 	}
 	return nil
 }

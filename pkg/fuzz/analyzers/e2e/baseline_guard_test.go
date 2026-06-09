@@ -19,7 +19,7 @@ import (
 func TestSQLi_BaselineGuard_E2E(t *testing.T) {
 	// Always returns a MySQL error, even for the benign original value.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax")
+		_, _ = fmt.Fprint(w, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax")
 	}))
 	defer srv.Close()
 
@@ -30,7 +30,7 @@ func TestSQLi_BaselineGuard_E2E(t *testing.T) {
 func TestLFI_BaselineGuard_E2E(t *testing.T) {
 	// Always returns /etc/passwd content regardless of the input.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "root:x:0:0:root:/root:/bin/bash\n")
+		_, _ = fmt.Fprint(w, "root:x:0:0:root:/root:/bin/bash\n")
 	}))
 	defer srv.Close()
 
@@ -41,7 +41,7 @@ func TestLFI_BaselineGuard_E2E(t *testing.T) {
 func TestSSRF_BaselineGuard_E2E(t *testing.T) {
 	// Always returns the AWS instance identity document regardless of the input.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
+		_, _ = fmt.Fprint(w, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
 	}))
 	defer srv.Close()
 
@@ -53,7 +53,7 @@ func TestCMDi_BaselineGuard_E2E(t *testing.T) {
 	// Always returns command output regardless of input (e.g. a page that
 	// legitimately prints a "uid=" string).
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "current identity: uid=0(root) gid=0(root) groups=0(root)")
+		_, _ = fmt.Fprint(w, "current identity: uid=0(root) gid=0(root) groups=0(root)")
 	}))
 	defer srv.Close()
 

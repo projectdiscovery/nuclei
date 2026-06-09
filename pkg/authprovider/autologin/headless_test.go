@@ -55,13 +55,13 @@ const jsLoginPage = `<html><head><title>Login</title></head><body>
 func (a *jsLoginApp) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, jsLoginPage)
+		_, _ = fmt.Fprint(w, jsLoginPage)
 		return
 	}
 	_ = r.ParseForm()
 	if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, jsLoginPage) // re-render: still a (JS) login page
+		_, _ = fmt.Fprint(w, jsLoginPage) // re-render: still a (JS) login page
 		return
 	}
 	token := "sess-dave"
@@ -85,7 +85,7 @@ func (a *jsLoginApp) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprint(w, "<html><body><h1>welcome dave</h1></body></html>")
+	_, _ = fmt.Fprint(w, "<html><body><h1>welcome dave</h1></body></html>")
 }
 
 func TestLoginHeadless_JSRenderedForm(t *testing.T) {
@@ -157,13 +157,13 @@ func TestLoginHeadless_MultiStep(t *testing.T) {
 		mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, twoStepLoginPage)
+				_, _ = fmt.Fprint(w, twoStepLoginPage)
 				return
 			}
 			_ = r.ParseForm()
 			if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, twoStepLoginPage)
+				_, _ = fmt.Fprint(w, twoStepLoginPage)
 				return
 			}
 			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
@@ -231,7 +231,7 @@ func TestLoginHeadless_LocalStorageToken(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, spaTokenPage)
+		_, _ = fmt.Fprint(w, spaTokenPage)
 	}))
 	defer srv.Close()
 
@@ -298,13 +298,13 @@ func TestLoginHeadless_SubmitDisabledUntilValid(t *testing.T) {
 		mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, disabledSubmitPage)
+				_, _ = fmt.Fprint(w, disabledSubmitPage)
 				return
 			}
 			_ = r.ParseForm()
 			if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, disabledSubmitPage)
+				_, _ = fmt.Fprint(w, disabledSubmitPage)
 				return
 			}
 			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
@@ -358,13 +358,13 @@ func TestLoginHeadless_EnterSubmitFallback(t *testing.T) {
 		mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, enterSubmitPage)
+				_, _ = fmt.Fprint(w, enterSubmitPage)
 				return
 			}
 			_ = r.ParseForm()
 			if r.PostFormValue("email") != "dave@example.com" || r.PostFormValue("password") != "p@ss" {
 				w.Header().Set("Content-Type", "text/html")
-				fmt.Fprint(w, enterSubmitPage)
+				_, _ = fmt.Fprint(w, enterSubmitPage)
 				return
 			}
 			http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
@@ -457,7 +457,7 @@ func TestLoginHeadless_AutoDetectStorageJWTWithoutRegex(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, spaAutoTokenPage)
+		_, _ = fmt.Fprint(w, spaAutoTokenPage)
 	}))
 	defer srv.Close()
 

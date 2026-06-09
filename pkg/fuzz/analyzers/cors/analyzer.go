@@ -82,7 +82,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 	targetHost := ""
 	if gr.Request != nil && gr.Request.URL != nil {
-		targetHost = gr.Request.URL.Hostname()
+		targetHost = gr.Request.Hostname()
 	}
 	canary := "https://" + randomToken() + ".corscanary.example"
 

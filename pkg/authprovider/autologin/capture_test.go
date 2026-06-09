@@ -28,7 +28,7 @@ func TestCaptureOnce_E2E(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "sess-dave", Path: "/"})
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, capturePage)
+		_, _ = fmt.Fprint(w, capturePage)
 	}))
 	defer srv.Close()
 
@@ -60,7 +60,7 @@ func TestCaptureOnce_ReadyErrorAborts(t *testing.T) {
 	requireChrome(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "<html><body>login</body></html>")
+		_, _ = fmt.Fprint(w, "<html><body>login</body></html>")
 	}))
 	defer srv.Close()
 
