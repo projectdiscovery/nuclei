@@ -394,3 +394,85 @@ func TestLoginHeadless_EnterSubmitFallback(t *testing.T) {
 	}
 	require.Contains(t, names, "session", "Enter-to-submit fallback should log in")
 }
+
+func TestDetectStorageJWT(t *testing.T) {
+	const jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYXZlIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+	t.Run("preferred key wins over other JWT-shaped values", func(t *testing.T) {
+		other := "eyJraWQiOiJvdGhlciJ9.eyJub3RpdCI6dHJ1ZX0.zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+		got := detectStorageJWT(map[string]string{"random_blob": other, "token": jwt})
+		require.Equal(t, jwt, got, "the value under a preferred key should be chosen")
+	})
+
+	t.Run("extracts JWT embedded in JSON", func(t *testing.T) {
+		got := detectStorageJWT(map[string]string{"auth": `{"access_token":"` + jwt + `","exp":123}`})
+		require.Equal(t, jwt, got)
+	})
+
+	t.Run("extracts JWT wrapped in quotes", func(t *testing.T) {
+		got := detectStorageJWT(map[string]string{"id_token": `"` + jwt + `"`})
+		require.Equal(t, jwt, got)
+	})
+
+	t.Run("falls back to sessionStorage when localStorage has none", func(t *testing.T) {
+		got := detectStorageJWT(map[string]string{"theme": "dark"}, map[string]string{"jwt": jwt})
+		require.Equal(t, jwt, got)
+	})
+
+	t.Run("returns empty when no JWT present", func(t *testing.T) {
+		require.Empty(t, detectStorageJWT(map[string]string{"theme": "dark", "lang": "en"}))
+		require.Empty(t, detectStorageJWT(nil, nil))
+	})
+
+	t.Run("ignores non-JWT values that merely start with eyJ", func(t *testing.T) {
+		require.Empty(t, detectStorageJWT(map[string]string{"x": "eyJustabase64ishstring"}))
+	})
+}
+
+// spaAutoTokenPage stores a realistic JWT in localStorage under a conventional
+// key and sets no cookie, mirroring a token-in-web-storage SPA. It is used to
+// verify that the engine surfaces the token even without an explicit TokenRegex.
+const spaAutoTokenPage = `<html><head><title>SPA</title></head><body>
+<form id="f">
+  <input type="email" name="email" id="email">
+  <input type="password" name="password" id="password">
+  <button type="submit" id="submit">Sign in</button>
+</form>
+<script>
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('email').value;
+    var pw = document.getElementById('password').value;
+    if (email === 'dave@example.com' && pw === 'p@ss') {
+      window.localStorage.setItem('token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYXZlIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c');
+      document.body.innerHTML = '<h1>welcome dave</h1>';
+    } else {
+      document.body.innerHTML += '<p>bad creds</p>';
+    }
+  });
+</script></body></html>`
+
+func TestLoginHeadless_AutoDetectStorageJWTWithoutRegex(t *testing.T) {
+	requireChrome(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, spaAutoTokenPage)
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	session, err := LoginHeadless(ctx, Config{
+		LoginURL:   srv.URL + "/login",
+		Username:   "dave@example.com",
+		Password:   "p@ss",
+		SettleTime: 1500 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.Empty(t, session.Cookies, "SPA login sets no cookie")
+	require.Equal(t,
+		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYXZlIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		session.Token,
+		"JWT in localStorage must be auto-detected as the session token without a TokenRegex")
+}

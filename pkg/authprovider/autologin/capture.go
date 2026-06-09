@@ -111,6 +111,12 @@ func CaptureOnce(ctx context.Context, cfg Config, ready func() error) (*Session,
 		}
 	}
 
+	// When no explicit token-regex matched, surface a JWT-shaped value from web
+	// storage so a captured SPA session also authenticates HTTP scan requests.
+	if session.Token == "" {
+		session.Token = detectStorageJWT(session.LocalStorage, session.SessionStorage)
+	}
+
 	if len(session.Cookies) == 0 && session.Token == "" && len(session.LocalStorage) == 0 && len(session.SessionStorage) == 0 {
 		return nil, errkit.New("auto-login(capture): no session captured (no cookies, token or web storage found)")
 	}

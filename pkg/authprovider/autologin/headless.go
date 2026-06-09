@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -142,6 +143,15 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 		}
 	}
 
+	// Fallback: many SPAs keep their bearer token in web storage (e.g.
+	// localStorage["token"]) rather than a cookie. When no explicit token-regex
+	// matched, surface a JWT-shaped value from web storage as the session token
+	// so HTTP scan requests carry an Authorization header without the user
+	// having to specify a token-regex.
+	if session.Token == "" {
+		session.Token = detectStorageJWT(session.LocalStorage, session.SessionStorage)
+	}
+
 	// Success heuristic: being re-prompted (final page still presents a login
 	// form) with no token means the login failed.
 	if session.Token == "" {
@@ -159,6 +169,49 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 		return nil, errkit.Wrapf(ErrLoginFailed, "no cookies or token captured at %s", session.FinalURL)
 	}
 	return session, nil
+}
+
+// jwtValueRe matches a JWT-shaped value (header.payload.signature in base64url).
+// It is intentionally not anchored so it also matches tokens wrapped in quotes
+// or embedded in a small JSON blob stored in web storage.
+var jwtValueRe = regexp.MustCompile(`eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{4,}`)
+
+// detectStorageJWT returns the first JWT-shaped value found across the supplied
+// web storage maps, or "" when none is present. Keys that conventionally hold an
+// auth token are inspected first (and otherwise keys are visited in sorted order)
+// so the result is deterministic across runs.
+func detectStorageJWT(stores ...map[string]string) string {
+	preferredKeys := []string{"token", "access_token", "accesstoken", "jwt", "auth_token", "authtoken", "id_token", "idtoken", "bearer"}
+	for _, store := range stores {
+		if len(store) == 0 {
+			continue
+		}
+		for _, want := range preferredKeys {
+			for k, v := range store {
+				if strings.EqualFold(k, want) {
+					if m := jwtValueRe.FindString(v); m != "" {
+						return m
+					}
+				}
+			}
+		}
+	}
+	for _, store := range stores {
+		if len(store) == 0 {
+			continue
+		}
+		keys := make([]string, 0, len(store))
+		for k := range store {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if m := jwtValueRe.FindString(store[k]); m != "" {
+				return m
+			}
+		}
+	}
+	return ""
 }
 
 // launchBrowser launches (or connects to) a browser and returns it with a
