@@ -168,7 +168,7 @@ iconType: "solid"
 				for _, sig := range f.Signatures {
 					sigSlice = append(sigSlice, "`"+sig+"`")
 				}
-				sb.WriteString(fmt.Sprintf("| %s | %s | %s |\n", f.Name, f.Description, strings.Join(sigSlice, ", ")))
+				fmt.Fprintf(&sb, "| %s | %s | %s |\n", f.Name, f.Description, strings.Join(sigSlice, ", "))
 			}
 			sb.WriteString("\n")
 		}

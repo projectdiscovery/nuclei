@@ -1,0 +1,5 @@
+type=regex
+condition=or
+part=body
+value=abc[0-9]+
+value=(?i)ping

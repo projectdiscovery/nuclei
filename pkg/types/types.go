@@ -14,10 +14,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	unitutils "github.com/projectdiscovery/utils/unit"
+	"github.com/rs/xid"
 )
 
 const DefaultTemplateLoadingConcurrency = 50
@@ -177,6 +179,8 @@ type Options struct {
 	ForceAttemptHTTP2 bool
 	// StatsJSON writes stats output in JSON format
 	StatsJSON bool
+	// CDPEndpoint specifies the endpoint for Chrome DevTools Protocol (CDP)
+	CDPEndpoint string
 	// Headless specifies whether to allow headless mode templates
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
@@ -237,6 +241,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// PDFExport is the file to export PDF output format to
+	PDFExport string
 	// Redact redacts given keys in
 	Redact goflags.StringSlice
 	// EnableProgressBar enables progress bar
@@ -253,6 +259,13 @@ type Options struct {
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
 	StopAtFirstMatch bool
+
+	// HoneypotDetection enables detection of potential honeypots based on match concentration.
+	HoneypotDetection bool
+	// HoneypotThreshold is the number of distinct template IDs required to flag a host as a potential honeypot.
+	HoneypotThreshold int
+	// SuppressHoneypotResults suppresses output writing for flagged honeypot hosts.
+	SuppressHoneypotResults bool
 	// Stream the input without sorting
 	Stream bool
 	// NoMeta disables display of metadata for the matches
@@ -449,6 +462,8 @@ type Options struct {
 	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
+	// InlineTargetsList holds inline multiline target list from a template profile
+	InlineTargetsList string `yaml:"targets-inline,omitempty"`
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
@@ -572,6 +587,7 @@ func (options *Options) Copy() *Options {
 		OmitTemplate:                   options.OmitTemplate,
 		JSONExport:                     options.JSONExport,
 		JSONLExport:                    options.JSONLExport,
+		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
 		EnableProgressBar:              options.EnableProgressBar,
 		TemplateDisplay:                options.TemplateDisplay,
@@ -580,6 +596,9 @@ func (options *Options) Copy() *Options {
 		HangMonitor:                    options.HangMonitor,
 		Stdin:                          options.Stdin,
 		StopAtFirstMatch:               options.StopAtFirstMatch,
+		HoneypotDetection:              options.HoneypotDetection,
+		HoneypotThreshold:              options.HoneypotThreshold,
+		SuppressHoneypotResults:        options.SuppressHoneypotResults,
 		Stream:                         options.Stream,
 		NoMeta:                         options.NoMeta,
 		Timestamp:                      options.Timestamp,
@@ -675,6 +694,7 @@ func (options *Options) Copy() *Options {
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
+		InlineTargetsList:              options.InlineTargetsList,
 		ListTemplateProfiles:           options.ListTemplateProfiles,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,
 		Logger:                         options.Logger,
@@ -793,6 +813,8 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		ExecutionId:                xid.New().String(),
+		Logger:                     &gologger.Logger{},
 	}
 }
 
@@ -856,27 +878,38 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	resolvedPath, err := fileutil.ResolveNClean(helperFilePath, config.DefaultConfig.GetTemplateDir())
 	if err == nil {
 		// As per rule 1, if helper file is present in nuclei-templates directory, allow it
-		if strings.HasPrefix(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
+		if filepathutil.IsPathWithinDirectory(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
 			return resolvedPath, nil
 		}
 	}
 
-	// CleanPath resolves using CWD and cleans the path
-	helperFilePath, err = fileutil.CleanPath(helperFilePath)
-	if err != nil {
-		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
-	}
-
-	templatePath, err = fileutil.CleanPath(templatePath)
+	// templatePath must be absolute for the rule-2 sandbox checks below.
+	cleanedTemplatePath, err := fileutil.CleanPath(templatePath)
 	if err != nil {
 		return "", errkit.Wrapf(err, "could not clean template path %v", templatePath)
+	}
+
+	// Resolve relative helper paths against the template's own directory
+	// rather than the process CWD. fileutil.CleanPath on a relative path
+	// uses os.Getwd(), which silently turns a helper reference like
+	// "payloads.txt" into "<cwd>/payloads.txt"; that disagrees with how
+	// templates expect helpers to be looked up (relative to the template
+	// file itself) and makes rule 2 effectively unreachable unless the
+	// process happens to be running from the template's directory.
+	cleanedHelperPath := helperFilePath
+	if !filepath.IsAbs(cleanedHelperPath) {
+		cleanedHelperPath = filepath.Join(filepath.Dir(cleanedTemplatePath), cleanedHelperPath)
+	}
+	cleanedHelperPath, err = fileutil.CleanPath(cleanedHelperPath)
+	if err != nil {
+		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
 	}
 
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
 	// and both of them are present in user home directory, allow it
 	// Review: should we keep this rule ? add extra option to disable this ?
-	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
-		return helperFilePath, nil
+	if isHomeDir(cleanedHelperPath) && isHomeDir(cleanedTemplatePath) && filepathutil.IsPathWithinDirectory(cleanedHelperPath, filepath.Dir(cleanedTemplatePath)) {
+		return cleanedHelperPath, nil
 	}
 
 	// all other cases are denied
@@ -900,5 +933,8 @@ func (options *Options) GetExecutionID() string {
 // isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
-	return strings.HasPrefix(path, homeDir)
+	if homeDir == "" {
+		return false
+	}
+	return filepathutil.IsPathWithinDirectory(path, homeDir)
 }

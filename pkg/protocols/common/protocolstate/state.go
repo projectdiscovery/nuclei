@@ -55,7 +55,19 @@ func ShouldInit(id string) bool {
 
 // Init creates the Dialers instance based on user configuration
 func Init(options *types.Options) error {
-	if GetDialersWithId(options.ExecutionId) != nil {
+	if existingDialers := GetDialersWithId(options.ExecutionId); existingDialers != nil {
+		// Dialers already exist for this ExecutionId. Refresh the LFA /
+		// network-policy state derived from options so that a second
+		// Init call with different options (e.g. flipping
+		// AllowLocalFileAccess) is reflected in IsLfaAllowed and the
+		// per-execution dialer state. Without this refresh the second
+		// caller silently keeps the first caller's settings, which is a
+		// footgun for tests and SDK callers that share an execution id.
+		existingDialers.Lock()
+		existingDialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
+		existingDialers.RestrictLocalNetworkAccess = options.RestrictLocalNetworkAccess
+		existingDialers.Unlock()
+		SetLfaAllowed(options)
 		return nil
 	}
 
@@ -200,8 +212,14 @@ func initDialers(options *types.Options) error {
 			addr += ":3306"
 		}
 
-		executionId := ctx.Value("executionId").(string)
+		var executionId string
+		if val := ctx.Value("executionId"); val != nil {
+			executionId = val.(string)
+		}
 		dialer := GetDialersWithId(executionId)
+		if dialer == nil {
+			return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+		}
 		return dialer.Fastdialer.Dial(ctx, "tcp", addr)
 	})
 

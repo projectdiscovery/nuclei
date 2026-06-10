@@ -13,6 +13,7 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
@@ -187,6 +188,11 @@ type Request struct {
 	//   This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
 	HostRedirects bool `yaml:"host-redirects,omitempty" json:"host-redirects,omitempty" jsonschema:"title=follow same host http redirects,description=Specifies whether redirects to the same host should be followed by the HTTP Client"`
 	// description: |
+	//   ProtocolRedirects specifies whether only redirects within the same protocol should be followed.
+	//
+	//   When set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked.
+	ProtocolRedirects bool `yaml:"protocol-redirects,omitempty" json:"protocol-redirects,omitempty" jsonschema:"title=follow same protocol http redirects,description=Specifies whether only same-protocol redirects should be followed by the HTTP Client"`
+	// description: |
 	//   Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining
 	//
 	//   All requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.
@@ -335,6 +341,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	if request.HostRedirects || options.Options.FollowHostRedirects {
 		connectionConfiguration.RedirectFlow = httpclientpool.FollowSameHostRedirect
+	}
+	if request.ProtocolRedirects {
+		connectionConfiguration.RedirectFlow = httpclientpool.FollowSameSchemeRedirect
 	}
 
 	// If we have request level timeout, ignore http client timeouts
@@ -506,7 +515,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			stats.Increment(SetThreadToCountZero)
 			request.Threads = 0
 		} else {
-			// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
+			// specifically for http requests high concurrency and threads will lead to memory exhaustion, hence reduce the maximum parallelism
 			if protocolstate.IsLowOnMemory() {
 				request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
 			}
@@ -543,4 +552,9 @@ func init() {
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
+}
+
+// HasFuzzing indicates whether the request has fuzzing rules defined.
+func (request *Request) HasFuzzing() bool {
+	return len(request.Fuzzing) > 0
 }

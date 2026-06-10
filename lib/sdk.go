@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -30,7 +31,6 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
-	"github.com/rs/xid"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -89,6 +89,7 @@ type NucleiEngine struct {
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client
+	reportingOpts  *reporting.Options
 	executerOpts   *protocols.ExecutorOptions
 
 	// Logger instance for the engine
@@ -110,7 +111,9 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 	if err != nil {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
-	e.store.Load()
+	if err := e.store.Load(); err != nil {
+		return errkit.Wrapf(err, "Could not load templates: %s", err)
+	}
 	e.templatesLoaded = true
 	return nil
 }
@@ -238,6 +241,9 @@ func (e *NucleiEngine) closeInternal() {
 	if e.tmpDir != "" {
 		_ = os.RemoveAll(e.tmpDir)
 	}
+	if e.opts != nil {
+		generators.ClearOptionsPayloadMap(e.opts)
+	}
 }
 
 // Close all resources used by nuclei engine
@@ -319,11 +325,11 @@ func (e *NucleiEngine) Store() *loader.Store {
 func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
 	defaultOptions := types.DefaultOptions()
-	defaultOptions.ExecutionId = xid.New().String()
 	e := &NucleiEngine{
-		opts: defaultOptions,
-		mode: singleInstance,
-		ctx:  ctx,
+		opts:   defaultOptions,
+		mode:   singleInstance,
+		ctx:    ctx,
+		Logger: defaultOptions.Logger,
 	}
 	for _, option := range options {
 		if err := option(e); err != nil {
@@ -354,4 +360,27 @@ func wait(wg *sync.WaitGroup) <-chan struct{} {
 		wg.Wait()
 	}()
 	return ch
+}
+
+// GetClusterTemplateIDs returns the template IDs for a given cluster ID
+// Returns nil if the cluster ID doesn't exist or engine hasn't executed yet
+func (e *NucleiEngine) GetClusterTemplateIDs(clusterID string) []string {
+	if e.executerOpts == nil || e.executerOpts.ClusterMappings == nil {
+		return nil
+	}
+	templateIDs, ok := e.executerOpts.ClusterMappings.Get(clusterID)
+	if !ok {
+		return nil
+	}
+	return templateIDs
+}
+
+// GetAllClusterMappings returns all cluster mappings
+// Returns nil if engine hasn't executed yet
+func (e *NucleiEngine) GetAllClusterMappings() map[string][]string {
+	if e.executerOpts == nil || e.executerOpts.ClusterMappings == nil {
+		return nil
+	}
+
+	return e.executerOpts.ClusterMappings.GetAll()
 }

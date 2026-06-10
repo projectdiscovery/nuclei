@@ -47,14 +47,21 @@ import (
 )
 
 var (
-	cfgFile         string
-	templateProfile string
-	memProfile      string // optional profile file path
-	options         = &types.Options{}
+	cfgFile                string
+	templateProfile        string
+	memProfile             string // optional profile file path
+	options                = &types.Options{}
+	inlineSecretsTempFiles []string
 )
 
 func main() {
 	options.Logger = gologger.DefaultLogger
+
+	defer func() {
+		for _, f := range inlineSecretsTempFiles {
+			_ = os.Remove(f)
+		}
+	}()
 
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
@@ -196,7 +203,7 @@ func main() {
 
 	// Setup filename for graceful exits
 	resumeFileName := types.DefaultResumeFilePath()
-	if options.Resume == "" {
+	if options.Resume != "" {
 		resumeFileName = options.Resume
 	}
 	c := make(chan os.Signal, 1)
@@ -220,6 +227,9 @@ func main() {
 			if err != nil {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
+		}
+		for _, f := range inlineSecretsTempFiles {
+			_ = os.Remove(f)
 		}
 		os.Exit(1)
 	}()
@@ -257,6 +267,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringVarP(&options.InlineTargetsList, "targets-inline", "", "", "inline multiline target list (for use in template profiles)"),
 		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
@@ -319,7 +330,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
 		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", true, "include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use `-omit-raw`]"),
-		flagSet.BoolVarP(&options.OmitRawRequests, "omit-raw", "or", false, "omit request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)"),
+		flagSet.BoolVarP(&options.OmitRawRequests, "omit-raw", "or", false, "omit request/response pairs in the JSON, JSONL, Markdown, and PDF outputs (for findings only)"),
 		flagSet.BoolVarP(&options.OmitTemplate, "omit-template", "ot", false, "omit encoded template in the JSON, JSONL output"),
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "disable printing result metadata in cli output"),
 		flagSet.BoolVarP(&options.Timestamp, "timestamp", "ts", false, "enables printing timestamp in cli output"),
@@ -329,6 +340,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),
 		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
+		flagSet.StringVarP(&options.PDFExport, "pdf-export", "pe", "", "file to export results in PDF format"),
 		flagSet.StringSliceVarP(&options.Redact, "redact", "rd", nil, "redact given list of keys from query parameter, request header and body", goflags.CommaSeparatedStringSliceOptions),
 	)
 
@@ -443,6 +455,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ShowBrowser, "show-browser", "sb", false, "show the browser on the screen when running templates with headless mode"),
 		flagSet.StringSliceVarP(&options.HeadlessOptionalArguments, "headless-options", "ho", nil, "start headless chrome with additional options", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "use local installed Chrome browser instead of nuclei installed"),
+		flagSet.StringVarP(&options.CDPEndpoint, "cdp-endpoint", "cdpe", "", "use remote browser via Chrome DevTools Protocol (CDP) endpoint"),
 		flagSet.BoolVarP(&options.ShowActions, "list-headless-action", "lha", false, "list available headless actions"),
 	)
 
@@ -472,6 +485,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
+	)
+
+	flagSet.CreateGroup("Honeypot", "Honeypot",
+		flagSet.BoolVarP(&options.HoneypotDetection, "honeypot-detect", "hpd", false, "detect potential honeypot hosts based on match concentration"),
+		flagSet.IntVarP(&options.HoneypotThreshold, "honeypot-threshold", "hpt", 15, "number of distinct template IDs required to flag a honeypot host"),
+		flagSet.BoolVarP(&options.SuppressHoneypotResults, "suppress-honeypot", "shp", false, "suppress output for flagged honeypot hosts"),
 	)
 
 	flagSet.CreateGroup("stats", "Statistics",
@@ -658,6 +677,39 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
 			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
 		}
+
+		// Process inline target list from profile.
+		// Supports both the dedicated targets-inline key and multiline
+		// content in the list key (which normally holds a file path).
+		if options.InlineTargetsList != "" {
+			inlineTargets := strings.Split(strings.TrimSpace(options.InlineTargetsList), "\n")
+			for _, target := range inlineTargets {
+				target = strings.TrimSpace(target)
+				if target != "" && !strings.HasPrefix(target, "#") {
+					options.Targets = append(options.Targets, target)
+				}
+			}
+		}
+		if strings.Contains(options.TargetsFilePath, "\n") {
+			// list key has multiline content, treat as inline targets
+			inlineTargets := strings.Split(strings.TrimSpace(options.TargetsFilePath), "\n")
+			for _, target := range inlineTargets {
+				target = strings.TrimSpace(target)
+				if target != "" && !strings.HasPrefix(target, "#") {
+					options.Targets = append(options.Targets, target)
+				}
+			}
+			options.TargetsFilePath = ""
+		}
+
+		// Process inline secrets from profile YAML
+		tempSecretsFile, err := processInlineSecretsFromProfile(templateProfile, options)
+		if err != nil {
+			options.Logger.Fatal().Msgf("Could not process inline secrets: %s\n", err)
+		}
+		if tempSecretsFile != "" {
+			inlineSecretsTempFiles = append(inlineSecretsTempFiles, tempSecretsFile)
+		}
 	}
 
 	if len(options.SecretsFile) > 0 {
@@ -750,12 +802,13 @@ func resetCallback() {
 Using '-reset' will delete all nuclei configurations files and all nuclei-templates
 
 Following files will be deleted:
-1. All Config + Resumes files at %v
-2. All nuclei-templates at %v
+1. All config files at %v
+2. All cache files (including resume state) at %v
+3. All nuclei-templates at %v
 
 Note: Make sure you have backup of your custom nuclei-templates before proceeding
 
-`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.TemplatesDirectory)
+`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.GetCacheDir(), config.DefaultConfig.TemplatesDirectory)
 	options.Logger.Print().Msg(warning)
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -776,6 +829,10 @@ Note: Make sure you have backup of your custom nuclei-templates before proceedin
 	err := os.RemoveAll(config.DefaultConfig.GetConfigDir())
 	if err != nil {
 		options.Logger.Fatal().Msgf("could not delete config dir: %s", err)
+	}
+	err = os.RemoveAll(config.DefaultConfig.GetCacheDir())
+	if err != nil {
+		options.Logger.Fatal().Msgf("could not delete cache dir: %s", err)
 	}
 	err = os.RemoveAll(config.DefaultConfig.TemplatesDirectory)
 	if err != nil {
@@ -804,4 +861,55 @@ func findProfilePathById(profileId, templatesDir string) string {
 		options.Logger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
+}
+
+// profileSecrets is a helper struct to extract secrets section from a template profile YAML
+type profileSecrets struct {
+	Secrets interface{} `yaml:"secrets"`
+}
+
+// processInlineSecretsFromProfile parses the profile YAML file for inline secrets
+// and creates a temporary secrets file compatible with nuclei's auth provider.
+// Returns the path to the temp file or empty string if no secrets found.
+func processInlineSecretsFromProfile(profilePath string, options *types.Options) (string, error) {
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		return "", fmt.Errorf("could not read profile file: %w", err)
+	}
+
+	var profile profileSecrets
+	if err := yaml.Unmarshal(data, &profile); err != nil {
+		return "", fmt.Errorf("could not parse profile YAML: %w", err)
+	}
+
+	if profile.Secrets == nil {
+		return "", nil
+	}
+
+	secretsData, err := yaml.Marshal(profile.Secrets)
+	if err != nil {
+		return "", fmt.Errorf("could not marshal inline secrets: %w", err)
+	}
+
+	tempDir := filepath.Join(os.TempDir(), "nuclei-secrets")
+	if err := os.MkdirAll(tempDir, 0700); err != nil {
+		return "", fmt.Errorf("could not create temp directory: %w", err)
+	}
+
+	tempFile, err := os.CreateTemp(tempDir, "inline-secrets-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("could not create temp secrets file: %w", err)
+	}
+	defer func() {
+		_ = tempFile.Close()
+	}()
+
+	if _, err := tempFile.Write(secretsData); err != nil {
+		_ = tempFile.Close()
+		_ = os.Remove(tempFile.Name())
+		return "", fmt.Errorf("could not write to temp secrets file: %w", err)
+	}
+
+	options.SecretsFile = append(options.SecretsFile, tempFile.Name())
+	return tempFile.Name(), nil
 }

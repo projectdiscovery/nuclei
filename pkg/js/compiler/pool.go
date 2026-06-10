@@ -3,6 +3,7 @@ package compiler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -10,12 +11,18 @@ import (
 	"github.com/Mzack9999/goja"
 	"github.com/Mzack9999/goja_nodejs/console"
 	"github.com/Mzack9999/goja_nodejs/require"
-	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
+
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcerpc"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcom"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkerberos"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbforge"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbroast"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libldap"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmysql"
@@ -26,19 +33,21 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/librdp"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libredis"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/librsync"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libscmr"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libsecretsdump"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libsmb"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libsmtp"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libssh"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libstructs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtelnet"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtsch"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libvnc"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libwmi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const (
@@ -46,10 +55,19 @@ const (
 	exportAsToken = "ExportAs"
 )
 
+// errRuntimeTerminationTimeout is returned by session when the
+// goroutine running goja.Runtime.RunProgram fails to terminate within the
+// grace period after an interrupt was raised. When this error is returned
+// the runtime MUST NOT be touched (no cleanup, no reuse, no Put back to
+// the pool) because the orphaned goroutine is still operating on it; any
+// concurrent access would race with goja's per-runtime state and can
+// trigger a fatal "concurrent map read and map write" runtime panic.
+//
+// See https://github.com/projectdiscovery/nuclei/issues/7376.
+var errRuntimeTerminationTimeout = errors.New("nuclei js runtime: program failed to terminate after interrupt")
+
 var (
-	r                *require.Registry
 	lazyRegistryInit = sync.OnceFunc(func() {
-		r = new(require.Registry) // this can be shared by multiple runtimes
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
@@ -73,84 +91,79 @@ var gojapool = &sync.Pool{
 	},
 }
 
-func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
-	defer func() {
-		// reset before putting back to pool
-		_ = runtime.GlobalObject().Delete("template") // template ctx
-		// remove all args
-		for k := range args.Args {
-			_ = runtime.GlobalObject().Delete(k)
-		}
-		if opts != nil && opts.Cleanup != nil {
-			opts.Cleanup(runtime)
-		}
-		runtime.RemoveContextValue("executionId")
-	}()
-
-	// TODO(dwisiswant0): remove this once we get the RCA.
-	defer func() {
-		if ci.IsCI() {
-			return
-		}
-
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %s", r)
-		}
-	}()
-
-	// set template ctx
-	_ = runtime.Set("template", args.TemplateCtx)
-	// set args
-	for k, v := range args.Args {
-		_ = runtime.Set(k, v)
-	}
-	// register extra callbacks if any
-	if opts != nil && opts.Callback != nil {
-		if err := opts.Callback(runtime); err != nil {
-			return nil, err
-		}
-	}
-
-	// inject execution id and context
-	runtime.SetContextValue("executionId", opts.ExecutionId)
-
-	// execute the script
-	return runtime.RunProgram(p)
-}
-
 // ExecuteProgram executes a compiled program with the default options.
 // it deligates if a particular program should run in a pooled or non-pooled runtime
-func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func ExecuteProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
+	if opts == nil {
+		opts = &ExecuteOptions{}
+	}
 	if opts.Source == nil {
 		// not-recommended anymore
-		return executeWithoutPooling(p, args, opts)
+		return executeWithoutPooling(ctx, p, args, opts)
 	}
 	if !stringsutil.ContainsAny(*opts.Source, exportAsToken, exportToken) {
 		// not-recommended anymore
-		return executeWithoutPooling(p, args, opts)
+		return executeWithoutPooling(ctx, p, args, opts)
 	}
-	return executeWithPoolingProgram(p, args, opts)
+	return executeWithPoolingProgram(ctx, p, args, opts)
 }
 
 // executes the actual js program
-func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
+	if opts == nil {
+		opts = &ExecuteOptions{}
+	}
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
-	sgResizeCheck(opts.Context)
+	sgResizeCheck(ctx)
 
-	pooljsc.Add()
-	defer pooljsc.Done()
+	// Acquire a pool slot, respecting the execution deadline. Returns
+	// immediately if the context has already expired.
+	if err := pooljsc.AddWithContext(ctx); err != nil {
+		return nil, err
+	}
+
 	runtime := gojapool.Get().(*goja.Runtime)
-	defer gojapool.Put(runtime)
+
 	var buff bytes.Buffer
 	opts.exports = make(map[string]interface{})
 
-	defer func() {
-		// remove below functions from runtime
-		_ = runtime.GlobalObject().Delete(exportAsToken)
-		_ = runtime.GlobalObject().Delete(exportToken)
-	}()
+	session := newSession(sessionConfig{
+		ctx:     ctx,
+		runtime: runtime,
+		program: p,
+		args:    args,
+		opts:    opts,
+		prepareRuntime: func(runtime *goja.Runtime) error {
+			registerExportHelpers(runtime, opts, &buff)
+			return nil
+		},
+		cleanupRuntime: func(runtime *goja.Runtime) {
+			_ = runtime.GlobalObject().Delete(exportAsToken)
+			_ = runtime.GlobalObject().Delete(exportToken)
+		},
+		finalizeResult: func(runtime *goja.Runtime, val goja.Value) (goja.Value, error) {
+			if val.Export() != nil {
+				// append last value to output
+				buff.WriteString(stringify(val, runtime))
+			}
+			// and return it as result
+			return runtime.ToValue(buff.String()), nil
+		},
+		returnRuntime: func(runtime *goja.Runtime) {
+			gojapool.Put(runtime)
+		},
+		releaseSlot:          pooljsc.Done,
+		releaseAbandonedSlot: pooljsc.Done,
+		onAbandon: func(err error) {
+			gologger.Warning().Msgf("js runtime did not terminate after interrupt; abandoning it to avoid concurrent use: %s", err)
+		},
+	})
+	return session.run()
+}
+
+func registerExportHelpers(runtime *goja.Runtime, opts *ExecuteOptions, buff *bytes.Buffer) {
 	// register export functions
 	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
 		Name:        "Export", // we use string instead of const for documentation generation
@@ -185,16 +198,6 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 			return goja.Null()
 		},
 	})
-	val, err := executeWithRuntime(runtime, p, args, opts)
-	if err != nil {
-		return nil, err
-	}
-	if val.Export() != nil {
-		// append last value to output
-		buff.WriteString(stringify(val, runtime))
-	}
-	// and return it as result
-	return runtime.ToValue(buff.String()), nil
 }
 
 // Internal purposes i.e generating bindings
@@ -203,14 +206,32 @@ func InternalGetGeneratorRuntime() *goja.Runtime {
 	return runtime
 }
 
-func getRegistry() *require.Registry {
+func enableRequire(runtime *goja.Runtime) {
 	lazyRegistryInit()
-	return r
+	_ = require.NewRegistry(require.WithLoader(newSourceLoader(runtime))).Enable(runtime)
+}
+
+func newSourceLoader(runtime *goja.Runtime) require.SourceLoader {
+	return func(path string) ([]byte, error) {
+		executionID := ""
+		if value, ok := runtime.GetContextValue("executionId"); ok {
+			if id, ok := value.(string); ok {
+				executionID = id
+			}
+		}
+
+		normalizedPath, err := protocolstate.NormalizePathWithExecutionId(executionID, path)
+		if err != nil {
+			return nil, err
+		}
+
+		return require.DefaultSourceLoader(normalizedPath)
+	}
 }
 
 func createNewRuntime() *goja.Runtime {
 	runtime := protocolstate.NewJSRuntime()
-	_ = getRegistry().Enable(runtime)
+	enableRequire(runtime)
 	// by default import below modules every time
 	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
@@ -229,7 +250,7 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 		return ""
 	}
 	kind := reflect.TypeOf(value).Kind()
-	if kind == reflect.Struct || kind == reflect.Ptr && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
+	if kind == reflect.Struct || kind == reflect.Pointer && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
 		// in this case we must use JSON.stringify to convert to string
 		// because json.Marshal() utilizes json tags when marshalling
 		// but goja has custom implementation of json.Marshal() which does not
@@ -242,9 +263,9 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 				return result.String()
 			}
 		}
-		// unlikely but if to_json throwed some error use native json.Marshal
+		// unlikely but if to_json threw some error use native json.Marshal
 		val := value
-		if kind == reflect.Ptr {
+		if kind == reflect.Pointer {
 			val = reflect.ValueOf(value).Elem().Interface()
 		}
 		bin, err := json.Marshal(val)

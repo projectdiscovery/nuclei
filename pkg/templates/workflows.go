@@ -77,6 +77,9 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
 			continue
 		}
+		if template == nil {
+			continue
+		}
 		if template.Executer == nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
@@ -92,7 +95,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			continue
 		}
 
-		if len(template.RequestsCode) > 0 {
+		if template.HasCodeRequest() {
 			if !options.Options.EnableCodeTemplates {
 				// NOTE(dwisiswant0): It is safe to continue here during
 				// validation mode, because the template has already been parsed
@@ -123,7 +126,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 		workflowTemplates = append(workflowTemplates, template)
 	}
 
-	finalTemplates, _ := ClusterTemplates(workflowTemplates, options.Copy())
+	finalTemplates, _, _ := ClusterTemplates(workflowTemplates, options.Copy())
 	for _, template := range finalTemplates {
 		workflow.Executers = append(workflow.Executers, &workflows.ProtocolExecuterPair{
 			Executer:     template.Executer,

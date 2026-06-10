@@ -76,7 +76,7 @@ type Request struct {
 	//   permutations and combinations for all payloads.
 	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
 	// description: |
-	//   Payload concurreny i.e threads for sending requests.
+	//   Payload concurrency i.e threads for sending requests.
 	// examples:
 	//   - name: Send requests using 10 concurrent threads
 	//     value: 10
@@ -158,7 +158,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			ExecutionId:     request.options.Options.ExecutionId,
 			TimeoutVariants: request.options.Options.GetTimeouts(),
 			Source:          &request.Init,
-			Context:         context.Background(),
 		}
 		// register 'export' function to export variables from init code
 		// these are saved in args and are available in pre-condition and request code
@@ -224,7 +223,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err != nil {
 			return errkit.Newf("could not compile init code: %s", err)
 		}
-		result, err := request.options.JsCompiler.ExecuteWithOptions(initCompiled, args, opts)
+		result, err := request.options.JsCompiler.ExecuteWithOptions(context.Background(), initCompiled, args, opts)
 		if err != nil {
 			return errkit.Newf("could not execute pre-condition: %s", err)
 		}
@@ -287,6 +286,9 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Get default port(s) if specified in template
 	ports := request.getPorts()
+	if len(ports) == 0 {
+		return request.executeWithResults("", target, dynamicValues, previous, callback)
+	}
 
 	var errs []error
 
@@ -374,12 +376,13 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 		}
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
+		result, err := request.options.JsCompiler.ExecuteWithOptions(target.Context(), request.preConditionCompiled, argsCopy,
 			&compiler.ExecuteOptions{
 				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
-				Source:          &request.PreCondition, Context: target.Context(),
-			})
+				Source: &request.PreCondition,
+			},
+		)
 		// if precondition was successful
 		if err == nil && result.GetSuccess() {
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
@@ -523,7 +526,16 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	}
 }
 
-func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions, interactshURLs []string) error {
+func (request *Request) executeRequestWithPayloads(
+	hostPort string,
+	input *contextargs.Context,
+	_ string,
+	payload map[string]interface{},
+	previous output.InternalEvent,
+	callback protocols.OutputEventCallback,
+	requestOptions *protocols.ExecutorOptions,
+	interactshURLs []string,
+) error {
 	payloadValues := generators.MergeMaps(payload, previous)
 	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
@@ -548,13 +560,13 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		}
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
+	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
 			Source:          &request.Code,
-			Context:         input.Context(),
-		})
+		},
+	)
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}
@@ -698,6 +710,7 @@ func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues ma
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		return nil, err
 	}
 	// "Port" is a special variable that is considered as network port
 	// and is conditional based on input port and default port specified in input

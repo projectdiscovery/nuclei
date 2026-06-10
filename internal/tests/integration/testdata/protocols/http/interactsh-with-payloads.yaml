@@ -1,0 +1,24 @@
+id: interactsh-with-payloads
+
+info:
+  name: Interactsh With Payloads Integration Test
+  author: dwisiswant0
+  severity: info
+  tags: test
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?p={{p}}"
+    headers:
+      url: 'http://{{interactsh-url}}'
+    payloads:
+      p:
+        - a
+        - b
+        - c
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -66,6 +67,13 @@ func GetSupportTemplateFileExtensions() []string {
 // IsTemplate returns true if the file is a template based on its path.
 // It used by goflags and other places to filter out non-template files.
 func IsTemplate(fpath string) bool {
+	return IsTemplateWithRoot(fpath, "")
+}
+
+// IsTemplateWithRoot returns true if the file is a template based on its path
+// and root directory. If rootDir is provided, it checks for excluded
+// directories relative to the root.
+func IsTemplateWithRoot(fpath, rootDir string) bool {
 	fpath = filepath.FromSlash(fpath)
 	fname := filepath.Base(fpath)
 	fext := strings.ToLower(filepath.Ext(fpath))
@@ -74,8 +82,33 @@ func IsTemplate(fpath string) bool {
 		return false
 	}
 
-	if stringsutil.ContainsAny(fpath, GetKnownMiscDirectories()...) {
-		return false
+	var pathToCheck string
+	if rootDir != "" {
+		if filepath.IsAbs(fpath) {
+			rel, err := filepath.Rel(rootDir, fpath)
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+				pathToCheck = rel
+			} else {
+				pathToCheck = fpath
+			}
+		} else {
+			pathToCheck = fpath
+		}
+	} else {
+		pathToCheck = fpath
+	}
+
+	// Only check components if pathToCheck is NOT absolute
+	// This avoids false positives on parent directories for absolute paths
+	if !filepath.IsAbs(pathToCheck) {
+		parts := strings.Split(pathToCheck, string(os.PathSeparator))
+		for _, p := range parts {
+			for _, excluded := range knownMiscDirectories {
+				if strings.EqualFold(p, excluded) {
+					return false
+				}
+			}
+		}
 	}
 
 	return stringsutil.EqualFoldAny(fext, GetSupportTemplateFileExtensions()...)
@@ -122,11 +155,21 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 			if err == nil {
 				for _, v := range records {
 					if len(v) >= 2 {
-						index[v[0]] = v[1]
+						templateID := v[0]
+						templatePath := v[1]
+						// Normalize path for consistent comparison (handles Windows path issues)
+						normalizedPath := filepath.Clean(templatePath)
+						// Validate that the file actually exists (prevents stale entries from deleted files on Windows)
+						if fileutil.FileExists(normalizedPath) {
+							index[templateID] = normalizedPath
+						}
 					}
 				}
+				// Close file handle before returning
+				_ = f.Close()
 				return index, nil
 			}
+			_ = f.Close()
 		}
 		DefaultConfig.Logger.Error().Msgf("failed to read index file creating new one: %v", err)
 	}
@@ -142,16 +185,18 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 			DefaultConfig.Logger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
 			return nil
 		}
-		if d.IsDir() || !IsTemplate(path) || stringsutil.ContainsAny(path, ignoreDirs...) {
+		if d.IsDir() || !IsTemplateWithRoot(path, DefaultConfig.TemplatesDirectory) || filepathutil.IsPathWithinAnyDirectory(path, ignoreDirs...) {
 			return nil
 		}
+		// Normalize path for consistent comparison (handles Windows path issues)
+		normalizedPath := filepath.Clean(path)
 		// get template id from file
-		id, err := getTemplateID(path)
+		id, err := getTemplateID(normalizedPath)
 		if err != nil || id == "" {
-			DefaultConfig.Logger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", path, id, err)
+			DefaultConfig.Logger.Verbose().Msgf("failed to get template id from file=%v got id=%v err=%v", normalizedPath, id, err)
 			return nil
 		}
-		index[id] = path
+		index[id] = normalizedPath
 		return nil
 	})
 	return index, err

@@ -28,7 +28,6 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
-	readerutil "github.com/projectdiscovery/utils/reader"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -210,7 +209,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
-	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(defaultReqVars, optionVars), r.options.Interactsh)
+	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, defaultReqVars, optionVars), r.options.Interactsh)
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
@@ -375,13 +374,48 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 
 	// Unsafe option uses rawhttp library
 	if r.request.Unsafe {
+		annotationURL := rawRequestData.FullURL
+		if annotationURL == "" && baseURL != nil {
+			cloned := baseURL.Clone()
+			cloned.Params.IncludeEquals = true
+			cloned.Path = ""
+			_ = cloned.MergePath(rawRequestData.Path, true)
+			annotationURL = cloned.String()
+			rawRequestData.FullURL = annotationURL
+		}
+
+		var annotationOverrides annotationOverrides
+		if annotationURL != "" {
+			annotationRequest, reqErr := retryablehttp.NewRequestWithContext(ctx, rawRequestData.Method, annotationURL, nil)
+			if reqErr == nil {
+				if hostHeader, ok := rawRequestData.Headers["Host"]; ok {
+					annotationRequest.Host = hostHeader
+				}
+
+				annotationOverrides, _ = r.request.parseAnnotations(rawRequest, annotationRequest)
+				if annotationOverrides.request != nil && annotationOverrides.request.URL != nil {
+					rawRequestData.FullURL = annotationOverrides.request.String()
+				}
+			}
+		}
+
 		if len(r.options.Options.CustomHeaders) > 0 {
 			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
 		}
+
 		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {
 			rawRequestData.Headers["Content-Length"] = strconv.Itoa(len(rawRequestData.Data))
 		}
+
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
+		if annotationOverrides.cancelFunc != nil {
+			unsafeReq.customCancelFunction = annotationOverrides.cancelFunc
+		}
+
+		if len(annotationOverrides.interactshURLs) > 0 {
+			unsafeReq.interactshURLs = append(unsafeReq.interactshURLs, annotationOverrides.interactshURLs...)
+		}
+
 		return unsafeReq, nil
 	}
 	urlx, err := urlutil.ParseAbsoluteURL(rawRequestData.FullURL, true)
@@ -466,11 +500,9 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		if err != nil {
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
-		bodyReader, err := readerutil.NewReusableReadCloser([]byte(body))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create reusable reader for request body")
+		if err := req.SetBodyString(body); err != nil {
+			return nil, errors.Wrap(err, "failed to set request body")
 		}
-		req.Body = bodyReader
 	}
 	if !r.request.Unsafe {
 		userAgent := useragent.PickRandom()

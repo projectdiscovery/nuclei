@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -207,9 +208,16 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 
 	// The first item of history data will contain the very first request from the browser
 	// we assume it's the one matching the initial URL
-	if len(createdPage.History) > 0 {
-		firstItem := createdPage.History[0]
-		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
+	createdPage.mutex.RLock()
+	var firstHistoryItem HistoryData
+	hasHistory := len(createdPage.History) > 0
+	if hasHistory {
+		firstHistoryItem = createdPage.History[0]
+	}
+	createdPage.mutex.RUnlock()
+
+	if hasHistory {
+		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
 			defer func() {
@@ -280,8 +288,26 @@ func (p *Page) addInteractshURL(URLs ...string) {
 	p.InteractshURLs = append(p.InteractshURLs, URLs...)
 }
 
+// appendRule records a request/response modification rule. The hijack handler
+// reads p.rules from a separate goroutine, so writes must be synchronized.
+func (p *Page) appendRule(r rule) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.rules = append(p.rules, r)
+}
+
+// rulesSnapshot returns a copy of the current rules for lock-free iteration by
+// the hijack handler (which performs network I/O and must not hold the lock).
+func (p *Page) rulesSnapshot() []rule {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return slices.Clone(p.rules)
+}
+
 func (p *Page) hasModificationRules() bool {
-	for _, rule := range p.rules {
+	for _, rule := range p.rulesSnapshot() {
 		if containsAnyModificationActionType(rule.Action) {
 			return true
 		}

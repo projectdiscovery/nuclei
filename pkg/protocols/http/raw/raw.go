@@ -38,6 +38,25 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		return nil, err
 	}
 
+	// handle full URLs first (before checking unsafe flag) to extract relative path
+	if strings.HasPrefix(rawrequest.Path, "http://") || strings.HasPrefix(rawrequest.Path, "https://") {
+		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
+		}
+		prevPath := rawrequest.Path
+		relPath := urlx.GetRelativePath()
+
+		// NOTE(dwisiswant0): Use rel path instead if unsafe.
+		// See https://github.com/projectdiscovery/nuclei/issues/6558.
+		if unsafe {
+			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
+		}
+
+		// rotate full URL with rel path
+		rawrequest.Path = relPath
+	}
+
 	switch {
 	// If path is empty do not tamper input url (see doc)
 	// can be omitted but makes things clear
@@ -47,22 +66,6 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			rawrequest.Path = inputURL.GetRelativePath()
 		}
 
-	// full url provided instead of rel path
-	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
-		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
-		if err != nil {
-			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
-		}
-		cloned := inputURL.Clone()
-		cloned.Params.IncludeEquals = true
-		if disablePathAutomerge {
-			cloned.Path = ""
-		}
-		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
-		if parseErr != nil {
-			return nil, errkit.Wrapf(parseErr, "could not automergepath for template path %v", urlx.GetRelativePath())
-		}
-		rawrequest.Path = cloned.GetRelativePath()
 	// If unsafe changes must be made in raw request string itself
 	case unsafe:
 		prevPath := rawrequest.Path
@@ -175,7 +178,7 @@ func readRawRequest(request string, unsafe bool) (*Request, error) {
 
 	// store body if it is unsafe request
 	if unsafe {
-		rawRequest.UnsafeRawBytes = []byte(request)
+		rawRequest.UnsafeRawBytes = stripLeadingAnnotations(request)
 	}
 
 	// parse raw request
@@ -262,6 +265,36 @@ read_line:
 
 }
 
+func stripLeadingAnnotations(request string) []byte {
+	reader := bufio.NewReader(strings.NewReader(request))
+	buffer := bufferPool.Get().(*bytes.Buffer)
+	buffer.Reset()
+	defer func() {
+		buffer.Reset()
+		bufferPool.Put(buffer)
+	}()
+
+	requestLineFound := false
+	for {
+		line, err := reader.ReadString('\n')
+		if len(line) > 0 {
+			if requestLineFound || !stringsutil.HasPrefixAny(line, "@") {
+				requestLineFound = true
+				_, _ = buffer.WriteString(line)
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return []byte(request)
+		}
+	}
+
+	return append([]byte(nil), buffer.Bytes()...)
+}
+
 // TryFillCustomHeaders after the Host header
 func (r *Request) TryFillCustomHeaders(headers []string) error {
 	unsafeBytes := bytes.ToLower(r.UnsafeRawBytes)
@@ -307,6 +340,7 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 		for _, p := range s.Data.Params {
 			parsed.Params.Add(p.Key, p.Value)
 		}
+		r.FullURL = parsed.String()
 	case *authx.CookiesAuthStrategy:
 		buff := bufferPool.Get().(*bytes.Buffer)
 		buff.Reset()

@@ -71,7 +71,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (request *Request) executeRaceRequest(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.MetaInput.Input
 	var generatedRequests []*generatedRequest
 
@@ -84,7 +84,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		return nil
 	}
 	ctx := request.newContext(input)
-	requestForDump, err := generator.Make(ctx, input, inputData, payloads, nil)
+	requestForDump, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 			break
 		}
 		ctx := request.newContext(input)
-		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, nil)
+		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			return err
 		}
@@ -190,7 +190,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	return multierr.Combine(spmHandler.CombinedResults()...)
 }
 
-// executeRaceRequest executes parallel requests for a template
+// executeParallelHTTP executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
@@ -242,8 +242,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// bounded worker-pool to avoid spawning one goroutine per payload
 	type task struct {
-		req          *generatedRequest
-		updatedInput *contextargs.Context
+		req                *generatedRequest
+		updatedInput       *contextargs.Context
+		hasInteractMarkers bool
 	}
 
 	var workersWg sync.WaitGroup
@@ -268,11 +269,27 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					continue
 				}
 				request.options.RateLimitTake()
+				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
 					continue
-				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), false, wrappedCallback, 0):
+				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
+						requestData := &interactsh.RequestData{
+							MakeResultFunc: request.MakeResultEvent,
+							Event:          event,
+							Operators:      request.CompiledOperators,
+							MatchFunc:      request.Match,
+							ExtractFunc:    request.Extract,
+						}
+						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
+						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
+						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+					}
+					wrappedCallback(event)
+				}, 0):
 					spmHandler.Release()
 				}
 			}
@@ -330,6 +347,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			workersWg.Wait()
 			return err
 		}
+		hasInteractMarkers := interactsh.HasMarkers(inputData) || len(generatedHttpRequest.interactshURLs) > 0
 		if input.MetaInput.Input == "" {
 			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
@@ -350,7 +368,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return nil
 			}
 			return multierr.Combine(spmHandler.CombinedResults()...)
-		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput}:
+		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
 		}
 		request.options.Progress.IncrementRequests()
 	}
@@ -486,17 +504,13 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
-		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
-		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
-	}
 	// verify if pipeline was requested
 	if request.Pipeline {
 		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
 	}
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
-		return request.executeRaceRequest(input, dynamicValues, callback)
+		return request.executeRaceRequest(input, dynamicValues, previous, callback)
 	}
 
 	// verify if fuzz elaboration was requested
@@ -505,7 +519,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	// verify if parallel elaboration was requested
-	if request.Threads > 0 && len(request.Payloads) > 0 {
+	if request.Threads > 0 && (len(request.Payloads) > 0 || request.Race) {
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
@@ -677,9 +691,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	var (
-		resp          *http.Response
-		fromCache     bool
-		dumpedRequest []byte
+		resp            *http.Response
+		fromCache       bool
+		dumpedRequest   []byte
+		projectCacheKey []byte
 	)
 
 	// Dump request for variables checks
@@ -695,7 +710,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			if err == nil {
 				// update the request body with the reusable reader
-				generatedRequest.request.Body = newReqBody
+				generatedRequest.request.SetBodyReader(newReqBody)
 				// get content length
 				length, _ := io.Copy(io.Discard, newReqBody)
 				generatedRequest.request.ContentLength = length
@@ -716,6 +731,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
+		}
+		if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.URL.Host)
+		} else {
+			projectCacheKey = dumpedRequest
 		}
 		dumpedRequestString := string(dumpedRequest)
 
@@ -773,6 +793,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
 		inputUrl := input.MetaInput.Input
+		if generatedRequest.rawRequest.FullURL != "" {
+			inputUrl = generatedRequest.rawRequest.FullURL
+		}
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
 			url.Params = urlutil.NewOrderedParams() // donot include query params
@@ -798,7 +821,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromCache = true
-			resp, err = request.options.ProjectFile.Get(dumpedRequest)
+			resp, err = request.options.ProjectFile.Get(projectCacheKey)
 			if err != nil {
 				fromCache = false
 			}
@@ -948,7 +971,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.Body().Bytes()); err != nil {
+			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
@@ -961,8 +984,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			return errors.Wrap(err, "could not generate response chain")
 		}
 
+		// Cache response strings once per Fill() to avoid repeated allocs.
+		// NOTE(dwisiswant0): These are valid until Previous() (which reloads
+		// the buffer).
+		fullResponseStr := respChain.FullResponseString()
+		bodyStr := respChain.BodyString()
+		headersStr := respChain.HeadersString()
+
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), respChain.FullResponse().String())
+		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), fullResponseStr)
 
 		// save response to projectfile
 		onceFunc()
@@ -1003,7 +1033,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponse().String(), respChain.Body().String(), respChain.Headers().String(), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
@@ -1044,6 +1074,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
 		interimEvent := generators.MergeMaps(generatedRequest.dynamicValues, finalEvent)
+		interimEvent["payloads"] = generatedRequest.meta
 		// add the request URL pattern to the event BEFORE operators execute
 		// so that interactsh events etc can also access it
 		if request.options.ExportReqURLPattern {
@@ -1066,7 +1097,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
 		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
-		dumpResponse(event, request, respChain.FullResponse().Bytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
+		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
 
@@ -1080,7 +1111,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
 				RawRequest:    string(dumpedRequest),
-				RawResponse:   respChain.FullResponse().String(),
+				RawResponse:   fullResponseStr,
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
 		}
@@ -1207,10 +1238,10 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 
 const CRLF = "\r\n"
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse []byte, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirectedResponse string, formedURL string, responseContentType string, isResponseTruncated bool, reqURL string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
-		response := string(redirectedResponse)
+		response := redirectedResponse
 
 		var highlightedResult string
 		if (responseContentType == "application/octet-stream" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response) {

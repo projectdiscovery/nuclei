@@ -1,0 +1,65 @@
+[files]
+extend-exclude = [
+    # Non-English translations
+    "README_CN.md",
+    "README_ES.md",
+    "README_ID.md",
+    "README_JP.md",
+    "README_KR.md",
+    "README_PT-BR.md",
+    "README_TR.md",
+    # Test fixtures and data files
+    "internal/tests/integration/testdata/",
+    "pkg/input/formats/testdata/",
+    "pkg/output/stats/waf/",
+    # Deserialization test data
+    "pkg/protocols/common/helpers/deserialization/testdata/",
+    # Certificate/encoded data in test utilities
+    "internal/tests/testutils/integration.go",
+    # Vendor directory
+    "vendor/",
+    # Go checksum file
+    "go.sum",
+]
+
+[default.extend-identifiers]
+# Go identifiers that cannot be renamed without breaking API
+MisMatched = "MisMatched"
+NoopWriter = "NoopWriter"
+AllowdTypes = "AllowdTypes"
+# Deprecated alias kept for backward compatibility
+ExludedDastTmplStats = "ExludedDastTmplStats"
+
+[default.extend-words]
+# External package API (fileutil.IsWriteable)
+Writeable = "Writeable" # TODO(dwisiswant0): Fix in upstream.
+# Variable name used for flow annotations
+fo = "fo"
+# Serbian test data in XML
+alo = "alo"
+# SQL test data (Spanish)
+algoritmos = "algoritmos"
+# Base64/hex encoded test data
+Noo = "Noo"
+# Certificate data fragments
+ba = "ba"
+nd = "nd"
+# Base64 encoded test data fragments
+Iif = "Iif"
+ser = "ser"
+
+[type.go.extend-identifiers]
+# Short CLI flag names that appear in help strings
+ot = "ot"
+ue = "ue"
+ine = "ine"
+ines = "ines"
+hae = "hae"
+
+[type.md.extend-identifiers]
+# CLI flag references in documentation
+ot = "ot"
+ue = "ue"
+ine = "ine"
+ines = "ines"
+hae = "hae"

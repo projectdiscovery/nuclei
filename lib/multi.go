@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -14,7 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
-	"github.com/rs/xid"
 )
 
 // unsafeOptions are those nuclei objects/instances/types
@@ -30,18 +29,17 @@ type unsafeOptions struct {
 func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
 	u.executerOpts = &protocols.ExecutorOptions{
-		Output:          base.customWriter,
-		Options:         opts,
-		Progress:        base.customProgress,
-		Catalog:         base.catalog,
-		IssuesClient:    base.rc,
-		RateLimiter:     base.rateLimiter,
-		Interactsh:      base.interactshClient,
-		HostErrorsCache: base.hostErrCache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-		Parser:          base.parser,
-		Browser:         base.browserInstance,
+		Output:       base.customWriter,
+		Options:      opts,
+		Progress:     base.customProgress,
+		Catalog:      base.catalog,
+		IssuesClient: base.rc,
+		RateLimiter:  base.rateLimiter,
+		Interactsh:   base.interactshClient,
+		Colorizer:    aurora.New(aurora.WithColors(true)),
+		ResumeCfg:    types.NewResumeCfg(),
+		Parser:       base.parser,
+		Browser:      base.browserInstance,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
@@ -86,11 +84,11 @@ type ThreadSafeNucleiEngine struct {
 // Note: Non-thread-safe methods start with Global prefix
 func NewThreadSafeNucleiEngineCtx(ctx context.Context, opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
 	defaultOptions := types.DefaultOptions()
-	defaultOptions.ExecutionId = xid.New().String()
-	// default options
 	e := &NucleiEngine{
-		opts: defaultOptions,
-		mode: threadSafe,
+		opts:   defaultOptions,
+		mode:   threadSafe,
+		ctx:    ctx,
+		Logger: defaultOptions.Logger,
 	}
 	for _, option := range opts {
 		if err := option(e); err != nil {
@@ -120,7 +118,7 @@ func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *outpu
 }
 
 // ExecuteNucleiWithOptsCtx executes templates on targets and calls callback on each result(only if results are found)
-// This method can be called concurrently and it will use some global resources but can be runned parallelly
+// This method can be called concurrently and it will use some global resources but can be run parallelly
 // by invoking this method with different options and targets
 // Note: Not all options are thread-safe. this method will throw error if you try to use non-thread-safe options
 func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, targets []string, opts ...NucleiSDKOptions) error {
@@ -151,7 +149,9 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	if err != nil {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
-	store.Load()
+	if err := store.Load(); err != nil {
+		return errkit.Wrapf(err, "Could not load templates: %s", err)
+	}
 
 	inputProvider := provider.NewSimpleInputProviderWithUrls(e.eng.opts.ExecutionId, targets...)
 

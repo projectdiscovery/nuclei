@@ -57,3 +57,40 @@ func TestDetermineSchemeOrderWithHighPorts(t *testing.T) {
 		})
 	}
 }
+
+func TestDetermineSchemeOrderAmbiguousIPv6Literal(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected []string
+	}{
+		{"::1:8065", []string{"https", "http"}},
+		{"[::1]:8065", []string{"http", "https"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			actual := determineSchemeOrder(normalizeProbeInput(tc.input))
+			require.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
+func TestNormalizeProbeInput(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"::1:8065", "[::1:8065]"},
+		{"fe80::1", "[fe80::1]"},
+		{"[::1]:8065", "[::1]:8065"},
+		{"127.0.0.1:8080", "127.0.0.1:8080"},
+		{"example.com:443", "example.com:443"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			actual := normalizeProbeInput(tc.input)
+			require.Equal(t, tc.expected, actual)
+		})
+	}
+}
