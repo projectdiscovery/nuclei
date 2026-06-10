@@ -9,7 +9,7 @@ import (
 
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"

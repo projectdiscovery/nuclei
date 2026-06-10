@@ -14,8 +14,6 @@ import (
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
-
-	"gopkg.in/yaml.v2"
 )
 
 type Parser struct {
@@ -172,13 +170,13 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		if data != nil {
 			// Already read and preprocessed
 			if p.NoStrictSyntax {
-				err = yaml.Unmarshal(data, template)
+				err = yamlutil.Unmarshal(data, template)
 			} else {
-				err = yaml.UnmarshalStrict(data, template)
+				err = yamlutil.UnmarshalStrict(data, template)
 			}
 		} else {
 			// Stream directly from reader
-			decoder := yaml.NewDecoder(reader)
+			decoder := yamlutil.NewDecoder(reader)
 			if !p.NoStrictSyntax {
 				decoder.SetStrict(true)
 			}
