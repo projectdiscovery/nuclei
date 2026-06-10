@@ -10,11 +10,8 @@
 package cors
 
 import (
-	"math/rand"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
@@ -84,7 +81,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	if gr.Request != nil && gr.Request.URL != nil {
 		targetHost = gr.Request.Hostname()
 	}
-	canary := "https://" + randomToken() + ".corscanary.example"
+	canary := "https://" + analyzers.RandToken(10) + ".corscanary.example"
 
 	defer func() {
 		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
@@ -98,6 +95,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 		rebuilt.Header.Set("Origin", origin)
 
+		options.RateLimit()
 		resp, err := options.HttpClient.Do(rebuilt)
 		if err != nil {
 			continue
@@ -109,22 +107,4 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 	}
 	return false, "", nil
-}
-
-var (
-	tokenRandMu sync.Mutex
-	tokenRand   = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
-
-const tokenLetters = "abcdefghijklmnopqrstuvwxyz0123456789"
-
-func randomToken() string {
-	const n = 10
-	b := make([]byte, n)
-	tokenRandMu.Lock()
-	for i := range b {
-		b[i] = tokenLetters[tokenRand.Intn(len(tokenLetters))]
-	}
-	tokenRandMu.Unlock()
-	return string(b)
 }

@@ -9,11 +9,8 @@
 package redirect
 
 import (
-	"math/rand"
 	"net/url"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
@@ -91,6 +88,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		if err != nil {
 			return false, "", err
 		}
+		options.RateLimit()
 		resp, err := options.HttpClient.Do(rebuilt)
 		if err != nil {
 			// A transport error is expected when redirects are followed to the
@@ -111,23 +109,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	return false, "", nil
 }
 
-var (
-	canaryRandMu sync.Mutex
-	canaryRand   = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
-
-const canaryLetters = "abcdefghijklmnopqrstuvwxyz0123456789"
-
 // randomCanaryHost returns a random, syntactically valid but non-resolvable
 // host under a reserved-looking label so it never collides with real hosts and
 // never generates real third-party traffic.
 func randomCanaryHost() string {
-	const n = 12
-	b := make([]byte, n)
-	canaryRandMu.Lock()
-	for i := range b {
-		b[i] = canaryLetters[canaryRand.Intn(len(canaryLetters))]
-	}
-	canaryRandMu.Unlock()
-	return string(b) + ".nucleicanary.invalid"
+	return analyzers.RandToken(12) + ".nucleicanary.invalid"
 }

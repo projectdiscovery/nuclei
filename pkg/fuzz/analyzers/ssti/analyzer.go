@@ -12,11 +12,8 @@
 package ssti
 
 import (
-	"math/rand"
+	"regexp"
 	"strconv"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
@@ -72,7 +69,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	for _, probe := range probes {
 		body, err := analyzers.SendValueAndReadBody(options, probe.Payload)
 		if err != nil {
-			return false, "", err
+			// A single failed probe (timeout, reset) must not abort the whole
+			// analysis; the remaining engine syntaxes may still evaluate.
+			continue
 		}
 
 		if DetectEvaluation(body, startToken, endToken, product) {
@@ -109,30 +108,23 @@ func GenerateProbes(a, b int, startToken, endToken string) []Probe {
 // DetectEvaluation reports whether the response body contains the evaluated
 // product between the two sentinels, which indicates the template engine
 // executed the injected expression. It is exported and pure for testability.
+//
+// Optional whitespace is allowed on either side of the product: some engines
+// emit incidental whitespace between the sentinels and the result (e.g. a
+// newline left by a directive such as Velocity's #set), which a strict
+// contiguous match would miss. A plain reflection still fails to match because
+// the literal expression ("7*7"), not the product ("49"), survives between the
+// sentinels.
 func DetectEvaluation(body, startToken, endToken string, product int) bool {
 	if body == "" || startToken == "" || endToken == "" {
 		return false
 	}
-	needle := startToken + strconv.Itoa(product) + endToken
-	return strings.Contains(body, needle)
+	re := regexp.MustCompile(regexp.QuoteMeta(startToken) + `\s*` + strconv.Itoa(product) + `\s*` + regexp.QuoteMeta(endToken))
+	return re.MatchString(body)
 }
-
-var (
-	tokenRandMu sync.Mutex
-	tokenRand   = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
-
-const tokenLetters = "abcdefghijklmnopqrstuvwxyz"
 
 // randToken returns a short random lowercase alphabetic sentinel. Alphabetic
 // (never numeric) so it cannot be confused with the arithmetic product.
 func randToken() string {
-	const n = 6
-	b := make([]byte, n)
-	tokenRandMu.Lock()
-	for i := range b {
-		b[i] = tokenLetters[tokenRand.Intn(len(tokenLetters))]
-	}
-	tokenRandMu.Unlock()
-	return "s" + string(b)
+	return "s" + analyzers.RandAlphaToken(6)
 }

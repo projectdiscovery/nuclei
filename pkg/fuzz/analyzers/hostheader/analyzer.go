@@ -10,11 +10,8 @@
 package hostheader
 
 import (
-	"math/rand"
 	"net/url"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
@@ -97,6 +94,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			rebuilt.Header.Set(header, canary)
 		}
 
+		options.RateLimit()
 		resp, body, err := analyzers.DoAndReadBody(options.HttpClient, rebuilt)
 		if err != nil {
 			continue
@@ -109,20 +107,6 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	return false, "", nil
 }
 
-var (
-	canaryRandMu sync.Mutex
-	canaryRand   = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
-
-const canaryLetters = "abcdefghijklmnopqrstuvwxyz0123456789"
-
 func randomCanaryHost() string {
-	const n = 12
-	b := make([]byte, n)
-	canaryRandMu.Lock()
-	for i := range b {
-		b[i] = canaryLetters[canaryRand.Intn(len(canaryLetters))]
-	}
-	canaryRandMu.Unlock()
-	return string(b) + ".hostcanary.example"
+	return analyzers.RandToken(12) + ".hostcanary.example"
 }

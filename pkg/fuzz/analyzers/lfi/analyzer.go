@@ -56,10 +56,13 @@ type fileSignature struct {
 }
 
 var fileSignatures = []fileSignature{
-	// /etc/passwd: entries like "root:x:0:0:root:/root:/bin/bash". Not anchored
-	// to line bounds so it still matches when wrapped (e.g. in <pre>) or
-	// indented; the 7-field uid:gid structure is what keeps false positives low.
-	{"/etc/passwd", regexp.MustCompile(`[a-zA-Z0-9_.-]+:[^:\r\n]*:\d+:\d+:[^:\r\n]*:[^:\r\n]*:[^:\r\n]*`)},
+	// /etc/passwd: entries like "root:x:0:0:root:/root:/bin/bash". We require a
+	// well-known system account name (root, daemon, nobody, ...) followed by the
+	// full 7-field name:passwd:uid:gid:gecos:home:shell structure. Requiring a
+	// known account — rather than any token — keeps false positives low against
+	// arbitrary colon-delimited content (config/CSV dumps) while staying
+	// unanchored so it still matches when the file is wrapped (e.g. in <pre>).
+	{"/etc/passwd", regexp.MustCompile(`(?i)\b(root|daemon|bin|sys|sync|games|man|lp|mail|news|nobody|www-data|sshd|ftp):[^:\r\n]*:\d+:\d+:[^:\r\n]*:[^:\r\n]*:[^:\r\n]*`)},
 	// Windows win.ini: the [fonts]/[extensions] sections
 	{"win.ini", regexp.MustCompile(`(?i)\[(fonts|extensions|mci extensions|files)\]`)},
 	{"win.ini", regexp.MustCompile(`(?i)for 16-bit app support`)},
@@ -104,7 +107,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	for _, payload := range traversalPayloads {
 		body, err := analyzers.SendValueAndReadBody(options, payload)
 		if err != nil {
-			return false, "", err
+			// A single failed probe (timeout, reset) must not abort the whole
+			// analysis; the remaining payloads may still surface the bug.
+			continue
 		}
 		if file, matched := MatchFileSignature(body); matched {
 			return true, "lfi: contents of " + file + " disclosed via payload " + strconv.Quote(payload), nil

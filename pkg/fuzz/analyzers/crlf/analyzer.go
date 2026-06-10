@@ -13,12 +13,9 @@
 package crlf
 
 import (
-	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 )
@@ -99,6 +96,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 			// skip rather than aborting the whole analysis.
 			continue
 		}
+		options.RateLimit()
 		resp, err := options.HttpClient.Do(rebuilt)
 		if err != nil {
 			continue
@@ -112,20 +110,8 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	return false, "", nil
 }
 
-var (
-	tokenRandMu sync.Mutex
-	tokenRand   = rand.New(rand.NewSource(time.Now().UnixNano()))
-)
-
-const tokenLetters = "abcdefghijklmnopqrstuvwxyz0123456789"
-
+// randomToken returns a 10-char lowercase alphanumeric token used for the
+// canary header name/value. It delegates to the shared analyzers RNG.
 func randomToken() string {
-	const n = 10
-	b := make([]byte, n)
-	tokenRandMu.Lock()
-	for i := range b {
-		b[i] = tokenLetters[tokenRand.Intn(len(tokenLetters))]
-	}
-	tokenRandMu.Unlock()
-	return string(b)
+	return analyzers.RandToken(10)
 }

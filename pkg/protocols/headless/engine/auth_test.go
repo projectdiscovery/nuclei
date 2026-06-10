@@ -20,6 +20,7 @@ func (m *mockAuthProvider) LookupURL(*url.URL) []authx.AuthStrategy      { retur
 func (m *mockAuthProvider) LookupURLX(*urlutil.URL) []authx.AuthStrategy { return m.strategies }
 func (m *mockAuthProvider) GetTemplatePaths() []string                   { return nil }
 func (m *mockAuthProvider) PreFetchSecrets() error                       { return nil }
+func (m *mockAuthProvider) Close()                                       {}
 
 func mustParseURL(t *testing.T, raw string) *urlutil.URL {
 	t.Helper()

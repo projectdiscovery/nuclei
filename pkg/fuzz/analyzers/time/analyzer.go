@@ -122,6 +122,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())
 
+		options.RateLimit()
 		timeTaken, err := doHTTPRequestWithTimeTracing(rebuilt, options.HttpClient)
 		if err != nil {
 			return 0, errors.Wrap(err, "could not do request with time tracing")
@@ -189,8 +190,11 @@ func doHTTPRequestWithTimeTracing(req *retryablehttp.Request, httpclient *retrya
 	if err != nil {
 		return 0, errors.Wrap(err, "could not do request")
 	}
+	defer func() { _ = resp.Body.Close() }()
 
-	_, err = io.ReadAll(resp.Body)
+	// Drain (bounded) so the connection can be reused; we only care about the
+	// time-to-first-byte captured by the trace, not the body contents.
+	_, err = io.Copy(io.Discard, io.LimitReader(resp.Body, analyzers.MaxResponseBodyBytes))
 	if err != nil {
 		return 0, errors.Wrap(err, "could not read response body")
 	}

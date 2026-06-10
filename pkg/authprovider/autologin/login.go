@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/utils/errkit"
 	"golang.org/x/net/proxy"
 )
@@ -201,6 +202,12 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 	var finalStatus int
 	var finalHeaders http.Header
 	if form.Method == http.MethodGet {
+		// A GET login places the password in the query string, where it can leak
+		// into server/proxy logs and browser history. We still honor it (some
+		// apps genuinely use GET), but warn so the operator is aware.
+		if cfg.Password != "" {
+			gologger.Warning().Msgf("auto-login: login form at %s uses GET; credentials will be sent in the URL query string", form.Action)
+		}
 		actionURL, perr := url.Parse(form.Action)
 		if perr != nil {
 			return nil, errkit.Wrap(perr, "auto-login: invalid form action")

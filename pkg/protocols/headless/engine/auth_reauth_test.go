@@ -57,6 +57,7 @@ func (p *inspectorProvider) LookupURLX(*urlutil.URL) []authx.AuthStrategy {
 }
 func (p *inspectorProvider) GetTemplatePaths() []string { return nil }
 func (p *inspectorProvider) PreFetchSecrets() error     { return nil }
+func (p *inspectorProvider) Close()                     {}
 
 func TestNotifyAuthResponse(t *testing.T) {
 	insp := &recordingInspector{reauthOn: 401}

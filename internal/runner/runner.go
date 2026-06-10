@@ -462,9 +462,7 @@ func (r *Runner) Close() {
 	// Drop any in-memory auto-login session so nuclei does not retain live
 	// session material after the scan (server-side sessions expire on their own).
 	if r.authProvider != nil {
-		if c, ok := r.authProvider.(interface{ Close() }); ok {
-			c.Close()
-		}
+		r.authProvider.Close()
 	}
 	if r.tmpDir != "" {
 		_ = os.RemoveAll(r.tmpDir)

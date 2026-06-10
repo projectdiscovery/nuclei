@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -16,7 +17,9 @@ import (
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/utils/errkit"
+	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 )
 
@@ -80,6 +83,12 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 	// mirroring the HTTP engine. This is observation-only (no request hijacking)
 	// to avoid interfering with the login flow. The listener stops when the page
 	// is closed (deferred above).
+	//
+	// Two safeguards keep this from latching onto the wrong token: we only honor
+	// responses served by the login origin (a page loads many third-party
+	// requests — CDNs, analytics — whose headers must not be mistaken for the
+	// app's session token), and we keep the first match (first-party auth
+	// responses come early; a later beacon must not clobber the real token).
 	var (
 		headerTokenMu sync.Mutex
 		headerToken   string
@@ -89,13 +98,18 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 			if e.Response == nil {
 				return
 			}
+			if !sameLoginOrigin(loginURL, e.Response.URL) {
+				return
+			}
 			hdr := make(http.Header, len(e.Response.Headers))
 			for k, v := range e.Response.Headers {
 				hdr.Set(k, v.Str())
 			}
 			if tok := detectHeaderToken(hdr, tokenRe); tok != "" {
 				headerTokenMu.Lock()
-				headerToken = tok
+				if headerToken == "" {
+					headerToken = tok
+				}
 				headerTokenMu.Unlock()
 			}
 		})()
@@ -206,6 +220,21 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 	return session, nil
 }
 
+// sameLoginOrigin reports whether respURL is served by the same host as the
+// login page. It is used to ignore third-party (CDN/analytics) responses when
+// passively scavenging a session token from response headers. An unparseable
+// respURL is treated as not matching (fail closed).
+func sameLoginOrigin(loginURL *url.URL, respURL string) bool {
+	if loginURL == nil || respURL == "" {
+		return false
+	}
+	u, err := url.Parse(respURL)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(u.Hostname(), loginURL.Hostname())
+}
+
 // jwtValueRe matches a JWT-shaped value (header.payload.signature in base64url).
 // It is intentionally not anchored so it also matches tokens wrapped in quotes
 // or embedded in a small JSON blob stored in web storage.
@@ -275,10 +304,19 @@ func launchBrowser(cfg Config) (*rod.Browser, func(), error) {
 	if cfg.Proxy != "" {
 		l = l.Proxy(cfg.Proxy)
 	}
+	// Mirror nuclei's headless engine browser selection: on musl (most likely
+	// Alpine) the managed Chromium download cannot run, so a system Chrome is
+	// required — as it is when the user forces it. Otherwise prefer a system
+	// Chrome when present and fall back to go-rod's managed browser, logging so a
+	// one-time download is not surprising in a server/CI context.
+	executablePath, _ := os.Executable()
+	useMusl, _ := fileutil.UseMusl(executablePath)
 	if path, ok := launcher.LookPath(); ok {
 		l = l.Bin(path)
-	} else if cfg.UseInstalledChrome {
-		return nil, nil, errkit.New("use-installed-chrome set but no chrome binary found")
+	} else if cfg.UseInstalledChrome || useMusl {
+		return nil, nil, errkit.New("auto-login(headless): no chrome/chromium binary found (a system install is required here)")
+	} else {
+		gologger.Info().Msgf("auto-login(headless): no system chrome found, using go-rod managed browser (a one-time download may occur)")
 	}
 
 	controlURL, err := l.Launch()

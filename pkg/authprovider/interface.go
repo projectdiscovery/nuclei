@@ -35,6 +35,11 @@ type AuthProvider interface {
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	// instead of lazy fetching
 	PreFetchSecrets() error
+	// Close releases any in-memory session material captured during the scan
+	// (e.g. cookies/tokens/web storage obtained by an auto-login dynamic
+	// secret). It must be safe to call once at scan teardown and a no-op for
+	// providers that hold only static secrets. It never contacts the target.
+	Close()
 }
 
 // AuthProviderOptions contains options for the auth provider

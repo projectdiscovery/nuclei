@@ -32,6 +32,7 @@ func (f *fakeStorageProvider) LookupURL(*url.URL) []authx.AuthStrategy      { re
 func (f *fakeStorageProvider) LookupURLX(*urlutil.URL) []authx.AuthStrategy { return f.strategies }
 func (f *fakeStorageProvider) GetTemplatePaths() []string                   { return nil }
 func (f *fakeStorageProvider) PreFetchSecrets() error                       { return nil }
+func (f *fakeStorageProvider) Close()                                       {}
 
 func TestResolveBrowserStorage(t *testing.T) {
 	provider := &fakeStorageProvider{strategies: []authx.AuthStrategy{

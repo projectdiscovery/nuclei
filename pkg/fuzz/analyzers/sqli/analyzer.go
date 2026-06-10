@@ -120,7 +120,9 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	for _, payload := range breakingPayloads {
 		body, err := analyzers.SendValueAndReadBody(options, gr.OriginalValue+payload)
 		if err != nil {
-			return false, "", err
+			// A single failed probe (timeout, reset) must not abort the whole
+			// analysis; the remaining payloads may still surface the bug.
+			continue
 		}
 		if dbms, matched := MatchDBMSError(body); matched {
 			return true, "sqli: " + dbms + " error triggered by payload " + strconv.Quote(payload), nil
