@@ -141,16 +141,16 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options              *protocols.ExecutorOptions
-	connConfiguration    *httpclientpool.Configuration
-	totalRequests        int
-	customHeaders        map[string]string
-	generator            *generators.PayloadGenerator // optional, only enabled when using payloads
-	httpClient           *retryablehttp.Client
-	rawhttpClient        *rawhttp.Client
-	dialer               *fastdialer.Dialer
-	hasInteractMatchers  bool // cached interactsh.HasMatchers(CompiledOperators) computed at Compile time
-	needsRequestEvent    bool // cached hasInteractMatchers && NeedsRequestCondition()
+	options             *protocols.ExecutorOptions
+	connConfiguration   *httpclientpool.Configuration
+	totalRequests       int
+	customHeaders       map[string]string
+	generator           *generators.PayloadGenerator // optional, only enabled when using payloads
+	httpClient          *retryablehttp.Client
+	rawhttpClient       *rawhttp.Client
+	dialer              *fastdialer.Dialer
+	hasInteractMatchers bool // cached interactsh.HasMatchers(CompiledOperators) computed at Compile time
+	needsRequestEvent   bool // cached hasInteractMatchers && NeedsRequestCondition()
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.

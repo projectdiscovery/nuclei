@@ -25,8 +25,8 @@ func Replace(template string, values map[string]interface{}) string {
 		return template
 	}
 
-	tagFn := makeStdTagFunc(values, marker.ParenthesisOpen, marker.ParenthesisClose)
 	if hasParenOpen {
+		tagFn := makeStdTagFunc(values, marker.ParenthesisOpen, marker.ParenthesisClose)
 		template = fasttemplate.ExecuteFuncString(template, marker.ParenthesisOpen, marker.ParenthesisClose, tagFn)
 	}
 	if hasGeneral {

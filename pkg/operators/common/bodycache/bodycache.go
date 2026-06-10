@@ -12,6 +12,7 @@ package bodycache
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
@@ -26,9 +27,14 @@ import (
 const Key = "__nuclei_bodycache"
 
 // Cache stores at most one parsed form per parser type. Matchers/extractors
-// typically run sequentially against one response on one goroutine, so no
-// synchronization is required.
+// typically run sequentially against one response on one goroutine, but the
+// same cache can outlive that goroutine when it is stored on an event map
+// that is later re-evaluated (e.g. interactsh OOB matching). The mutex keeps
+// the memoized parses safe if the cache is ever touched concurrently; it is
+// uncontended on the common single-goroutine path.
 type Cache struct {
+	mu sync.Mutex
+
 	htmlCorpus string
 	htmlDoc    *html.Node
 	htmlErr    error
@@ -70,6 +76,8 @@ func From(data map[string]interface{}) *Cache {
 // the same corpus return the cached parse; calls with a different corpus
 // re-parse and replace the cache entry.
 func (c *Cache) HTMLNode(corpus string) (*html.Node, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.htmlSet && c.htmlCorpus == corpus {
 		return c.htmlDoc, c.htmlErr
 	}
@@ -84,6 +92,8 @@ func (c *Cache) HTMLNode(corpus string) (*html.Node, error) {
 // XMLNode returns the parsed XML tree for corpus. Same caching contract as
 // HTMLNode.
 func (c *Cache) XMLNode(corpus string) (*xmlquery.Node, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.xmlSet && c.xmlCorpus == corpus {
 		return c.xmlDoc, c.xmlErr
 	}
@@ -98,6 +108,8 @@ func (c *Cache) XMLNode(corpus string) (*xmlquery.Node, error) {
 // JSONObject returns the unmarshaled JSON value for corpus. Same caching
 // contract as HTMLNode.
 func (c *Cache) JSONObject(corpus string) (interface{}, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.jsonSet && c.jsonCorpus == corpus {
 		return c.jsonObj, c.jsonErr
 	}
@@ -114,6 +126,8 @@ func (c *Cache) JSONObject(corpus string) (interface{}, error) {
 // case-insensitive word matchers against the same body avoid redundant
 // O(n) ToLower allocations.
 func (c *Cache) Lowered(corpus string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.loweredSet && c.loweredCorpus == corpus {
 		return c.loweredOut
 	}

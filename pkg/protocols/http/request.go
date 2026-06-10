@@ -756,8 +756,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	// === apply auth strategies ===
+	var authApplied bool
 	if generatedRequest.request != nil && !request.SkipSecretFile {
-		generatedRequest.ApplyAuth(request.options.AuthProvider)
+		authApplied = generatedRequest.ApplyAuth(request.options.AuthProvider)
 	}
 
 	var formedURL string
@@ -874,25 +875,32 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// converts whitespace and other chars that cannot be printed to url encoded values
 	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
-	// Dump the request a second time so debug/store output reflects any
-	// post-auth headers applied by ApplyAuth(). Skipped entirely when no
-	// debug/store consumer needs the dump -- the pre-flight dump above
-	// already populates dumpedRequest for failure-path logging.
-	if !generatedRequest.original.Race && (request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse) {
+	// Re-dump the request after auth so the value carried into the result
+	// event (and any debug/store output) reflects headers applied by
+	// ApplyAuth(). The pre-flight dump above runs before auth, so we must
+	// refresh dumpedRequest whenever auth actually mutated the request.
+	//
+	// The dump is expensive, so when auth did not touch the request we reuse
+	// the pre-flight dump and only re-run it when a debug/store consumer
+	// needs to emit it.
+	needsDebugDump := request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse
+	if !generatedRequest.original.Race && (authApplied || needsDebugDump) {
 		postAuthDump, dumpError := dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
 		}
 		dumpedRequest = postAuthDump
-		dumpedRequestString := string(dumpedRequest)
-		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
+		if needsDebugDump {
+			dumpedRequestString := string(dumpedRequest)
+			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Info().Msg(msg)
-			gologger.Print().Msgf("%s", dumpedRequestString)
-		}
-		if request.options.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				gologger.Info().Msg(msg)
+				gologger.Print().Msgf("%s", dumpedRequestString)
+			}
+			if request.options.Options.StoreResponse {
+				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
+			}
 		}
 	}
 
