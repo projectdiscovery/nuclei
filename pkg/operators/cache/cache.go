@@ -4,9 +4,9 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/gcache"
+	"github.com/projectdiscovery/govaluate"
 )
 
 var (

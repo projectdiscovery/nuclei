@@ -5,11 +5,12 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -833,6 +834,26 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 		}
 	}
 
+	// noteExcludedByTag surfaces a template the index filter dropped because it
+	// carries a tag from the .nuclei-ignore defaults. Without it the exclusion is
+	// silent at every verbosity level.
+	//
+	// indexFilter.ExcludeTags is a merge of CLI -exclude-tags and the ignore-file
+	// tags, so it must be matched against the ignore-file tags specifically:
+	// otherwise user-requested -exclude-tags drops would be mislabeled as
+	// .nuclei-ignore exclusions.
+	ignoreFileTags := config.ReadIgnoreFile().Tags
+	noteExcludedByTag := func(templatePath string, metadata *index.Metadata) {
+		if len(ignoreFileTags) == 0 || !slices.ContainsFunc(ignoreFileTags, metadata.HasTag) {
+			return
+		}
+
+		stats.Increment(templates.TemplatesExcludedStats)
+		if config.DefaultConfig.LogAllEvents {
+			store.logger.Print().Msgf("[%v] %v excluded from default run using .nuclei-ignore\n", aurora.Yellow("WRN").String(), templatePath)
+		}
+	}
+
 	typesOpts := store.config.ExecutorOptions.Options
 	concurrency := typesOpts.TemplateLoadingConcurrency
 	if concurrency <= 0 {
@@ -867,6 +888,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 				if cachedMetadata, found := store.metadataIndex.Get(templatePath); found {
 					metadata = cachedMetadata
 					if !indexFilter.Matches(metadata) {
+						noteExcludedByTag(templatePath, metadata)
 						return
 					}
 					// NOTE(dwisiswant0): else, tagFilter probably exists (for
@@ -889,6 +911,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 					}
 
 					if metadata != nil && !indexFilter.Matches(metadata) {
+						noteExcludedByTag(templatePath, metadata)
 						return
 					}
 				}

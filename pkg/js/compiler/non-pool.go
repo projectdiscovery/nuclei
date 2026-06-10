@@ -22,8 +22,16 @@ func executeWithoutPooling(ctx context.Context, p *goja.Program, args *ExecuteAr
 	if err := ephemeraljsc.AddWithContext(ctx); err != nil {
 		return nil, err
 	}
-	defer ephemeraljsc.Done()
 
 	runtime := createNewRuntime()
-	return executeWithRuntime(ctx, runtime, p, args, opts)
+	session := newSession(sessionConfig{
+		ctx:                  ctx,
+		runtime:              runtime,
+		program:              p,
+		args:                 args,
+		opts:                 opts,
+		releaseSlot:          ephemeraljsc.Done,
+		releaseAbandonedSlot: ephemeraljsc.Done,
+	})
+	return session.run()
 }

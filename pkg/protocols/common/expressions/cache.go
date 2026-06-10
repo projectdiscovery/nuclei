@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/gcache"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 )
