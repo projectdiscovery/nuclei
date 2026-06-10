@@ -6,7 +6,7 @@ import (
 	_ "net/http/pprof"
 	"strings"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
@@ -57,7 +57,7 @@ type NucleiExecutorOptions struct {
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser
 	FuzzStatsDB        *stats.Tracker
-	Colorizer          aurora.Aurora
+	Colorizer          *aurora.Aurora
 	Parser             parser.Parser
 	TemporaryDirectory string
 	Logger             *gologger.Logger

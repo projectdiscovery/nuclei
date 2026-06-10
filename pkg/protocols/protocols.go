@@ -11,7 +11,7 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -124,7 +124,7 @@ type ExecutorOptions struct {
 	// DoNotCache bool disables optional caching of the templates structure
 	DoNotCache bool
 
-	Colorizer      aurora.Aurora
+	Colorizer      *aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 	ResumeCfg      *types.ResumeCfg
 	// ProtocolType is the type of the template

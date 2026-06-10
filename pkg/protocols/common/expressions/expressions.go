@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
@@ -150,6 +150,10 @@ func FindExpressions(data, OpenMarker, CloseMarker string, base map[string]inter
 }
 
 func isExpression(data string, base map[string]interface{}) bool {
+	if _, ok := base[data]; ok {
+		return false
+	}
+
 	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
 		if stringsutil.ContainsAny(data, getFunctionsNames(base)...) {
 			return true

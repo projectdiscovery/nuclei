@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -30,18 +30,17 @@ type unsafeOptions struct {
 func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
 	u.executerOpts = &protocols.ExecutorOptions{
-		Output:          base.customWriter,
-		Options:         opts,
-		Progress:        base.customProgress,
-		Catalog:         base.catalog,
-		IssuesClient:    base.rc,
-		RateLimiter:     base.rateLimiter,
-		HostRateLimiter: base.hostRateLimiter,
-		Interactsh:      base.interactshClient,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-		Parser:          base.parser,
-		Browser:         base.browserInstance,
+		Output:       base.customWriter,
+		Options:      opts,
+		Progress:     base.customProgress,
+		Catalog:      base.catalog,
+		IssuesClient: base.rc,
+		RateLimiter:  base.rateLimiter,
+		Interactsh:   base.interactshClient,
+		Colorizer:    aurora.New(aurora.WithColors(true)),
+		ResumeCfg:    types.NewResumeCfg(),
+		Parser:       base.parser,
+		Browser:      base.browserInstance,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
@@ -57,15 +56,13 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 
 	// Per-call ephemeral host rate limiter; the goroutine cost is paid once
 	// per ExecuteNucleiWithOpts invocation and Stop()-ed in
-	// closeEphemeralObjects so we do not leak limiters across calls.
+	// closeEphemeralObjects so we do not leak limiters across calls. The
+	// base engine's limiter is intentionally not inherited: each call owns
+	// its pool lifecycle so per-call cleanup can never stop shared state.
 	if opts.RateLimitHost > 0 {
-		hostDuration := opts.RateLimitHostDuration
-		if hostDuration == 0 {
-			hostDuration = time.Second
-		}
 		u.executerOpts.HostRateLimiter = hostratelimit.NewPool(ctx, hostratelimit.Options{
 			MaxCount: uint(opts.RateLimitHost),
-			Duration: hostDuration,
+			Duration: opts.RateLimitHostDuration,
 		})
 	}
 

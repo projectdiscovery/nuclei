@@ -432,7 +432,7 @@ nuclei -target https://example.com -dashboard
 ```
 
 > [!NOTE]
-> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [**`documentation`**](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [**`documentation`**](https://docs.projectdiscovery.io/cloud/scanning/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
 
 <br>
 <br>

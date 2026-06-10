@@ -1,13 +1,13 @@
 package output
 
 import (
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output/stats"
 )
 
 // StatsOutputWriter implements writer interface for stats observation
 type StatsOutputWriter struct {
-	colorizer aurora.Aurora
+	colorizer *aurora.Aurora
 	Tracker   *stats.Tracker
 }
 
@@ -16,14 +16,14 @@ var _ Writer = &StatsOutputWriter{}
 // NewStatsOutputWriter returns a new StatsOutputWriter instance.
 func NewTrackerWriter(t *stats.Tracker) *StatsOutputWriter {
 	return &StatsOutputWriter{
-		colorizer: aurora.NewAurora(true),
+		colorizer: aurora.New(aurora.WithColors(true)),
 		Tracker:   t,
 	}
 }
 
 func (tw *StatsOutputWriter) Close() {}
 
-func (tw *StatsOutputWriter) Colorizer() aurora.Aurora {
+func (tw *StatsOutputWriter) Colorizer() *aurora.Aurora {
 	return tw.colorizer
 }
 

@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/leslie-qiwa/flat"
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 )

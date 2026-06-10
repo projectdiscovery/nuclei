@@ -1,7 +1,7 @@
 package output
 
 import (
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 )
 
 type MultiWriter struct {
@@ -21,13 +21,13 @@ func (mw *MultiWriter) Close() {
 	}
 }
 
-func (mw *MultiWriter) Colorizer() aurora.Aurora {
+func (mw *MultiWriter) Colorizer() *aurora.Aurora {
 	// Return the colorizer of the first writer
 	if len(mw.writers) > 0 {
 		return mw.writers[0].Colorizer()
 	}
 	// Default to a no-op colorizer
-	return aurora.NewAurora(false)
+	return aurora.New(aurora.WithColors(false))
 }
 
 func (mw *MultiWriter) Write(event *ResultEvent) error {

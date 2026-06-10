@@ -29,7 +29,7 @@ import (
 	pprofutil "github.com/projectdiscovery/utils/pprof"
 	updateutils "github.com/projectdiscovery/utils/update"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/ratelimit"
 
@@ -51,11 +51,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -86,7 +86,7 @@ type Runner struct {
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog
 	progress           progress.Progress
-	colorizer          aurora.Aurora
+	colorizer          *aurora.Aurora
 	issuesClient       reporting.Client
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
@@ -227,7 +227,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// output coloring
 	useColor := !options.NoColor
-	runner.colorizer = aurora.NewAurora(useColor)
+	runner.colorizer = aurora.New(aurora.WithColors(useColor))
 	templates.Colorizer = runner.colorizer
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
@@ -399,7 +399,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.Logger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
+		runner.Logger.Warning().Msg("rate limit per minute is deprecated - use rate-limit-duration")
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
@@ -632,7 +632,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.ShouldUseHostError() {
 		maxHostError := r.options.MaxHostError
 		if r.options.TemplateThreads > maxHostError {
-			r.Logger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", r.colorizer.BrightYellow("WRN"))
+			r.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
 			r.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
 
 			maxHostError = r.options.TemplateThreads
@@ -902,7 +902,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if tmplCount == 0 && workflowCount == 0 {
 		// if dast flag is used print explicit warning
 		if r.options.DAST {
-			r.Logger.Print().Msgf("[%v] No DAST templates found", aurora.BrightYellow("WRN"))
+			r.Logger.Warning().Msg("No DAST templates found")
 		}
 		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
 	} else {
@@ -944,7 +944,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			value := v.Load()
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					r.Logger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
+					r.Logger.Warning().Msgf("Loading %d unsigned templates for scan. Use with caution.", value)
 				} else {
 					r.Logger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
@@ -1028,7 +1028,7 @@ type WalkFunc func(reflect.Value, reflect.StructField)
 // reflect.Value and reflect.Type properties of the value in the struct.
 func Walk(s interface{}, callback WalkFunc) {
 	structValue := reflect.ValueOf(s)
-	if structValue.Kind() == reflect.Ptr {
+	if structValue.Kind() == reflect.Pointer {
 		structValue = structValue.Elem()
 	}
 	if structValue.Kind() != reflect.Struct {
@@ -1042,7 +1042,7 @@ func Walk(s interface{}, callback WalkFunc) {
 		}
 		if field.Kind() == reflect.Struct {
 			Walk(field.Addr().Interface(), callback)
-		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+		} else if field.Kind() == reflect.Pointer && field.Elem().Kind() == reflect.Struct {
 			Walk(field.Interface(), callback)
 		} else {
 			callback(field, fieldType)

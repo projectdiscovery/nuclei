@@ -3,7 +3,7 @@ package matchers
 import (
 	"regexp"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 )
 
 // Matcher is used to match a part in the output from a protocol.

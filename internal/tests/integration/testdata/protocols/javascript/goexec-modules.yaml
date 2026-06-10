@@ -1,0 +1,50 @@
+id: javascript-goexec-modules
+
+info:
+  name: JavaScript GoExec Helper Modules
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      const wmi = require("nuclei/wmi");
+      const tsch = require("nuclei/tsch");
+      const scmr = require("nuclei/scmr");
+      const dcom = require("nuclei/dcom");
+
+      const auth = wmi.Auth.password("CORP\\auditor", "goexec-modules-secret");
+      const opts = { timeout: 5, output: false, endpoint: RPCEndpoint };
+
+      const results = [
+        new wmi.Client(Host, auth).command("whoami", opts),
+        new tsch.Client(Host, auth).demand("\\NucleiTask", "cmd.exe", "/c whoami", opts),
+        new scmr.Client(Host, auth).create("NucleiService", "cmd.exe", "/c whoami", opts),
+        new dcom.Client(Host, auth).mmc("cmd.exe", "/c whoami", opts),
+      ];
+      Export(to_json(results));
+    args:
+      Host: "{{Host}}"
+      RPCEndpoint: "{{RPCEndpoint}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        condition: and
+        words:
+          - "wmi"
+          - "tsch"
+          - "scmr"
+          - "dcom"
+          - "command"
+          - "demand"
+          - "create"
+          - "mmc"
+          - "duration_ms"
+      - type: word
+        part: response
+        negative: true
+        words:
+          - "goexec-modules-secret"

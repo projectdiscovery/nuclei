@@ -91,6 +91,7 @@ type NucleiEngine struct {
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client
+	reportingOpts  *reporting.Options
 	executerOpts   *protocols.ExecutorOptions
 
 	// Logger instance for the engine

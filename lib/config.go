@@ -1,6 +1,7 @@
 package nuclei
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -8,8 +9,10 @@ import (
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
+	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -576,6 +579,173 @@ func WithLogger(logger *gologger.Logger) NucleiSDKOptions {
 func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts = opts
+		return nil
+	}
+}
+
+// WithPDCPUpload uploads findings to the PDCP dashboard, matching the CLI's
+// `-dashboard -scan-id -team-id`. Credentials come from PDCP_API_KEY or
+// ~/.config/nuclei/.pdcp/credentials.yaml; missing creds log a warning and
+// scans continue. A non-empty scanID implicitly enables upload.
+func WithPDCPUpload(scanID, teamID string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableCloudUpload = true
+		if scanID != "" {
+			e.opts.ScanID = scanID
+		}
+		if teamID != "" {
+			e.opts.TeamID = teamID
+		}
+		return nil
+	}
+}
+
+// RuntimeConfig is the set of nuclei config options exposed via the SDK.
+type RuntimeConfig struct {
+	Authors           []string `yaml:"author,omitempty"`
+	Tags              []string `yaml:"tags,omitempty"`
+	ExcludeTags       []string `yaml:"exclude-tags,omitempty"`
+	IncludeTags       []string `yaml:"include-tags,omitempty"`
+	IncludeIds        []string `yaml:"template-id,omitempty"`
+	ExcludeIds        []string `yaml:"exclude-id,omitempty"`
+	IncludeTemplates  []string `yaml:"include-templates,omitempty"`
+	ExcludedTemplates []string `yaml:"exclude-templates,omitempty"`
+	ExcludeMatchers   []string `yaml:"exclude-matchers,omitempty"`
+	Severities        []string `yaml:"severity,omitempty"`
+	ExcludeSeverities []string `yaml:"exclude-severity,omitempty"`
+	Protocols         []string `yaml:"type,omitempty"`
+	ExcludeProtocols  []string `yaml:"exclude-type,omitempty"`
+	IncludeConditions []string `yaml:"template-condition,omitempty"`
+	Headers           []string `yaml:"header,omitempty"`
+	Variables         []string `yaml:"var,omitempty"`
+	InteractshServer  string   `yaml:"interactsh-server,omitempty"`
+	InteractshToken   string   `yaml:"interactsh-token,omitempty"`
+	Socks5Proxy       []string `yaml:"socks5-proxy,omitempty"`
+	// Scalar knobs use *int so omitted YAML keys preserve the engine's
+	// existing value instead of forcing it to zero.
+	RateLimit     *int `yaml:"rate-limit,omitempty"`
+	BulkSize      *int `yaml:"bulk-size,omitempty"`
+	Concurrency   *int `yaml:"concurrency,omitempty"` // maps to opts.TemplateThreads
+	Timeout       *int `yaml:"timeout,omitempty"`
+	Retries       *int `yaml:"retries,omitempty"`
+	RateLimitHost *int `yaml:"rate-limit-host,omitempty"`
+}
+
+// MergeOptions appends/sets the configuration onto opts.
+//
+// RateLimitHost is stored on the struct for downstream consumers but is NOT
+// applied to *types.Options — there is no equivalent field on nuclei's
+// runtime options today. Callers needing per-host rate limiting must wire it
+// outside the engine.
+func (s *RuntimeConfig) MergeOptions(opts *pkgtypes.Options) {
+	opts.Authors = append(opts.Authors, s.Authors...)
+	opts.Tags = append(opts.Tags, s.Tags...)
+	opts.ExcludeTags = append(opts.ExcludeTags, s.ExcludeTags...)
+	opts.IncludeTags = append(opts.IncludeTags, s.IncludeTags...)
+	opts.IncludeIds = append(opts.IncludeIds, s.IncludeIds...)
+	opts.ExcludeIds = append(opts.ExcludeIds, s.ExcludeIds...)
+	opts.IncludeTemplates = append(opts.IncludeTemplates, s.IncludeTemplates...)
+	opts.ExcludedTemplates = append(opts.ExcludedTemplates, s.ExcludedTemplates...)
+	opts.ExcludeMatchers = append(opts.ExcludeMatchers, s.ExcludeMatchers...)
+	opts.IncludeConditions = append(opts.IncludeConditions, s.IncludeConditions...)
+	if s.InteractshServer != "" {
+		opts.InteractshURL = s.InteractshServer
+	}
+	if s.InteractshToken != "" {
+		opts.InteractshToken = s.InteractshToken
+	}
+	for _, v := range s.Severities {
+		_ = opts.Severities.Set(v)
+	}
+	for _, v := range s.ExcludeSeverities {
+		_ = opts.ExcludeSeverities.Set(v)
+	}
+	for _, v := range s.Protocols {
+		_ = opts.Protocols.Set(v)
+	}
+	for _, v := range s.ExcludeProtocols {
+		_ = opts.ExcludeProtocols.Set(v)
+	}
+	for _, v := range s.Headers {
+		opts.CustomHeaders = append(opts.CustomHeaders, v)
+	}
+	for _, v := range s.Variables {
+		_ = opts.Vars.Set(v)
+	}
+	opts.Proxy = append(opts.Proxy, s.Socks5Proxy...)
+
+	if s.RateLimit != nil {
+		opts.RateLimit = *s.RateLimit
+	}
+	if s.BulkSize != nil {
+		opts.BulkSize = *s.BulkSize
+	}
+	if s.Concurrency != nil {
+		opts.TemplateThreads = *s.Concurrency
+	}
+	if s.Timeout != nil {
+		opts.Timeout = *s.Timeout
+	}
+	if s.Retries != nil {
+		opts.Retries = *s.Retries
+	}
+}
+
+// WithConfigFile decodes a RuntimeConfig YAML at path and merges it into
+// the engine options. Matches the schema Aurora server emits.
+func WithConfigFile(path string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return errkit.Wrap(err, "could not open nuclei config file")
+		}
+		return applyRuntimeConfigFromBytes(e, data)
+	}
+}
+
+// WithConfigBytes is WithConfigFile from memory.
+func WithConfigBytes(data []byte) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		return applyRuntimeConfigFromBytes(e, data)
+	}
+}
+
+func applyRuntimeConfigFromBytes(e *NucleiEngine, data []byte) error {
+	cfg := &RuntimeConfig{}
+	if err := yaml.NewDecoder(bytes.NewReader(data)).Decode(cfg); err != nil {
+		return errkit.Wrap(err, "could not parse nuclei config")
+	}
+	cfg.MergeOptions(e.opts)
+	return nil
+}
+
+// WithReportingConfigFile loads a nuclei -report-config style YAML file
+// (Jira/Linear/GitHub/etc. tracker configuration) into the engine's
+// reporting options. Equivalent to -report-config <path> on the CLI.
+func WithReportingConfigFile(path string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return errkit.Wrap(err, "could not open reporting config file")
+		}
+		ropts, err := runner.LoadReportingOptionsFromBytes(data)
+		if err != nil {
+			return errkit.Wrap(err, "could not parse reporting config file")
+		}
+		e.reportingOpts = ropts
+		return nil
+	}
+}
+
+// WithReportingConfigBytes is WithReportingConfigFile from memory. Passing
+// nil/empty produces an empty reporting.Options (no-op).
+func WithReportingConfigBytes(data []byte) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		ropts, err := runner.LoadReportingOptionsFromBytes(data)
+		if err != nil {
+			return errkit.Wrap(err, "could not parse reporting config bytes")
+		}
+		e.reportingOpts = ropts
 		return nil
 	}
 }

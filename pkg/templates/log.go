@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	Colorizer                       aurora.Aurora
+	Colorizer                       *aurora.Aurora
 	SeverityColorizer               func(severity.Severity) string
 	deprecatedProtocolNameTemplates = mapsutil.SyncLockMap[string, bool]{Map: mapsutil.Map[string, bool]{}} //templates that still use deprecated protocol names
 )

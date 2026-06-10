@@ -20,7 +20,7 @@ import (
 	"go.uber.org/multierr"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -50,7 +50,7 @@ type Writer interface {
 	// Close closes the output writer interface
 	Close()
 	// Colorizer returns the colorizer instance for writer
-	Colorizer() aurora.Aurora
+	Colorizer() *aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
 	// WriteFailure writes the optional failure event for template to file and/or screen.
@@ -76,7 +76,7 @@ type StandardWriter struct {
 	suppressHoneypot      bool
 	honeypotThreshold     int
 	mutex                 *sync.Mutex
-	aurora                aurora.Aurora
+	aurora                *aurora.Aurora
 	outputFile            io.WriteCloser
 	traceFile             io.WriteCloser
 	errorFile             io.WriteCloser
@@ -241,7 +241,7 @@ type IssueTrackerMetadata struct {
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	resumeBool := options.Resume != ""
 
-	auroraColorizer := aurora.NewAurora(!options.NoColor)
+	auroraColorizer := aurora.New(aurora.WithColors(!options.NoColor))
 
 	var outputFile io.WriteCloser
 	if options.Output != "" {
@@ -490,7 +490,7 @@ func getJSONLogRequestFromError(templatePath, input, requestType string, request
 }
 
 // Colorizer returns the colorizer instance for writer
-func (w *StandardWriter) Colorizer() aurora.Aurora {
+func (w *StandardWriter) Colorizer() *aurora.Aurora {
 	return w.aurora
 }
 
