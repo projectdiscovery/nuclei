@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
     env:
+      GITHUB_TOKEN: "${{ github.token }}"
       PGO_FILE: "cmd/nuclei/default.pgo"
       TARGET: "https://honey.scanme.sh"
       TARGET_COUNT: "100"
@@ -19,8 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
-      - uses: projectdiscovery/actions/cache/nuclei@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - run: |
           for i in {1..${{ env.TARGET_COUNT }}}; do
               echo "${{ env.TARGET }}/-/?_=${i}" >> "${{ env.TARGET_LIST }}";
@@ -43,7 +43,7 @@ jobs:
         env:
           DISABLE_STDOUT: "1"
       - run: mv "${PROFILE_MEM}.cpu" "${PGO_FILE}"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: "pgo"
           path: "${{ env.PGO_FILE }}"

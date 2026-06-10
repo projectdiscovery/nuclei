@@ -60,9 +60,9 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	}
 	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
 	var dsn strings.Builder
-	dsn.WriteString(fmt.Sprintf("%v:%v", url.QueryEscape(opts.Username), opts.Password))
+	fmt.Fprintf(&dsn, "%v:%v", url.QueryEscape(opts.Username), opts.Password)
 	dsn.WriteString("@")
-	dsn.WriteString(fmt.Sprintf("%v(%v)", opts.Protocol, target))
+	fmt.Fprintf(&dsn, "%v(%v)", opts.Protocol, target)
 	if opts.DbName != "" {
 		dsn.WriteString(opts.DbName)
 	}
@@ -73,7 +73,7 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 }
 
 // @memo
-func connectWithDSN(executionId string, dsn string) (bool, error) {
+func connectWithDSN(ctx context.Context, executionId string, dsn string) (bool, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return false, err
@@ -84,8 +84,8 @@ func connectWithDSN(executionId string, dsn string) (bool, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	ctx := context.WithValue(context.Background(), "executionId", executionId) // nolint: staticcheck
-	err = db.PingContext(ctx)
+	pingCtx := context.WithValue(ctx, "executionId", executionId) // nolint: staticcheck
+	err = db.PingContext(pingCtx)
 	if err != nil {
 		return false, err
 	}

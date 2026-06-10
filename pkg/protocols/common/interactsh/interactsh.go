@@ -119,7 +119,7 @@ func (c *Client) poll() error {
 		}
 
 		if requestShouldStopAtFirstMatch(request) || c.options.StopAtFirstMatch {
-			if gotItem, err := c.matchedTemplates.Get(hash(request.Event.InternalEvent)); gotItem && err == nil {
+			if gotItem, err := c.matchedTemplates.Get(eventHash(request.Event)); gotItem && err == nil {
 				return
 			}
 		}
@@ -154,6 +154,7 @@ func requestShouldStopAtFirstMatch(request *RequestData) bool {
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
 	var result *operators.Result
 	var matched bool
+	var templateID string
 	data.Event.Lock()
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	if strings.EqualFold(interaction.Protocol, "dns") {
@@ -163,16 +164,16 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
-	data.Event.Unlock()
-
 	if data.Operators != nil {
 		result, matched = data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
 	} else {
 		// this is most likely a bug so error instead of warning
-		var templateID string
 		if data.Event.InternalEvent != nil {
 			templateID = fmt.Sprint(data.Event.InternalEvent[templateIdAttribute])
 		}
+	}
+	data.Event.Unlock()
+	if data.Operators == nil {
 		gologger.Error().Msgf("missing compiled operators for '%v' template", templateID)
 	}
 
@@ -200,6 +201,14 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	} else {
 		data.Event.SetOperatorResult(result)
 	}
+	// ensure payload values are preserved for interactsh-only matches
+	data.Event.Lock()
+	if data.Event.OperatorsResult != nil && len(data.Event.OperatorsResult.PayloadValues) == 0 {
+		if payloads, ok := data.Event.InternalEvent["payloads"].(map[string]interface{}); ok {
+			data.Event.OperatorsResult.PayloadValues = payloads
+		}
+	}
+	data.Event.Unlock()
 
 	data.Event.Lock()
 	data.Event.Results = data.MakeResultFunc(data.Event)
@@ -217,7 +226,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		data.Event.InteractshMatched.Store(true)
 		c.matched.Store(true)
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
-			_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)
+			_ = c.matchedTemplates.SetWithExpire(eventHash(data.Event), true, defaultInteractionDuration)
 		}
 	}
 
@@ -225,10 +234,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 }
 
 func (c *Client) AlreadyMatched(data *RequestData) bool {
-	data.Event.RLock()
-	defer data.Event.RUnlock()
-
-	return c.matchedTemplates.Has(hash(data.Event.InternalEvent))
+	return c.matchedTemplates.Has(eventHash(data.Event))
 }
 
 // URL returns a new URL that can be interacted with
@@ -340,7 +346,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
-			gotItem, err := c.matchedTemplates.Get(hash(data.Event.InternalEvent))
+			gotItem, err := c.matchedTemplates.Get(eventHash(data.Event))
 			if gotItem && err == nil {
 				break
 			}
@@ -440,6 +446,13 @@ func hash(internalEvent output.InternalEvent) string {
 	templateId := internalEvent[templateIdAttribute].(string)
 	host := internalEvent["host"].(string)
 	return fmt.Sprintf("%s:%s", templateId, host)
+}
+
+func eventHash(event *output.InternalWrappedEvent) string {
+	event.RLock()
+	defer event.RUnlock()
+
+	return hash(event.InternalEvent)
 }
 
 func (c *Client) getHostname() string {

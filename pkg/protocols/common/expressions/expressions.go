@@ -1,10 +1,10 @@
 package expressions
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/Knetic/govaluate"
-	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/govaluate"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
@@ -43,6 +43,8 @@ func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
 }
 
 func evaluate(data string, base map[string]interface{}) (string, error) {
+	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
+
 	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
 	data = replacer.Replace(data, base)
 
@@ -50,23 +52,41 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
 	for _, expression := range expressions {
+		originalExpression := expression
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
+
 		// turns expressions (either helper functions+base values or base values)
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
 		if err != nil {
-			gologger.Warning().Msgf("Failed to compile expression '%s': %v", expression, err)
-			continue
+			return data, fmt.Errorf("failed to compile expression %q: %w", originalExpression, err)
 		}
+
 		result, err := compiled.Evaluate(base)
 		if err != nil {
-			gologger.Warning().Msgf("Failed to evaluate expression '%s': %v", expression, err)
-			continue
+			return data, fmt.Errorf("failed to evaluate expression %q: %w", originalExpression, err)
 		}
+
+		replacement := result
+		// Preserve unresolved markers only when a helper call would otherwise
+		// hide them from downstream validation. Plain expressions such as
+		// comparisons should evaluate normally.
+		if markers := unresolvedVarMarkers(compiled.Vars(), base); markers != "" {
+			usesFunctions := false
+			for _, token := range compiled.Tokens() {
+				if token.Kind == govaluate.FUNCTION {
+					usesFunctions = true
+					break
+				}
+			}
+			if usesFunctions && ContainsUnresolvedVariables(fmt.Sprint(result)) == nil {
+				replacement = markers
+			}
+		}
+
 		// replace incrementally
-		data = replacer.ReplaceOne(data, expression, result)
+		data = replacer.ReplaceOne(data, expression, replacement)
 	}
 	return data, nil
 }
@@ -130,6 +150,10 @@ func FindExpressions(data, OpenMarker, CloseMarker string, base map[string]inter
 }
 
 func isExpression(data string, base map[string]interface{}) bool {
+	if _, ok := base[data]; ok {
+		return false
+	}
+
 	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
 		if stringsutil.ContainsAny(data, getFunctionsNames(base)...) {
 			return true
@@ -140,6 +164,37 @@ func isExpression(data string, base map[string]interface{}) bool {
 	}
 	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	return err == nil
+}
+
+// unresolvedVarMarkers returns concatenated {{...}} markers found in the
+// string values of the given variable names. Returns "" if none.
+func unresolvedVarMarkers(vars []string, base map[string]any) string {
+	seen := make(map[string]struct{})
+	var markers []string
+	for _, varName := range vars {
+		val, ok := base[varName]
+		if !ok {
+			continue
+		}
+		valStr, ok := val.(string)
+		if !ok {
+			continue
+		}
+		for _, match := range unresolvedVariablesRegex.FindAllStringSubmatch(valStr, -1) {
+			if len(match) < 2 {
+				continue
+			}
+			if numericalExpressionRegex.MatchString(match[1]) || hasLiteralsOnly(match[1]) {
+				continue
+			}
+			full := marker.ParenthesisOpen + match[1] + marker.ParenthesisClose
+			if _, exists := seen[full]; !exists {
+				seen[full] = struct{}{}
+				markers = append(markers, full)
+			}
+		}
+	}
+	return strings.Join(markers, "")
 }
 
 func getFunctionsNames(m map[string]interface{}) []string {

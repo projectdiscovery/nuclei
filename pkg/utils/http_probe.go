@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
+	"strings"
 
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -48,9 +50,10 @@ func determineSchemeOrder(input string) []string {
 // http schemes are selected with heuristics
 // If none succeeds, probing is abandoned for such URLs.
 func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
-	schemes := determineSchemeOrder(input)
+	normalizedInput := normalizeProbeInput(input)
+	schemes := determineSchemeOrder(normalizedInput)
 	for _, scheme := range schemes {
-		formedURL := fmt.Sprintf("%s://%s", scheme, input)
+		formedURL := fmt.Sprintf("%s://%s", scheme, normalizedInput)
 		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
 		if err != nil {
 			continue
@@ -65,6 +68,18 @@ func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
 		return formedURL
 	}
 	return ""
+}
+
+// normalizeProbeInput rewrites unbracketed IPv6 literals to bracketed host form.
+func normalizeProbeInput(input string) string {
+	if strings.Contains(input, "://") || strings.HasPrefix(input, "[") {
+		return input
+	}
+	addr, err := netip.ParseAddr(input)
+	if err != nil || !addr.Is6() {
+		return input
+	}
+	return fmt.Sprintf("[%s]", addr.String())
 }
 
 type inputLivenessChecker struct {

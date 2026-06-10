@@ -226,14 +226,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		args := compiler.NewExecuteArgs()
 		args.TemplateCtx = allvars
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
+		result, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
 				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
 				Cleanup:         cleanUpPreConditionFunctions,
-				Context:         input.Context(),
 			})
 		if err != nil {
 			return errkit.Newf("could not execute pre-condition: %s", err)
@@ -276,6 +275,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		gOutput = &gozerotypes.Result{
 			Stderr: buff,
 		}
+	}
+	if err != nil {
+		gologger.Warning().Msgf("[%s] Could not execute code: %s", request.options.TemplateID, err)
 	}
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
@@ -352,6 +354,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if request.options.Options.Debug || request.options.Options.DebugResponse {
 			gologger.Debug().Msg(msg)
 			gologger.Print().Msgf("%s\n\n", responsehighlighter.Highlight(event.OperatorsResult, dataOutputString, request.options.Options.NoColor, false))
+			if gOutput.Stderr.Len() > 0 {
+				gologger.Debug().Msgf("[%s] Code Stderr:\n%s", request.options.TemplateID, gOutput.Stderr.String())
+			}
 		}
 		if request.options.Options.StoreResponse {
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dataOutputString))

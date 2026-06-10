@@ -29,7 +29,7 @@ import (
 	pprofutil "github.com/projectdiscovery/utils/pprof"
 	updateutils "github.com/projectdiscovery/utils/update"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/ratelimit"
 
@@ -51,6 +51,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -85,7 +86,7 @@ type Runner struct {
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog
 	progress           progress.Progress
-	colorizer          aurora.Aurora
+	colorizer          *aurora.Aurora
 	issuesClient       reporting.Client
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
@@ -97,6 +98,8 @@ type Runner struct {
 	fuzzFrequencyCache *frequency.Tracker
 	httpStats          *outputstats.Tracker
 	Logger             *gologger.Logger
+
+	honeypotDetector *honeypotdetector.Detector
 
 	//general purpose temporary directory
 	tmpDir          string
@@ -223,7 +226,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// output coloring
 	useColor := !options.NoColor
-	runner.colorizer = aurora.NewAurora(useColor)
+	runner.colorizer = aurora.New(aurora.WithColors(useColor))
 	templates.Colorizer = runner.colorizer
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
@@ -262,6 +265,12 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}()
 
+	// Initialize honeypot detector (opt-in) so results can be suppressed.
+	var hpDetector *honeypotdetector.Detector
+	if options.HoneypotDetection {
+		hpDetector = honeypotdetector.New(options.HoneypotThreshold)
+	}
+
 	// create the input provider and load the inputs
 	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options, TempDir: runner.tmpDir})
 	if err != nil {
@@ -273,6 +282,10 @@ func New(options *types.Options) (*Runner, error) {
 	outputWriter, err := output.NewStandardWriter(options)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
+	}
+	if hpDetector != nil {
+		outputWriter.SetHoneypotDetector(hpDetector)
+		runner.honeypotDetector = hpDetector
 	}
 	// setup a proxy writer to automatically upload results to PDCP
 	runner.output = runner.setupPDCPUpload(outputWriter)
@@ -385,7 +398,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.Logger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
+		runner.Logger.Warning().Msg("rate limit per minute is deprecated - use rate-limit-duration")
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
@@ -426,6 +439,10 @@ func (r *Runner) Close() {
 	}
 	if r.output != nil {
 		r.output.Close()
+	}
+
+	if r.honeypotDetector != nil {
+		r.Logger.Print().Msgf("%s\n", r.honeypotDetector.Summary())
 	}
 	if r.issuesClient != nil {
 		r.issuesClient.Close()
@@ -605,7 +622,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.ShouldUseHostError() {
 		maxHostError := r.options.MaxHostError
 		if r.options.TemplateThreads > maxHostError {
-			r.Logger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", r.colorizer.BrightYellow("WRN"))
+			r.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
 			r.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
 
 			maxHostError = r.options.TemplateThreads
@@ -642,16 +659,20 @@ func (r *Runner) RunEnumeration() error {
 	// This uses a separate parser to reduce time taken as
 	// normally nuclei does a lot of compilation and stuff
 	// for templates, which we don't want for these simp
-	if r.options.TemplateList || r.options.TemplateDisplay || r.options.TagList {
+	if r.options.TagList {
+		tagsMap, err := store.LoadTemplateTags()
+		if err != nil {
+			return err
+		}
+		r.listAvailableTags(tagsMap)
+		os.Exit(0)
+	}
+
+	if r.options.TemplateList || r.options.TemplateDisplay {
 		if err := store.LoadTemplatesOnlyMetadata(); err != nil {
 			return err
 		}
-
-		if r.options.TagList {
-			r.listAvailableStoreTags(store)
-		} else {
-			r.listAvailableStoreTemplates(store)
-		}
+		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
 
@@ -666,7 +687,9 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return nil // exit
 	}
-	store.Load()
+	if err := store.Load(); err != nil {
+		return err
+	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
@@ -695,8 +718,8 @@ func (r *Runner) RunEnumeration() error {
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
-	// prefetch secrets if enabled
-	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
+	// prefetch secrets to ensure authentication completes before scanning starts
+	if executorOpts.AuthProvider != nil {
 		r.Logger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
 		if err := executorOpts.AuthProvider.PreFetchSecrets(); err != nil {
 			return errors.Wrap(err, "could not pre-fetch secrets")
@@ -918,7 +941,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		// only print these stats in verbose mode
 		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
 		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
-		stats.ForceDisplayWarning(templates.ExludedDastTmplStats)
+		stats.ForceDisplayWarning(templates.ExcludedDastTmplStats)
 		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
 		stats.ForceDisplayWarning(templates.ExcludedFileStats)
 		stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)
@@ -927,7 +950,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if tmplCount == 0 && workflowCount == 0 {
 		// if dast flag is used print explicit warning
 		if r.options.DAST {
-			r.Logger.Print().Msgf("[%v] No DAST templates found", aurora.BrightYellow("WRN"))
+			r.Logger.Warning().Msg("No DAST templates found")
 		}
 		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
 	} else {
@@ -969,7 +992,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			value := v.Load()
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					r.Logger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
+					r.Logger.Warning().Msgf("Loading %d unsigned templates for scan. Use with caution.", value)
 				} else {
 					r.Logger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
@@ -1053,7 +1076,7 @@ type WalkFunc func(reflect.Value, reflect.StructField)
 // reflect.Value and reflect.Type properties of the value in the struct.
 func Walk(s interface{}, callback WalkFunc) {
 	structValue := reflect.ValueOf(s)
-	if structValue.Kind() == reflect.Ptr {
+	if structValue.Kind() == reflect.Pointer {
 		structValue = structValue.Elem()
 	}
 	if structValue.Kind() != reflect.Struct {
@@ -1067,7 +1090,7 @@ func Walk(s interface{}, callback WalkFunc) {
 		}
 		if field.Kind() == reflect.Struct {
 			Walk(field.Addr().Interface(), callback)
-		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+		} else if field.Kind() == reflect.Pointer && field.Elem().Kind() == reflect.Struct {
 			Walk(field.Interface(), callback)
 		} else {
 			callback(field, fieldType)

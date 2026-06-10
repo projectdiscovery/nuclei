@@ -2,6 +2,8 @@
 package smb
 
 import (
+	"context"
+
 	"errors"
 
 	"fmt"
@@ -9,11 +11,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizeddetectSMBGhost(executionId string, host string, port int) (bool, error) {
+func memoizeddetectSMBGhost(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	hash := "detectSMBGhost" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return detectSMBGhost(executionId, host, port)
+		return detectSMBGhost(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return false, err

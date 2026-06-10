@@ -2,10 +2,12 @@ package output
 
 import (
 	"encoding/base64"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"maps"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,7 +20,7 @@ import (
 	"go.uber.org/multierr"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -27,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
@@ -38,12 +41,16 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
+// ErrHoneypotSuppressed is returned by the output writer when a match result is suppressed
+// due to honeypot detection.
+var ErrHoneypotSuppressed = stderrors.New("honeypot suppressed result")
+
 // Writer is an interface which writes output to somewhere for nuclei events.
 type Writer interface {
 	// Close closes the output writer interface
 	Close()
 	// Colorizer returns the colorizer instance for writer
-	Colorizer() aurora.Aurora
+	Colorizer() *aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
 	// WriteFailure writes the optional failure event for template to file and/or screen.
@@ -65,8 +72,11 @@ type StandardWriter struct {
 	timestamp             bool
 	noMetadata            bool
 	matcherStatus         bool
+	honeypotDetector      *honeypotdetector.Detector
+	suppressHoneypot      bool
+	honeypotThreshold     int
 	mutex                 *sync.Mutex
-	aurora                aurora.Aurora
+	aurora                *aurora.Aurora
 	outputFile            io.WriteCloser
 	traceFile             io.WriteCloser
 	errorFile             io.WriteCloser
@@ -231,7 +241,7 @@ type IssueTrackerMetadata struct {
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	resumeBool := options.Resume != ""
 
-	auroraColorizer := aurora.NewAurora(!options.NoColor)
+	auroraColorizer := aurora.New(aurora.WithColors(!options.NoColor))
 
 	var outputFile io.WriteCloser
 	if options.Output != "" {
@@ -265,21 +275,23 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	}
 
 	writer := &StandardWriter{
-		json:             options.JSONL,
-		jsonReqResp:      !options.OmitRawRequests,
-		noMetadata:       options.NoMeta,
-		matcherStatus:    options.MatcherStatus,
-		timestamp:        options.Timestamp,
-		aurora:           auroraColorizer,
-		mutex:            &sync.Mutex{},
-		outputFile:       outputFile,
-		traceFile:        traceOutput,
-		errorFile:        errorOutput,
-		severityColors:   colorizer.New(auroraColorizer),
-		storeResponse:    options.StoreResponse,
-		storeResponseDir: options.StoreResponseDir,
-		omitTemplate:     options.OmitTemplate,
-		KeysToRedact:     options.Redact,
+		json:              options.JSONL,
+		jsonReqResp:       !options.OmitRawRequests,
+		noMetadata:        options.NoMeta,
+		matcherStatus:     options.MatcherStatus,
+		timestamp:         options.Timestamp,
+		suppressHoneypot:  options.SuppressHoneypotResults,
+		honeypotThreshold: options.HoneypotThreshold,
+		aurora:            auroraColorizer,
+		mutex:             &sync.Mutex{},
+		outputFile:        outputFile,
+		traceFile:         traceOutput,
+		errorFile:         errorOutput,
+		severityColors:    colorizer.New(auroraColorizer),
+		storeResponse:     options.StoreResponse,
+		storeResponseDir:  options.StoreResponseDir,
+		omitTemplate:      options.OmitTemplate,
+		KeysToRedact:      options.Redact,
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -287,6 +299,14 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	}
 
 	return writer, nil
+}
+
+// SetHoneypotDetector attaches an initialized honeypot detector to the writer.
+func (w *StandardWriter) SetHoneypotDetector(detector *honeypotdetector.Detector) {
+	w.honeypotDetector = detector
+	if detector != nil {
+		w.honeypotThreshold = detector.Threshold()
+	}
 }
 
 func (w *StandardWriter) ResultCount() int {
@@ -297,6 +317,29 @@ func (w *StandardWriter) ResultCount() int {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.Error != "" && !w.matcherStatus {
 		return nil
+	}
+
+	// Honeypot detection is performed only for successful matches.
+	if event.MatcherStatus && w.honeypotDetector != nil {
+		hostKey := event.URL
+		if hostKey == "" && event.Host != "" {
+			hostKey = event.Host
+			if event.Port != "" {
+				hostKey = net.JoinHostPort(event.Host, event.Port)
+			}
+		}
+
+		if hostKey != "" {
+			justFlagged := w.honeypotDetector.RecordMatch(hostKey, event.TemplateID)
+			if justFlagged {
+				normalized := honeypotdetector.NormalizeHostKey(hostKey)
+				gologger.Warning().Msgf("Potential honeypot detected: %s (matched %d distinct templates)", normalized, w.honeypotThreshold)
+			}
+
+			if w.suppressHoneypot && w.honeypotDetector.IsFlagged(hostKey) {
+				return ErrHoneypotSuppressed
+			}
+		}
 	}
 
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -447,7 +490,7 @@ func getJSONLogRequestFromError(templatePath, input, requestType string, request
 }
 
 // Colorizer returns the colorizer instance for writer
-func (w *StandardWriter) Colorizer() aurora.Aurora {
+func (w *StandardWriter) Colorizer() *aurora.Aurora {
 	return w.aurora
 }
 

@@ -8,7 +8,8 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">`Indonesia`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">`Spanish`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">`日本語`</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">`Portuguese`</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">`Portuguese`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_TR.md">`Türkçe`</a>
   
 </div>
 
@@ -308,6 +309,7 @@ HEADLESS:
    -sb, -show-browser               show the browser on the screen when running templates with headless mode
    -ho, -headless-options string[]  start headless chrome with additional options
    -sc, -system-chrome              use local installed Chrome browser instead of nuclei installed
+   -cdpe, -cdp-endpoint string      use remote browser via Chrome DevTools Protocol (CDP) endpoint
    -lha, -list-headless-action      list available headless actions
 
 DEBUG:
@@ -335,6 +337,11 @@ UPDATE:
    -ut, -update-templates            update nuclei-templates to latest released version
    -ud, -update-template-dir string  custom directory to install / update nuclei-templates
    -duc, -disable-update-check       disable automatic nuclei/templates update check
+
+HONEYPOT:
+   -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration
+   -hpt, -honeypot-threshold int     number of distinct template IDs required to flag a honeypot host (default 15)
+   -shp, -suppress-honeypot          suppress output for flagged honeypot hosts
 
 STATISTICS:
    -stats                    display statistics about the running scan
@@ -374,11 +381,11 @@ Run nuclei with a JSON output:
 Run nuclei with sorted Markdown outputs (with environment variables):
 	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
+Additional documentation is available at: https://docs.projectdiscovery.io/getting-started/running
 
 ```
 
-Additional documentation is available at: [**`docs.nuclei.sh/getting-started/running`**](https://docs.nuclei.sh/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
+Additional documentation is available at: [**`docs.projectdiscovery.io/getting-started/running`**](https://docs.projectdiscovery.io/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 
@@ -423,7 +430,7 @@ nuclei -target https://example.com -dashboard
 ```
 
 > [!NOTE]
-> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [**`documentation`**](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [**`documentation`**](https://docs.projectdiscovery.io/cloud/scanning/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
 
 <br>
 <br>

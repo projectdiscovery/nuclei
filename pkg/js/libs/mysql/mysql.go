@@ -38,11 +38,11 @@ type (
 func (c *MySQLClient) IsMySQL(ctx context.Context, host string, port int) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
 	// todo: why this is exposed? Service fingerprint should be automatic
-	return memoizedisMySQL(executionId, host, port)
+	return memoizedisMySQL(ctx, executionId, host, port)
 }
 
 // @memo
-func isMySQL(executionId string, host string, port int) (bool, error) {
+func isMySQL(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
@@ -52,7 +52,7 @@ func isMySQL(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -108,7 +108,7 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 	if err != nil {
 		return false, err
 	}
-	return connectWithDSN(executionId, dsn)
+	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
 type (
@@ -136,11 +136,11 @@ type (
 // ```
 func (c *MySQLClient) FingerprintMySQL(ctx context.Context, host string, port int) (MySQLInfo, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedfingerprintMySQL(executionId, host, port)
+	return memoizedfingerprintMySQL(ctx, executionId, host, port)
 }
 
 // @memo
-func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, error) {
+func fingerprintMySQL(ctx context.Context, executionId string, host string, port int) (MySQLInfo, error) {
 	info := MySQLInfo{}
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
@@ -151,7 +151,7 @@ func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, err
 		return MySQLInfo{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return info, err
 	}
@@ -192,7 +192,7 @@ func fingerprintMySQL(executionId string, host string, port int) (MySQLInfo, err
 // ```
 func (c *MySQLClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnectWithDSN(executionId, dsn)
+	return memoizedconnectWithDSN(ctx, executionId, dsn)
 }
 
 // ExecuteQueryWithOpts connects to Mysql database using given credentials
@@ -237,7 +237,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

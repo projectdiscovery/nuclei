@@ -80,6 +80,49 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	}
 }
 
+// TestPathComponent_RebuildDoesNotMutateOriginal verifies that Rebuild()
+// does not mutate the original request path, which caused numeric path
+// segments to be skipped when fuzzing in single mode (issue #6398).
+func TestPathComponent_RebuildDoesNotMutateOriginal(t *testing.T) {
+	path := NewPath()
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)
+	require.NoError(t, err)
+
+	found, err := path.Parse(req)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	// Simulate single-mode fuzzing: fuzz each segment one at a time,
+	// rebuilding after each and then resetting.
+	segments := map[string]string{}
+	_ = path.Iterate(func(key string, value interface{}) error {
+		segments[key] = value.(string)
+		return nil
+	})
+
+	var fuzzedPaths []string
+	for key, original := range segments {
+		err := path.SetValue(key, original+"%20FUZZED")
+		require.NoError(t, err)
+
+		rebuilt, err := path.Rebuild()
+		require.NoError(t, err)
+		fuzzedPaths = append(fuzzedPaths, rebuilt.Path)
+
+		// Reset value back to original
+		err = path.SetValue(key, original)
+		require.NoError(t, err)
+	}
+
+	// All three segments must have been fuzzed
+	require.Len(t, fuzzedPaths, 3, "expected 3 fuzzed paths for 3 segments")
+
+	// Verify that each segment was individually fuzzed
+	require.Contains(t, fuzzedPaths, "/user FUZZED/55/profile")
+	require.Contains(t, fuzzedPaths, "/user/55 FUZZED/profile")
+	require.Contains(t, fuzzedPaths, "/user/55/profile FUZZED")
+}
+
 func TestPathComponent_SQLInjection(t *testing.T) {
 	path := NewPath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com/user/55/profile", nil)

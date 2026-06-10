@@ -38,7 +38,7 @@ type (
 // ```
 func (c *MSSQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnect(executionId, host, port, username, password, "master")
+	return memoizedconnect(ctx, executionId, host, port, username, password, "master")
 }
 
 // ConnectWithDB connects to MS SQL database using given credentials and database name.
@@ -53,11 +53,11 @@ func (c *MSSQLClient) Connect(ctx context.Context, host string, port int, userna
 // ```
 func (c *MSSQLClient) ConnectWithDB(ctx context.Context, host string, port int, username, password, dbName string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnect(executionId, host, port, username, password, dbName)
+	return memoizedconnect(ctx, executionId, host, port, username, password, dbName)
 }
 
 // @memo
-func connect(executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
+func connect(ctx context.Context, executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
@@ -82,7 +82,7 @@ func connect(executionId string, host string, port int, username string, passwor
 		_ = db.Close()
 	}()
 
-	_, err = db.Exec("select 1")
+	_, err = db.ExecContext(ctx, "select 1")
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "connect: connection refused"):
@@ -111,11 +111,11 @@ func connect(executionId string, host string, port int, username string, passwor
 // ```
 func (c *MSSQLClient) IsMssql(ctx context.Context, host string, port int) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisMssql(executionId, host, port)
+	return memoizedisMssql(ctx, executionId, host, port)
 }
 
 // @memo
-func isMssql(executionId string, host string, port int) (bool, error) {
+func isMssql(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
@@ -126,7 +126,7 @@ func isMssql(executionId string, host string, port int) (bool, error) {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -192,7 +192,7 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

@@ -5,11 +5,12 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -172,6 +173,9 @@ func New(cfg *Config) (*Store, error) {
 	// Initialize metadata index and filter (load from disk & cache for reuse)
 	store.metadataIndex = store.loadTemplatesIndex()
 	store.indexFilter = store.buildIndexFilter()
+	if cfg.ExecutorOptions != nil {
+		cfg.ExecutorOptions.TemplateVerificationCallback = store.getTemplateVerification
+	}
 	store.saveMetadataIndexOnce = sync.OnceFunc(func() {
 		if store.metadataIndex == nil {
 			return
@@ -246,6 +250,22 @@ func New(cfg *Config) (*Store, error) {
 	return store, nil
 }
 
+func (store *Store) getTemplateVerification(templatePath string) *protocols.TemplateVerification {
+	if store.metadataIndex == nil {
+		return nil
+	}
+
+	metadata, found := store.metadataIndex.Get(templatePath)
+	if !found {
+		return nil
+	}
+
+	return &protocols.TemplateVerification{
+		Verified: metadata.Verified,
+		Verifier: metadata.TemplateVerifier,
+	}
+}
+
 func handleTemplatesEditorURLs(input string) string {
 	parsed, err := url.Parse(input)
 	if err != nil {
@@ -314,9 +334,14 @@ func (store *Store) RegisterPreprocessor(preprocessor templates.Preprocessor) {
 
 // Load loads all the templates from a store, performs filtering and returns
 // the complete compiled templates for a nuclei execution configuration.
-func (store *Store) Load() {
-	store.templates = store.LoadTemplates(store.finalTemplates)
+func (store *Store) Load() error {
+	templates, err := store.LoadTemplates(store.finalTemplates)
+	if err != nil {
+		return err
+	}
+	store.templates = templates
 	store.workflows = store.LoadWorkflows(store.finalWorkflows)
+	return nil
 }
 
 var templateIDPathMap map[string]string
@@ -363,6 +388,86 @@ func (store *Store) loadTemplatesIndex() *index.Index {
 	}
 
 	return metadataIdx
+}
+
+// LoadTemplateTags loads template tags count using metadata index when possible.
+//
+// This method is optimized for tag listing (`-tgl`) and avoids loading all
+// templates into the store.
+func (store *Store) LoadTemplateTags() (map[string]int, error) {
+	defer store.saveMetadataIndexOnce()
+
+	templatePaths, errs := store.config.Catalog.GetTemplatesPath(store.finalTemplates)
+	store.logErroredTemplates(errs)
+
+	tagsMap := make(map[string]int)
+	indexFilter := store.indexFilter
+
+	templatesCache := store.parserCacheOnce()
+	if templatesCache == nil {
+		return nil, errors.New("invalid parser")
+	}
+
+	// Include conditions require a parsed template and cannot be evaluated from
+	// metadata alone.
+	requiresTemplateParse := len(store.config.IncludeConditions) > 0
+
+	for _, templatePath := range templatePaths {
+		if store.metadataIndex != nil {
+			if metadata, found := store.metadataIndex.Get(templatePath); found {
+				if !indexFilter.Matches(metadata) {
+					continue
+				}
+
+				if !requiresTemplateParse {
+					for _, tag := range metadata.Tags {
+						tagsMap[tag]++
+					}
+					continue
+				}
+			}
+		}
+
+		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		if err != nil {
+			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
+				stats.Increment(templates.TemplatesExcludedStats)
+				if config.DefaultConfig.LogAllEvents {
+					store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+				}
+				continue
+			}
+
+			store.logger.Warning().Msg(err.Error())
+			continue
+		}
+
+		if !loaded {
+			continue
+		}
+
+		template, _, _ := templatesCache.Has(templatePath)
+		if template == nil {
+			continue
+		}
+
+		var metadata *index.Metadata
+		if store.metadataIndex != nil {
+			metadata, _ = store.metadataIndex.SetFromTemplate(templatePath, template)
+		} else {
+			metadata = index.NewMetadataFromTemplate(templatePath, template)
+		}
+
+		if metadata != nil && !indexFilter.Matches(metadata) {
+			continue
+		}
+
+		for _, tag := range template.Info.Tags.ToSlice() {
+			tagsMap[tag]++
+		}
+	}
+
+	return tagsMap, nil
 }
 
 // LoadTemplatesOnlyMetadata loads only the metadata of the templates
@@ -618,7 +723,7 @@ func isParsingError(store *Store, message string, template string, err error) bo
 }
 
 // LoadTemplates takes a list of templates and returns paths for them
-func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
+func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template, error) {
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
@@ -649,7 +754,8 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 // LoadTemplatesWithTags takes a list of templates and extra tags
 // returning templates that match.
-func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templates.Template {
+// Returns an error if dialers are not initialized for the given execution ID.
+func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*templates.Template, error) {
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
@@ -681,6 +787,26 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		}
 	}
 
+	// noteExcludedByTag surfaces a template the index filter dropped because it
+	// carries a tag from the .nuclei-ignore defaults. Without it the exclusion is
+	// silent at every verbosity level.
+	//
+	// indexFilter.ExcludeTags is a merge of CLI -exclude-tags and the ignore-file
+	// tags, so it must be matched against the ignore-file tags specifically:
+	// otherwise user-requested -exclude-tags drops would be mislabeled as
+	// .nuclei-ignore exclusions.
+	ignoreFileTags := config.ReadIgnoreFile().Tags
+	noteExcludedByTag := func(templatePath string, metadata *index.Metadata) {
+		if len(ignoreFileTags) == 0 || !slices.ContainsFunc(ignoreFileTags, metadata.HasTag) {
+			return
+		}
+
+		stats.Increment(templates.TemplatesExcludedStats)
+		if config.DefaultConfig.LogAllEvents {
+			store.logger.Print().Msgf("[%v] %v excluded from default run using .nuclei-ignore\n", aurora.Yellow("WRN").String(), templatePath)
+		}
+	}
+
 	typesOpts := store.config.ExecutorOptions.Options
 	concurrency := typesOpts.TemplateLoadingConcurrency
 	if concurrency <= 0 {
@@ -689,7 +815,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(concurrency))
 	if errWg != nil {
-		panic("could not create wait group")
+		return nil, fmt.Errorf("could not create wait group: %w", errWg)
 	}
 
 	if typesOpts.ExecutionId == "" {
@@ -698,7 +824,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	dialers := protocolstate.GetDialersWithId(typesOpts.ExecutionId)
 	if dialers == nil {
-		panic("dialers with executionId " + typesOpts.ExecutionId + " not found")
+		return nil, fmt.Errorf("dialers with executionId %s not found", typesOpts.ExecutionId)
 	}
 
 	for _, templatePath := range includedTemplates {
@@ -715,6 +841,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				if cachedMetadata, found := store.metadataIndex.Get(templatePath); found {
 					metadata = cachedMetadata
 					if !indexFilter.Matches(metadata) {
+						noteExcludedByTag(templatePath, metadata)
 						return
 					}
 					// NOTE(dwisiswant0): else, tagFilter probably exists (for
@@ -737,6 +864,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					}
 
 					if metadata != nil && !indexFilter.Matches(metadata) {
+						noteExcludedByTag(templatePath, metadata)
 						return
 					}
 				}
@@ -805,7 +933,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 							store.logger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
 					} else if parsed.IsFuzzableRequest() && !typesOpts.DAST {
-						stats.Increment(templates.ExludedDastTmplStats)
+						stats.Increment(templates.ExcludedDastTmplStats)
 						if config.DefaultConfig.LogAllEvents {
 							store.logger.Print().Msgf("[%v] -dast flag is required for DAST template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
@@ -833,7 +961,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates.Slice
+	return loadedTemplates.Slice, nil
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for

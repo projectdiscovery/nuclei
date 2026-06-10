@@ -88,7 +88,7 @@ func (request *Request) rateLimitTake(hostname string) {
 }
 
 // executeRaceRequest executes race condition request for a URL
-func (request *Request) executeRaceRequest(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.MetaInput.Input
 	var generatedRequests []*generatedRequest
 
@@ -101,7 +101,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		return nil
 	}
 	ctx := request.newContext(input)
-	requestForDump, err := generator.Make(ctx, input, inputData, payloads, nil)
+	requestForDump, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 			break
 		}
 		ctx := request.newContext(input)
-		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, nil)
+		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			return err
 		}
@@ -207,7 +207,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	return multierr.Combine(spmHandler.CombinedResults()...)
 }
 
-// executeRaceRequest executes parallel requests for a template
+// executeParallelHTTP executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
@@ -259,8 +259,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// bounded worker-pool to avoid spawning one goroutine per payload
 	type task struct {
-		req          *generatedRequest
-		updatedInput *contextargs.Context
+		req                *generatedRequest
+		updatedInput       *contextargs.Context
+		hasInteractMarkers bool
 	}
 
 	var workersWg sync.WaitGroup
@@ -290,14 +291,30 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					hostname = t.req.URL()
 				} else if t.req != nil && t.req.request != nil && t.req.request.URL != nil {
 					// Extract from request URL if available
-					hostname = t.req.request.String()
+					hostname = t.req.request.URL.String()
 				}
 				request.rateLimitTake(hostname)
+				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
 					continue
-				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), false, wrappedCallback, 0):
+				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
+						requestData := &interactsh.RequestData{
+							MakeResultFunc: request.MakeResultEvent,
+							Event:          event,
+							Operators:      request.CompiledOperators,
+							MatchFunc:      request.Match,
+							ExtractFunc:    request.Extract,
+						}
+						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
+						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
+						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+					}
+					wrappedCallback(event)
+				}, 0):
 					spmHandler.Release()
 				}
 			}
@@ -355,6 +372,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			workersWg.Wait()
 			return err
 		}
+		hasInteractMarkers := interactsh.HasMarkers(inputData) || len(generatedHttpRequest.interactshURLs) > 0
 		if input.MetaInput.Input == "" {
 			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
@@ -375,7 +393,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return nil
 			}
 			return multierr.Combine(spmHandler.CombinedResults()...)
-		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput}:
+		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
 		}
 		request.options.Progress.IncrementRequests()
 	}
@@ -517,7 +535,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
-		return request.executeRaceRequest(input, dynamicValues, callback)
+		return request.executeRaceRequest(input, dynamicValues, previous, callback)
 	}
 
 	// verify if fuzz elaboration was requested
@@ -526,7 +544,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	// verify if parallel elaboration was requested
-	if request.Threads > 0 && len(request.Payloads) > 0 {
+	if request.Threads > 0 && (len(request.Payloads) > 0 || request.Race) {
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
@@ -704,9 +722,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	var (
-		resp          *http.Response
-		fromCache     bool
-		dumpedRequest []byte
+		resp            *http.Response
+		fromCache       bool
+		dumpedRequest   []byte
+		projectCacheKey []byte
 	)
 
 	// Dump request for variables checks
@@ -743,6 +762,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
+		}
+		if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.URL.Host)
+		} else {
+			projectCacheKey = dumpedRequest
 		}
 		dumpedRequestString := string(dumpedRequest)
 
@@ -800,6 +824,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
 		inputUrl := input.MetaInput.Input
+		if generatedRequest.rawRequest.FullURL != "" {
+			inputUrl = generatedRequest.rawRequest.FullURL
+		}
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
 			url.Params = urlutil.NewOrderedParams() // donot include query params
@@ -825,7 +852,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
 			fromCache = true
-			resp, err = request.options.ProjectFile.Get(dumpedRequest)
+			resp, err = request.options.ProjectFile.Get(projectCacheKey)
 			if err != nil {
 				fromCache = false
 			}
@@ -839,9 +866,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			// Extract target URL for per-host pooling (use request URL or fallback to input)
 			targetURL := input.MetaInput.Input
 			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-				targetURL = generatedRequest.request.String()
-			} else if generatedRequest.request != nil {
-				targetURL = generatedRequest.request.String()
+				targetURL = generatedRequest.request.URL.String()
 			}
 
 			// this will be assigned/updated if this specific request has a custom configuration
@@ -889,11 +914,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
 				tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options)
 				if tracker != nil {
-					requestURL := generatedRequest.request.String()
+					requestURL := generatedRequest.request.URL.String()
 					if tracker.RequiresHTTPS(requestURL) {
 						// Modify request URL scheme from http to https
 						if generatedRequest.request.Scheme == "http" {
 							generatedRequest.request.Scheme = "https"
+							tracker.RecordCorrection()
 							gologger.Debug().Msgf("[http-to-https-tracker] Corrected HTTP to HTTPS for %s", requestURL)
 						}
 					}
@@ -906,7 +932,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				hostnameForReuse := input.MetaInput.Input
 				if generatedRequest.request.URL != nil {
 					// Use the actual request URL - normalization will extract host:port correctly
-					hostnameForReuse = generatedRequest.request.String()
+					hostnameForReuse = generatedRequest.request.URL.String()
 				} else if generatedRequest.URL() != "" {
 					// Fallback to generated request URL method
 					hostnameForReuse = generatedRequest.URL()
@@ -1035,7 +1061,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.BodyBytes()); err != nil {
+			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
@@ -1061,7 +1087,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			// Extract host:port from the request URL
 			var requestURL string
 			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-				requestURL = generatedRequest.request.String()
+				requestURL = generatedRequest.request.URL.String()
 			} else if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
 				requestURL = generatedRequest.rawRequest.FullURL
 			} else if respChain.Request() != nil && respChain.Request().URL != nil {
@@ -1155,6 +1181,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
 		interimEvent := generators.MergeMaps(generatedRequest.dynamicValues, finalEvent)
+		interimEvent["payloads"] = generatedRequest.meta
 		// add the request URL pattern to the event BEFORE operators execute
 		// so that interactsh events etc can also access it
 		if request.options.ExportReqURLPattern {

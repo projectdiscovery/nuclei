@@ -11,7 +11,7 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -57,6 +57,12 @@ type Executer interface {
 	ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error)
 }
 
+// TemplateVerification holds cached verification information for a template.
+type TemplateVerification struct {
+	Verified bool
+	Verifier string
+}
+
 // ExecutorOptions contains the configuration options for executer clients
 type ExecutorOptions struct {
 	// TemplateID is the ID of the template for the request
@@ -67,6 +73,9 @@ type ExecutorOptions struct {
 	TemplateInfo model.Info
 	// TemplateVerifier is the verifier for the template
 	TemplateVerifier string
+	// TemplateVerificationCallback returns cached verification info for a template path.
+	// If it returns nil, verification should be computed normally.
+	TemplateVerificationCallback func(templatePath string) *TemplateVerification
 	// RawTemplate is the raw template for the request
 	RawTemplate []byte
 	// Output is a writer interface for writing output events from executer.
@@ -110,7 +119,7 @@ type ExecutorOptions struct {
 	// DoNotCache bool disables optional caching of the templates structure
 	DoNotCache bool
 
-	Colorizer      aurora.Aurora
+	Colorizer      *aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 	ResumeCfg      *types.ResumeCfg
 	// ProtocolType is the type of the template
@@ -138,6 +147,8 @@ type ExecutorOptions struct {
 	Logger *gologger.Logger
 	// CustomFastdialer is a fastdialer dialer instance
 	CustomFastdialer *fastdialer.Dialer
+	// ClusterMappings stores cluster ID to template IDs mapping during execution
+	ClusterMappings *templateTypes.ClusterMappingsMap
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
@@ -266,6 +277,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		TemplatePath:        e.TemplatePath,
 		TemplateInfo:        e.TemplateInfo,
 		TemplateVerifier:    e.TemplateVerifier,
+		TemplateVerificationCallback: e.TemplateVerificationCallback,
 		RawTemplate:         e.RawTemplate,
 		Output:              e.Output,
 		Options:             e.Options,
@@ -300,6 +312,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		GlobalMatchers:      e.GlobalMatchers,
 		Logger:              e.Logger,
 	}
+	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
 	return copy
 }
@@ -472,4 +485,5 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.GlobalMatchers = n.GlobalMatchers
 	e.Logger = n.Logger
 	e.CustomFastdialer = n.CustomFastdialer
+	e.ClusterMappings = n.ClusterMappings.Copy()
 }

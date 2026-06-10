@@ -24,6 +24,7 @@ func GetNewTemplatesInVersions(versions ...string) []string {
 	for _, v := range versions {
 		if v == config.DefaultConfig.TemplateVersion {
 			allTemplates = append(allTemplates, config.DefaultConfig.GetNewAdditions()...)
+			continue
 		}
 		_, err := semver.NewVersion(v)
 		if err != nil {

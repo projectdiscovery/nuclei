@@ -1,7 +1,6 @@
 package smtp
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/smtp"
@@ -95,7 +94,7 @@ func (c *Client) IsSMTP() (SMTPResponse, error) {
 		return SMTPResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(c.host, c.port))
+	conn, err := dialer.Fastdialer.Dial(c.nj.Context(), "tcp", net.JoinHostPort(c.host, c.port))
 	if err != nil {
 		return resp, err
 	}
@@ -139,7 +138,7 @@ func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
 	}
 
 	addr := net.JoinHostPort(c.host, c.port)
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", addr)
+	conn, err := dialer.Fastdialer.Dial(c.nj.Context(), "tcp", addr)
 	if err != nil {
 		return false, err
 	}

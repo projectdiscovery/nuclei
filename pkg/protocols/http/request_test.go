@@ -20,7 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func TestHTTPExtractMultipleReuse(t *testing.T) {
@@ -273,6 +273,9 @@ func (f *fakeHostErrorsCache) MarkFailedOrRemove(string, *contextargs.Context, e
 
 // Check always returns true to simulate an already unresponsive host
 func (f *fakeHostErrorsCache) Check(string, *contextargs.Context) bool { return true }
+
+// IsPermanentErr returns false for tests
+func (f *fakeHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool { return false }
 
 func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
 	options := testutils.DefaultOptions

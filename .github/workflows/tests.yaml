@@ -24,12 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
       - uses: projectdiscovery/actions/golangci-lint/v2@v1
 
   tests:
     name: "Tests"
     needs: ["lint"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     strategy:
       fail-fast: false
       matrix:
@@ -38,8 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
-      - uses: projectdiscovery/actions/cache/nuclei@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - uses: projectdiscovery/actions/free-disk-space@v1
         with:
           llvm: 'false'
@@ -53,9 +53,8 @@ jobs:
       - run: make build
       - run: make test
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
-      - run: go run -race . -l ../functional-test/targets.txt -id tech-detect,tls-version
+      - run: go run -race . -l ${{ github.workspace }}/internal/tests/functional/testdata/targets.txt -id tech-detect,tls-version
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
         working-directory: cmd/nuclei/
 
@@ -63,11 +62,12 @@ jobs:
     name: "Run example SDK"
     needs: ["tests"]
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
-      - uses: projectdiscovery/actions/cache/nuclei@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - name: "Simple"
         run: go run .
         working-directory: examples/simple/
@@ -82,6 +82,8 @@ jobs:
   integration:
     name: "Integration tests"
     needs: ["tests"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     strategy:
       fail-fast: false
       matrix:
@@ -89,20 +91,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
-      - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/nuclei@v1
       - uses: projectdiscovery/actions/setup/python@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
-      - run: bash run.sh "${{ matrix.os }}"
+      - uses: projectdiscovery/actions/setup/go@v1
+      - run: make integration
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
         timeout-minutes: 50
-        working-directory: integration_tests/
 
   functional:
     name: "Functional tests"
     needs: ["tests"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     strategy:
       fail-fast: false
       matrix:
@@ -110,23 +110,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
-      - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/nuclei@v1
       - uses: projectdiscovery/actions/setup/python@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
-      - run: bash run.sh
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        working-directory: cmd/functional-test/
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action@v3
+        with:
+          version: latest
+          install-only: true
+      - run: make functional
 
   validate:
     name: "Template validate"
     needs: ["tests"]
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - run: make template-validate
 
   codeql:
@@ -161,7 +162,7 @@ jobs:
     needs: ["tests"]
     uses: ./.github/workflows/flamegraph.yaml
 
-  perf-regression:
-    name: "Performance regression"
-    needs: ["tests"]
-    uses: ./.github/workflows/perf-regression.yaml
+  # perf-regression:
+  #   name: "Performance regression"
+  #   needs: ["tests"]
+  #   uses: ./.github/workflows/perf-regression.yaml

@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	testCertFile = "../../../integration_tests/protocols/keys/ci.crt"
-	testKeyFile  = "../../../integration_tests/protocols/keys/ci-private-key.pem"
+	testCertFile = "testdata/ci.crt"
+	testKeyFile  = "testdata/ci-private-key.pem"
 )
 
 type mockSignableTemplate struct {

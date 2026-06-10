@@ -28,25 +28,6 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-var (
-	forceMaxRedirects int
-)
-
-// Init initializes the clientpool implementation
-func Init(options *types.Options) error {
-	if options.ShouldFollowHTTPRedirects() {
-		forceMaxRedirects = options.MaxRedirects
-	}
-
-	// Initialize connection reuse tracker early to ensure it's always available for tracking
-	_ = GetConnectionReuseTracker(options)
-
-	// Initialize HTTP-to-HTTPS port tracker early to ensure it's always available
-	_ = GetHTTPToHTTPSPortTracker(options)
-
-	return nil
-}
-
 // ConnectionConfiguration contains the custom configuration options for a connection
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
@@ -198,6 +179,15 @@ func hashWithCookieJar(hash string, configuration *Configuration) string {
 	return hash
 }
 
+// clientConnSettings holds the transport-level connection settings that differ
+// between the standard and sharded client creation paths
+type clientConnSettings struct {
+	disableKeepAlives   bool
+	maxIdleConns        int
+	maxIdleConnsPerHost int
+	maxConnsPerHost     int
+}
+
 // wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var err error
@@ -214,10 +204,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	// Multiple Host
 	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
-	disableKeepAlives := true
-	maxIdleConns := 0
-	maxConnsPerHost := 0
-	maxIdleConnsPerHost := -1
+	conn := clientConnSettings{
+		disableKeepAlives:   true,
+		maxIdleConns:        0,
+		maxConnsPerHost:     0,
+		maxIdleConnsPerHost: -1,
+	}
 	// do not split given timeout into chunks for retry
 	// because this won't work on slow hosts
 	retryableHttpOptions.NoAdjustTimeout = true
@@ -225,12 +217,45 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	// with threading always allow connection reuse
 	if configuration.Threads > 0 {
 		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
-		disableKeepAlives = false
-		maxIdleConnsPerHost = 500
-		maxConnsPerHost = 500
-		maxIdleConns = 500
+		conn = clientConnSettings{
+			disableKeepAlives:   false,
+			maxIdleConns:        500,
+			maxConnsPerHost:     500,
+			maxIdleConnsPerHost: 500,
+		}
 	}
 
+	client, err := buildHTTPClient(options, configuration, dialers, retryableHttpOptions, conn)
+	if err != nil {
+		return nil, err
+	}
+
+	var jar *cookiejar.Jar
+	if configuration.Connection != nil && configuration.Connection.HasCookieJar() {
+		jar = configuration.Connection.GetCookieJar()
+	} else if !configuration.DisableCookie {
+		if jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
+			return nil, errors.Wrap(err, "could not create cookiejar")
+		}
+	}
+	if jar != nil {
+		client.HTTPClient.Jar = jar
+	}
+
+	if jar == nil || isMultiThreadWithJar(configuration) {
+		if err := dialers.HTTPClientPool.Set(hash, client); err != nil {
+			return nil, err
+		}
+	}
+
+	return client, nil
+}
+
+// buildHTTPClient creates a retryablehttp client from the given configuration
+// and connection settings. It contains the creation logic shared between the
+// standard pool (wrappedGet) and the sharded pool (createShardClient):
+// redirects, TLS, timeouts, transport and proxy wiring.
+func buildHTTPClient(options *types.Options, configuration *Configuration, dialers *protocolstate.Dialers, retryableHttpOptions retryablehttp.Options, conn clientConnSettings) (*retryablehttp.Client, error) {
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
 	retryableHttpOptions.RetryMax = options.Retries
 	retryableHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
@@ -240,7 +265,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
 
-	if forceMaxRedirects > 0 {
+	if options.ShouldFollowHTTPRedirects() {
 		// by default we enable general redirects following
 		switch {
 		case options.FollowHostRedirects:
@@ -248,7 +273,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		default:
 			redirectFlow = FollowAllRedirect
 		}
-		maxRedirects = forceMaxRedirects
+		if options.MaxRedirects > 0 {
+			maxRedirects = options.MaxRedirects
+		}
 	}
 	if options.DisableRedirects {
 		options.FollowRedirects = false
@@ -259,7 +286,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	// override connection's settings if required
 	if configuration.Connection != nil {
-		disableKeepAlives = configuration.Connection.DisableKeepAlive
+		conn.disableKeepAlives = configuration.Connection.DisableKeepAlive
 	}
 
 	// Set the base TLS configuration definition
@@ -275,7 +302,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	// Add the client certificate authentication to the request if it's configured
-	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create client certificate")
 	}
@@ -306,11 +333,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 			}
 			return dialers.Fastdialer.DialTLS(ctx, network, addr)
 		},
-		MaxIdleConns:          maxIdleConns,
-		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
-		MaxConnsPerHost:       maxConnsPerHost,
+		MaxIdleConns:          conn.maxIdleConns,
+		MaxIdleConnsPerHost:   conn.maxIdleConnsPerHost,
+		MaxConnsPerHost:       conn.maxConnsPerHost,
 		TLSClientConfig:       tlsConfig,
-		DisableKeepAlives:     disableKeepAlives,
+		DisableKeepAlives:     conn.disableKeepAlives,
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
@@ -352,15 +379,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		}
 	}
 
-	var jar *cookiejar.Jar
-	if configuration.Connection != nil && configuration.Connection.HasCookieJar() {
-		jar = configuration.Connection.GetCookieJar()
-	} else if !configuration.DisableCookie {
-		if jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
-			return nil, errors.Wrap(err, "could not create cookiejar")
-		}
-	}
-
 	httpclient := &http.Client{
 		Transport:     transport,
 		CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
@@ -372,18 +390,48 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		}
 	}
 	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
-	if jar != nil {
-		client.HTTPClient.Jar = jar
-	}
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	if jar == nil || isMultiThreadWithJar(configuration) {
-		if err := dialers.HTTPClientPool.Set(hash, client); err != nil {
-			return nil, err
-		}
+	return client, nil
+}
+
+// hasExplicitCookieJar reports whether the configuration carries an explicit
+// cookie jar (e.g. multi-step templates with cookie-reuse). Such configurations
+// must use the standard pool so the provided jar is wired into the client.
+func hasExplicitCookieJar(configuration *Configuration) bool {
+	return configuration.Connection != nil && configuration.Connection.HasCookieJar()
+}
+
+// getFromPerHostPool returns a client from the per-host pool, creating the pool
+// and the per-target client lazily
+func getFromPerHostPool(dialers *protocolstate.Dialers, options *types.Options, configuration *Configuration, targetURL string) (*retryablehttp.Client, error) {
+	dialers.Lock()
+	if dialers.PerHostHTTPPool == nil {
+		dialers.PerHostHTTPPool = NewPerHostClientPool(1024, 5*time.Minute, 30*time.Minute)
+	}
+	poolAny := dialers.PerHostHTTPPool
+	dialers.Unlock()
+
+	pool, ok := poolAny.(*PerHostClientPool)
+	if !ok || pool == nil {
+		return Get(options, configuration)
 	}
 
-	return client, nil
+	return pool.GetOrCreate(targetURL, func() (*retryablehttp.Client, error) {
+		cfg := configuration.Clone()
+		if cfg.Connection == nil {
+			cfg.Connection = &ConnectionConfiguration{}
+		}
+		cfg.Connection.DisableKeepAlive = false
+
+		// Override Threads to force connection pool settings
+		originalThreads := cfg.Threads
+		cfg.Threads = 1
+		client, err := wrappedGet(options, cfg)
+		cfg.Threads = originalThreads
+
+		return client, err
+	})
 }
 
 // GetForTarget creates or gets a client for a specific target
@@ -405,36 +453,28 @@ func GetForTarget(options *types.Options, configuration *Configuration, targetUR
 		return Get(options, configuration)
 	}
 
+	// Explicit cookie jars (e.g. multi-step templates with cookie-reuse) must be
+	// wired into the client directly: per-host pooled clients are keyed by target
+	// only and sharded clients have cookies disabled, so both would lose or mix
+	// session state. Route these to the standard pool which honors the jar.
+	if hasExplicitCookieJar(configuration) {
+		return Get(options, configuration)
+	}
+
 	// Priority 1: Per-host pooling (if flag is set)
 	if options.PerHostClientPool {
-		dialers.Lock()
-		if dialers.PerHostHTTPPool == nil {
-			dialers.PerHostHTTPPool = NewPerHostClientPool(1024, 5*time.Minute, 30*time.Minute)
-		}
-		dialers.Unlock()
-
-		pool, ok := dialers.PerHostHTTPPool.(*PerHostClientPool)
-		if ok && pool != nil {
-			return pool.GetOrCreate(targetURL, func() (*retryablehttp.Client, error) {
-				cfg := configuration.Clone()
-				if cfg.Connection == nil {
-					cfg.Connection = &ConnectionConfiguration{}
-				}
-				cfg.Connection.DisableKeepAlive = false
-
-				// Override Threads to force connection pool settings
-				originalThreads := cfg.Threads
-				cfg.Threads = 1
-				client, err := wrappedGet(options, cfg)
-				cfg.Threads = originalThreads
-
-				return client, err
-			})
-		}
+		return getFromPerHostPool(dialers, options, configuration, targetURL)
 	}
 
 	// Priority 2: Sharded pooling (if flag is set)
 	if options.HTTPClientShards {
+		// Sharded clients are shared across hosts and have cookies disabled, so
+		// cookie-dependent configurations are routed to the per-host pool which
+		// keeps clients and cookie jars isolated per target (concurrent-safe)
+		if !configuration.DisableCookie {
+			return getFromPerHostPool(dialers, options, configuration, targetURL)
+		}
+
 		dialers.Lock()
 		if dialers.ShardedHTTPPool == nil {
 			// Calculate optimal shard count based on input size
@@ -448,9 +488,10 @@ func GetForTarget(options *types.Options, configuration *Configuration, targetUR
 			}
 			dialers.ShardedHTTPPool = pool
 		}
+		poolAny := dialers.ShardedHTTPPool
 		dialers.Unlock()
 
-		pool, ok := dialers.ShardedHTTPPool.(*ShardedClientPool)
+		pool, ok := poolAny.(*ShardedClientPool)
 		if ok && pool != nil {
 			client, _ := pool.GetClientForHost(targetURL)
 			return client, nil
@@ -481,9 +522,10 @@ func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.
 		// This ensures all hosts are tracked throughout the entire scan, even for very long scans
 		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(1024, 24*time.Hour, 24*time.Hour, options)
 	}
+	poolAny := dialers.PerHostRateLimitPool
 	dialers.Unlock()
 
-	pool, ok := dialers.PerHostRateLimitPool.(*PerHostRateLimitPool)
+	pool, ok := poolAny.(*PerHostRateLimitPool)
 	if !ok || pool == nil {
 		return nil, nil
 	}
@@ -502,7 +544,11 @@ func RecordPerHostRateLimitRequest(options *types.Options, hostname string) {
 		return
 	}
 
-	pool, ok := dialers.PerHostRateLimitPool.(*PerHostRateLimitPool)
+	dialers.Lock()
+	poolAny := dialers.PerHostRateLimitPool
+	dialers.Unlock()
+
+	pool, ok := poolAny.(*PerHostRateLimitPool)
 	if !ok || pool == nil {
 		return
 	}
@@ -525,9 +571,10 @@ func GetConnectionReuseTracker(options *types.Options) *ConnectionReuseTracker {
 		// This ensures all hosts are tracked throughout the entire scan, even for very long scans
 		dialers.ConnectionReuseTracker = NewConnectionReuseTracker(1024, 24*time.Hour, 24*time.Hour)
 	}
+	trackerAny := dialers.ConnectionReuseTracker
 	dialers.Unlock()
 
-	tracker, ok := dialers.ConnectionReuseTracker.(*ConnectionReuseTracker)
+	tracker, ok := trackerAny.(*ConnectionReuseTracker)
 	if !ok || tracker == nil {
 		return nil
 	}
@@ -546,9 +593,10 @@ func GetHTTPToHTTPSPortTracker(options *types.Options) *HTTPToHTTPSPortTracker {
 	if dialers.HTTPToHTTPSPortTracker == nil {
 		dialers.HTTPToHTTPSPortTracker = NewHTTPToHTTPSPortTracker()
 	}
+	trackerAny := dialers.HTTPToHTTPSPortTracker
 	dialers.Unlock()
 
-	tracker, ok := dialers.HTTPToHTTPSPortTracker.(*HTTPToHTTPSPortTracker)
+	tracker, ok := trackerAny.(*HTTPToHTTPSPortTracker)
 	if !ok || tracker == nil {
 		return nil
 	}
@@ -590,6 +638,7 @@ const (
 	DontFollowRedirect RedirectFlow = iota
 	FollowSameHostRedirect
 	FollowAllRedirect
+	FollowSameSchemeRedirect
 )
 
 const defaultMaxRedirects = 10
@@ -602,21 +651,44 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 		case DontFollowRedirect:
 			return http.ErrUseLastResponse
 		case FollowSameHostRedirect:
-			var newHost = req.URL.Host
-			var oldHost = via[0].Host
-			if oldHost == "" {
-				oldHost = via[0].URL.Host
+			var newHost = normalizeHost(req.URL)
+			var oldHost string
+			if via[0].Host != "" {
+				oldHost = normalizeHost(&url.URL{Scheme: via[0].URL.Scheme, Host: via[0].Host})
+			} else {
+				oldHost = normalizeHost(via[0].URL)
 			}
 			if newHost != oldHost {
-				// Tell the http client to not follow redirect
 				return http.ErrUseLastResponse
 			}
 			return checkMaxRedirects(req, via, maxRedirects)
 		case FollowAllRedirect:
 			return checkMaxRedirects(req, via, maxRedirects)
+		case FollowSameSchemeRedirect:
+			previousScheme := via[len(via)-1].URL.Scheme
+			if req.URL.Scheme != previousScheme {
+				return http.ErrUseLastResponse
+			}
+			return checkMaxRedirects(req, via, maxRedirects)
 		}
 		return nil
 	}
+}
+
+// normalizeHost strips default ports (80 for http, 443 for https) from
+// the URL host so that "example.com:80" and "example.com" compare equal.
+func normalizeHost(u *url.URL) string {
+	host, port, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return u.Host
+	}
+	if (u.Scheme == "http" && port == "80") || (u.Scheme == "https" && port == "443") {
+		if strings.Contains(host, ":") {
+			return "[" + host + "]"
+		}
+		return host
+	}
+	return u.Host
 }
 
 func checkMaxRedirects(req *http.Request, via []*http.Request, maxRedirects int) error {

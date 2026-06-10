@@ -45,7 +45,7 @@ func TestSimpleNuclei(t *testing.T) {
 		defer ne.Close()
 	}
 
-	// this is shared test so needs to be run as seperate process
+	// this is shared test so needs to be run as separate process
 	if env.GetEnvOrDefault("TestSimpleNuclei", false) {
 		// run as new process
 		cmd := exec.Command(os.Args[0], "-test.run=TestSimpleNuclei")
@@ -84,7 +84,7 @@ func TestSimpleNucleiRemote(t *testing.T) {
 		require.Nil(t, err)
 		defer ne.Close()
 	}
-	// this is shared test so needs to be run as seperate process
+	// this is shared test so needs to be run as separate process
 	if env.GetEnvOrDefault("TestSimpleNucleiRemote", false) {
 		cmd := exec.Command(os.Args[0], "-test.run=TestSimpleNucleiRemote")
 		cmd.Env = append(os.Environ(), "TestSimpleNucleiRemote=true")
@@ -158,7 +158,7 @@ func TestWithVarsNuclei(t *testing.T) {
 		require.Nil(t, err)
 		defer ne.Close()
 	}
-	// this is shared test so needs to be run as seperate process
+	// this is shared test so needs to be run as separate process
 	if env.GetEnvOrDefault("TestWithVarsNuclei", false) {
 		cmd := exec.Command(os.Args[0], "-test.run=TestWithVarsNuclei")
 		cmd.Env = append(os.Environ(), "TestWithVarsNuclei=true")

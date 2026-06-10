@@ -11,8 +11,8 @@ Nuclei is a modern, high-performance vulnerability scanner built in Go that leve
 ### Building and Testing
 - `make build` - Build the main nuclei binary to ./bin/nuclei
 - `make test` - Run unit tests with race detection
-- `make integration` - Run integration tests (builds and runs test suite)
-- `make functional` - Run functional tests
+- `make integration` - Run the native integration suite via `go test -tags=integration ./internal/tests/integration`
+- `make functional` - CI-only functional suite entry point
 - `make vet` - Run go vet for code analysis
 - `make tidy` - Clean up go modules
 
@@ -29,7 +29,7 @@ Nuclei is a modern, high-performance vulnerability scanner built in Go that leve
 
 ### Testing Specific Components
 - Run single test: `go test -v ./pkg/path/to/package -run TestName`
-- Integration tests are in `integration_tests/` and can be run via `make integration`
+- Integration tests are in `internal/tests/integration/` and run via `go test -tags=integration ./internal/tests/integration`
 
 ## Architecture Overview
 
@@ -77,7 +77,8 @@ Each protocol (HTTP, DNS, Network, etc.) implements:
 ## Key Directories
 - **lib/** - SDK for embedding nuclei as a library
 - **examples/** - Usage examples for different scenarios
-- **integration_tests/** - Integration test suite with protocol-specific tests
+- **internal/tests/integration/** - Native integration suite and owned testdata for harness coverage
+- **internal/tests/functional/** - CI-only native functional comparison suite and testcase assets
 - **pkg/fuzz/** - Fuzzing engine and DAST capabilities
 - **pkg/input/** - Input processing for various formats (Burp, OpenAPI, etc.)
 - **pkg/reporting/** - Result export and issue tracking integrations

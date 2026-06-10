@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -227,7 +226,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
-	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
+	if parsedAddress.Path == "" || parsedAddress.Path == "/" {
+		parsedAddress.Path = parsed.Path
+	}
 	addressToDial = parsedAddress.String()
 
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)

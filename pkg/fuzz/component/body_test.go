@@ -2,9 +2,11 @@ package component
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -172,4 +174,73 @@ func TestMultiPartFormComponent(t *testing.T) {
 	require.Contains(t, string(newBody), "updatedTestPass", "unexpected body content")
 	require.Contains(t, string(newBody), "username", "unexpected body content")
 	require.Contains(t, string(newBody), "testuser", "unexpected body content")
+}
+
+// each goroutine creates its own multipart body with a unique boundary
+// and parses it concurrently. before the fix this would crash with
+// "fatal error: concurrent map writes" because all goroutines shared
+// the same MultiPartForm singleton.
+func TestMultiPartFormConcurrentParse(t *testing.T) {
+	const goroutines = 20
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	errs := make(chan error, goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+
+			formData := &bytes.Buffer{}
+			writer := multipart.NewWriter(formData)
+			_ = writer.WriteField("field", fmt.Sprintf("value-%d", id))
+			contentType := writer.FormDataContentType()
+			_ = writer.Close()
+
+			req, err := retryablehttp.NewRequest("POST", "https://example.com", bytes.NewReader(formData.Bytes()))
+			if err != nil {
+				errs <- fmt.Errorf("goroutine %d: new request: %w", id, err)
+				return
+			}
+			req.Header.Set("Content-Type", contentType)
+
+			body := NewBody()
+			parsed, err := body.Parse(req)
+			if err != nil {
+				errs <- fmt.Errorf("goroutine %d: parse: %w", id, err)
+				return
+			}
+			if !parsed {
+				errs <- fmt.Errorf("goroutine %d: body was not parsed", id)
+				return
+			}
+
+			_ = body.SetValue("field", fmt.Sprintf("fuzzed-%d", id))
+
+			rebuilt, err := body.Rebuild()
+			if err != nil {
+				errs <- fmt.Errorf("goroutine %d: rebuild: %w", id, err)
+				return
+			}
+
+			rebuiltBody, err := io.ReadAll(rebuilt.Body)
+			if err != nil {
+				errs <- fmt.Errorf("goroutine %d: read rebuilt body: %w", id, err)
+				return
+			}
+
+			expected := fmt.Sprintf("fuzzed-%d", id)
+			if !strings.Contains(string(rebuiltBody), expected) {
+				errs <- fmt.Errorf("goroutine %d: rebuilt body missing %q", id, expected)
+				return
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		t.Error(err)
+	}
 }

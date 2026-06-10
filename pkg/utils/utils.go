@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"golang.org/x/exp/constraints"
 )
 
 func IsBlank(value string) bool {
@@ -66,11 +66,11 @@ func StringSliceContains(slice []string, item string) bool {
 }
 
 // MapHash generates a hash for any give map
-func MapHash[K constraints.Ordered, V any](m map[K]V) uint64 {
+func MapHash[K cmp.Ordered, V any](m map[K]V) uint64 {
 	keys := mapsutil.GetSortedKeys(m)
 	var sb strings.Builder
 	for _, k := range keys {
-		sb.WriteString(fmt.Sprintf("%v:%v\n", k, m[k]))
+		fmt.Fprintf(&sb, "%v:%v\n", k, m[k])
 	}
 	return xxhash.Sum64([]byte(sb.String()))
 }
