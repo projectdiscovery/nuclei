@@ -8,15 +8,13 @@ import (
 	"time"
 
 	"github.com/invopop/jsonschema"
-	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -25,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
 	fileutil "github.com/projectdiscovery/utils/file"
