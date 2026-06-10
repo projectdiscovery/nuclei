@@ -22,6 +22,8 @@ func TestRawRequestFromFuzzDataSeedCorpus(t *testing.T) {
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
 
+		require.Truef(t, fuzzRawRequestParsing(data), "seed %s should exercise the raw request parser fuzz path", entry.Name())
+
 		raw, targetURL, ok := rawRequestFromFuzzData(data)
 		require.Truef(t, ok, "seed %s should decode into a raw request", entry.Name())
 		require.NotEmpty(t, raw)

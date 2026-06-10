@@ -54,10 +54,7 @@ func fuzzTemplateParsing(data []byte) bool {
 	candidate := newFuzzTemplateCandidate(data)
 	candidate.applyLines(splitFuzzLines(data))
 
-	parsed := false
-	if exerciseFuzzYAMLTemplate(candidate.yaml()) {
-		parsed = true
-	}
+	parsed := exerciseFuzzYAMLTemplate(candidate.yaml())
 	if exerciseFuzzJSONTemplate(candidate.json()) {
 		parsed = true
 	}
