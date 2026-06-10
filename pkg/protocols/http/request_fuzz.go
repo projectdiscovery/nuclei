@@ -184,8 +184,8 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	// Extract hostname for per-host rate limiting: prefer the concrete fuzzed
 	// request URL (rules may change host/port), fall back to the input target
 	hostname := input.MetaInput.Input
-	if gr.Request != nil && gr.Request.URL != nil {
-		hostname = gr.Request.URL.String()
+	if gr.Request != nil && gr.Request.Request != nil && gr.Request.Request.URL != nil {
+		hostname = gr.Request.Request.URL.String()
 	}
 	request.rateLimitTake(hostname)
 	req := &generatedRequest{

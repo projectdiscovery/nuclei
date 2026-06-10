@@ -289,9 +289,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				hostname := t.updatedInput.MetaInput.Input
 				if t.req != nil && t.req.URL() != "" {
 					hostname = t.req.URL()
-				} else if t.req != nil && t.req.request != nil && t.req.request.URL != nil {
+				} else if t.req != nil && t.req.request != nil && t.req.request.Request != nil && t.req.request.Request.URL != nil {
 					// Extract from request URL if available
-					hostname = t.req.request.URL.String()
+					hostname = t.req.request.Request.URL.String()
 				}
 				request.rateLimitTake(hostname)
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
@@ -763,8 +763,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if dumpError != nil {
 			return dumpError
 		}
-		if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.URL.Host)
+		if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
 		} else {
 			projectCacheKey = dumpedRequest
 		}
@@ -865,8 +865,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 			// Extract target URL for per-host pooling (use request URL or fallback to input)
 			targetURL := input.MetaInput.Input
-			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-				targetURL = generatedRequest.request.URL.String()
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				targetURL = generatedRequest.request.Request.URL.String()
 			}
 
 			// this will be assigned/updated if this specific request has a custom configuration
@@ -911,10 +911,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request
-			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 				tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options)
 				if tracker != nil {
-					requestURL := generatedRequest.request.URL.String()
+					requestURL := generatedRequest.request.Request.URL.String()
 					if tracker.RequiresHTTPS(requestURL) {
 						// Modify request URL scheme from http to https
 						if generatedRequest.request.Scheme == "http" {
@@ -930,9 +930,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if generatedRequest.request != nil {
 				// Extract hostname for connection reuse tracking (use actual request URL, same as rate limiting)
 				hostnameForReuse := input.MetaInput.Input
-				if generatedRequest.request.URL != nil {
+				if generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 					// Use the actual request URL - normalization will extract host:port correctly
-					hostnameForReuse = generatedRequest.request.URL.String()
+					hostnameForReuse = generatedRequest.request.Request.URL.String()
 				} else if generatedRequest.URL() != "" {
 					// Fallback to generated request URL method
 					hostnameForReuse = generatedRequest.URL()
@@ -1086,8 +1086,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
 			// Extract host:port from the request URL
 			var requestURL string
-			if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-				requestURL = generatedRequest.request.URL.String()
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				requestURL = generatedRequest.request.Request.URL.String()
 			} else if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
 				requestURL = generatedRequest.rawRequest.FullURL
 			} else if respChain.Request() != nil && respChain.Request().URL != nil {
