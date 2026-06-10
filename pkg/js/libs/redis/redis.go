@@ -197,7 +197,7 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	}()
 
 	// Ping the Redis server
-	_, err := client.Ping(context.TODO()).Result()
+	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return "", err
 	}
@@ -213,34 +213,47 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 			for _, item := range v {
 				keysSlice = append(keysSlice, fmt.Sprintf("%v", item))
 			}
+		case string:
+			// the goja runtime zero-fills omitted trailing JS arguments with
+			// the previous parameter's type, so a 4-arg call (old signature)
+			// delivers "" here: treat it as no keys (backwards compat)
+			if v != "" {
+				return nil, fmt.Errorf("keys must be []string or []interface{}, got string")
+			}
+		default:
+			return nil, fmt.Errorf("keys must be []string or []interface{}, got %T", keys)
 		}
 	}
 
-	// Convert interface{} to []string for args (handle backwards compatibility)
-	argsSlice := []string{}
+	// Convert interface{} args to []interface{} for Eval (handle backwards
+	// compatibility). Non-string items (numbers, booleans from JavaScript)
+	// are stringified rather than dropped: Redis ARGV values are always
+	// bulk strings on the Lua side, so "123"/"true" match JS expectations.
+	argsInterface := []interface{}{}
 	if args != nil {
 		switch v := args.(type) {
 		case []string:
-			argsSlice = v
-		case []interface{}:
-			// Convert []interface{} to []string (from JavaScript arrays)
-			argsSlice = make([]string, 0, len(v))
-			for _, item := range v {
-				if s, ok := item.(string); ok {
-					argsSlice = append(argsSlice, s)
-				}
+			argsInterface = make([]interface{}, len(v))
+			for i, arg := range v {
+				argsInterface[i] = arg
 			}
+		case []interface{}:
+			argsInterface = make([]interface{}, len(v))
+			for i, item := range v {
+				argsInterface[i] = fmt.Sprintf("%v", item)
+			}
+		case string:
+			// zero-value padding from omitted JS arguments (see keys above)
+			if v != "" {
+				return nil, fmt.Errorf("args must be []string or []interface{}, got string")
+			}
+		default:
+			return nil, fmt.Errorf("args must be []string or []interface{}, got %T", args)
 		}
 	}
 
-	// Convert []string args to []interface{} for Eval
-	argsInterface := make([]interface{}, len(argsSlice))
-	for i, arg := range argsSlice {
-		argsInterface[i] = arg
-	}
-
 	// Execute the Lua script with keys and args
-	infoCmd := client.Eval(context.Background(), script, keysSlice, argsInterface...)
+	infoCmd := client.Eval(ctx, script, keysSlice, argsInterface...)
 
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()

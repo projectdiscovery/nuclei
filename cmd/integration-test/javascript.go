@@ -40,22 +40,26 @@ func (j *javascriptNetHttps) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
-type javascriptRedisPassBrute struct{}
-
-func (j *javascriptRedisPassBrute) Execute(filePath string) error {
-	if redisResource == nil || pool == nil {
-		// skip test as redis is not running
+// executeDockerJSTest runs a nuclei template against a dockerized service,
+// retrying a few times to accommodate service startup. When purgeAfter is
+// true the container is purged once the test finishes; tests sharing a
+// resource must only purge on the last test using it.
+func executeDockerJSTest(filePath string, resource *dockertest.Resource, port string, purgeAfter bool) error {
+	if resource == nil || pool == nil {
+		// skip test as the service is not running
 		return nil
 	}
-	tempPort := redisResource.GetPort("6379/tcp")
+	tempPort := resource.GetPort(port)
 	finalURL := "localhost:" + tempPort
-	defer purge(redisResource)
+	if purgeAfter {
+		defer purge(resource)
+	}
 	errs := []error{}
 	for i := 0; i < defaultRetry; i++ {
 		results := []string{}
 		var err error
 		_ = pool.Retry(func() error {
-			// let redis server start
+			// let the service start
 			time.Sleep(3 * time.Second)
 			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
 			return nil
@@ -70,135 +74,38 @@ func (j *javascriptRedisPassBrute) Execute(filePath string) error {
 		}
 	}
 	return multierr.Combine(errs...)
+}
+
+type javascriptRedisPassBrute struct{}
+
+func (j *javascriptRedisPassBrute) Execute(filePath string) error {
+	// do not purge: the redis container is shared with javascriptRedisLuaScript
+	return executeDockerJSTest(filePath, redisResource, "6379/tcp", false)
 }
 
 type javascriptRedisLuaScript struct{}
 
 func (j *javascriptRedisLuaScript) Execute(filePath string) error {
-	if redisResource == nil || pool == nil {
-		// skip test as redis is not running
-		return nil
-	}
-	tempPort := redisResource.GetPort("6379/tcp")
-	finalURL := "localhost:" + tempPort
-	defer purge(redisResource)
-	errs := []error{}
-	for i := 0; i < defaultRetry; i++ {
-		results := []string{}
-		var err error
-		_ = pool.Retry(func() error {
-			// let redis server start
-			time.Sleep(3 * time.Second)
-			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		if err := expectResultsCount(results, 1); err == nil {
-			return nil
-		} else {
-			errs = append(errs, err)
-		}
-	}
-	return multierr.Combine(errs...)
+	// last test using the redis container: purge it once done
+	return executeDockerJSTest(filePath, redisResource, "6379/tcp", true)
 }
 
 type javascriptSSHServerFingerprint struct{}
 
 func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
-	if sshResource == nil || pool == nil {
-		// skip test as redis is not running
-		return nil
-	}
-	tempPort := sshResource.GetPort("2222/tcp")
-	finalURL := "localhost:" + tempPort
-	defer purge(sshResource)
-	errs := []error{}
-	for i := 0; i < defaultRetry; i++ {
-		results := []string{}
-		var err error
-		_ = pool.Retry(func() error {
-			// let ssh server start
-			time.Sleep(3 * time.Second)
-			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		if err := expectResultsCount(results, 1); err == nil {
-			return nil
-		} else {
-			errs = append(errs, err)
-		}
-	}
-	return multierr.Combine(errs...)
+	return executeDockerJSTest(filePath, sshResource, "2222/tcp", true)
 }
 
 type javascriptOracleAuthTest struct{}
 
 func (j *javascriptOracleAuthTest) Execute(filePath string) error {
-	if oracleResource == nil || pool == nil {
-		// skip test as oracle is not running
-		return nil
-	}
-	tempPort := oracleResource.GetPort("1521/tcp")
-	finalURL := "localhost:" + tempPort
-	defer purge(oracleResource)
-
-	errs := []error{}
-	for i := 0; i < defaultRetry; i++ {
-		results := []string{}
-		var err error
-		_ = pool.Retry(func() error {
-			// let oracle server start
-			time.Sleep(3 * time.Second)
-			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		if err := expectResultsCount(results, 1); err == nil {
-			return nil
-		} else {
-			errs = append(errs, err)
-		}
-	}
-	return multierr.Combine(errs...)
+	return executeDockerJSTest(filePath, oracleResource, "1521/tcp", true)
 }
 
 type javascriptVncPassBrute struct{}
 
 func (j *javascriptVncPassBrute) Execute(filePath string) error {
-	if vncResource == nil || pool == nil {
-		// skip test as vnc is not running
-		return nil
-	}
-	tempPort := vncResource.GetPort("5900/tcp")
-	finalURL := "localhost:" + tempPort
-	defer purge(vncResource)
-	errs := []error{}
-	for i := 0; i < defaultRetry; i++ {
-		results := []string{}
-		var err error
-		_ = pool.Retry(func() error {
-			// let vnc server start
-			time.Sleep(3 * time.Second)
-			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		if err := expectResultsCount(results, 1); err == nil {
-			return nil
-		} else {
-			errs = append(errs, err)
-		}
-	}
-	return multierr.Combine(errs...)
+	return executeDockerJSTest(filePath, vncResource, "5900/tcp", true)
 }
 
 type javascriptMultiPortsSSH struct{}
@@ -250,8 +157,10 @@ func init() {
 		log.Printf("Could not start resource: %s", err)
 		return
 	}
-	// by default expire after 30 sec
-	if err := redisResource.Expire(30); err != nil {
+	// the redis container is shared by two sequential testcases (pass-brute
+	// and lua-script), so give it a longer hard-kill window; the last test
+	// purges it explicitly anyway
+	if err := redisResource.Expire(180); err != nil {
 		log.Printf("Could not expire resource: %s", err)
 	}
 
