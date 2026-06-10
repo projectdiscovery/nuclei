@@ -37,14 +37,19 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	for _, query := range e.JSON {
-		query, err := gojq.Parse(query)
+		if cached, err := cache.JQ().GetIFPresent(query); err == nil && cached != nil {
+			e.jsonCompiled = append(e.jsonCompiled, cached)
+			continue
+		}
+		parsed, err := gojq.Parse(query)
 		if err != nil {
 			return fmt.Errorf("could not parse json: %s", query)
 		}
-		compiled, err := gojq.Compile(query)
+		compiled, err := gojq.Compile(parsed)
 		if err != nil {
 			return fmt.Errorf("could not compile json: %s", query)
 		}
+		_ = cache.JQ().Set(query, compiled)
 		e.jsonCompiled = append(e.jsonCompiled, compiled)
 	}
 

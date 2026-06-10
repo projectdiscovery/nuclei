@@ -14,7 +14,7 @@ import (
 
 // Eval compiles the given expression and evaluate it with the given values preserving the return type
 func Eval(expression string, values map[string]interface{}) (interface{}, error) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+	compiled, err := compileExprWithFunctions(expression)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		expression = replacer.Replace(expression, base)
 
 		// turns expressions (either helper functions+base values or base values)
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+		compiled, err := compileExprWithFunctions(expression)
 		if err != nil {
 			return data, fmt.Errorf("failed to compile expression %q: %w", originalExpression, err)
 		}
@@ -154,15 +154,15 @@ func isExpression(data string, base map[string]interface{}) bool {
 		return false
 	}
 
-	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
-		if stringsutil.ContainsAny(data, getFunctionsNames(base)...) {
+	if _, err := compileBareExpr(data); err == nil {
+		if baseHasAnyKey(data, base) {
 			return true
 		} else if stringsutil.ContainsAny(data, dsl.FunctionNames...) {
 			return true
 		}
 		return false
 	}
-	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
+	_, err := compileExprWithFunctions(data)
 	return err == nil
 }
 
@@ -195,12 +195,4 @@ func unresolvedVarMarkers(vars []string, base map[string]any) string {
 		}
 	}
 	return strings.Join(markers, "")
-}
-
-func getFunctionsNames(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }

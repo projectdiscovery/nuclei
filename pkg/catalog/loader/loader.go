@@ -727,28 +727,75 @@ func (store *Store) LoadTemplates(templatesList []string) ([]*templates.Template
 	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
-// LoadWorkflows takes a list of workflows and returns paths for them
+// LoadWorkflows takes a list of workflows and returns paths for them.
+//
+// Workflows are loaded concurrently using TemplateLoadingConcurrency (mirrors
+// the concurrency model of LoadTemplatesWithTags). Order is preserved by
+// pre-allocating the result slice and writing into the original index, so
+// downstream consumers see the same order as the input list.
 func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template {
 	includedWorkflows, errs := store.config.Catalog.GetTemplatesPath(workflowsList)
 	store.logErroredTemplates(errs)
 
-	loadedWorkflows := make([]*templates.Template, 0, len(includedWorkflows))
-	for _, workflowPath := range includedWorkflows {
-		loaded, err := store.config.ExecutorOptions.Parser.LoadWorkflow(workflowPath, store.config.Catalog)
-		if err != nil {
-			store.logger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
-		}
-
-		if loaded {
-			parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
-			if err != nil {
-				store.logger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
-			} else if parsed != nil {
-				loadedWorkflows = append(loadedWorkflows, parsed)
-			}
-		}
+	if len(includedWorkflows) == 0 {
+		return nil
 	}
 
+	concurrency := store.config.ExecutorOptions.Options.TemplateLoadingConcurrency
+	if concurrency <= 0 {
+		concurrency = types.DefaultTemplateLoadingConcurrency
+	}
+	wg, errWg := syncutil.New(syncutil.WithSize(concurrency))
+	if errWg != nil {
+		// Fall back to sequential on the rare error path.
+		loadedWorkflows := make([]*templates.Template, 0, len(includedWorkflows))
+		for _, workflowPath := range includedWorkflows {
+			loaded, err := store.config.ExecutorOptions.Parser.LoadWorkflow(workflowPath, store.config.Catalog)
+			if err != nil {
+				store.logger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
+			}
+			if loaded {
+				parsed, err := templates.Parse(workflowPath, store.preprocessor, store.config.ExecutorOptions)
+				if err != nil {
+					store.logger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
+				} else if parsed != nil {
+					loadedWorkflows = append(loadedWorkflows, parsed)
+				}
+			}
+		}
+		return loadedWorkflows
+	}
+
+	parsedSlots := make([]*templates.Template, len(includedWorkflows))
+	for i, workflowPath := range includedWorkflows {
+		wg.Add()
+		go func(idx int, path string) {
+			defer wg.Done()
+			loaded, err := store.config.ExecutorOptions.Parser.LoadWorkflow(path, store.config.Catalog)
+			if err != nil {
+				store.logger.Warning().Msgf("Could not load workflow %s: %s\n", path, err)
+			}
+			if !loaded {
+				return
+			}
+			parsed, err := templates.Parse(path, store.preprocessor, store.config.ExecutorOptions)
+			if err != nil {
+				store.logger.Warning().Msgf("Could not parse workflow %s: %s\n", path, err)
+				return
+			}
+			if parsed != nil {
+				parsedSlots[idx] = parsed
+			}
+		}(i, workflowPath)
+	}
+	wg.Wait()
+
+	loadedWorkflows := make([]*templates.Template, 0, len(includedWorkflows))
+	for _, p := range parsedSlots {
+		if p != nil {
+			loadedWorkflows = append(loadedWorkflows, p)
+		}
+	}
 	return loadedWorkflows
 }
 

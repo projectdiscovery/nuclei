@@ -269,8 +269,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					continue
 				}
 				request.options.RateLimitTake()
-				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
+				// Cached at Compile time; avoids walking the matcher/extractor graph per worker iteration.
+				hasInteractMatchers := request.hasInteractMatchers
+				needsRequestEvent := request.needsRequestEvent
 				select {
 				case <-spmHandler.Done():
 					spmHandler.Release()
@@ -531,7 +532,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
-			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+			// Cached at Compile time.
+			hasInteractMatchers := request.hasInteractMatchers
 
 			request.options.RateLimitTake()
 
@@ -569,7 +571,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
-				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
+				// Cached at Compile time.
+				needsRequestEvent := request.needsRequestEvent
 				if (hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
@@ -753,8 +756,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	// === apply auth strategies ===
+	var authApplied bool
 	if generatedRequest.request != nil && !request.SkipSecretFile {
-		generatedRequest.ApplyAuth(request.options.AuthProvider)
+		authApplied = generatedRequest.ApplyAuth(request.options.AuthProvider)
 	}
 
 	var formedURL string
@@ -871,15 +875,23 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// converts whitespace and other chars that cannot be printed to url encoded values
 	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
-	// Dump the requests containing all headers
-	if !generatedRequest.original.Race {
-		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
+	// Re-dump the request after auth so the value carried into the result
+	// event (and any debug/store output) reflects headers applied by
+	// ApplyAuth(). The pre-flight dump above runs before auth, so we must
+	// refresh dumpedRequest whenever auth actually mutated the request.
+	//
+	// The dump is expensive, so when auth did not touch the request we reuse
+	// the pre-flight dump and only re-run it when a debug/store consumer
+	// needs to emit it.
+	needsDebugDump := request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse
+	if !generatedRequest.original.Race && (authApplied || needsDebugDump) {
+		postAuthDump, dumpError := dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
 		}
-		dumpedRequestString := string(dumpedRequest)
-		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
+		dumpedRequest = postAuthDump
+		if needsDebugDump {
+			dumpedRequestString := string(dumpedRequest)
 			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
 			if request.options.Options.Debug || request.options.Options.DebugRequests {

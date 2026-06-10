@@ -116,29 +116,37 @@ func (gr *generatedRequest) setReqURLPattern(reqURLPattern string) {
 }
 
 // ApplyAuth applies the auth provider to the generated request
-func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
+// ApplyAuth applies any matching auth strategies onto the generated request
+// and reports whether the request was potentially mutated (i.e. at least one
+// strategy matched). Callers use the return value to decide whether a request
+// dump taken before this call is still accurate.
+func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) bool {
 	if provider == nil {
-		return
+		return false
 	}
+	var applied bool
 	if g.request != nil {
 		authStrategies := provider.LookupURLX(g.request.URL)
 		for _, strategy := range authStrategies {
 			strategy.ApplyOnRR(g.request)
+			applied = true
 		}
 	}
 	if g.rawRequest != nil {
 		parsed, err := urlutil.ParseAbsoluteURL(g.rawRequest.FullURL, true)
 		if err != nil {
 			gologger.Warning().Msgf("[authprovider] Could not parse URL %s: %s\n", g.rawRequest.FullURL, err)
-			return
+			return applied
 		}
 		authStrategies := provider.LookupURLX(parsed)
 		// here we need to apply it custom because we don't have a standard/official
 		// rawhttp request format ( which we probably should have )
 		for _, strategy := range authStrategies {
 			g.rawRequest.ApplyAuthStrategy(strategy)
+			applied = true
 		}
 	}
+	return applied
 }
 
 func (g *generatedRequest) URL() string {

@@ -5,43 +5,71 @@ import (
 	"reflect"
 )
 
-// MergeMapsMany merges many maps into a new map
+// MergeMapsMany merges many maps into a new map.
+//
+// Fast paths handle the two map shapes the codebase actually passes:
+// map[string][]string and map[string]interface{}. Other shapes fall back to
+// the reflect-based implementation. This avoids per-key reflect.Value
+// allocation on the HTTP operator-callback hot path
+// (pkg/protocols/http/request.go) which fires on every successful response.
 func MergeMapsMany(maps ...interface{}) map[string][]string {
 	m := make(map[string][]string)
+	appendToSlice := func(key, value string) {
+		m[key] = append(m[key], value)
+	}
 	for _, gotMap := range maps {
-		val := reflect.ValueOf(gotMap)
-		if val.Kind() != reflect.Map {
-			continue
-		}
-		appendToSlice := func(key, value string) {
-			if values, ok := m[key]; !ok {
-				m[key] = []string{value}
-			} else {
-				m[key] = append(values, value)
+		switch typed := gotMap.(type) {
+		case map[string][]string:
+			for k, vs := range typed {
+				m[k] = append(m[k], vs...)
 			}
-		}
-		for _, e := range val.MapKeys() {
-			v := val.MapIndex(e)
-			switch v.Kind() {
-			case reflect.Slice, reflect.Array:
-				for i := 0; i < v.Len(); i++ {
-					appendToSlice(e.String(), v.Index(i).String())
-				}
-			case reflect.String:
-				appendToSlice(e.String(), v.String())
-			case reflect.Interface:
-				switch data := v.Interface().(type) {
+		case map[string]interface{}:
+			for k, v := range typed {
+				switch data := v.(type) {
 				case string:
-					appendToSlice(e.String(), data)
+					appendToSlice(k, data)
 				case []string:
 					for _, value := range data {
-						appendToSlice(e.String(), value)
+						appendToSlice(k, value)
 					}
+				}
+			}
+		case map[string]string:
+			for k, v := range typed {
+				appendToSlice(k, v)
+			}
+		default:
+			mergeMapsManyReflect(m, gotMap, appendToSlice)
+		}
+	}
+	return m
+}
+
+func mergeMapsManyReflect(m map[string][]string, gotMap interface{}, appendToSlice func(string, string)) {
+	val := reflect.ValueOf(gotMap)
+	if val.Kind() != reflect.Map {
+		return
+	}
+	for _, e := range val.MapKeys() {
+		v := val.MapIndex(e)
+		switch v.Kind() {
+		case reflect.Slice, reflect.Array:
+			for i := 0; i < v.Len(); i++ {
+				appendToSlice(e.String(), v.Index(i).String())
+			}
+		case reflect.String:
+			appendToSlice(e.String(), v.String())
+		case reflect.Interface:
+			switch data := v.Interface().(type) {
+			case string:
+				appendToSlice(e.String(), data)
+			case []string:
+				for _, value := range data {
+					appendToSlice(e.String(), value)
 				}
 			}
 		}
 	}
-	return m
 }
 
 // MergeMaps merges multiple maps into a new map.

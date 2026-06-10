@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
@@ -140,14 +141,16 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
-	connConfiguration *httpclientpool.Configuration
-	totalRequests     int
-	customHeaders     map[string]string
-	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	httpClient        *retryablehttp.Client
-	rawhttpClient     *rawhttp.Client
-	dialer            *fastdialer.Dialer
+	options             *protocols.ExecutorOptions
+	connConfiguration   *httpclientpool.Configuration
+	totalRequests       int
+	customHeaders       map[string]string
+	generator           *generators.PayloadGenerator // optional, only enabled when using payloads
+	httpClient          *retryablehttp.Client
+	rawhttpClient       *rawhttp.Client
+	dialer              *fastdialer.Dialer
+	hasInteractMatchers bool // cached interactsh.HasMatchers(CompiledOperators) computed at Compile time
+	needsRequestEvent   bool // cached hasInteractMatchers && NeedsRequestCondition()
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -398,6 +401,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
+	// Cache interactsh.HasMatchers / NeedsRequestCondition results so per-request
+	// hot paths skip the linear matcher/extractor scan (interactsh.go ~374-394).
+	request.hasInteractMatchers = interactsh.HasMatchers(request.CompiledOperators)
+	request.needsRequestEvent = request.hasInteractMatchers && request.NeedsRequestCondition()
 
 	// === fuzzing filters ===== //
 

@@ -40,6 +40,21 @@ type StopAtFirstMatchHandler[T comparable] struct {
 	maxResults  int
 }
 
+// resultChanBuffer returns the result channel buffer for a SPM handler given
+// the pool size. We size to the pool so workers can deposit results without
+// blocking when the consumer goroutine is briefly slow. Bounded above by 64
+// to keep memory predictable for very large pools.
+func resultChanBuffer(size int) int {
+	switch {
+	case size <= 1:
+		return 1
+	case size > 64:
+		return 64
+	default:
+		return size
+	}
+}
+
 // NewBlockingSPMHandler creates a new stop at first match handler
 func NewBlockingSPMHandler[T comparable](ctx context.Context, size int, maxResults int, spm bool) *StopAtFirstMatchHandler[T] {
 	ctx1, cancel := context.WithCancel(ctx)
@@ -47,7 +62,7 @@ func NewBlockingSPMHandler[T comparable](ctx context.Context, size int, maxResul
 	awg, _ := syncutil.New(syncutil.WithSize(size))
 
 	s := &StopAtFirstMatchHandler[T]{
-		ResultChan:  make(chan T, 1),
+		ResultChan:  make(chan T, resultChanBuffer(size)),
 		poolType:    Blocking,
 		sgPool:      awg,
 		internalWg:  &sync.WaitGroup{},
@@ -66,7 +81,7 @@ func NewBlockingSPMHandler[T comparable](ctx context.Context, size int, maxResul
 func NewNonBlockingSPMHandler[T comparable](ctx context.Context, maxResults int, spm bool) *StopAtFirstMatchHandler[T] {
 	ctx1, cancel := context.WithCancel(ctx)
 	s := &StopAtFirstMatchHandler[T]{
-		ResultChan:  make(chan T, 1),
+		ResultChan:  make(chan T, 16),
 		poolType:    NonBlocking,
 		wgPool:      &sync.WaitGroup{},
 		internalWg:  &sync.WaitGroup{},

@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"sync"
 
+	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/gcache"
 	"github.com/projectdiscovery/govaluate"
 )
@@ -14,15 +15,18 @@ var (
 
 	regexCap = 4096
 	dslCap   = 4096
+	jqCap    = 2048
 
 	regexCache gcache.Cache[string, *regexp.Regexp]
 	dslCache   gcache.Cache[string, *govaluate.EvaluableExpression]
+	jqCache    gcache.Cache[string, *gojq.Code]
 )
 
 func initCaches() {
 	initOnce.Do(func() {
 		regexCache = gcache.New[string, *regexp.Regexp](regexCap).LRU().Build()
 		dslCache = gcache.New[string, *govaluate.EvaluableExpression](dslCap).LRU().Build()
+		jqCache = gcache.New[string, *gojq.Code](jqCap).LRU().Build()
 	})
 }
 
@@ -59,4 +63,14 @@ func DSL() gcache.Cache[string, *govaluate.EvaluableExpression] {
 	mu.RLock()
 	defer mu.RUnlock()
 	return dslCache
+}
+
+// JQ returns the shared LRU cache for compiled gojq programs. Sharing one
+// cache across all extractors means that thousands of templates referencing
+// the same JQ query (e.g. `.cves[]`) compile it once.
+func JQ() gcache.Cache[string, *gojq.Code] {
+	initCaches()
+	mu.RLock()
+	defer mu.RUnlock()
+	return jqCache
 }
