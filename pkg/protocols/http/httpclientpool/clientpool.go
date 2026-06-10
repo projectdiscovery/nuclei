@@ -420,6 +420,7 @@ const (
 	DontFollowRedirect RedirectFlow = iota
 	FollowSameHostRedirect
 	FollowAllRedirect
+	FollowSameSchemeRedirect
 )
 
 const defaultMaxRedirects = 10
@@ -444,6 +445,12 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 			}
 			return checkMaxRedirects(req, via, maxRedirects)
 		case FollowAllRedirect:
+			return checkMaxRedirects(req, via, maxRedirects)
+		case FollowSameSchemeRedirect:
+			previousScheme := via[len(via)-1].URL.Scheme
+			if req.URL.Scheme != previousScheme {
+				return http.ErrUseLastResponse
+			}
 			return checkMaxRedirects(req, via, maxRedirects)
 		}
 		return nil
