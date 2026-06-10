@@ -141,9 +141,9 @@ type Request struct {
 	options           *protocols.ExecutorOptions
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
-	customHeaders map[string]string
-	generator     *generators.PayloadGenerator // optional, only enabled when using payloads
-	rawhttpClient *rawhttp.Client
+	customHeaders     map[string]string
+	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
+	rawhttpClient     *rawhttp.Client
 	dialer            *fastdialer.Dialer
 
 	// description: |

@@ -225,19 +225,27 @@ func Get(options *types.Options, configuration *Configuration, host string) (*re
 
 // wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration, host string) (*retryablehttp.Client, error) {
-	var err error
-
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
 	}
+	pool := dialers.HTTPClientPool
 
-	hash := configuration.Hash()
+	// Explicit per-request cookie jars always bypass the client cache so
+	// session state is never leaked into the shared pool; they still share
+	// the pooled per-host transport below.
+	hasExplicitJar := configuration.Connection != nil && configuration.Connection.HasCookieJar()
+
+	clientKey := configuration.Hash()
 	if host != "" {
-		hash += ":" + host
+		clientKey += ":" + host
 	}
-	if client, ok := dialers.HTTPClientPool.Get(hash); ok {
-		return client, nil
+
+	// Fast path: lock-free cache hit.
+	if !hasExplicitJar {
+		if client, ok := pool.GetClient(clientKey); ok {
+			return client, nil
+		}
 	}
 
 	// Each client is scoped to a single host, so we optimize for connection
@@ -245,6 +253,12 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	// lets the transport reclaim unused connections automatically.
 	retryableHttpOptions := retryablehttp.DefaultOptionsSingle
 	retryableHttpOptions.NoAdjustTimeout = true
+	retryableHttpOptions.RetryWaitMax = 10 * time.Second
+	retryableHttpOptions.RetryMax = options.Retries
+	retryableHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
+	if configuration.ResponseHeaderTimeout > 0 && configuration.ResponseHeaderTimeout > retryableHttpOptions.Timeout {
+		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
+	}
 
 	maxIdleConns := 4
 	maxIdleConnsPerHost := 4
@@ -256,12 +270,103 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 
 	disableKeepAlives := configuration.Connection != nil && configuration.Connection.DisableKeepAlive
 
-	retryableHttpOptions.RetryWaitMax = 10 * time.Second
-	retryableHttpOptions.RetryMax = options.Retries
-	retryableHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
-	if configuration.ResponseHeaderTimeout > 0 && configuration.ResponseHeaderTimeout > retryableHttpOptions.Timeout {
-		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
+	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
+	if configuration.ResponseHeaderTimeout != 0 {
+		responseHeaderTimeout = configuration.ResponseHeaderTimeout
 	}
+	if responseHeaderTimeout < retryableHttpOptions.Timeout {
+		responseHeaderTimeout = retryableHttpOptions.Timeout
+	}
+	if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
+		responseHeaderTimeout = configuration.Connection.CustomMaxTimeout
+	}
+
+	// Transports are pooled separately from clients: only parameters that
+	// actually live on http.Transport participate in the key, so clients
+	// that differ in client-level settings (redirect policy, cookies,
+	// timeout) still share a single connection pool per host.
+	transportKey := transportHash(host, disableKeepAlives, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost, responseHeaderTimeout)
+
+	createTransport := func() (http.RoundTripper, error) {
+		// Set the base TLS configuration definition
+		tlsConfig := &tls.Config{
+			Renegotiation:      tls.RenegotiateOnceAsClient,
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS10,
+			ClientSessionCache: sharedTLSSessionCache,
+		}
+
+		if options.SNI != "" {
+			tlsConfig.ServerName = options.SNI
+		}
+
+		tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create client certificate")
+		}
+
+		transport := &http.Transport{
+			ForceAttemptHTTP2: options.ForceAttemptHTTP2,
+			DialContext:       dialers.Fastdialer.Dial,
+			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				if options.TlsImpersonate {
+					return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+				}
+				if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
+					return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+				}
+				return dialers.Fastdialer.DialTLS(ctx, network, addr)
+			},
+			MaxIdleConns:          maxIdleConns,
+			MaxIdleConnsPerHost:   maxIdleConnsPerHost,
+			MaxConnsPerHost:       maxConnsPerHost,
+			TLSClientConfig:       tlsConfig,
+			DisableKeepAlives:     disableKeepAlives,
+			IdleConnTimeout:       30 * time.Second,
+			ResponseHeaderTimeout: responseHeaderTimeout,
+		}
+
+		if options.AliveHttpProxy != "" {
+			if proxyURL, err := url.Parse(options.AliveHttpProxy); err == nil {
+				transport.Proxy = http.ProxyURL(proxyURL)
+			}
+		} else if options.AliveSocksProxy != "" {
+			socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
+			if proxyErr != nil {
+				return nil, proxyErr
+			}
+
+			dialer, err := proxy.FromURL(socksURL, proxy.Direct)
+			if err != nil {
+				return nil, err
+			}
+
+			dc := dialer.(interface {
+				DialContext(ctx context.Context, network, addr string) (net.Conn, error)
+			})
+
+			transport.DialContext = dc.DialContext
+			transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				// upgrade proxy connection to tls
+				conn, err := dc.DialContext(ctx, network, addr)
+				if err != nil {
+					return nil, err
+				}
+				if tlsConfig.ServerName == "" {
+					// addr should be in form of host:port already set from canonicalAddr
+					host, _, err := net.SplitHostPort(addr)
+					if err != nil {
+						return nil, err
+					}
+					tlsConfig.ServerName = host
+				}
+				return tls.Client(conn, tlsConfig), nil
+			}
+		}
+
+		return &connTrackingTransport{base: transport}, nil
+	}
+
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
 
@@ -283,135 +388,75 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		maxRedirects = 0
 	}
 
-	// Set the base TLS configuration definition
-	tlsConfig := &tls.Config{
-		Renegotiation:      tls.RenegotiateOnceAsClient,
-		InsecureSkipVerify: true,
-		MinVersion:         tls.VersionTLS10,
-		ClientSessionCache: tls.NewLRUClientSessionCache(128),
-	}
-
-	if options.SNI != "" {
-		tlsConfig.ServerName = options.SNI
-	}
-
-	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create client certificate")
-	}
-
-	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
-	if configuration.ResponseHeaderTimeout != 0 {
-		responseHeaderTimeout = configuration.ResponseHeaderTimeout
-	}
-
-	if responseHeaderTimeout < retryableHttpOptions.Timeout {
-		responseHeaderTimeout = retryableHttpOptions.Timeout
-	}
-
-	if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
-		responseHeaderTimeout = configuration.Connection.CustomMaxTimeout
-	}
-
-	transport := &http.Transport{
-		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       dialers.Fastdialer.Dial,
-		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if options.TlsImpersonate {
-				return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+	createClient := func(rt http.RoundTripper) (*retryablehttp.Client, error) {
+		// Each per-host client gets its own default cookie jar. This is safe
+		// because cookies are domain-scoped per RFC 6265, and same-host iterations
+		// (workflows, multi-step templates) hit the same cached client so cookies
+		// are retained across requests. Explicit jars from input.CookieJar bypass
+		// the client cache for full isolation.
+		var jar *cookiejar.Jar
+		if hasExplicitJar {
+			jar = configuration.Connection.GetCookieJar()
+		} else if !configuration.DisableCookie {
+			var err error
+			if jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
+				return nil, errors.Wrap(err, "could not create cookiejar")
 			}
-			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
-				return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
-			}
-			return dialers.Fastdialer.DialTLS(ctx, network, addr)
-		},
-		MaxIdleConns:          maxIdleConns,
-		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
-		MaxConnsPerHost:       maxConnsPerHost,
-		TLSClientConfig:       tlsConfig,
-		DisableKeepAlives:     disableKeepAlives,
-		IdleConnTimeout:       30 * time.Second,
-		ResponseHeaderTimeout: responseHeaderTimeout,
-	}
-
-	if options.AliveHttpProxy != "" {
-		if proxyURL, err := url.Parse(options.AliveHttpProxy); err == nil {
-			transport.Proxy = http.ProxyURL(proxyURL)
-		}
-	} else if options.AliveSocksProxy != "" {
-		socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
-		if proxyErr != nil {
-			return nil, proxyErr
 		}
 
-		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
+		httpclient := &http.Client{
+			Transport:     rt,
+			CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
+		}
+		if !configuration.NoTimeout {
+			httpclient.Timeout = options.GetTimeouts().HttpTimeout
+			if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
+				httpclient.Timeout = configuration.Connection.CustomMaxTimeout
+			}
+		}
+		client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
+		if jar != nil {
+			client.HTTPClient.Jar = jar
+		}
+		client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
+		return client, nil
+	}
+
+	if hasExplicitJar {
+		rt, err := pool.GetOrCreateTransport(transportKey, createTransport)
 		if err != nil {
 			return nil, err
 		}
+		return createClient(rt)
+	}
+	// Singleflight creation: concurrent first requests to the same host build
+	// exactly one client instead of racing Get/Set and orphaning transports.
+	return pool.GetOrCreateClient(clientKey, transportKey, createTransport, createClient)
+}
 
-		dc := dialer.(interface {
-			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-		})
+// sharedTLSSessionCache is shared by all pooled transports so TLS session
+// resumption survives transport eviction/re-creation, and a single bounded
+// LRU replaces a 128-entry cache per host client.
+var sharedTLSSessionCache = tls.NewLRUClientSessionCache(2048)
 
-		transport.DialContext = dc.DialContext
-		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// upgrade proxy connection to tls
-			conn, err := dc.DialContext(ctx, network, addr)
-			if err != nil {
-				return nil, err
-			}
-			if tlsConfig.ServerName == "" {
-				// addr should be in form of host:port already set from canonicalAddr
-				host, _, err := net.SplitHostPort(addr)
-				if err != nil {
-					return nil, err
-				}
-				tlsConfig.ServerName = host
-			}
-			return tls.Client(conn, tlsConfig), nil
-		}
-	}
-
-	// Each per-host client gets its own default cookie jar. This is safe
-	// because cookies are domain-scoped per RFC 6265, and same-host iterations
-	// (workflows, multi-step templates) hit the same cached client so cookies
-	// are retained across requests. Explicit jars from input.CookieJar bypass
-	// the cache entirely for full isolation.
-	var jar *cookiejar.Jar
-	if configuration.Connection != nil && configuration.Connection.HasCookieJar() {
-		jar = configuration.Connection.GetCookieJar()
-	} else if !configuration.DisableCookie {
-		if jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
-			return nil, errors.Wrap(err, "could not create cookiejar")
-		}
-	}
-
-	httpclient := &http.Client{
-		Transport:     &connTrackingTransport{base: transport},
-		CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
-	}
-	if !configuration.NoTimeout {
-		httpclient.Timeout = options.GetTimeouts().HttpTimeout
-		if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
-			httpclient.Timeout = configuration.Connection.CustomMaxTimeout
-		}
-	}
-	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
-	if jar != nil {
-		client.HTTPClient.Jar = jar
-	}
-	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
-
-	// Cache the client unless it has an explicit per-request cookie jar.
-	// Default jars (from DisableCookie=false) are fine to cache since they
-	// just provide standard cookie handling within a host's connection pool.
-	hasExplicitJar := configuration.Connection != nil && configuration.Connection.HasCookieJar()
-	if !hasExplicitJar {
-		if err := dialers.HTTPClientPool.Set(hash, client); err != nil {
-			return nil, err
-		}
-	}
-	return client, nil
+// transportHash identifies a shareable transport. Only parameters that live
+// on http.Transport participate; everything else (redirects, cookie jars,
+// client timeouts) is layered on top by the per-configuration client.
+func transportHash(host string, disableKeepAlives bool, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost int, responseHeaderTimeout time.Duration) string {
+	builder := &strings.Builder{}
+	builder.Grow(len(host) + 32)
+	builder.WriteString(host)
+	builder.WriteString("|ka")
+	builder.WriteString(strconv.FormatBool(!disableKeepAlives))
+	builder.WriteString("|i")
+	builder.WriteString(strconv.Itoa(maxIdleConns))
+	builder.WriteString("|ih")
+	builder.WriteString(strconv.Itoa(maxIdleConnsPerHost))
+	builder.WriteString("|ch")
+	builder.WriteString(strconv.Itoa(maxConnsPerHost))
+	builder.WriteString("|rht")
+	builder.WriteString(strconv.FormatInt(int64(responseHeaderTimeout), 10))
+	return builder.String()
 }
 
 type RedirectFlow uint8

@@ -1029,18 +1029,22 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if analyzerClient == nil {
 				analyzerClient = request.getHTTPClientForHost(hostname)
 			}
-			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
-				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
-				HttpClient:         analyzerClient,
-				ResponseTimeDelay:  duration,
-				AnalyzerParameters: request.Analyzer.Parameters,
-			})
-			if err != nil {
-				gologger.Warning().Msgf("Could not analyze response: %v\n", err)
-			}
-			if analysisMatched {
-				finalEvent["analyzer_details"] = analysisDetails
-				finalEvent["analyzer"] = true
+			if analyzerClient == nil {
+				gologger.Warning().Msgf("Could not get http client for analyzer %s on %s, skipping analysis\n", request.Analyzer.Name, hostname)
+			} else {
+				analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
+					FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
+					HttpClient:         analyzerClient,
+					ResponseTimeDelay:  duration,
+					AnalyzerParameters: request.Analyzer.Parameters,
+				})
+				if err != nil {
+					gologger.Warning().Msgf("Could not analyze response: %v\n", err)
+				}
+				if analysisMatched {
+					finalEvent["analyzer_details"] = analysisDetails
+					finalEvent["analyzer"] = true
+				}
 			}
 		}
 

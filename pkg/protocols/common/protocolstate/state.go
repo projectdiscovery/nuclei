@@ -16,7 +16,6 @@ import (
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
-	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -187,12 +186,11 @@ func initDialers(options *types.Options) error {
 
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
-	httpClientPool := mapsutil.NewSyncLockMap(
-		// Per-host HTTP clients are evicted after 90 seconds of inactivity.
-		// Combined with IdleConnTimeout on each transport, this ensures
-		// connections to already-scanned hosts are cleaned up promptly.
-		mapsutil.WithEviction[string, *retryablehttp.Client](90*time.Second, 30*time.Second),
-	)
+	// Per-host HTTP clients and transports are evicted after 90 seconds of
+	// inactivity (checked lazily every 30 seconds). Evicted transports get
+	// their idle connections closed immediately, so connections to
+	// already-scanned hosts are cleaned up promptly.
+	httpClientPool := NewHTTPPool(90*time.Second, 30*time.Second)
 
 	dialersInstance := &Dialers{
 		Fastdialer:             dialer,
@@ -292,15 +290,10 @@ func Close(executionId string) {
 	}
 
 	if dialersInstance != nil {
-		// Close idle keep-alive connections on all cached HTTP clients
-		// to avoid lingering transport goroutines after shutdown.
-		_ = dialersInstance.HTTPClientPool.Iterate(func(_ string, client *retryablehttp.Client) error {
-			if client != nil && client.HTTPClient != nil {
-				client.HTTPClient.CloseIdleConnections()
-			}
-			return nil
-		})
-		dialersInstance.HTTPClientPool.Clear()
+		// Drop all cached HTTP clients/transports and close their idle
+		// keep-alive connections to avoid lingering transport goroutines
+		// after shutdown.
+		dialersInstance.HTTPClientPool.Close()
 		dialersInstance.Fastdialer.Close()
 	}
 
