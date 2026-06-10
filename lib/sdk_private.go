@@ -133,13 +133,10 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	}
 
 	if e.hostRateLimiter == nil && e.opts.RateLimitHost > 0 {
-		hostDuration := e.opts.RateLimitHostDuration
-		if hostDuration == 0 {
-			hostDuration = time.Second
-		}
+		// non-positive durations are normalized to 1s by the pool
 		e.hostRateLimiter = hostratelimit.NewPool(ctx, hostratelimit.Options{
 			MaxCount: uint(e.opts.RateLimitHost),
-			Duration: hostDuration,
+			Duration: e.opts.RateLimitHostDuration,
 		})
 	}
 

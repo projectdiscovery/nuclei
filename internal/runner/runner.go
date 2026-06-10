@@ -409,13 +409,10 @@ func New(options *types.Options) (*Runner, error) {
 	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 
 	if options.RateLimitHost > 0 {
-		hostDuration := options.RateLimitHostDuration
-		if hostDuration == 0 {
-			hostDuration = time.Second
-		}
+		// non-positive durations are normalized to 1s by the pool
 		runner.hostRateLimiter = hostratelimit.NewPool(context.Background(), hostratelimit.Options{
 			MaxCount: uint(options.RateLimitHost),
-			Duration: hostDuration,
+			Duration: options.RateLimitHostDuration,
 		})
 	}
 

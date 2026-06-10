@@ -11,13 +11,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewPool_DisabledReturnsNil verifies that an Options with MaxCount==0 or
-// Duration==0 produces a nil pool, since callers rely on a nil *Pool being a
-// valid no-op.
+// TestNewPool_DisabledReturnsNil verifies that an Options with MaxCount==0
+// produces a nil pool, since callers rely on a nil *Pool being a valid no-op,
+// while a non-positive Duration is normalized to DefaultDuration instead of
+// disabling the pool.
 func TestNewPool_DisabledReturnsNil(t *testing.T) {
 	require.Nil(t, NewPool(context.Background(), Options{}))
-	require.Nil(t, NewPool(context.Background(), Options{MaxCount: 10}))
 	require.Nil(t, NewPool(context.Background(), Options{Duration: time.Second}))
+
+	p := NewPool(context.Background(), Options{MaxCount: 10})
+	require.NotNil(t, p, "zero duration must default to DefaultDuration, not disable")
+	require.Equal(t, DefaultDuration, p.opts.Duration)
+	p.Stop()
+
+	p = NewPool(context.Background(), Options{MaxCount: 10, Duration: -time.Second})
+	require.NotNil(t, p)
+	require.Equal(t, DefaultDuration, p.opts.Duration, "negative duration must be normalized")
+	p.Stop()
 }
 
 // TestPool_NilIsNoOp asserts that all public methods are safe on a nil pool,
@@ -141,6 +151,49 @@ func TestPool_TakeBlocksUntilToken(t *testing.T) {
 
 	require.GreaterOrEqual(t, elapsed, 25*time.Millisecond,
 		"second Take should wait for the bucket to refill (got %v)", elapsed)
+}
+
+// TestPool_DoesNotEvictEntriesWithWaiters verifies that neither the idle
+// sweep nor the LRU cap can reclaim a limiter while goroutines are blocked
+// inside its Take(). Without the in-flight guard, a host with a long refill
+// window would look idle, get Stop()-ed, and the next access would recreate
+// a fresh bucket with full tokens - silently breaking the per-host limit.
+func TestPool_DoesNotEvictEntriesWithWaiters(t *testing.T) {
+	p := NewPool(context.Background(), Options{
+		MaxCount:      1,
+		Duration:      300 * time.Millisecond,
+		Inactivity:    30 * time.Millisecond, // shorter than the refill wait
+		SweepInterval: 10 * time.Millisecond,
+		MaxHosts:      1, // force LRU pressure from the second host
+	})
+	defer p.Stop()
+
+	const blockedHost = "blocked.example.com"
+	p.Take(blockedHost) // drain the single token
+
+	// This Take blocks ~300ms waiting for the refill, far longer than the
+	// 30ms inactivity window, so the sweep would normally consider the
+	// entry idle.
+	done := make(chan struct{})
+	go func() {
+		p.Take(blockedHost)
+		close(done)
+	}()
+
+	// Give the waiter time to block, then create LRU pressure and let
+	// several sweep cycles run.
+	time.Sleep(50 * time.Millisecond)
+	p.Take("other.example.com")
+	time.Sleep(50 * time.Millisecond)
+
+	require.NotNil(t, p.peek(blockedHost),
+		"entry with a blocked waiter must not be evicted by sweep or LRU")
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("blocked Take never completed; limiter was likely stopped under the waiter")
+	}
 }
 
 // TestPool_StopDrainsAllLimiters verifies Stop() closes every cached limiter

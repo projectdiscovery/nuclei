@@ -231,7 +231,7 @@ func (e *NucleiEngine) closeInternal() {
 	if e.rateLimiter != nil {
 		e.rateLimiter.Stop()
 	}
-	e.executerOpts.HostRateLimiter.Stop()
+	// executerOpts.HostRateLimiter is the same pool; Stop is idempotent and nil-safe
 	e.hostRateLimiter.Stop()
 	if e.inputProvider != nil {
 		e.inputProvider.Close()

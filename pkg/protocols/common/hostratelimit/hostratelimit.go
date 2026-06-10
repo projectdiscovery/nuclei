@@ -16,12 +16,16 @@ package hostratelimit
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/ratelimit"
 )
 
 const (
+	// DefaultDuration is the bucket refill interval used when Options.Duration
+	// is not set (or is non-positive).
+	DefaultDuration = time.Second
 	// DefaultInactivity is how long an idle per-host limiter is retained
 	// before the background sweep reclaims it.
 	DefaultInactivity = 90 * time.Second
@@ -39,7 +43,7 @@ type Options struct {
 	// Take/Get become no-ops.
 	MaxCount uint
 	// Duration is the bucket refill interval (e.g. time.Minute).
-	// Required when MaxCount > 0.
+	// Non-positive values default to DefaultDuration.
 	Duration time.Duration
 	// Inactivity controls how long an idle per-host limiter is retained
 	// before the sweep reclaims it. Defaults to DefaultInactivity.
@@ -55,10 +59,13 @@ type Options struct {
 
 // Disabled reports whether this options configuration produces a no-op pool.
 func (o Options) Disabled() bool {
-	return o.MaxCount == 0 || o.Duration == 0
+	return o.MaxCount == 0
 }
 
 func (o *Options) applyDefaults() {
+	if o.Duration <= 0 {
+		o.Duration = DefaultDuration
+	}
 	if o.Inactivity <= 0 {
 		o.Inactivity = DefaultInactivity
 	}
@@ -92,8 +99,16 @@ type Pool struct {
 }
 
 type entry struct {
-	limiter    *ratelimit.Limiter
-	lastAccess time.Time
+	limiter *ratelimit.Limiter
+	// lastAccess is the unix-nano timestamp of the most recent use,
+	// updated both when the entry is looked up and when a blocking
+	// Take() returns, so long waits keep the entry fresh.
+	lastAccess atomic.Int64
+	// inflight counts goroutines currently blocked inside limiter.Take().
+	// Entries with inflight > 0 are never evicted: stopping a limiter with
+	// active waiters would let the next access recreate a fresh bucket
+	// with full tokens, breaking the per-host limit.
+	inflight atomic.Int64
 }
 
 // NewPool constructs a Pool. If opts.Disabled() reports true a nil Pool is
@@ -122,10 +137,15 @@ func (p *Pool) Take(host string) {
 	if p == nil || host == "" {
 		return
 	}
-	l := p.getOrCreate(host)
-	if l != nil {
-		l.Take()
+	e := p.getOrCreate(host)
+	if e == nil {
+		return
 	}
+	// inflight was incremented under the pool lock in getOrCreate, which
+	// guarantees the entry cannot be evicted while we block on Take().
+	e.limiter.Take()
+	e.lastAccess.Store(time.Now().UnixNano())
+	e.inflight.Add(-1)
 }
 
 // Get returns the *ratelimit.Limiter associated with host, creating it on
@@ -138,7 +158,14 @@ func (p *Pool) Get(host string) *ratelimit.Limiter {
 	if p == nil || host == "" {
 		return nil
 	}
-	return p.getOrCreate(host)
+	e := p.getOrCreate(host)
+	if e == nil {
+		return nil
+	}
+	// Get does not block on the limiter, so the in-flight guard taken by
+	// getOrCreate can be released immediately.
+	e.inflight.Add(-1)
+	return e.limiter
 }
 
 // Len returns the number of live per-host limiters. Useful for tests and
@@ -172,31 +199,41 @@ func (p *Pool) Stop() {
 	})
 }
 
-func (p *Pool) getOrCreate(host string) *ratelimit.Limiter {
-	now := time.Now()
+// getOrCreate returns the entry for host, creating it on first use. The
+// returned entry has its inflight counter already incremented (under the
+// pool lock), so it is protected from eviction until the caller releases
+// it with entry.inflight.Add(-1).
+func (p *Pool) getOrCreate(host string) *entry {
+	now := time.Now().UnixNano()
 
 	p.mu.Lock()
 	if e, ok := p.entries[host]; ok {
-		e.lastAccess = now
-		l := e.limiter
+		e.lastAccess.Store(now)
+		e.inflight.Add(1)
 		p.mu.Unlock()
-		return l
+		return e
 	}
 
 	// Enforce hard cap before insert so the map size never exceeds
-	// MaxHosts. We pick the LRU victim under the lock and Stop() it
-	// outside the lock to keep the critical section short.
+	// MaxHosts (except when every entry has active waiters, in which case
+	// the overflow is bounded by current concurrency). We pick the LRU
+	// victim under the lock and Stop() it outside the lock to keep the
+	// critical section short. Entries with inflight > 0 are skipped:
+	// stopping a limiter someone is blocked on would reset its bucket.
 	var victim *ratelimit.Limiter
 	if len(p.entries) >= p.opts.MaxHosts {
 		var (
 			oldestKey  string
-			oldestTime time.Time
+			oldestTime int64
 			first      = true
 		)
 		for k, e := range p.entries {
-			if first || e.lastAccess.Before(oldestTime) {
+			if e.inflight.Load() > 0 {
+				continue
+			}
+			if last := e.lastAccess.Load(); first || last < oldestTime {
 				oldestKey = k
-				oldestTime = e.lastAccess
+				oldestTime = last
 				first = false
 			}
 		}
@@ -207,14 +244,16 @@ func (p *Pool) getOrCreate(host string) *ratelimit.Limiter {
 		}
 	}
 
-	l := ratelimit.New(p.ctx, p.opts.MaxCount, p.opts.Duration)
-	p.entries[host] = &entry{limiter: l, lastAccess: now}
+	e := &entry{limiter: ratelimit.New(p.ctx, p.opts.MaxCount, p.opts.Duration)}
+	e.lastAccess.Store(now)
+	e.inflight.Add(1)
+	p.entries[host] = e
 	p.mu.Unlock()
 
 	if victim != nil {
 		victim.Stop()
 	}
-	return l
+	return e
 }
 
 // sweepLoop periodically reclaims per-host limiters that have been inactive
@@ -236,15 +275,19 @@ func (p *Pool) sweepLoop() {
 	}
 }
 
-// evictIdle removes entries whose lastAccess is older than now-Inactivity.
-// Stops are performed outside the lock.
+// evictIdle removes entries whose lastAccess is older than now-Inactivity
+// and that have no goroutines blocked on their limiter. Stops are performed
+// outside the lock.
 func (p *Pool) evictIdle(now time.Time) {
-	cutoff := now.Add(-p.opts.Inactivity)
+	cutoff := now.Add(-p.opts.Inactivity).UnixNano()
 
 	var stops []*ratelimit.Limiter
 	p.mu.Lock()
 	for k, e := range p.entries {
-		if e.lastAccess.Before(cutoff) {
+		if e.inflight.Load() > 0 {
+			continue
+		}
+		if e.lastAccess.Load() < cutoff {
 			stops = append(stops, e.limiter)
 			delete(p.entries, k)
 			p.stoppedLimiters++

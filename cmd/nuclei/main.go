@@ -417,7 +417,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second (ignored when -rate-limit-host is set)"),
-		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "maximum number of requests to send per second"),
+		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "rate-limit interval/window for -rate-limit"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute (DEPRECATED)"),
 		flagSet.IntVarP(&options.RateLimitHost, "rate-limit-host", "rlh", 0, "maximum number of requests to send per host per rate-limit-host-duration (0 = disabled, takes priority over -rate-limit)"),
 		flagSet.DurationVarP(&options.RateLimitHostDuration, "rate-limit-host-duration", "rlhd", time.Second, "refill interval for the per-host rate limit bucket"),

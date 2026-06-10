@@ -276,7 +276,7 @@ UNCOVER:
 
 RATE-LIMIT:
    -rl, -rate-limit int                     maximum number of requests to send per second (ignored when -rate-limit-host is set) (default 150)
-   -rld, -rate-limit-duration value         maximum number of requests to send per second (default 1s)
+   -rld, -rate-limit-duration value         rate-limit interval/window for -rate-limit (default 1s)
    -rlm, -rate-limit-minute int             maximum number of requests to send per minute (DEPRECATED)
    -rlh, -rate-limit-host int               maximum number of requests to send per host per rate-limit-host-duration (0 = disabled, takes priority over -rate-limit)
    -rlhd, -rate-limit-host-duration value   refill interval for the per-host rate limit bucket (default 1s)

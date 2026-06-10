@@ -38,12 +38,17 @@ func hostFromURL(t testing.TB, raw string) string {
 	return u.Host
 }
 
-func drainGet(t testing.TB, client *http.Client, u string) {
-	t.Helper()
+// drainGet performs a GET and discards the body. It returns the error
+// instead of asserting so it is safe to call from worker goroutines
+// (require.* uses FailNow, which must only run on the test goroutine).
+func drainGet(client *http.Client, u string) error {
 	resp, err := client.Get(u)
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
+	return nil
 }
 
 // TestIntegration_PerHostBudgetIsEnforced verifies that, when M concurrent
@@ -87,6 +92,7 @@ func TestIntegration_PerHostBudgetIsEnforced(t *testing.T) {
 	defer cancel()
 
 	var wg sync.WaitGroup
+	errCh := make(chan error, numHosts*workersPer)
 	start := time.Now()
 	for _, srv := range servers {
 		host := hostFromURL(t, srv.URL)
@@ -106,13 +112,20 @@ func TestIntegration_PerHostBudgetIsEnforced(t *testing.T) {
 						return
 					default:
 					}
-					drainGet(t, client, url)
+					if err := drainGet(client, url); err != nil {
+						errCh <- err
+						return
+					}
 				}
 			}(host, srv.URL)
 		}
 	}
 	wg.Wait()
 	elapsed := time.Since(start)
+	close(errCh)
+	for err := range errCh {
+		require.NoError(t, err)
+	}
 
 	budgetedRate := float64(budget) / duration.Seconds() // req/sec per host
 	const slack = 0.30
