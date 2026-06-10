@@ -611,6 +611,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				requestErr = reqKitErr
 				request.options.Progress.IncrementFailedRequestsBy(1)
 			} else {
+				// a successful response resets the host's error count so intermittent
+				// timeouts on a live host do not accumulate into a false skip
+				request.markHostSuccess(updatedInput)
 				request.options.Progress.IncrementRequests()
 			}
 
@@ -1306,6 +1309,14 @@ func (request *Request) newContext(input *contextargs.Context) context.Context {
 func (request *Request) markHostError(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil && err != nil {
 		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
+	}
+}
+
+// markHostSuccess resets the host's error count after a successful request so that
+// only consecutive failures (with no success in between) can mark a host unresponsive.
+func (request *Request) markHostSuccess(input *contextargs.Context) {
+	if request.options.HostErrorsCache != nil {
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, nil)
 	}
 }
 

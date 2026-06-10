@@ -87,6 +87,38 @@ func TestCacheCheckRawHTTPTimeout(t *testing.T) {
 	require.True(t, cache.Check(protoType, ctx), "host with repeated rawhttp i/o timeouts must be skipped")
 }
 
+func TestMarkSkipsParentContextCancellation(t *testing.T) {
+	// A failure that happens because the caller's (parent scan) context was
+	// cancelled or hit its deadline is not the host's fault and must not be
+	// counted. context.DeadlineExceeded otherwise classifies as a temporary
+	// network error and would wrongly accumulate.
+	cache := New(3, DefaultMaxHostsCount, nil)
+	parent, cancel := context.WithCancel(context.Background())
+	cancel()
+	ctx := contextargs.NewWithInput(parent, "cancelled-host")
+	timeout := errkit.New("context deadline exceeded").SetKind(errkit.ErrKindNetworkTemporary)
+
+	for i := 0; i < 5; i++ {
+		cache.MarkFailedOrRemove(protoType, ctx, timeout)
+	}
+	require.False(t, cache.Check(protoType, ctx), "failures under a cancelled parent context must not mark the host")
+}
+
+func TestNonConsecutiveTimeoutsDoNotSkip(t *testing.T) {
+	// A live host that times out intermittently but succeeds in between must not
+	// be skipped: a success resets the count so only consecutive failures reach
+	// the threshold. Guards the property the HTTP path relies on.
+	cache := New(3, DefaultMaxHostsCount, nil)
+	ctx := newCtxArgs(t.Name())
+	timeout := errkit.New("i/o timeout").SetKind(errkit.ErrKindNetworkTemporary)
+
+	cache.MarkFailedOrRemove(protoType, ctx, timeout)
+	cache.MarkFailedOrRemove(protoType, ctx, timeout)
+	cache.MarkFailedOrRemove(protoType, ctx, nil) // successful response resets the host
+	cache.MarkFailedOrRemove(protoType, ctx, timeout)
+	require.False(t, cache.Check(protoType, ctx), "a success between timeouts must reset the count")
+}
+
 func TestTrackErrors(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount, []string{"custom error"})
 

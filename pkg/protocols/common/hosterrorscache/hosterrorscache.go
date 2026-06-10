@@ -173,6 +173,14 @@ func (c *Cache) MarkFailed(protoType string, ctx *contextargs.Context, err error
 
 // MarkFailedOrRemove marks a host as failed previously or removes it
 func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, err error) {
+	// A failure that occurs because the caller's context was cancelled or hit its
+	// deadline is not the host's fault (e.g. the parent scan was cancelled). Such
+	// errors classify as temporary/deadline and would otherwise be counted, so
+	// ignore them. A nil error (success) still resets the host below.
+	if err != nil && ctx != nil && ctx.Context() != nil && ctx.Context().Err() != nil {
+		return
+	}
+
 	if err != nil && !c.checkError(protoType, err) {
 		return
 	}
