@@ -235,7 +235,7 @@ func restoreYAMLv2InterfaceMapShape(v interface{}) {
 	if !value.IsValid() {
 		return
 	}
-	if value.Kind() != reflect.Ptr || value.IsNil() {
+	if value.Kind() != reflect.Pointer || value.IsNil() {
 		return
 	}
 	restoreYAMLv2InterfaceMapShapeValue(value.Elem())
@@ -252,7 +252,7 @@ func restoreYAMLv2InterfaceMapShapeValue(value reflect.Value) {
 			return
 		}
 		setInterfaceValue(value, toYAMLv2InterfaceValue(value.Interface()))
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if !value.IsNil() {
 			restoreYAMLv2InterfaceMapShapeValue(value.Elem())
 		}
