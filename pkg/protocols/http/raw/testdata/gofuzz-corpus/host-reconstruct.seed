@@ -1,0 +1,7 @@
+method=GET
+path=/manager/html
+host=example.com:8080
+input-url=https://target.example/base
+unsafe=false
+disable-automerge=false
+header=Authorization: Basic dXNlcjpwYXNz
