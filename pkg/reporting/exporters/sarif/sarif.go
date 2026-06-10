@@ -55,7 +55,7 @@ func (exporter *Exporter) addToolDetails() {
 		},
 		FullName:        "Nuclei " + config.Version,
 		SemanticVersion: config.Version,
-		DownloadURI:     "https://github.com/projectdiscovery/nuclei/releases",
+		DownloadUri:     "https://github.com/projectdiscovery/nuclei/releases",
 		Rules:           exporter.rules,
 	}
 	exporter.sarif.RegisterTool(driver)

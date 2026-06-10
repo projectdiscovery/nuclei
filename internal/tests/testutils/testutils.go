@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"go.uber.org/multierr"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -123,7 +123,7 @@ func (n *NoopWriter) Write(data []byte, level levels.Level) {}
 
 // MockOutputWriter is a mocked output writer.
 type MockOutputWriter struct {
-	aurora          aurora.Aurora
+	aurora          *aurora.Aurora
 	omitTemplate    bool
 	RequestCallback func(templateID, url, requestType string, err error)
 	FailureCallback func(result *output.InternalEvent)
@@ -132,14 +132,14 @@ type MockOutputWriter struct {
 
 // NewMockOutputWriter creates a new mock output writer.
 func NewMockOutputWriter(omomitTemplate bool) *MockOutputWriter {
-	return &MockOutputWriter{aurora: aurora.NewAurora(false), omitTemplate: omomitTemplate}
+	return &MockOutputWriter{aurora: aurora.New(aurora.WithColors(false)), omitTemplate: omomitTemplate}
 }
 
 // Close closes the output writer interface.
 func (m *MockOutputWriter) Close() {}
 
 // Colorizer returns the colorizer instance for writer.
-func (m *MockOutputWriter) Colorizer() aurora.Aurora {
+func (m *MockOutputWriter) Colorizer() *aurora.Aurora {
 	return m.aurora
 }
 

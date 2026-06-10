@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -120,7 +120,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		RateLimiter:     ratelimiter,
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
-		Colorizer:       aurora.NewAurora(true),
+		Colorizer:       aurora.New(aurora.WithColors(true)),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          templates.NewParser(),
 	}

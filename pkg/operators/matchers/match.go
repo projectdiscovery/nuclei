@@ -4,9 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Knetic/govaluate"
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
+	"github.com/projectdiscovery/govaluate"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"

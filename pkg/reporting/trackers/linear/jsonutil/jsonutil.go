@@ -63,7 +63,7 @@ type decoder struct {
 // Decode decodes a single JSON value from d.tokenizer into v.
 func (d *decoder) Decode(v any) error {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr {
+	if rv.Kind() != reflect.Pointer {
 		return fmt.Errorf("cannot decode into non-pointer %T", v)
 	}
 	d.vs = [][]reflect.Value{{rv.Elem()}}
@@ -93,7 +93,7 @@ func (d *decoder) decode() error {
 			someFieldExist := false
 			for i := range d.vs {
 				v := d.vs[i][len(d.vs[i])-1]
-				if v.Kind() == reflect.Ptr {
+				if v.Kind() == reflect.Pointer {
 					v = v.Elem()
 				}
 				var f reflect.Value
@@ -123,7 +123,7 @@ func (d *decoder) decode() error {
 			someSliceExist := false
 			for i := range d.vs {
 				v := d.vs[i][len(d.vs[i])-1]
-				if v.Kind() == reflect.Ptr {
+				if v.Kind() == reflect.Pointer {
 					v = v.Elem()
 				}
 				var f reflect.Value
@@ -167,7 +167,7 @@ func (d *decoder) decode() error {
 					v := d.vs[i][len(d.vs[i])-1]
 					frontier[i] = v
 					// TODO: Do this recursively or not? Add a test case if needed.
-					if v.Kind() == reflect.Ptr && v.IsNil() {
+					if v.Kind() == reflect.Pointer && v.IsNil() {
 						v.Set(reflect.New(v.Type().Elem())) // v = new(T).
 					}
 				}
@@ -176,7 +176,7 @@ func (d *decoder) decode() error {
 				for len(frontier) > 0 {
 					v := frontier[0]
 					frontier = frontier[1:]
-					if v.Kind() == reflect.Ptr {
+					if v.Kind() == reflect.Pointer {
 						v = v.Elem()
 					}
 					if v.Kind() != reflect.Struct {
@@ -198,12 +198,12 @@ func (d *decoder) decode() error {
 				for i := range d.vs {
 					v := d.vs[i][len(d.vs[i])-1]
 					// TODO: Confirm this is needed, write a test case.
-					//if v.Kind() == reflect.Ptr && v.IsNil() {
+					//if v.Kind() == reflect.Pointer && v.IsNil() {
 					//	v.Set(reflect.New(v.Type().Elem())) // v = new(T).
 					//}
 
 					// Reset slice to empty (in case it had non-zero initial value).
-					if v.Kind() == reflect.Ptr {
+					if v.Kind() == reflect.Pointer {
 						v = v.Elem()
 					}
 					if v.Kind() != reflect.Slice {

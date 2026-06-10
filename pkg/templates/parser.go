@@ -163,7 +163,11 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 				return nil, err
 			}
 		}
-		err = json.Unmarshal(data, template)
+		if p.NoStrictSyntax {
+			err = json.Unmarshal(data, template)
+		} else {
+			err = template.unmarshalJSONStrict(data)
+		}
 	case config.YAML:
 		if data != nil {
 			// Already read and preprocessed

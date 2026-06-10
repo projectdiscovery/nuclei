@@ -3,7 +3,7 @@ package network
 import (
 	"encoding/hex"
 	"fmt"
-	maps0 "maps"
+	"maps"
 	"net"
 	"net/url"
 	"os"
@@ -14,7 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
-	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -376,7 +375,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
 				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{input.Name: bufferStr}, request.Extract)
-				maps0.Copy(payloads, values)
+				maps.Copy(payloads, values)
 			}
 		}
 	}
@@ -426,9 +425,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
 	}
-	maps0.Copy(outputEvent, previous)
-	maps0.Copy(outputEvent, interimValues)
-	maps0.Copy(outputEvent, inputEvents)
+	maps.Copy(outputEvent, previous)
+	maps.Copy(outputEvent, interimValues)
+	maps.Copy(outputEvent, inputEvents)
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
 	}
