@@ -222,7 +222,7 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 
 // sameLoginOrigin reports whether respURL is served by the same host as the
 // login page. It is used to ignore third-party (CDN/analytics) responses when
-// passively scavenging a session token from response headers. An unparseable
+// passively scavenging a session token from response headers. An unparsable
 // respURL is treated as not matching (fail closed).
 func sameLoginOrigin(loginURL *url.URL, respURL string) bool {
 	if loginURL == nil || respURL == "" {
