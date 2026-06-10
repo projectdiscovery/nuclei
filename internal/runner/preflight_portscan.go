@@ -85,7 +85,7 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 	}
 
 	dialers := protocolstate.GetDialersWithId(r.options.ExecutionId)
-	if dialers == nil {
+	if dialers == nil || dialers.Fastdialer == nil {
 		return fmt.Errorf("dialers not initialized for %s", r.options.ExecutionId)
 	}
 
@@ -247,7 +247,7 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 		swg.Add()
 		go func(t preflightTarget) {
 			defer swg.Done()
-			ok, openPort, reason := r.preflightOneResolved(t.key, t.raw, portsToScan, resolvedIPsByKey, dialers)
+			ok, openPort, reason := r.preflightOneResolved(t.key, t.raw, portsToScan, resolvedIPsByKey)
 			processed.Add(1)
 			if ok {
 				_ = allowed.Set(t.key, struct{}{})
@@ -332,7 +332,7 @@ const (
 	preflightReasonPorts
 )
 
-func (r *Runner) preflightOneResolved(key string, raw string, ports []string, resolved *mapsutil.SyncLockMap[string, string], dialers *protocolstate.Dialers) (ok bool, openPort string, reason preflightReason) {
+func (r *Runner) preflightOneResolved(key string, raw string, ports []string, resolved *mapsutil.SyncLockMap[string, string]) (ok bool, openPort string, reason preflightReason) {
 	resolvedIPsCSV, _ := resolved.Get(key)
 	if resolvedIPsCSV == "" {
 		return false, "", preflightReasonDNS

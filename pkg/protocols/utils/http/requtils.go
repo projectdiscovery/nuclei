@@ -45,8 +45,10 @@ func SetHeader(req *retryablehttp.Request, name, value string) {
 	}
 }
 
-// ShouldDisableKeepAlive depending on scan strategy
+// ShouldDisableKeepAlive depending on scan strategy and template concurrency
 func ShouldDisableKeepAlive(options *types.Options) bool {
-	// with host-spray strategy keep-alive must be enabled
+	// keep-alive must stay enabled with host-spray strategy and when templates
+	// run concurrently (TemplateThreads > 0), so that connections to the same
+	// host can be reused across templates
 	return options.TemplateThreads == 0 && options.ScanStrategy != scanstrategy.HostSpray.String()
 }

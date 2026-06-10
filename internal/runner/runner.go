@@ -710,9 +710,10 @@ func (r *Runner) RunEnumeration() error {
 
 	// Preflight: resolve hosts + portscan for ports required by loaded templates, then filter inputs.
 	// This reduces time spent on non-resolvable targets or targets with no relevant open ports.
+	// Preflight is a best-effort optimization: on failure we log and continue with the full input set.
 	if r.options.PreflightPortScan {
 		if err := r.preflightResolveAndPortScan(store); err != nil {
-			return errors.Wrap(err, "preflight resolve/portscan failed")
+			gologger.Warning().Msgf("preflight resolve/portscan failed, continuing without input filtering: %s", err)
 		}
 	}
 	// display execution info like version , templates used etc
@@ -790,48 +791,38 @@ func (r *Runner) RunEnumeration() error {
 	r.progress.Stop()
 	timeTaken := time.Since(now)
 
-	// Print per-host pool stats if available
-	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil && dialers.PerHostHTTPPool != nil {
-		if pool, ok := dialers.PerHostHTTPPool.(interface{ PrintStats() }); ok {
+	// Print pool/tracker stats if available (single dialers lookup, reads under lock)
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
+		dialers.Lock()
+		perHostHTTPPool := dialers.PerHostHTTPPool
+		perHostRateLimitPool := dialers.PerHostRateLimitPool
+		connectionReuseTracker := dialers.ConnectionReuseTracker
+		shardedHTTPPool := dialers.ShardedHTTPPool
+		httpToHTTPSPortTracker := dialers.HTTPToHTTPSPortTracker
+		dialers.Unlock()
+
+		if pool, ok := perHostHTTPPool.(interface{ PrintStats() }); ok {
 			pool.PrintStats()
 		}
-	}
-	// Print per-host rate limit pool stats if available
-	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil && dialers.PerHostRateLimitPool != nil {
-		if pool, ok := dialers.PerHostRateLimitPool.(interface{ PrintStats() }); ok {
+		if pool, ok := perHostRateLimitPool.(interface{ PrintStats() }); ok {
 			pool.PrintStats()
 		}
-		if pool, ok := dialers.PerHostRateLimitPool.(interface{ PrintPerHostPPSStats() }); ok {
+		if pool, ok := perHostRateLimitPool.(interface{ PrintPerHostPPSStats() }); ok {
 			pool.PrintPerHostPPSStats()
 		}
-	}
-	// Always print connection reuse stats (tracker is initialized early for all HTTP requests)
-	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
-		// Ensure tracker exists (it should already be initialized, but create if needed)
-		if dialers.ConnectionReuseTracker == nil {
-			_ = httpclientpool.GetConnectionReuseTracker(r.options)
+		if tracker, ok := connectionReuseTracker.(interface{ PrintStats() }); ok {
+			tracker.PrintStats()
 		}
-		if dialers.ConnectionReuseTracker != nil {
-			if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintStats() }); ok {
-				tracker.PrintStats()
-			}
-			if tracker, ok := dialers.ConnectionReuseTracker.(interface{ PrintPerHostStats() }); ok {
-				tracker.PrintPerHostStats()
-			}
+		if tracker, ok := connectionReuseTracker.(interface{ PrintPerHostStats() }); ok {
+			tracker.PrintPerHostStats()
 		}
-
-		// Print sharded pool stats if sharding is enabled
-		if r.options.HTTPClientShards && dialers.ShardedHTTPPool != nil {
-			if pool, ok := dialers.ShardedHTTPPool.(interface{ PrintStats() }); ok {
+		if r.options.HTTPClientShards {
+			if pool, ok := shardedHTTPPool.(interface{ PrintStats() }); ok {
 				pool.PrintStats()
 			}
 		}
-
-		// Print HTTP-to-HTTPS port tracker stats
-		if dialers.HTTPToHTTPSPortTracker != nil {
-			if tracker, ok := dialers.HTTPToHTTPSPortTracker.(interface{ PrintStats() }); ok {
-				tracker.PrintStats()
-			}
+		if tracker, ok := httpToHTTPSPortTracker.(interface{ PrintStats() }); ok {
+			tracker.PrintStats()
 		}
 	}
 

@@ -63,7 +63,7 @@ func (p *PerHostClientPool) GetOrCreate(
 	host string,
 	createFunc func() (*retryablehttp.Client, error),
 ) (*retryablehttp.Client, error) {
-	normalizedHost := normalizeHost(host)
+	normalizedHost := normalizePoolKey(host)
 
 	if entry, ok := p.cache.Get(normalizedHost); ok {
 		entry.accessCount.Add(1)
@@ -102,7 +102,7 @@ func (p *PerHostClientPool) GetOrCreate(
 }
 
 func (p *PerHostClientPool) EvictHost(host string) bool {
-	normalizedHost := normalizeHost(host)
+	normalizedHost := normalizePoolKey(host)
 	existed := p.cache.Remove(normalizedHost)
 
 	if existed {
@@ -134,7 +134,9 @@ func (p *PerHostClientPool) Close() {
 	p.EvictAll()
 }
 
-func normalizeHost(rawURL string) string {
+// normalizePoolKey normalizes a raw URL into a scheme://host:port key
+// used to group clients per host in the pool
+func normalizePoolKey(rawURL string) string {
 	if rawURL == "" {
 		return ""
 	}
@@ -149,24 +151,13 @@ func normalizeHost(rawURL string) string {
 		scheme = "http"
 	}
 
-	host := parsed.Host
-	if host == "" {
-		host = parsed.Hostname()
-	}
-
-	port := parsed.Port()
-	if port != "" {
+	if port := parsed.Port(); port != "" {
 		return fmt.Sprintf("%s://%s:%s", scheme, parsed.Hostname(), port)
 	}
-
-	if scheme == "https" && port == "" {
+	if scheme == "https" {
 		return fmt.Sprintf("%s://%s:443", scheme, parsed.Hostname())
 	}
-	if scheme == "http" && port == "" {
-		return fmt.Sprintf("%s://%s:80", scheme, parsed.Hostname())
-	}
-
-	return fmt.Sprintf("%s://%s", scheme, host)
+	return fmt.Sprintf("%s://%s:80", scheme, parsed.Hostname())
 }
 
 type PoolStats struct {
@@ -177,7 +168,7 @@ type PoolStats struct {
 }
 
 func (p *PerHostClientPool) GetClientForHost(host string) (*retryablehttp.Client, bool) {
-	normalizedHost := normalizeHost(host)
+	normalizedHost := normalizePoolKey(host)
 
 	if entry, ok := p.cache.Peek(normalizedHost); ok {
 		return entry.client, true
@@ -197,7 +188,7 @@ type ClientInfo struct {
 }
 
 func (p *PerHostClientPool) GetClientInfo(host string) *ClientInfo {
-	normalizedHost := normalizeHost(host)
+	normalizedHost := normalizePoolKey(host)
 
 	entry, ok := p.cache.Peek(normalizedHost)
 	if !ok {
@@ -239,11 +230,10 @@ func (p *PerHostClientPool) PrintStats() {
 	if stats.Size == 0 {
 		return
 	}
+	var hitRate float64
+	if total := stats.Hits + stats.Misses; total > 0 {
+		hitRate = float64(stats.Hits) * 100 / float64(total)
+	}
 	gologger.Verbose().Msgf("[perhost-pool] Connection reuse stats: Hits=%d Misses=%d HitRate=%.1f%% Hosts=%d",
-		stats.Hits, stats.Misses,
-		float64(stats.Hits)*100/float64(stats.Hits+stats.Misses+1),
-		stats.Size)
-}
-
-func (p *PerHostClientPool) PrintTransportStats() {
+		stats.Hits, stats.Misses, hitRate, stats.Size)
 }

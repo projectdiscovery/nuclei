@@ -1,24 +1,16 @@
 package httpclientpool
 
 import (
-	"context"
-	"crypto/tls"
 	"fmt"
 	"hash/fnv"
 	"math"
-	"net"
-	"net/http"
-	"net/url"
 	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
-	"golang.org/x/net/proxy"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -48,11 +40,10 @@ type ShardedClientPool struct {
 // ShardEntry represents a single shard with its HTTP client
 type ShardEntry struct {
 	client              *retryablehttp.Client
-	hostCount           atomic.Int64  // Number of unique hosts using this shard
 	requestCount        atomic.Uint64 // Total requests through this shard
 	createdAt           time.Time
 	lastAccess          atomic.Value // time.Time
-	maxIdleConnsPerHost int          // Calculated: baseMaxIdle / estimatedHostsPerShard
+	maxIdleConnsPerHost int
 }
 
 // calculateOptimalShardCount calculates the optimal number of shards based on input size
@@ -95,17 +86,10 @@ func NewShardedClientPool(numShards int, options *types.Options, baseConfig *Con
 		}
 	}
 
-	// Base max idle conns per host (from existing logic: 500 when threading enabled)
-	baseMaxIdleConnsPerHost := 500
-	if baseConfig.Threads == 0 {
-		// If no threading, we still want some pooling for sharding
-		baseMaxIdleConnsPerHost = 500
-	}
-
-	// Use a fixed maxIdleConnsPerHost per shard
+	// Use a fixed maxIdleConnsPerHost per shard (consistent regardless of threading)
 	// This provides good connection reuse without needing to estimate host distribution
 	// Each shard can handle multiple hosts efficiently
-	maxIdleConnsPerHost := baseMaxIdleConnsPerHost
+	maxIdleConnsPerHost := 500
 
 	pool := &ShardedClientPool{
 		shards:        make([]*ShardEntry, numShards),
@@ -167,12 +151,12 @@ func normalizeHostForSharding(rawURL string) string {
 	parsed, err := urlutil.Parse(rawURL)
 	if err != nil {
 		// Fallback: try to extract host:port manually
-		return extractHostPortFromStringForReuse(rawURL)
+		return extractHostPort(rawURL)
 	}
 
 	hostname := parsed.Hostname()
 	if hostname == "" {
-		return extractHostPortFromStringForReuse(rawURL)
+		return extractHostPort(rawURL)
 	}
 
 	port := parsed.Port()
@@ -223,7 +207,8 @@ func createShardClient(options *types.Options, config *Configuration, maxIdleCon
 }
 
 // wrappedGetWithCustomMaxIdle creates an HTTP client with a custom maxIdleConnsPerHost value
-// This is used for sharding to distribute idle connections evenly per host
+// This is used for sharding to distribute idle connections evenly per host.
+// Client creation is delegated to buildHTTPClient (shared with wrappedGet).
 func wrappedGetWithCustomMaxIdle(options *types.Options, configuration *Configuration, customMaxIdleConnsPerHost int, hash string) (*retryablehttp.Client, error) {
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
 	if dialers == nil {
@@ -235,154 +220,22 @@ func wrappedGetWithCustomMaxIdle(options *types.Options, configuration *Configur
 		return client, nil
 	}
 
-	// Use standard wrappedGet logic but override maxIdleConnsPerHost
-	retryableHttpOptions := retryablehttp.DefaultOptionsSingle
-	disableKeepAlives := false
-	maxIdleConns := 500
-	maxConnsPerHost := customMaxIdleConnsPerHost
-	maxIdleConnsPerHost := customMaxIdleConnsPerHost // Use custom value
-
-	retryableHttpOptions.RetryWaitMax = 10 * time.Second
-	retryableHttpOptions.RetryMax = options.Retries
-	retryableHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
-	if configuration.ResponseHeaderTimeout > 0 && configuration.ResponseHeaderTimeout > retryableHttpOptions.Timeout {
-		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
-	}
-
-	redirectFlow := configuration.RedirectFlow
-	maxRedirects := configuration.MaxRedirects
-
-	if forceMaxRedirects > 0 {
-		switch {
-		case options.FollowHostRedirects:
-			redirectFlow = FollowSameHostRedirect
-		default:
-			redirectFlow = FollowAllRedirect
-		}
-		maxRedirects = forceMaxRedirects
-	}
-	if options.DisableRedirects {
-		options.FollowRedirects = false
-		options.FollowHostRedirects = false
-		redirectFlow = DontFollowRedirect
-		maxRedirects = 0
-	}
-
-	// Override connection's settings if required
-	if configuration.Connection != nil {
-		disableKeepAlives = configuration.Connection.DisableKeepAlive
-	}
-
-	// Set the base TLS configuration definition
-	tlsConfig := &tls.Config{
-		Renegotiation:      tls.RenegotiateOnceAsClient,
-		InsecureSkipVerify: true,
-		MinVersion:         tls.VersionTLS10,
-		ClientSessionCache: tls.NewLRUClientSessionCache(1024),
-	}
-
-	if options.SNI != "" {
-		tlsConfig.ServerName = options.SNI
-	}
-
-	// Add the client certificate authentication to the request if it's configured
-	var err error
-	tlsConfig, err = utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	client, err := buildHTTPClient(options, configuration, dialers, retryablehttp.DefaultOptionsSingle, clientConnSettings{
+		disableKeepAlives:   false,
+		maxIdleConns:        500,
+		maxIdleConnsPerHost: customMaxIdleConnsPerHost, // Custom value for sharding
+		maxConnsPerHost:     customMaxIdleConnsPerHost, // Same value for consistency
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create client certificate")
+		return nil, err
 	}
 
-	// responseHeaderTimeout is max timeout for response headers to be read
-	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
-	if configuration.ResponseHeaderTimeout != 0 {
-		responseHeaderTimeout = configuration.ResponseHeaderTimeout
-	}
-
-	if responseHeaderTimeout < retryableHttpOptions.Timeout {
-		responseHeaderTimeout = retryableHttpOptions.Timeout
-	}
-
-	if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
-		responseHeaderTimeout = configuration.Connection.CustomMaxTimeout
-	}
-
-	transport := &http.Transport{
-		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       dialers.Fastdialer.Dial,
-		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if options.TlsImpersonate {
-				return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
-			}
-			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
-				return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
-			}
-			return dialers.Fastdialer.DialTLS(ctx, network, addr)
-		},
-		MaxIdleConns:          maxIdleConns,
-		MaxIdleConnsPerHost:   maxIdleConnsPerHost, // Custom value for sharding
-		MaxConnsPerHost:       maxConnsPerHost,     // Same value for consistency
-		TLSClientConfig:       tlsConfig,
-		DisableKeepAlives:     disableKeepAlives,
-		ResponseHeaderTimeout: responseHeaderTimeout,
-	}
-
-	if options.AliveHttpProxy != "" {
-		if proxyURL, err := url.Parse(options.AliveHttpProxy); err == nil {
-			transport.Proxy = http.ProxyURL(proxyURL)
-		}
-	} else if options.AliveSocksProxy != "" {
-		socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
-		if proxyErr != nil {
-			return nil, proxyErr
-		}
-
-		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
-		if err != nil {
-			return nil, err
-		}
-
-		dc := dialer.(interface {
-			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-		})
-
-		transport.DialContext = dc.DialContext
-		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			conn, err := dc.DialContext(ctx, network, addr)
-			if err != nil {
-				return nil, err
-			}
-			if tlsConfig.ServerName == "" {
-				host, _, err := net.SplitHostPort(addr)
-				if err != nil {
-					return nil, err
-				}
-				tlsConfig.ServerName = host
-			}
-			return tls.Client(conn, tlsConfig), nil
-		}
-	}
-
-	// CRITICAL: Never use cookiejars in sharded clients!
-	// cookiejar.Jar is not thread-safe and sharded clients are shared across goroutines.
-	// This causes "fatal error: concurrent map writes" when multiple goroutines access the same jar.
-	// Cookies are disabled for sharded clients (set in createShardClient via cfg.DisableCookie = true)
-
-	httpclient := &http.Client{
-		Transport:     transport,
-		CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
-	}
-	if !configuration.NoTimeout {
-		httpclient.Timeout = options.GetTimeouts().HttpTimeout
-		if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
-			httpclient.Timeout = configuration.Connection.CustomMaxTimeout
-		}
-	}
-	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
-	// jar is always nil for sharded clients (thread safety)
-	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
+	// NOTE: sharded clients never use cookiejars: they are shared across hosts
+	// and goroutines, so cookies are disabled in createShardClient via
+	// cfg.DisableCookie = true and the jar is never wired here.
 
 	// Store in pool with modified hash
-	// Sharded clients never use cookiejars (disabled for thread safety), so always store in pool
+	// Sharded clients never use cookiejars, so always store in pool
 	if err := dialers.HTTPClientPool.Set(hash, client); err != nil {
 		return nil, errors.Wrap(err, "could not store client in pool")
 	}
@@ -412,7 +265,6 @@ func (p *ShardedClientPool) Stats() ShardedPoolStats {
 		stats.ShardStats[i] = ShardStat{
 			Index:        i,
 			RequestCount: shard.requestCount.Load(),
-			HostCount:    shard.hostCount.Load(),
 			LastAccess:   lastAccess,
 		}
 	}
@@ -431,7 +283,6 @@ type ShardedPoolStats struct {
 type ShardStat struct {
 	Index        int
 	RequestCount uint64
-	HostCount    int64
 	LastAccess   time.Time
 }
 
@@ -450,8 +301,8 @@ func (p *ShardedClientPool) PrintStats() {
 	// We'll always print per-shard stats if there are requests
 	for _, shardStat := range stats.ShardStats {
 		if shardStat.RequestCount > 0 {
-			gologger.Verbose().Msgf("  Shard %d: Requests=%d Hosts=%d LastAccess=%v",
-				shardStat.Index, shardStat.RequestCount, shardStat.HostCount,
+			gologger.Verbose().Msgf("  Shard %d: Requests=%d LastAccess=%v",
+				shardStat.Index, shardStat.RequestCount,
 				shardStat.LastAccess.Round(time.Second))
 		}
 	}

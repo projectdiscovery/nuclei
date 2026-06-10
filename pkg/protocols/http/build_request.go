@@ -24,7 +24,6 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -502,8 +501,10 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 			req.Header.Del("Connection")
 		}
 	default:
-		// Legacy behavior: In case of multiple threads the underlying connection should remain open to allow reuse
-		if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && r.options.Options.ScanStrategy != scanstrategy.HostSpray.String() {
+		// Legacy behavior: in case of per-request threading the underlying connection
+		// should remain open to allow reuse, otherwise defer to the shared
+		// options-level keep-alive decision (same helper used in Compile)
+		if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && httputil.ShouldDisableKeepAlive(r.options.Options) {
 			req.Close = true
 		}
 	}

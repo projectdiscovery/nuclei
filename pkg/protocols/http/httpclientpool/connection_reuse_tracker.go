@@ -2,7 +2,6 @@ package httpclientpool
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -87,7 +86,7 @@ func (t *ConnectionReuseTracker) RecordConnection(hostname string, reused bool) 
 		return
 	}
 
-	normalizedHost := normalizeHostForConnectionReuse(hostname)
+	normalizedHost := normalizeHostPort(hostname)
 	if normalizedHost == "" {
 		return
 	}
@@ -189,26 +188,12 @@ func (t *ConnectionReuseTracker) getOrCreateEntry(normalizedHost string) *connec
 		return entry
 	}
 
+	// atomic counters are zero-initialized by Go
 	entry := &connectionReuseEntry{
 		host:      normalizedHost,
 		createdAt: time.Now(),
 	}
-	entry.totalConnections.Store(0)
-	entry.totalReused.Store(0)
-	entry.totalNewConnections.Store(0)
-	entry.accessCount.Store(0)
-	entry.totalHTTPConnections.Store(0)
-	entry.totalHTTPSConnections.Store(0)
-	entry.totalHTTPReused.Store(0)
-	entry.totalHTTPSReused.Store(0)
-	entry.totalHTTPNewConnections.Store(0)
-	entry.totalHTTPSNewConnections.Store(0)
-
-	evicted := t.cache.Add(normalizedHost, entry)
-	if evicted {
-		_ = evicted
-		// Entry was evicted, but we still return the new entry
-	}
+	_ = t.cache.Add(normalizedHost, entry)
 
 	return entry
 }
@@ -274,10 +259,7 @@ func (t *ConnectionReuseTracker) PrintPerHostStats() {
 		return
 	}
 
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	hostStats := []struct {
+	type hostStat struct {
 		host                  string
 		totalConnections      uint64
 		totalReused           uint64
@@ -290,8 +272,12 @@ func (t *ConnectionReuseTracker) PrintPerHostStats() {
 		totalHTTPSReused      uint64
 		httpReuseRate         float64
 		httpsReuseRate        float64
-	}{}
+	}
 
+	// Collect stats under lock, log after releasing it so RecordConnection
+	// callers are not blocked during slow I/O
+	t.mu.Lock()
+	hostStats := []hostStat{}
 	for _, key := range t.cache.Keys() {
 		entry, ok := t.cache.Peek(key)
 		if !ok || entry == nil {
@@ -322,20 +308,7 @@ func (t *ConnectionReuseTracker) PrintPerHostStats() {
 			httpsReuseRate = float64(httpsReused) * 100 / float64(httpsConn)
 		}
 
-		hostStats = append(hostStats, struct {
-			host                  string
-			totalConnections      uint64
-			totalReused           uint64
-			totalNewConnections   uint64
-			reuseRate             float64
-			age                   time.Duration
-			totalHTTPConnections  uint64
-			totalHTTPSConnections uint64
-			totalHTTPReused       uint64
-			totalHTTPSReused      uint64
-			httpReuseRate         float64
-			httpsReuseRate        float64
-		}{
+		hostStats = append(hostStats, hostStat{
 			host:                  key,
 			totalConnections:      totalConn,
 			totalReused:           totalReused,
@@ -350,6 +323,7 @@ func (t *ConnectionReuseTracker) PrintPerHostStats() {
 			httpsReuseRate:        httpsReuseRate,
 		})
 	}
+	t.mu.Unlock()
 
 	if len(hostStats) == 0 {
 		return
@@ -378,100 +352,4 @@ func (t *ConnectionReuseTracker) PrintPerHostStats() {
 
 func (t *ConnectionReuseTracker) Close() {
 	t.cache.Purge()
-}
-
-// normalizeHostForConnectionReuse extracts and normalizes host:port from URL (same as rate limit)
-func normalizeHostForConnectionReuse(rawURL string) string {
-	if rawURL == "" {
-		return ""
-	}
-
-	parsed, err := urlutil.Parse(rawURL)
-	if err != nil {
-		// If parsing fails, try to extract host:port manually
-		return extractHostPortFromStringForReuse(rawURL)
-	}
-
-	scheme := parsed.Scheme
-	if scheme == "" {
-		scheme = "http"
-	}
-
-	// Extract just the hostname (without port) and port separately
-	hostname := parsed.Hostname()
-	if hostname == "" {
-		// Fallback: try to extract from Host field
-		host := parsed.Host
-		if host != "" {
-			// Split host:port if port is present
-			if h, _, err := net.SplitHostPort(host); err == nil {
-				hostname = h
-			} else {
-				hostname = host
-			}
-		}
-	}
-
-	if hostname == "" {
-		return extractHostPortFromStringForReuse(rawURL)
-	}
-
-	port := parsed.Port()
-	if port == "" {
-		// Use default ports based on scheme
-		if scheme == "https" {
-			port = "443"
-		} else {
-			port = "80"
-		}
-	}
-
-	// Return just hostname:port (no scheme prefix)
-	return fmt.Sprintf("%s:%s", hostname, port)
-}
-
-// extractHostPortFromStringForReuse attempts to extract host:port from a string when URL parsing fails
-func extractHostPortFromStringForReuse(s string) string {
-	original := s
-	scheme := "http"
-
-	// Remove scheme prefix if present
-	if strings.HasPrefix(s, "http://") {
-		s = strings.TrimPrefix(s, "http://")
-		scheme = "http"
-	} else if strings.HasPrefix(s, "https://") {
-		s = strings.TrimPrefix(s, "https://")
-		scheme = "https"
-	}
-
-	// Extract up to first /, ?, #, space, or newline (path/query/fragment separator)
-	if idx := strings.IndexAny(s, "/?# \n\r\t"); idx != -1 {
-		s = s[:idx]
-	}
-
-	if s == "" {
-		return original // Return original if we can't extract anything
-	}
-
-	// Validate and split host:port
-	host, port, err := net.SplitHostPort(s)
-	if err == nil {
-		// Valid host:port format
-		if port == "" {
-			// Port is empty, use default
-			if scheme == "https" {
-				port = "443"
-			} else {
-				port = "80"
-			}
-		}
-		// Return just host:port (no scheme prefix)
-		return fmt.Sprintf("%s:%s", host, port)
-	}
-
-	// No port in string, add default port
-	if scheme == "https" {
-		return fmt.Sprintf("%s:443", s)
-	}
-	return fmt.Sprintf("%s:80", s)
 }

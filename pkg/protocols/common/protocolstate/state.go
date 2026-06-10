@@ -227,8 +227,8 @@ func initDialers(options *types.Options) error {
 
 	SetLfaAllowed(options)
 
-	// Set input count for sharding calculation (will be updated later when input provider is ready)
-	dialersInstance.InputCount = 0
+	// InputCount (used for sharding calculation) is zero-initialized and will be
+	// updated later via SetInputCount when the input provider is ready
 
 	return nil
 }

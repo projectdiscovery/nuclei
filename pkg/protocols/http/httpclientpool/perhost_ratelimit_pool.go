@@ -2,9 +2,6 @@ package httpclientpool
 
 import (
 	"context"
-	"fmt"
-	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,7 +11,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 type PerHostRateLimitPool struct {
@@ -29,14 +25,23 @@ type PerHostRateLimitPool struct {
 	evictions atomic.Uint64
 }
 
+// ppsWindowSize is the number of recent request timestamps tracked per host
+// for pps calculation (heuristic balance between precision and memory)
+const ppsWindowSize = 100
+
 type rateLimitEntry struct {
-	limiter           *ratelimit.Limiter
-	createdAt         time.Time
-	accessCount       atomic.Uint64
-	requestCount      atomic.Uint64
-	firstRequestAt    atomic.Int64 // UnixNano timestamp
-	lastRequestAt     atomic.Int64 // UnixNano timestamp
-	requestTimestamps []int64      // Ring buffer of recent request timestamps for pps calculation
+	limiter        *ratelimit.Limiter
+	createdAt      time.Time
+	accessCount    atomic.Uint64
+	requestCount   atomic.Uint64
+	firstRequestAt atomic.Int64 // UnixNano timestamp
+	lastRequestAt  atomic.Int64 // UnixNano timestamp
+
+	// Fixed-size circular buffer of recent request timestamps for pps
+	// calculation: avoids the re-allocations of a sliding slice window
+	requestTimestamps [ppsWindowSize]int64
+	tsHead            int // next write position
+	tsCount           int // number of valid entries (up to ppsWindowSize)
 	requestMu         sync.Mutex
 }
 
@@ -83,7 +88,7 @@ func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, o
 func (p *PerHostRateLimitPool) GetOrCreate(
 	host string,
 ) (*ratelimit.Limiter, error) {
-	normalizedHost := normalizeHostForRateLimit(host)
+	normalizedHost := normalizeHostPort(host)
 
 	// Try to get entry (this refreshes TTL in expirable LRU)
 	if entry, ok := p.cache.Get(normalizedHost); ok {
@@ -149,9 +154,8 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 	limiter := utils.GetRateLimiter(context.Background(), p.options.RateLimit, p.options.RateLimitDuration)
 
 	entry := &rateLimitEntry{
-		limiter:           limiter,
-		createdAt:         time.Now(),
-		requestTimestamps: make([]int64, 0, 100), // Track last 100 requests for pps calculation
+		limiter:   limiter,
+		createdAt: time.Now(),
 	}
 	entry.accessCount.Store(1)
 
@@ -164,7 +168,7 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {
-	normalizedHost := normalizeHostForRateLimit(host)
+	normalizedHost := normalizeHostPort(host)
 
 	// Get entry before removing to stop limiter
 	entry, ok := p.cache.Peek(normalizedHost)
@@ -208,104 +212,6 @@ func (p *PerHostRateLimitPool) Close() {
 	p.EvictAll()
 }
 
-// normalizeHostForRateLimit extracts and normalizes host:port from URL for rate limit pool
-// This ensures all requests to the same host:port use the same rate limiter, regardless of path
-func normalizeHostForRateLimit(rawURL string) string {
-	if rawURL == "" {
-		return ""
-	}
-
-	parsed, err := urlutil.Parse(rawURL)
-	if err != nil {
-		// If parsing fails, try to extract host:port manually
-		// This handles cases where the URL might be malformed
-		return extractHostPortFromString(rawURL)
-	}
-
-	scheme := parsed.Scheme
-	if scheme == "" {
-		scheme = "http"
-	}
-
-	// Extract just the hostname (without port) and port separately
-	hostname := parsed.Hostname()
-	if hostname == "" {
-		// Fallback: try to extract from Host field
-		host := parsed.Host
-		if host != "" {
-			// Split host:port if port is present
-			if h, _, err := net.SplitHostPort(host); err == nil {
-				hostname = h
-			} else {
-				hostname = host
-			}
-		}
-	}
-
-	if hostname == "" {
-		return extractHostPortFromString(rawURL)
-	}
-
-	port := parsed.Port()
-	if port == "" {
-		// Use default ports based on scheme
-		if scheme == "https" {
-			port = "443"
-		} else {
-			port = "80"
-		}
-	}
-
-	// Return just hostname:port (no scheme prefix)
-	return fmt.Sprintf("%s:%s", hostname, port)
-}
-
-// extractHostPortFromString attempts to extract host:port from a string when URL parsing fails
-func extractHostPortFromString(s string) string {
-	original := s
-	scheme := "http"
-
-	// Remove scheme prefix if present
-	if strings.HasPrefix(s, "http://") {
-		s = strings.TrimPrefix(s, "http://")
-		scheme = "http"
-	} else if strings.HasPrefix(s, "https://") {
-		s = strings.TrimPrefix(s, "https://")
-		scheme = "https"
-	}
-
-	// Extract up to first /, ?, #, space, or newline (path/query/fragment separator)
-	if idx := strings.IndexAny(s, "/?# \n\r\t"); idx != -1 {
-		s = s[:idx]
-	}
-
-	if s == "" {
-		return original // Return original if we can't extract anything
-	}
-
-	// Validate and split host:port
-	host, port, err := net.SplitHostPort(s)
-	if err == nil {
-		// Valid host:port format
-		if port == "" {
-			// Port is empty, use default
-			if scheme == "https" {
-				port = "443"
-			} else {
-				port = "80"
-			}
-		}
-		// Return just host:port (no scheme prefix)
-		return fmt.Sprintf("%s:%s", host, port)
-	}
-
-	// No port in string, add default port
-	if scheme == "https" {
-		return fmt.Sprintf("%s:443", s)
-	}
-	return fmt.Sprintf("%s:80", s)
-}
-
 type RateLimitPoolStats struct {
 	Hits      uint64
 	Misses    uint64
@@ -314,7 +220,7 @@ type RateLimitPoolStats struct {
 }
 
 func (p *PerHostRateLimitPool) GetLimiterForHost(host string) (*ratelimit.Limiter, bool) {
-	normalizedHost := normalizeHostForRateLimit(host)
+	normalizedHost := normalizeHostPort(host)
 
 	if entry, ok := p.cache.Peek(normalizedHost); ok {
 		return entry.limiter, true
@@ -334,7 +240,7 @@ type RateLimitInfo struct {
 }
 
 func (p *PerHostRateLimitPool) GetRateLimitInfo(host string) *RateLimitInfo {
-	normalizedHost := normalizeHostForRateLimit(host)
+	normalizedHost := normalizeHostPort(host)
 
 	entry, ok := p.cache.Peek(normalizedHost)
 	if !ok {
@@ -373,7 +279,7 @@ func (p *PerHostRateLimitPool) Cap() int {
 
 // RecordRequest records a request timestamp for a host to calculate pps
 func (p *PerHostRateLimitPool) RecordRequest(host string) {
-	normalizedHost := normalizeHostForRateLimit(host)
+	normalizedHost := normalizeHostPort(host)
 	entry, ok := p.cache.Peek(normalizedHost)
 	if !ok || entry == nil {
 		return
@@ -388,12 +294,12 @@ func (p *PerHostRateLimitPool) RecordRequest(host string) {
 	}
 	entry.lastRequestAt.Store(now)
 
-	// Track recent timestamps for pps calculation (keep last 100)
+	// Track recent timestamps for pps calculation (circular buffer, no re-allocs)
 	entry.requestMu.Lock()
-	entry.requestTimestamps = append(entry.requestTimestamps, now)
-	if len(entry.requestTimestamps) > 100 {
-		// Keep only last 100 timestamps
-		entry.requestTimestamps = entry.requestTimestamps[len(entry.requestTimestamps)-100:]
+	entry.requestTimestamps[entry.tsHead] = now
+	entry.tsHead = (entry.tsHead + 1) % ppsWindowSize
+	if entry.tsCount < ppsWindowSize {
+		entry.tsCount++
 	}
 	entry.requestMu.Unlock()
 }
@@ -407,17 +313,19 @@ func (p *PerHostRateLimitPool) calculatePPS(entry *rateLimitEntry) float64 {
 	entry.requestMu.Lock()
 	defer entry.requestMu.Unlock()
 
-	if len(entry.requestTimestamps) < 2 {
+	if entry.tsCount < 2 {
 		// Need at least 2 requests to calculate pps
 		return 0
 	}
 
 	now := time.Now().UnixNano()
-	// Calculate pps based on requests in the last second
+	// Calculate pps based on requests in the last second, walking the circular
+	// buffer backwards from the most recent timestamp
 	oneSecondAgo := now - int64(time.Second)
 	recentRequests := 0
-	for i := len(entry.requestTimestamps) - 1; i >= 0; i-- {
-		if entry.requestTimestamps[i] >= oneSecondAgo {
+	for i := 0; i < entry.tsCount; i++ {
+		idx := (entry.tsHead - 1 - i + 2*ppsWindowSize) % ppsWindowSize
+		if entry.requestTimestamps[idx] >= oneSecondAgo {
 			recentRequests++
 		} else {
 			break
@@ -454,10 +362,12 @@ func (p *PerHostRateLimitPool) PrintStats() {
 	if stats.Size == 0 {
 		return
 	}
+	var hitRate float64
+	if total := stats.Hits + stats.Misses; total > 0 {
+		hitRate = float64(stats.Hits) * 100 / float64(total)
+	}
 	gologger.Info().Msgf("[perhost-ratelimit-pool] Rate limit stats: Hits=%d Misses=%d HitRate=%.1f%% Hosts=%d",
-		stats.Hits, stats.Misses,
-		float64(stats.Hits)*100/float64(stats.Hits+stats.Misses+1),
-		stats.Size)
+		stats.Hits, stats.Misses, hitRate, stats.Size)
 }
 
 // PrintPerHostPPSStats prints requests per second for each host
@@ -466,38 +376,31 @@ func (p *PerHostRateLimitPool) PrintPerHostPPSStats() {
 		return
 	}
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	hostStats := []struct {
+	type hostStat struct {
 		host     string
 		pps      float64
 		requests uint64
 		age      time.Duration
-	}{}
+	}
 
+	// Collect stats under lock, log after releasing it to avoid blocking
+	// concurrent GetOrCreate/RecordRequest callers during slow I/O
+	p.mu.Lock()
+	hostStats := []hostStat{}
 	for _, key := range p.cache.Keys() {
 		entry, ok := p.cache.Peek(key)
 		if !ok || entry == nil {
 			continue
 		}
 
-		pps := p.calculatePPS(entry)
-		requests := entry.requestCount.Load()
-		age := time.Since(entry.createdAt)
-
-		hostStats = append(hostStats, struct {
-			host     string
-			pps      float64
-			requests uint64
-			age      time.Duration
-		}{
+		hostStats = append(hostStats, hostStat{
 			host:     key,
-			pps:      pps,
-			requests: requests,
-			age:      age,
+			pps:      p.calculatePPS(entry),
+			requests: entry.requestCount.Load(),
+			age:      time.Since(entry.createdAt),
 		})
 	}
+	p.mu.Unlock()
 
 	if len(hostStats) == 0 {
 		return
