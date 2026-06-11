@@ -601,6 +601,14 @@ func (request *Request) HasFuzzing() bool {
 // This analysis ensures backward compatibility by preserving connection-close behavior
 // when necessary while enabling pooling/sharding for other requests.
 func (r *Request) AnalyzeConnectionReuse() ConnectionReusePolicy {
+	// Priority 0: race and pipeline requests need dedicated connections. Race
+	// uses a one-shot synced body gate that breaks if a connection is reused and
+	// the body is re-read, and reusing a single keep-alive connection would also
+	// serialize the requests and defeat the race.
+	if r.Race || r.Pipeline {
+		return ReuseUnsafe
+	}
+
 	// Priority 1: Check for explicit "Connection: close" header in raw requests
 	for _, raw := range r.Raw {
 		if hasConnectionCloseHeader(raw) {
