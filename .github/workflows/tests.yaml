@@ -57,6 +57,18 @@ jobs:
       - run: go run -race . -l ${{ github.workspace }}/internal/tests/functional/testdata/targets.txt -id tech-detect,tls-version
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
         working-directory: cmd/nuclei/
+      # Hermetic HTTP-engine scale regression: stands up many loopback hosts and
+      # asserts finding parity across a diverse template set (per-host pool,
+      # sharding, connection-reuse and http->https tracker + cookie-reuse). Run
+      # with -race where supported to guard the shared pools/trackers; Windows
+      # skips -race per the known issue above. Large runs stay opt-in locally
+      # via NUCLEI_SCALE_HOSTS.
+      - name: "Scale regression (race)"
+        run: go test -tags=regression -race -timeout 15m ./lib/tests -run TestScaleRegression
+        if: ${{ matrix.os != 'windows-latest' }}
+      - name: "Scale regression"
+        run: make regression
+        if: ${{ matrix.os == 'windows-latest' }}
 
   sdk:
     name: "Run example SDK"

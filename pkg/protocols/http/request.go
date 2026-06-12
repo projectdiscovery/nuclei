@@ -910,7 +910,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				httpclient = client
 			}
 
-			// Check if HTTP-to-HTTPS port correction is needed before sending request
+			// Check if HTTP-to-HTTPS port correction is needed before sending request.
+			// The correction is keyed by host:port and shared across templates, so a
+			// single mis-detection could otherwise silently break every later request
+			// to that host. We remember that a correction was applied so we can revert
+			// and retry on failure (see below).
+			var httpsCorrectionTracker *httpclientpool.HTTPToHTTPSPortTracker
+			var httpsCorrectionURL string
 			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 				tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options)
 				if tracker != nil {
@@ -920,6 +926,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 						if generatedRequest.request.Scheme == "http" {
 							generatedRequest.request.Scheme = "https"
 							tracker.RecordCorrection()
+							httpsCorrectionTracker = tracker
+							httpsCorrectionURL = requestURL
 							gologger.Debug().Msgf("[http-to-https-tracker] Corrected HTTP to HTTPS for %s", requestURL)
 						}
 					}
@@ -951,6 +959,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 
 			resp, err = httpclient.Do(generatedRequest.request)
+
+			// If we forced http->https from a previous detection and the corrected
+			// request failed (e.g. a false positive where the port actually speaks
+			// plain HTTP), revert to the original scheme, evict the bad entry so
+			// other templates hitting the same host:port are not affected, and retry
+			// once. This keeps the optimization while preventing a single
+			// mis-detection from silently dropping findings at scale.
+			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
+				generatedRequest.request.Scheme = "http"
+				httpsCorrectionTracker.Evict(httpsCorrectionURL)
+				resp, err = httpclient.Do(generatedRequest.request)
+			}
 		}
 	}
 	// use request url as matched url if empty

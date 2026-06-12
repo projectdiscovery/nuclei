@@ -63,6 +63,26 @@ func (t *HTTPToHTTPSPortTracker) RecordCorrection() {
 	t.totalCorrections.Add(1)
 }
 
+// Evict removes a host:port from the tracker. It is used to self-heal a false
+// positive: when an http->https correction is applied but the https request
+// then fails, the original http scheme is retried and, if the entry was wrong,
+// evicted so subsequent requests (including those from unrelated templates)
+// against the same host:port are not silently broken.
+func (t *HTTPToHTTPSPortTracker) Evict(hostPort string) {
+	if hostPort == "" {
+		return
+	}
+
+	normalizedHostPort := normalizeHostPort(hostPort)
+	if normalizedHostPort == "" {
+		return
+	}
+
+	if _, loaded := t.ports.LoadAndDelete(normalizedHostPort); loaded {
+		gologger.Debug().Msgf("[http-to-https-tracker] Reverted HTTP-to-HTTPS for %s (https attempt failed, falling back to http)", normalizedHostPort)
+	}
+}
+
 // Stats returns statistics about the tracker
 func (t *HTTPToHTTPSPortTracker) Stats() HTTPToHTTPSPortStats {
 	return HTTPToHTTPSPortStats{
