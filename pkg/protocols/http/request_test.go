@@ -343,6 +343,51 @@ func TestHTTPResetsHostCacheOnSuccess(t *testing.T) {
 	require.Equal(t, int32(0), spy.marks.Load(), "a successful request must not mark a host error")
 }
 
+func TestParallelHTTPResetsHostCacheOnSuccess(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "ok")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-reset-on-success"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2", "3", "4"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"ok"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	spy := &spyHostErrorsCache{}
+	executerOpts.HostErrorsCache = spy
+	require.NoError(t, req.Compile(executerOpts))
+
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err := req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+	require.NoError(t, err)
+
+	require.Greater(t, spy.resets.Load(), int32(0), "successful parallel requests must reset the host-errors cache")
+	require.Equal(t, int32(0), spy.marks.Load(), "successful parallel requests must not mark a host error")
+}
+
 func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
 	options := testutils.DefaultOptions
 	testutils.Init(options)

@@ -150,8 +150,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks this host as unresponsive if applicable
-		request.markHostError(input, err)
+		request.recordHostResult(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
 			spmHandler.Cancel()
@@ -232,8 +231,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks this host as unresponsive if applicable
-		request.markHostError(input, err)
+		request.recordHostResult(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
 			spmHandler.Cancel()
@@ -437,8 +435,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 	// look for unresponsive hosts and cancel inflight requests as well
 	spmHandler.SetOnResultCallback(func(err error) {
-		// marks this host as unresponsive if applicable
-		request.markHostError(input, err)
+		request.recordHostResult(input, err)
 		if request.isUnresponsiveAddress(input) {
 			// stop all inflight requests
 			spmHandler.Cancel()
@@ -601,19 +598,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				return true, nil
 			}
 
+			request.recordHostResult(updatedInput, execReqErr)
 			if execReqErr != nil {
-				request.markHostError(updatedInput, execReqErr)
-
-				// if applicable mark the host as unresponsive
 				reqKitErr := errkit.FromError(execReqErr)
 				reqKitErr.Msgf("got err while executing %v", generatedHttpRequest.URL())
 
 				requestErr = reqKitErr
 				request.options.Progress.IncrementFailedRequestsBy(1)
 			} else {
-				// a successful response resets the host's error count so intermittent
-				// timeouts on a live host do not accumulate into a false skip
-				request.markHostSuccess(updatedInput)
 				request.options.Progress.IncrementRequests()
 			}
 
@@ -1305,18 +1297,12 @@ func (request *Request) newContext(input *contextargs.Context) context.Context {
 	return input.Context()
 }
 
-// markHostError checks if the error is a unreponsive host error and marks it
-func (request *Request) markHostError(input *contextargs.Context, err error) {
-	if request.options.HostErrorsCache != nil && err != nil {
-		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
-	}
-}
-
-// markHostSuccess resets the host's error count after a successful request so that
-// only consecutive failures (with no success in between) can mark a host unresponsive.
-func (request *Request) markHostSuccess(input *contextargs.Context) {
+// recordHostResult updates the host-errors cache with the outcome of a request.
+// A failure is counted; a success resets the host, so only consecutive failures
+// with no success in between can mark a host unresponsive.
+func (request *Request) recordHostResult(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, nil)
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
 	}
 }
 
