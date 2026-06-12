@@ -18,7 +18,7 @@ func TestHTTPToHTTPSPortTracker_RecordAndRequire(t *testing.T) {
 	require.EqualValues(t, 1, tr.Stats().TotalDetections)
 }
 
-// TestHTTPToHTTPSPortTracker_Evict guards the fallback mechanism: a mis-detected
+// TestHTTPToHTTPSPortTracker_Evict guards the fallback mechanism: a wrongly detected
 // host:port must be removable so a failed https correction can revert to http
 // and stop breaking subsequent (cross-template) requests to the same target.
 func TestHTTPToHTTPSPortTracker_Evict(t *testing.T) {

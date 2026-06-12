@@ -13,7 +13,7 @@
 // requests and a multi-step cookie-reuse flow) through the engine, asserting
 // that every host yields the full expected finding set. It also includes a host
 // that emits the "plain HTTP request was sent to HTTPS port" 400 body to
-// exercise the HTTP->HTTPS port tracker: a mis-detected/false-positive scheme
+// exercise the HTTP->HTTPS port tracker: a wrongly detected/false-positive scheme
 // rewrite must not silently drop findings of unrelated templates hitting the
 // same host:port (regression guard for the tracker fallback).
 package sdk_test

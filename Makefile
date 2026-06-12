@@ -82,7 +82,11 @@ syntax-docs: docgen
 syntax-docs:
 	./bin/docgen SYNTAX-REFERENCE.md nuclei-jsonschema.json
 
-test: GOFLAGS = -race -v -timeout 1h -count 1
+# RACE controls the data-race detector (on by default for local runs). CI builds
+# the race variant on a single OS and passes RACE= elsewhere, since data races are
+# OS-independent and the detector costs ~2-3x build+run time on every runner.
+RACE ?= -race
+test: GOFLAGS = $(RACE) -v -timeout 1h -count 1
 test:
 	$(GOTEST) $(GOFLAGS) ./...
 
