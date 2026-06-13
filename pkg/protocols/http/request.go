@@ -148,36 +148,30 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	// look for unresponsive hosts and cancel inflight requests as well
-	spmHandler.SetOnResultCallback(func(err error) {
-		request.recordHostResult(input, err)
-		if request.isUnresponsiveAddress(input) {
-			// stop all inflight requests
-			spmHandler.Cancel()
-		}
-	})
-
 	for i := 0; i < request.RaceNumberRequests; i++ {
-		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(input) {
+		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedRequests[i].URL())
+		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) {
 			// stop sending more requests condition is met
 			break
 		}
 		spmHandler.Acquire()
 		// execute http request
-		go func(httpRequest *generatedRequest) {
+		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(input) {
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
 				// stop sending more requests condition is met
 				return
 			}
 
+			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
-			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+			case spmHandler.ResultChan <- err:
+				request.recordHostResultAndCancelIfUnresponsive(requestInput, err, spmHandler.Cancel)
 				return
 			}
-		}(generatedRequests[i])
+		}(generatedRequests[i], updatedInput)
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -229,15 +223,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 	}
 
-	// look for unresponsive hosts and cancel inflight requests as well
-	spmHandler.SetOnResultCallback(func(err error) {
-		request.recordHostResult(input, err)
-		if request.isUnresponsiveAddress(input) {
-			// stop all inflight requests
-			spmHandler.Cancel()
-		}
-	})
-
 	// bounded worker-pool to avoid spawning one goroutine per payload
 	type task struct {
 		req                *generatedRequest
@@ -269,11 +254,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				request.options.RateLimitTake()
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
-				select {
-				case <-spmHandler.Done():
-					spmHandler.Release()
-					continue
-				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+				err := request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 						requestData := &interactsh.RequestData{
 							MakeResultFunc: request.MakeResultEvent,
@@ -287,7 +268,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
 					}
 					wrappedCallback(event)
-				}, 0):
+				}, 0)
+				select {
+				case <-spmHandler.Done():
+					spmHandler.Release()
+					continue
+				case spmHandler.ResultChan <- err:
+					request.recordHostResultAndCancelIfUnresponsive(t.updatedInput, err, spmHandler.Cancel)
 					spmHandler.Release()
 				}
 			}
@@ -433,15 +420,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		}
 	}
 
-	// look for unresponsive hosts and cancel inflight requests as well
-	spmHandler.SetOnResultCallback(func(err error) {
-		request.recordHostResult(input, err)
-		if request.isUnresponsiveAddress(input) {
-			// stop all inflight requests
-			spmHandler.Cancel()
-		}
-	})
-
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
@@ -476,19 +454,21 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
 		spmHandler.Acquire()
-		go func(httpRequest *generatedRequest) {
+		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) {
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
 				// skip if first match is found
 				return
 			}
+			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
-			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+			case spmHandler.ResultChan <- err:
+				request.recordHostResultAndCancelIfUnresponsive(requestInput, err, spmHandler.Cancel)
 				return
 			}
-		}(generatedHttpRequest)
+		}(generatedHttpRequest, updatedInput)
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -1303,6 +1283,13 @@ func (request *Request) newContext(input *contextargs.Context) context.Context {
 func (request *Request) recordHostResult(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
 		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
+	}
+}
+
+func (request *Request) recordHostResultAndCancelIfUnresponsive(input *contextargs.Context, err error, cancel func()) {
+	request.recordHostResult(input, err)
+	if request.isUnresponsiveAddress(input) {
+		cancel()
 	}
 }
 
