@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tarunKoyalwar/goleak"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -20,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func TestHTTPExtractMultipleReuse(t *testing.T) {
@@ -286,9 +287,9 @@ type spyHostErrorsCache struct {
 	skip   bool
 }
 
-func (s *spyHostErrorsCache) SetVerbose(bool)                 {}
-func (s *spyHostErrorsCache) Close()                          {}
-func (s *spyHostErrorsCache) Remove(*contextargs.Context)     { s.resets.Add(1) }
+func (s *spyHostErrorsCache) SetVerbose(bool)             {}
+func (s *spyHostErrorsCache) Close()                      {}
+func (s *spyHostErrorsCache) Remove(*contextargs.Context) { s.resets.Add(1) }
 func (s *spyHostErrorsCache) MarkFailed(p string, c *contextargs.Context, err error) {
 	s.MarkFailedOrRemove(p, c, err)
 }
@@ -299,8 +300,39 @@ func (s *spyHostErrorsCache) MarkFailedOrRemove(_ string, _ *contextargs.Context
 		s.marks.Add(1)
 	}
 }
-func (s *spyHostErrorsCache) Check(string, *contextargs.Context) bool          { return s.skip }
-func (s *spyHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool  { return false }
+func (s *spyHostErrorsCache) Check(string, *contextargs.Context) bool         { return s.skip }
+func (s *spyHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool { return false }
+
+type addressSpyHostErrorsCache struct {
+	mu     sync.Mutex
+	checks []string
+	resets []string
+}
+
+func (s *addressSpyHostErrorsCache) SetVerbose(bool) {}
+func (s *addressSpyHostErrorsCache) Close()          {}
+func (s *addressSpyHostErrorsCache) Remove(ctx *contextargs.Context) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.resets = append(s.resets, ctx.MetaInput.Address())
+}
+func (s *addressSpyHostErrorsCache) MarkFailed(string, *contextargs.Context, error) {}
+func (s *addressSpyHostErrorsCache) MarkFailedOrRemove(_ string, ctx *contextargs.Context, err error) {
+	if err == nil {
+		s.Remove(ctx)
+	}
+}
+func (s *addressSpyHostErrorsCache) Check(_ string, ctx *contextargs.Context) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.checks = append(s.checks, ctx.MetaInput.Address())
+	return false
+}
+func (s *addressSpyHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool {
+	return false
+}
 
 func TestHTTPResetsHostCacheOnSuccess(t *testing.T) {
 	options := testutils.DefaultOptions
@@ -386,6 +418,52 @@ func TestParallelHTTPResetsHostCacheOnSuccess(t *testing.T) {
 
 	require.Greater(t, spy.resets.Load(), int32(0), "successful parallel requests must reset the host-errors cache")
 	require.Equal(t, int32(0), spy.marks.Load(), "successful parallel requests must not mark a host error")
+}
+
+func TestParallelHTTPResetsUpdatedHostCacheKeyOnSuccess(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "ok")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-reset-updated-host"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{ts.URL + "/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"ok"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	spy := &addressSpyHostErrorsCache{}
+	executerOpts.HostErrorsCache = spy
+	require.NoError(t, req.Compile(executerOpts))
+
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), "http://example.invalid")
+	err := req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+	require.NoError(t, err)
+
+	expectedAddress := contextargs.NewWithInput(context.Background(), ts.URL).MetaInput.Address()
+	require.Contains(t, spy.checks, expectedAddress, "generated request host must be checked")
+	require.Contains(t, spy.resets, expectedAddress, "success must reset the generated request host")
 }
 
 func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
