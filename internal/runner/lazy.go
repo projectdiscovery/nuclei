@@ -1,11 +1,16 @@
 package runner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/autologin"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -62,6 +67,208 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 		return nil, errkit.Wrap(err, "failed to initialize dynamic auth templates store")
 	}
 	return store, nil
+}
+
+// captureOnceStoreFromOptions launches a visible browser at -auth-login-url,
+// lets the user log in manually (pressing Enter in the terminal when done) and
+// builds an in-memory static auth store from the captured session (cookies and
+// an optional token), scoped to the login host. Unlike auto-login this captures
+// a point-in-time session with no automated re-authentication.
+func captureOnceStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
+	u, err := url.Parse(opts.AuthLoginURL)
+	if err != nil {
+		return nil, errkit.Wrap(err, "invalid -auth-login-url")
+	}
+	if u.Host == "" {
+		return nil, errkit.New("capture-once: -auth-login-url is required and must include a host")
+	}
+
+	rt := buildAutoLoginRuntimeOptions(opts)
+	cfg := autologin.Config{
+		LoginURL:           opts.AuthLoginURL,
+		Proxy:              rt.Proxy,
+		CDPEndpoint:        rt.CDPEndpoint,
+		UseInstalledChrome: rt.UseInstalledChrome,
+		UserAgent:          rt.UserAgent,
+		CustomHeaders:      rt.CustomHeaders,
+	}
+
+	ready := func() error {
+		fmt.Fprintf(os.Stderr, "[auth-capture] Log in to %s in the opened browser window, then press Enter here to capture the session...", opts.AuthLoginURL)
+		reader := bufio.NewReader(os.Stdin)
+		_, rerr := reader.ReadString('\n')
+		return rerr
+	}
+
+	session, err := autologin.CaptureOnce(context.Background(), cfg, ready)
+	if err != nil {
+		return nil, err
+	}
+	return captureSessionToStore(session, u.Host)
+}
+
+// captureSessionToStore converts a captured login session into a static auth
+// store scoped to host: cookies as a Cookie secret, an extracted token as a
+// BearerToken secret, and any web storage as a WebStorage secret (replayed into
+// headless scan pages). It is split out from captureOnceStoreFromOptions so the
+// session->store mapping is unit-testable without driving a browser.
+func captureSessionToStore(session *autologin.Session, host string) (*authx.Authx, error) {
+	if session == nil {
+		return nil, errkit.New("capture-once: nil session")
+	}
+	var secrets []authx.Secret
+	if len(session.Cookies) > 0 {
+		cookies := make([]authx.Cookie, 0, len(session.Cookies))
+		for _, c := range session.Cookies {
+			cookies = append(cookies, authx.Cookie{Key: c.Name, Value: c.Value})
+		}
+		secrets = append(secrets, authx.Secret{
+			Type:    string(authx.CookiesAuth),
+			Domains: []string{host},
+			Cookies: cookies,
+		})
+	}
+	if session.Token != "" {
+		secrets = append(secrets, authx.Secret{
+			Type:    string(authx.BearerTokenAuth),
+			Domains: []string{host},
+			Token:   session.Token,
+		})
+	}
+	if len(session.LocalStorage) > 0 || len(session.SessionStorage) > 0 {
+		// Carry captured web storage so a token-in-web-storage SPA session
+		// replays into headless scan pages (HTTP scans ignore this secret).
+		secrets = append(secrets, authx.Secret{
+			Type:           string(authx.WebStorageAuth),
+			Domains:        []string{host},
+			LocalStorage:   session.LocalStorage,
+			SessionStorage: session.SessionStorage,
+		})
+	}
+	if len(secrets) == 0 {
+		return nil, errkit.New("capture-once: captured session had no replayable cookies, token or web storage")
+	}
+	for i := range secrets {
+		if err := secrets[i].Validate(); err != nil {
+			return nil, errkit.Wrap(err, "capture-once: invalid captured secret")
+		}
+	}
+	return &authx.Authx{ID: "cli-capture-once", Secrets: secrets}, nil
+}
+
+// buildAutoLoginRuntimeOptions maps scan-level options into the auto-login
+// runtime options so a (headless) auto-login uses the same identity and network
+// path as the scan: user-agent and custom headers (-H), proxy, CDP endpoint and
+// Chrome settings.
+func buildAutoLoginRuntimeOptions(opts *types.Options) *authx.AutoLoginRuntimeOptions {
+	// Mirror the proxy precedence used everywhere else in the codebase (HTTP
+	// proxy first, SOCKS as fallback) so a SOCKS-proxied scan does not silently
+	// bypass the proxy during auto-login.
+	proxy := opts.AliveHttpProxy
+	if proxy == "" {
+		proxy = opts.AliveSocksProxy
+	}
+	rt := &authx.AutoLoginRuntimeOptions{
+		Proxy:              proxy,
+		CDPEndpoint:        opts.CDPEndpoint,
+		UseInstalledChrome: opts.UseInstalledChrome,
+		ShowBrowser:        opts.ShowBrowser,
+	}
+	for _, header := range opts.CustomHeaders {
+		parts := strings.SplitN(header, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if key == "" || value == "" {
+			continue
+		}
+		if strings.EqualFold(key, "User-Agent") {
+			rt.UserAgent = value
+			continue
+		}
+		if rt.CustomHeaders == nil {
+			rt.CustomHeaders = map[string]string{}
+		}
+		rt.CustomHeaders[key] = value
+	}
+	return rt
+}
+
+// autoLoginStoreFromOptions assembles an in-memory Authx store containing a
+// single auto-login dynamic secret built from the -auth-login-url flag set. The
+// captured session is scoped to the login URL's host.
+func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
+	// The login URL may be supplied directly (-auth-login-url) or derived from a
+	// recording's first navigate step; resolve the host scope from whichever is
+	// available.
+	loginURL := opts.AuthLoginURL
+	if loginURL == "" && opts.AuthRecording != "" {
+		steps, err := autologin.StepsFromRecordingFile(opts.AuthRecording, opts.AuthUsername, opts.AuthPassword)
+		if err != nil {
+			return nil, err
+		}
+		loginURL = autologin.FirstNavigateURL(steps)
+	}
+	u, err := url.Parse(loginURL)
+	if err != nil {
+		return nil, errkit.Wrap(err, "invalid auto-login url")
+	}
+	if u.Host == "" {
+		return nil, errkit.New("auto-login: could not determine host (set -auth-login-url or provide a recording with a navigate step)")
+	}
+	reauthCodes, err := parseStatusCodes(opts.AuthReauthStatusCodes)
+	if err != nil {
+		return nil, err
+	}
+	return &authx.Authx{
+		ID: "cli-auto-login",
+		Dynamic: []authx.Dynamic{
+			{
+				Secret: &authx.Secret{Domains: []string{u.Host}},
+				// Session lifecycle: re-run the login on the configured expiry
+				// status codes and/or once the session ages past the interval, so
+				// a long scan does not silently continue with a dead session.
+				RefreshInterval:   opts.AuthRefreshInterval,
+				ReauthStatusCodes: reauthCodes,
+				AutoLogin: &authx.AutoLoginConfig{
+					LoginURL:      loginURL,
+					Username:      opts.AuthUsername,
+					Password:      opts.AuthPassword,
+					UsernameField: opts.AuthUsernameField,
+					PasswordField: opts.AuthPasswordField,
+					Headless:      opts.AuthHeadless,
+					Recording:     opts.AuthRecording,
+				},
+			},
+		},
+	}, nil
+}
+
+// parseStatusCodes parses a comma-separated list of HTTP status codes (e.g.
+// "401,403") into a slice of ints. An empty string yields a nil slice.
+func parseStatusCodes(raw string) ([]int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	var codes []int
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		code, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "invalid -auth-reauth-status-codes value %q", part)
+		}
+		if code < 100 || code > 599 {
+			return nil, errkit.New("invalid -auth-reauth-status-codes value %q: must be a valid HTTP status code", part)
+		}
+		codes = append(codes, code)
+	}
+	return codes, nil
 }
 
 // GetLazyAuthFetchCallback returns a lazy fetch callback for auth secrets

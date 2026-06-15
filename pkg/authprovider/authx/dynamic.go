@@ -2,8 +2,10 @@ package authx
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -14,11 +16,35 @@ import (
 
 type LazyFetchSecret func(d *Dynamic) error
 
-// fetchState holds the sync.Once and error for thread-safe fetching.
-// This is stored as a pointer in Dynamic so that value copies share the same state.
+// fetchState holds the session state for a dynamic secret and makes it safe
+// for concurrent use. It is stored as a pointer in Dynamic so that value copies
+// (e.g. the one held inside DynamicAuthStrategy) share the same session.
+//
+// Unlike a plain sync.Once, this state machine supports re-authentication: the
+// login flow can be re-run when the session goes stale (explicitly marked,
+// detected from a response status, or after a configured refresh interval).
+//
+// Locking contract:
+//   - Fetch/Refresh take the write lock while (re)running the login callback.
+//   - The dynamic apply path (ApplyStrategies) holds the read lock while reading
+//     the rendered secret, so request-time reads never race a concurrent re-auth.
 type fetchState struct {
-	once sync.Once
-	err  error
+	mu        sync.RWMutex
+	fetched   bool      // whether the login callback has completed at least once
+	stale     bool      // whether the session must be re-authenticated on next fetch
+	fetchedAt time.Time // time of the last successful/attempted fetch
+	err       error     // error from the most recent fetch attempt
+	// webStorageLocal/webStorageSession hold browser web storage captured by a
+	// headless auto-login, to be replayed into headless scan pages. Stored here
+	// (on the shared fetchState pointer) so all Dynamic value-copies and a
+	// re-authentication observe the same, freshly-captured storage.
+	webStorageLocal   map[string]string
+	webStorageSession map[string]string
+	// autoLoginSecrets holds extra applied secrets derived from an auto-login
+	// session (e.g. a bearer token captured alongside a session cookie). They
+	// live on the shared fetchState rather than the per-copy Dynamic.Secrets
+	// slice so every domain-scoped value-copy applies the same captured session.
+	autoLoginSecrets []*Secret
 }
 
 var (
@@ -30,16 +56,44 @@ var (
 // ex: username and password are dynamic secrets, the actual secret is the token obtained
 // after authenticating with the username and password
 type Dynamic struct {
-	*Secret       `yaml:",inline"`       // this is a static secret that will be generated after the dynamic secret is resolved
-	Secrets       []*Secret              `yaml:"secrets"`
-	TemplatePath  string                 `json:"template" yaml:"template"`
-	Variables     []KV                   `json:"variables" yaml:"variables"`
-	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
-	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
-	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
+	*Secret      `yaml:",inline"`       // this is a static secret that will be generated after the dynamic secret is resolved
+	Secrets      []*Secret              `yaml:"secrets"`
+	TemplatePath string                 `json:"template" yaml:"template"`
+	Variables    []KV                   `json:"variables" yaml:"variables"`
+	Input        string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
+	Extracted    map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
+
+	// AutoLogin, when set, replaces the template-based login (TemplatePath) with
+	// a turnkey form-based auto-login: nuclei fetches the login page, detects the
+	// form and submits the supplied credentials, capturing the session
+	// automatically. It is mutually exclusive with TemplatePath.
+	AutoLogin *AutoLoginConfig `json:"auto-login" yaml:"auto-login"`
+
+	// RefreshInterval, when set (e.g. "15m"), causes the session to be
+	// re-authenticated automatically once the rendered secret is older than the
+	// interval. When empty/zero the session is fetched once and never expires by time.
+	RefreshInterval string `json:"refresh-interval" yaml:"refresh-interval"`
+	// ReauthStatusCodes is the set of HTTP response status codes that indicate
+	// the session has expired (e.g. [401, 403]). When a matching response is
+	// observed, the session is marked stale and re-authenticated before the next
+	// request. When empty, response-triggered re-authentication is disabled.
+	ReauthStatusCodes []int `json:"reauth-status-codes" yaml:"reauth-status-codes"`
+
+	fetchCallback LazyFetchSecret `json:"-" yaml:"-"`
 	// fetchState is shared across value-copies of Dynamic (e.g., inside DynamicAuthStrategy).
 	// It must be initialized via Validate() before calling Fetch().
 	fetchState *fetchState `json:"-" yaml:"-"`
+	// refreshInterval is the parsed form of RefreshInterval.
+	refreshInterval time.Duration `json:"-" yaml:"-"`
+	// autoLoginClient is an optional template HTTP client (proxy/TLS) reused for
+	// auto-login requests. nil means use the autologin engine's defaults.
+	autoLoginClient *http.Client `json:"-" yaml:"-"`
+	// origSecret/origSecrets hold pristine copies of the secret templates (with
+	// their {{var}} placeholders intact) captured before the first fetch. They are
+	// used to re-render the secret on each re-authentication, since substitution
+	// is destructive (placeholders are replaced with concrete values in place).
+	origSecret  *Secret   `json:"-" yaml:"-"`
+	origSecrets []*Secret `json:"-" yaml:"-"`
 }
 
 func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
@@ -80,11 +134,55 @@ func (d *Dynamic) Validate() error {
 	// NOTE: Validate() must not be called concurrently with Fetch()/GetStrategies().
 	// Re-validating resets fetch state and allows re-fetching.
 	d.fetchState = &fetchState{}
+
+	// Auto-login is a template-free alternative to TemplatePath. When set, it is
+	// validated on its own and the template/variables requirements do not apply;
+	// domains (used for scoping the captured session) are still required.
+	if d.AutoLogin != nil {
+		if d.TemplatePath != "" {
+			return errkit.New("auto-login and template are mutually exclusive for dynamic secret")
+		}
+		if err := d.AutoLogin.Validate(); err != nil {
+			return err
+		}
+		domains, domainsRegex := d.GetDomainAndDomainRegex()
+		if len(domains) == 0 && len(domainsRegex) == 0 {
+			return errkit.New("domains or domains-regex are required for auto-login dynamic secret")
+		}
+		if d.RefreshInterval != "" {
+			dur, err := time.ParseDuration(d.RefreshInterval)
+			if err != nil {
+				return errkit.New("invalid refresh-interval %q for dynamic secret: %s", d.RefreshInterval, err)
+			}
+			if dur < 0 {
+				return errkit.New("refresh-interval cannot be negative for dynamic secret")
+			}
+			d.refreshInterval = dur
+		}
+		// The applied secret is built from the captured session at fetch time, so
+		// skip the (pre-fetch) Secret.Validate which would reject the still-empty
+		// cookies/token. We only need its domains, captured above.
+		if d.Secret != nil {
+			d.skipCookieParse = true
+		}
+		return nil
+	}
+
 	if d.TemplatePath == "" {
 		return errkit.New(" template-path is required for dynamic secret")
 	}
 	if len(d.Variables) == 0 {
 		return errkit.New("variables are required for dynamic secret")
+	}
+	if d.RefreshInterval != "" {
+		dur, err := time.ParseDuration(d.RefreshInterval)
+		if err != nil {
+			return errkit.New("invalid refresh-interval %q for dynamic secret: %s", d.RefreshInterval, err)
+		}
+		if dur < 0 {
+			return errkit.New("refresh-interval cannot be negative for dynamic secret")
+		}
+		d.refreshInterval = dur
 	}
 
 	if d.Secret != nil {
@@ -102,8 +200,15 @@ func (d *Dynamic) Validate() error {
 	return nil
 }
 
-// SetLazyFetchCallback sets the lazy fetch callback for the dynamic secret
+// SetLazyFetchCallback sets the lazy fetch callback for the dynamic secret.
+//
+// The provided callback is responsible for running the login flow and populating
+// d.Extracted. The wrapper here renders the secret templates with the freshly
+// extracted values. It snapshots the pristine secret templates on first use so
+// that re-authentication can re-render them with new values (template
+// substitution is destructive and would otherwise consume the placeholders).
 func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
+	d.snapshotTemplates()
 	d.fetchCallback = func(d *Dynamic) error {
 		err := callback(d)
 		if err != nil {
@@ -114,18 +219,63 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 		}
 
 		if d.Secret != nil {
+			restoreSecretTemplate(d.Secret, d.origSecret)
 			if err := d.applyValuesToSecret(d.Secret); err != nil {
 				return err
 			}
 		}
 
-		for _, secret := range d.Secrets {
+		for i, secret := range d.Secrets {
+			if i < len(d.origSecrets) {
+				restoreSecretTemplate(secret, d.origSecrets[i])
+			}
 			if err := d.applyValuesToSecret(secret); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
+}
+
+// snapshotTemplates captures pristine copies of the secret templates (with their
+// {{var}} placeholders intact) so they can be re-rendered on re-authentication.
+func (d *Dynamic) snapshotTemplates() {
+	if d.Secret != nil {
+		d.origSecret = cloneSecretTemplate(d.Secret)
+	}
+	if len(d.Secrets) > 0 {
+		d.origSecrets = make([]*Secret, len(d.Secrets))
+		for i, secret := range d.Secrets {
+			d.origSecrets[i] = cloneSecretTemplate(secret)
+		}
+	}
+}
+
+// cloneSecretTemplate deep-copies the templated fields of a secret so the
+// original placeholders survive destructive in-place substitution.
+func cloneSecretTemplate(s *Secret) *Secret {
+	if s == nil {
+		return nil
+	}
+	clone := *s
+	clone.Headers = append([]KV(nil), s.Headers...)
+	clone.Cookies = append([]Cookie(nil), s.Cookies...)
+	clone.Params = append([]KV(nil), s.Params...)
+	return &clone
+}
+
+// restoreSecretTemplate resets the templated fields of live back to the pristine
+// template captured in snap, so the next substitution starts from placeholders.
+func restoreSecretTemplate(live, snap *Secret) {
+	if live == nil || snap == nil {
+		return
+	}
+	live.Headers = append([]KV(nil), snap.Headers...)
+	live.Cookies = append([]Cookie(nil), snap.Cookies...)
+	live.Params = append([]KV(nil), snap.Params...)
+	live.Username = snap.Username
+	live.Password = snap.Password
+	live.Token = snap.Token
 }
 
 func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
@@ -196,20 +346,68 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	// does not terminate the entire scan process.
 	_ = d.Fetch(false)
 
-	if d.fetchState != nil && d.fetchState.err != nil {
+	if d.fetchState == nil {
+		return nil
+	}
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
+	if d.fetchState.err != nil {
 		return nil
 	}
 	var strategies []AuthStrategy
 	if d.Secret != nil {
-		strategies = append(strategies, d.GetStrategy())
+		if s := d.GetStrategy(); s != nil {
+			strategies = append(strategies, s)
+		}
 	}
 	for _, secret := range d.Secrets {
-		strategies = append(strategies, secret.GetStrategy())
+		if s := secret.GetStrategy(); s != nil {
+			strategies = append(strategies, s)
+		}
+	}
+	for _, secret := range d.fetchState.autoLoginSecrets {
+		if s := secret.GetStrategy(); s != nil {
+			strategies = append(strategies, s)
+		}
 	}
 	return strategies
 }
 
-// Fetch fetches the dynamic secret
+// ApplyStrategies fetches (or re-authenticates) the session if needed and then
+// applies each resolved auth strategy via the provided apply func while holding
+// the read lock. This guarantees the rendered secret is never read at request
+// time while a concurrent re-authentication is rewriting it.
+func (d *Dynamic) ApplyStrategies(apply func(AuthStrategy)) {
+	// Fetch (re)authenticates under the write lock if the session is missing or stale.
+	_ = d.Fetch(false)
+	if d.fetchState == nil {
+		return
+	}
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
+	if d.fetchState.err != nil {
+		return
+	}
+	if d.Secret != nil {
+		if s := d.GetStrategy(); s != nil {
+			apply(s)
+		}
+	}
+	for _, secret := range d.Secrets {
+		if s := secret.GetStrategy(); s != nil {
+			apply(s)
+		}
+	}
+	for _, secret := range d.fetchState.autoLoginSecrets {
+		if s := secret.GetStrategy(); s != nil {
+			apply(s)
+		}
+	}
+}
+
+// Fetch fetches the dynamic secret, (re)running the login flow when the session
+// has not been fetched yet or has gone stale (explicitly marked, expired by
+// refresh-interval, or invalidated by an observed response status code).
 // if isFatal is true, it will stop the execution if the secret could not be fetched
 func (d *Dynamic) Fetch(isFatal bool) error {
 	if d.fetchState == nil {
@@ -219,18 +417,135 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		return errkit.New("dynamic secret not validated: call Validate() before Fetch()")
 	}
 
-	d.fetchState.once.Do(func() {
-		if d.fetchCallback == nil {
-			d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
-			return
-		}
-		d.fetchState.err = d.fetchCallback(d)
-	})
-
-	if d.fetchState.err != nil && isFatal {
-		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.fetchState.err)
+	d.fetchState.mu.Lock()
+	if !d.fetchState.fetched || d.isExpiredLocked() {
+		d.runFetchLocked()
 	}
-	return d.fetchState.err
+	err := d.fetchState.err
+	d.fetchState.mu.Unlock()
+
+	if err != nil && isFatal {
+		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", err)
+	}
+	return err
+}
+
+// Refresh forces an immediate re-authentication, re-running the login flow
+// regardless of the current session state.
+func (d *Dynamic) Refresh(isFatal bool) error {
+	if d.fetchState == nil {
+		if isFatal {
+			gologger.Fatal().Msgf("Could not refresh dynamic secret: Validate() must be called before Refresh()")
+		}
+		return errkit.New("dynamic secret not validated: call Validate() before Refresh()")
+	}
+
+	d.fetchState.mu.Lock()
+	d.fetchState.fetched = false
+	d.fetchState.stale = false
+	d.runFetchLocked()
+	err := d.fetchState.err
+	d.fetchState.mu.Unlock()
+
+	if err != nil && isFatal {
+		gologger.Fatal().Msgf("Could not refresh dynamic secret: %s\n", err)
+	}
+	return err
+}
+
+// MarkStale marks the session for re-authentication on the next fetch. It is
+// cheap and does not perform any network I/O; the actual re-auth happens on the
+// next Fetch/ApplyStrategies call so it never runs in a response-handling path.
+func (d *Dynamic) MarkStale() {
+	if d.fetchState == nil {
+		return
+	}
+	d.fetchState.mu.Lock()
+	d.fetchState.stale = true
+	d.fetchState.mu.Unlock()
+}
+
+// NotifyResponse inspects a response and, if its status code is configured as a
+// session-expiry signal, marks the session stale so it is re-authenticated
+// before the next request. It returns true if re-authentication was triggered.
+func (d *Dynamic) NotifyResponse(statusCode int) bool {
+	if d.fetchState == nil || !d.shouldReauthOnStatus(statusCode) {
+		return false
+	}
+	// Only mark stale if we actually have an established session to refresh.
+	d.fetchState.mu.RLock()
+	fetched := d.fetchState.fetched
+	d.fetchState.mu.RUnlock()
+	if !fetched {
+		return false
+	}
+	d.MarkStale()
+	return true
+}
+
+// WebStorage returns the browser web storage (localStorage/sessionStorage)
+// captured by a headless auto-login, fetching the session first if needed. It
+// returns nil maps when no storage was captured (e.g. HTTP auto-login or a
+// fetch error).
+func (d *Dynamic) WebStorage() (map[string]string, map[string]string) {
+	_ = d.Fetch(false)
+	if d.fetchState == nil {
+		return nil, nil
+	}
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
+	if d.fetchState.err != nil {
+		return nil, nil
+	}
+	return d.fetchState.webStorageLocal, d.fetchState.webStorageSession
+}
+
+// IsExpired reports whether the session is currently considered expired/stale.
+func (d *Dynamic) IsExpired() bool {
+	if d.fetchState == nil {
+		return false
+	}
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
+	return d.isExpiredLocked()
+}
+
+// runFetchLocked runs the login callback. The caller must hold the write lock.
+func (d *Dynamic) runFetchLocked() {
+	if d.fetchCallback == nil {
+		d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
+		return
+	}
+	d.fetchState.err = d.fetchCallback(d)
+	d.fetchState.fetched = true
+	d.fetchState.stale = false
+	d.fetchState.fetchedAt = time.Now()
+}
+
+// isExpiredLocked reports whether the session needs re-authentication. The
+// caller must hold at least the read lock.
+func (d *Dynamic) isExpiredLocked() bool {
+	if !d.fetchState.fetched {
+		return false
+	}
+	if d.fetchState.stale {
+		return true
+	}
+	if d.refreshInterval > 0 && time.Since(d.fetchState.fetchedAt) > d.refreshInterval {
+		return true
+	}
+	return false
+}
+
+// shouldReauthOnStatus reports whether the given status code is configured as a
+// session-expiry signal.
+func (d *Dynamic) shouldReauthOnStatus(statusCode int) bool {
+	for _, code := range d.ReauthStatusCodes {
+		if code == statusCode {
+			return true
+		}
+	}
+	return false
 }
 
 // Error returns the error if any
@@ -238,5 +553,50 @@ func (d *Dynamic) Error() error {
 	if d.fetchState == nil {
 		return nil
 	}
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
 	return d.fetchState.err
+}
+
+// Close drops the in-memory session captured for this dynamic secret: the
+// applied cookies/token/headers, any captured web storage and derived secrets,
+// and the extracted values. It does not contact the server (sessions are left
+// to expire on their own); it simply ensures nuclei does not retain live
+// session material after the scan, which matters when nuclei is embedded as a
+// library and the process outlives the scan. The session is also marked
+// unfetched so a later reuse re-authenticates from scratch.
+func (d *Dynamic) Close() {
+	if d.fetchState != nil {
+		d.fetchState.mu.Lock()
+		d.fetchState.webStorageLocal = nil
+		d.fetchState.webStorageSession = nil
+		for _, s := range d.fetchState.autoLoginSecrets {
+			wipeSecretSession(s)
+		}
+		d.fetchState.autoLoginSecrets = nil
+		d.fetchState.fetched = false
+		d.fetchState.stale = false
+		d.fetchState.err = nil
+		d.fetchState.mu.Unlock()
+	}
+	wipeSecretSession(d.Secret)
+	for _, s := range d.Secrets {
+		wipeSecretSession(s)
+	}
+	d.Extracted = nil
+}
+
+// wipeSecretSession zeroes the session-bearing fields of a secret (cookies,
+// token, headers, query params and web storage), leaving non-sensitive scoping
+// fields (type/domains) intact. It is a no-op on nil.
+func wipeSecretSession(s *Secret) {
+	if s == nil {
+		return
+	}
+	s.Headers = nil
+	s.Cookies = nil
+	s.Params = nil
+	s.Token = ""
+	s.LocalStorage = nil
+	s.SessionStorage = nil
 }

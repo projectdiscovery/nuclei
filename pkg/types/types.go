@@ -432,6 +432,35 @@ type Options struct {
 	SecretsFile goflags.StringSlice
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
+	// AuthLoginURL is the login page URL for turnkey auto-login (template-free
+	// authenticated scanning). When set, nuclei detects the login form, submits
+	// the credentials and applies the captured session to the scan.
+	AuthLoginURL string
+	// AuthUsername / AuthPassword are the credentials submitted to AuthLoginURL.
+	AuthUsername string
+	AuthPassword string
+	// AuthUsernameField / AuthPasswordField optionally override the detected
+	// login form field names.
+	AuthUsernameField string
+	AuthPasswordField string
+	// AuthHeadless drives the auto-login through a real browser (for JS-rendered
+	// / SPA / multi-step login pages).
+	AuthHeadless bool
+	// AuthRecording is a path to a Chrome DevTools Recorder / @puppeteer/replay
+	// JSON export of a login, replayed headless to acquire the session (implies
+	// a headless auto-login).
+	AuthRecording string
+	// AuthCapture launches a visible browser at -auth-login-url for a one-time
+	// manual login; the resulting session (cookies/token) is captured and used
+	// for the scan. There is no automated re-authentication.
+	AuthCapture bool
+	// AuthReauthStatusCodes is a comma-separated list of HTTP status codes that
+	// signal an expired session (e.g. "401,403"); when a scan response matches,
+	// the auto-login is re-run before the next request. Empty disables it.
+	AuthReauthStatusCodes string
+	// AuthRefreshInterval, when set (e.g. "15m"), proactively re-runs the
+	// auto-login once the captured session is older than the interval.
+	AuthRefreshInterval string
 	// FormatUseRequiredOnly only uses required fields when generating requests
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation

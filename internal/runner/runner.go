@@ -106,6 +106,7 @@ type Runner struct {
 	httpApiEndpoint *httpapi.Server
 	fuzzStats       *fuzzStats.Tracker
 	dastServer      *server.DASTServer
+	authProvider    authprovider.AuthProvider
 }
 
 // New creates a new client for running the enumeration process.
@@ -458,6 +459,11 @@ func (r *Runner) Close() {
 	if r.browser != nil {
 		r.browser.Close()
 	}
+	// Drop any in-memory auto-login session so nuclei does not retain live
+	// session material after the scan (server-side sessions expire on their own).
+	if r.authProvider != nil {
+		r.authProvider.Close()
+	}
 	if r.tmpDir != "" {
 		_ = os.RemoveAll(r.tmpDir)
 	}
@@ -593,24 +599,79 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.ExportReqURLPattern = true
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
-		// Clone options so GetAuthTmplStore can modify them without affecting the original
-		authOptions := r.options.Copy()
-		authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
-		if err != nil {
-			return errors.Wrap(err, "failed to load dynamic auth templates")
+	if (len(r.options.SecretsFile) > 0 || r.options.AuthLoginURL != "" || r.options.AuthRecording != "" || r.options.AuthCapture) && !r.options.Validate {
+		autoLoginOpts := buildAutoLoginRuntimeOptions(r.options)
+		var providers []authprovider.AuthProvider
+
+		if len(r.options.SecretsFile) > 0 {
+			// Clone options so GetAuthTmplStore can modify them without affecting the original
+			authOptions := r.options.Copy()
+			authTmplStore, err := GetAuthTmplStore(authOptions, r.catalog, executorOpts)
+			if err != nil {
+				return errors.Wrap(err, "failed to load dynamic auth templates")
+			}
+			authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
+			authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
+				TemplateStore: authTmplStore,
+				ExecOpts:      executorOpts,
+			})
+			authOpts.AutoLoginOptions = autoLoginOpts
+			fileProvider, err := authprovider.NewAuthProvider(authOpts)
+			if err != nil {
+				return errors.Wrap(err, "could not create auth provider")
+			}
+			providers = append(providers, fileProvider)
 		}
-		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
-		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
-			TemplateStore: authTmplStore,
-			ExecOpts:      executorOpts,
-		})
-		// initialize auth provider
-		provider, err := authprovider.NewAuthProvider(authOpts)
-		if err != nil {
-			return errors.Wrap(err, "could not create auth provider")
+
+		// Turnkey auto-login from CLI flags (-auth-login-url): build an in-memory
+		// auto-login secret scoped to the login host, no secrets file needed.
+		if r.options.AuthLoginURL != "" || r.options.AuthRecording != "" {
+			engine := "http"
+			if r.options.AuthHeadless || r.options.AuthRecording != "" {
+				engine = "headless"
+			}
+			target := r.options.AuthLoginURL
+			if target == "" {
+				target = r.options.AuthRecording
+			}
+			r.Logger.Info().Msgf("Auto-login enabled (%s engine) for %s", engine, target)
+			store, err := autoLoginStoreFromOptions(r.options)
+			if err != nil {
+				return errors.Wrap(err, "could not build auto-login auth provider")
+			}
+			cliProvider, err := authprovider.NewStoreAuthProvider(store, nil, autoLoginOpts)
+			if err != nil {
+				return errors.Wrap(err, "could not create auto-login auth provider")
+			}
+			providers = append(providers, cliProvider)
 		}
-		executorOpts.AuthProvider = provider
+
+		// Capture-once: open a visible browser for a one-time manual login and
+		// build a static session store from the captured cookies/token.
+		if r.options.AuthCapture {
+			if r.options.AuthLoginURL == "" {
+				return errors.New("-auth-capture requires -auth-login-url (the page to open for manual login)")
+			}
+			r.Logger.Info().Msgf("Capture-once login enabled for %s", r.options.AuthLoginURL)
+			store, err := captureOnceStoreFromOptions(r.options)
+			if err != nil {
+				return errors.Wrap(err, "could not capture login session")
+			}
+			captureProvider, err := authprovider.NewStoreAuthProvider(store, nil, autoLoginOpts)
+			if err != nil {
+				return errors.Wrap(err, "could not create capture-once auth provider")
+			}
+			providers = append(providers, captureProvider)
+		}
+
+		switch len(providers) {
+		case 1:
+			executorOpts.AuthProvider = providers[0]
+		default:
+			executorOpts.AuthProvider = authprovider.NewMultiAuthProvider(providers...)
+		}
+		// Retained so Runner.Close can drop captured session material on exit.
+		r.authProvider = executorOpts.AuthProvider
 	}
 
 	if r.options.ShouldUseHostError() {

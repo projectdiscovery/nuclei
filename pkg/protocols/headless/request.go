@@ -133,6 +133,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
+		AuthProvider:  request.options.AuthProvider,
 	}
 
 	if !options.DisableCookie && input.CookieJar == nil {

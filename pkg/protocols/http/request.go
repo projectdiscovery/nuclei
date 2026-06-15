@@ -909,6 +909,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		return err
 	}
 
+	// === detect session expiry and schedule re-authentication ===
+	// If a dynamic auth secret was applied, let it inspect the response status so
+	// an expired session is re-authenticated before subsequent requests.
+	if generatedRequest.request != nil && !request.SkipSecretFile && resp != nil {
+		generatedRequest.NotifyResponse(request.options.AuthProvider, resp)
+	}
+
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
@@ -998,6 +1005,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				HttpClient:         request.httpClient,
 				ResponseTimeDelay:  duration,
 				AnalyzerParameters: request.Analyzer.Parameters,
+				RateLimitTake:      request.options.RateLimitTake,
 			})
 			if err != nil {
 				gologger.Warning().Msgf("Could not analyze response: %v\n", err)

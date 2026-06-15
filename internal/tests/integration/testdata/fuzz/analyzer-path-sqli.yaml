@@ -1,0 +1,33 @@
+id: analyzer-path-sqli
+
+info:
+  name: Path-position error-based SQLi via analyzer
+  author: pdteam
+  severity: high
+  description: |
+    Drives the sqli_error analyzer while fuzzing a numeric PATH segment, proving
+    the analyzer works on the path component through the real pipeline.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "GET"'
+        condition: and
+
+    payloads:
+      seed:
+        - "1"
+
+    fuzzing:
+      - part: path
+        type: replace
+        mode: single
+        fuzz:
+          - "{{seed}}"
+    analyzer:
+      name: sqli_error
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

@@ -6,6 +6,7 @@ Currently the following formats are implemented -
 
 - Burp Suite XML Request/Response file
 - Proxify JSONL output file
+- Katana JSONL crawl output file
 - OpenAPI Specification file
 - Postman Collection file
 - Swagger Specification file
@@ -88,3 +89,14 @@ Swagger specification file is converted from OpenAPI 2.0 format to OpenAPI 3.0 f
 ## Burp XML / Proxify JSONL
 
 These modules are generic and parse raw requests from these respective tools.
+
+## Katana JSONL
+
+This module ingests the JSONL crawl output of the [katana](https://github.com/projectdiscovery/katana) crawler (`katana -jsonl -o crawl.jsonl`), bridging crawling and DAST so a live crawl of a target can directly drive fuzzing (`nuclei -im katana -l crawl.jsonl -dast ...`).
+
+For each crawled endpoint it produces a fuzzable request:
+
+- When katana captured the raw request (the common case, including authenticated and non-GET requests), the raw request is parsed as-is, preserving method, headers, body, and all parameters.
+- When only discrete fields are present (method, endpoint, headers, body), a raw request is synthesized from them and parsed back, so the result has the same shape as every other input format.
+
+The parser is tolerant of mixed input: blank and malformed lines are skipped with a warning, and a bare URL line (katana's default non-JSONL output) is treated as a `GET` request.

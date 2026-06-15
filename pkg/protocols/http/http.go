@@ -12,6 +12,15 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/cmdi"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/cors"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/crlf"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/hostheader"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/lfi"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/redirect"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/ssrf"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/ssti"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/sqli"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 

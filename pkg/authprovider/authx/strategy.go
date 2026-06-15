@@ -15,6 +15,22 @@ type AuthStrategy interface {
 	ApplyOnRR(*retryablehttp.Request)
 }
 
+// ResponseInspector is an optional interface that an AuthStrategy may implement
+// to observe responses to authenticated requests. It is used to detect session
+// expiry (e.g. a 401 after a previously valid session) and trigger
+// re-authentication for subsequent requests.
+type ResponseInspector interface {
+	// OnResponse is called with the status code of a response to a request the
+	// strategy authenticated. It returns true if re-authentication was triggered.
+	OnResponse(statusCode int) bool
+}
+
+var (
+	_ AuthStrategy           = &DynamicAuthStrategy{}
+	_ ResponseInspector      = &DynamicAuthStrategy{}
+	_ BrowserStorageProvider = &DynamicAuthStrategy{}
+)
+
 // DynamicAuthStrategy is an auth strategy for dynamic secrets
 // it implements the AuthStrategy interface
 type DynamicAuthStrategy struct {
@@ -24,22 +40,26 @@ type DynamicAuthStrategy struct {
 
 // Apply applies the strategy to the request
 func (d *DynamicAuthStrategy) Apply(req *http.Request) {
-	strategies := d.Dynamic.GetStrategies()
-	if strategies == nil {
-		return
-	}
-	for _, s := range strategies {
-		if s == nil {
-			continue
-		}
+	d.Dynamic.ApplyStrategies(func(s AuthStrategy) {
 		s.Apply(req)
-	}
+	})
 }
 
 // ApplyOnRR applies the strategy to the retryable request
 func (d *DynamicAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	strategy := d.Dynamic.GetStrategies()
-	for _, s := range strategy {
+	d.Dynamic.ApplyStrategies(func(s AuthStrategy) {
 		s.ApplyOnRR(req)
-	}
+	})
+}
+
+// OnResponse inspects a response status code and marks the dynamic session for
+// re-authentication when the code signals an expired session.
+func (d *DynamicAuthStrategy) OnResponse(statusCode int) bool {
+	return d.Dynamic.NotifyResponse(statusCode)
+}
+
+// WebStorage exposes the browser web storage captured by a headless auto-login
+// so the headless engine can replay it into scan pages.
+func (d *DynamicAuthStrategy) WebStorage() (map[string]string, map[string]string) {
+	return d.Dynamic.WebStorage()
 }
