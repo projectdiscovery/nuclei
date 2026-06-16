@@ -101,8 +101,11 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 		if err != nil {
 			return true
 		}
-		inputs = append(inputs, preflightTarget{key: key, raw: mi.Input})
-		extractPortsFromInput(portsFromInputs, mi.Input)
+		// Use Target()/CustomIP so preflight resolves the same address the real
+		// scan would connect to (honors ReqResp-backed targets and CustomIP),
+		// instead of only the raw Input which can mismatch routing state.
+		inputs = append(inputs, preflightTarget{key: key, target: mi.Target(), customIP: mi.CustomIP})
+		extractPortsFromInput(portsFromInputs, mi.Target())
 		return true
 	})
 
@@ -133,7 +136,9 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 		return nil
 	}
 
-	r.Logger.Info().Msgf("Running preflight portscan (workers=%d, ports=%d, targets=%d)", preflightWorkers, len(portsToScan), totalTargets.Load())
+	if !r.options.Silent {
+		r.Logger.Info().Msgf("Running preflight portscan (workers=%d, ports=%d, targets=%d)", preflightWorkers, len(portsToScan), totalTargets.Load())
+	}
 
 	swg, err := syncutil.New(syncutil.WithSize(preflightWorkers))
 	if err != nil {
@@ -152,7 +157,10 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 		swg.Add()
 		go func(t preflightTarget) {
 			defer swg.Done()
-			host, _, _, _ := hostForResolveAndScan(t.raw)
+			host, _, _, _ := hostForResolveAndScan(t.target)
+			if t.customIP != "" {
+				host = t.customIP
+			}
 			if host == "" {
 				resolveDNSFail.Add(1)
 				resolveProcessed.Add(1)
@@ -247,7 +255,7 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 		swg.Add()
 		go func(t preflightTarget) {
 			defer swg.Done()
-			ok, openPort, reason := r.preflightOneResolved(t.key, t.raw, portsToScan, resolvedIPsByKey)
+			ok, openPort, reason := r.preflightOneResolved(t.key, t.target, portsToScan, resolvedIPsByKey)
 			processed.Add(1)
 			if ok {
 				_ = allowed.Set(t.key, struct{}{})
@@ -320,8 +328,9 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 }
 
 type preflightTarget struct {
-	key string
-	raw string
+	key      string
+	target   string
+	customIP string
 }
 
 type preflightReason int

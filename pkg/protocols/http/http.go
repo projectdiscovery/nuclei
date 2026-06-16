@@ -629,17 +629,7 @@ func (r *Request) AnalyzeConnectionReuse() ConnectionReusePolicy {
 		return ReuseUnsafe
 	}
 
-	// Priority 4: Check for raw HTTP (unsafe) with explicit connection control
-	if r.Unsafe {
-		// Analyze raw request for connection directives
-		for _, raw := range r.Raw {
-			if hasConnectionCloseHeader(raw) {
-				return ReuseUnsafe
-			}
-		}
-	}
-
-	// Priority 5: Check for specific request patterns that require closure
+	// Priority 4: Check for specific request patterns that require closure
 	// This can be extended based on template analysis
 	if requiresConnectionClosure(r) {
 		return ReuseUnsafe
