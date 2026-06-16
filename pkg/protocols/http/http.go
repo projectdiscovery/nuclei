@@ -25,10 +25,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
-	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
-	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -145,7 +143,6 @@ type Request struct {
 	totalRequests     int
 	customHeaders     map[string]string
 	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	httpClient        *retryablehttp.Client
 	rawhttpClient     *rawhttp.Client
 	dialer            *fastdialer.Dialer
 
@@ -327,11 +324,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		// Preserve existing behavior: disable keep-alive for unsafe requests
 		disableKeepAlive = true
 	case ReuseSafe:
-		// Enable keep-alive for safe requests to allow connection pooling/sharding
+		// Enable keep-alive for safe requests to allow connection pooling
 		disableKeepAlive = false
 	default:
-		// If ReuseUnknown, use the standard logic
-		disableKeepAlive = httputil.ShouldDisableKeepAlive(options.Options)
+		// ReuseUnknown: keep-alive stays enabled so the per-host client pool can
+		// reuse connections (matches the default pooling behavior)
+		disableKeepAlive = false
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
@@ -377,14 +375,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	request.connConfiguration = connectionConfiguration
-
-	// At compile time, no hostname is available yet, so pass empty string
-	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
-	if err != nil {
-		return errors.Wrap(err, "could not get dns client")
-	}
 	request.customHeaders = make(map[string]string)
-	request.httpClient = client
 
 	dialer, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
 		CustomDialer: options.CustomFastdialer,
@@ -576,7 +567,7 @@ type ConnectionReusePolicy int
 const (
 	// ReuseUnknown indicates the policy hasn't been analyzed yet
 	ReuseUnknown ConnectionReusePolicy = iota
-	// ReuseSafe indicates the request can safely reuse connections (enable pooling/sharding)
+	// ReuseSafe indicates the request can safely reuse connections (enable connection pooling)
 	ReuseSafe
 	// ReuseUnsafe indicates the request must close connections (preserve existing behavior)
 	ReuseUnsafe
@@ -599,7 +590,7 @@ func (request *Request) HasFuzzing() bool {
 // AnalyzeConnectionReuse determines if a request can safely reuse connections.
 // Returns ReuseUnsafe if connection closure is required, ReuseSafe otherwise.
 // This analysis ensures backward compatibility by preserving connection-close behavior
-// when necessary while enabling pooling/sharding for other requests.
+// when necessary while enabling connection pooling for other requests.
 func (r *Request) AnalyzeConnectionReuse() ConnectionReusePolicy {
 	// Priority 0: race and pipeline requests need dedicated connections. Race
 	// uses a one-shot synced body gate that breaks if a connection is reused and
@@ -629,13 +620,7 @@ func (r *Request) AnalyzeConnectionReuse() ConnectionReusePolicy {
 		return ReuseUnsafe
 	}
 
-	// Priority 4: Check for specific request patterns that require closure
-	// This can be extended based on template analysis
-	if requiresConnectionClosure(r) {
-		return ReuseUnsafe
-	}
-
-	// Default: Safe to reuse - enable connection pooling/sharding
+	// Default: Safe to reuse - enable connection pooling
 	return ReuseSafe
 }
 
@@ -666,15 +651,4 @@ func hasConnectionCloseHeader(raw string) bool {
 		value = value[:newlineIdx]
 	}
 	return strings.Contains(value, "close")
-}
-
-// requiresConnectionClosure checks for specific patterns that require connection closure
-// This can be extended based on template analysis
-func requiresConnectionClosure(r *Request) bool {
-	// Add specific patterns that require connection closure
-	// Example: If request has specific headers that indicate stateful protocol
-	// Example: If request uses specific authentication that requires fresh connections
-
-	// For now, no special requirements beyond what's already checked
-	return false
 }

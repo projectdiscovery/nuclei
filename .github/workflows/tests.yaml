@@ -72,7 +72,7 @@ jobs:
         working-directory: cmd/nuclei/
       # Hermetic HTTP-engine scale regression: stands up many loopback hosts and
       # asserts finding parity across a diverse template set (per-host pool,
-      # sharding, connection-reuse and http->https tracker + cookie-reuse). Race
+      # connection-reuse and http->https tracker + cookie-reuse). Race
       # build runs on ubuntu only (same rationale as the unit tests above);
       # other OSes run it plain. Large runs stay opt-in locally via
       # NUCLEI_SCALE_HOSTS.

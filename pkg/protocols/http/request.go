@@ -8,7 +8,6 @@ import (
 	"io"
 	"maps"
 	"net/http"
-	"net/http/httptrace"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
@@ -165,37 +165,30 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	// look for unresponsive hosts and cancel inflight requests as well
-	spmHandler.SetOnResultCallback(func(err error) {
-		// marks this host as unresponsive if applicable
-		request.markHostError(input, err)
-		if request.isUnresponsiveAddress(input) {
-			// stop all inflight requests
-			spmHandler.Cancel()
-		}
-	})
-
 	for i := 0; i < request.RaceNumberRequests; i++ {
-		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(input) {
+		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedRequests[i].URL())
+		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) {
 			// stop sending more requests condition is met
 			break
 		}
 		spmHandler.Acquire()
 		// execute http request
-		go func(httpRequest *generatedRequest) {
+		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(input) {
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
 				// stop sending more requests condition is met
 				return
 			}
 
+			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
-			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+			case spmHandler.ResultChan <- err:
+				request.recordHostResultAndCancelIfUnresponsive(requestInput, err, spmHandler.Cancel)
 				return
 			}
-		}(generatedRequests[i])
+		}(generatedRequests[i], updatedInput)
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -247,16 +240,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 	}
 
-	// look for unresponsive hosts and cancel inflight requests as well
-	spmHandler.SetOnResultCallback(func(err error) {
-		// marks this host as unresponsive if applicable
-		request.markHostError(input, err)
-		if request.isUnresponsiveAddress(input) {
-			// stop all inflight requests
-			spmHandler.Cancel()
-		}
-	})
-
 	// bounded worker-pool to avoid spawning one goroutine per payload
 	type task struct {
 		req                *generatedRequest
@@ -296,11 +279,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				request.rateLimitTake(hostname)
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
-				select {
-				case <-spmHandler.Done():
-					spmHandler.Release()
-					continue
-				case spmHandler.ResultChan <- request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+				err := request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 						requestData := &interactsh.RequestData{
 							MakeResultFunc: request.MakeResultEvent,
@@ -314,7 +293,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
 					}
 					wrappedCallback(event)
-				}, 0):
+				}, 0)
+				select {
+				case <-spmHandler.Done():
+					spmHandler.Release()
+					continue
+				case spmHandler.ResultChan <- err:
+					request.recordHostResultAndCancelIfUnresponsive(t.updatedInput, err, spmHandler.Cancel)
 					spmHandler.Release()
 				}
 			}
@@ -460,16 +445,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		}
 	}
 
-	// look for unresponsive hosts and cancel inflight requests as well
-	spmHandler.SetOnResultCallback(func(err error) {
-		// marks this host as unresponsive if applicable
-		request.markHostError(input, err)
-		if request.isUnresponsiveAddress(input) {
-			// stop all inflight requests
-			spmHandler.Cancel()
-		}
-	})
-
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
@@ -504,19 +479,21 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
 		spmHandler.Acquire()
-		go func(httpRequest *generatedRequest) {
+		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) {
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
 				// skip if first match is found
 				return
 			}
+			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
-			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+			case spmHandler.ResultChan <- err:
+				request.recordHostResultAndCancelIfUnresponsive(requestInput, err, spmHandler.Cancel)
 				return
 			}
-		}(generatedHttpRequest)
+		}(generatedHttpRequest, updatedInput)
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -632,10 +609,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				return true, nil
 			}
 
+			request.recordHostResult(updatedInput, execReqErr)
 			if execReqErr != nil {
-				request.markHostError(updatedInput, execReqErr)
-
-				// if applicable mark the host as unresponsive
 				reqKitErr := errkit.FromError(execReqErr)
 				reqKitErr.Msgf("got err while executing %v", generatedHttpRequest.URL())
 
@@ -726,6 +701,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		fromCache       bool
 		dumpedRequest   []byte
 		projectCacheKey []byte
+		// executingClient is the client that actually performed the HTTP
+		// request, preserving any per-request overrides (cookie jar,
+		// CustomMaxTimeout) applied via connConfig.Clone(). Reused below by
+		// the analyzer so follow-up requests share the same session/timeout.
+		executingClient *retryablehttp.Client
 	)
 
 	// Dump request for variables checks
@@ -846,7 +826,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		})
 	} else {
 		//** For Normal requests **//
-		hostname = generatedRequest.request.Host
+		// Use the dial target (URL.Host) rather than the optional Host-header
+		// override (request.Host), so the per-host pool keys distinct
+		// connection targets even when templates set a custom Host header
+		// against multiple IPs/vhosts.
+		if generatedRequest.request.URL != nil {
+			hostname = generatedRequest.request.URL.Host
+		} else {
+			hostname = generatedRequest.request.Host
+		}
 		formedURL = generatedRequest.request.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if request.options.ProjectFile != nil {
@@ -861,54 +849,24 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
 				return errSignature
 			}
-			httpclient := request.httpClient
 
-			// Extract target URL for per-host pooling (use request URL or fallback to input)
-			targetURL := input.MetaInput.Input
-			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
-				targetURL = generatedRequest.request.Request.URL.String()
-			}
-
-			// this will be assigned/updated if this specific request has a custom configuration
-			var modifiedConfig *httpclientpool.Configuration
-
-			// check for cookie related configuration
+			connConfig := request.connConfiguration
 			if input.CookieJar != nil {
-				connConfiguration := request.connConfiguration.Clone()
-				connConfiguration.Connection.SetCookieJar(input.CookieJar)
-				modifiedConfig = connConfiguration
+				connConfig = connConfig.Clone()
+				connConfig.Connection.SetCookieJar(input.CookieJar)
 			}
-			// check for request updatedTimeout annotation
-			updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
-			if ok {
-				if modifiedConfig == nil {
-					connConfiguration := request.connConfiguration.Clone()
-					modifiedConfig = connConfiguration
+			if updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout); ok {
+				if connConfig == request.connConfiguration {
+					connConfig = connConfig.Clone()
 				}
-
-				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
+				connConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			// Prefer per-host pooled client or sharded client for better reuse when flags are enabled
-			// choose config to use (modified if present else default)
-			configToUse := modifiedConfig
-			if configToUse == nil {
-				configToUse = request.connConfiguration
+			httpclient, clientErr := httpclientpool.Get(request.options.Options, connConfig, hostname)
+			if clientErr != nil {
+				return errors.Wrap(clientErr, "could not get http client")
 			}
-			if request.options.Options.PerHostClientPool || request.options.Options.HTTPClientShards {
-				if client, err := httpclientpool.GetForTarget(request.options.Options, configToUse, targetURL); err == nil {
-					httpclient = client
-				} else {
-					return errors.Wrap(err, "could not get http client")
-				}
-			} else if modifiedConfig != nil {
-				modifiedConfig.Threads = request.Threads
-				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
-				if err != nil {
-					return errors.Wrap(err, "could not get http client")
-				}
-				httpclient = client
-			}
+			executingClient = httpclient
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a
@@ -932,30 +890,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 						}
 					}
 				}
-			}
-
-			// Track connection reuse for all HTTP requests
-			if generatedRequest.request != nil {
-				// Extract hostname for connection reuse tracking (use actual request URL, same as rate limiting)
-				hostnameForReuse := input.MetaInput.Input
-				if generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
-					// Use the actual request URL - normalization will extract host:port correctly
-					hostnameForReuse = generatedRequest.request.Request.URL.String()
-				} else if generatedRequest.URL() != "" {
-					// Fallback to generated request URL method
-					hostnameForReuse = generatedRequest.URL()
-				} else if targetURL != "" {
-					hostnameForReuse = targetURL
-				}
-
-				trace := &httptrace.ClientTrace{
-					GotConn: func(info httptrace.GotConnInfo) {
-						// Record connection reuse event
-						httpclientpool.RecordConnectionReuse(request.options.Options, hostnameForReuse, info.Reused)
-					},
-				}
-				ctx := httptrace.WithClientTrace(generatedRequest.request.Context(), trace)
-				generatedRequest.request = generatedRequest.request.WithContext(ctx)
 			}
 
 			resp, err = httpclient.Do(generatedRequest.request)
@@ -1101,10 +1035,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
-		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message)
 		statusCode := respChain.Response().StatusCode
+
+		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message) so
+		// later requests to the same host:port are auto-upgraded to https.
 		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
-			// Extract host:port from the request URL
 			var requestURL string
 			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 				requestURL = generatedRequest.request.Request.URL.String()
@@ -1145,18 +1080,30 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
-			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
-				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
-				HttpClient:         request.httpClient,
-				ResponseTimeDelay:  duration,
-				AnalyzerParameters: request.Analyzer.Parameters,
-			})
-			if err != nil {
-				gologger.Warning().Msgf("Could not analyze response: %v\n", err)
+			// Prefer reusing the exact client that executed the request so
+			// the analyzer inherits any per-request cookie jar / timeout
+			// overrides; fall back to a per-host lookup for paths that did
+			// not go through the standard execution flow (pipeline/unsafe).
+			analyzerClient := executingClient
+			if analyzerClient == nil {
+				analyzerClient = request.getHTTPClientForHost(hostname)
 			}
-			if analysisMatched {
-				finalEvent["analyzer_details"] = analysisDetails
-				finalEvent["analyzer"] = true
+			if analyzerClient == nil {
+				gologger.Warning().Msgf("Could not get http client for analyzer %s on %s, skipping analysis\n", request.Analyzer.Name, hostname)
+			} else {
+				analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
+					FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
+					HttpClient:         analyzerClient,
+					ResponseTimeDelay:  duration,
+					AnalyzerParameters: request.Analyzer.Parameters,
+				})
+				if err != nil {
+					gologger.Warning().Msgf("Could not analyze response: %v\n", err)
+				}
+				if analysisMatched {
+					finalEvent["analyzer_details"] = analysisDetails
+					finalEvent["analyzer"] = true
+				}
 			}
 		}
 
@@ -1287,6 +1234,16 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 			event.InternalEvent["error"] = err.Error()
 		}
 	}
+}
+
+// getHTTPClientForHost returns a per-host HTTP client, falling back to a
+// host-agnostic client if the lookup fails.
+func (request *Request) getHTTPClientForHost(host string) *retryablehttp.Client {
+	client, err := httpclientpool.Get(request.options.Options, request.connConfiguration, host)
+	if err != nil {
+		client, _ = httpclientpool.Get(request.options.Options, request.connConfiguration, "")
+	}
+	return client
 }
 
 // addCNameIfAvailable adds the cname to the event if available
@@ -1429,10 +1386,19 @@ func (request *Request) newContext(input *contextargs.Context) context.Context {
 	return input.Context()
 }
 
-// markHostError checks if the error is a unreponsive host error and marks it
-func (request *Request) markHostError(input *contextargs.Context, err error) {
-	if request.options.HostErrorsCache != nil && err != nil {
+// recordHostResult updates the host-errors cache with the outcome of a request.
+// A failure is counted; a success resets the host, so only consecutive failures
+// with no success in between can mark a host unresponsive.
+func (request *Request) recordHostResult(input *contextargs.Context, err error) {
+	if request.options.HostErrorsCache != nil {
 		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
+	}
+}
+
+func (request *Request) recordHostResultAndCancelIfUnresponsive(input *contextargs.Context, err error, cancel func()) {
+	request.recordHostResult(input, err)
+	if request.isUnresponsiveAddress(input) {
+		cancel()
 	}
 }
 

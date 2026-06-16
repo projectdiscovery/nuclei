@@ -4,8 +4,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -43,12 +41,4 @@ func SetHeader(req *retryablehttp.Request, name, value string) {
 	if name == "Host" {
 		req.Host = value
 	}
-}
-
-// ShouldDisableKeepAlive depending on scan strategy and template concurrency
-func ShouldDisableKeepAlive(options *types.Options) bool {
-	// keep-alive must stay enabled with host-spray strategy and when templates
-	// run concurrently (TemplateThreads > 0), so that connections to the same
-	// host can be reused across templates
-	return options.TemplateThreads == 0 && options.ScanStrategy != scanstrategy.HostSpray.String()
 }

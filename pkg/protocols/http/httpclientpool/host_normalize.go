@@ -10,9 +10,8 @@ import (
 
 // normalizeHostPort extracts and normalizes "hostname:port" from a URL or
 // host[:port] string. Default ports (80/443) are derived from the scheme when
-// missing. It is shared by the per-host rate limit pool, the connection reuse
-// tracker, the HTTP-to-HTTPS port tracker and the sharded pool so that all of
-// them group entries by the same key.
+// missing. It is shared by the per-host rate limit pool and the HTTP-to-HTTPS
+// port tracker so that both group entries by the same key.
 func normalizeHostPort(rawURL string) string {
 	if rawURL == "" {
 		return ""

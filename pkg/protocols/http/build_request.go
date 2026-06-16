@@ -484,27 +484,24 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		}
 	}
 
-	// Respect connection reuse policy from smart analyzer
-	// If policy is ReuseUnsafe, ensure connection is closed
+	// Respect the connection reuse policy from the smart analyzer.
 	switch r.request.connectionReusePolicy {
 	case ReuseUnsafe:
-		// Explicitly set Connection: close header if not already present
+		// Force connection close for requests that must not reuse connections
 		if req.Header.Get("Connection") == "" {
 			req.Header.Set("Connection", "close")
 		}
 		req.Close = true
 	case ReuseSafe:
-		// For safe requests, ensure connection can be reused
-		// Don't set req.Close = true, allow connection pooling
-		// Remove any existing "Connection: close" header if present
+		// Allow connection pooling: drop any explicit close header
 		if strings.EqualFold(req.Header.Get("Connection"), "close") {
 			req.Header.Del("Connection")
 		}
 	default:
-		// Legacy behavior: in case of per-request threading the underlying connection
-		// should remain open to allow reuse, otherwise defer to the shared
-		// options-level keep-alive decision (same helper used in Compile)
-		if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && httputil.ShouldDisableKeepAlive(r.options.Options) {
+		// Defer to the connection-level keep-alive decision: per-host clients
+		// keep connections alive unless a template explicitly disabled it.
+		if r.request.connConfiguration != nil && r.request.connConfiguration.Connection != nil &&
+			r.request.connConfiguration.Connection.DisableKeepAlive && req.Header.Get("Connection") == "" {
 			req.Close = true
 		}
 	}

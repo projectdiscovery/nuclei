@@ -182,8 +182,8 @@ func TestScaleRegression(t *testing.T) {
 	}
 
 	// Stand up N independent loopback hosts (distinct host:port each, so the
-	// per-host pool / sharding / connection-reuse / http->https machinery is
-	// exercised across many keys).
+	// per-host pool / connection-reuse / http->https machinery is exercised
+	// across many keys).
 	handler := scaleHandler()
 	targets := make([]string, 0, hosts)
 	servers := make([]*httptest.Server, 0, hosts)

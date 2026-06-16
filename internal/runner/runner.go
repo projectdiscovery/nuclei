@@ -199,7 +199,7 @@ func New(options *types.Options) (*Runner, error) {
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
 		var err error
-		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
+		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{}, "")
 		if err != nil {
 			return nil, err
 		}
@@ -433,6 +433,11 @@ func (r *Runner) Close() {
 	if r.httpStats != nil {
 		r.httpStats.DisplayTopStats(r.options.NoColor)
 	}
+	if newConns, reusedConns := httpclientpool.GetConnectionStats(); newConns+reusedConns > 0 {
+		total := newConns + reusedConns
+		ratio := float64(reusedConns) / float64(total) * 100
+		gologger.Info().Msgf("HTTP connections: %d total, %d new, %d reused (%.1f%%)", total, newConns, reusedConns, ratio)
+	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {
 		r.hostErrors.Close()
@@ -513,6 +518,11 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() error {
+	// Reset connection-reuse counters so the summary logged on Close()
+	// reflects only this run, not totals accumulated across multiple
+	// in-process executions (e.g. SDK / embedded usage).
+	httpclientpool.ResetConnectionStats()
+
 	// If the user has asked for DAST server mode, run the live
 	// DAST fuzzing server.
 	if r.options.DASTServer {
@@ -738,9 +748,7 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
-	// Set input count in dialers for sharding calculation
 	inputCount := int(r.inputProvider.Count())
-	protocolstate.SetInputCount(r.options.ExecutionId, inputCount)
 
 	// initialize stats worker ( this is no-op unless nuclei is built with stats build tag)
 	// during execution a directory with 2 files will be created in the current directory
@@ -794,32 +802,15 @@ func (r *Runner) RunEnumeration() error {
 	// Print pool/tracker stats if available (single dialers lookup, reads under lock)
 	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
 		dialers.Lock()
-		perHostHTTPPool := dialers.PerHostHTTPPool
 		perHostRateLimitPool := dialers.PerHostRateLimitPool
-		connectionReuseTracker := dialers.ConnectionReuseTracker
-		shardedHTTPPool := dialers.ShardedHTTPPool
 		httpToHTTPSPortTracker := dialers.HTTPToHTTPSPortTracker
 		dialers.Unlock()
 
-		if pool, ok := perHostHTTPPool.(interface{ PrintStats() }); ok {
-			pool.PrintStats()
-		}
 		if pool, ok := perHostRateLimitPool.(interface{ PrintStats() }); ok {
 			pool.PrintStats()
 		}
 		if pool, ok := perHostRateLimitPool.(interface{ PrintPerHostPPSStats() }); ok {
 			pool.PrintPerHostPPSStats()
-		}
-		if tracker, ok := connectionReuseTracker.(interface{ PrintStats() }); ok {
-			tracker.PrintStats()
-		}
-		if tracker, ok := connectionReuseTracker.(interface{ PrintPerHostStats() }); ok {
-			tracker.PrintPerHostStats()
-		}
-		if r.options.HTTPClientShards {
-			if pool, ok := shardedHTTPPool.(interface{ PrintStats() }); ok {
-				pool.PrintStats()
-			}
 		}
 		if tracker, ok := httpToHTTPSPortTracker.(interface{ PrintStats() }); ok {
 			tracker.PrintStats()
