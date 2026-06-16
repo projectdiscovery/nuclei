@@ -40,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
@@ -670,6 +671,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		fromCache       bool
 		dumpedRequest   []byte
 		projectCacheKey []byte
+		// executingClient is the client that actually performed the HTTP
+		// request, preserving any per-request overrides (cookie jar,
+		// CustomMaxTimeout) applied via connConfig.Clone(). Reused below by
+		// the analyzer so follow-up requests share the same session/timeout.
+		executingClient *retryablehttp.Client
 	)
 
 	// Dump request for variables checks
@@ -790,7 +796,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		})
 	} else {
 		//** For Normal requests **//
-		hostname = generatedRequest.request.Host
+		// Use the dial target (URL.Host) rather than the optional Host-header
+		// override (request.Host), so the per-host pool keys distinct
+		// connection targets even when templates set a custom Host header
+		// against multiple IPs/vhosts.
+		if generatedRequest.request.URL != nil {
+			hostname = generatedRequest.request.URL.Host
+		} else {
+			hostname = generatedRequest.request.Host
+		}
 		formedURL = generatedRequest.request.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if request.options.ProjectFile != nil {
@@ -805,35 +819,24 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
 				return errSignature
 			}
-			httpclient := request.httpClient
 
-			// this will be assigned/updated if this specific request has a custom configuration
-			var modifiedConfig *httpclientpool.Configuration
-
-			// check for cookie related configuration
+			connConfig := request.connConfiguration
 			if input.CookieJar != nil {
-				connConfiguration := request.connConfiguration.Clone()
-				connConfiguration.Connection.SetCookieJar(input.CookieJar)
-				modifiedConfig = connConfiguration
+				connConfig = connConfig.Clone()
+				connConfig.Connection.SetCookieJar(input.CookieJar)
 			}
-			// check for request updatedTimeout annotation
-			updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
-			if ok {
-				if modifiedConfig == nil {
-					connConfiguration := request.connConfiguration.Clone()
-					modifiedConfig = connConfiguration
+			if updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout); ok {
+				if connConfig == request.connConfiguration {
+					connConfig = connConfig.Clone()
 				}
-
-				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
+				connConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			if modifiedConfig != nil {
-				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
-				if err != nil {
-					return errors.Wrap(err, "could not get http client")
-				}
-				httpclient = client
+			httpclient, clientErr := httpclientpool.Get(request.options.Options, connConfig, hostname)
+			if clientErr != nil {
+				return errors.Wrap(clientErr, "could not get http client")
 			}
+			executingClient = httpclient
 
 			resp, err = httpclient.Do(generatedRequest.request)
 		}
@@ -993,18 +996,30 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
-			analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
-				FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
-				HttpClient:         request.httpClient,
-				ResponseTimeDelay:  duration,
-				AnalyzerParameters: request.Analyzer.Parameters,
-			})
-			if err != nil {
-				gologger.Warning().Msgf("Could not analyze response: %v\n", err)
+			// Prefer reusing the exact client that executed the request so
+			// the analyzer inherits any per-request cookie jar / timeout
+			// overrides; fall back to a per-host lookup for paths that did
+			// not go through the standard execution flow (pipeline/unsafe).
+			analyzerClient := executingClient
+			if analyzerClient == nil {
+				analyzerClient = request.getHTTPClientForHost(hostname)
 			}
-			if analysisMatched {
-				finalEvent["analyzer_details"] = analysisDetails
-				finalEvent["analyzer"] = true
+			if analyzerClient == nil {
+				gologger.Warning().Msgf("Could not get http client for analyzer %s on %s, skipping analysis\n", request.Analyzer.Name, hostname)
+			} else {
+				analysisMatched, analysisDetails, err := analyzer.Analyze(&analyzers.Options{
+					FuzzGenerated:      generatedRequest.fuzzGeneratedRequest,
+					HttpClient:         analyzerClient,
+					ResponseTimeDelay:  duration,
+					AnalyzerParameters: request.Analyzer.Parameters,
+				})
+				if err != nil {
+					gologger.Warning().Msgf("Could not analyze response: %v\n", err)
+				}
+				if analysisMatched {
+					finalEvent["analyzer_details"] = analysisDetails
+					finalEvent["analyzer"] = true
+				}
 			}
 		}
 
@@ -1135,6 +1150,16 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 			event.InternalEvent["error"] = err.Error()
 		}
 	}
+}
+
+// getHTTPClientForHost returns a per-host HTTP client, falling back to a
+// host-agnostic client if the lookup fails.
+func (request *Request) getHTTPClientForHost(host string) *retryablehttp.Client {
+	client, err := httpclientpool.Get(request.options.Options, request.connConfiguration, host)
+	if err != nil {
+		client, _ = httpclientpool.Get(request.options.Options, request.connConfiguration, "")
+	}
+	return client
 }
 
 // addCNameIfAvailable adds the cname to the event if available

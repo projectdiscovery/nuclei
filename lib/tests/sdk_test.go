@@ -14,11 +14,12 @@ import (
 )
 
 var knownLeaks = []goleak.Option{
-	// prettyify the output and generate dependency graph and more details instead of just stack output
 	goleak.Pretty(),
-	// net/http transport maintains idle connections which are closed with cooldown
-	// hence they don't count as leaks
+	// net/http transport maintains idle keep-alive connections whose goroutines
+	// exit on idle timeout or explicit close - not real leaks.
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+	goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
+	goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 }
 
 func TestSimpleNuclei(t *testing.T) {
