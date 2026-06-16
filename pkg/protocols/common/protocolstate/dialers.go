@@ -5,13 +5,12 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/networkpolicy"
-	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 type Dialers struct {
 	Fastdialer                 *fastdialer.Dialer
-	RawHTTPClient              *rawhttp.Client
+	RawHTTPClient              *RawHTTPClient
 	DefaultHTTPClient          *retryablehttp.Client
 	HTTPClientPool             *HTTPPool
 	NetworkPolicy              *networkpolicy.NetworkPolicy

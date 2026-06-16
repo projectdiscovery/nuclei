@@ -39,7 +39,6 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
-	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
@@ -378,16 +377,22 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		return err
 	}
 
-	pipeOptions := rawhttp.DefaultPipelineOptions
-	pipeOptions.Host = URL.Host
-	pipeOptions.MaxConnections = 1
+	pipeOptions := &protocolstate.RawPipelineOptions{
+		Host:               URL.Host,
+		MaxConnections:     1,
+		MaxPendingRequests: 100,
+		Timeout:            request.options.Options.GetTimeouts().HttpTimeout,
+	}
+	if dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId); dialers != nil {
+		pipeOptions.FastDialer = dialers.Fastdialer
+	}
 	if request.PipelineConcurrentConnections > 0 {
 		pipeOptions.MaxConnections = request.PipelineConcurrentConnections
 	}
 	if request.PipelineRequestsPerConnection > 0 {
 		pipeOptions.MaxPendingRequests = request.PipelineRequestsPerConnection
 	}
-	pipeClient := rawhttp.NewPipelineClient(pipeOptions)
+	pipeClient := protocolstate.NewRawPipelineClient(pipeOptions)
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
 	// in case the queue is bigger increase the workers

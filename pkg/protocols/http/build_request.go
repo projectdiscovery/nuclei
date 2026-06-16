@@ -18,13 +18,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/raw"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -76,7 +76,7 @@ type generatedRequest struct {
 	original             *Request
 	rawRequest           *raw.Request
 	meta                 map[string]interface{}
-	pipelinedClient      *rawhttp.PipelineClient
+	pipelinedClient      *protocolstate.RawPipelineClient
 	request              *retryablehttp.Request
 	dynamicValues        map[string]interface{}
 	interactshURLs       []string

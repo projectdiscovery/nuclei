@@ -1,8 +1,6 @@
 package httpclientpool
 
 import (
-	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,15 +14,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -188,8 +182,8 @@ func (c *Configuration) HasStandardOptions() bool {
 	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0
 }
 
-// GetRawHTTP returns the rawhttp request client
-func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
+// GetRawHTTP returns the reqx-backed raw request client
+func GetRawHTTP(options *protocols.ExecutorOptions) *protocolstate.RawHTTPClient {
 	dialers := protocolstate.GetDialersWithId(options.Options.ExecutionId)
 	if dialers == nil {
 		panic("dialers not initialized for execution id: " + options.Options.ExecutionId)
@@ -203,16 +197,17 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 		return dialers.RawHTTPClient
 	}
 
-	rawHttpOptionsCopy := *rawhttp.DefaultOptions
+	rawOptions := protocolstate.DefaultRawHTTPOptions()
 	if options.Options.AliveHttpProxy != "" {
-		rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
+		rawOptions.Proxy = options.Options.AliveHttpProxy
 	} else if options.Options.AliveSocksProxy != "" {
-		rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
+		rawOptions.Proxy = options.Options.AliveSocksProxy
 	} else if dialers.Fastdialer != nil {
-		rawHttpOptionsCopy.FastDialer = dialers.Fastdialer
+		rawOptions.FastDialer = dialers.Fastdialer
 	}
-	rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
-	dialers.RawHTTPClient = rawhttp.NewClient(&rawHttpOptionsCopy)
+	rawOptions.Timeout = options.Options.GetTimeouts().HttpTimeout
+	rawOptions.SNI = options.Options.SNI
+	dialers.RawHTTPClient = protocolstate.NewRawHTTPClient(rawOptions)
 	return dialers.RawHTTPClient
 }
 
@@ -288,80 +283,20 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	transportKey := transportHash(host, disableKeepAlives, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost, responseHeaderTimeout)
 
 	createTransport := func() (http.RoundTripper, error) {
-		// Set the base TLS configuration definition
-		tlsConfig := &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS10,
-			ClientSessionCache: sharedTLSSessionCache,
-		}
-
-		if options.SNI != "" {
-			tlsConfig.ServerName = options.SNI
-		}
-
-		tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+		// reqx replaces the net/http.Transport as nuclei's HTTP engine: fastdialer
+		// still performs the TCP dial (DNS cache, dialed-IP tracking, network
+		// policy) while reqx performs TLS and the HTTP exchange. The pool tuning,
+		// client certificates, SNI, impersonation and proxy settings are mapped
+		// onto reqx options in newReqxTransport.
+		transport, err := newReqxTransport(dialers.Fastdialer, options, reqxTransportParams{
+			disableKeepAlives:     disableKeepAlives,
+			maxIdleConns:          maxIdleConns,
+			maxIdleConnsPerHost:   maxIdleConnsPerHost,
+			idleConnTimeout:       30 * time.Second,
+			responseHeaderTimeout: responseHeaderTimeout,
+		})
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create client certificate")
-		}
-
-		transport := &http.Transport{
-			ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-			DialContext:       dialers.Fastdialer.Dial,
-			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				if options.TlsImpersonate {
-					return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
-				}
-				if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
-					return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
-				}
-				return dialers.Fastdialer.DialTLS(ctx, network, addr)
-			},
-			MaxIdleConns:          maxIdleConns,
-			MaxIdleConnsPerHost:   maxIdleConnsPerHost,
-			MaxConnsPerHost:       maxConnsPerHost,
-			TLSClientConfig:       tlsConfig,
-			DisableKeepAlives:     disableKeepAlives,
-			IdleConnTimeout:       30 * time.Second,
-			ResponseHeaderTimeout: responseHeaderTimeout,
-		}
-
-		if options.AliveHttpProxy != "" {
-			if proxyURL, err := url.Parse(options.AliveHttpProxy); err == nil {
-				transport.Proxy = http.ProxyURL(proxyURL)
-			}
-		} else if options.AliveSocksProxy != "" {
-			socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
-			if proxyErr != nil {
-				return nil, proxyErr
-			}
-
-			dialer, err := proxy.FromURL(socksURL, proxy.Direct)
-			if err != nil {
-				return nil, err
-			}
-
-			dc := dialer.(interface {
-				DialContext(ctx context.Context, network, addr string) (net.Conn, error)
-			})
-
-			transport.DialContext = dc.DialContext
-			transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// upgrade proxy connection to tls
-				conn, err := dc.DialContext(ctx, network, addr)
-				if err != nil {
-					return nil, err
-				}
-				if tlsConfig.ServerName == "" {
-					// addr should be in form of host:port already set from canonicalAddr
-					host, _, err := net.SplitHostPort(addr)
-					if err != nil {
-						return nil, err
-					}
-					tlsConfig.ServerName = host
-				}
-				return tls.Client(conn, tlsConfig), nil
-			}
+			return nil, err
 		}
 
 		return &connTrackingTransport{base: transport}, nil
@@ -433,11 +368,6 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	// exactly one client instead of racing Get/Set and orphaning transports.
 	return pool.GetOrCreateClient(clientKey, transportKey, createTransport, createClient)
 }
-
-// sharedTLSSessionCache is shared by all pooled transports so TLS session
-// resumption survives transport eviction/re-creation, and a single bounded
-// LRU replaces a 128-entry cache per host client.
-var sharedTLSSessionCache = tls.NewLRUClientSessionCache(2048)
 
 // transportHash identifies a shareable transport. Only parameters that live
 // on http.Transport participate; everything else (redirects, cookie jars,

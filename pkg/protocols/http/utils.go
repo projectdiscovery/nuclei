@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/utils/errkit"
 )
 
@@ -20,8 +20,12 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 		}
 		return bin, nil
 	}
-	rawHttpOptions := &rawhttp.Options{CustomHeaders: req.rawRequest.UnsafeHeaders, CustomRawBytes: req.rawRequest.UnsafeRawBytes}
-	bin, err := rawhttp.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), io.NopCloser(strings.NewReader(req.rawRequest.Data)), rawHttpOptions)
+	rawHttpOptions := &protocolstate.RawHTTPOptions{
+		CustomHeaders:       req.rawRequest.UnsafeHeaders,
+		CustomRawBytes:      req.rawRequest.UnsafeRawBytes,
+		AutomaticHostHeader: true,
+	}
+	bin, err := protocolstate.DumpRequestRaw(req.rawRequest.Method, reqURL, req.rawRequest.Path, generators.ExpandMapValues(req.rawRequest.Headers), io.NopCloser(strings.NewReader(req.rawRequest.Data)), rawHttpOptions)
 	if err != nil {
 		return nil, errkit.Wrapf(err, "could not dump request: %v", reqURL)
 	}

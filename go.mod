@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/nuclei/v3
 
-go 1.25.7
+go 1.26.1
 
 require (
 	github.com/andygrunwald/go-jira v1.16.1
@@ -22,7 +22,7 @@ require (
 	github.com/projectdiscovery/fastdialer v0.5.10
 	github.com/projectdiscovery/hmap v0.0.101
 	github.com/projectdiscovery/interactsh v1.3.1
-	github.com/projectdiscovery/rawhttp v0.1.90
+	github.com/projectdiscovery/rawhttp v0.1.90 // indirect
 	github.com/projectdiscovery/retryabledns v1.0.115
 	github.com/projectdiscovery/retryablehttp-go v1.3.15
 	github.com/projectdiscovery/yamldoc-go v1.0.6
@@ -112,6 +112,7 @@ require (
 	github.com/projectdiscovery/networkpolicy v0.1.40
 	github.com/projectdiscovery/ratelimit v0.0.88
 	github.com/projectdiscovery/rdap v0.9.0
+	github.com/projectdiscovery/reqx v0.0.0-20260508172251-6205af3493df
 	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.2.2
 	github.com/projectdiscovery/uncover v1.2.1
@@ -340,6 +341,8 @@ require (
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
+	github.com/quic-go/qpack v0.6.0 // indirect
+	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
 	github.com/sashabaranov/go-openai v1.37.0 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
@@ -366,6 +369,7 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.69.0 // indirect
 	github.com/vmihailenco/bufpool v0.1.11 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.4 // indirect
 	github.com/vmihailenco/tagparser v0.1.2 // indirect
@@ -423,7 +427,7 @@ require (
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/time v0.14.0 // indirect
+	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.45.0
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect

@@ -26,7 +26,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
-	"github.com/projectdiscovery/rawhttp"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -143,7 +142,7 @@ type Request struct {
 	totalRequests     int
 	customHeaders     map[string]string
 	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	rawhttpClient     *rawhttp.Client
+	rawhttpClient     *protocolstate.RawHTTPClient
 	dialer            *fastdialer.Dialer
 
 	// description: |

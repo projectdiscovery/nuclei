@@ -12,7 +12,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
-	"github.com/projectdiscovery/rawhttp/client"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -27,7 +27,7 @@ type Request struct {
 	Path           string
 	Data           string
 	Headers        map[string]string
-	UnsafeHeaders  client.Headers
+	UnsafeHeaders  protocolstate.RawHeaders
 	UnsafeRawBytes []byte
 }
 
@@ -239,7 +239,7 @@ read_line:
 		// therefore use the full line as key
 		_, found := rawRequest.Headers[key]
 		if unsafe {
-			rawRequest.UnsafeHeaders = append(rawRequest.UnsafeHeaders, client.Header{Key: line})
+			rawRequest.UnsafeHeaders = append(rawRequest.UnsafeHeaders, protocolstate.RawHeader{Key: line})
 		}
 
 		if unsafe && found {
