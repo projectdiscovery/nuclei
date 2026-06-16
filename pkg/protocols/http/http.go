@@ -312,7 +312,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	// Analyze connection reuse policy to determine if we can safely reuse connections
-	reusePolicy := request.AnalyzeConnectionReuse()
+	forceHTTP2 := options.Options != nil && options.Options.ForceAttemptHTTP2
+	reusePolicy := request.AnalyzeConnectionReuse(forceHTTP2)
 	request.connectionReusePolicy = reusePolicy
 
 	// Determine if keep-alive should be disabled
@@ -591,7 +592,11 @@ func (request *Request) HasFuzzing() bool {
 // Returns ReuseUnsafe if connection closure is required, ReuseSafe otherwise.
 // This analysis ensures backward compatibility by preserving connection-close behavior
 // when necessary while enabling connection pooling for other requests.
-func (r *Request) AnalyzeConnectionReuse() ConnectionReusePolicy {
+//
+// forceHTTP2 reports whether HTTP/2 may be negotiated (only possible when the
+// user enables it, since the pooled transport sets custom dial hooks). It only
+// affects the time_delay analyzer decision below.
+func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
 	// Priority 0: race and pipeline requests need dedicated connections. Race
 	// uses a one-shot synced body gate that breaks if a connection is reused and
 	// the body is re-read, and reusing a single keep-alive connection would also
@@ -614,10 +619,18 @@ func (r *Request) AnalyzeConnectionReuse() ConnectionReusePolicy {
 		}
 	}
 
-	// Priority 3: Check for time-based analyzers that require connection closure
-	// Time-based attacks need fresh connections to measure timing accurately
+	// Priority 3: time-based analyzers. The time_delay analyzer measures only the
+	// server-side window (httptrace WroteHeaders -> GotFirstResponseByte), so
+	// connection setup is excluded from the timing. Under HTTP/1.1 net/http never
+	// shares an in-flight connection, so keep-alive reuse saves handshakes without
+	// affecting the measurement -> safe to reuse. Under HTTP/2 concurrent sleeping
+	// probes can multiplex onto one connection and add timing jitter, so force
+	// fresh connections only in that case to keep detection error-free.
 	if r.Analyzer != nil && r.Analyzer.Name == "time_delay" {
-		return ReuseUnsafe
+		if forceHTTP2 {
+			return ReuseUnsafe
+		}
+		return ReuseSafe
 	}
 
 	// Default: Safe to reuse - enable connection pooling

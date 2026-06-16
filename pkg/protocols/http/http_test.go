@@ -48,9 +48,10 @@ Accept-Encoding: gzip`},
 // everything else stays ReuseSafe so dev's per-host pooling keeps connections alive.
 func TestAnalyzeConnectionReuse(t *testing.T) {
 	tests := []struct {
-		name    string
-		request *Request
-		want    ConnectionReusePolicy
+		name       string
+		request    *Request
+		forceHTTP2 bool
+		want       ConnectionReusePolicy
 	}{
 		{
 			name:    "plain request is safe",
@@ -83,14 +84,24 @@ func TestAnalyzeConnectionReuse(t *testing.T) {
 			want:    ReuseUnsafe,
 		},
 		{
-			name:    "time_delay analyzer is unsafe",
+			// time_delay measures the server-side window only, so HTTP/1.1 reuse is
+			// measurement-safe and lets time-based fuzzing reuse connections.
+			name:    "time_delay is safe under http1",
 			request: &Request{Analyzer: &analyzers.AnalyzerTemplate{Name: "time_delay"}},
-			want:    ReuseUnsafe,
+			want:    ReuseSafe,
+		},
+		{
+			// Under HTTP/2 concurrent sleeping probes can multiplex and add jitter,
+			// so fresh connections are required to keep detection error-free.
+			name:       "time_delay is unsafe under http2",
+			request:    &Request{Analyzer: &analyzers.AnalyzerTemplate{Name: "time_delay"}},
+			forceHTTP2: true,
+			want:       ReuseUnsafe,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, tt.request.AnalyzeConnectionReuse())
+			require.Equal(t, tt.want, tt.request.AnalyzeConnectionReuse(tt.forceHTTP2))
 		})
 	}
 }
