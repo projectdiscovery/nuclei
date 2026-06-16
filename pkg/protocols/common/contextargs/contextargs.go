@@ -108,8 +108,15 @@ func (ctx *Context) Add(key string, v interface{}) {
 	}
 }
 
-// UseNetworkPort updates input with required/default network port for that template
-// but is ignored if input/target contains non-http ports like 80,8080,8081 etc
+// UseNetworkPort updates input with required/default network port for that template.
+// The template port is used when:
+//   - the input has no port at all, OR
+//   - the input port is a reserved HTTP/DNS port AND the port was not explicitly
+//     specified by the user (i.e. the input contains a URL scheme, meaning the
+//     port was implied by the scheme, not typed by the operator).
+//
+// When the operator explicitly writes "target:80" (no scheme), that port is
+// intentional (e.g. an SSH service running on port 80) and must not be replaced.
 func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 	ignorePorts := reservedPorts
 	if excludePorts != "" {
@@ -125,8 +132,19 @@ func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 		return err
 	}
 	inputPort := target.Port()
-	if inputPort == "" || stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
-		// replace port with networkPort
+	if inputPort == "" {
+		// No port in input at all — use the template port.
+		target.UpdatePort(port)
+		ctx.MetaInput.Input = target.Host
+		return nil
+	}
+	// The input has an explicit port. Only override a reserved port when the
+	// input included a URL scheme (http:// / https://), which means the port was
+	// implied by the scheme rather than deliberately typed by the operator.
+	// A bare "host:port" form (no scheme) means the operator chose that port
+	// on purpose and we must not overwrite it.
+	hasScheme := strings.Contains(ctx.MetaInput.Input, "://")
+	if hasScheme && stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
 		target.UpdatePort(port)
 		ctx.MetaInput.Input = target.Host
 	}
