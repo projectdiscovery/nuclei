@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -437,6 +438,24 @@ func (r *Runner) Close() {
 		total := newConns + reusedConns
 		ratio := float64(reusedConns) / float64(total) * 100
 		gologger.Info().Msgf("HTTP connections: %d total, %d new, %d reused (%.1f%%)", total, newConns, reusedConns, ratio)
+
+		// Per-host breakdown is opt-in (verbose) since large scans touch many hosts.
+		if r.options.Verbose {
+			perHost := httpclientpool.GetPerHostConnectionStats()
+			sort.Slice(perHost, func(i, j int) bool {
+				return (perHost[i].New + perHost[i].Reused) > (perHost[j].New + perHost[j].Reused)
+			})
+			const maxPerHostLines = 20
+			for i, s := range perHost {
+				if i >= maxPerHostLines {
+					gologger.Info().Msgf("HTTP connections: ... and %d more host(s)", len(perHost)-maxPerHostLines)
+					break
+				}
+				hostTotal := s.New + s.Reused
+				hostRatio := float64(s.Reused) / float64(hostTotal) * 100
+				gologger.Info().Msgf("HTTP connections [%s]: %d total, %d new, %d reused (%.1f%%)", s.Host, hostTotal, s.New, s.Reused, hostRatio)
+			}
+		}
 	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {

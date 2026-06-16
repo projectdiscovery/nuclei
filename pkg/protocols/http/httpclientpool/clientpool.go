@@ -32,10 +32,63 @@ import (
 
 var connStats ConnectionStats
 
+// perHostConnStats buckets connection reuse per normalized host alongside the
+// global connStats counters. It is populated from the same httptrace.GotConn
+// hook in connTrackingTransport, so per-host visibility adds no extra trace
+// plumbing or second round-trip wrapper. Reads are lock-free (sync.Map) and
+// each bucket uses atomics, keeping the hot path cheap.
+var perHostConnStats sync.Map // map[string]*hostConnStat
+
 // ConnectionStats tracks HTTP connection reuse across the scan.
 type ConnectionStats struct {
 	New    atomic.Int64
 	Reused atomic.Int64
+}
+
+// hostConnStat holds per-host new/reused connection counters.
+type hostConnStat struct {
+	New    atomic.Int64
+	Reused atomic.Int64
+}
+
+// PerHostConnStat is a point-in-time snapshot of a single host's connection reuse.
+type PerHostConnStat struct {
+	Host   string
+	New    int64
+	Reused int64
+}
+
+// recordHostConn records a connection event for a single host. It is called
+// from the global GotConn hook so the global and per-host views stay in sync.
+func recordHostConn(host string, reused bool) {
+	if host == "" {
+		return
+	}
+	v, ok := perHostConnStats.Load(host)
+	if !ok {
+		v, _ = perHostConnStats.LoadOrStore(host, &hostConnStat{})
+	}
+	hs := v.(*hostConnStat)
+	if reused {
+		hs.Reused.Add(1)
+	} else {
+		hs.New.Add(1)
+	}
+}
+
+// GetPerHostConnectionStats returns a snapshot of per-host connection reuse.
+func GetPerHostConnectionStats() []PerHostConnStat {
+	var out []PerHostConnStat
+	perHostConnStats.Range(func(k, v any) bool {
+		hs := v.(*hostConnStat)
+		out = append(out, PerHostConnStat{
+			Host:   k.(string),
+			New:    hs.New.Load(),
+			Reused: hs.Reused.Load(),
+		})
+		return true
+	})
+	return out
 }
 
 // GetConnectionStats returns the current connection statistics.
@@ -48,12 +101,16 @@ func GetConnectionStats() (newConns, reused int64) {
 	return connStats.New.Load(), connStats.Reused.Load()
 }
 
-// ResetConnectionStats clears the package-global new/reused connection counters.
-// Intended to be called at the start of an execution to scope the metrics
-// returned by GetConnectionStats() to a single run.
+// ResetConnectionStats clears the package-global new/reused connection counters
+// (both the global totals and the per-host breakdown). Intended to be called at
+// the start of an execution to scope the metrics to a single run.
 func ResetConnectionStats() {
 	connStats.New.Store(0)
 	connStats.Reused.Store(0)
+	perHostConnStats.Range(func(k, _ any) bool {
+		perHostConnStats.Delete(k)
+		return true
+	})
 }
 
 // connTrackingTransport wraps an http.RoundTripper to track connection reuse
@@ -64,6 +121,9 @@ type connTrackingTransport struct {
 }
 
 func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Compute the host key once (URL is already parsed) so the GotConn hook can
+	// update both the global counters and the per-host bucket from one trace.
+	host := normalizeHost(req.URL)
 	trace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
 			if info.Reused {
@@ -71,6 +131,7 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 			} else {
 				connStats.New.Add(1)
 			}
+			recordHostConn(host, info.Reused)
 		},
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
