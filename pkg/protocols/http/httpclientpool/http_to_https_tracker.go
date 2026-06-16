@@ -9,7 +9,10 @@ import (
 
 // HTTPToHTTPSPortTracker tracks host:port combinations that require HTTPS
 // This is used to automatically detect and correct cases where HTTP requests
-// are sent to HTTPS ports (detected via 400 error with specific message)
+// are sent to HTTPS ports (detected via 400 error with specific message).
+//
+// NOTE: detection and correction apply to the standard net/http (retryablehttp)
+// request path only. Unsafe/raw (rawhttp) requests bypass this scheme rewrite.
 type HTTPToHTTPSPortTracker struct {
 	// ports is a grow-only discovery cache, sync.Map gives lock-free reads
 	ports sync.Map // map[string]struct{}
