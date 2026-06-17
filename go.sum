@@ -870,8 +870,8 @@ github.com/projectdiscovery/gologger v1.1.70 h1:A1ZAsUJfRUXO6qqwTwyTWXLVlBrVu/Gp
 github.com/projectdiscovery/gologger v1.1.70/go.mod h1:kpLKNafZWRN9P7WpJYtIOY/XvY/v41GDdU9NzICdKmo=
 github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBDDSv7VEdG1M=
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
-github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e h1:o+ulEIaC2+9V2Ezr6mI5xEhKWsf0V/+FUQIS723Aj6U=
-github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e/go.mod h1:xH7bPwHxUlz1yx9UlVeTF+UVCUaKhTnZgaxHb5z362E=
+github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e h1:vxzgQlz2Cy/YvizYDQx9OhucBcmBotfDhbQ4yCY2vfA=
+github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e/go.mod h1:xH7bPwHxUlz1yx9UlVeTF+UVCUaKhTnZgaxHb5z362E=
 github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76 h1:AN70bbi6BBs7KpIM9w0LxygUN7uzT/oH+owDIQ+Fz/k=
 github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76/go.mod h1:cWHYnRXoYWHtTpOYyAp5laGYX8GH8ITUhgQaP8G/8FA=
 github.com/projectdiscovery/hmap v0.0.101 h1:zXM6YtLmsn8Q0CUUw8QavhqWmiQYwaw+/U679Rr00pc=

@@ -104,7 +104,7 @@ require (
 	github.com/projectdiscovery/goflags v0.1.74
 	github.com/projectdiscovery/gologger v1.1.70
 	github.com/projectdiscovery/gostruct v0.0.2
-	github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e
+	github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e
 	github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76
 	github.com/projectdiscovery/httpx v1.9.0
 	github.com/projectdiscovery/mapcidr v1.1.97
