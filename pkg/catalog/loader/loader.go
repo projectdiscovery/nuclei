@@ -897,6 +897,31 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 						stats.Increment(templates.SkippedRequestSignatureStats)
 						return
 					}
+
+					// evaluate code-protocol gating before the DAST / headless
+					// branches below, which are mutually-exclusive and would
+					// otherwise be reached first for a template that is also a
+					// fuzzable/DAST or global-matchers template.
+					if parsed.HasCodeRequest() {
+						if !typesOpts.EnableCodeTemplates {
+							// donot include 'Code' protocol custom template in final list if code flag is not set
+							stats.Increment(templates.ExcludedCodeTmplStats)
+							if config.DefaultConfig.LogAllEvents {
+								store.logger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+							}
+							return
+						}
+						if !parsed.Verified && !parsed.HasWorkflows() {
+							// donot include unverified 'Code' protocol custom template in final list
+							stats.Increment(templates.SkippedCodeTmplTamperedStats)
+							// these will be skipped so increment skip counter
+							stats.Increment(templates.SkippedUnsignedStats)
+							if config.DefaultConfig.LogAllEvents {
+								store.logger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
+							}
+							return
+						}
+					}
 					// DAST only templates
 					// Skip DAST filter when loading auth templates
 					if store.ID() != AuthStoreId && typesOpts.DAST {
@@ -917,20 +942,6 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 						stats.Increment(templates.ExcludedHeadlessTmplStats)
 						if config.DefaultConfig.LogAllEvents {
 							store.logger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
-						}
-					} else if parsed.HasCodeRequest() && !typesOpts.EnableCodeTemplates {
-						// donot include 'Code' protocol custom template in final list if code flag is not set
-						stats.Increment(templates.ExcludedCodeTmplStats)
-						if config.DefaultConfig.LogAllEvents {
-							store.logger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
-						}
-					} else if parsed.HasCodeRequest() && !parsed.Verified && !parsed.HasWorkflows() {
-						// donot include unverified 'Code' protocol custom template in final list
-						stats.Increment(templates.SkippedCodeTmplTamperedStats)
-						// these will be skipped so increment skip counter
-						stats.Increment(templates.SkippedUnsignedStats)
-						if config.DefaultConfig.LogAllEvents {
-							store.logger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 						}
 					} else if parsed.IsFuzzableRequest() && !typesOpts.DAST {
 						stats.Increment(templates.ExcludedDastTmplStats)

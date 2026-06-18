@@ -27,9 +27,11 @@ func newTestRequest(t *testing.T, engine []string, source string) (*Request, *te
 func executeRequest(t *testing.T, request *Request, info *testutils.TemplateInfo) (output.InternalEvent, error) {
 	t.Helper()
 	options := testutils.DefaultOptions
+	options.EnableCodeTemplates = true
 	testutils.Init(options)
 
 	executerOpts := testutils.NewMockExecuterOptions(options, info)
+	executerOpts.Verified = true
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile code request")
 

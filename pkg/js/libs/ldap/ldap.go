@@ -94,6 +94,14 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	dialCtx := c.nj.Context()
 	var conn net.Conn
 	if u.Scheme == "ldapi" {
+		// the ldapi unix domain socket is not covered by the IP-based network
+		// policy, so block it when local network access is restricted (-lna).
+		dialers.Lock()
+		restricted := dialers.RestrictLocalNetworkAccess
+		dialers.Unlock()
+		if restricted {
+			c.nj.ThrowError(fmt.Errorf("ldapi:// unix socket access is blocked by network policy (-lna)"))
+		}
 		if u.Path == "" || u.Path == "/" {
 			u.Path = "/var/run/slapd/ldapi"
 		}

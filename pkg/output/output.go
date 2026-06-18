@@ -347,12 +347,15 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID), event.TemplateVerifier)
 	}
 
-	if len(w.KeysToRedact) > 0 {
-		event.Request = redactKeys(event.Request, w.KeysToRedact)
-		event.Response = redactKeys(event.Response, w.KeysToRedact)
-		event.CURLCommand = redactKeys(event.CURLCommand, w.KeysToRedact)
-		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
-	}
+	// redact the default credential-bearing keys in addition to any
+	// user-supplied -redact keys.
+	redactionKeys := make([]string, 0, len(defaultRedactKeys)+len(w.KeysToRedact))
+	redactionKeys = append(redactionKeys, defaultRedactKeys...)
+	redactionKeys = append(redactionKeys, w.KeysToRedact...)
+	event.Request = redactKeys(event.Request, redactionKeys)
+	event.Response = redactKeys(event.Response, redactionKeys)
+	event.CURLCommand = redactKeys(event.CURLCommand, redactionKeys)
+	event.Matched = redactKeys(event.Matched, redactionKeys)
 
 	event.Timestamp = time.Now()
 
@@ -391,6 +394,16 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	}
 	w.resultCount.Add(1)
 	return nil
+}
+
+// defaultRedactKeys are header and parameter names that are always redacted
+// from output regardless of the -redact flag.
+var defaultRedactKeys = []string{
+	"Authorization",
+	"Proxy-Authorization",
+	"Cookie",
+	"Set-Cookie",
+	"X-Api-Key",
 }
 
 func redactKeys(data string, keysToRedact []string) string {
