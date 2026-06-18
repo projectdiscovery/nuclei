@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan/techgraph"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -63,6 +64,13 @@ type Service struct {
 	techTemplates      []*templates.Template
 	ServiceOpts        Options
 	hasResults         *atomic.Bool
+
+	// tech-graph based selection (automatic scan v2). When selector is nil the
+	// service falls back to the legacy tag-overlap selection.
+	selector     *techgraph.Selector
+	tier         techgraph.Tier
+	universe     map[string]*templates.Template
+	universeOnce sync.Once
 }
 
 // New takes options and returns a new automatic scan service
@@ -103,7 +111,7 @@ func New(opts Options) (*Service, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}
-	return &Service{
+	service := &Service{
 		opts:               opts.ExecuterOpts,
 		store:              opts.Store,
 		engine:             opts.Engine,
@@ -115,7 +123,18 @@ func New(opts Options) (*Service, error) {
 		techTemplates:      techDetectTemplates,
 		ServiceOpts:        opts,
 		hasResults:         &atomic.Bool{},
-	}, nil
+		tier:               techgraph.NormalizeTier(opts.ExecuterOpts.Options.AutomaticScanCoverage),
+	}
+
+	// load the embedded tech-graph for v2 selection; on failure we silently fall
+	// back to legacy tag-overlap so behaviour never regresses.
+	if graph, err := techgraph.Embedded(); err == nil {
+		service.selector = techgraph.NewSelector(graph)
+	} else {
+		gologger.Warning().Msgf("automatic scan: tech-graph unavailable, using legacy selection: %s", err)
+	}
+
+	return service, nil
 }
 
 // Close closes the service
@@ -177,9 +196,19 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 		gologger.Print().Msgf("Final tags identified for %v: %+v\n", input.Input, finalTags)
 	}
 
-	finalTemplates, err := LoadTemplatesWithTags(s.ServiceOpts, s.templateDirs, finalTags, false)
-	if err != nil {
-		gologger.Error().Msgf("%v Error loading templates: %s\n", input.Input, err)
+	var finalTemplates []*templates.Template
+	if s.selector != nil {
+		finalTemplates = s.selectWithGraph(input, finalTags)
+	} else {
+		var err error
+		finalTemplates, err = LoadTemplatesWithTags(s.ServiceOpts, s.templateDirs, finalTags, false)
+		if err != nil {
+			gologger.Error().Msgf("%v Error loading templates: %s\n", input.Input, err)
+			return
+		}
+	}
+	if len(finalTemplates) == 0 {
+		gologger.Warning().Msgf("Skipping automatic scan since no templates were selected on %v\n", input.Input)
 		return
 	}
 	gologger.Info().Msgf("Executing %d templates on %v", len(finalTemplates), input.Input)
@@ -190,6 +219,80 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 
 	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
 	s.hasResults.Store(tmp.Load())
+}
+
+// ensureUniverse lazily loads every selectable template once and indexes it by
+// id. This is the pool from which graph-based selection draws (precise + fuzzy),
+// avoiding a per-target loader pass.
+func (s *Service) ensureUniverse() map[string]*templates.Template {
+	s.universeOnce.Do(func() {
+		all, err := s.store.LoadTemplates(s.templateDirs)
+		if err != nil {
+			gologger.Warning().Msgf("automatic scan: could not load template universe: %s", err)
+			return
+		}
+		s.universe = make(map[string]*templates.Template, len(all))
+		for _, t := range all {
+			if t != nil {
+				s.universe[t.ID] = t
+			}
+		}
+	})
+	return s.universe
+}
+
+// selectWithGraph resolves detected signals to a precise fire-set via the
+// tech-graph, augmented (except at the lean tier) by legacy tag-overlap for any
+// signals not present in the graph, so recall never falls below legacy behaviour.
+func (s *Service) selectWithGraph(input *contextargs.MetaInput, finalTags []string) []*templates.Template {
+	universe := s.ensureUniverse()
+	if len(universe) == 0 {
+		return nil
+	}
+
+	techIDs, unresolved := s.selector.Resolve(finalTags)
+	selected := map[string]*templates.Template{}
+
+	for _, id := range s.selector.FireSet(s.tier, techIDs) {
+		if t, ok := universe[id]; ok {
+			selected[id] = t
+		}
+	}
+
+	fuzzy := 0
+	if s.tier != techgraph.TierLean && len(unresolved) > 0 {
+		want := map[string]struct{}{}
+		for _, tag := range unresolved {
+			want[strings.ToLower(tag)] = struct{}{}
+		}
+		for id, t := range universe {
+			if _, ok := selected[id]; ok {
+				continue
+			}
+			for _, tag := range t.Info.Tags.ToSlice() {
+				if _, ok := want[strings.ToLower(tag)]; ok {
+					selected[id] = t
+					fuzzy++
+					break
+				}
+			}
+		}
+	}
+
+	out := make([]*templates.Template, 0, len(selected))
+	for _, t := range selected {
+		out = append(out, t)
+	}
+
+	if s.opts.Options.VerboseVerbose {
+		gologger.Print().Msgf("%v selection [tier=%s]: %d techs, %d precise + %d fuzzy = %d templates\n",
+			input.Input, s.tier, len(techIDs), len(selected)-fuzzy, fuzzy, len(out))
+	}
+
+	if !s.opts.Options.DisableClustering {
+		out, _, _ = templates.ClusterTemplates(out, s.opts)
+	}
+	return out
 }
 
 // getTagsUsingWappalyzer returns tags using wappalyzer by fingerprinting target
