@@ -190,6 +190,30 @@ func WithGlobalRateLimitCtx(ctx context.Context, maxTokens int, duration time.Du
 	}
 }
 
+// WithHostRateLimit configures a per-host rate limit. Each unique target
+// host is capped at maxTokens requests per duration. Pass maxTokens=0 to
+// disable per-host limiting (the default).
+//
+// The per-host limiter takes priority over the global rate limit
+// (WithGlobalRateLimitCtx): when this option is in effect, requests carrying
+// a host scope consult only the per-host bucket, and the global limiter is
+// bypassed. This is intentional — the global rate limit defaults to a
+// non-zero value, so layering both would silently throttle aggregate
+// throughput and defeat the point of opting into a per-host budget.
+// Aggregate scan throughput is naturally bounded by num_hosts * maxTokens.
+//
+// Requests without a host scope (rare, e.g. self-contained templates) fall
+// back to the global limiter so they remain paced.
+func WithHostRateLimit(ctx context.Context, maxTokens int, duration time.Duration) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.RateLimitHost = maxTokens
+		e.opts.RateLimitHostDuration = duration
+		// Lazily constructed in init() so we honor whichever ctx the
+		// engine ultimately runs under; this option only records intent.
+		return nil
+	}
+}
+
 // HeadlessOpts contains options for headless templates
 type HeadlessOpts struct {
 	PageTimeout     int // timeout for page load

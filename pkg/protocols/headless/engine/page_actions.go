@@ -202,7 +202,11 @@ func (p *Page) WaitVisible(act *Action, out ActionData) error {
 }
 
 func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
+	// copying the whole struct reads shared fields (History, rules, ...) that the
+	// hijack goroutine mutates under p.mutex, so guard the copy with a read lock
+	p.mutex.RLock()
 	page := *p
+	p.mutex.RUnlock()
 	page.page = page.Page().Sleeper(func() utils.Sleeper {
 		return createBackOffSleeper(pollTimeout, timeout)
 	})
@@ -210,7 +214,9 @@ func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
 }
 
 func (p *Page) Timeout(timeout time.Duration) *Page {
+	p.mutex.RLock()
 	page := *p
+	p.mutex.RUnlock()
 	page.page = page.Page().Timeout(timeout)
 	return &page
 }

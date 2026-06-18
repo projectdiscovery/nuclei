@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -72,6 +73,7 @@ type NucleiEngine struct {
 	interactshClient *interactsh.Client
 	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
+	hostRateLimiter  *hostratelimit.Pool
 	store            *loader.Store
 	httpxClient      providerTypes.InputLivenessProbe
 	inputProvider    provider.InputProvider
@@ -229,6 +231,8 @@ func (e *NucleiEngine) closeInternal() {
 	if e.rateLimiter != nil {
 		e.rateLimiter.Stop()
 	}
+	// executerOpts.HostRateLimiter is the same pool; Stop is idempotent and nil-safe
+	e.hostRateLimiter.Stop()
 	if e.inputProvider != nil {
 		e.inputProvider.Close()
 	}

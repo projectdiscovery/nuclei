@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -129,6 +130,14 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 			e.opts.RateLimitDuration = time.Second
 		}
 		e.rateLimiter = nucleiUtils.GetRateLimiter(ctx, e.opts.RateLimit, e.opts.RateLimitDuration)
+	}
+
+	if e.hostRateLimiter == nil && e.opts.RateLimitHost > 0 {
+		// non-positive durations are normalized to 1s by the pool
+		e.hostRateLimiter = hostratelimit.NewPool(ctx, hostratelimit.Options{
+			MaxCount: uint(e.opts.RateLimitHost),
+			Duration: e.opts.RateLimitHostDuration,
+		})
 	}
 
 	if e.opts.ExcludeTags == nil {
@@ -245,6 +254,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		Catalog:            e.catalog,
 		IssuesClient:       e.rc,
 		RateLimiter:        e.rateLimiter,
+		HostRateLimiter:    e.hostRateLimiter,
 		Interactsh:         e.interactshClient,
 		Colorizer:          aurora.New(aurora.WithColors(true)),
 		ResumeCfg:          types.NewResumeCfg(),

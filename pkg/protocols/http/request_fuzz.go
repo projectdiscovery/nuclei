@@ -181,7 +181,14 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input) {
 		return false
 	}
-	request.options.RateLimitTake()
+	// key on the concrete fuzzed request URL: input.MetaInput.Input may hold
+	// a raw HTTP request dump (fuzzing from request files) that is not a
+	// parseable URL, which would silently bypass the per-host limiter
+	var rateLimitKey string
+	if gr.Request != nil && gr.Request.URL != nil {
+		rateLimitKey = gr.Request.URL.Host
+	}
+	request.options.RateLimitTakeFor(rateLimitKey)
 	req := &generatedRequest{
 		request:              gr.Request,
 		dynamicValues:        gr.DynamicValues,

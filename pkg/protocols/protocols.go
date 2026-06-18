@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
@@ -88,6 +89,10 @@ type ExecutorOptions struct {
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter *ratelimit.Limiter
+	// HostRateLimiter limits requests per target host. Optional: nil when
+	// per-host rate limiting is disabled (the default), in which case
+	// RateLimitTakeFor degenerates to RateLimitTake.
+	HostRateLimiter *hostratelimit.Pool
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
@@ -163,6 +168,31 @@ func (e *ExecutorOptions) RateLimitTake() {
 			e.RateLimiter.SetDuration(e.Options.RateLimitDuration)
 		}
 	*/
+	if e.RateLimiter != nil {
+		e.RateLimiter.Take()
+	}
+}
+
+// RateLimitTakeFor acquires one token from the appropriate rate limiter for
+// host. When a per-host limiter is configured (i.e. -rate-limit-host > 0)
+// it takes priority over the global limiter and is the only limiter
+// consulted; the global -rate-limit is bypassed.
+//
+// This priority is intentional: -rate-limit defaults to a non-zero value
+// (150 rps), so applying both limiters would silently cap aggregate
+// throughput at the global default and defeat the purpose of opting into
+// a per-host budget. Users who want a strict global ceiling on top of
+// per-host budgets should rely on -rate-limit-host alone (the aggregate
+// is bounded by num_hosts * rate-limit-host).
+//
+// Pass an empty host when no host scope is available (e.g. self-contained
+// templates); the call falls back to the global limiter so those requests
+// are still paced.
+func (e *ExecutorOptions) RateLimitTakeFor(host string) {
+	if e.HostRateLimiter != nil && host != "" {
+		e.HostRateLimiter.Take(host)
+		return
+	}
 	if e.RateLimiter != nil {
 		e.RateLimiter.Take()
 	}
@@ -284,6 +314,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		IssuesClient:        e.IssuesClient,
 		Progress:            e.Progress,
 		RateLimiter:         e.RateLimiter,
+		HostRateLimiter:     e.HostRateLimiter,
 		Catalog:             e.Catalog,
 		ProjectFile:         e.ProjectFile,
 		Browser:             e.Browser,
@@ -465,6 +496,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.IssuesClient = n.IssuesClient
 	e.Progress = n.Progress
 	e.RateLimiter = n.RateLimiter
+	e.HostRateLimiter = n.HostRateLimiter
 	e.Catalog = n.Catalog
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser
