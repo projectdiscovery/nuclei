@@ -7,6 +7,10 @@ import (
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 type (
@@ -72,9 +76,33 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	return dsn.String(), nil
 }
 
+// sandboxDSN enforces the local file access sandbox on a MySQL DSN. The
+// driver's allowAllFiles option lets a malicious server read any local file
+// off the host via LOAD DATA LOCAL INFILE, so it is only honored when -lfa is
+// enabled, mirroring the fs.ReadFile restriction.
+func sandboxDSN(dsn string, lfaAllowed bool) (string, error) {
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return "", err
+	}
+	if cfg.AllowAllFiles && !lfaAllowed {
+		cfg.AllowAllFiles = false
+	}
+	return cfg.FormatDSN(), nil
+}
+
+// openDB opens a sandboxed MySQL connection from dsn.
+func openDB(executionId, dsn string) (*sql.DB, error) {
+	dsn, err := sandboxDSN(dsn, protocolstate.IsLfaAllowed(&types.Options{ExecutionId: executionId}))
+	if err != nil {
+		return nil, err
+	}
+	return sql.Open("mysql", dsn)
+}
+
 // @memo
 func connectWithDSN(ctx context.Context, executionId string, dsn string) (bool, error) {
-	db, err := sql.Open("mysql", dsn)
+	db, err := openDB(executionId, dsn)
 	if err != nil {
 		return false, err
 	}

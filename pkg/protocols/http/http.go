@@ -155,6 +155,10 @@ type Request struct {
 	//   - "AWS"
 	Signature SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
+	// connectionReusePolicy stores the analyzed connection reuse policy
+	// This is set during Compile() based on template analysis
+	connectionReusePolicy ConnectionReusePolicy `yaml:"-" json:"-"`
+
 	// description: |
 	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
 	SkipSecretFile bool `yaml:"skip-secret-file,omitempty" json:"skip-secret-file,omitempty" jsonschema:"title=bypass secret file,description=Skips the authentication or authorization configured in the secret file"`
@@ -306,13 +310,37 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		return errors.Wrap(err, "validation error")
 	}
 
+	// Analyze connection reuse policy to determine if we can safely reuse connections
+	forceHTTP2 := options.Options != nil && options.Options.ForceAttemptHTTP2
+	reusePolicy := request.AnalyzeConnectionReuse(forceHTTP2)
+	request.connectionReusePolicy = reusePolicy
+
+	// Determine if keep-alive should be disabled
+	// If policy is ReuseUnsafe, we must disable keep-alive to preserve existing behavior
+	// Otherwise, use the standard logic (which may enable keep-alive)
+	var disableKeepAlive bool
+	switch reusePolicy {
+	case ReuseUnsafe:
+		// Preserve existing behavior: disable keep-alive for unsafe requests
+		disableKeepAlive = true
+	case ReuseSafe:
+		// Enable keep-alive for safe requests to allow connection pooling
+		disableKeepAlive = false
+	default:
+		// ReuseUnknown: keep-alive stays enabled so the per-host client pool can
+		// reuse connections (matches the default pooling behavior)
+		disableKeepAlive = false
+	}
+
 	connectionConfiguration := &httpclientpool.Configuration{
 		Threads:       request.Threads,
 		MaxRedirects:  request.MaxRedirects,
 		NoTimeout:     false,
 		DisableCookie: request.DisableCookie,
-		Connection:    &httpclientpool.ConnectionConfiguration{},
-		RedirectFlow:  httpclientpool.DontFollowRedirect,
+		Connection: &httpclientpool.ConnectionConfiguration{
+			DisableKeepAlive: disableKeepAlive,
+		},
+		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
 	var customTimeout int
 	if request.Analyzer != nil && request.Analyzer.Name == "time_delay" {
@@ -533,6 +561,18 @@ const (
 	SetThreadToCountZero = "set-thread-count-to-zero"
 )
 
+// ConnectionReusePolicy determines whether a request can safely reuse connections
+type ConnectionReusePolicy int
+
+const (
+	// ReuseUnknown indicates the policy hasn't been analyzed yet
+	ReuseUnknown ConnectionReusePolicy = iota
+	// ReuseSafe indicates the request can safely reuse connections (enable connection pooling)
+	ReuseSafe
+	// ReuseUnsafe indicates the request must close connections (preserve existing behavior)
+	ReuseUnsafe
+)
+
 func init() {
 	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
 }
@@ -545,4 +585,82 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 // HasFuzzing indicates whether the request has fuzzing rules defined.
 func (request *Request) HasFuzzing() bool {
 	return len(request.Fuzzing) > 0
+}
+
+// AnalyzeConnectionReuse determines if a request can safely reuse connections.
+// Returns ReuseUnsafe if connection closure is required, ReuseSafe otherwise.
+// This analysis ensures backward compatibility by preserving connection-close behavior
+// when necessary while enabling connection pooling for other requests.
+//
+// forceHTTP2 reports whether HTTP/2 may be negotiated (only possible when the
+// user enables it, since the pooled transport sets custom dial hooks). It only
+// affects the time_delay analyzer decision below.
+func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
+	// Priority 0: race and pipeline requests need dedicated connections. Race
+	// uses a one-shot synced body gate that breaks if a connection is reused and
+	// the body is re-read, and reusing a single keep-alive connection would also
+	// serialize the requests and defeat the race.
+	if r.Race || r.Pipeline {
+		return ReuseUnsafe
+	}
+
+	// Priority 1: Check for explicit "Connection: close" header in raw requests
+	for _, raw := range r.Raw {
+		if hasConnectionCloseHeader(raw) {
+			return ReuseUnsafe
+		}
+	}
+
+	// Priority 2: Check for "Connection: close" in regular headers
+	for key, value := range r.Headers {
+		if strings.EqualFold(key, "Connection") && strings.Contains(strings.ToLower(value), "close") {
+			return ReuseUnsafe
+		}
+	}
+
+	// Priority 3: time-based analyzers. The time_delay analyzer measures only the
+	// server-side window (httptrace WroteHeaders -> GotFirstResponseByte), so
+	// connection setup is excluded from the timing. Under HTTP/1.1 net/http never
+	// shares an in-flight connection, so keep-alive reuse saves handshakes without
+	// affecting the measurement -> safe to reuse. Under HTTP/2 concurrent sleeping
+	// probes can multiplex onto one connection and add timing jitter, so force
+	// fresh connections only in that case to keep detection error-free.
+	if r.Analyzer != nil && r.Analyzer.Name == "time_delay" {
+		if forceHTTP2 {
+			return ReuseUnsafe
+		}
+		return ReuseSafe
+	}
+
+	// Default: Safe to reuse - enable connection pooling
+	return ReuseSafe
+}
+
+// hasConnectionCloseHeader checks if a raw HTTP request contains "Connection: close"
+// Case-insensitive check for both "Connection:" and "close"
+func hasConnectionCloseHeader(raw string) bool {
+	rawLower := strings.ToLower(raw)
+	// Check for "connection:" header
+	if !strings.Contains(rawLower, "connection:") {
+		return false
+	}
+	// Check for "close" value after "connection:"
+	// Handle various formats: "Connection: close", "Connection:Close", "Connection: close\r\n", etc.
+	connIdx := strings.Index(rawLower, "connection:")
+	if connIdx == -1 {
+		return false
+	}
+	// Extract the value after "connection:"
+	valueStart := connIdx + len("connection:")
+	// Skip whitespace
+	for valueStart < len(rawLower) && (rawLower[valueStart] == ' ' || rawLower[valueStart] == '\t') {
+		valueStart++
+	}
+	// Check if the value contains "close"
+	value := rawLower[valueStart:]
+	// Find end of line or end of string
+	if newlineIdx := strings.IndexAny(value, "\r\n"); newlineIdx != -1 {
+		value = value[:newlineIdx]
+	}
+	return strings.Contains(value, "close")
 }

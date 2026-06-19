@@ -174,10 +174,37 @@ func TestGet_ConcurrentSameHost(t *testing.T) {
 func TestResetConnectionStats(t *testing.T) {
 	connStats.New.Store(7)
 	connStats.Reused.Store(11)
+	recordHostConn("example.com", false)
 
 	ResetConnectionStats()
 
 	newC, reused := GetConnectionStats()
 	require.Equal(t, int64(0), newC, "new conn counter must be reset to 0")
 	require.Equal(t, int64(0), reused, "reused conn counter must be reset to 0")
+	require.Empty(t, GetPerHostConnectionStats(), "per-host stats must be cleared on reset")
+}
+
+// TestPerHostConnectionStats verifies that the per-host breakdown is recorded
+// alongside the global counters from the shared GotConn hook.
+func TestPerHostConnectionStats(t *testing.T) {
+	ResetConnectionStats()
+	t.Cleanup(ResetConnectionStats)
+
+	recordHostConn("a.example.com", false)
+	recordHostConn("a.example.com", true)
+	recordHostConn("a.example.com", true)
+	recordHostConn("b.example.com", false)
+	recordHostConn("", true) // empty host must be ignored
+
+	stats := GetPerHostConnectionStats()
+	byHost := make(map[string]PerHostConnStat, len(stats))
+	for _, s := range stats {
+		byHost[s.Host] = s
+	}
+
+	require.Len(t, stats, 2, "only non-empty hosts should be tracked")
+	require.Equal(t, int64(1), byHost["a.example.com"].New)
+	require.Equal(t, int64(2), byHost["a.example.com"].Reused)
+	require.Equal(t, int64(1), byHost["b.example.com"].New)
+	require.Equal(t, int64(0), byHost["b.example.com"].Reused)
 }

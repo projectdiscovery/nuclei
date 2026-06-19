@@ -78,6 +78,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
 	github.com/h2non/filetype v1.1.3
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/kitabisa/go-ci v1.0.3
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
@@ -249,7 +250,6 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.8.0 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/iangcarroll/cookiemonster v1.6.0 // indirect
