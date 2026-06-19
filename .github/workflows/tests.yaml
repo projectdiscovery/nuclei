@@ -24,7 +24,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - uses: projectdiscovery/actions/golangci-lint/v2@v1
+      # go vet runs once here (not per-OS in the tests matrix): it is platform
+      # independent and folding it into the lint gate fails fast on a cheap
+      # runner before the heavy test/integration jobs start.
+      - run: make vet
 
   tests:
     name: "Tests"
@@ -49,14 +54,34 @@ jobs:
           misc-packages: 'false'
           docker-images: 'false'
           tools-cache: 'false'
-      - run: make vet
       - run: make build
-      - run: make test
+      # The data-race detector is OS-independent, so we only pay its ~2-3x cost
+      # on ubuntu; windows/macOS run the same suite without instrumentation.
+      - name: "Unit tests (race)"
+        run: make test
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        env:
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+      - name: "Unit tests"
+        run: make test RACE=
+        if: ${{ matrix.os != 'ubuntu-latest' }}
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
       - run: go run -race . -l ${{ github.workspace }}/internal/tests/functional/testdata/targets.txt -id tech-detect,tls-version
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
         working-directory: cmd/nuclei/
+      # Hermetic HTTP-engine scale regression: stands up many loopback hosts and
+      # asserts finding parity across a diverse template set (per-host pool,
+      # connection-reuse and http->https tracker + cookie-reuse). Race
+      # build runs on ubuntu only (same rationale as the unit tests above);
+      # other OSes run it plain. Large runs stay opt-in locally via
+      # NUCLEI_SCALE_HOSTS.
+      - name: "Scale regression (race)"
+        run: go test -tags=regression -race -timeout 15m ./lib/tests -run TestScaleRegression
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: "Scale regression"
+        run: make regression
+        if: ${{ matrix.os != 'ubuntu-latest' }}
 
   sdk:
     name: "Run example SDK"
@@ -93,6 +118,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - run: make integration
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
@@ -112,6 +138,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - uses: projectdiscovery/nuclei-action@v3
         with:
           version: latest

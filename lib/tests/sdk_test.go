@@ -18,6 +18,9 @@ var knownLeaks = []goleak.Option{
 	// net/http transport maintains idle keep-alive connections whose goroutines
 	// exit on idle timeout or explicit close - not real leaks.
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+	// expirable LRU cache creates a background goroutine for TTL expiration that persists
+	// see: https://github.com/hashicorp/golang-lru/blob/770151e9c8cdfae1797826b7b74c33d6f103fbd8/expirable/expirable_lru.go#L79
+	goleak.IgnoreAnyContainingPkg("github.com/hashicorp/golang-lru/v2/expirable"),
 	goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
 	goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 }

@@ -71,6 +71,22 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
 }
 
+// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
+func (request *Request) rateLimitTake(hostname string) {
+	if request.options.Options.PerHostRateLimit && hostname != "" {
+		// Use per-host rate limiter
+		if limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname); err == nil && limiter != nil {
+			limiter.Take()
+			// Record request for pps stats
+			httpclientpool.RecordPerHostRateLimitRequest(request.options.Options, hostname)
+			return
+		}
+		// Fallback to global if per-host fails
+	}
+	// Use global rate limiter (or unlimited if per-host is enabled but hostname is empty)
+	request.options.RateLimitTake()
+}
+
 // executeRaceRequest executes race condition request for a URL
 func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.MetaInput.Input
@@ -252,7 +268,15 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					spmHandler.Release()
 					continue
 				}
-				request.options.RateLimitTake()
+				// Extract hostname for per-host rate limiting (use full URL - normalization happens in rateLimitTake)
+				hostname := t.updatedInput.MetaInput.Input
+				if t.req != nil && t.req.URL() != "" {
+					hostname = t.req.URL()
+				} else if t.req != nil && t.req.request != nil && t.req.request.Request != nil && t.req.request.Request.URL != nil {
+					// Extract from request URL if available
+					hostname = t.req.request.Request.URL.String()
+				}
+				request.rateLimitTake(hostname)
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 				err := request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -511,8 +535,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			request.options.RateLimitTake()
-
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
 			defer cancel()
@@ -530,6 +552,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// a copy and using it to check for host errors etc
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
+
+			// Extract hostname for per-host rate limiting (use generated request URL - normalization happens in rateLimitTake)
+			hostname := input.MetaInput.Input
+			if generatedHttpRequest.URL() != "" {
+				// Use the generated URL directly - the normalization function will extract host:port correctly
+				hostname = generatedHttpRequest.URL()
+			}
+			request.rateLimitTake(hostname)
 
 			if generatedHttpRequest.customCancelFunction != nil {
 				defer generatedHttpRequest.customCancelFunction()
@@ -713,8 +743,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if dumpError != nil {
 			return dumpError
 		}
-		if generatedRequest.request != nil && generatedRequest.request.URL != nil {
-			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.URL.Host)
+		if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
 		} else {
 			projectCacheKey = dumpedRequest
 		}
@@ -838,7 +868,43 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			executingClient = httpclient
 
+			// Check if HTTP-to-HTTPS port correction is needed before sending request.
+			// The correction is keyed by host:port and shared across templates, so a
+			// single wrong detection could otherwise silently break every later request
+			// to that host. We remember that a correction was applied so we can revert
+			// and retry on failure (see below).
+			var httpsCorrectionTracker *httpclientpool.HTTPToHTTPSPortTracker
+			var httpsCorrectionURL string
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options)
+				if tracker != nil {
+					requestURL := generatedRequest.request.Request.URL.String()
+					if tracker.RequiresHTTPS(requestURL) {
+						// Modify request URL scheme from http to https
+						if generatedRequest.request.Scheme == "http" {
+							generatedRequest.request.Scheme = "https"
+							tracker.RecordCorrection()
+							httpsCorrectionTracker = tracker
+							httpsCorrectionURL = requestURL
+							gologger.Debug().Msgf("[http-to-https-tracker] Corrected HTTP to HTTPS for %s", requestURL)
+						}
+					}
+				}
+			}
+
 			resp, err = httpclient.Do(generatedRequest.request)
+
+			// If we forced http->https from a previous detection and the corrected
+			// request failed (e.g. a false positive where the port actually speaks
+			// plain HTTP), revert to the original scheme, evict the bad entry so
+			// other templates hitting the same host:port are not affected, and retry
+			// once. This keeps the optimization while preventing a single
+			// wrong detection from silently dropping findings at scale.
+			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
+				generatedRequest.request.Scheme = "http"
+				httpsCorrectionTracker.Evict(httpsCorrectionURL)
+				resp, err = httpclient.Do(generatedRequest.request)
+			}
 		}
 	}
 	// use request url as matched url if empty
@@ -969,8 +1035,26 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
+		statusCode := respChain.Response().StatusCode
+
+		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message) so
+		// later requests to the same host:port are auto-upgraded to https.
+		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
+			var requestURL string
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				requestURL = generatedRequest.request.Request.URL.String()
+			} else if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
+				requestURL = generatedRequest.rawRequest.FullURL
+			} else if respChain.Request() != nil && respChain.Request().URL != nil {
+				requestURL = respChain.Request().URL.String()
+			}
+			if requestURL != "" {
+				httpclientpool.RecordHTTPToHTTPSPortMismatch(request.options.Options, requestURL)
+			}
+		}
+
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), fullResponseStr)
+		request.options.Output.RequestStatsLog(strconv.Itoa(statusCode), fullResponseStr)
 
 		// save response to projectfile
 		onceFunc()

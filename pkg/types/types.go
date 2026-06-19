@@ -205,6 +205,13 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
+	// before running templates. Disabled by default.
+	PreflightPortScan bool
+	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
+	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
+	// Disabled by default.
+	PerHostRateLimit bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -569,6 +576,8 @@ func (options *Options) Copy() *Options {
 		DebugRequests:                  options.DebugRequests,
 		DebugResponse:                  options.DebugResponse,
 		DisableHTTPProbe:               options.DisableHTTPProbe,
+		PreflightPortScan:              options.PreflightPortScan,
+		PerHostRateLimit:               options.PerHostRateLimit,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
