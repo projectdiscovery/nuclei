@@ -85,7 +85,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -107,7 +107,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
 	rdapReq.Server = request.parsedServerURL
+	timeStart := time.Now()
 	res, err := request.client.Do(rdapReq)
+	duration := time.Since(timeStart)
 	if err != nil {
 		return errors.Wrap(err, "could not make whois request")
 	}
@@ -135,6 +137,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["type"] = request.Type().String()
 	data["host"] = query
 	data["response"] = jsonDataString
+	data["duration"] = duration.Seconds()
 
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
@@ -190,6 +193,16 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
 	return data
+}
+
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"type":     "Type is the type of request made",
+	"host":     "Host is the input to the template",
+	"response": "WHOIS response data",
+	"duration": "Protocol operation duration in seconds",
 }
 
 // Type returns the type of the protocol request

@@ -84,6 +84,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":        "Matched is the input which was matched upon",
 	"type":           "Type is the type of request made",
 	"req":            "Headless request made from the client",
+	"duration":       "Latest measured operation duration in seconds",
 	"resp,body,data": "Headless response received from client (default)",
 }
 

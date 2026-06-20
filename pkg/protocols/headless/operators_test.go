@@ -2,9 +2,11 @@ package headless
 
 import (
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/stretchr/testify/require"
 )
 
@@ -282,6 +284,32 @@ func TestRequest_getMatchPart(t *testing.T) {
 	part, ok = request.getMatchPart("nonexistent", data)
 	require.False(t, ok)
 	require.Equal(t, "", part)
+}
+
+func TestHeadlessDurationFields(t *testing.T) {
+	event := output.InternalEvent{}
+	addHeadlessDurationFields(event, []time.Duration{time.Second, 2 * time.Second}, 0)
+	require.Equal(t, float64(1), event["duration_1"])
+	require.Equal(t, float64(2), event["duration_2"])
+	require.Equal(t, float64(2), event["duration"])
+
+	event = output.InternalEvent{}
+	addHeadlessDurationFields(event, nil, 500*time.Millisecond)
+	require.Equal(t, 0.5, event["duration"])
+	require.NotContains(t, event, "duration_1")
+
+	request := &Request{}
+	extractor := &extractors.Extractor{
+		Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+		DSL:  []string{"duration"},
+	}
+	require.NoError(t, extractor.CompileExtractors())
+	require.Equal(t, map[string]struct{}{"0.5": {}}, request.Extract(event, extractor))
+
+	require.Contains(t, RequestPartDefinitions, "duration")
+	require.NotContains(t, RequestPartDefinitions, "duration_<N>")
+	require.NotContains(t, RequestPartDefinitions, "duration_ms")
+	require.NotContains(t, RequestPartDefinitions, "duration_total")
 }
 
 func TestRequest_ExtractWithDifferentParts(t *testing.T) {
