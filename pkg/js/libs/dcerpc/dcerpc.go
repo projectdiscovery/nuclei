@@ -26,7 +26,7 @@ import (
 	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
 	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
 	gpsmbexec "github.com/Mzack9999/goimpacket/pkg/smbexec"
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
