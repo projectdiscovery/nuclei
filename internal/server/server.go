@@ -2,6 +2,7 @@ package server
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -11,8 +12,6 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/scope"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -25,7 +24,7 @@ import (
 // DASTServer is a server that performs execution of fuzzing templates
 // on user input passed to the API.
 type DASTServer struct {
-	echo         *echo.Echo
+	httpServer   *http.Server
 	options      *Options
 	tasksPool    *pond.WorkerPool
 	deduplicator *requestDeduplicator
@@ -111,6 +110,7 @@ func New(options *Options) (*DASTServer, error) {
 
 func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 	server := &DASTServer{
+		options: &Options{},
 		nucleiExecutor: &nucleiExecutor{
 			executorOpts: &protocols.ExecutorOptions{
 				FuzzStatsDB: fuzzStatsDB,
@@ -124,62 +124,70 @@ func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 }
 
 func (s *DASTServer) Close() {
-	s.nucleiExecutor.Close()
-	_ = s.echo.Close()
-	s.tasksPool.StopAndWaitFor(1 * time.Minute)
+	if s.nucleiExecutor != nil {
+		s.nucleiExecutor.Close()
+	}
+	if s.httpServer != nil {
+		_ = s.httpServer.Close()
+	}
+	if s.tasksPool != nil {
+		s.tasksPool.StopAndWaitFor(1 * time.Minute)
+	}
 }
 
 func (s *DASTServer) buildURL(endpoint string) string {
 	values := make(url.Values)
-	if s.options.Token != "" {
-		values.Set("token", s.options.Token)
+	opts := s.optionsOrDefault()
+	if opts.Token != "" {
+		values.Set("token", opts.Token)
 	}
 
 	// Use url.URL struct to safely construct the URL
 	u := &url.URL{
 		Scheme:   "http",
-		Host:     s.options.Address,
+		Host:     opts.Address,
 		Path:     endpoint,
 		RawQuery: values.Encode(),
 	}
 	return u.String()
 }
 
+func (s *DASTServer) optionsOrDefault() *Options {
+	if s.options != nil {
+		return s.options
+	}
+	return &Options{}
+}
+
 func (s *DASTServer) setupHandlers(onlyStats bool) {
-	e := echo.New()
-	e.Use(middleware.Recover())
-	if s.options.Verbose {
-		cfg := middleware.DefaultLoggerConfig
-		cfg.Skipper = func(c echo.Context) bool {
-			// Skip /stats and /stats.json
-			return c.Request().URL.Path == "/stats" || c.Request().URL.Path == "/stats.json"
-		}
-		e.Use(middleware.LoggerWithConfig(cfg))
-	}
-	e.Use(middleware.CORS())
-
-	if s.options.Token != "" {
-		e.Use(middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-			KeyLookup: "query:token",
-			Validator: func(key string, c echo.Context) (bool, error) {
-				return key == s.options.Token, nil
-			},
-		}))
-	}
-
-	e.HideBanner = true
+	mux := http.NewServeMux()
 	// POST /fuzz - Queue a request for fuzzing
 	if !onlyStats {
-		e.POST("/fuzz", s.handleRequest)
+		mux.HandleFunc("POST /fuzz", s.handleRequest)
 	}
-	e.GET("/stats", s.handleStats)
-	e.GET("/stats.json", s.handleStatsJSON)
+	mux.HandleFunc("GET /stats", s.handleStats)
+	mux.HandleFunc("GET /stats.json", s.handleStatsJSON)
 
-	s.echo = e
+	handler := http.Handler(mux)
+	opts := s.optionsOrDefault()
+	if opts.Token != "" {
+		handler = s.tokenAuthMiddleware(handler)
+	}
+	handler = corsMiddleware(handler)
+	if opts.Verbose {
+		handler = requestLoggerMiddleware(handler)
+	}
+	handler = recoverMiddleware(handler)
+
+	s.httpServer = &http.Server{Handler: handler}
 }
 
 func (s *DASTServer) Start() error {
-	if err := s.echo.Start(s.options.Address); err != nil && err != http.ErrServerClosed {
+	if s.httpServer == nil {
+		s.setupHandlers(false)
+	}
+	s.httpServer.Addr = s.optionsOrDefault().Address
+	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}
 	return nil
@@ -191,24 +199,26 @@ type PostRequestsHandlerRequest struct {
 	URL     string `json:"url"`
 }
 
-func (s *DASTServer) handleRequest(c echo.Context) error {
+func (s *DASTServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	var req PostRequestsHandlerRequest
-	if err := c.Bind(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		fmt.Printf("Error binding request: %s\n", err)
-		return err
+		writeServerJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
 	}
 
 	// Validate the request
 	if req.RawHTTP == "" || req.URL == "" {
 		fmt.Printf("Missing required fields\n")
-		return c.JSON(400, map[string]string{"error": "missing required fields"})
+		writeServerJSON(w, http.StatusBadRequest, map[string]string{"error": "missing required fields"})
+		return
 	}
 
 	s.endpointsInQueue.Add(1)
 	s.tasksPool.Submit(func() {
 		s.consumeTaskRequest(req)
 	})
-	return c.NoContent(200)
+	w.WriteHeader(http.StatusOK)
 }
 
 type StatsResponse struct {
@@ -274,23 +284,116 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 //go:embed templates/index.html
 var indexTemplate string
 
-func (s *DASTServer) handleStats(c echo.Context) error {
+func (s *DASTServer) handleStats(w http.ResponseWriter, _ *http.Request) {
 	stats, err := s.getStats()
 	if err != nil {
-		return c.JSON(500, map[string]string{"error": err.Error()})
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
 
 	tmpl, err := template.New("index").Parse(indexTemplate)
 	if err != nil {
-		return c.JSON(500, map[string]string{"error": err.Error()})
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
-	return tmpl.Execute(c.Response().Writer, stats)
+	if err := tmpl.Execute(w, stats); err != nil {
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 }
 
-func (s *DASTServer) handleStatsJSON(c echo.Context) error {
+func (s *DASTServer) handleStatsJSON(w http.ResponseWriter, _ *http.Request) {
 	resp, err := s.getStats()
 	if err != nil {
-		return c.JSON(500, map[string]string{"error": err.Error()})
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.JSONPretty(200, resp, "  ")
+	writeServerJSONPretty(w, http.StatusOK, resp)
+}
+
+func (s *DASTServer) tokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			writeServerJSON(w, http.StatusBadRequest, map[string]string{"message": "missing key in the query string"})
+			return
+		}
+		if token != s.optionsOrDefault().Token {
+			writeServerJSON(w, http.StatusUnauthorized, map[string]string{"message": "Unauthorized"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	const allowMethods = "GET,HEAD,PUT,PATCH,POST,DELETE"
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		w.Header().Add("Vary", "Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		if r.Method == http.MethodOptions {
+			if origin != "" {
+				w.Header().Add("Vary", "Access-Control-Request-Method")
+				w.Header().Add("Vary", "Access-Control-Request-Headers")
+				w.Header().Set("Access-Control-Allow-Methods", allowMethods)
+				if headers := r.Header.Get("Access-Control-Request-Headers"); headers != "" {
+					w.Header().Set("Access-Control-Allow-Headers", headers)
+				}
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func requestLoggerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/stats" || r.URL.Path == "/stats.json" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		start := time.Now()
+		next.ServeHTTP(recorder, r)
+		fmt.Printf("%s %s %d %s\n", r.Method, r.URL.RequestURI(), recorder.statusCode, time.Since(start))
+	})
+}
+
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(statusCode int) {
+	r.statusCode = statusCode
+	r.ResponseWriter.WriteHeader(statusCode)
+}
+
+func writeServerJSON(w http.ResponseWriter, statusCode int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(value)
+}
+
+func writeServerJSONPretty(w http.ResponseWriter, statusCode int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	_ = encoder.Encode(value)
 }

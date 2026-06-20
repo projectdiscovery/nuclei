@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/go-pg/pg/v10"
@@ -22,6 +23,10 @@ import (
 
 func javascriptDockerDisabled() bool {
 	return !osutils.IsLinux() || !hasAnyExecutable("docker", "podman")
+}
+
+func javascriptGoExecSambaDisabled() bool {
+	return javascriptDockerDisabled() || os.Getenv("RUN_GOEXEC_SAMBA_LOCAL") != "1"
 }
 
 var jsTestcases = []integrationCase{
@@ -40,7 +45,7 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/wmi-command.yaml", TestCase: &javascriptWMICommand{}},
 	{Path: "protocols/javascript/goexec-redaction.yaml", TestCase: &javascriptGoExecRedaction{}},
 	{Path: "protocols/javascript/goexec-modules.yaml", TestCase: &javascriptGoExecModules{}},
-	{Path: "protocols/javascript/goexec-samba-ntlm.yaml", TestCase: &javascriptGoExecSambaNTLM{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/goexec-samba-ntlm.yaml", TestCase: &javascriptGoExecSambaNTLM{}, DisableOn: javascriptGoExecSambaDisabled, Serial: true},
 }
 
 var (
@@ -48,7 +53,6 @@ var (
 )
 
 const (
-	javascriptContainerTTLSeconds  = 300
 	javascriptDatabaseReadyTimeout = 3 * time.Minute
 	javascriptServiceReadyTimeout  = 45 * time.Second
 	javascriptRetryDelay           = 500 * time.Millisecond
@@ -257,10 +261,6 @@ func (j *javascriptGoExecSambaNTLM) Execute(filePath string) error {
 	}
 	defer purge(pool, resource)
 
-	if err := resource.Expire(javascriptContainerTTLSeconds); err != nil {
-		return fmt.Errorf("could not expire samba: %w", err)
-	}
-
 	targetAddress := "127.0.0.1:445"
 	if err := waitForTCPService(targetAddress, javascriptServiceReadyTimeout); err != nil {
 		return err
@@ -418,10 +418,6 @@ func runJavascriptDockerCase(filePath string, spec javascriptDockerSpec, expecte
 		return fmt.Errorf("could not start resource for %s: %w", filePath, err)
 	}
 	defer purge(pool, resource)
-
-	if err := resource.Expire(javascriptContainerTTLSeconds); err != nil {
-		return fmt.Errorf("could not expire resource for %s: %w", filePath, err)
-	}
 
 	mappedPort := resource.GetPort(spec.port)
 	if mappedPort == "" {
@@ -586,7 +582,6 @@ func purge(pool *dockertest.Pool, resource *dockertest.Resource) {
 		return
 	}
 	containerName := resource.Container.Name
-	_ = pool.Client.StopContainer(resource.Container.ID, 0)
 	_ = pool.Purge(resource)
 	_ = pool.RemoveContainerByName(containerName)
 }

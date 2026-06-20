@@ -172,6 +172,32 @@ jobs:
           languages: 'go'
       - uses: github/codeql-action/autobuild@v4
       - uses: github/codeql-action/analyze@v4
+        with:
+          output: sarif-results
+          upload: never
+          category: "/language:go"
+      # internal/fuzzplayground is a deliberately vulnerable mock server used to
+      # exercise nuclei's fuzzing templates (CMDI/SQLi/SSRF/etc. are by design),
+      # so its CodeQL alerts are expected false positives. paths-ignore has no
+      # effect for compiled languages, so drop those results from the SARIF
+      # before upload instead.
+      - name: "Filter fuzzplayground alerts from SARIF"
+        run: |
+          for sarif in sarif-results/*.sarif; do
+            [ -e "$sarif" ] || continue
+            jq '
+              .runs[].results |= map(
+                select(
+                  [ .locations[]?.physicalLocation.artifactLocation.uri // "" ]
+                  | any(startswith("internal/fuzzplayground/")) | not
+                )
+              )
+            ' "$sarif" > "$sarif.filtered" && mv "$sarif.filtered" "$sarif"
+          done
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: sarif-results
+          category: "/language:go"
 
   release:
     name: "Release test"

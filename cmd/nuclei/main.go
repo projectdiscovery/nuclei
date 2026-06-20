@@ -15,12 +15,12 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/rs/xid"
-	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger/levels"

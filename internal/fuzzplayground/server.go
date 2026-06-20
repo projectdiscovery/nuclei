@@ -2,39 +2,67 @@
 package fuzzplayground
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os/exec"
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
-func GetPlaygroundServer() *echo.Echo {
-	e := echo.New()
-	e.Use(middleware.Recover())
-	e.Use(middleware.Logger())
+// PlaygroundServer wraps the fuzz playground handler with the lifecycle methods
+// used by the integration tests and the standalone playground command.
+type PlaygroundServer struct {
+	handler http.Handler
+	server  *http.Server
+}
 
-	e.GET("/", indexHandler)
-	e.GET("/info", infoHandler)
-	e.GET("/redirect", redirectHandler)
-	e.GET("/request", requestHandler)
-	e.GET("/email", emailHandler)
-	e.GET("/permissions", permissionsHandler)
+func GetPlaygroundServer() *PlaygroundServer {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", indexHandler)
+	mux.HandleFunc("GET /info", infoHandler)
+	mux.HandleFunc("GET /redirect", redirectHandler)
+	mux.HandleFunc("GET /request", requestHandler)
+	mux.HandleFunc("GET /email", emailHandler)
+	mux.HandleFunc("GET /permissions", permissionsHandler)
 
-	e.GET("/blog/post", numIdorHandler) // for num based idors like ?id=44
-	e.POST("/reset-password", resetPasswordHandler)
-	e.GET("/host-header-lab", hostHeaderLabHandler)
-	e.GET("/user/:id/profile", userProfileHandler)
-	e.POST("/user", patchUnsanitizedUserHandler)
-	e.GET("/blog/posts", getPostsHandler)
-	return e
+	mux.HandleFunc("GET /blog/post", numIdorHandler) // for num based idors like ?id=44
+	mux.HandleFunc("POST /reset-password", resetPasswordHandler)
+	mux.HandleFunc("GET /host-header-lab", hostHeaderLabHandler)
+	mux.HandleFunc("GET /user/{id}/profile", userProfileHandler)
+	mux.HandleFunc("POST /user", patchUnsanitizedUserHandler)
+	mux.HandleFunc("GET /blog/posts", getPostsHandler)
+
+	handler := recoverPlaygroundRequest(logPlaygroundRequest(mux))
+	return &PlaygroundServer{handler: handler}
+}
+
+func (s *PlaygroundServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.handler.ServeHTTP(w, r)
+}
+
+func (s *PlaygroundServer) Start(addr string) error {
+	s.server = &http.Server{
+		Addr:    addr,
+		Handler: s.handler,
+	}
+	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}
+
+func (s *PlaygroundServer) Close() error {
+	if s.server == nil {
+		return nil
+	}
+	return s.server.Close()
 }
 
 var bodyTemplate = `<html>
@@ -46,8 +74,8 @@ var bodyTemplate = `<html>
 </body>
 </html>`
 
-func indexHandler(ctx echo.Context) error {
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, `<h1>Fuzzing Playground</h1><hr>
+func indexHandler(w http.ResponseWriter, _ *http.Request) {
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, `<h1>Fuzzing Playground</h1><hr>
 	<ul>
 		
 	<li><a href="/info?name=test&another=value&random=data">Info Page XSS</a></li>
@@ -65,154 +93,172 @@ func indexHandler(ctx echo.Context) error {
 `))
 }
 
-func infoHandler(ctx echo.Context) error {
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Name of user: %s%s%s", ctx.QueryParam("name"), ctx.QueryParam("another"), ctx.QueryParam("random"))))
+func infoHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Name of user: %s%s%s", query.Get("name"), query.Get("another"), query.Get("random"))))
 }
 
-func redirectHandler(ctx echo.Context) error {
-	url := ctx.QueryParam("redirect_url")
-	return ctx.Redirect(302, url)
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, r.URL.Query().Get("redirect_url"), http.StatusFound)
 }
 
-func requestHandler(ctx echo.Context) error {
-	url := ctx.QueryParam("url")
-	data, err := retryablehttp.DefaultClient().Get(url)
+func requestHandler(w http.ResponseWriter, r *http.Request) {
+	requestURL := r.URL.Query().Get("url")
+	data, err := retryablehttp.DefaultClient().Get(requestURL)
 	if err != nil {
-		return ctx.HTML(500, err.Error())
+		writeHTML(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	defer func() {
 		_ = data.Body.Close()
 	}()
 
 	body, _ := io.ReadAll(data.Body)
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(body)))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, string(body)))
 }
 
-func emailHandler(ctx echo.Context) error {
-	text := ctx.QueryParam("text")
+func emailHandler(w http.ResponseWriter, r *http.Request) {
+	text := r.URL.Query().Get("text")
 	if strings.Contains(text, "{{") {
 		trimmed := strings.SplitN(strings.Trim(text[strings.Index(text, "{"):], "{}"), "*", 2)
 		if len(trimmed) < 2 {
-			return ctx.HTML(500, "invalid template")
+			writeHTML(w, http.StatusInternalServerError, "invalid template")
+			return
 		}
 		first, _ := strconv.Atoi(trimmed[0])
 		second, _ := strconv.Atoi(trimmed[1])
 		text = strconv.Itoa(first * second)
 	}
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Text: %s", text)))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Text: %s", text)))
 }
 
-func permissionsHandler(ctx echo.Context) error {
-	command := ctx.QueryParam("cmd")
+func permissionsHandler(w http.ResponseWriter, r *http.Request) {
+	command := r.URL.Query().Get("cmd")
 	fields := strings.Fields(command)
 	cmd := exec.Command(fields[0], fields[1:]...)
 	data, _ := cmd.CombinedOutput()
 
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(data)))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, string(data)))
 }
 
-func numIdorHandler(ctx echo.Context) error {
+func numIdorHandler(w http.ResponseWriter, r *http.Request) {
 	// validate if any numerical query param is present
 	// if not, return 400 if so, return 200
-	for k := range ctx.QueryParams() {
-		if _, err := strconv.Atoi(ctx.QueryParam(k)); err == nil {
-			return ctx.JSON(200, "Profile Info for user with id "+ctx.QueryParam(k))
+	for k := range r.URL.Query() {
+		value := r.URL.Query().Get(k)
+		if _, err := strconv.Atoi(value); err == nil {
+			writeJSON(w, http.StatusOK, "Profile Info for user with id "+value)
+			return
 		}
 	}
-	return ctx.JSON(400, "No numerical query param found")
+	writeJSON(w, http.StatusBadRequest, "No numerical query param found")
 }
 
-func patchUnsanitizedUserHandler(ctx echo.Context) error {
+func patchUnsanitizedUserHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 
-	contentType := ctx.Request().Header.Get("Content-Type")
+	contentType := r.Header.Get("Content-Type")
 	// manually handle unmarshalling data
 	if strings.Contains(contentType, "application/json") {
-		err := ctx.Bind(&user)
-		if err != nil {
-			return ctx.JSON(500, "Invalid JSON data")
+		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+			writeJSON(w, http.StatusInternalServerError, "Invalid JSON data")
+			return
 		}
 	} else if strings.Contains(contentType, "application/x-www-form-urlencoded") {
-		user.Name = ctx.FormValue("name")
-		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
-		user.Role = ctx.FormValue("role")
-		user.ID, _ = strconv.Atoi(ctx.FormValue("id"))
+		user.Name = r.FormValue("name")
+		user.Age, _ = strconv.Atoi(r.FormValue("age"))
+		user.Role = r.FormValue("role")
+		user.ID, _ = strconv.Atoi(r.FormValue("id"))
 	} else if strings.Contains(contentType, "application/xml") {
-		bin, _ := io.ReadAll(ctx.Request().Body)
+		bin, _ := io.ReadAll(r.Body)
 		err := xml.Unmarshal(bin, &user)
 		if err != nil {
-			return ctx.JSON(500, "Invalid XML data")
+			writeJSON(w, http.StatusInternalServerError, "Invalid XML data")
+			return
 		}
 	} else if strings.Contains(contentType, "multipart/form-data") {
-		user.Name = ctx.FormValue("name")
-		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
-		user.Role = ctx.FormValue("role")
-		user.ID, _ = strconv.Atoi(ctx.FormValue("id"))
+		user.Name = r.FormValue("name")
+		user.Age, _ = strconv.Atoi(r.FormValue("age"))
+		user.Role = r.FormValue("role")
+		user.ID, _ = strconv.Atoi(r.FormValue("id"))
 	} else {
-		return ctx.JSON(500, "Invalid Content-Type")
+		writeJSON(w, http.StatusInternalServerError, "Invalid Content-Type")
+		return
 	}
 
 	err := patchUnsanitizedUser(db, user)
 	if err != nil {
-		return ctx.JSON(500, err.Error())
+		writeJSON(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return ctx.JSON(200, "User updated successfully")
+	writeJSON(w, http.StatusOK, "User updated successfully")
 }
 
 // resetPassword mock
-func resetPasswordHandler(c echo.Context) error {
+func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var m map[string]interface{}
-	if err := c.Bind(&m); err != nil {
-		return c.JSON(500, "Something went wrong")
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
 	}
 
-	host := c.Request().Header.Get("X-Forwarded-For")
+	host := r.Header.Get("X-Forwarded-For")
 	if host == "" {
-		return c.JSON(500, "Something went wrong")
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
 	}
-	resp, err := http.Get("http://internal." + host + "/update?user=1337&pass=" + m["password"].(string))
+	password, ok := m["password"].(string)
+	if !ok {
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	resp, err := http.Get("http://internal." + host + "/update?user=1337&pass=" + password)
 	if err != nil {
-		return c.JSON(500, "Something went wrong")
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	return c.JSON(200, "Password reset successfully")
+	writeJSON(w, http.StatusOK, "Password reset successfully")
 }
 
-func hostHeaderLabHandler(c echo.Context) error {
+func hostHeaderLabHandler(w http.ResponseWriter, r *http.Request) {
 	// vulnerable app has custom routing and trusts x-forwarded-host
 	// to route to internal services
-	if c.Request().Header.Get("X-Forwarded-Host") != "" {
-		resp, err := http.Get("http://" + c.Request().Header.Get("X-Forwarded-Host"))
+	if r.Header.Get("X-Forwarded-Host") != "" {
+		resp, err := http.Get("http://" + r.Header.Get("X-Forwarded-Host"))
 		if err != nil {
-			return c.JSON(500, "Something went wrong")
+			writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+			return
 		}
 		defer func() {
 			_ = resp.Body.Close()
 		}()
-		c.Response().Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-		c.Response().WriteHeader(resp.StatusCode)
-		_, err = io.Copy(c.Response().Writer, resp.Body)
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		w.WriteHeader(resp.StatusCode)
+		_, err = io.Copy(w, resp.Body)
 		if err != nil {
-			return c.JSON(500, "Something went wrong")
+			return
 		}
+		return
 	}
-	return c.JSON(200, "Not a Teapot")
+	writeJSON(w, http.StatusOK, "Not a Teapot")
 }
 
-func userProfileHandler(ctx echo.Context) error {
-	val, _ := url.PathUnescape(ctx.Param("id"))
+func userProfileHandler(w http.ResponseWriter, r *http.Request) {
+	val, _ := url.PathUnescape(r.PathValue("id"))
 	fmt.Printf("Unescaped: %s\n", val)
 	user, err := getUnsanitizedUser(db, val)
 	if err != nil {
-		return ctx.JSON(500, err.Error())
+		writeJSON(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return ctx.JSON(200, user)
+	writeJSON(w, http.StatusOK, user)
 }
 
-func getPostsHandler(c echo.Context) error {
-	lang, err := c.Cookie("lang")
+func getPostsHandler(w http.ResponseWriter, r *http.Request) {
+	lang, err := r.Cookie("lang")
 	if err != nil {
 		// If the language cookie is missing, default to English
 		lang = new(http.Cookie)
@@ -220,7 +266,38 @@ func getPostsHandler(c echo.Context) error {
 	}
 	posts, err := getUnsanitizedPostsByLang(db, lang.Value)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		writeJSON(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return c.JSON(http.StatusOK, posts)
+	writeJSON(w, http.StatusOK, posts)
+}
+
+func writeHTML(w http.ResponseWriter, statusCode int, value string) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_, _ = io.WriteString(w, value)
+}
+
+func writeJSON(w http.ResponseWriter, statusCode int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(value)
+}
+
+func recoverPlaygroundRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func logPlaygroundRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s", r.Method, r.URL.RequestURI())
+		next.ServeHTTP(w, r)
+	})
 }
