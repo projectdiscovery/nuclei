@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
