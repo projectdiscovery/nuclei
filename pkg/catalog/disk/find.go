@@ -193,6 +193,9 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 	if err != nil {
 		return "", false, err
 	}
+	defer func() {
+		_ = info.Close()
+	}()
 	stat, err := info.Stat()
 	if err != nil {
 		return "", false, err
