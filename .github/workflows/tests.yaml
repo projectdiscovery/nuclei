@@ -22,7 +22,7 @@ jobs:
     if: ${{ !endsWith(github.actor, '[bot]') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
       - uses: projectdiscovery/actions/golangci-lint/v2@v1
@@ -42,7 +42,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: "${{ matrix.os }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
       - uses: projectdiscovery/actions/free-disk-space@v1
@@ -90,7 +90,7 @@ jobs:
     env:
       GITHUB_TOKEN: "${{ github.token }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
       - name: "Simple"
@@ -115,7 +115,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
@@ -135,7 +135,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
@@ -152,7 +152,7 @@ jobs:
     env:
       GITHUB_TOKEN: "${{ github.token }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
       - run: make template-validate
@@ -166,7 +166,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v4
         with:
           languages: 'go'
@@ -204,7 +204,7 @@ jobs:
     needs: ["tests"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
         with:
           go-version: "stable"
