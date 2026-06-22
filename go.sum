@@ -821,8 +821,8 @@ github.com/projectdiscovery/asnmap v1.1.1 h1:ImJiKIaACOT7HPx4Pabb5dksolzaFYsD1kI
 github.com/projectdiscovery/asnmap v1.1.1/go.mod h1:QT7jt9nQanj+Ucjr9BqGr1Q2veCCKSAVyUzLXfEcQ60=
 github.com/projectdiscovery/blackrock v0.0.1 h1:lHQqhaaEFjgf5WkuItbpeCZv2DUIE45k0VbGJyft6LQ=
 github.com/projectdiscovery/blackrock v0.0.1/go.mod h1:ANUtjDfaVrqB453bzToU+YB4cUbvBRpLvEwoWIwlTss=
-github.com/projectdiscovery/cdncheck v1.2.40 h1:mLOzT6Tg4Hq2L7ZmapHXmo7WxjPuyUM67IxLee1ZRPM=
-github.com/projectdiscovery/cdncheck v1.2.40/go.mod h1:9oE9KKxCSHNvUf0UaMeqqUwWpC38FkNaTll0ScIBT3w=
+github.com/projectdiscovery/cdncheck v1.2.41 h1:XLgrlHKT7wus9JMArQqMAq3sqT16gW+g+TqY2A72ces=
+github.com/projectdiscovery/cdncheck v1.2.41/go.mod h1:9oE9KKxCSHNvUf0UaMeqqUwWpC38FkNaTll0ScIBT3w=
 github.com/projectdiscovery/clistats v0.1.4 h1:kDnXoNxIdOvQElOF7k2Mt6XosGa5GbMKPtRXdPHMVzU=
 github.com/projectdiscovery/clistats v0.1.4/go.mod h1:hjJYNcUubk9T3cuFvA+JkLhZGjzYW50fkC48dqUAtbU=
 github.com/projectdiscovery/dsl v0.8.19 h1:qA5OFJMfghSCjKqS4AdsEtnur/SoriXDw3geE7+mReU=
@@ -843,8 +843,8 @@ github.com/projectdiscovery/goja v0.0.0-20260618133720-acb73e419534 h1:hYd1zQA/d
 github.com/projectdiscovery/goja v0.0.0-20260618133720-acb73e419534/go.mod h1:SO0AP+uKfYeeoR6jyVH/PKRYJE/f5gJrPMAM00iGEMc=
 github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d h1:fqqH9LHpN2WDz9QuxFrhKNxXSRtzk+Sa6jAhbB7tXcQ=
 github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d/go.mod h1:Ezmbgdaw4EunGGBU4MQViLoGMJc37LA3ip55YV3KeRI=
-github.com/projectdiscovery/gologger v1.1.70 h1:A1ZAsUJfRUXO6qqwTwyTWXLVlBrVu/Gpi1zzL1hg5LY=
-github.com/projectdiscovery/gologger v1.1.70/go.mod h1:kpLKNafZWRN9P7WpJYtIOY/XvY/v41GDdU9NzICdKmo=
+github.com/projectdiscovery/gologger v1.1.71 h1:IYU4mw9viKdSzMTIGVpYuw1Gtg7QIHIStqAQgeNXcBQ=
+github.com/projectdiscovery/gologger v1.1.71/go.mod h1:mJwODZcFDg70ihINpOvZevmBtgvpP8H9/l8Y+OPhZPY=
 github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBDDSv7VEdG1M=
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e h1:vxzgQlz2Cy/YvizYDQx9OhucBcmBotfDhbQ4yCY2vfA=
@@ -889,8 +889,8 @@ github.com/projectdiscovery/useragent v0.0.108 h1:fb+uLuFJvC+MHZjCtxQJxtvp1X6A8n
 github.com/projectdiscovery/useragent v0.0.108/go.mod h1:XdNRrlvtDmYfVL1Oybat4uMe+W6cLwsK9S18ond17CI=
 github.com/projectdiscovery/utils v0.11.1 h1:PWj1KjIASxt8icxommH72C0TQqNOvGkcSODRkiq0SQw=
 github.com/projectdiscovery/utils v0.11.1/go.mod h1:yktGrHGk2CTjNiccXovnvGrLHX9sV2bqz9nSnbA3V8M=
-github.com/projectdiscovery/wappalyzergo v0.2.85 h1:RIJwaR2ViAoHSYBE/1ytNjvzXV+mfFDeTjr9eXAgaCU=
-github.com/projectdiscovery/wappalyzergo v0.2.85/go.mod h1:gMH0o5lBp65sKMwHx/tuUdOtW2RjodC6Ti+9QDsYMkY=
+github.com/projectdiscovery/wappalyzergo v0.2.86 h1:UYiBus+0Bjl7d2ZgZcXk/gHRVIhqv3sl06AnmQ+pDkc=
+github.com/projectdiscovery/wappalyzergo v0.2.86/go.mod h1:gMH0o5lBp65sKMwHx/tuUdOtW2RjodC6Ti+9QDsYMkY=
 github.com/projectdiscovery/yamldoc-go v1.0.6 h1:GCEdIRlQjDux28xTXKszM7n3jlMf152d5nqVpVoetas=
 github.com/projectdiscovery/yamldoc-go v1.0.6/go.mod h1:R5lWrNzP+7Oyn77NDVPnBsxx2/FyQZBBkIAaSaCQFxw=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
