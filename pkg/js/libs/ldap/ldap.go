@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/projectdiscovery/goja"
 	"github.com/go-ldap/ldap/v3"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -84,6 +84,10 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 
 	u, err := url.Parse(ldapUrl)
 	c.nj.HandleError(err, "invalid ldap url supported schemas are ldap://, ldaps://, ldapi://, and cldap://")
+	if u.Scheme == "" {
+		// default to ldap
+		u.Scheme = "ldap"
+	}
 
 	executionId := c.nj.ExecutionId()
 	dialers := protocolstate.GetDialersWithId(executionId)
@@ -94,44 +98,43 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	dialCtx := c.nj.Context()
 	var conn net.Conn
 	if u.Scheme == "ldapi" {
+		const ldapiPolicyHost = "127.0.0.1"
+
+		c.nj.Require(protocolstate.IsHostAllowed(executionId, ldapiPolicyHost), protocolstate.ErrHostDenied.Msgf(ldapiPolicyHost).Error())
 		if u.Path == "" || u.Path == "/" {
 			u.Path = "/var/run/slapd/ldapi"
 		}
 		conn, err = dialers.Fastdialer.Dial(dialCtx, "unix", u.Path)
 		c.nj.HandleError(err, "failed to connect to ldap server")
 	} else {
-		host, port, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			// we assume that error is due to missing port
-			host = u.Host
-			port = ""
-		}
-		if u.Scheme == "" {
-			// default to ldap
-			u.Scheme = "ldap"
-		}
-
 		switch u.Scheme {
-		case "cldap":
-			if port == "" {
-				port = ldap.DefaultLdapPort
+		case "cldap", "ldap", "ldaps":
+			host, port := u.Hostname(), u.Port()
+			c.nj.Require(host != "", "ldap host cannot be empty")
+			c.nj.Require(protocolstate.IsHostAllowed(executionId, host), protocolstate.ErrHostDenied.Msgf(host).Error())
+
+			switch u.Scheme {
+			case "cldap":
+				if port == "" {
+					port = ldap.DefaultLdapPort
+				}
+				conn, err = dialers.Fastdialer.Dial(dialCtx, "udp", net.JoinHostPort(host, port))
+			case "ldap":
+				if port == "" {
+					port = ldap.DefaultLdapPort
+				}
+				conn, err = dialers.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, port))
+			case "ldaps":
+				if port == "" {
+					port = ldap.DefaultLdapsPort
+				}
+				serverName := host
+				if c.cfg.ServerName != "" {
+					serverName = c.cfg.ServerName
+				}
+				conn, err = dialers.Fastdialer.DialTLSWithConfig(dialCtx, "tcp", net.JoinHostPort(host, port),
+					&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, ServerName: serverName})
 			}
-			conn, err = dialers.Fastdialer.Dial(dialCtx, "udp", net.JoinHostPort(host, port))
-		case "ldap":
-			if port == "" {
-				port = ldap.DefaultLdapPort
-			}
-			conn, err = dialers.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, port))
-		case "ldaps":
-			if port == "" {
-				port = ldap.DefaultLdapsPort
-			}
-			serverName := host
-			if c.cfg.ServerName != "" {
-				serverName = c.cfg.ServerName
-			}
-			conn, err = dialers.Fastdialer.DialTLSWithConfig(dialCtx, "tcp", net.JoinHostPort(host, port),
-				&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, ServerName: serverName})
 		default:
 			err = fmt.Errorf("unsupported ldap url schema %v", u.Scheme)
 		}
