@@ -633,6 +633,8 @@ func (template *Template) finalizeFromJSON(data []byte) error {
 }
 
 // Requirements holds the required options for a template to be enabled.
+//
+// Deprecated: use [Template.RequiredCapabilities] instead.
 type Requirements struct {
 	Headless      bool
 	Code          bool
@@ -642,6 +644,8 @@ type Requirements struct {
 }
 
 // Requirements returns what options must be enabled for the template to run.
+//
+// Deprecated: use [Template.RequiredCapabilities] instead.
 func (template *Template) Requirements() Requirements {
 	return Requirements{
 		Headless:      template.HasHeadlessRequest(),
@@ -653,6 +657,8 @@ func (template *Template) Requirements() Requirements {
 }
 
 // Capabilities represents the enabled options/capabilities.
+//
+// Deprecated: use [CapabilitySet] and [CapabilitiesFromOptions] instead.
 type Capabilities struct {
 	Headless      bool
 	Code          bool
@@ -663,28 +669,18 @@ type Capabilities struct {
 
 // IsEnabledFor checks if all template requirements are satisfied by the given
 // capabilities.
+//
+// Deprecated: use [Template.MissingCapabilities] instead.
 func (template *Template) IsEnabledFor(caps Capabilities) bool {
-	reqs := template.Requirements()
+	return len(template.MissingCapabilities(caps.toCapabilitySet())) == 0
+}
 
-	if reqs.Headless && !caps.Headless {
-		return false
+func (caps Capabilities) toCapabilitySet() CapabilitySet {
+	return CapabilitySet{
+		CapabilityHeadless:      caps.Headless,
+		CapabilityCode:          caps.Code,
+		CapabilityDAST:          caps.DAST,
+		CapabilitySelfContained: caps.SelfContained,
+		CapabilityFile:          caps.File,
 	}
-
-	if reqs.Code && !caps.Code {
-		return false
-	}
-
-	if reqs.DAST && !caps.DAST {
-		return false
-	}
-
-	if reqs.SelfContained && !caps.SelfContained {
-		return false
-	}
-
-	if reqs.File && !caps.File {
-		return false
-	}
-
-	return true
 }

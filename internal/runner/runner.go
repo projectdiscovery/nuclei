@@ -709,7 +709,7 @@ func (r *Runner) RunEnumeration() error {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
 		}
-		if stats.GetValue(templates.SyntaxErrorStats) == 0 && stats.GetValue(templates.SyntaxWarningStats) == 0 && stats.GetValue(templates.RuntimeWarningsStats) == 0 {
+		if stats.GetValue(templates.TemplateSyntaxErrorStats) == 0 && stats.GetValue(templates.TemplateSyntaxWarningStats) == 0 && stats.GetValue(templates.TemplateRuntimeWarningStats) == 0 {
 			r.Logger.Info().Msgf("All templates validated successfully")
 		} else {
 			return errors.New("encountered errors while performing template validation")
@@ -930,36 +930,36 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	return results, nil
 }
 
-// displayExecutionInfo displays misc info about the nuclei engine execution
+// displayExecutionInfo prints parser stats, version info, and scan counts.
 func (r *Runner) displayExecutionInfo(store *loader.Store) {
-	// Display stats for any loaded templates' syntax warnings or errors
-	stats.Display(templates.SyntaxWarningStats)
-	stats.Display(templates.SyntaxErrorStats)
-	stats.Display(templates.RuntimeWarningsStats)
+	// Display parser stats for templates loaded into the store.
+	stats.Display(templates.TemplateSyntaxWarningStats)
+	stats.Display(templates.TemplateSyntaxErrorStats)
+	stats.Display(templates.TemplateRuntimeWarningStats)
+
 	tmplCount := len(store.Templates())
 	workflowCount := len(store.Workflows())
 	if r.options.Verbose || (tmplCount == 0 && workflowCount == 0) {
-		// only print these stats in verbose mode
-		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
-		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
-		stats.ForceDisplayWarning(templates.ExcludedDastTmplStats)
-		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
-		stats.ForceDisplayWarning(templates.ExcludedFileStats)
-		stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)
+		// Excluded-template stats are noisy during normal scans, but useful in verbose mode
+		// and when no runnable templates remain.
+		for _, capability := range templates.AllCapabilities() {
+			stats.ForceDisplayWarning(capability.Stat())
+		}
+		stats.ForceDisplayWarning(templates.ExcludedWeakMatcherTemplateStats)
 	}
 
 	if tmplCount == 0 && workflowCount == 0 {
-		// if dast flag is used print explicit warning
 		if r.options.DAST {
 			r.Logger.Warning().Msg("No DAST templates found")
 		}
-		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
+		stats.ForceDisplayWarning(templates.SkippedUnverifiedCodeTemplateStats)
 	} else {
-		stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
+		stats.DisplayAsWarning(templates.SkippedUnverifiedCodeTemplateStats)
 	}
+
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
-	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
-	stats.ForceDisplayWarning(templates.SkippedRequestSignatureStats)
+	stats.ForceDisplayWarning(templates.SkippedUnverifiedTemplateStats)
+	stats.ForceDisplayWarning(templates.SkippedRequestSignatureTemplateStats)
 
 	cfg := config.DefaultConfig
 

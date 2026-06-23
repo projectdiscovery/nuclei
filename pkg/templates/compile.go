@@ -250,16 +250,12 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 //
 // TODO: support all protocols.
 func (template *Template) isGlobalMatchersEnabled() bool {
-	if !template.Options.Options.EnableGlobalMatchersTemplates {
+	caps := CapabilitiesFromOptions(template.Options.Options)
+	if !caps.Has(CapabilityGlobalMatchers) {
 		return false
 	}
 
-	for _, request := range template.RequestsHTTP {
-		if request.GlobalMatchers {
-			return true
-		}
-	}
-	return false
+	return template.requiresGlobalMatchers()
 }
 
 // parseSelfContainedRequests parses the self contained template requests.
@@ -311,6 +307,7 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 	}
 
 	var requests []protocols.Request
+	caps := CapabilitiesFromOptions(options.Options)
 
 	if template.hasMultipleRequests() {
 		// when multiple requests are present preserve the order of requests and protocols
@@ -332,7 +329,7 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 		if template.HasHTTPRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
 		}
-		if template.HasHeadlessRequest() && options.Options.Headless {
+		if template.HasHeadlessRequest() && caps.Has(CapabilityHeadless) {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
 		}
 		if template.HasSSLRequest() {
@@ -344,7 +341,7 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 		if template.HasWHOISRequest() {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 		}
-		if template.HasCodeRequest() && options.Options.EnableCodeTemplates {
+		if template.HasCodeRequest() && caps.Has(CapabilityCode) {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 		}
 		if template.HasJavascriptRequest() {

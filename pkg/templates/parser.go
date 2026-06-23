@@ -102,7 +102,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 
 	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
-		stats.Increment(SyntaxErrorStats)
+		stats.Increment(TemplateSyntaxErrorStats)
 		return false, errkit.Newf("Could not load template %s: %s", templatePath, validationError)
 	}
 
@@ -115,7 +115,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	if ret {
 		validationWarning := validateTemplateOptionalFields(template)
 		if validationWarning != nil {
-			stats.Increment(SyntaxWarningStats)
+			stats.Increment(TemplateSyntaxWarningStats)
 			checkOpenFileError(validationWarning)
 			return ret, errkit.Newf("Could not load template %s: %s", templatePath, validationWarning)
 		}
@@ -208,7 +208,7 @@ func (p *Parser) LoadWorkflow(templatePath string, catalog catalog.Catalog) (boo
 
 	if len(template.Workflows) > 0 {
 		if validationError := validateTemplateMandatoryFields(template); validationError != nil {
-			stats.Increment(SyntaxErrorStats)
+			stats.Increment(TemplateSyntaxErrorStats)
 			return false, validationError
 		}
 		return true, nil
