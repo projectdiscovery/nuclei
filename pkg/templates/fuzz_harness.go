@@ -3,7 +3,7 @@ package templates
 import (
 	"bytes"
 	"context"
-	stdjson "encoding/json"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,8 +17,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	nucleiTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/ratelimit"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -103,7 +103,7 @@ func exerciseFuzzDirectTemplateParsers(data []byte) {
 	if template, err := parseFuzzYAMLTemplate(data); err == nil {
 		exerciseFuzzParsedTemplate(template)
 	}
-	if stdjson.Valid(data) {
+	if json.Valid(data) {
 		if template, err := parseFuzzJSONTemplate(data); err == nil {
 			exerciseFuzzParsedTemplate(template)
 		}
@@ -275,7 +275,7 @@ func (candidate *fuzzTemplateCandidate) json() []byte {
 		},
 		"http": []map[string]interface{}{request},
 	}
-	data, err := stdjson.Marshal(template)
+	data, err := json.Marshal(template)
 	if err != nil {
 		panic(err)
 	}
@@ -320,7 +320,7 @@ func cutFuzzKV(line string) (string, string, bool) {
 }
 
 func yamlQuote(value string) string {
-	data, err := stdjson.Marshal(value)
+	data, err := json.Marshal(value)
 	if err != nil {
 		panic(err)
 	}
