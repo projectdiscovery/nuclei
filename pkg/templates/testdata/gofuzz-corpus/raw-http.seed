@@ -1,0 +1,8 @@
+id=raw-http-fuzz
+name=Raw HTTP fuzz template
+author=nuclei-fuzzer
+severity=low
+method=GET
+path=/admin
+raw=true
+matcher=admin
