@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
@@ -976,11 +977,8 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 
 	argValue := action.GetArg(arg)
 
-	if p.instance.interactsh != nil {
-		var interactshURLs []string
-		argValue, interactshURLs = p.instance.interactsh.Replace(argValue, p.InteractshURLs)
-		p.addInteractshURL(interactshURLs...)
-	}
+	prepared := render.ReplaceInteractshMarkers(argValue, p.instance.interactsh, nil)
+	argValue = prepared.Text
 
 	exprs := getExpressions(argValue, p.variables)
 
@@ -989,10 +987,15 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 		return "", errkit.Wrapf(err, "argument %q, value: %q", arg, argValue)
 	}
 
-	argValue, err = expressions.Evaluate(argValue, p.variables)
+	result, err := render.Render(render.Input{
+		Text:         argValue,
+		Values:       p.variables,
+		InteractURLs: prepared.InteractURLs,
+	})
 	if err != nil {
 		return "", fmt.Errorf("could not get value for argument %q: %s", arg, err)
 	}
+	p.addInteractshURL(result.InteractURLs...)
 
-	return argValue, nil
+	return result.Text, nil
 }

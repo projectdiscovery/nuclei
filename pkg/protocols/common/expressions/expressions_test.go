@@ -122,6 +122,73 @@ func TestEvaluateDoesNotExecuteHelpersFromResolvedValues(t *testing.T) {
 	require.Zero(t, calls)
 }
 
+func TestEvaluateDoesNotCompileResolvedValuesInsideHelperExpressions(t *testing.T) {
+	var calls int
+
+	withTestHelperFunction(t, "test_side_effect", func(args ...interface{}) (interface{}, error) {
+		calls++
+		return true, nil
+	})
+
+	items := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "parenthesis marker",
+			expression: "{{contains('{{body}}', 'needle')}}",
+		},
+		{
+			name:       "general marker",
+			expression: "{{contains('§body§', 'needle')}}",
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			calls = 0
+
+			value, err := Evaluate(item.expression, map[string]interface{}{
+				"body": "value', 'missing') || test_side_effect() || contains('",
+			})
+			require.NoError(t, err)
+			require.Equal(t, "false", value)
+			require.Zero(t, calls)
+		})
+	}
+}
+
+func TestEvaluatePreservesStringLiteralPlaceholderBytes(t *testing.T) {
+	withTestHelperFunction(t, "test_echo", func(args ...interface{}) (interface{}, error) {
+		require.Len(t, args, 1)
+		return args[0], nil
+	})
+
+	items := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "parenthesis marker",
+			expression: "{{test_echo('{{body}}')}}",
+		},
+		{
+			name:       "general marker",
+			expression: "{{test_echo('§body§')}}",
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			value, err := Evaluate(item.expression, map[string]interface{}{
+				"body": "a\nb\tc\rd\\e'f\"g",
+			})
+			require.NoError(t, err)
+			require.Equal(t, "a\nb\tc\rd\\e'f\"g", value)
+		})
+	}
+}
+
 func TestEvaluateHyphenatedPlaceholderNames(t *testing.T) {
 	value, err := Evaluate("foo-bar: {{foo-bar}}", map[string]interface{}{
 		"foo-bar": "baz",

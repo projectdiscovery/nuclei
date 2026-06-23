@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/raw"
@@ -154,6 +155,7 @@ func (g *generatedRequest) URL() string {
 // It returns ErrNoMoreRequests as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context, reqData string, payloads, dynamicValues map[string]interface{}) (gr *generatedRequest, err error) {
 	origReqData := reqData
+	r.interactshURLs = nil
 	defer func() {
 		if gr != nil {
 			gr.setReqURLPattern(origReqData)
@@ -171,16 +173,8 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	}
 
 	isRawRequest := len(r.request.Raw) > 0
-	// replace interactsh variables with actual interactsh urls
-	if r.options.Interactsh != nil {
-		reqData, r.interactshURLs = r.options.Interactsh.Replace(reqData, []string{})
-		for payloadName, payloadValue := range payloads {
-			payloads[payloadName], r.interactshURLs = r.options.Interactsh.Replace(types.ToString(payloadValue), r.interactshURLs)
-		}
-	} else {
-		for payloadName, payloadValue := range payloads {
-			payloads[payloadName] = types.ToStringNSlice(payloadValue)
-		}
+	for payloadName, payloadValue := range payloads {
+		payloads[payloadName] = types.ToStringNSlice(payloadValue)
 	}
 
 	if r.request.SelfContained {
@@ -218,7 +212,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// Evaluate payload variables
 	// eg: payload variables can be username: jon.doe@{{Hostname}}
 	for payloadName, payloadValue := range payloads {
-		payloads[payloadName], err = expressions.Evaluate(types.ToString(payloadValue), allVars)
+		payloads[payloadName], err = r.renderText(types.ToString(payloadValue), allVars)
 		if err != nil {
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
@@ -235,7 +229,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// should be avoided since it is dependent on `urlutil` core logic
 
 	// Evaluate (replace) variable with final values
-	reqData, err = expressions.Evaluate(reqData, finalVars)
+	reqData, err = r.renderText(reqData, finalVars)
 	if err != nil {
 		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 	}
@@ -248,10 +242,12 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	if err != nil {
 		return nil, errkit.Newf("failed to parse url %v while creating http request", reqData)
 	}
+
 	// while merging parameters first preference is given to target params
 	finalparams := parsed.Params
 	finalparams.Merge(reqURL.Params.Encode())
 	reqURL.Params = finalparams
+
 	return r.generateHttpRequest(ctx, reqURL, finalVars, payloads)
 }
 
@@ -266,21 +262,36 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		payloads, // payloads should override other variables in case of duplicate vars
 	)
 	// adds all variables from `variables` section in template
-	variablesMap := r.request.options.Variables.Evaluate(values)
+	variablesMap, interactURLs := r.request.options.Variables.EvaluateWithInteractsh(values, r.request.options.Interactsh)
+	if len(interactURLs) > 0 {
+		r.interactshURLs = append(r.interactshURLs, interactURLs...)
+	}
 	values = generators.MergeMaps(variablesMap, values)
 
 	signerVars := GetDefaultSignerVars(r.request.Signature.Value)
 	// this will ensure that default signer variables are overwritten by other variables
 	values = generators.MergeMaps(signerVars, values, r.options.Constants)
 
+	for payloadName, payloadValue := range payloads {
+		renderedPayload, err := r.renderText(types.ToString(payloadValue), values)
+		if err != nil {
+			return nil, errkit.Wrap(err, "could not evaluate payload helper expressions")
+		}
+
+		payloads[payloadName] = renderedPayload
+	}
+
+	values = generators.MergeMaps(values, payloads, r.options.Constants)
+
 	// priority of variables is as follows (from low to high) for self contained templates
-	// default signer vars < variables <  cli vars  < payload < dynamic values < constants
+	// default signer vars < variables < cli vars < dynamic values < payload < constants
 
 	// evaluate request
-	data, err := expressions.Evaluate(data, values)
+	data, err := r.renderText(data, values)
 	if err != nil {
 		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 	}
+
 	// If the request is a raw request, get the URL from the request
 	// header and use it to make the request.
 	if isRawRequest {
@@ -291,6 +302,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		if err != nil {
 			return nil, fmt.Errorf("could not read request: %w", err)
 		}
+
 		// ignore all annotations
 		if stringsutil.HasPrefixAny(s, "@") {
 			goto read_line
@@ -309,15 +321,18 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
+
 		values = generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, protocolutils.GenerateVariables(parsed, false, nil)),
 			values,
 		)
+
 		// Evaluate (replace) variable with final values
-		data, err = expressions.Evaluate(data, values)
+		data, err = r.renderText(data, values)
 		if err != nil {
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
+
 		return r.generateRawRequest(ctx, data, parsed, values, payloads)
 	}
 	if err := expressions.ContainsUnresolvedVariables(data); err != nil && !r.request.SkipVariablesCheck {
@@ -330,6 +345,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to parse %v in self contained request", data)
 	}
+
 	return r.generateHttpRequest(ctx, urlx, values, payloads)
 }
 
@@ -337,10 +353,11 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
 func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
-	method, err := expressions.Evaluate(r.request.Method.String(), finalVars)
+	method, err := r.renderText(r.request.Method.String(), finalVars)
 	if err != nil {
 		return nil, errkit.Wrap(err, "failed to evaluate while generating http request")
 	}
+
 	// Build a request on the specified URL
 	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, method, urlx, nil)
 	if err != nil {
@@ -351,6 +368,7 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 	if err != nil {
 		return nil, err
 	}
+
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalVars, interactshURLs: r.interactshURLs}, nil
 }
 
@@ -358,9 +376,9 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
 func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
-
 	var rawRequestData *raw.Request
 	var err error
+
 	if r.request.SelfContained {
 		// in self contained requests baseURL is extracted from raw request itself
 		rawRequestData, err = raw.ParseRawRequest(rawRequest, r.request.Unsafe)
@@ -436,6 +454,7 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if r.request.Threads > 0 && r.request.Race {
 		req.Body = race.NewOpenGateWithTimeout(req.Body, time.Duration(2)*time.Second)
 	}
+
 	for key, value := range rawRequestData.Headers {
 		if key == "" {
 			continue
@@ -445,6 +464,7 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 			req.Host = value
 		}
 	}
+
 	request, err := r.fillRequest(req, finalVars)
 	if err != nil {
 		return nil, err
@@ -471,13 +491,11 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	// Set the header values requested
 	for header, value := range r.request.Headers {
-		if r.options.Interactsh != nil {
-			value, r.interactshURLs = r.options.Interactsh.Replace(value, r.interactshURLs)
-		}
-		value, err := expressions.Evaluate(value, values)
+		value, err := r.renderText(value, values)
 		if err != nil {
 			return nil, errkit.Wrap(err, "failed to evaluate while adding headers to request")
 		}
+
 		req.Header[header] = []string{value}
 		if header == "Host" {
 			req.Host = value
@@ -508,18 +526,16 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 	// Check if the user requested a request body
 	if r.request.Body != "" {
-		body := r.request.Body
-		if r.options.Interactsh != nil {
-			body, r.interactshURLs = r.options.Interactsh.Replace(r.request.Body, r.interactshURLs)
-		}
-		body, err := expressions.Evaluate(body, values)
+		body, err := r.renderText(r.request.Body, values)
 		if err != nil {
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
+
 		if err := req.SetBodyString(body); err != nil {
 			return nil, errors.Wrap(err, "failed to set request body")
 		}
 	}
+
 	if !r.request.Unsafe {
 		userAgent := useragent.PickRandom()
 		httputil.SetHeader(req, "User-Agent", userAgent.Raw)
@@ -549,4 +565,20 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	}
 
 	return req, nil
+}
+
+func (r *requestGenerator) renderText(text string, values map[string]interface{}) (string, error) {
+	result, err := render.Render(render.Input{
+		Text:         text,
+		Values:       values,
+		Interactsh:   r.options.Interactsh,
+		InteractURLs: r.interactshURLs,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	r.interactshURLs = result.InteractURLs
+
+	return result.Text, nil
 }

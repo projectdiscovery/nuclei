@@ -682,20 +682,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	request.setCustomHeaders(generatedRequest)
 
-	// Try to evaluate any payloads before replacement
-	finalMap := generators.MergeMaps(generatedRequest.dynamicValues, generatedRequest.meta)
-
-	// add known variables from metainput
-	if _, ok := finalMap["ip"]; !ok && input.MetaInput.CustomIP != "" {
-		finalMap["ip"] = input.MetaInput.CustomIP
-	}
-
-	for payloadName, payloadValue := range generatedRequest.meta {
-		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
-			generatedRequest.meta[payloadName] = data
-		}
-	}
-
 	var (
 		resp            *http.Response
 		fromCache       bool

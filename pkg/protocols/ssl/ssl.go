@@ -20,10 +20,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -227,13 +227,16 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		gologger.Debug().Msgf("SSL Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
-	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
+	result, dataErr := render.Render(render.Input{Text: request.Address, Values: payloadValues})
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
-	addressToDial := string(finalAddress)
+
+	addressToDial := result.Text
+
 	host, port, err := net.SplitHostPort(addressToDial)
 	if err != nil {
 		return errkit.Wrap(err, "could not split input host port")
