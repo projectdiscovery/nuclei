@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -57,7 +58,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		vars = generators.MergeMaps(vars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
 
-	variablesMap := request.options.Variables.Evaluate(vars)
+	variablesMap, interactshURLs := request.options.Variables.EvaluateWithInteractsh(vars, request.options.Interactsh)
 	vars = generators.MergeMaps(vars, metadata, optionVars, variablesMap, request.options.Constants)
 
 	// check for operator matches by wrapping callback
@@ -79,20 +80,33 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			if !ok {
 				break
 			}
+
 			if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
 				return nil
 			}
-			value = generators.MergeMaps(value, vars)
-			if err := request.executeRequestWithPayloads(input, value, previous, wrappedCallback); err != nil {
+
+			renderedValue, err := render.RenderMap(render.MapInput{
+				Source:       value,
+				Data:         vars,
+				Values:       generators.MergeMaps(value, vars),
+				Interactsh:   request.options.Interactsh,
+				InteractURLs: interactshURLs,
+			})
+			if err != nil {
+				return errors.Wrap(err, "could not evaluate payload helper expressions")
+			}
+
+			if err := request.executeRequestWithPayloads(input, renderedValue.Values, previous, renderedValue.InteractURLs, wrappedCallback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := maps.Clone(vars)
-		if err := request.executeRequestWithPayloads(input, value, previous, wrappedCallback); err != nil {
+		if err := request.executeRequestWithPayloads(input, value, previous, interactshURLs, wrappedCallback); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -111,7 +125,7 @@ func extractBaseURLFromActions(steps []*engine.Action) (string, error) {
 	return "", errors.New("no navigation action found")
 }
 
-func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
 	instance, err := request.options.Browser.NewInstance()
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
@@ -146,6 +160,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer page.Close()
+
+	page.InteractshURLs = append(interactshURLs, page.InteractshURLs...)
 
 	reqLog := instance.GetRequestLog()
 	navigatedURL := request.getLastNavigationURLWithLog(reqLog) // also known as matchedURL if there is a match
@@ -245,19 +261,23 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 		}
 		newInput := input.Clone()
 		newInput.MetaInput.Input = gr.Request.String()
-		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, callback); err != nil {
+
+		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, gr.InteractURLs, callback); err != nil {
 			return false
 		}
+
 		return true
 	}
 
 	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
+
 	baseRequest, err := retryablehttp.NewRequest("GET", input.MetaInput.Input, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not create base request")
 	}
+
 	for _, rule := range request.Fuzzing {
 		err := rule.Execute(&fuzz.ExecuteRuleInput{
 			Input:       input,

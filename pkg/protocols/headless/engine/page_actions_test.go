@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,11 +22,57 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testheadless"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	envutil "github.com/projectdiscovery/utils/env"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+func TestGetActionArgTreatsResolvedValuesAsData(t *testing.T) {
+	page := &Page{
+		instance: &Instance{},
+		mutex:    &sync.RWMutex{},
+		variables: map[string]interface{}{
+			"body":   "{{secret}}",
+			"secret": "leaked-secret",
+		},
+	}
+
+	got, err := page.getActionArg(&Action{Data: map[string]string{"value": "{{body}}"}}, "value")
+
+	require.NoError(t, err)
+	require.Equal(t, "{{secret}}", got)
+	require.Empty(t, page.InteractshURLs)
+}
+
+func TestGetActionArgRendersTemplateInteractshBeforeValidation(t *testing.T) {
+	client, err := interactsh.New(&interactsh.Options{
+		ServerURL:           "oast.fun",
+		CacheSize:           100,
+		Eviction:            60 * time.Second,
+		CooldownPeriod:      0,
+		PollDuration:        5 * time.Second,
+		DisableHttpFallback: true,
+	})
+	require.NoError(t, err)
+	defer client.Close()
+
+	page := &Page{
+		instance:  &Instance{interactsh: client},
+		mutex:     &sync.RWMutex{},
+		variables: map[string]interface{}{},
+	}
+
+	got, err := page.getActionArg(&Action{Data: map[string]string{
+		"value": "{{url_encode('{{interactsh-url}}')}}",
+	}}, "value")
+
+	require.NoError(t, err)
+	require.Len(t, page.InteractshURLs, 1)
+	require.NotContains(t, got, "{{interactsh-url}}")
+	require.NotContains(t, got, "%7B%7Binteractsh-url%7D%7D")
+}
 
 func TestActionNavigate(t *testing.T) {
 	response := `

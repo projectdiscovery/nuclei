@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -196,11 +196,15 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload str
 	values := generators.MergeMaps(rule.options.Variables.GetAll(), map[string]interface{}{
 		"value": value,
 	}, rule.options.Options.Vars.AsMap(), input.Values)
-	firstpass, _ := expressions.Evaluate(payload, values)
-	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
-	evaluated, _ := expressions.Evaluate(interactData, values)
-	replaced := rule.executeRuleTypes(input, value, evaluated)
-	return replaced, interactshURLs
+	result, _ := render.Render(render.Input{
+		Text:         payload,
+		Values:       values,
+		Interactsh:   rule.options.Interactsh,
+		InteractURLs: interactshURLs,
+	})
+	replaced := rule.executeRuleTypes(input, value, result.Text)
+
+	return replaced, result.InteractURLs
 }
 
 // executeRuleTypes executes replacement for a key and value

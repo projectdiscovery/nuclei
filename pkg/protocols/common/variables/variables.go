@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -78,16 +79,24 @@ func (variables *Variable) Evaluate(values map[string]interface{}) map[string]in
 			// slices cannot be evaluated
 			result[key] = sliceValue
 			combined[key] = sliceValue
+
 			return
 		}
+
 		valueString := types.ToString(value)
 		if existingValue, ok := combined[key]; ok {
 			valueString = types.ToString(existingValue)
+			result[key] = valueString
+			combined[key] = valueString
+
+			return
 		}
+
 		evaluated := evaluateVariableValueWithMap(valueString, combined)
 		result[key] = evaluated
 		combined[key] = evaluated
 	})
+
 	return result
 }
 
@@ -97,6 +106,7 @@ func (variables *Variable) GetAll() map[string]interface{} {
 	variables.ForEach(func(key string, value interface{}) {
 		result[key] = value
 	})
+
 	return result
 }
 
@@ -107,24 +117,31 @@ func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{},
 	generators.MergeMapsInto(combined, values)
 
 	var interactURLs []string
+
 	variables.ForEach(func(key string, value interface{}) {
 		if sliceValue, ok := value.([]interface{}); ok {
 			// slices cannot be evaluated
 			result[key] = sliceValue
 			combined[key] = sliceValue
+
 			return
 		}
+
 		valueString := types.ToString(value)
 		if existingValue, ok := combined[key]; ok {
 			valueString = types.ToString(existingValue)
+			result[key] = valueString
+			combined[key] = valueString
+
+			return
 		}
-		if strings.Contains(valueString, "interactsh-url") {
-			valueString, interactURLs = interact.Replace(valueString, interactURLs)
-		}
-		evaluated := evaluateVariableValueWithMap(valueString, combined)
+
+		evaluated, gotURLs := renderVariableValueWithInteractsh(valueString, combined, interact, interactURLs)
 		result[key] = evaluated
 		combined[key] = evaluated
+		interactURLs = gotURLs
 	})
+
 	return result, interactURLs
 }
 
@@ -134,22 +151,42 @@ func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{},
 // merging overhead.
 func evaluateVariableValue(expression string, values, processing map[string]interface{}) string { // nolint
 	finalMap := generators.MergeMaps(values, processing)
-	result, err := expressions.Evaluate(expression, finalMap)
+	result, err := render.Render(render.Input{
+		Text:   expression,
+		Values: finalMap,
+	})
 	if err != nil {
 		return expression
 	}
 
-	return result
+	return result.Text
 }
 
 // evaluateVariableValueWithMap evaluates an expression with a pre-merged map.
 func evaluateVariableValueWithMap(expression string, combinedMap map[string]interface{}) string {
-	result, err := expressions.Evaluate(expression, combinedMap)
+	result, err := render.Render(render.Input{
+		Text:   expression,
+		Values: combinedMap,
+	})
 	if err != nil {
 		return expression
 	}
 
-	return result
+	return result.Text
+}
+
+func renderVariableValueWithInteractsh(expression string, combinedMap map[string]interface{}, interact render.URLSource, interactURLs []string) (string, []string) {
+	result, err := render.Render(render.Input{
+		Text:         expression,
+		Values:       combinedMap,
+		Interactsh:   interact,
+		InteractURLs: interactURLs,
+	})
+	if err != nil {
+		return expression, interactURLs
+	}
+
+	return result.Text, result.InteractURLs
 }
 
 // checkForLazyEval checks if the variables have any lazy evaluation i.e any dsl function

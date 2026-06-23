@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -151,12 +152,23 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	baseValues := input.Values
 	if rule.generator == nil {
 		for _, component := range finalComponentList {
+			var dataKeys map[string]struct{}
+
+			optionVars := rule.options.Options.Vars.AsMap()
+			constants := rule.options.Constants
+			dataValues := generators.MergeMaps(baseValues, optionVars, constants)
 			// get vars from variables while replacing interactsh urls
-			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
-			input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Options.Vars.AsMap(), rule.options.Constants)
-			// evaluate all vars with interactsh
-			input.Values, interactURLs = rule.evaluateVarsWithInteractsh(input.Values, interactURLs)
+			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(dataValues, rule.options.Interactsh)
+			input.Values, dataKeys = mergeFuzzValueLayers(
+				fuzzValueLayer{values: evaluatedValues, kind: fuzzValueTemplate},
+				fuzzValueLayer{values: baseValues, kind: fuzzValueData},
+				fuzzValueLayer{values: optionVars, kind: fuzzValueData},
+				fuzzValueLayer{values: constants, kind: fuzzValueData},
+			)
+			// Replace template-text interactsh markers without evaluating runtime values.
+			input.Values, interactURLs = rule.evaluateVarsWithInteractsh(input.Values, interactURLs, dataKeys)
 			input.InteractURLs = interactURLs
+
 			err := rule.executeRuleValues(input, component)
 			if err != nil {
 				return err
@@ -172,11 +184,8 @@ mainLoop:
 			if !next {
 				continue mainLoop
 			}
-			// get vars from variables while replacing interactsh urls
-			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
-			input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Options.Vars.AsMap(), rule.options.Constants)
-			// evaluate all vars with interactsh
-			input.Values, interactURLs = rule.evaluateVarsWithInteractsh(input.Values, interactURLs)
+			var interactURLs []string
+			input.Values, interactURLs = rule.prepareGeneratorValues(values, baseValues)
 			input.InteractURLs = interactURLs
 
 			if err := rule.executeRuleValues(input, component); err != nil {
@@ -189,6 +198,63 @@ mainLoop:
 		}
 	}
 	return nil
+}
+
+func (rule *Rule) prepareGeneratorValues(values, baseValues map[string]interface{}) (map[string]interface{}, []string) {
+	optionVars := rule.options.Options.Vars.AsMap()
+	constants := rule.options.Constants
+	evaluationValues := generators.MergeMaps(values, baseValues, optionVars, constants)
+	evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(evaluationValues, rule.options.Interactsh)
+	inputValues, dataKeys := mergeFuzzValueLayers(
+		fuzzValueLayer{values: values, kind: fuzzValueTemplate},
+		fuzzValueLayer{values: evaluatedValues, kind: fuzzValueTemplate},
+		fuzzValueLayer{values: baseValues, kind: fuzzValueData},
+		fuzzValueLayer{values: optionVars, kind: fuzzValueData},
+		fuzzValueLayer{values: constants, kind: fuzzValueData},
+	)
+
+	// Generator values are template-authored payload definitions until this
+	// render. Runtime/base, CLI option, and constant values remain data.
+	return rule.evaluateVarsWithInteractsh(inputValues, interactURLs, dataKeys)
+}
+
+type fuzzValueKind uint8
+
+const (
+	fuzzValueTemplate fuzzValueKind = iota
+	fuzzValueData
+)
+
+type fuzzValueLayer struct {
+	values map[string]interface{}
+	kind   fuzzValueKind
+}
+
+func mergeFuzzValueLayers(layers ...fuzzValueLayer) (map[string]interface{}, map[string]struct{}) {
+	size := 0
+	for _, layer := range layers {
+		size += len(layer.values)
+	}
+
+	values := make(map[string]interface{}, size)
+	dataKeys := make(map[string]struct{})
+
+	for _, layer := range layers {
+		for key, value := range layer.values {
+			values[key] = value
+			if layer.kind == fuzzValueData {
+				dataKeys[key] = struct{}{}
+				continue
+			}
+			delete(dataKeys, key)
+		}
+	}
+
+	if len(dataKeys) == 0 {
+		return values, nil
+	}
+
+	return values, dataKeys
 }
 
 // evaluateVars evaluates variables in a string using available executor options
@@ -210,16 +276,19 @@ func (rule *Rule) evaluateVars(input string) (string, error) {
 		return input, err
 	}
 
-	eval, err := expressions.Evaluate(input, data)
+	result, err := render.Render(render.Input{
+		Text:   input,
+		Values: data,
+	})
 	if err != nil {
 		return input, err
 	}
 
-	return eval, nil
+	return result.Text, nil
 }
 
-// evaluateVarsWithInteractsh evaluates the variables with Interactsh URLs and updates them accordingly.
-func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string) (map[string]interface{}, []string) {
+// evaluateVarsWithInteractsh renders template-text values and leaves runtime data untouched.
+func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string, dataKeys map[string]struct{}) (map[string]interface{}, []string) {
 	// Check if Interactsh options are configured
 	if rule.options.Interactsh != nil {
 		data = maps.Clone(data)
@@ -228,35 +297,35 @@ func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, intera
 		for _, url := range interactshUrls {
 			interactshUrlsMap[url] = struct{}{}
 		}
+
 		interactshUrls = mapsutil.GetKeys(interactshUrlsMap)
-		// Iterate through the data to replace and evaluate variables with Interactsh URLs
+
+		// Iterate through template-text data to replace Interactsh URL markers.
 		for k, v := range data {
-			value := fmt.Sprint(v)
-			// Replace variables with Interactsh URLs and collect new URLs
-			got, oastUrls := rule.options.Interactsh.Replace(value, interactshUrls)
-			if got != value {
-				data[k] = got
+			if _, ok := dataKeys[k]; ok {
+				continue
 			}
-			// Append new OAST URLs if any
-			if len(oastUrls) > 0 {
-				for _, url := range oastUrls {
-					if _, ok := interactshUrlsMap[url]; !ok {
-						interactshUrlsMap[url] = struct{}{}
-						interactshUrls = append(interactshUrls, url)
-					}
-				}
-			}
-			// Evaluate the replaced data
-			evaluatedData, err := expressions.Evaluate(got, data)
+
+			got, err := render.Render(render.Input{
+				Text:         fmt.Sprint(v),
+				Values:       data,
+				Interactsh:   rule.options.Interactsh,
+				InteractURLs: interactshUrls,
+			})
 			if err == nil {
-				// Update the data if there is a change after evaluation
-				if evaluatedData != got {
-					data[k] = evaluatedData
+				data[k] = got.Text
+				for _, url := range got.InteractURLs {
+					if _, ok := interactshUrlsMap[url]; ok {
+						continue
+					}
+
+					interactshUrlsMap[url] = struct{}{}
+					interactshUrls = append(interactshUrls, url)
 				}
 			}
 		}
 	}
-	// Return the updated data and Interactsh URLs without any error
+
 	return data, interactshUrls
 }
 

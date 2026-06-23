@@ -10,7 +10,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/portutil"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -192,8 +194,13 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if input.Type.String() != "" {
 			continue
 		}
-		if compiled, evalErr := expressions.Evaluate(input.Data, preCompileVars); evalErr == nil {
-			input.Data = compiled
+
+		if interactsh.HasMarkers(input.Data) {
+			continue
+		}
+
+		if result, evalErr := render.Render(render.Input{Text: input.Data, Values: preCompileVars}); evalErr == nil {
+			input.Data = result.Text
 		}
 	}
 
@@ -282,4 +289,3 @@ func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
 }
-
