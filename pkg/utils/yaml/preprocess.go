@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -28,55 +27,66 @@ func PreProcess(data []byte) ([]byte, error) {
 
 func preProcess(data []byte, includeStack map[string]struct{}, depth int) ([]byte, error) {
 	// find all matches like !include:path\n
-	importMatches := reImportsPattern.FindAllSubmatch(data, -1)
+	// FindAllSubmatchIndex is used (instead of FindAllSubmatch) so each match
+	// carries its own offset; relying on bytes.Index would always resolve to the
+	// first occurrence and mis-pad repeated include directives.
+	importMatches := reImportsPattern.FindAllSubmatchIndex(data, -1)
 	hasImportDirectives := len(importMatches) > 0
 
 	if hasImportDirectives && StrictSyntax {
 		return data, errors.New("include directive preprocessing is disabled")
 	}
 
-	var replaceItems []string
+	if !hasImportDirectives {
+		return data, nil
+	}
+
+	// Expand each directive in place using its own offset. A strings.Replacer
+	// cannot be used here because it collapses identical directive lines onto a
+	// single replacement, which would reuse the first occurrence's indentation
+	// for every later occurrence.
+	var out bytes.Buffer
+	lastEnd := 0
 
 	for _, match := range importMatches {
-		var (
-			matchString     string
-			includeFileName string
-		)
-		matchBytes := match[0]
-		matchString = string(matchBytes)
-		if len(match) > 1 {
-			includeFileName = string(match[1])
+		matchStart, matchEnd := match[0], match[1]
+
+		var includeFileName string
+		if len(match) > 3 && match[2] >= 0 {
+			includeFileName = string(data[match[2]:match[3]])
+		}
+
+		// check if the file exists; otherwise leave the directive untouched
+		if !fileutil.FileExists(includeFileName) {
+			continue
+		}
+
+		includeFileContent, err := readIncludedFile(includeFileName, includeStack, depth)
+		if err != nil {
+			return nil, err
 		}
 
 		// Preserve the newline and indentation that should prefix included content lines.
-		matchIndex := bytes.Index(data, matchBytes)
-		lastNewLineIndex := bytes.LastIndex(data[:matchIndex], []byte("\n"))
+		lastNewLineIndex := bytes.LastIndex(data[:matchStart], []byte("\n"))
 		var padBytes []byte
 		if lastNewLineIndex < 0 {
-			padBytes = append([]byte("\n"), data[:matchIndex]...)
+			padBytes = append([]byte("\n"), data[:matchStart]...)
 		} else {
-			padBytes = data[lastNewLineIndex:matchIndex]
+			padBytes = data[lastNewLineIndex:matchStart]
 		}
 
-		// check if the file exists
-		if fileutil.FileExists(includeFileName) {
-			// and in case replace the comment with it
-			includeFileContent, err := readIncludedFile(includeFileName, includeStack, depth)
-			if err != nil {
-				return nil, err
-			}
+		// pad each line of file content with padBytes
+		includeFileContent = bytes.ReplaceAll(includeFileContent, []byte("\n"), padBytes)
 
-			// pad each line of file content with padBytes
-			includeFileContent = bytes.ReplaceAll(includeFileContent, []byte("\n"), padBytes)
-
-			replaceItems = append(replaceItems, matchString)
-			replaceItems = append(replaceItems, string(includeFileContent))
-		}
+		// copy everything up to the directive (including its indentation), then
+		// the expanded content, and resume after the directive.
+		out.Write(data[lastEnd:matchStart])
+		out.Write(includeFileContent)
+		lastEnd = matchEnd
 	}
+	out.Write(data[lastEnd:])
 
-	replacer := strings.NewReplacer(replaceItems...)
-
-	return []byte(replacer.Replace(string(data))), nil
+	return out.Bytes(), nil
 }
 
 func readIncludedFile(includeFileName string, includeStack map[string]struct{}, depth int) ([]byte, error) {

@@ -29,6 +29,32 @@ func TestPreProcessIncludesFileAtStartOfData(t *testing.T) {
 	require.Contains(t, string(output), "root: true")
 }
 
+func TestPreProcessExpandsRepeatedIncludeWithPerOccurrenceIndentation(t *testing.T) {
+	restoreStrictSyntax(t)
+
+	dir := t.TempDir()
+	childPath := filepath.Join(dir, "child.yaml")
+	require.NoError(t, os.WriteFile(childPath, []byte("key: value\nnested: true"), 0o600))
+
+	// The same include directive appears twice at different indentation levels.
+	// Each occurrence must be expanded using its own offset/indentation.
+	data := []byte(fmt.Sprintf("root:\n  # !include:%s\nother:\n      # !include:%s\n", childPath, childPath))
+
+	var (
+		output []byte
+		err    error
+	)
+	require.NotPanics(t, func() {
+		output, err = PreProcess(data)
+	})
+	require.NoError(t, err)
+
+	got := string(output)
+	require.NotContains(t, got, "# !include:")
+	require.Contains(t, got, "root:\n  key: value\n  nested: true")
+	require.Contains(t, got, "other:\n      key: value\n      nested: true")
+}
+
 func TestPreProcessRejectsCircularInclude(t *testing.T) {
 	restoreStrictSyntax(t)
 
