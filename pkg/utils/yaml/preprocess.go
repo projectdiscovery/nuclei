@@ -29,7 +29,7 @@ func preProcess(data []byte, includeStack map[string]struct{}, depth int) ([]byt
 	// find all matches like !include:path\n
 	// FindAllSubmatchIndex is used (instead of FindAllSubmatch) so each match
 	// carries its own offset; relying on bytes.Index would always resolve to the
-	// first occurrence and mis-pad repeated include directives.
+	// first occurrence and incorrectly pad repeated include directives.
 	importMatches := reImportsPattern.FindAllSubmatchIndex(data, -1)
 	hasImportDirectives := len(importMatches) > 0
 
