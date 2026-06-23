@@ -68,11 +68,7 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
-		url.PathEscape(username),
-		url.PathEscape(password),
-		target,
-		dbName)
+	connString := mssqlConnString(target, username, password, dbName)
 
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
@@ -165,8 +161,6 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-
 	ok, err := c.IsMssql(ctx, host, port)
 	if err != nil {
 		return nil, err
@@ -175,11 +169,8 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 		return nil, fmt.Errorf("not a mssql service")
 	}
 
-	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
-		url.PathEscape(username),
-		url.PathEscape(password),
-		target,
-		dbName)
+	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+	connString := mssqlConnString(target, username, password, dbName)
 
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
@@ -205,4 +196,12 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 		return nil, err
 	}
 	return data, nil
+}
+
+func mssqlConnString(target, username, password, dbName string) string {
+	return fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
+		url.PathEscape(username),
+		url.PathEscape(password),
+		target,
+		url.QueryEscape(dbName))
 }
