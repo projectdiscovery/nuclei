@@ -5,7 +5,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/fuzzplayground"
+	"github.com/projectdiscovery/nuclei/v3/internal/fuzzplayground"
 )
 
 var (
@@ -18,7 +18,9 @@ func main() {
 
 	defer fuzzplayground.Cleanup()
 	server := fuzzplayground.GetPlaygroundServer()
-	defer server.Close()
+	defer func() {
+		_ = server.Close()
+	}()
 
 	// Start the server
 	if err := server.Start(addr); err != nil {

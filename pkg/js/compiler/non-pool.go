@@ -1,9 +1,10 @@
 package compiler
 
 import (
+	"context"
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/projectdiscovery/goja"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
@@ -14,10 +15,23 @@ var (
 	})
 )
 
-func executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithoutPooling(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	lazyFixedSgInit()
-	ephemeraljsc.Add()
-	defer ephemeraljsc.Done()
+	// Acquire a pool slot, respecting the execution deadline. Returns
+	// immediately if the context has already expired.
+	if err := ephemeraljsc.AddWithContext(ctx); err != nil {
+		return nil, err
+	}
+
 	runtime := createNewRuntime()
-	return executeWithRuntime(runtime, p, args, opts)
+	session := newSession(sessionConfig{
+		ctx:                  ctx,
+		runtime:              runtime,
+		program:              p,
+		args:                 args,
+		opts:                 opts,
+		releaseSlot:          ephemeraljsc.Done,
+		releaseAbandonedSlot: ephemeraljsc.Done,
+	})
+	return session.run()
 }

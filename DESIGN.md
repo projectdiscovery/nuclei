@@ -145,7 +145,7 @@ type Exporter interface {
 }
 ```
 
-Exporters include `Elasticsearch`, `markdown`, `sarif` . Trackers include `GitHub` , `GitLab` and `Jira`.
+Exporters include `Elasticsearch`, `markdown`, `sarif` . Trackers include `GitHub`, `GitLab` and `Jira`.
 
 Each exporter and trackers implement their own configuration in YAML format and are very modular in nature, so adding new ones is easy.
 
@@ -381,7 +381,7 @@ func (r *Request) Type() templateTypes.ProtocolType {
 }
 ```
 
-Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, GetCompiledOperators`, etc. which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
+Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, `GetCompiledOperators`, etc. which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
 
 `eventcreator` package offers `CreateEventWithAdditionalOptions` function which can be used to create result events after doing request execution.
 
@@ -454,40 +454,47 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 }
 ```
 
-That's it, you've added a new protocol to Nuclei. The next good step would be to write integration tests which are described in `integration-tests` and `cmd/integration-tests` directories.
+That's it, you've added a new protocol to Nuclei. The next good step would be to add native integration coverage under `internal/tests/integration` and run it with `go test -tags=integration ./internal/tests/integration`.
 
 
 ## Profiling and Tracing
 
-To analyze Nuclei's performance and resource usage, you can generate memory profiles and trace files using the `-profile-mem` flag:
+To analyze Nuclei's performance and resource usage, you can generate CPU & memory profiles and trace files using the `-profile-mem` flag:
 
 ```bash
 nuclei -t nuclei-templates/ -u https://example.com -profile-mem=nuclei-$(git describe --tags)
 ```
 
-This command creates two files:
+This command creates three files:
 
-* `nuclei.prof`: Memory (heap) profile
+* `nuclei.cpu`: CPU profile
+* `nuclei.mem`: Memory (heap) profile
 * `nuclei.trace`: Execution trace
 
-### Analyzing the Memory Profile
+### Analyzing the CPU/Memory Profiles
 
-1. View the profile in the terminal:
+* View the profile in the terminal:
 
 ```bash
-go tool pprof nuclei.prof
+go tool pprof nuclei.{cpu,mem}
 ```
 
-2. Display top memory consumers:
+* Display overall CPU time for processing $$N$$ targets:
 
-```bash
-go tool pprof -top nuclei.prof | grep "$(go list -m)" | head -10
+```
+go tool pprof -top nuclei.cpu | grep "Total samples"
 ```
 
-3. Visualize the profile in a web browser:
+* Display top memory consumers:
 
 ```bash
-go tool pprof -http=:$(shuf -i 1000-99999 -n 1) nuclei.prof
+go tool pprof -top nuclei.mem | grep "$(go list -m)" | head -10
+```
+
+* Visualize the profile in a web browser:
+
+```bash
+go tool pprof -http=:$(shuf -i 1000-99999 -n 1) nuclei.{cpu,mem}
 ```
 
 ### Analyzing the Trace File

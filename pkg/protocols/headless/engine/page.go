@@ -5,30 +5,40 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Page is a single page in an isolated browser instance
 type Page struct {
-	input          *contextargs.Context
-	options        *Options
-	page           *rod.Page
-	rules          []rule
-	instance       *Instance
-	hijackRouter   *rod.HijackRouter
-	hijackNative   *Hijack
-	mutex          *sync.RWMutex
-	History        []HistoryData
-	InteractshURLs []string
-	payloads       map[string]interface{}
+	ctx                *contextargs.Context
+	inputURL           *urlutil.URL
+	options            *Options
+	page               *rod.Page
+	rules              []rule
+	instance           *Instance
+	hijackRouter       *rod.HijackRouter
+	hijackNative       *Hijack
+	mutex              *sync.RWMutex
+	History            []HistoryData
+	InteractshURLs     []string
+	payloads           map[string]interface{}
+	variables          map[string]interface{}
+	lastActionNavigate *Action
 }
 
 // HistoryData contains the page request/response pairs
@@ -45,32 +55,72 @@ type Options struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (ActionData, *Page, error) {
+func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (ActionData, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
 	}
 	page = page.Timeout(options.Timeout)
 
+	if err = i.browser.applyDefaultHeaders(page); err != nil {
+		_ = page.Close()
+		return nil, nil, err
+	}
+
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
+			_ = page.Close()
 			return nil, nil, userAgentErr
 		}
 	}
 
+	payloads = generators.MergeMaps(payloads,
+		generators.BuildPayloadFromOptions(i.browser.options),
+	)
+
+	target := ctx.MetaInput.Input
+	input, err := urlutil.Parse(target)
+	if err != nil {
+		_ = page.Close()
+		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
+	}
+
+	hasTrailingSlash := httputil.HasTrailingSlash(target)
+	variables := utils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(ctx))
+	variables = generators.MergeMaps(variables, payloads)
+
+	if vardump.EnableVarDump {
+		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(variables))
+	}
+
 	createdPage := &Page{
-		options:  options,
-		page:     page,
-		input:    input,
-		instance: i,
-		mutex:    &sync.RWMutex{},
-		payloads: payloads,
+		options:   options,
+		page:      page,
+		ctx:       ctx,
+		instance:  i,
+		mutex:     &sync.RWMutex{},
+		payloads:  payloads,
+		variables: variables,
+		inputURL:  input,
+	}
+
+	successfulPageCreation := false
+	defer func() {
+		if !successfulPageCreation {
+			// to avoid leaking pages in case of errors
+			createdPage.Close()
+		}
+	}()
+
+	httpclient, err := i.browser.getHTTPClient()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// in case the page has request/response modification rules - enable global hijacking
 	if createdPage.hasModificationRules() || containsModificationActions(actions...) {
 		hijackRouter := page.HijackRequests()
-		if err := hijackRouter.Add("*", "", createdPage.routingRuleHandler); err != nil {
+		if err := hijackRouter.Add("*", "", createdPage.routingRuleHandler(httpclient)); err != nil {
 			return nil, nil, err
 		}
 		createdPage.hijackRouter = hijackRouter
@@ -96,20 +146,16 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		return nil, nil, err
 	}
 
-	if _, err := page.SetExtraHeaders([]string{"Accept-Language", "en, en-GB, en-us;"}); err != nil {
-		return nil, nil, err
-	}
-
 	// inject cookies
 	// each http request is performed via the native go http client
 	// we first inject the shared cookies
-	URL, err := url.Parse(input.MetaInput.Input)
+	URL, err := url.Parse(ctx.MetaInput.Input)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if !options.DisableCookie {
-		if cookies := input.CookieJar.Cookies(URL); len(cookies) > 0 {
+		if cookies := ctx.CookieJar.Cookies(URL); len(cookies) > 0 {
 			var NetworkCookies []*proto.NetworkCookie
 			for _, cookie := range cookies {
 				networkCookie := &proto.NetworkCookie{
@@ -127,7 +173,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 			}
 			params := proto.CookiesToParams(NetworkCookies)
 			for _, param := range params {
-				param.URL = input.MetaInput.Input
+				param.URL = ctx.MetaInput.Input
 			}
 			err := page.SetCookies(params)
 			if err != nil {
@@ -136,7 +182,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		}
 	}
 
-	data, err := createdPage.ExecuteActions(input, actions, payloads)
+	data, err := createdPage.ExecuteActions(ctx, actions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -156,21 +202,31 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 				}
 				httpCookies = append(httpCookies, httpCookie)
 			}
-			input.CookieJar.SetCookies(URL, httpCookies)
+			ctx.CookieJar.SetCookies(URL, httpCookies)
 		}
 	}
 
 	// The first item of history data will contain the very first request from the browser
 	// we assume it's the one matching the initial URL
-	if len(createdPage.History) > 0 {
-		firstItem := createdPage.History[0]
-		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
+	createdPage.mutex.RLock()
+	var firstHistoryItem HistoryData
+	hasHistory := len(createdPage.History) > 0
+	if hasHistory {
+		firstHistoryItem = createdPage.History[0]
+	}
+	createdPage.mutex.RUnlock()
+
+	if hasHistory {
+		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
-			resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 		}
 	}
 
+	successfulPageCreation = true // avoid closing the page in case of success in deferred function
 	return data, createdPage, nil
 }
 
@@ -182,7 +238,7 @@ func (p *Page) Close() {
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	p.page.Close()
+	_ = p.page.Close()
 }
 
 // Page returns the current page for the actions
@@ -232,13 +288,42 @@ func (p *Page) addInteractshURL(URLs ...string) {
 	p.InteractshURLs = append(p.InteractshURLs, URLs...)
 }
 
+// appendRule records a request/response modification rule. The hijack handler
+// reads p.rules from a separate goroutine, so writes must be synchronized.
+func (p *Page) appendRule(r rule) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.rules = append(p.rules, r)
+}
+
+// rulesSnapshot returns a copy of the current rules for lock-free iteration by
+// the hijack handler (which performs network I/O and must not hold the lock).
+func (p *Page) rulesSnapshot() []rule {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return slices.Clone(p.rules)
+}
+
 func (p *Page) hasModificationRules() bool {
-	for _, rule := range p.rules {
+	for _, rule := range p.rulesSnapshot() {
 		if containsAnyModificationActionType(rule.Action) {
 			return true
 		}
 	}
 	return false
+}
+
+// updateLastNavigatedURL updates the last navigated URL in the instance's
+// request log.
+func (p *Page) updateLastNavigatedURL() {
+	if p.lastActionNavigate == nil {
+		return
+	}
+
+	templateURL := p.lastActionNavigate.GetArg("url")
+	p.instance.requestLog[templateURL] = p.URL()
 }
 
 func containsModificationActions(actions ...*Action) bool {

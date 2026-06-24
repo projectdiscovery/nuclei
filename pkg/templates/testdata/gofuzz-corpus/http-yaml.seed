@@ -1,0 +1,7 @@
+id=http-yaml-fuzz
+name=HTTP YAML fuzz template
+author=nuclei-fuzzer
+severity=info
+method=GET
+path=/status
+matcher=HTTP

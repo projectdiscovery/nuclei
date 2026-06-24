@@ -170,3 +170,13 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 func (request *Request) Requests() int {
 	return 1
 }
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
+}
+
+// HasFuzzing checks if the request has fuzzing rules defined.
+func (request *Request) HasFuzzing() bool {
+	return len(request.Fuzzing) > 0
+}

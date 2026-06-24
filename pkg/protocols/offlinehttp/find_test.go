@@ -10,7 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
@@ -30,7 +30,9 @@ func TestFindResponses(t *testing.T) {
 
 	tempDir, err := os.MkdirTemp("", "test-*")
 	require.Nil(t, err, "could not create temporary directory")
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	files := map[string]string{
 		"test.go":           "TEST",

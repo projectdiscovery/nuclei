@@ -5,10 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tarunKoyalwar/goleak"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -17,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 )
 
 func TestHTTPExtractMultipleReuse(t *testing.T) {
@@ -61,12 +65,12 @@ func TestHTTPExtractMultipleReuse(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/robots.txt":
-			_, _ = w.Write([]byte(`User-agent: Googlebot
+			_, _ = fmt.Fprintf(w, `User-agent: Googlebot
 Disallow: /a
 Disallow: /b
-Disallow: /c`))
+Disallow: /c`)
 		default:
-			_, _ = w.Write([]byte(fmt.Sprintf(`match %v`, r.URL.Path)))
+			_, _ = fmt.Fprintf(w, `match %v`, r.URL.Path)
 		}
 	}))
 	defer ts.Close()
@@ -256,4 +260,464 @@ func TestReqURLPattern(t *testing.T) {
 	require.Equal(t, 1, matchCount, "could not get correct match count")
 	require.NotEmpty(t, finalEvent.Results[0].ReqURLPattern, "could not get req url pattern")
 	require.Equal(t, `/{{rand_char("abc")}}/{{interactsh-url}}/123?query={{rand_int(1, 10)}}&data={{randstr}}`, finalEvent.Results[0].ReqURLPattern)
+}
+
+// fakeHostErrorsCache implements hosterrorscache.CacheInterface minimally for tests
+type fakeHostErrorsCache struct{}
+
+func (f *fakeHostErrorsCache) SetVerbose(bool)                                {}
+func (f *fakeHostErrorsCache) Close()                                         {}
+func (f *fakeHostErrorsCache) Remove(*contextargs.Context)                    {}
+func (f *fakeHostErrorsCache) MarkFailed(string, *contextargs.Context, error) {}
+func (f *fakeHostErrorsCache) MarkFailedOrRemove(string, *contextargs.Context, error) {
+}
+
+// Check always returns true to simulate an already unresponsive host
+func (f *fakeHostErrorsCache) Check(string, *contextargs.Context) bool { return true }
+
+// IsPermanentErr returns false for tests
+func (f *fakeHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool { return false }
+
+// spyHostErrorsCache records how the request path interacts with the cache:
+// a mark (non-nil error) versus a reset (nil error). Check returns skip so the
+// request actually executes.
+type spyHostErrorsCache struct {
+	marks  atomic.Int32
+	resets atomic.Int32
+	skip   bool
+}
+
+func (s *spyHostErrorsCache) SetVerbose(bool)             {}
+func (s *spyHostErrorsCache) Close()                      {}
+func (s *spyHostErrorsCache) Remove(*contextargs.Context) { s.resets.Add(1) }
+func (s *spyHostErrorsCache) MarkFailed(p string, c *contextargs.Context, err error) {
+	s.MarkFailedOrRemove(p, c, err)
+}
+func (s *spyHostErrorsCache) MarkFailedOrRemove(_ string, _ *contextargs.Context, err error) {
+	if err == nil {
+		s.resets.Add(1)
+	} else {
+		s.marks.Add(1)
+	}
+}
+func (s *spyHostErrorsCache) Check(string, *contextargs.Context) bool         { return s.skip }
+func (s *spyHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool { return false }
+
+type addressSpyHostErrorsCache struct {
+	mu     sync.Mutex
+	checks []string
+	resets []string
+}
+
+func (s *addressSpyHostErrorsCache) SetVerbose(bool) {}
+func (s *addressSpyHostErrorsCache) Close()          {}
+func (s *addressSpyHostErrorsCache) Remove(ctx *contextargs.Context) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.resets = append(s.resets, ctx.MetaInput.Address())
+}
+func (s *addressSpyHostErrorsCache) MarkFailed(string, *contextargs.Context, error) {}
+func (s *addressSpyHostErrorsCache) MarkFailedOrRemove(_ string, ctx *contextargs.Context, err error) {
+	if err == nil {
+		s.Remove(ctx)
+	}
+}
+func (s *addressSpyHostErrorsCache) Check(_ string, ctx *contextargs.Context) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.checks = append(s.checks, ctx.MetaInput.Address())
+	return false
+}
+func (s *addressSpyHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool {
+	return false
+}
+
+func TestHTTPResetsHostCacheOnSuccess(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "ok")
+	}))
+	defer ts.Close()
+
+	templateID := "reset-on-success"
+	req := &Request{
+		ID:     templateID,
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"ok"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	spy := &spyHostErrorsCache{}
+	executerOpts.HostErrorsCache = spy
+	require.NoError(t, req.Compile(executerOpts))
+
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err := req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+	require.NoError(t, err)
+
+	require.Greater(t, spy.resets.Load(), int32(0), "a successful request must reset the host-errors cache")
+	require.Equal(t, int32(0), spy.marks.Load(), "a successful request must not mark a host error")
+}
+
+func TestParallelHTTPResetsHostCacheOnSuccess(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "ok")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-reset-on-success"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2", "3", "4"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"ok"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	spy := &spyHostErrorsCache{}
+	executerOpts.HostErrorsCache = spy
+	require.NoError(t, req.Compile(executerOpts))
+
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err := req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+	require.NoError(t, err)
+
+	require.Greater(t, spy.resets.Load(), int32(0), "successful parallel requests must reset the host-errors cache")
+	require.Equal(t, int32(0), spy.marks.Load(), "successful parallel requests must not mark a host error")
+}
+
+func TestParallelHTTPResetsUpdatedHostCacheKeyOnSuccess(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "ok")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-reset-updated-host"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{ts.URL + "/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"ok"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	spy := &addressSpyHostErrorsCache{}
+	executerOpts.HostErrorsCache = spy
+	require.NoError(t, req.Compile(executerOpts))
+
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), "http://example.invalid")
+	err := req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+	require.NoError(t, err)
+
+	expectedAddress := contextargs.NewWithInput(context.Background(), ts.URL).MetaInput.Address()
+	require.Contains(t, spy.checks, expectedAddress, "generated request host must be checked")
+	require.Contains(t, spy.resets, expectedAddress, "success must reset the generated request host")
+}
+
+func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	// server that always matches
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "match")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-stop-first"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"match"},
+			}},
+		},
+		StopAtFirstMatch: true,
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := req.Compile(executerOpts)
+	require.NoError(t, err)
+
+	var matches int32
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			atomic.AddInt32(&matches, 1)
+		}
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(1), atomic.LoadInt32(&matches), "expected only first match to be processed")
+}
+
+func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	// server that would match if reached
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "match")
+	}))
+	defer ts.Close()
+
+	templateID := "parallel-skip-unresponsive"
+	req := &Request{
+		ID:      templateID,
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 2,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"match"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	// inject fake host errors cache that forces skip
+	executerOpts.HostErrorsCache = &fakeHostErrorsCache{}
+
+	err := req.Compile(executerOpts)
+	require.NoError(t, err)
+
+	var matches int32
+	metadata := make(output.InternalEvent)
+	previous := make(output.InternalEvent)
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			atomic.AddInt32(&matches, 1)
+		}
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(0), atomic.LoadInt32(&matches), "expected no matches when host is marked unresponsive")
+}
+
+// TestExecuteParallelHTTP_GoroutineLeaks uses goleak to detect goroutine leaks in all HTTP parallel execution scenarios
+func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
+	defer goleak.VerifyNone(t,
+		goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
+		goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
+		goleak.IgnoreAnyContainingPkg("github.com/go-rod/rod"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/server"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/client"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb/util.(*BufferPool).drain"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).compactionError"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).mpoolDrain"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).tCompaction"),
+		goleak.IgnoreAnyFunction("github.com/syndtr/goleveldb/leveldb.(*DB).mCompaction"),
+		// expirable LRU cache creates a background goroutine for TTL expiration that persists
+		// see: https://github.com/hashicorp/golang-lru/blob/770151e9c8cdfae1797826b7b74c33d6f103fbd8/expirable/expirable_lru.go#L79
+		goleak.IgnoreAnyContainingPkg("github.com/hashicorp/golang-lru/v2/expirable"),
+	)
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	defer testutils.Cleanup(options)
+
+	// Test Case 1: Normal execution with StopAtFirstMatch
+	t.Run("StopAtFirstMatch", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(10 * time.Millisecond)
+			_, _ = fmt.Fprintf(w, "test response")
+		}))
+		defer ts.Close()
+
+		req := &Request{
+			ID:      "parallel-stop-first-match",
+			Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:    []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads: 4,
+			Payloads: map[string]interface{}{
+				"payload": []string{"1", "2", "3", "4", "5", "6", "7", "8"},
+			},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Part:  "body",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"test response"},
+				}},
+			},
+			StopAtFirstMatch: true,
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-stop-first-match",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		metadata := make(output.InternalEvent)
+		previous := make(output.InternalEvent)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+
+		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+		require.NoError(t, err)
+	})
+
+	// Test Case 2: Unresponsive host scenario
+	t.Run("UnresponsiveHost", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprintf(w, "response")
+		}))
+		defer ts.Close()
+
+		req := &Request{
+			ID:      "parallel-unresponsive",
+			Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:    []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads: 3,
+			Payloads: map[string]interface{}{
+				"payload": []string{"1", "2", "3", "4", "5"},
+			},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Part:  "body",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"response"},
+				}},
+			},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-unresponsive",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+		executerOpts.HostErrorsCache = &fakeHostErrorsCache{}
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		metadata := make(output.InternalEvent)
+		previous := make(output.InternalEvent)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+
+		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+		require.NoError(t, err)
+	})
+
+	// Test Case 3: Context cancellation scenario
+	t.Run("ContextCancellation", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(200 * time.Millisecond)
+			_, _ = fmt.Fprintf(w, "response")
+		}))
+		defer ts.Close()
+
+		req := &Request{
+			ID:      "parallel-context-cancel",
+			Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:    []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads: 3,
+			Payloads: map[string]interface{}{
+				"payload": []string{"1", "2", "3", "4", "5"},
+			},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Part:  "body",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"response"},
+				}},
+			},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-context-cancel",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		metadata := make(output.InternalEvent)
+		previous := make(output.InternalEvent)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		ctxArgs := contextargs.NewWithInput(ctx, ts.URL)
+
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+
+		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
+		require.Error(t, err)
+		require.Equal(t, context.Canceled, err)
+	})
 }

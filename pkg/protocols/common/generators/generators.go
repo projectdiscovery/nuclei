@@ -3,6 +3,8 @@
 package generators
 
 import (
+	"maps"
+
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -32,9 +34,7 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 			if err != nil {
 				return nil, errors.Wrap(err, "could not parse payloads with aggression")
 			}
-			for k, v := range values {
-				payloadsFinal[k] = v
-			}
+			maps.Copy(payloadsFinal, values)
 		default:
 			payloadsFinal[payloadName] = v
 		}
@@ -76,7 +76,7 @@ type aggressionLevelToPayloads struct {
 
 // parsePayloadsWithAggression parses the payloads with the aggression level
 //
-// Three agression are supported -
+// Three aggression are supported -
 //   - low
 //   - medium
 //   - high
@@ -84,7 +84,7 @@ type aggressionLevelToPayloads struct {
 // low is the default level. If medium is specified, all templates from
 // low and medium are executed. Similarly with high, including all templates
 // from low, medium, high.
-func parsePayloadsWithAggression(name string, v map[interface{}]interface{}, agression string) (map[string]interface{}, error) {
+func parsePayloadsWithAggression(name string, v map[interface{}]interface{}, aggression string) (map[string]interface{}, error) {
 	payloadsLevels := &aggressionLevelToPayloads{}
 
 	for k, v := range v {
@@ -108,7 +108,7 @@ func parsePayloadsWithAggression(name string, v map[interface{}]interface{}, agr
 	}
 
 	payloads := make(map[string]interface{})
-	switch agression {
+	switch aggression {
 	case "low":
 		payloads[name] = payloadsLevels.Low
 	case "medium":
@@ -117,7 +117,7 @@ func parsePayloadsWithAggression(name string, v map[interface{}]interface{}, agr
 		payloads[name] = append(payloadsLevels.Low, payloadsLevels.Medium...)
 		payloads[name] = append(payloads[name].([]interface{}), payloadsLevels.High...)
 	default:
-		return nil, errors.Errorf("invalid aggression level %s specified for %s", agression, name)
+		return nil, errors.Errorf("invalid aggression level %s specified for %s", aggression, name)
 	}
 	return payloads, nil
 }

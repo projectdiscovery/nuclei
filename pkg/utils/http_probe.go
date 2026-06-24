@@ -2,23 +2,58 @@ package utils
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"net/netip"
+	"strconv"
+	"strings"
 
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/useragent"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
-var (
-	HttpSchemes = []string{"https", "http"}
-)
+var commonHttpPorts = []string{
+	"80",
+	"8080",
+}
+var defaultHttpSchemes = []string{
+	"https",
+	"http",
+}
+var httpFirstSchemes = []string{
+	"http",
+	"https",
+}
 
-// probeURL probes the scheme for a URL. first HTTPS is tried
-// and if any errors occur http is tried. If none succeeds, probing
-// is abandoned for such URLs.
+// determineSchemeOrder for the input
+func determineSchemeOrder(input string) []string {
+	if _, port, err := net.SplitHostPort(input); err == nil {
+		// if input has port that is commonly used for HTTP, return http then https
+		if sliceutil.Contains(commonHttpPorts, port) {
+			return httpFirstSchemes
+		}
+
+		// As of 10/2025 shodan shows that ports > 1024 are more likely to expose HTTP
+		// hence we test first http then https on higher ports
+		// if input has port > 1024, return http then https
+		if port, err := strconv.Atoi(port); err == nil && port > 1024 {
+			return httpFirstSchemes
+		}
+	}
+
+	return defaultHttpSchemes
+}
+
+// ProbeURL probes the scheme for a URL.
+// http schemes are selected with heuristics
+// If none succeeds, probing is abandoned for such URLs.
 func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
-	for _, scheme := range HttpSchemes {
-		formedURL := fmt.Sprintf("%s://%s", scheme, input)
+	normalizedInput := normalizeProbeInput(input)
+	schemes := determineSchemeOrder(normalizedInput)
+	for _, scheme := range schemes {
+		formedURL := fmt.Sprintf("%s://%s", scheme, normalizedInput)
 		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
 		if err != nil {
 			continue
@@ -35,11 +70,23 @@ func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
 	return ""
 }
 
+// normalizeProbeInput rewrites unbracketed IPv6 literals to bracketed host form.
+func normalizeProbeInput(input string) string {
+	if strings.Contains(input, "://") || strings.HasPrefix(input, "[") {
+		return input
+	}
+	addr, err := netip.ParseAddr(input)
+	if err != nil || !addr.Is6() {
+		return input
+	}
+	return fmt.Sprintf("[%s]", addr.String())
+}
+
 type inputLivenessChecker struct {
 	client *httpx.HTTPX
 }
 
-// ProbeURL probes the scheme for a URL. first HTTPS is tried
+// ProbeURL probes the scheme for a URL.
 func (i *inputLivenessChecker) ProbeURL(input string) (string, error) {
 	return ProbeURL(input, i.client), nil
 }

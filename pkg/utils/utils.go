@@ -1,17 +1,20 @@
 package utils
 
 import (
+	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/cespare/xxhash"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"golang.org/x/exp/constraints"
 )
 
 func IsBlank(value string) bool {
@@ -63,11 +66,20 @@ func StringSliceContains(slice []string, item string) bool {
 }
 
 // MapHash generates a hash for any give map
-func MapHash[K constraints.Ordered, V any](m map[K]V) uint64 {
+func MapHash[K cmp.Ordered, V any](m map[K]V) uint64 {
 	keys := mapsutil.GetSortedKeys(m)
 	var sb strings.Builder
 	for _, k := range keys {
-		sb.WriteString(fmt.Sprintf("%v:%v\n", k, m[k]))
+		fmt.Fprintf(&sb, "%v:%v\n", k, m[k])
 	}
 	return xxhash.Sum64([]byte(sb.String()))
+}
+
+// GetRateLimiter returns a rate limiter with the given max tokens and duration
+// if maxTokens is 0 or duration is 0, it returns an unlimited rate limiter
+func GetRateLimiter(ctx context.Context, maxTokens int, duration time.Duration) *ratelimit.Limiter {
+	if maxTokens == 0 || duration == 0 {
+		return ratelimit.NewUnlimited(ctx)
+	}
+	return ratelimit.New(ctx, uint(maxTokens), duration)
 }

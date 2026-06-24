@@ -3,6 +3,7 @@ package smb
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
@@ -34,17 +35,26 @@ type (
 // const info = client.ConnectSMBInfoMode('acme.com', 445);
 // log(to_json(info));
 // ```
-func (c *SMBClient) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
-	return memoizedconnectSMBInfoMode(host, port)
+func (c *SMBClient) ConnectSMBInfoMode(ctx context.Context, host string, port int) (*smb.SMBLog, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedconnectSMBInfoMode(ctx, executionId, host, port)
 }
 
 // @memo
-func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func connectSMBInfoMode(ctx context.Context, executionId string, host string, port int) (*smb.SMBLog, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+	dialSMBInfo := func(ctx context.Context) (net.Conn, error) {
+		return dialer.Fastdialer.Dial(ctx, "tcp", address)
+	}
+	conn, err := dialSMBInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -52,15 +62,18 @@ func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 	result, err := getSMBInfo(conn, true, false)
 	_ = conn.Close() // close regardless of error
 	if err == nil {
+		updateSMBv1Support(ctx, result, dialSMBInfo)
 		return result, nil
 	}
 
 	// try to negotiate SMBv1
-	conn, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err = dialSMBInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	result, err = getSMBInfo(conn, true, true)
 	if err != nil {
 		return result, nil
@@ -79,12 +92,13 @@ func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 // const metadata = client.ListSMBv2Metadata('acme.com', 445);
 // log(to_json(metadata));
 // ```
-func (c *SMBClient) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSMB, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int) (*plugins.ServiceSMB, error) {
+	executionId := ctx.Value("executionId").(string)
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	return memoizedcollectSMBv2Metadata(host, port, 5*time.Second)
+	return memoizedcollectSMBv2Metadata(ctx, executionId, host, port, 5*time.Second)
 }
 
 // ListShares tries to connect to provided host and port
@@ -102,21 +116,29 @@ func (c *SMBClient) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSM
 //	}
 //
 // ```
-func (c *SMBClient) ListShares(host string, port int, user, password string) ([]string, error) {
-	return memoizedlistShares(host, port, user, password)
+func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user, password string) ([]string, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedlistShares(ctx, executionId, host, port, user, password)
 }
 
 // @memo
-func listShares(host string, port int, user string, password string) ([]string, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func listShares(ctx context.Context, executionId string, host string, port int, user string, password string) ([]string, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	d := &smb2.Dialer{
 		Initiator: &smb2.NTLMInitiator{

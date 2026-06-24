@@ -12,8 +12,7 @@ import (
 
 	"errors"
 
-	"github.com/Mzack9999/gcache"
-
+	"github.com/projectdiscovery/gcache"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -22,7 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -88,7 +87,7 @@ func (c *Client) poll() error {
 		KeepAliveInterval:   time.Minute,
 	})
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not create client")
+		return errkit.Wrap(err, "could not create client")
 	}
 
 	c.interactsh = interactsh
@@ -109,7 +108,7 @@ func (c *Client) poll() error {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
 			items, err := c.interactions.Get(interaction.UniqueID)
-			if errorutil.IsAny(err, gcache.KeyNotFoundError) || items == nil {
+			if errkit.Is(err, gcache.KeyNotFoundError) || items == nil {
 				_ = c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
 			} else {
 				items = append(items, interaction)
@@ -119,7 +118,7 @@ func (c *Client) poll() error {
 		}
 
 		if requestShouldStopAtFirstMatch(request) || c.options.StopAtFirstMatch {
-			if gotItem, err := c.matchedTemplates.Get(hash(request.Event.InternalEvent)); gotItem && err == nil {
+			if gotItem, err := c.matchedTemplates.Get(eventHash(request.Event)); gotItem && err == nil {
 				return
 			}
 		}
@@ -128,7 +127,7 @@ func (c *Client) poll() error {
 	})
 
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not perform interactsh polling")
+		return errkit.Wrap(err, "could not perform interactsh polling")
 	}
 	return nil
 }
@@ -154,6 +153,7 @@ func requestShouldStopAtFirstMatch(request *RequestData) bool {
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
 	var result *operators.Result
 	var matched bool
+	var templateID string
 	data.Event.Lock()
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	if strings.EqualFold(interaction.Protocol, "dns") {
@@ -163,16 +163,16 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
-	data.Event.Unlock()
-
 	if data.Operators != nil {
 		result, matched = data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
 	} else {
 		// this is most likely a bug so error instead of warning
-		var templateID string
 		if data.Event.InternalEvent != nil {
 			templateID = fmt.Sprint(data.Event.InternalEvent[templateIdAttribute])
 		}
+	}
+	data.Event.Unlock()
+	if data.Operators == nil {
 		gologger.Error().Msgf("missing compiled operators for '%v' template", templateID)
 	}
 
@@ -183,9 +183,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if c.options.FuzzParamsFrequency != nil {
 		if !matched {
-			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		} else {
-			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		}
 	}
 
@@ -200,6 +200,14 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	} else {
 		data.Event.SetOperatorResult(result)
 	}
+	// ensure payload values are preserved for interactsh-only matches
+	data.Event.Lock()
+	if data.Event.OperatorsResult != nil && len(data.Event.OperatorsResult.PayloadValues) == 0 {
+		if payloads, ok := data.Event.InternalEvent["payloads"].(map[string]interface{}); ok {
+			data.Event.OperatorsResult.PayloadValues = payloads
+		}
+	}
+	data.Event.Unlock()
 
 	data.Event.Lock()
 	data.Event.Results = data.MakeResultFunc(data.Event)
@@ -217,7 +225,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		data.Event.InteractshMatched.Store(true)
 		c.matched.Store(true)
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
-			_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)
+			_ = c.matchedTemplates.SetWithExpire(eventHash(data.Event), true, defaultInteractionDuration)
 		}
 	}
 
@@ -225,10 +233,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 }
 
 func (c *Client) AlreadyMatched(data *RequestData) bool {
-	data.Event.RLock()
-	defer data.Event.RUnlock()
-
-	return c.matchedTemplates.Has(hash(data.Event.InternalEvent))
+	return c.matchedTemplates.Has(eventHash(data.Event))
 }
 
 // URL returns a new URL that can be interacted with
@@ -239,7 +244,7 @@ func (c *Client) URL() (string, error) {
 		err = c.poll()
 	})
 	if err != nil {
-		return "", errorutil.NewWithErr(err).Wrap(ErrInteractshClientNotInitialized)
+		return "", errkit.Wrap(ErrInteractshClientNotInitialized, err.Error())
 	}
 
 	if c.interactsh == nil {
@@ -257,7 +262,7 @@ func (c *Client) Close() bool {
 	}
 	if c.interactsh != nil {
 		_ = c.interactsh.StopPolling()
-		c.interactsh.Close()
+		_ = c.interactsh.Close()
 	}
 
 	c.requests.Purge()
@@ -340,7 +345,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
-			gotItem, err := c.matchedTemplates.Get(hash(data.Event.InternalEvent))
+			gotItem, err := c.matchedTemplates.Get(eventHash(data.Event))
 			if gotItem && err == nil {
 				break
 			}
@@ -424,7 +429,7 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *o
 			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest, event, c.options.NoColor))
 		}
 	}
-	fmt.Fprint(os.Stderr, builder.String())
+	_, _ = fmt.Fprint(os.Stderr, builder.String())
 }
 
 func formatInteractionHeader(protocol, ID, address string, at time.Time) string {
@@ -442,6 +447,13 @@ func hash(internalEvent output.InternalEvent) string {
 	return fmt.Sprintf("%s:%s", templateId, host)
 }
 
+func eventHash(event *output.InternalWrappedEvent) string {
+	event.RLock()
+	defer event.RUnlock()
+
+	return hash(event.InternalEvent)
+}
+
 func (c *Client) getHostname() string {
 	c.RLock()
 	defer c.RUnlock()
@@ -454,4 +466,9 @@ func (c *Client) setHostname(hostname string) {
 	defer c.Unlock()
 
 	c.hostname = hostname
+}
+
+// GetHostname returns the configured interactsh server hostname.
+func (c *Client) GetHostname() string {
+	return c.getHostname()
 }

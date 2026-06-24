@@ -2,17 +2,19 @@
 package mysql
 
 import (
+	"context"
 	"errors"
+
 	"fmt"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedconnectWithDSN(dsn string) (bool, error) {
-	hash := "connectWithDSN" + ":" + fmt.Sprint(dsn)
+func memoizedconnectWithDSN(ctx context.Context, executionId string, dsn string) (bool, error) {
+	hash := "connectWithDSN" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(dsn)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connectWithDSN(dsn)
+		return connectWithDSN(ctx, executionId, dsn)
 	})
 	if err != nil {
 		return false, err

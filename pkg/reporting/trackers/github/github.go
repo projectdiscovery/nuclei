@@ -9,13 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v30/github"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/oauth2"
 )
@@ -63,11 +62,9 @@ func New(options *Options) (*Integration, error) {
 	)
 	tc := oauth2.NewClient(ctx, ts)
 
-	// patch transport to support proxy - only http
-	// TODO: investigate if it's possible to reuse existing retryablehttp
-	if types.ProxyURL != "" {
-		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
-			tc.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
+		if tcTransport, ok := tc.Transport.(*http.Transport); ok {
+			tcTransport.Proxy = options.HttpClient.HTTPClient.Transport.(*http.Transport).Proxy
 		}
 	}
 
@@ -206,8 +203,8 @@ func (i *Integration) findIssueByTitle(ctx context.Context, title string) (*gith
 		}
 
 		for _, issue := range issues.Issues {
-			if issue.Title != nil && *issue.Title == title {
-				return &issue, nil
+			if issue != nil && issue.Title != nil && *issue.Title == title {
+				return issue, nil
 			}
 		}
 

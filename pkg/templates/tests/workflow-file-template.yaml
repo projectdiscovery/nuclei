@@ -1,0 +1,14 @@
+id: workflow-file-template
+
+info:
+  name: Workflow File Template
+  author: pdteam
+  severity: info
+
+file:
+  - extensions:
+      - all
+    matchers:
+      - type: word
+        words:
+          - "db_password"

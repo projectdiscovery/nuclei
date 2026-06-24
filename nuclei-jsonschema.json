@@ -3,6 +3,22 @@
   "$id": "https://templates.-template",
   "$ref": "#/$defs/templates.Template",
   "$defs": {
+    "analyzers.AnalyzerTemplate": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/map[string]interface {}"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
     "code.Request": {
       "properties": {
         "matchers": {
@@ -43,6 +59,11 @@
           "title": "engine",
           "description": "Engine"
         },
+        "sandbox": {
+          "$ref": "#/$defs/code.Sandbox",
+          "title": "sandbox",
+          "description": "Sandbox"
+        },
         "pre-condition": {
           "type": "string",
           "title": "pre-condition for the request",
@@ -65,6 +86,22 @@
           "type": "string",
           "title": "source file/snippet",
           "description": "Source snippet"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "code.Sandbox": {
+      "properties": {
+        "working-dir": {
+          "type": "string",
+          "title": "working-dir",
+          "description": "Working directory"
+        },
+        "image": {
+          "type": "string",
+          "title": "image",
+          "description": "Image"
         }
       },
       "additionalProperties": false,
@@ -785,6 +822,11 @@
           "title": "fuzzin rules for http fuzzing",
           "description": "Fuzzing describes rule schema to fuzz http requests"
         },
+        "analyzer": {
+          "$ref": "#/$defs/analyzers.AnalyzerTemplate",
+          "title": "analyzer for http request",
+          "description": "Analyzer for HTTP Request"
+        },
         "self-contained": {
           "type": "boolean"
         },
@@ -822,6 +864,11 @@
           "type": "boolean",
           "title": "follow same host http redirects",
           "description": "Specifies whether redirects to the same host should be followed by the HTTP Client"
+        },
+        "protocol-redirects": {
+          "type": "boolean",
+          "title": "follow same protocol http redirects",
+          "description": "Specifies whether only same-protocol redirects should be followed by the HTTP Client"
         },
         "pipeline": {
           "type": "boolean",
@@ -1353,7 +1400,7 @@
             }
           ],
           "title": "port to send requests to",
-          "description": "Port to send network requests to"
+          "description": "Port to send network requests to. Supports numeric ports and service names (e.g. ftp, ssh, smtp)"
         },
         "exclude-ports": {
           "type": "string",

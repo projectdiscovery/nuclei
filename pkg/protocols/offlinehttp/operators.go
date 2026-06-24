@@ -1,6 +1,7 @@
 package offlinehttp
 
 import (
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -77,6 +78,9 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 
 // getMatchPart returns the match part honoring "all" matchers + others.
 func getMatchPart(part string, data output.InternalEvent) (string, bool) {
+	if part == "" {
+		part = "body"
+	}
 	if part == "header" {
 		part = "all_headers"
 	}
@@ -100,14 +104,12 @@ func getMatchPart(part string, data output.InternalEvent) (string, bool) {
 // responseToDSLMap converts an HTTP response to a map for use in DSL matching
 func (request *Request) responseToDSLMap(resp *http.Response, host, matched, rawReq, rawResp, body, headers string, duration time.Duration, extra map[string]interface{}) output.InternalEvent {
 	data := make(output.InternalEvent, 12+len(extra)+len(resp.Header)+len(resp.Cookies()))
-	for k, v := range extra {
-		data[k] = v
-	}
+	maps.Copy(data, extra)
 	for _, cookie := range resp.Cookies() {
 		data[strings.ToLower(cookie.Name)] = cookie.Value
 	}
 	for k, v := range resp.Header {
-		k = strings.ToLower(strings.TrimSpace(k))
+		k = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(k), "-", "_"))
 		data[k] = strings.Join(v, " ")
 	}
 

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/projectdiscovery/gologger"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -61,7 +62,9 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	filename := createFileName(event)
 
@@ -115,7 +118,9 @@ func createFileName(event *output.ResultEvent) string {
 	filenameBuilder := &strings.Builder{}
 	filenameBuilder.WriteString(event.TemplateID)
 	filenameBuilder.WriteString("-")
-	filenameBuilder.WriteString(stringsutil.ReplaceAll(event.Matched, "_", "/", ":"))
+	filenameBuilder.WriteString(event.Host)
+	filenameBuilder.WriteString("-")
+	filenameBuilder.WriteString(uuid.NewString())
 
 	var suffix string
 	if event.MatcherName != "" {
@@ -140,5 +145,12 @@ func sanitizeFilename(filename string) string {
 	if len(filename) > 256 {
 		filename = filename[0:255]
 	}
-	return stringsutil.ReplaceAll(filename, "_", "?", "/", ">", "|", ":", ";", "*", "<", "\"", "'", " ")
+	// Note: "\\" must be replaced together with "/" so an attacker-controlled
+	// host or template id with Windows-style path separators cannot traverse
+	// out of the configured directory when this value is later used as a
+	// subdirectory or filename. ".." is replaced for the same reason — even
+	// without a separator, a name of "..foo" is harmless but a name of ".."
+	// alone (or any sequence containing "..") is treated by filepath.Clean as
+	// a parent reference once joined with the report directory.
+	return stringsutil.ReplaceAll(filename, "_", "?", "/", "\\", "..", ">", "|", ":", ";", "*", "<", "\"", "'", " ")
 }

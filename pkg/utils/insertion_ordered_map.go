@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 )
 
 type InsertionOrderedStringMap struct {

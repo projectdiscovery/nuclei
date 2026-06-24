@@ -1373,6 +1373,19 @@ Fuzzing describes schema to fuzz http requests
 
 <div class="dd">
 
+<code>analyzer</code>  <i><a href="#analyzersanalyzertemplate">analyzers.AnalyzerTemplate</a></i>
+
+</div>
+<div class="dt">
+
+Analyzer is an analyzer to use for matching the response.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>self-contained</code>  <i>bool</i>
 
 </div>
@@ -1481,6 +1494,21 @@ This can be used in conjunction with `max-redirects` to control the HTTP request
 Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.
 
 This can be used in conjunction with `max-redirects` to control the HTTP request redirects.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>protocol-redirects</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+ProtocolRedirects specifies whether only redirects within the same protocol should be followed.
+
+When set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked.
 
 </div>
 
@@ -2020,6 +2048,61 @@ Appears in:
 - <code><a href="#fuzzrule">fuzz.Rule</a>.fuzz</code>
 
 
+
+
+
+
+
+## analyzers.AnalyzerTemplate
+AnalyzerTemplate is the template for the analyzer
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.analyzer</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>name</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Name is the name of the analyzer to use
+
+
+Valid values:
+
+
+  - <code>time_delay</code>
+
+  - <code>xss_context</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>parameters</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Parameters is the parameters for the analyzer
+
+Parameters are different for each analyzer. For example, you can customize
+time_delay analyzer with sleep_duration, time_slope_error_range, etc. Refer
+to the docs for each analyzer to get an idea about parameters.
+
+</div>
+
+<hr />
 
 
 
@@ -3152,8 +3235,8 @@ Inputs contains inputs for the network socket
 <div class="dt">
 
 description: |
-   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
- non-http(s) ports like 80,8080,8081 etc
+   Port is the port to send network requests to. this acts as default port but is overridden if target/input contains
+ non-http(s) ports like 80,8080,8081 etc. Supports both numeric ports and IANA service names (e.g. ftp, ssh, smtp).
 
 </div>
 
@@ -4446,7 +4529,7 @@ permutations and combinations for all payloads.
 </div>
 <div class="dt">
 
-Payload concurreny i.e threads for sending requests.
+Payload concurrency i.e threads for sending requests.
 
 
 

@@ -3,7 +3,7 @@ package dataformat
 import (
 	"strings"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // JSON is a JSON encoder
@@ -12,7 +12,7 @@ import (
 // and not arrays
 //
 // TODO: Support arrays + other JSON oddities by
-// adding more attirbutes to the map[string]interface{}
+// adding more attributes to the map[string]interface{}
 type JSON struct{}
 
 var (
@@ -31,14 +31,14 @@ func (j *JSON) IsType(data string) bool {
 
 // Encode encodes the data into JSON format
 func (j *JSON) Encode(data KV) (string, error) {
-	encoded, err := jsoniter.Marshal(data.Map)
+	encoded, err := json.Marshal(data.Map)
 	return string(encoded), err
 }
 
 // Decode decodes the data from JSON format
 func (j *JSON) Decode(data string) (KV, error) {
 	var decoded map[string]interface{}
-	err := jsoniter.Unmarshal([]byte(data), &decoded)
+	err := json.Unmarshal([]byte(data), &decoded)
 	return KVMap(decoded), err
 }
 

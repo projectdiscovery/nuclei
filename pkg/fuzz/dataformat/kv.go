@@ -1,8 +1,9 @@
 package dataformat
 
 import (
+	"maps"
+
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"golang.org/x/exp/maps"
 )
 
 // KV is a key-value struct

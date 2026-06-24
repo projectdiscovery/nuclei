@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Knetic/govaluate"
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -61,11 +61,12 @@ func init() {
 			return nil, fmt.Errorf("invalid dns type")
 		}
 
-		err := dnsclientpool.Init(&types.Options{})
+		options := &types.Options{}
+		err := dnsclientpool.Init(options)
 		if err != nil {
 			return nil, err
 		}
-		dnsClient, err := dnsclientpool.Get(nil, &dnsclientpool.Configuration{})
+		dnsClient, err := dnsclientpool.Get(options, &dnsclientpool.Configuration{})
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +115,7 @@ func init() {
 	}))
 
 	dsl.PrintDebugCallback = func(args ...interface{}) error {
-		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
+		gologger.Debug().Msgf("print_debug value: %s", fmt.Sprint(args...))
 		return nil
 	}
 

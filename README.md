@@ -1,99 +1,122 @@
 ![nuclei](/static/nuclei-cover-image.png)
 
+<div align="center">
+  
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">`English`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">`中文`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">`Korean`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">`Indonesia`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">`Spanish`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">`日本語`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">`Portuguese`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_TR.md">`Türkçe`</a>
+  
+</div>
+
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">日本語</a>
-</p>
 
-</p>
-
-<p align="center">
-
-<img src="https://img.shields.io/badge/go-1.21-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white">
-&nbsp;&nbsp;
 <a href="https://docs.projectdiscovery.io/tools/nuclei/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white"></a>
 &nbsp;&nbsp;
 <a href="https://github.com/projectdiscovery/nuclei-templates"><img src="https://img.shields.io/badge/Templates Library-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNoaWVsZCI+PHBhdGggZD0iTTIwIDEzYzAgNS0zLjUgNy41LTcuNjYgOC45NWExIDEgMCAwIDEtLjY3LS4wMUM3LjUgMjAuNSA0IDE4IDQgMTNWNmExIDEgMCAwIDEgMS0xYzIgMCA0LjUtMS4yIDYuMjQtMi43MmExLjE3IDEuMTcgMCAwIDEgMS41MiAwQzE0LjUxIDMuODEgMTcgNSAxOSA1YTEgMSAwIDAgMSAxIDF6Ii8+PC9zdmc+&logoColor=white"></a>
 &nbsp;&nbsp;
 <a href="https://discord.gg/projectdiscovery?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white"></a>
 
----
+<hr>
 
 </p>
-	
-<br />
 
-Nuclei is a modern, high-performance vulnerability scanner that leverages simple YAML-based templates. It empowers you to design custom vulnerability detection scenarios that mimic real-world conditions, leading to zero false positives.
+<br>
+
+**Nuclei is a modern, high-performance vulnerability scanner that leverages simple YAML-based templates. It empowers you to design custom vulnerability detection scenarios that mimic real-world conditions, leading to zero false positives.**
 
 - Simple YAML format for creating and customizing vulnerability templates.
 - Contributed by thousands of security professionals to tackle trending vulnerabilities.
 - Reduce false positives by simulating real-world steps to verify a vulnerability.
 - Ultra-fast parallel scan processing and request clustering.
 - Integrate into CI/CD pipelines for vulnerability detection and regression testing.
-- Supports multiple protocols like TCP, DNS, HTTP, SSL, WHOIS JavaScript, Code and more.
+- Supports multiple protocols like TCP, DNS, HTTP, SSL, WHOIS, JavaScript, Code and more.
 - Integrate with Jira, Splunk, GitHub, Elastic, GitLab.
+
+<br>
+<br>
 
 ## Table of Contents
 
-- [Get Started](#get-started)
-  - [1. Nuclei CLI](#1-nuclei-cli)
-  - [2. Pro and Enterprise Editions](#2-pro-and-enterprise-editions)
-- [Documentation](#documentation)
-  - [Command Line Flags](#command-line-flags)
-  - [Single target scan](#single-target-scan)
-  - [Scanning multiple targets](#scanning-multiple-targets)
-  - [Network scan](#network-scan)
-  - [Scanning with your custom template](#scanning-with-your-custom-template)
-  - [Connect Nuclei to ProjectDiscovery](#connect-nuclei-to-projectdiscovery)
-- [Nuclei Templates, Community and Rewards 💎](#nuclei-templates-community-and-rewards-)
-- [Our Mission](#our-mission)
-- [Contributors ❤️](#contributors-️)
-- [License](#license)
+- [**`Get Started`**](#get-started)
+  - [_`1. Nuclei CLI`_](#1-nuclei-cli)
+  - [_`2. Pro and Enterprise Editions`_](#2-pro-and-enterprise-editions)
+- [**`Documentation`**](#documentation)
+  - [_`Command Line Flags`_](#command-line-flags)
+  - [_`Single target scan`_](#single-target-scan)
+  - [_`Scanning multiple targets`_](#scanning-multiple-targets)
+  - [_`Network scan`_](#network-scan)
+  - [_`Scanning with your custom template`_](#scanning-with-your-custom-template)
+  - [_`Connect Nuclei to ProjectDiscovery_`_](#connect-nuclei-to-projectdiscovery)
+- [**`Nuclei Templates, Community and Rewards`**](#nuclei-templates-community-and-rewards-) 💎
+- [**`Our Mission`**](#our-mission)
+- [**`Contributors`**](#contributors-heart) ❤
+- [**`License`**](#license)
 
----
-
-| :exclamation:  **Disclaimer**  |
-|---------------------------------|
-| **This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating. |
-| This project is primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
+<br>
+<br>
 
 ## Get Started
 
 ### **1. Nuclei CLI**
 
-Install Nuclei on your machine. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide [a free cloud tier](https://cloud.projectdiscovery.io/sign-up) and comes with a generous monthly free limits:
+_Install Nuclei on your machine. Get started by following the installation guide [**`here`**](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide [**`a free cloud tier`**](https://cloud.projectdiscovery.io/sign-up) and comes with a generous monthly free limits:_
 
 - Store and visualize your vulnerability findings
 - Write and manage your nuclei templates
 - Access latest nuclei templates
 - Discover and store your targets
 
+> [!Important]
+> |**This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating.|
+> |:--------------------------------|
+> | This project is primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
+
+<br>
+
 ### **2. Pro and Enterprise Editions**
 
-For security teams and enterprises, we provide a cloud-hosted service built on top of Nuclei OSS, fine-tuned to help you continuously run vulnerability scans at scale with your team and existing workflows:
+_For security teams and enterprises, we provide a cloud-hosted service built on top of Nuclei OSS, fine-tuned to help you continuously run vulnerability scans at scale with your team and existing workflows:_
 
 - 50x faster scans
 - Large scale scanning with high accuracy
-- Integrations with cloud services (AWS, GCP, Azure, CloudFlare, Fastly, Terraform, Kubernetes)
+- Integrations with cloud services (AWS, GCP, Azure, Cloudflare, Fastly, Terraform, Kubernetes)
 - Jira, Slack, Linear, APIs and Webhooks
 - Executive and compliance reporting
 - Plus: Real-time scanning, SAML SSO, SOC 2 compliant platform (with EU and US hosting options), shared team workspaces, and more
-- We're constantly [adding new features](https://feedback.projectdiscovery.io/changelog)!
+- We're constantly [**`adding new features`**](https://feedback.projectdiscovery.io/changelog)!
 - **Ideal for:** Pentesters, security teams, and enterprises
+
+[**`Sign up to Pro`**](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) or [**`Talk to our team`**](https://projectdiscovery.io/request-demo?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) if you have large organization and complex requirements.
+
+<br>
+<br>
 
 ## Documentation
 
-Browse the full Nuclei [documentation here](https://docs.projectdiscovery.io/tools/nuclei/running). If you’re new to Nuclei, check out our [foundational Youtube series.](https://www.youtube.com/playlist?list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl)
+Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.io/tools/nuclei/running). If you’re new to Nuclei, check out our [**`foundational YouTube series`**](https://www.youtube.com/playlist?list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl).
 
-<p align="center">
+<div align="center">
 
 <a href="https://www.youtube.com/watch?v=b5qMyQvL1ZA&list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-getting-started.png" width="350px"></a> <a href="https://www.youtube.com/watch?v=nFXygQdtjyw&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-write-your-first-template.png" width="350px"></a>
 
-</p>
+</div>
+
+<br>
+
+### Installation
+
+`nuclei` requires **go >= 1.24.2** to install successfully. Run the following command to get the repo:
+
+```sh
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+```
+
+To learn more about installing nuclei, see `https://docs.projectdiscovery.io/tools/nuclei/install`.
 
 ### Command Line Flags
 
@@ -106,7 +129,7 @@ nuclei -h
 <details>
   <summary>Expand full help flags</summary>
 
-```console
+```yaml
 Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.
 
@@ -118,7 +141,7 @@ TARGET:
    -u, -target string[]          target URLs/hosts to scan
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
-   -resume string                resume scan using resume.cfg (clustering will be disabled)
+   -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
 
@@ -133,16 +156,20 @@ TEMPLATES:
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
    -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
+   -ai, -prompt string                    generate and run template using ai prompt
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
-   -tl                                    list all available templates
+   -tl                                    list all templates matching current filters
    -tgl                                   list all available tags
    -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
    -code                                  enable loading code protocol-based templates
    -dut, -disable-unsigned-templates      disable running unsigned templates or templates with mismatched signature
+   -esc, -enable-self-contained           enable loading self-contained templates
+   -egm, -enable-global-matchers          enable loading global matchers templates
+   -file                                  enable loading file templates
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -225,13 +252,19 @@ INTERACTSH:
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
 FUZZING:
-   -ft, -fuzzing-type string     overrides fuzzing type set in template (replace, prefix, postfix, infix)
-   -fm, -fuzzing-mode string     overrides fuzzing mode set in template (multiple, single)
-   -fuzz                         enable loading fuzzing templates (Deprecated: use -dast instead)
-   -dast                         enable / run dast (fuzz) nuclei templates
-   -dfp, -display-fuzz-points    display fuzz points in the output for debugging
-   -fuzz-param-frequency int     frequency of uninteresting parameters for fuzzing before skipping (default 10)
-   -fa, -fuzz-aggression string  fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")
+   -ft, -fuzzing-type string           overrides fuzzing type set in template (replace, prefix, postfix, infix)
+   -fm, -fuzzing-mode string           overrides fuzzing mode set in template (multiple, single)
+   -fuzz                               enable loading fuzzing templates (Deprecated: use -dast instead)
+   -dast                               enable / run dast (fuzz) nuclei templates
+   -dts, -dast-server                  enable dast server mode (live fuzzing)
+   -dtr, -dast-report                  write dast scan report to file
+   -dtst, -dast-server-token string    dast server token (optional)
+   -dtsa, -dast-server-address string  dast server address (default "localhost:9055")
+   -dfp, -display-fuzz-points          display fuzz points in the output for debugging
+   -fuzz-param-frequency int           frequency of uninteresting parameters for fuzzing before skipping (default 10)
+   -fa, -fuzz-aggression string        fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")
+   -cs, -fuzz-scope string[]           in scope url regex to be followed by fuzzer
+   -cos, -fuzz-out-scope string[]      out of scope url regex to be excluded by fuzzer
 
 UNCOVER:
    -uc, -uncover                  enable uncover engine
@@ -252,6 +285,7 @@ RATE-LIMIT:
    -jsc, -js-concurrency int          maximum number of javascript runtimes to be executed in parallel (default 120)
    -pc, -payload-concurrency int      max payload concurrency for each template (default 25)
    -prc, -probe-concurrency int       http probe concurrency with httpx (default 50)
+   -tlc, -template-loading-concurrency int  maximum number of concurrent template loading operations (default 50)
 
 OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
@@ -275,6 +309,7 @@ HEADLESS:
    -sb, -show-browser               show the browser on the screen when running templates with headless mode
    -ho, -headless-options string[]  start headless chrome with additional options
    -sc, -system-chrome              use local installed Chrome browser instead of nuclei installed
+   -cdpe, -cdp-endpoint string      use remote browser via Chrome DevTools Protocol (CDP) endpoint
    -lha, -list-headless-action      list available headless actions
 
 DEBUG:
@@ -303,11 +338,17 @@ UPDATE:
    -ud, -update-template-dir string  custom directory to install / update nuclei-templates
    -duc, -disable-update-check       disable automatic nuclei/templates update check
 
+HONEYPOT:
+   -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration
+   -hpt, -honeypot-threshold int     number of distinct template IDs required to flag a honeypot host (default 15)
+   -shp, -suppress-honeypot          suppress output for flagged honeypot hosts
+
 STATISTICS:
    -stats                    display statistics about the running scan
    -sj, -stats-json          display statistics in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+   -hps, -http-stats         enable http status capturing (experimental)
 
 CLOUD:
    -auth                           configure projectdiscovery cloud (pdcp) api key (default true)
@@ -321,28 +362,30 @@ CLOUD:
 AUTHENTICATION:
    -sf, -secret-file string[]  path to config file containing secrets for nuclei authenticated scan
    -ps, -prefetch-secrets      prefetch secrets from the secrets file
+   # NOTE: Headers in secrets files preserve exact casing (useful for case-sensitive APIs)
 
 
 EXAMPLES:
 Run nuclei on single host:
-  $ nuclei -target example.com
+	$ nuclei -target example.com
 
 Run nuclei with specific template directories:
-  $ nuclei -target example.com -t http/cves/ -t ssl
+	$ nuclei -target example.com -t http/cves/ -t ssl
 
 Run nuclei against a list of hosts:
-  $ nuclei -list hosts.txt
+	$ nuclei -list hosts.txt
 
 Run nuclei with a JSON output:
-  $ nuclei -target example.com -json-export output.json
+	$ nuclei -target example.com -json-export output.json
 
 Run nuclei with sorted Markdown outputs (with environment variables):
-  $ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
+Additional documentation is available at: https://docs.projectdiscovery.io/getting-started/running
+
 ```
 
-Additional documentation is available at: [https://docs.nuclei.sh/getting-started/running](https://docs.nuclei.sh/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
+Additional documentation is available at: [**`docs.projectdiscovery.io/getting-started/running`**](https://docs.projectdiscovery.io/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 
@@ -359,7 +402,7 @@ nuclei -target https://example.com
 Nuclei can handle bulk scanning by providing a list of targets. You can use a file containing multiple URLs.
 
 ```sh
-nuclei -targets urls.txt
+nuclei -list urls.txt
 ```
 
 ### Network scan
@@ -367,7 +410,7 @@ nuclei -targets urls.txt
 This will scan the entire subnet for network-related issues, such as open ports or misconfigured services.
 
 ```sh
-nuclei -target 192.168.1.0/24 
+nuclei -target 192.168.1.0/24
 ```
 
 ### Scanning with your custom template
@@ -387,14 +430,17 @@ nuclei -target https://example.com -dashboard
 ```
 
 > [!NOTE]
-> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [**`documentation`**](https://docs.projectdiscovery.io/cloud/scanning/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+
+<br>
+<br>
 
 ## Nuclei Templates, Community and Rewards 💎
-[Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) are based on the concepts of YAML based template files that define how the requests will be sent and processed. This allows easy extensibility capabilities to nuclei. The templates are written in YAML which specifies a simple human-readable format to quickly define the execution process.
+[**Nuclei templates**](https://github.com/projectdiscovery/nuclei-templates) are based on the concepts of YAML based template files that define how the requests will be sent and processed. This allows easy extensibility capabilities to nuclei. The templates are written in YAML which specifies a simple human-readable format to quickly define the execution process.
 
-Try it online with our free AI powered Nuclei Templates Editor by [clicking here.](https://cloud.projectdiscovery.io/templates)
+**Try it online with our free AI powered Nuclei Templates Editor by** [**`clicking here`**](https://cloud.projectdiscovery.io/templates).
 
-Nuclei Templates offer a streamlined way to identify and communicate vulnerabilities, combining essential details like severity ratings and detection methods. This open-source, community-developed tool accelerates threat response and is widely recognized in the cybersecurity world. Nuclei templates are actively contributed by thousands of security researchers globally. We run two programs for our contributors: [Pioneers](https://projectdiscovery.io/pioneers) and [💎 bounties](https://github.com/projectdiscovery/nuclei-templates/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22%F0%9F%92%8E%20Bounty%22).
+Nuclei Templates offer a streamlined way to identify and communicate vulnerabilities, combining essential details like severity ratings and detection methods. This open-source, community-developed tool accelerates threat response and is widely recognized in the cybersecurity world. Nuclei templates are actively contributed by thousands of security researchers globally. We run two programs for our contributors: [**`Pioneers`**](https://projectdiscovery.io/pioneers) and [**`💎 bounties`**](https://github.com/projectdiscovery/nuclei-templates/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22%F0%9F%92%8E%20Bounty%22).
 
 
 <p align="left">
@@ -403,7 +449,7 @@ Nuclei Templates offer a streamlined way to identify and communicate vulnerabili
 
 #### Examples
 
-Visit [our documentation](https://docs.projectdiscovery.io/templates/introduction) for use cases and ideas.
+Visit [**our documentation**](https://docs.projectdiscovery.io/templates/introduction) for use cases and ideas.
 
 | Use case                             | Nuclei template                                    |
 | :----------------------------------- | :------------------------------------------------- |
@@ -423,17 +469,23 @@ Visit [our documentation](https://docs.projectdiscovery.io/templates/introductio
 | File inclusion vulnerabilities       | **[Local/Remote File Inclusion](https://cloud.projectdiscovery.io/public/CVE-2023-6977)**                    |
 
 
+<br>
+<br>
+
 ## Our Mission
 
 Traditional vulnerability scanners were built decades ago. They are closed-source, incredibly slow, and vendor-driven. Today's attackers are mass exploiting newly released CVEs across the internet within days, unlike the years it used to take. This shift requires a completely different approach to tackling trending exploits on the internet.
 
 We built Nuclei to solve this challenge. We made the entire scanning engine framework open and customizable—allowing the global security community to collaborate and tackle the trending attack vectors and vulnerabilities on the internet. Nuclei is now used and contributed by Fortune 500 enterprises, government agencies, universities.
 
-You can participate by contributing to our code, [templates library](https://github.com/projectdiscovery/nuclei-templates), or [joining our team.](https://projectdiscovery.io/)
+You can participate by contributing to our code, [**`templates library`**](https://github.com/projectdiscovery/nuclei-templates), or [**`joining our team`**](https://projectdiscovery.io/).
+
+<br>
+<br>
 
 ## Contributors :heart:
 
-Thanks to all the amazing [community contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors) and keeping this project updated. :heart:
+Thanks to all the amazing [**`community contributors for sending PRs`**](https://github.com/projectdiscovery/nuclei/graphs/contributors) and keeping this project updated. :heart:
 
 <p align="left">
 <a href="https://github.com/Ice3man543"><img src="https://avatars.githubusercontent.com/u/22318055?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
@@ -460,6 +512,100 @@ Thanks to all the amazing [community contributors for sending PRs](https://githu
 <a href="https://github.com/geeknik"><img src="https://avatars.githubusercontent.com/u/466878?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/TerminalFi"><img src="https://avatars.githubusercontent.com/u/32599364?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/KaulSe"><img src="https://avatars.githubusercontent.com/u/45340011?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/sullo"><img src="https://avatars.githubusercontent.com/u/1474884?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/wdahlenburg"><img src="https://avatars.githubusercontent.com/u/4451504?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/ghost"><img src="https://avatars.githubusercontent.com/u/10137?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/Nishan8583"><img src="https://avatars.githubusercontent.com/u/20457968?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/jdk2588"><img src="https://avatars.githubusercontent.com/u/985054?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/nothinux"><img src="https://avatars.githubusercontent.com/u/17433202?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/CodFrm"><img src="https://avatars.githubusercontent.com/u/22783163?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/CasperGN"><img src="https://avatars.githubusercontent.com/u/5549643?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/ankh2054"><img src="https://avatars.githubusercontent.com/u/6784287?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/revblock"><img src="https://avatars.githubusercontent.com/u/72813848?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/cn-kali-team"><img src="https://avatars.githubusercontent.com/u/30642514?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/EndPositive"><img src="https://avatars.githubusercontent.com/u/25148195?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/jimen0"><img src="https://avatars.githubusercontent.com/u/6826244?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/xstevens"><img src="https://avatars.githubusercontent.com/u/69216?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/mjkim610"><img src="https://avatars.githubusercontent.com/u/17107206?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/organiccrap"><img src="https://avatars.githubusercontent.com/u/376317?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/lu4nx"><img src="https://avatars.githubusercontent.com/u/3006875?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/souvikhazra1"><img src="https://avatars.githubusercontent.com/u/13842393?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/tovask"><img src="https://avatars.githubusercontent.com/u/22732484?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/Marmelatze"><img src="https://avatars.githubusercontent.com/u/199681?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/doug-threatmate"><img src="https://avatars.githubusercontent.com/u/127235272?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/yabeow"><img src="https://avatars.githubusercontent.com/u/21117771?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/olearycrew"><img src="https://avatars.githubusercontent.com/u/6044920?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/gano3s"><img src="https://avatars.githubusercontent.com/u/2551605?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/alizmhdi"><img src="https://avatars.githubusercontent.com/u/79321261?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/hackerpain"><img src="https://avatars.githubusercontent.com/u/61242234?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/lc"><img src="https://avatars.githubusercontent.com/u/19563282?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/savushkin-yauheni"><img src="https://avatars.githubusercontent.com/u/5173352?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/74616e696d"><img src="https://avatars.githubusercontent.com/u/97121933?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/edoardottt"><img src="https://avatars.githubusercontent.com/u/35783570?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/zt2"><img src="https://avatars.githubusercontent.com/u/7644862?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/moonD4rk"><img src="https://avatars.githubusercontent.com/u/24284231?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/wk8"><img src="https://avatars.githubusercontent.com/u/2536231?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/mikerott"><img src="https://avatars.githubusercontent.com/u/857712?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/toufik-airane"><img src="https://avatars.githubusercontent.com/u/5610269?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/hktalent"><img src="https://avatars.githubusercontent.com/u/18223385?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/jturner"><img src="https://avatars.githubusercontent.com/u/1825202?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/gaby"><img src="https://avatars.githubusercontent.com/u/835733?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/vavkamil"><img src="https://avatars.githubusercontent.com/u/47953210?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/leonjza"><img src="https://avatars.githubusercontent.com/u/1148127?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/mionskowski-form3"><img src="https://avatars.githubusercontent.com/u/91873652?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/chenrui333"><img src="https://avatars.githubusercontent.com/u/1580956?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/iamargus95"><img src="https://avatars.githubusercontent.com/u/77744293?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/shashikarsiddharth"><img src="https://avatars.githubusercontent.com/u/60960197?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/trypa11"><img src="https://avatars.githubusercontent.com/u/67585616?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/Zeokat"><img src="https://avatars.githubusercontent.com/u/1313154?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/alban-stourbe-wmx"><img src="https://avatars.githubusercontent.com/u/159776828?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/anykno"><img src="https://avatars.githubusercontent.com/u/2528207?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/ronaudinho"><img src="https://avatars.githubusercontent.com/u/10264710?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/boy-hack"><img src="https://avatars.githubusercontent.com/u/18695984?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/iuliu8899"><img src="https://avatars.githubusercontent.com/u/31680027?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/debasishbsws"><img src="https://avatars.githubusercontent.com/u/65381620?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/denysvitali-niantic"><img src="https://avatars.githubusercontent.com/u/157139422?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/fail-open"><img src="https://avatars.githubusercontent.com/u/72417455?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/Xc1Ym"><img src="https://avatars.githubusercontent.com/u/29765332?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/XTeam-Wing"><img src="https://avatars.githubusercontent.com/u/25416365?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/Weltolk"><img src="https://avatars.githubusercontent.com/u/40228052?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/tonghuaroot"><img src="https://avatars.githubusercontent.com/u/23011166?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/praetorian-thendrickson"><img src="https://avatars.githubusercontent.com/u/69640071?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/S0obi"><img src="https://avatars.githubusercontent.com/u/4180104?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/skahn007gl"><img src="https://avatars.githubusercontent.com/u/144735608?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/shouichi"><img src="https://avatars.githubusercontent.com/u/99586?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/seb-elttam"><img src="https://avatars.githubusercontent.com/u/111818823?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/AdallomRoy"><img src="https://avatars.githubusercontent.com/u/4046118?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/rotemreiss"><img src="https://avatars.githubusercontent.com/u/9288082?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/oscarintherocks"><img src="https://avatars.githubusercontent.com/u/1785821?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/xxcdd"><img src="https://avatars.githubusercontent.com/u/42600601?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/chen2aaron"><img src="https://avatars.githubusercontent.com/u/9978183?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/voidz0r"><img src="https://avatars.githubusercontent.com/u/1032286?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/vince-isec"><img src="https://avatars.githubusercontent.com/u/149686094?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/true13"><img src="https://avatars.githubusercontent.com/u/18207552?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/skhalsa-sigsci"><img src="https://avatars.githubusercontent.com/u/68570441?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/ShuBo6"><img src="https://avatars.githubusercontent.com/u/41125338?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/seeyarh"><img src="https://avatars.githubusercontent.com/u/16869800?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/securibee"><img src="https://avatars.githubusercontent.com/u/51520913?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/sduc"><img src="https://avatars.githubusercontent.com/u/2879617?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/scottdharvey"><img src="https://avatars.githubusercontent.com/u/25498254?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/rykkard"><img src="https://avatars.githubusercontent.com/u/51889048?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/monitor403"><img src="https://avatars.githubusercontent.com/u/45124775?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/mlec1"><img src="https://avatars.githubusercontent.com/u/42201667?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/meme-lord"><img src="https://avatars.githubusercontent.com/u/17912559?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/LazyMaple"><img src="https://avatars.githubusercontent.com/u/12314941?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/lvyaoting"><img src="https://avatars.githubusercontent.com/u/166296299?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/llussy"><img src="https://avatars.githubusercontent.com/u/18432966?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/linchizhen"><img src="https://avatars.githubusercontent.com/u/170242051?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/kiokuless"><img src="https://avatars.githubusercontent.com/u/110003596?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/Jarnpher553"><img src="https://avatars.githubusercontent.com/u/10233873?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/c-f"><img src="https://avatars.githubusercontent.com/u/35263248?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/hanghuge"><img src="https://avatars.githubusercontent.com/u/166206050?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/testwill"><img src="https://avatars.githubusercontent.com/u/8717479?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/galoget"><img src="https://avatars.githubusercontent.com/u/8353133?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/fudancoder"><img src="https://avatars.githubusercontent.com/u/171416994?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/revolunet"><img src="https://avatars.githubusercontent.com/u/124937?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/jsoref"><img src="https://avatars.githubusercontent.com/u/2119212?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/MachadoOtto"><img src="https://avatars.githubusercontent.com/u/93268441?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/jonathanwalker"><img src="https://avatars.githubusercontent.com/u/14978093?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/nHurD"><img src="https://avatars.githubusercontent.com/u/233374?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
@@ -504,10 +650,15 @@ Thanks to all the amazing [community contributors for sending PRs](https://githu
 <a href="https://github.com/KristinnVikar"><img src="https://avatars.githubusercontent.com/u/93918469?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/kant01ne"><img src="https://avatars.githubusercontent.com/u/5072452?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/KeisukeYamashita"><img src="https://avatars.githubusercontent.com/u/23056537?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/1hehaq"><img src="https://avatars.githubusercontent.com/u/162917546?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 </p>
 
-## License
+<br>
+<br>
+<br>
 
-Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md).
+<div align="center">
+  
+  <sub>**`nuclei`** is distributed under [**MIT License**](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)</sub>
 
-<img src="https://img.shields.io/badge/license-MIT-000000.svg?style=for-the-badge">
+</div>

@@ -12,7 +12,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 func TestMakeRequestFromModal(t *testing.T) {
@@ -46,7 +47,7 @@ func TestMakeRequestFromModal(t *testing.T) {
 		t.Fatalf("url is nil in generator make")
 	}
 	bodyBytes, _ := req.request.BodyBytes()
-	require.Equal(t, "/login.php", req.request.URL.Path, "could not get correct request path")
+	require.Equal(t, "/login.php", req.request.Path, "could not get correct request path")
 	require.Equal(t, "username=test&password=pass", string(bodyBytes), "could not get correct request body")
 }
 
@@ -72,13 +73,13 @@ func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
 	inputData, payloads, _ := generator.nextValue()
 	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com/test.php"), inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
-	require.Equal(t, "https://example.com/test.php?query=example", req.request.URL.String(), "could not get correct request path")
+	require.Equal(t, "https://example.com/test.php?query=example", req.request.String(), "could not get correct request path")
 
 	generator = request.newGenerator(false)
 	inputData, payloads, _ = generator.nextValue()
 	req, err = generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com/test/"), inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
-	require.Equal(t, "https://example.com/test/?query=example", req.request.URL.String(), "could not get correct request path")
+	require.Equal(t, "https://example.com/test/?query=example", req.request.String(), "could not get correct request path")
 }
 
 func TestMakeRequestFromRawWithPayloads(t *testing.T) {
@@ -163,6 +164,39 @@ Accept-Encoding: gzip`},
 	require.Equal(t, "Basic YWRtaW46Z3Vlc3Q=", authorization, "could not get correct authorization headers from raw")
 }
 
+func TestMakeUnsafeRequestFromRawWithHostAnnotation(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http-unsafe-annotations"
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Unsafe: true,
+		Raw: []string{`@Host: honey.scanme.sh
+GET /foo HTTP/1.1
+Host: {{Hostname}}`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile unsafe raw request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "http://scanme.sh"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make unsafe http request")
+	require.NotNil(t, req.rawRequest, "raw request should be present")
+	require.NotContains(t, string(req.rawRequest.UnsafeRawBytes), "@Host:", "unsafe raw request bytes should not contain annotation lines")
+
+	parsedURL, parseErr := urlutil.ParseAbsoluteURL(req.rawRequest.FullURL, true)
+	require.Nil(t, parseErr, "could not parse generated unsafe request URL")
+	require.Equal(t, "honey.scanme.sh", parsedURL.Host, "host should be overridden by @Host annotation in unsafe mode")
+	require.Equal(t, "http", parsedURL.Scheme, "scheme should inherit from input when annotation host has no scheme")
+}
+
 func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 
 	options := testutils.DefaultOptions
@@ -199,7 +233,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	require.Nil(t, err, "could not make http request")
 
 	// check if all the interactsh markers are replaced with unique urls
-	require.NotContains(t, got.request.URL.String(), "{{interactsh-url}}", "could not get correct interactsh url")
+	require.NotContains(t, got.request.String(), "{{interactsh-url}}", "could not get correct interactsh url")
 	// check the length of returned urls
 	require.Equal(t, len(got.interactshURLs), 4, "could not get correct interactsh url")
 	// check if the interactsh urls are unique

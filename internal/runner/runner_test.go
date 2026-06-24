@@ -2,6 +2,7 @@ package runner
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,14 +13,14 @@ import (
 
 func TestCreateReportingOptions(t *testing.T) {
 	var options types.Options
-	options.ReportingConfig = "../../integration_tests/test-issue-tracker-config1.yaml"
+	options.ReportingConfig = filepath.Join("testdata", "test-issue-tracker-config1.yaml")
 	resultOptions, err := createReportingOptions(&options)
 
 	require.Nil(t, err)
 	require.Equal(t, resultOptions.AllowList.Severities, severity.Severities{severity.High, severity.Critical})
 	require.Equal(t, resultOptions.DenyList.Severities, severity.Severities{severity.Low})
 
-	options.ReportingConfig = "../../integration_tests/test-issue-tracker-config2.yaml"
+	options.ReportingConfig = filepath.Join("testdata", "test-issue-tracker-config2.yaml")
 	resultOptions2, err := createReportingOptions(&options)
 	require.Nil(t, err)
 	require.Equal(t, resultOptions2.AllowList.Severities, resultOptions.AllowList.Severities)
@@ -64,8 +65,8 @@ func TestWalkReflectStructAssignsEnvVars(t *testing.T) {
 			B: "$VAR_TWO",
 		},
 	}
-	os.Setenv("VAR_EXAMPLE", "value")
-	os.Setenv("VAR_TWO", "value2")
+	_ = os.Setenv("VAR_EXAMPLE", "value")
+	_ = os.Setenv("VAR_TWO", "value2")
 
 	Walk(testStruct, expandEndVars)
 
@@ -79,9 +80,9 @@ func TestWalkReflectStructHandlesDifferentTypes(t *testing.T) {
 		B: "$VAR_TWO",
 		C: "$VAR_THREE",
 	}
-	os.Setenv("VAR_EXAMPLE", "value")
-	os.Setenv("VAR_TWO", "2")
-	os.Setenv("VAR_THREE", "true")
+	_ = os.Setenv("VAR_EXAMPLE", "value")
+	_ = os.Setenv("VAR_TWO", "2")
+	_ = os.Setenv("VAR_THREE", "true")
 
 	Walk(testStruct, expandEndVars)
 
@@ -96,9 +97,9 @@ func TestWalkReflectStructEmpty(t *testing.T) {
 		B: "",
 		C: "$VAR_THREE",
 	}
-	os.Setenv("VAR_EXAMPLE", "value")
-	os.Setenv("VAR_TWO", "2")
-	os.Setenv("VAR_THREE", "true")
+	_ = os.Setenv("VAR_EXAMPLE", "value")
+	_ = os.Setenv("VAR_TWO", "2")
+	_ = os.Setenv("VAR_THREE", "true")
 
 	Walk(testStruct, expandEndVars)
 
@@ -116,7 +117,7 @@ func TestWalkReflectStructWithNoYamlTag(t *testing.T) {
 		C: "$GITHUB_USER",
 	}
 
-	os.Setenv("GITHUB_USER", "testuser")
+	_ = os.Setenv("GITHUB_USER", "testuser")
 
 	Walk(test, expandEndVars)
 	require.Equal(t, "testuser", test.A)
@@ -132,9 +133,9 @@ func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
 			C: "$VAR_THREE",
 		},
 	}
-	os.Setenv("VAR_EXAMPLE", "value")
-	os.Setenv("VAR_TWO", "2")
-	os.Setenv("VAR_THREE", "true")
+	_ = os.Setenv("VAR_EXAMPLE", "value")
+	_ = os.Setenv("VAR_TWO", "2")
+	_ = os.Setenv("VAR_THREE", "true")
 
 	Walk(testStruct, expandEndVars)
 

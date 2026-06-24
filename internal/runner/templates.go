@@ -7,14 +7,13 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/quick"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // log available templates for verbose (-vv)
@@ -25,7 +24,7 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 		panic("not a template")
 	}
 	if err != nil {
-		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
+		r.Logger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
 		r.verboseTemplate(tpl)
 	}
@@ -33,39 +32,45 @@ func (r *Runner) logAvailableTemplate(tplPath string) {
 
 // log available templates for verbose (-vv)
 func (r *Runner) verboseTemplate(tpl *templates.Template) {
-	gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
+	r.Logger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
 		types.ToString(tpl.Info.Name),
 		tpl.Info.Authors.ToSlice(),
 		tpl.Info.SeverityHolder.Severity))
 }
 
 func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
-	gologger.Print().Msgf(
+	r.Logger.Print().Msgf(
 		"\nListing available %v nuclei templates for %v",
 		config.DefaultConfig.TemplateVersion,
 		config.DefaultConfig.TemplatesDirectory,
 	)
-	for _, tpl := range store.Templates() {
+	// order templates alphabetically by path
+	templates := store.Templates()
+	sort.Slice(templates, func(i, j int) bool {
+		return templates[i].Path < templates[j].Path
+	})
+
+	for _, tpl := range templates {
 		if hasExtraFlags(r.options) {
 			if r.options.TemplateDisplay {
 				colorize := !r.options.NoColor
 				path := tpl.Path
 				tplBody, err := store.ReadTemplateFromURI(path, true)
 				if err != nil {
-					gologger.Error().Msgf("Could not read the template %s: %s", path, err)
+					r.Logger.Error().Msgf("Could not read the template %s: %s", path, err)
 					continue
 				}
 				if colorize {
 					path = aurora.Cyan(tpl.Path).String()
 					tplBody, err = r.highlightTemplate(&tplBody)
 					if err != nil {
-						gologger.Error().Msgf("Could not highlight the template %s: %s", tpl.Path, err)
+						r.Logger.Error().Msgf("Could not highlight the template %s: %s", tpl.Path, err)
 						continue
 					}
 				}
-				gologger.Silent().Msgf("Template: %s\n\n%s", path, tplBody)
+				r.Logger.Print().Msgf("Template: %s\n\n%s", path, tplBody)
 			} else {
-				gologger.Silent().Msgf("%s\n", strings.TrimPrefix(tpl.Path, config.DefaultConfig.TemplatesDirectory+string(filepath.Separator)))
+				r.Logger.Print().Msgf("%s\n", strings.TrimPrefix(tpl.Path, config.DefaultConfig.TemplatesDirectory+string(filepath.Separator)))
 			}
 		} else {
 			r.verboseTemplate(tpl)
@@ -73,18 +78,13 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	}
 }
 
-func (r *Runner) listAvailableStoreTags(store *loader.Store) {
-	gologger.Print().Msgf(
+func (r *Runner) listAvailableTags(tagsMap map[string]int) {
+	r.Logger.Print().Msgf(
 		"\nListing available %v nuclei tags for %v",
 		config.DefaultConfig.TemplateVersion,
 		config.DefaultConfig.TemplatesDirectory,
 	)
-	tagsMap := make(map[string]int)
-	for _, tpl := range store.Templates() {
-		for _, tag := range tpl.Info.Tags.ToSlice() {
-			tagsMap[tag]++
-		}
-	}
+
 	type kv struct {
 		Key   string `json:"tag"`
 		Value int    `json:"count"`
@@ -99,10 +99,10 @@ func (r *Runner) listAvailableStoreTags(store *loader.Store) {
 
 	for _, tag := range tagsList {
 		if r.options.JSONL {
-			marshalled, _ := jsoniter.Marshal(tag)
-			gologger.Silent().Msgf("%s\n", string(marshalled))
+			marshalled, _ := json.Marshal(tag)
+			r.Logger.Print().Msgf("%s", string(marshalled))
 		} else {
-			gologger.Silent().Msgf("%s (%d)\n", tag.Key, tag.Value)
+			r.Logger.Print().Msgf("%s (%d)", tag.Key, tag.Value)
 		}
 	}
 }

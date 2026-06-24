@@ -34,17 +34,14 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	swg, _ := syncutil.New(syncutil.WithSize(templateThreads))
 
 	for _, template := range w.Workflows {
-		swg.Add()
-
-		func(template *workflows.WorkflowTemplate) {
-			defer swg.Done()
-
-			if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
-				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
-			}
-		}(template)
+		newCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
+		if err := e.runWorkflowStep(template, newCtx, results, swg, w); err != nil {
+			gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
+		}
 	}
+
 	swg.Wait()
+
 	return results.Load()
 }
 
@@ -57,6 +54,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 
 	if len(template.Matchers) == 0 {
 		for _, executer := range template.Executers {
+			e.syncWorkflowInputToTemplateCtx(executer, ctx.Input)
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
 
 			// Don't print results with subtemplates, only print results on template.
@@ -96,10 +94,10 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 					firstMatched = true
 				}
 			}
+			if w.Options.HostErrorsCache != nil {
+				w.Options.HostErrorsCache.MarkFailedOrRemove(w.Options.ProtocolType.String(), ctx.Input, err)
+			}
 			if err != nil {
-				if w.Options.HostErrorsCache != nil {
-					w.Options.HostErrorsCache.MarkFailed(w.Options.ProtocolType.String(), ctx.Input, err)
-				}
 				if len(template.Executers) == 1 {
 					mainErr = err
 				} else {
@@ -114,6 +112,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 	}
 	if len(template.Matchers) > 0 {
 		for _, executer := range template.Executers {
+			e.syncWorkflowInputToTemplateCtx(executer, ctx.Input)
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
 
 			ctx.OnResult = func(event *output.InternalWrappedEvent) {
@@ -166,7 +165,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 
 			go func(template *workflows.WorkflowTemplate) {
 				// create a new context with the same input but with unset callbacks
-				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
+				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
 				if err := e.runWorkflowStep(template, subCtx, results, swg, w); err != nil {
 					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
@@ -175,4 +174,17 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 		}
 	}
 	return mainErr
+}
+
+func (e *Engine) syncWorkflowInputToTemplateCtx(executer *workflows.ProtocolExecuterPair, input *contextargs.Context) {
+	if executer == nil || executer.Options == nil || input == nil || !input.HasArgs() {
+		return
+	}
+
+	workflowValues := input.GetAll()
+	if len(workflowValues) == 0 {
+		return
+	}
+
+	executer.Options.GetTemplateCtx(input.MetaInput).Merge(workflowValues)
 }

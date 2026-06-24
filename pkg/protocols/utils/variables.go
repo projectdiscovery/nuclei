@@ -10,7 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	maputil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
-	"github.com/weppos/publicsuffix-go/publicsuffix"
+	"golang.org/x/net/publicsuffix"
 )
 
 // KnownVariables are the variables that are known to input requests
@@ -56,7 +56,7 @@ const (
 	Sd
 )
 
-// GenerateVariables will create default variables with context args
+// GenerateVariablesWithContextArgs will create default variables with context args
 func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash bool) map[string]interface{} {
 	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
@@ -68,12 +68,11 @@ func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash 
 // GenerateDNSVariables from a dns name
 // This function is used by dns and ssl protocol to generate variables
 func GenerateDNSVariables(domain string) map[string]interface{} {
-	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
-	if err != nil {
+	domainName, sld, tld, trd, ok := splitDomain(domain)
+	if !ok {
 		return map[string]interface{}{"FQDN": domain}
 	}
 
-	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
 	dnsVariables := make(map[string]interface{})
 	for k, v := range KnownVariables {
 		switch k {
@@ -82,14 +81,34 @@ func GenerateDNSVariables(domain string) map[string]interface{} {
 		case Rdn:
 			dnsVariables[v] = domainName
 		case Dn:
-			dnsVariables[v] = parsed.SLD
+			dnsVariables[v] = sld
 		case Tld:
-			dnsVariables[v] = parsed.TLD
+			dnsVariables[v] = tld
 		case Sd:
-			dnsVariables[v] = parsed.TRD
+			dnsVariables[v] = trd
 		}
 	}
 	return dnsVariables
+}
+
+func splitDomain(domain string) (domainName, sld, tld, trd string, ok bool) {
+	normalized := strings.TrimSuffix(domain, ".")
+	domainName, err := publicsuffix.EffectiveTLDPlusOne(normalized)
+	if err != nil {
+		return "", "", "", "", false
+	}
+
+	tld, _ = publicsuffix.PublicSuffix(normalized)
+	sld = strings.TrimSuffix(domainName, "."+tld)
+	if sld == "" || sld == domainName {
+		return "", "", "", "", false
+	}
+
+	trd = strings.TrimSuffix(normalized, "."+domainName)
+	if trd == normalized {
+		trd = ""
+	}
+	return domainName, sld, tld, trd, true
 }
 
 // GenerateVariables accepts string or *urlutil.URL object as input
@@ -120,9 +139,10 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 	parsed.Params = urlutil.NewOrderedParams()
 	port := parsed.Port()
 	if port == "" {
-		if parsed.Scheme == "https" {
+		switch parsed.Scheme {
+		case "https":
 			port = "443"
-		} else if parsed.Scheme == "http" {
+		case "http":
 			port = "80"
 		}
 	}

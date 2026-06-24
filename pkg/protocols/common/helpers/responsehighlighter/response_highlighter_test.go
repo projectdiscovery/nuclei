@@ -3,6 +3,7 @@ package responsehighlighter
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/stretchr/testify/require"
@@ -107,4 +108,30 @@ start ValueToMatch-2.1 end
 			"start \x1b[32mV\x1b[0m\x1b[32ma\x1b[0m\x1b[32ml\x1b[0m\x1b[32mu\x1b[0m\x1b[32me\x1b[0m\x1b[32mT\x1b[0m\x1b[32mo\x1b[0m\x1b[32mM\x1b[0m\x1b[32ma\x1b[0m\x1b[32mt\x1b[0m\x1b[32mc\x1b[0m\x1b[32mh\x1b[0m\x1b[32m-\x1b[0m\x1b[32m2\x1b[0m\x1b[32m.\x1b[0m\x1b[32m1\x1b[0m end \n"
 	result := Highlight(&operatorResult, input, false, false)
 	require.Equal(t, expected, result)
+}
+
+func TestHexDumpHighlightDoesNotExplode(t *testing.T) {
+	// Two binary matchers of different lengths,
+	// both consisting entirely of non-printable bytes
+	op := &operators.Result{
+		Matches: map[string][]string{
+			"long":  {"\x05\x00\x00\x01"},
+			"short": {"\x05\x00"},
+		},
+	}
+	response := []byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00}
+	dump := hex.Dump(response)
+
+	done := make(chan int, 1)
+	go func() { done <- len(Highlight(op, dump, false, true)) }()
+	select {
+	case n := <-done:
+		// Sanity: output should stay within a few KB for a single-row
+		// hex dump; before the fix it grew past 1 GB in <100 ms.
+		if n > 10_000 {
+			t.Fatalf("Highlight output suspiciously large: %d bytes", n)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Highlight hung — exponential ReplaceAll regression")
+	}
 }

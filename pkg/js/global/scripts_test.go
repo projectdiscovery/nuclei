@@ -3,9 +3,9 @@ package global
 import (
 	"testing"
 
-	"github.com/dop251/goja"
-	"github.com/dop251/goja_nodejs/console"
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/projectdiscovery/goja"
+	"github.com/projectdiscovery/goja_nodejs/console"
+	"github.com/projectdiscovery/goja_nodejs/require"
 )
 
 func TestScriptsRuntime(t *testing.T) {

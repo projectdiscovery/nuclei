@@ -1,5 +1,4 @@
 //go:build !stats
-// +build !stats
 
 package events
 
@@ -8,4 +7,7 @@ func AddScanEvent(event ScanEvent) {
 }
 
 func InitWithConfig(config *ScanConfig, statsDirectory string) {
+}
+
+func Close() {
 }

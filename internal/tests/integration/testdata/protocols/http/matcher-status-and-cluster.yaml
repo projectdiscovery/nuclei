@@ -1,0 +1,23 @@
+id: matcher-status-and-cluster
+
+info:
+  name: Test Matcher Status AND Condition Cluster
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "this_will_also_never_match"
+
+      - type: status
+        status:
+          - 200

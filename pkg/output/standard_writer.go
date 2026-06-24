@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
@@ -47,7 +47,7 @@ func WithMatcherStatus(matcherStatus bool) WriterOptions {
 }
 
 // WithAurora sets the aurora instance for the writer
-func WithAurora(aurora aurora.Aurora) WriterOptions {
+func WithAurora(aurora *aurora.Aurora) WriterOptions {
 	return func(s *StandardWriter) error {
 		s.aurora = aurora
 		return nil
@@ -109,7 +109,7 @@ func NewWriter(opts ...WriterOptions) (*StandardWriter, error) {
 		}
 	}
 	if s.aurora == nil {
-		s.aurora = aurora.NewAurora(false)
+		s.aurora = aurora.New(aurora.WithColors(false))
 	}
 	if s.outputFile == nil {
 		s.outputFile = os.Stdout

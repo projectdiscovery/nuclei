@@ -1,14 +1,15 @@
 package nuclei
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/ratelimit"
-
+	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -17,8 +18,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	pkgtypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // TemplateSources contains template sources
@@ -50,7 +54,7 @@ type TemplateFilters struct {
 	ExcludeSeverities    string   // filter by excluding severities (accepts CSV values of info, low, medium, high, critical)
 	ProtocolTypes        string   // filter by protocol types
 	ExcludeProtocolTypes string   // filter by excluding protocol types
-	Authors              []string // fiter by author
+	Authors              []string // filter by author
 	Tags                 []string // filter by tags present in template
 	ExcludeTags          []string // filter by excluding tags present in template
 	IncludeTags          []string // filter by including tags present in template
@@ -100,8 +104,9 @@ type InteractshOpts interactsh.Options
 // WithInteractshOptions sets interactsh options
 func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithInteractshOptions")
+		// WithInteractshOptions can be used when creating ThreadSafeNucleiEngine but not after it's initialized
+		if e.mode == threadSafe && e.interactshOpts != nil {
+			return errkit.Wrap(ErrOptionsNotSupported, "WithInteractshOptions")
 		}
 		optsPtr := &opts
 		e.interactshOpts = (*interactsh.Options)(optsPtr)
@@ -126,39 +131,44 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 		// minimum required is 1
 		if opts.TemplateConcurrency <= 0 {
 			return errors.New("template threads must be at least 1")
-		} else {
-			e.opts.TemplateThreads = opts.TemplateConcurrency
 		}
 		if opts.HostConcurrency <= 0 {
 			return errors.New("host concurrency must be at least 1")
-		} else {
-			e.opts.BulkSize = opts.HostConcurrency
 		}
 		if opts.HeadlessHostConcurrency <= 0 {
 			return errors.New("headless host concurrency must be at least 1")
-		} else {
-			e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
 		}
 		if opts.HeadlessTemplateConcurrency <= 0 {
 			return errors.New("headless template threads must be at least 1")
-		} else {
-			e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
 		}
 		if opts.JavascriptTemplateConcurrency <= 0 {
 			return errors.New("js must be at least 1")
-		} else {
-			e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
 		}
 		if opts.TemplatePayloadConcurrency <= 0 {
 			return errors.New("payload concurrency must be at least 1")
-		} else {
-			e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
 		}
 		if opts.ProbeConcurrency <= 0 {
 			return errors.New("probe concurrency must be at least 1")
-		} else {
-			e.opts.ProbeConcurrency = opts.ProbeConcurrency
 		}
+		e.opts.TemplateThreads = opts.TemplateConcurrency
+		e.opts.BulkSize = opts.HostConcurrency
+		e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
+		e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
+		e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
+		e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
+		e.opts.ProbeConcurrency = opts.ProbeConcurrency
+		return nil
+	}
+}
+
+// WithResponseReadSize sets the maximum size of response to read in bytes.
+// A value of 0 means no limit. Recommended values: 1MB (1048576) to 10MB (10485760).
+func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if responseReadSize < 0 {
+			return errors.New("response read size must be non-negative")
+		}
+		e.opts.ResponseReadSize = responseReadSize
 		return nil
 	}
 }
@@ -174,7 +184,7 @@ func WithGlobalRateLimitCtx(ctx context.Context, maxTokens int, duration time.Du
 	return func(e *NucleiEngine) error {
 		e.opts.RateLimit = maxTokens
 		e.opts.RateLimitDuration = duration
-		e.rateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		e.rateLimiter = utils.GetRateLimiter(ctx, e.opts.RateLimit, e.opts.RateLimitDuration)
 		return nil
 	}
 }
@@ -188,8 +198,10 @@ type HeadlessOpts struct {
 }
 
 // EnableHeadless allows execution of headless templates
-// *Use With Caution*: Enabling headless mode may open up attack surface due to browser usage
-// and can be prone to exploitation by custom unverified templates if not properly configured
+//
+// Warning: enabling headless mode may open up attack surface due to browser
+// usage and can be prone to exploitation by custom unverified templates if not
+// properly configured.
 func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.Headless = true
@@ -199,14 +211,6 @@ func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 			e.opts.ShowBrowser = hopts.ShowBrowser
 			e.opts.UseInstalledChrome = hopts.UseChrome
 		}
-		if engine.MustDisableSandbox() {
-			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
-		}
-		browser, err := engine.New(e.opts)
-		if err != nil {
-			return err
-		}
-		e.browserInstance = browser
 		return nil
 	}
 }
@@ -223,7 +227,7 @@ type StatsOptions struct {
 func EnableStatsWithOpts(opts StatsOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("EnableStatsWithOpts")
+			return errkit.Wrap(ErrOptionsNotSupported, "EnableStatsWithOpts")
 		}
 		if opts.Interval == 0 {
 			opts.Interval = 5 //sec
@@ -251,7 +255,7 @@ type VerbosityOptions struct {
 func WithVerbosity(opts VerbosityOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithVerbosity")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithVerbosity")
 		}
 		e.opts.Verbose = opts.Verbose
 		e.opts.Silent = opts.Silent
@@ -283,13 +287,27 @@ type NetworkConfig struct {
 // WithNetworkConfig allows setting network config options
 func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithNetworkConfig")
+		// WithNetworkConfig can be used when creating ThreadSafeNucleiEngine but not after it's initialized
+		if e.mode == threadSafe && e.hostErrCache != nil {
+			return errkit.Wrap(ErrOptionsNotSupported, "WithNetworkConfig")
+		}
+		e.opts.NoHostErrors = opts.DisableMaxHostErr
+		e.opts.MaxHostError = opts.MaxHostError
+		if e.opts.ShouldUseHostError() {
+			maxHostError := opts.MaxHostError
+			if e.opts.TemplateThreads > maxHostError {
+				e.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
+				e.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", e.opts.TemplateThreads)
+				maxHostError = e.opts.TemplateThreads
+				e.opts.MaxHostError = maxHostError
+			}
+			cache := hosterrorscache.New(maxHostError, hosterrorscache.DefaultMaxHostsCount, e.opts.TrackError)
+			cache.SetVerbose(e.opts.Verbose)
+			e.hostErrCache = cache
 		}
 		e.opts.Timeout = opts.Timeout
 		e.opts.Retries = opts.Retries
 		e.opts.LeaveDefaultPorts = opts.LeaveDefaultPorts
-		e.hostErrCache = hosterrorscache.New(opts.MaxHostError, hosterrorscache.DefaultMaxHostsCount, opts.TrackError)
 		e.opts.Interface = opts.Interface
 		e.opts.SourceIP = opts.SourceIP
 		e.opts.SystemResolvers = opts.SystemResolvers
@@ -302,7 +320,7 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 func WithProxy(proxy []string, proxyInternalRequests bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithProxy")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithProxy")
 		}
 		e.opts.Proxy = proxy
 		e.opts.ProxyInternal = proxyInternalRequests
@@ -327,7 +345,7 @@ type OutputWriter output.Writer
 func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("UseOutputWriter")
+			return errkit.Wrap(ErrOptionsNotSupported, "UseOutputWriter")
 		}
 		e.customWriter = writer
 		return nil
@@ -342,7 +360,7 @@ type StatsWriter progress.Progress
 func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("UseStatsWriter")
+			return errkit.Wrap(ErrOptionsNotSupported, "UseStatsWriter")
 		}
 		e.customProgress = writer
 		return nil
@@ -356,7 +374,7 @@ func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(newVersion string)) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithTemplateUpdateCallback")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithTemplateUpdateCallback")
 		}
 		e.disableTemplatesAutoUpgrade = disableTemplatesAutoUpgrade
 		e.onUpdateAvailableCallback = callback
@@ -368,7 +386,7 @@ func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(
 func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithSandboxOptions")
+			return errkit.Wrap(ErrOptionsNotSupported, "WithSandboxOptions")
 		}
 		e.opts.AllowLocalFileAccess = allowLocalFileAccess
 		e.opts.RestrictLocalNetworkAccess = restrictLocalNetworkAccess
@@ -380,6 +398,39 @@ func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bo
 func EnableCodeTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.EnableCodeTemplates = true
+		e.opts.EnableSelfContainedTemplates = true
+		return nil
+	}
+}
+
+// EnableSelfContainedTemplates allows loading/executing self-contained templates
+func EnableSelfContainedTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableSelfContainedTemplates = true
+		return nil
+	}
+}
+
+// EnableGlobalMatchersTemplates allows loading/executing global-matchers templates
+func EnableGlobalMatchersTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableGlobalMatchersTemplates = true
+		return nil
+	}
+}
+
+// DisableTemplateCache disables template caching
+func DisableTemplateCache() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.DoNotCacheTemplates = true
+		return nil
+	}
+}
+
+// EnableFileTemplates allows loading/executing file protocol templates
+func EnableFileTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableFileTemplates = true
 		return nil
 	}
 }
@@ -392,11 +443,38 @@ func WithHeaders(headers []string) NucleiSDKOptions {
 	}
 }
 
+// WithVars allows setting custom variables to use in templates/workflows context
+func WithVars(vars []string) NucleiSDKOptions {
+	// Create a goflags.RuntimeMap
+	runtimeVars := goflags.RuntimeMap{}
+	for _, v := range vars {
+		err := runtimeVars.Set(v)
+		if err != nil {
+			return func(e *NucleiEngine) error {
+				return err
+			}
+		}
+	}
+
+	return func(e *NucleiEngine) error {
+		e.opts.Vars = runtimeVars
+		return nil
+	}
+}
+
 // EnablePassiveMode allows enabling passive HTTP response processing mode
 func EnablePassiveMode() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.OfflineHTTP = true
 		e.opts.DisableHTTPProbe = true
+		return nil
+	}
+}
+
+// EnableMatcherStatus allows enabling matcher status
+func EnableMatcherStatus() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.MatcherStatus = true
 		return nil
 	}
 }
@@ -446,6 +524,218 @@ func WithCatalog(cat catalog.Catalog) NucleiSDKOptions {
 func DisableUpdateCheck() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		DefaultConfig.DisableUpdateCheck()
+		return nil
+	}
+}
+
+// WithResumeFile allows setting a resume file
+func WithResumeFile(file string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.Resume = file
+		return nil
+	}
+}
+
+// WithLogger allows setting a shared gologger instance
+func WithLogger(logger *gologger.Logger) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.Logger = logger
+		if e.opts != nil {
+			e.opts.Logger = logger
+		}
+		if e.executerOpts != nil {
+			e.executerOpts.Logger = logger
+		}
+		return nil
+	}
+}
+
+// WithOptions sets all options at once
+func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts = opts
+		return nil
+	}
+}
+
+// WithPDCPUpload uploads findings to the PDCP dashboard, matching the CLI's
+// `-dashboard -scan-id -team-id`. Credentials come from PDCP_API_KEY or
+// ~/.config/nuclei/.pdcp/credentials.yaml; missing creds log a warning and
+// scans continue. A non-empty scanID implicitly enables upload.
+func WithPDCPUpload(scanID, teamID string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableCloudUpload = true
+		if scanID != "" {
+			e.opts.ScanID = scanID
+		}
+		if teamID != "" {
+			e.opts.TeamID = teamID
+		}
+		return nil
+	}
+}
+
+// RuntimeConfig is the set of nuclei config options exposed via the SDK.
+type RuntimeConfig struct {
+	Authors           []string `yaml:"author,omitempty"`
+	Tags              []string `yaml:"tags,omitempty"`
+	ExcludeTags       []string `yaml:"exclude-tags,omitempty"`
+	IncludeTags       []string `yaml:"include-tags,omitempty"`
+	IncludeIds        []string `yaml:"template-id,omitempty"`
+	ExcludeIds        []string `yaml:"exclude-id,omitempty"`
+	IncludeTemplates  []string `yaml:"include-templates,omitempty"`
+	ExcludedTemplates []string `yaml:"exclude-templates,omitempty"`
+	ExcludeMatchers   []string `yaml:"exclude-matchers,omitempty"`
+	Severities        []string `yaml:"severity,omitempty"`
+	ExcludeSeverities []string `yaml:"exclude-severity,omitempty"`
+	Protocols         []string `yaml:"type,omitempty"`
+	ExcludeProtocols  []string `yaml:"exclude-type,omitempty"`
+	IncludeConditions []string `yaml:"template-condition,omitempty"`
+	Headers           []string `yaml:"header,omitempty"`
+	Variables         []string `yaml:"var,omitempty"`
+	InteractshServer  string   `yaml:"interactsh-server,omitempty"`
+	InteractshToken   string   `yaml:"interactsh-token,omitempty"`
+	Socks5Proxy       []string `yaml:"socks5-proxy,omitempty"`
+	// Scalar knobs use *int so omitted YAML keys preserve the engine's
+	// existing value instead of forcing it to zero.
+	RateLimit     *int `yaml:"rate-limit,omitempty"`
+	BulkSize      *int `yaml:"bulk-size,omitempty"`
+	Concurrency   *int `yaml:"concurrency,omitempty"` // maps to opts.TemplateThreads
+	Timeout       *int `yaml:"timeout,omitempty"`
+	Retries       *int `yaml:"retries,omitempty"`
+	RateLimitHost *int `yaml:"rate-limit-host,omitempty"`
+}
+
+// MergeOptions appends/sets the configuration onto opts.
+//
+// RateLimitHost is stored on the struct for downstream consumers but is NOT
+// applied to *types.Options — there is no equivalent field on nuclei's
+// runtime options today. Callers needing per-host rate limiting must wire it
+// outside the engine.
+func (s *RuntimeConfig) MergeOptions(opts *pkgtypes.Options) {
+	opts.Authors = append(opts.Authors, s.Authors...)
+	opts.Tags = append(opts.Tags, s.Tags...)
+	opts.ExcludeTags = append(opts.ExcludeTags, s.ExcludeTags...)
+	opts.IncludeTags = append(opts.IncludeTags, s.IncludeTags...)
+	opts.IncludeIds = append(opts.IncludeIds, s.IncludeIds...)
+	opts.ExcludeIds = append(opts.ExcludeIds, s.ExcludeIds...)
+	opts.IncludeTemplates = append(opts.IncludeTemplates, s.IncludeTemplates...)
+	opts.ExcludedTemplates = append(opts.ExcludedTemplates, s.ExcludedTemplates...)
+	opts.ExcludeMatchers = append(opts.ExcludeMatchers, s.ExcludeMatchers...)
+	opts.IncludeConditions = append(opts.IncludeConditions, s.IncludeConditions...)
+	if s.InteractshServer != "" {
+		opts.InteractshURL = s.InteractshServer
+	}
+	if s.InteractshToken != "" {
+		opts.InteractshToken = s.InteractshToken
+	}
+	for _, v := range s.Severities {
+		_ = opts.Severities.Set(v)
+	}
+	for _, v := range s.ExcludeSeverities {
+		_ = opts.ExcludeSeverities.Set(v)
+	}
+	for _, v := range s.Protocols {
+		_ = opts.Protocols.Set(v)
+	}
+	for _, v := range s.ExcludeProtocols {
+		_ = opts.ExcludeProtocols.Set(v)
+	}
+	for _, v := range s.Headers {
+		opts.CustomHeaders = append(opts.CustomHeaders, v)
+	}
+	for _, v := range s.Variables {
+		_ = opts.Vars.Set(v)
+	}
+	opts.Proxy = append(opts.Proxy, s.Socks5Proxy...)
+
+	if s.RateLimit != nil {
+		opts.RateLimit = *s.RateLimit
+	}
+	if s.BulkSize != nil {
+		opts.BulkSize = *s.BulkSize
+	}
+	if s.Concurrency != nil {
+		opts.TemplateThreads = *s.Concurrency
+	}
+	if s.Timeout != nil {
+		opts.Timeout = *s.Timeout
+	}
+	if s.Retries != nil {
+		opts.Retries = *s.Retries
+	}
+}
+
+// WithConfigFile decodes a RuntimeConfig YAML at path and merges it into
+// the engine options. Matches the schema Aurora server emits.
+func WithConfigFile(path string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return errkit.Wrap(err, "could not open nuclei config file")
+		}
+		return applyRuntimeConfigFromBytes(e, data)
+	}
+}
+
+// WithConfigBytes is WithConfigFile from memory.
+func WithConfigBytes(data []byte) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		return applyRuntimeConfigFromBytes(e, data)
+	}
+}
+
+func applyRuntimeConfigFromBytes(e *NucleiEngine, data []byte) error {
+	cfg := &RuntimeConfig{}
+	if err := yaml.NewDecoder(bytes.NewReader(data)).Decode(cfg); err != nil {
+		return errkit.Wrap(err, "could not parse nuclei config")
+	}
+	cfg.MergeOptions(e.opts)
+	return nil
+}
+
+// WithReportingConfigFile loads a nuclei -report-config style YAML file
+// (Jira/Linear/GitHub/etc. tracker configuration) into the engine's
+// reporting options. Equivalent to -report-config <path> on the CLI.
+func WithReportingConfigFile(path string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return errkit.Wrap(err, "could not open reporting config file")
+		}
+		ropts, err := runner.LoadReportingOptionsFromBytes(data)
+		if err != nil {
+			return errkit.Wrap(err, "could not parse reporting config file")
+		}
+		e.reportingOpts = ropts
+		return nil
+	}
+}
+
+// WithReportingConfigBytes is WithReportingConfigFile from memory. Passing
+// nil/empty produces an empty reporting.Options (no-op).
+func WithReportingConfigBytes(data []byte) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		ropts, err := runner.LoadReportingOptionsFromBytes(data)
+		if err != nil {
+			return errkit.Wrap(err, "could not parse reporting config bytes")
+		}
+		e.reportingOpts = ropts
+		return nil
+	}
+}
+
+// WithTemporaryDirectory allows setting a parent directory for SDK-managed temporary files.
+// A temporary directory will be created inside the provided directory and cleaned up on engine close.
+// If not set, a temporary directory will be automatically created in the system temp location.
+// The parent directory is assumed to exist.
+func WithTemporaryDirectory(parentDir string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		tmpDir, err := os.MkdirTemp(parentDir, "nuclei-tmp-*")
+		if err != nil {
+			return err
+		}
+		e.tmpDir = tmpDir
 		return nil
 	}
 }

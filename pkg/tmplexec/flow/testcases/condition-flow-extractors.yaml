@@ -1,29 +1,28 @@
-id: ghost-blog-detection
+id: condition-flow-extractors
 info:
-  name: Ghost blog detection
+  name: Condition Flow Extractors
   author: pdteam
   severity: info
-
 
 flow: dns() && http()
 
 dns:
   - name: "{{FQDN}}"
-    type: CNAME
+    type: A
 
     extractors:
       - type: dsl
-        name: cname
+        name: a
         internal: true
         dsl:
-            - cname
-        
+          - a
+
 http:
   - method: GET
     path:
-      - "{{BaseURL}}?ref={{cname}}"
+      - "{{BaseURL}}/?ref={{a}}"
 
     matchers:
       - type: word
         words:
-          - "ghost.io"
+          - "ok"

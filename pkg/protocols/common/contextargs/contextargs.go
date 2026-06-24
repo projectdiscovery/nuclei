@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/portutil"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -107,13 +108,20 @@ func (ctx *Context) Add(key string, v interface{}) {
 	}
 }
 
-// UseNetworkPort updates input with required/default network port for that template
-// but is ignored if input/target contains non-http ports like 80,8080,8081 etc
+// UseNetworkPort updates input with required/default network port for that template.
+// The template port is used when:
+//   - the input has no port at all, OR
+//   - the input port is a reserved HTTP/DNS port AND the port was not explicitly
+//     specified by the user (i.e. the input contains a URL scheme, meaning the
+//     port was implied by the scheme, not typed by the operator).
+//
+// When the operator explicitly writes "target:80" (no scheme), that port is
+// intentional (e.g. an SSH service running on port 80) and must not be replaced.
 func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 	ignorePorts := reservedPorts
 	if excludePorts != "" {
-		// TODO: add support for service names like http,https,ssh etc once https://github.com/projectdiscovery/netdb is ready
-		ignorePorts = sliceutil.Dedupe(strings.Split(excludePorts, ","))
+		ignorePorts = resolvePortList(strings.Split(excludePorts, ","))
+		ignorePorts = sliceutil.Dedupe(ignorePorts)
 	}
 	if port == "" {
 		// if template does not contain port, do nothing
@@ -124,8 +132,19 @@ func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 		return err
 	}
 	inputPort := target.Port()
-	if inputPort == "" || stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
-		// replace port with networkPort
+	if inputPort == "" {
+		// No port in input at all — use the template port.
+		target.UpdatePort(port)
+		ctx.MetaInput.Input = target.Host
+		return nil
+	}
+	// The input has an explicit port. Only override a reserved port when the
+	// input included a URL scheme (http:// / https://), which means the port was
+	// implied by the scheme rather than deliberately typed by the operator.
+	// A bare "host:port" form (no scheme) means the operator chose that port
+	// on purpose and we must not overwrite it.
+	hasScheme := strings.Contains(ctx.MetaInput.Input, "://")
+	if hasScheme && stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
 		target.UpdatePort(port)
 		ctx.MetaInput.Input = target.Host
 	}
@@ -182,6 +201,21 @@ func (ctx *Context) Clone() *Context {
 		CookieJar: ctx.CookieJar,
 	}
 	return newCtx
+}
+
+// resolvePortList converts a list of port strings (numeric or service names) to numeric port strings.
+func resolvePortList(ports []string) []string {
+	resolved := make([]string, 0, len(ports))
+	for _, p := range ports {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if r, err := portutil.ResolvePort(p); err == nil {
+			resolved = append(resolved, r)
+		}
+	}
+	return resolved
 }
 
 // GetCopyIfHostOutdated returns a new contextargs if the host is outdated

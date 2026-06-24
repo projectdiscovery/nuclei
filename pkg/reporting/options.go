@@ -1,11 +1,13 @@
 package reporting
 
 import (
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
@@ -23,6 +25,8 @@ type Options struct {
 	AllowList *filters.Filter `yaml:"allow-list"`
 	// DenyList contains a list of denied events for reporting module
 	DenyList *filters.Filter `yaml:"deny-list"`
+	// ValidatorCallback is a callback function that is called to validate an event before it is reported
+	ValidatorCallback func(event *output.ResultEvent) bool `yaml:"-"`
 	// GitHub contains configuration options for GitHub Issue Tracker
 	GitHub *github.Options `yaml:"github"`
 	// GitLab contains configuration options for GitLab Issue Tracker
@@ -45,9 +49,13 @@ type Options struct {
 	JSONExporter *jsonexporter.Options `yaml:"json"`
 	// JSONLExporter contains configuration options for JSONL Exporter Module
 	JSONLExporter *jsonl.Options `yaml:"jsonl"`
+	// PDFExporter contains configuration options for PDF Exporter Module
+	PDFExporter *pdf.Options `yaml:"pdf"`
 	// MongoDBExporter containers the configuration options for the MongoDB Exporter Module
 	MongoDBExporter *mongo.Options `yaml:"mongodb"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 	OmitRaw    bool                  `yaml:"-"`
+
+	ExecutionId string `yaml:"-"`
 }

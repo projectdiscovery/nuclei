@@ -72,7 +72,7 @@ func (p *EntityParser) Parse() error {
 	for _, file := range p.syntax {
 		// Traverse the AST and find all relevant declarations
 		ast.Inspect(file, func(n ast.Node) bool {
-			// look for funtions and methods
+			// look for functions and methods
 			// and generate entities for them
 			fn, ok := n.(*ast.FuncDecl)
 			if ok {
@@ -492,12 +492,16 @@ func (p *EntityParser) extractVarsNConstants() {
 					if len(spec.Values) == 0 {
 						continue
 					}
+					value := "undefined"
+					if basicLit, ok := spec.Values[0].(*ast.BasicLit); ok {
+						value = basicLit.Value
+					}
 					// get comments or description
 					p.vars = append(p.vars, Entity{
 						Name:        spec.Names[0].Name,
 						Type:        "const",
 						Description: strings.TrimSpace(spec.Comment.Text()),
-						Value:       spec.Values[0].(*ast.BasicLit).Value,
+						Value:       value,
 					})
 				}
 			}

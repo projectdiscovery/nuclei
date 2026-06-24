@@ -1,0 +1,221 @@
+name: 🔨 Tests
+
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - '**.go'
+      - '**.mod'
+  pull_request:
+    paths:
+      - '**.go'
+      - '**.mod'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: "Lint"
+    if: ${{ !endsWith(github.actor, '[bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
+      - uses: projectdiscovery/actions/golangci-lint/v2@v1
+      # go vet runs once here (not per-OS in the tests matrix): it is platform
+      # independent and folding it into the lint gate fails fast on a cheap
+      # runner before the heavy test/integration jobs start.
+      - run: make vet
+
+  tests:
+    name: "Tests"
+    needs: ["lint"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
+      - uses: projectdiscovery/actions/free-disk-space@v1
+        with:
+          llvm: 'false'
+          php: 'false'
+          mongodb: 'false'
+          mysql: 'false'
+          misc-packages: 'false'
+          docker-images: 'false'
+          tools-cache: 'false'
+      - run: make build
+      # The data-race detector is OS-independent, so we only pay its ~2-3x cost
+      # on ubuntu; windows/macOS run the same suite without instrumentation.
+      - name: "Unit tests (race)"
+        run: make test
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        env:
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+      - name: "Unit tests"
+        run: make test RACE=
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+        env:
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+      - run: go run -race . -l ${{ github.workspace }}/internal/tests/functional/testdata/targets.txt -id tech-detect,tls-version
+        if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
+        working-directory: cmd/nuclei/
+      # Hermetic HTTP-engine scale regression: stands up many loopback hosts and
+      # asserts finding parity across a diverse template set (per-host pool,
+      # connection-reuse and http->https tracker + cookie-reuse). Race
+      # build runs on ubuntu only (same rationale as the unit tests above);
+      # other OSes run it plain. Large runs stay opt-in locally via
+      # NUCLEI_SCALE_HOSTS.
+      - name: "Scale regression (race)"
+        run: go test -tags=regression -race -timeout 15m ./lib/tests -run TestScaleRegression
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: "Scale regression"
+        run: make regression
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+
+  sdk:
+    name: "Run example SDK"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
+      - name: "Simple"
+        run: go run .
+        working-directory: examples/simple/
+      # - run: go run . # Temporarily disabled very flaky in github actions
+      #   working-directory: examples/advanced/
+
+      # TODO: FIX with ExecutionID (ref: https://github.com/projectdiscovery/nuclei/pull/6296)
+      # - name: "with Speed Control"
+      #   run: go run .
+      #   working-directory: examples/with_speed_control/
+
+  integration:
+    name: "Integration tests"
+    needs: ["tests"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: projectdiscovery/actions/setup/python@v1
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
+      - run: make integration
+        env:
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+        timeout-minutes: 50
+
+  functional:
+    name: "Functional tests"
+    needs: ["tests"]
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: projectdiscovery/actions/setup/python@v1
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
+      - uses: projectdiscovery/nuclei-action@v3
+        with:
+          version: latest
+          install-only: true
+      - run: make functional
+
+  validate:
+    name: "Template validate"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: "${{ github.token }}"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
+      - run: make template-validate
+
+  codeql:
+    name: "CodeQL analysis"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: 'go'
+      - uses: github/codeql-action/autobuild@v4
+      - uses: github/codeql-action/analyze@v4
+        with:
+          output: sarif-results
+          upload: never
+          category: "/language:go"
+      # internal/fuzzplayground is a deliberately vulnerable mock server used to
+      # exercise nuclei's fuzzing templates (CMDI/SQLi/SSRF/etc. are by design),
+      # so its CodeQL alerts are expected false positives. paths-ignore has no
+      # effect for compiled languages, so drop those results from the SARIF
+      # before upload instead.
+      - name: "Filter fuzzplayground alerts from SARIF"
+        run: |
+          for sarif in sarif-results/*.sarif; do
+            [ -e "$sarif" ] || continue
+            jq '
+              .runs[].results |= map(
+                select(
+                  [ .locations[]?.physicalLocation.artifactLocation.uri // "" ]
+                  | any(startswith("internal/fuzzplayground/")) | not
+                )
+              )
+            ' "$sarif" > "$sarif.filtered" && mv "$sarif.filtered" "$sarif"
+          done
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: sarif-results
+          category: "/language:go"
+
+  release:
+    name: "Release test"
+    needs: ["tests"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: projectdiscovery/actions/setup/go@v1
+        with:
+          go-version: "stable"
+      - uses: projectdiscovery/actions/goreleaser@v1
+
+  flamegraph:
+    name: "Flamegraph"
+    needs: ["tests"]
+    uses: ./.github/workflows/flamegraph.yaml
+
+  # perf-regression:
+  #   name: "Performance regression"
+  #   needs: ["tests"]
+  #   uses: ./.github/workflows/perf-regression.yaml

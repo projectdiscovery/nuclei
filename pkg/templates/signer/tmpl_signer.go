@@ -16,7 +16,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 var (
@@ -30,11 +30,12 @@ func ExtractSignatureAndContent(data []byte) (signature, content []byte) {
 	dataStr := string(data)
 	if idx := strings.LastIndex(dataStr, SignaturePattern); idx != -1 {
 		signature = []byte(strings.TrimSpace(dataStr[idx:]))
-		content = []byte(strings.TrimSpace(dataStr[:idx]))
+		content = bytes.TrimSpace(data[:idx])
 	} else {
 		content = data
 	}
-	return
+	content = bytes.TrimSpace(content)
+	return signature, content
 }
 
 // SignableTemplate is a template that can be signed
@@ -81,13 +82,13 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 			arr := strings.SplitN(string(existingSignature), ":", 3)
 			if len(arr) == 2 {
 				// signature has no fragment
-				return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
+				return "", errkit.New("re-signing code templates are not allowed for security reasons.")
 			}
 			if len(arr) == 3 {
 				// signature has fragment verify if it is equal to current fragment
 				fragment := t.GetUserFragment()
 				if fragment != arr[2] {
-					return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
+					return "", errkit.New("re-signing code templates are not allowed for security reasons.")
 				}
 			}
 		}
@@ -144,6 +145,10 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	if err != nil {
 		return false, err
 	}
+
+	// normalize content by removing \r\n everywhere since this only done for verification
+	// it does not affect the actual template
+	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 
 	buff := bytes.NewBuffer(content)
 	// if file has any imports process them

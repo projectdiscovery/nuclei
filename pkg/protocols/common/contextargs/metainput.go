@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/segmentio/ksuid"
 )
@@ -35,7 +35,7 @@ func NewMetaInput() *MetaInput {
 
 func (metaInput *MetaInput) marshalToBuffer() (bytes.Buffer, error) {
 	var b bytes.Buffer
-	err := jsoniter.NewEncoder(&b).Encode(metaInput)
+	err := json.NewEncoder(&b).Encode(metaInput)
 	return b, err
 }
 
@@ -138,10 +138,13 @@ func (metaInput *MetaInput) MustMarshalBytes() []byte {
 }
 
 func (metaInput *MetaInput) Unmarshal(data string) error {
-	return jsoniter.NewDecoder(strings.NewReader(data)).Decode(metaInput)
+	return json.NewDecoder(strings.NewReader(data)).Decode(metaInput)
 }
 
 func (metaInput *MetaInput) Clone() *MetaInput {
+	metaInput.mu.Lock()
+	defer metaInput.mu.Unlock()
+
 	input := NewMetaInput()
 	input.Input = metaInput.Input
 	input.CustomIP = metaInput.CustomIP

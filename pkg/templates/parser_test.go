@@ -3,6 +3,8 @@ package templates
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -41,7 +43,7 @@ func TestLoadTemplate(t *testing.T) {
 			name:        "emptyTemplate",
 			template:    &Template{},
 			isValid:     false,
-			expectedErr: errors.New("mandatory 'name' field is missing\nmandatory 'author' field is missing\nmandatory 'id' field is missing"),
+			expectedErr: errors.New("cause=\"Could not load template emptyTemplate: cause=\\\"mandatory 'name' field is missing\\\"\\ncause=\\\"mandatory 'author' field is missing\\\"\\ncause=\\\"mandatory 'id' field is missing\\\"\""),
 		},
 		{
 			name: "emptyNameWithInvalidID",
@@ -52,7 +54,7 @@ func TestLoadTemplate(t *testing.T) {
 					SeverityHolder: severity.Holder{Severity: severity.Medium},
 				},
 			},
-			expectedErr: errors.New("mandatory 'name' field is missing\ninvalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
+			expectedErr: errors.New("cause=\"Could not load template emptyNameWithInvalidID: cause=\\\"mandatory 'name' field is missing\\\"\\ncause=\\\"invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)\\\"\""),
 		},
 		{
 			name: "emptySeverity",
@@ -111,6 +113,240 @@ func TestLoadTemplate(t *testing.T) {
 			require.Equal(t, tc.isValid, success)
 		})
 	}
+
+	// Regression test for projectdiscovery/nuclei#7448.
+	//
+	// Templates loaded from JSON used to silently accept unknown fields because
+	// [Template.UnmarshalJSON] delegated to a non-strict json.Unmarshal call.
+	// That meant `-validate` would pass templates that contained typoed fields
+	// or HTTP-only fields on a network.Request block, which then failed at
+	// runtime with the unknown-field error. Strict mode is the default and
+	// must be opt-out via the parser's [Parser.NoStrictSyntax] field (set
+	// from the runner's `-no-strict-syntax` flag).
+	t.Run("strictJSONRejectsUnknownFields", func(t *testing.T) {
+		const tmpl = `{
+  "id": "JSON-UNKNOWN-FIELD",
+  "info": {
+    "name": "strict json regression",
+    "author": "anonymous",
+    "severity": "info",
+    "tags": "test"
+  },
+  "tcp": [{
+    "host": ["{{Hostname}}"],
+    "port": "80",
+    "name": "first_read",
+    "req-condition": true,
+    "bogus_field_42": "anything",
+    "inputs": [{"data": "X"}],
+    "matchers": [{"type": "word", "words": ["HTTP"]}]
+  }]
+}`
+		dir := t.TempDir()
+		strictPath := filepath.Join(dir, "tmpl-strict.json")
+		require.NoError(t, os.WriteFile(strictPath, []byte(tmpl), 0o600))
+
+		// Strict mode (default): unknown fields must be rejected.
+		strictParser := NewParser()
+		_, err := strictParser.ParseTemplate(strictPath, disk.NewCatalog(""))
+		require.Error(t, err, "expected strict JSON decode to reject unknown fields")
+		require.Contains(t, err.Error(), "unknown field", "expected unknown-field error, got: %v", err)
+
+		// Lax mode: when the parser opts out via NoStrictSyntax (set from the
+		// `-no-strict-syntax` flag) the same template must still parse.
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		laxPath := filepath.Join(dir, "tmpl-lax.json")
+		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
+		_, err = laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
+		require.NoError(t, err, "NoStrictSyntax should allow unknown fields")
+	})
+
+	// json.Decoder by design only consumes one top-level value. Without an
+	// explicit EOF check, concatenated JSON documents would silently load
+	// only the first — e.g. `{"id":"safe"...}{"id":"hijack"...}` would scan
+	// under the safe id while the second document is ignored.
+	t.Run("strictJSONRejectsTrailingData", func(t *testing.T) {
+		const tmpl = `{
+  "id": "JSON-TRAILING-DATA",
+  "info": {
+    "name": "trailing data regression",
+    "author": "anonymous",
+    "severity": "info"
+  },
+  "http": [{
+    "method": "GET",
+    "path": ["{{BaseURL}}"],
+    "matchers": [{"type": "word", "words": ["HTTP"]}]
+  }]
+}
+{"id":"HIJACK","info":{"name":"x","author":"y","severity":"high"}}
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.json")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		_, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.Error(t, err, "expected strict JSON to reject trailing data")
+		require.Contains(t, err.Error(), "trailing data", "expected trailing-data error, got: %v", err)
+	})
+
+	// Strictness is a per-parser setting (not a process global) so two
+	// parsers in the same process with different `-no-strict-syntax` values
+	// must not interfere with each other. Cf. concurrent-engines support
+	// introduced in #6322.
+	t.Run("strictJSONIsPerParser", func(t *testing.T) {
+		const tmpl = `{
+  "id": "JSON-PER-PARSER",
+  "info": {
+    "name": "per-parser strictness",
+    "author": "anonymous",
+    "severity": "info"
+  },
+  "http": [{
+    "method": "GET",
+    "path": ["{{BaseURL}}"],
+    "matchers": [{"type": "word", "words": ["HTTP"]}],
+    "bogus_field": "ignore me"
+  }]
+}`
+		dir := t.TempDir()
+		strictPath := filepath.Join(dir, "per-parser-strict.json")
+		laxPath := filepath.Join(dir, "per-parser-lax.json")
+		require.NoError(t, os.WriteFile(strictPath, []byte(tmpl), 0o600))
+		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
+
+		strictParser := NewParser()
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+
+		_, strictErr := strictParser.ParseTemplate(strictPath, disk.NewCatalog(""))
+		_, laxErr := laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
+
+		require.Error(t, strictErr, "strict parser must reject unknown field")
+		require.Contains(t, strictErr.Error(), "unknown field")
+		require.NoError(t, laxErr, "lax parser must accept the same template")
+	})
+
+	t.Run("strictYAMLRejectsUnknownFields", func(t *testing.T) {
+		const tmpl = `id: yaml-unknown-field
+info:
+  name: strict yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    bogus_field: ignore me
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		strictPath := filepath.Join(dir, "tmpl-strict.yaml")
+		laxPath := filepath.Join(dir, "tmpl-lax.yaml")
+		require.NoError(t, os.WriteFile(strictPath, []byte(tmpl), 0o600))
+		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
+
+		_, strictErr := NewParser().ParseTemplate(strictPath, disk.NewCatalog(""))
+
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		_, laxErr := laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
+
+		require.Error(t, strictErr, "strict YAML decode must reject unknown fields")
+		require.Contains(t, strictErr.Error(), "bogus_field")
+		require.NoError(t, laxErr, "NoStrictSyntax should allow unknown YAML fields")
+	})
+
+	t.Run("strictYAMLRejectsDuplicateFields", func(t *testing.T) {
+		const tmpl = `id: yaml-duplicate-field
+id: yaml-duplicate-field-overwrite
+info:
+  name: duplicate yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		_, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.Error(t, err, "strict YAML decode must reject duplicate fields")
+		require.Contains(t, err.Error(), "already")
+	})
+
+	t.Run("laxYAMLAllowsDuplicateFields", func(t *testing.T) {
+		const tmpl = `id: yaml-duplicate-field
+id: yaml-duplicate-field-overwrite
+info:
+  name: duplicate yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		parsed, err := laxParser.ParseTemplate(path, disk.NewCatalog(""))
+		require.NoError(t, err, "NoStrictSyntax should preserve yaml.v2 duplicate-field behavior")
+
+		template, ok := parsed.(*Template)
+		require.True(t, ok)
+		require.Equal(t, "yaml-duplicate-field-overwrite", template.ID)
+	})
+
+	t.Run("YAMLPreservesMultiProtocolOrder", func(t *testing.T) {
+		const tmpl = `id: yaml-protocol-order
+info:
+  name: protocol order regression
+  author: anonymous
+  severity: info
+dns:
+  - name: "{{FQDN}}"
+    type: cname
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		parsed, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.NoError(t, err)
+
+		template, ok := parsed.(*Template)
+		require.True(t, ok)
+		require.Len(t, template.RequestsQueue, 2)
+		require.Equal(t, "dns", template.RequestsQueue[0].Type().String())
+		require.Equal(t, "http", template.RequestsQueue[1].Type().String())
+	})
 
 	t.Run("invalidTemplateID", func(t *testing.T) {
 		tt := []struct {

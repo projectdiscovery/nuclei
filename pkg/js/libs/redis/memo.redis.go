@@ -2,17 +2,19 @@
 package redis
 
 import (
+	"context"
 	"errors"
+
 	"fmt"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedgetServerInfo(host string, port int) (string, error) {
-	hash := "getServerInfo" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+func memoizedgetServerInfo(ctx context.Context, executionId string, host string, port int) (string, error) {
+	hash := "getServerInfo" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return getServerInfo(host, port)
+		return getServerInfo(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return "", err
@@ -24,11 +26,11 @@ func memoizedgetServerInfo(host string, port int) (string, error) {
 	return "", errors.New("could not convert cached result")
 }
 
-func memoizedconnect(host string, port int, password string) (bool, error) {
-	hash := "connect" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
+func memoizedconnect(ctx context.Context, executionId string, host string, port int, password string) (bool, error) {
+	hash := "connect" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connect(host, port, password)
+		return connect(ctx, executionId, host, port, password)
 	})
 	if err != nil {
 		return false, err
@@ -40,11 +42,11 @@ func memoizedconnect(host string, port int, password string) (bool, error) {
 	return false, errors.New("could not convert cached result")
 }
 
-func memoizedgetServerInfoAuth(host string, port int, password string) (string, error) {
-	hash := "getServerInfoAuth" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
+func memoizedgetServerInfoAuth(ctx context.Context, executionId string, host string, port int, password string) (string, error) {
+	hash := "getServerInfoAuth" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return getServerInfoAuth(host, port, password)
+		return getServerInfoAuth(ctx, executionId, host, port, password)
 	})
 	if err != nil {
 		return "", err
@@ -56,11 +58,11 @@ func memoizedgetServerInfoAuth(host string, port int, password string) (string, 
 	return "", errors.New("could not convert cached result")
 }
 
-func memoizedisAuthenticated(host string, port int) (bool, error) {
-	hash := "isAuthenticated" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+func memoizedisAuthenticated(ctx context.Context, executionId string, host string, port int) (bool, error) {
+	hash := "isAuthenticated" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isAuthenticated(host, port)
+		return isAuthenticated(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return false, err

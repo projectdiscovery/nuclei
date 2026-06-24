@@ -9,6 +9,8 @@ import (
 	"go/types"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	_ "embed"
@@ -16,6 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 )
+
+const jsGenIgnoreFile = ".nuclei-jsgen-ignore"
 
 var (
 	//go:embed templates/js_class.tmpl
@@ -46,6 +50,11 @@ type TemplateData struct {
 	// NativeScripts contains the list of native scripts
 	// that should be included in the package.
 	NativeScripts []string
+}
+
+type parsedPackage struct {
+	name  string
+	files map[string]*ast.File
 }
 
 // PackageTypeExtra contains extra information about a type
@@ -92,9 +101,13 @@ func GetLibraryModules(directory string) ([]string, error) {
 	}
 	var modules []string
 	for _, dir := range dirs {
-		if dir.IsDir() {
-			modules = append(modules, dir.Name())
+		if !dir.IsDir() {
+			continue
 		}
+		if _, err := os.Stat(filepath.Join(directory, dir.Name(), jsGenIgnoreFile)); err == nil {
+			continue
+		}
+		modules = append(modules, dir.Name())
 	}
 	return modules, nil
 }
@@ -105,9 +118,12 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 	fmt.Println(directory)
 	fset := token.NewFileSet()
 
-	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments)
+	pkgs, err := parsePackageDir(fset, directory)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse directory")
+	}
+	if len(pkgs) == 0 {
+		return nil, errors.New("no packages found")
 	}
 	if len(pkgs) != 1 {
 		return nil, fmt.Errorf("expected 1 package, got %d", len(pkgs))
@@ -117,13 +133,20 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 		Importer: importer.ForCompiler(fset, "source", nil),
 	}
 	var packageName string
+	var pkgMain *parsedPackage
 	var files []*ast.File
-	for k, v := range pkgs {
-		packageName = k
-		for _, f := range v.Files {
-			files = append(files, f)
-		}
+	for name, pkg := range pkgs {
+		packageName = name
+		pkgMain = pkg
 		break
+	}
+	filenames := make([]string, 0, len(pkgMain.files))
+	for filename := range pkgMain.files {
+		filenames = append(filenames, filename)
+	}
+	sort.Strings(filenames)
+	for _, filename := range filenames {
+		files = append(files, pkgMain.files[filename])
 	}
 
 	pkg, err := config.Check(packageName, fset, files, nil)
@@ -131,16 +154,12 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 		return nil, errors.Wrap(err, "could not check package")
 	}
 
-	var pkgMain *ast.Package
-	for _, p := range pkgs {
-		pkgMain = p
-		break
-	}
-
-	log.Printf("[create] [discover] Package: %s\n", pkgMain.Name)
-	data := newTemplateData(packagePrefix, pkgMain.Name)
+	log.Printf("[create] [discover] Package: %s\n", pkgMain.name)
+	data := newTemplateData(packagePrefix, pkgMain.name)
 	data.typesPackage = pkg
-	data.gatherPackageData(pkgMain, data)
+	for _, file := range files {
+		data.gatherPackageData(file, data)
+	}
 
 	for item, v := range data.PackageFuncsExtra {
 		if len(v.Items) == 0 {
@@ -168,6 +187,36 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 	return data, nil
 }
 
+func parsePackageDir(fset *token.FileSet, directory string) (map[string]*parsedPackage, error) {
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, err
+	}
+	pkgs := make(map[string]*parsedPackage)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		filename := filepath.Join(directory, name)
+		file, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
+		if err != nil {
+			return nil, err
+		}
+		pkgName := file.Name.Name
+		pkg := pkgs[pkgName]
+		if pkg == nil {
+			pkg = &parsedPackage{name: pkgName, files: make(map[string]*ast.File)}
+			pkgs[pkgName] = pkg
+		}
+		pkg.files[filename] = file
+	}
+	return pkgs, nil
+}
+
 // InitNativeScripts initializes the native scripts array
 // with all the exported functions from the runtime
 func (d *TemplateData) InitNativeScripts() {
@@ -187,8 +236,8 @@ func (d *TemplateData) InitNativeScripts() {
 }
 
 // gatherPackageData gathers data about the package
-func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
-	ast.Inspect(pkg, func(node ast.Node) bool {
+func (d *TemplateData) gatherPackageData(astNode ast.Node, data *TemplateData) {
+	ast.Inspect(astNode, func(node ast.Node) bool {
 		switch node := node.(type) {
 		case *ast.FuncDecl:
 			extra := d.collectFuncDecl(node)
@@ -236,24 +285,26 @@ func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 			}
 			data.PackageTypesExtra[node.Name.Name] = packageTypes
 		case *ast.GenDecl:
-			identifyGenDecl(pkg, node, data)
+			identifyGenDecl(astNode, node, data)
 		}
 		return true
 	})
 }
 
-func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
+func identifyGenDecl(node ast.Node, decl *ast.GenDecl, data *TemplateData) {
 	for _, spec := range decl.Specs {
 		switch spec := spec.(type) {
 		case *ast.ValueSpec:
 			if !spec.Names[0].IsExported() {
 				continue
 			}
+			data.PackageVars[spec.Names[0].Name] = spec.Names[0].Name
 			if len(spec.Values) == 0 {
 				continue
 			}
-			data.PackageVars[spec.Names[0].Name] = spec.Names[0].Name
-			data.PackageVarsValues[spec.Names[0].Name] = spec.Values[0].(*ast.BasicLit).Value
+			if value, ok := spec.Values[0].(*ast.BasicLit); ok {
+				data.PackageVarsValues[spec.Names[0].Name] = value.Value
+			}
 		case *ast.TypeSpec:
 			if !spec.Name.IsExported() {
 				continue
@@ -273,15 +324,15 @@ func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 				}
 
 				// Traverse the AST.
-				collectStructFuncsFromAST(pkg, spec, data)
+				collectStructFuncsFromAST(node, spec, data)
 				data.PackageTypes[spec.Name.Name] = spec.Name.Name
 			}
 		}
 	}
 }
 
-func collectStructFuncsFromAST(pkg *ast.Package, spec *ast.TypeSpec, data *TemplateData) {
-	ast.Inspect(pkg, func(n ast.Node) bool {
+func collectStructFuncsFromAST(node ast.Node, spec *ast.TypeSpec, data *TemplateData) {
+	ast.Inspect(node, func(n ast.Node) bool {
 		if fn, isFunc := n.(*ast.FuncDecl); isFunc && fn.Name.IsExported() {
 			processFunc(fn, spec, data)
 		}

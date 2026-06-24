@@ -1,12 +1,14 @@
 package output
 
 import (
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 )
 
 type MultiWriter struct {
 	writers []Writer
 }
+
+var _ Writer = &MultiWriter{}
 
 // NewMultiWriter creates a new MultiWriter instance
 func NewMultiWriter(writers ...Writer) *MultiWriter {
@@ -19,13 +21,13 @@ func (mw *MultiWriter) Close() {
 	}
 }
 
-func (mw *MultiWriter) Colorizer() aurora.Aurora {
+func (mw *MultiWriter) Colorizer() *aurora.Aurora {
 	// Return the colorizer of the first writer
 	if len(mw.writers) > 0 {
 		return mw.writers[0].Colorizer()
 	}
 	// Default to a no-op colorizer
-	return aurora.NewAurora(false)
+	return aurora.New(aurora.WithColors(false))
 }
 
 func (mw *MultiWriter) Write(event *ResultEvent) error {
@@ -56,4 +58,20 @@ func (mw *MultiWriter) WriteStoreDebugData(host, templateID, eventType string, d
 	for _, writer := range mw.writers {
 		writer.WriteStoreDebugData(host, templateID, eventType, data)
 	}
+}
+
+func (mw *MultiWriter) RequestStatsLog(statusCode, response string) {
+	for _, writer := range mw.writers {
+		writer.RequestStatsLog(statusCode, response)
+	}
+}
+
+func (mw *MultiWriter) ResultCount() int {
+	count := 0
+	for _, writer := range mw.writers {
+		if count := writer.ResultCount(); count > 0 {
+			return count
+		}
+	}
+	return count
 }

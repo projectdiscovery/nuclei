@@ -7,18 +7,22 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/swagger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/list"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
-	ErrNotImplemented = errorutil.NewWithFmt("provider %s does not implement %s")
+	ErrNotImplemented = errkit.New("provider does not implement method")
 	ErrInactiveInput  = fmt.Errorf("input is inactive")
 )
 
@@ -59,11 +63,11 @@ type InputProvider interface {
 	// Iterate over all inputs in order
 	Iterate(callback func(value *contextargs.MetaInput) bool)
 	// Set adds item to input provider
-	Set(value string)
+	Set(executionId string, value string)
 	// SetWithProbe adds item to input provider with http probing
-	SetWithProbe(value string, probe types.InputLivenessProbe) error
+	SetWithProbe(executionId string, value string, probe types.InputLivenessProbe) error
 	// SetWithExclusions adds item to input provider if it doesn't match any of the exclusions
-	SetWithExclusions(value string) error
+	SetWithExclusions(executionId string, value string) error
 	// InputType returns the type of input provider
 	InputType() string
 	// Close the input provider and cleanup any resources
@@ -74,6 +78,8 @@ type InputProvider interface {
 type InputOptions struct {
 	// Options for global config
 	Options *configTypes.Options
+	// TempDir is the temporary directory for storing files
+	TempDir string
 	// NotFoundCallback is the callback to call when input is not found
 	// only supported in list input provider
 	NotFoundCallback func(template string) bool
@@ -107,18 +113,58 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 			Options:          opts.Options,
 			NotFoundCallback: opts.NotFoundCallback,
 		})
-	} else {
-		// use HttpInputProvider
-		return http.NewHttpInputProvider(&http.HttpMultiFormatOptions{
-			InputFile: opts.Options.TargetsFilePath,
-			InputMode: opts.Options.InputFileMode,
-			Options: formats.InputFormatOptions{
-				Variables:            generators.MergeMaps(extraVars, opts.Options.Vars.AsMap()),
-				SkipFormatValidation: opts.Options.SkipFormatValidation,
-				RequiredOnly:         opts.Options.FormatUseRequiredOnly,
-			},
-		})
+	} else if len(opts.Options.Targets) > 0 &&
+		(strings.EqualFold(opts.Options.InputFileMode, "openapi") || strings.EqualFold(opts.Options.InputFileMode, "swagger")) {
+
+		if len(opts.Options.Targets) > 1 {
+			return nil, fmt.Errorf("only one target URL is supported in %s input mode", opts.Options.InputFileMode)
+		}
+
+		target := opts.Options.Targets[0]
+		if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+			var downloader formats.SpecDownloader
+			var tempFile string
+			var err error
+
+			// Get HttpClient from protocolstate if available
+			var httpClient *retryablehttp.Client
+			if opts.Options.ExecutionId != "" {
+				dialers := protocolstate.GetDialersWithId(opts.Options.ExecutionId)
+				if dialers != nil {
+					httpClient = dialers.DefaultHTTPClient
+				}
+			}
+
+			switch strings.ToLower(opts.Options.InputFileMode) {
+			case "openapi":
+				downloader = openapi.NewDownloader()
+				tempFile, err = downloader.Download(target, opts.TempDir, httpClient)
+			case "swagger":
+				downloader = swagger.NewDownloader()
+				tempFile, err = downloader.Download(target, opts.TempDir, httpClient)
+			default:
+				return nil, fmt.Errorf("unsupported input mode: %s", opts.Options.InputFileMode)
+			}
+
+			if err != nil {
+				return nil, fmt.Errorf("failed to download %s spec from url %s: %w", opts.Options.InputFileMode, target, err)
+			}
+
+			opts.Options.TargetsFilePath = tempFile
+		}
 	}
+
+	return http.NewHttpInputProvider(&http.HttpMultiFormatOptions{
+		InputFile: opts.Options.TargetsFilePath,
+		InputMode: opts.Options.InputFileMode,
+		Options: formats.InputFormatOptions{
+			Variables:            generators.MergeMaps(extraVars, opts.Options.Vars.AsMap()),
+			SkipFormatValidation: opts.Options.SkipFormatValidation,
+			RequiredOnly:         opts.Options.FormatUseRequiredOnly,
+			VarsTextTemplating:   opts.Options.VarsTextTemplating,
+			VarsFilePaths:        opts.Options.VarsFilePaths,
+		},
+	})
 }
 
 // SupportedInputFormats returns all supported input formats of nuclei

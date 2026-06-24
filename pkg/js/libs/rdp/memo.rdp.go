@@ -2,17 +2,19 @@
 package rdp
 
 import (
+	"context"
 	"errors"
+
 	"fmt"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisRDP(host string, port int) (IsRDPResponse, error) {
-	hash := "isRDP" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+func memoizedisRDP(ctx context.Context, executionId string, host string, port int) (IsRDPResponse, error) {
+	hash := "isRDP" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isRDP(host, port)
+		return isRDP(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return IsRDPResponse{}, err
@@ -24,11 +26,11 @@ func memoizedisRDP(host string, port int) (IsRDPResponse, error) {
 	return IsRDPResponse{}, errors.New("could not convert cached result")
 }
 
-func memoizedcheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
-	hash := "checkRDPAuth" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+func memoizedcheckRDPAuth(ctx context.Context, executionId string, host string, port int) (CheckRDPAuthResponse, error) {
+	hash := "checkRDPAuth" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return checkRDPAuth(host, port)
+		return checkRDPAuth(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return CheckRDPAuthResponse{}, err
@@ -38,4 +40,20 @@ func memoizedcheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	}
 
 	return CheckRDPAuthResponse{}, errors.New("could not convert cached result")
+}
+
+func memoizedcheckRDPEncryption(ctx context.Context, executionId string, host string, port int) (RDPEncryptionResponse, error) {
+	hash := "checkRDPEncryption" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
+
+	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
+		return checkRDPEncryption(ctx, executionId, host, port)
+	})
+	if err != nil {
+		return RDPEncryptionResponse{}, err
+	}
+	if value, ok := v.(RDPEncryptionResponse); ok {
+		return value, nil
+	}
+
+	return RDPEncryptionResponse{}, errors.New("could not convert cached result")
 }

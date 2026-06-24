@@ -14,8 +14,8 @@ import (
 const DefaultResumeFileName = "resume-%s.cfg"
 
 func DefaultResumeFilePath() string {
-	configDir := config.DefaultConfig.GetCacheDir()
-	resumeFile := filepath.Join(configDir, fmt.Sprintf(DefaultResumeFileName, xid.New().String()))
+	cacheDir := config.DefaultConfig.GetCacheDir()
+	resumeFile := filepath.Join(cacheDir, fmt.Sprintf(DefaultResumeFileName, xid.New().String()))
 	return resumeFile
 }
 
@@ -33,6 +33,39 @@ type ResumeInfo struct {
 	SkipUnder uint32              `json:"-"`
 	Repeat    map[uint32]struct{} `json:"-"`
 	DoAbove   uint32              `json:"-"`
+}
+
+func (resumeInfo *ResumeInfo) IsCompleted() bool {
+	resumeInfo.RLock()
+	defer resumeInfo.RUnlock()
+	return resumeInfo.Completed
+}
+
+func (resumeInfo *ResumeInfo) GetSkipUnder() uint32 {
+	resumeInfo.RLock()
+	defer resumeInfo.RUnlock()
+	return resumeInfo.SkipUnder
+}
+
+func (resumeInfo *ResumeInfo) GetDoAbove() uint32 {
+	resumeInfo.RLock()
+	defer resumeInfo.RUnlock()
+	return resumeInfo.DoAbove
+}
+
+func (resumeInfo *ResumeInfo) InitInFlight() {
+	resumeInfo.Lock()
+	defer resumeInfo.Unlock()
+	if resumeInfo.InFlight == nil {
+		resumeInfo.InFlight = make(map[uint32]struct{})
+	}
+}
+
+func (resumeInfo *ResumeInfo) IsInFlight(index uint32) bool {
+	resumeInfo.RLock()
+	defer resumeInfo.RUnlock()
+	_, ok := resumeInfo.InFlight[index]
+	return ok
 }
 
 // Clone the ResumeInfo structure

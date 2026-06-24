@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/projectdiscovery/gologger"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 )
 
 // IgnoreFile is an internal nuclei template blocking configuration file
@@ -20,7 +20,9 @@ func ReadIgnoreFile() IgnoreFile {
 		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
 		return IgnoreFile{}
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	ignore := IgnoreFile{}
 	if err := yaml.NewDecoder(file).Decode(&ignore); err != nil {

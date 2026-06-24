@@ -3,13 +3,13 @@ package dns
 import (
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
-	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -121,7 +121,14 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 
 	dnsClient := request.dnsClient
 	if varErr := expressions.ContainsUnresolvedVariables(request.Resolvers...); varErr != nil {
-		if dnsClient, varErr = request.getDnsClient(request.options, metadata); varErr != nil {
+		// Resolve resolver expressions using the full per-request variable
+		// scope (DNS variables + template `variables:` + payloads + template
+		// context + extracted dynamic values + metadata). The previous code
+		// passed the bare `metadata` event which does not contain template
+		// `variables:` declarations, so {{my_var}} resolvers always failed
+		// to resolve. See https://github.com/projectdiscovery/nuclei/issues/7374.
+		resolverVars := generators.MergeMaps(vars, metadata)
+		if dnsClient, varErr = request.getDnsClient(request.options, resolverVars); varErr != nil {
 			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
 			return nil
 		}
@@ -181,12 +188,8 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-	for k, v := range previous {
-		outputEvent[k] = v
-	}
-	for k, v := range vars {
-		outputEvent[k] = v
-	}
+	maps.Copy(outputEvent, previous)
+	maps.Copy(outputEvent, vars)
 	// add variables from template context before matching/extraction
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())

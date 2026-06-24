@@ -1,13 +1,14 @@
 package charts
 
 import (
-	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/labstack/echo/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -54,7 +55,9 @@ func NewScanEventsCharts(eventsDir string) (*ScanEventsCharts, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	data := []events.ScanEvent{}
 	dec := json.NewDecoder(f)
@@ -76,12 +79,15 @@ func NewScanEventsCharts(eventsDir string) (*ScanEventsCharts, error) {
 
 // Start starts the nuclei event charts server
 func (sc *ScanEventsCharts) Start(addr string) {
-	e := echo.New()
-	e.HideBanner = true
-	e.GET("/concurrency", sc.ConcurrencyVsTime)
-	e.GET("/requests", sc.TotalRequestsOverTime)
-	e.GET("/slow", sc.TopSlowTemplates)
-	e.GET("/rps", sc.RequestsVSInterval)
-	e.GET("/", sc.AllCharts)
-	e.Logger.Fatal(e.Start(addr))
+	log.Fatal(http.ListenAndServe(addr, sc.routes()))
+}
+
+func (sc *ScanEventsCharts) routes() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /concurrency", sc.ConcurrencyVsTime)
+	mux.HandleFunc("GET /fuzz", sc.TotalRequestsOverTime)
+	mux.HandleFunc("GET /slow", sc.TopSlowTemplates)
+	mux.HandleFunc("GET /rps", sc.RequestsVSInterval)
+	mux.HandleFunc("GET /{$}", sc.AllCharts)
+	return mux
 }

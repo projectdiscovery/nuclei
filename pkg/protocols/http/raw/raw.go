@@ -8,14 +8,17 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/rawhttp/client"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
+
+var bufferPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 // Request defines a basic HTTP raw request
 type Request struct {
@@ -35,6 +38,25 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		return nil, err
 	}
 
+	// handle full URLs first (before checking unsafe flag) to extract relative path
+	if strings.HasPrefix(rawrequest.Path, "http://") || strings.HasPrefix(rawrequest.Path, "https://") {
+		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
+		}
+		prevPath := rawrequest.Path
+		relPath := urlx.GetRelativePath()
+
+		// NOTE(dwisiswant0): Use rel path instead if unsafe.
+		// See https://github.com/projectdiscovery/nuclei/issues/6558.
+		if unsafe {
+			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
+		}
+
+		// rotate full URL with rel path
+		rawrequest.Path = relPath
+	}
+
 	switch {
 	// If path is empty do not tamper input url (see doc)
 	// can be omitted but makes things clear
@@ -44,22 +66,6 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			rawrequest.Path = inputURL.GetRelativePath()
 		}
 
-	// full url provided instead of rel path
-	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
-		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
-		if err != nil {
-			return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to parse url %v from template", rawrequest.Path)
-		}
-		cloned := inputURL.Clone()
-		cloned.Params.IncludeEquals = true
-		if disablePathAutomerge {
-			cloned.Path = ""
-		}
-		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
-		if parseErr != nil {
-			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", urlx.GetRelativePath()).Wrap(parseErr)
-		}
-		rawrequest.Path = cloned.GetRelativePath()
 	// If unsafe changes must be made in raw request string itself
 	case unsafe:
 		prevPath := rawrequest.Path
@@ -94,7 +100,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			}
 			err = cloned.MergePath(rawrequest.Path, true)
 			if err != nil {
-				return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to automerge %v from unsafe template", rawrequest.Path)
+				return nil, errkit.Wrapf(err, "failed to automerge %v from unsafe template", rawrequest.Path)
 			}
 			unsafeRelativePath = cloned.GetRelativePath()
 		}
@@ -116,7 +122,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		}
 		parseErr := cloned.MergePath(rawrequest.Path, true)
 		if parseErr != nil {
-			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", rawrequest.Path).Wrap(parseErr)
+			return nil, errkit.Wrapf(parseErr, "could not automergepath for template path %v", rawrequest.Path)
 		}
 		rawrequest.Path = cloned.GetRelativePath()
 	}
@@ -145,18 +151,18 @@ func ParseRawRequest(request string, unsafe bool) (*Request, error) {
 	if strings.HasPrefix(req.Path, "http") {
 		urlx, err := urlutil.Parse(req.Path)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("failed to parse url %v", req.Path)
+			return nil, errkit.Wrapf(err, "failed to parse url %v", req.Path)
 		}
 		req.Path = urlx.GetRelativePath()
 		req.FullURL = urlx.String()
 	} else {
 
 		if req.Path == "" {
-			return nil, errorutil.NewWithTag("self-contained-raw", "path cannot be empty in self contained request")
+			return nil, errkit.New("path cannot be empty in self contained request")
 		}
 		// given url is relative construct one using Host Header
 		if _, ok := req.Headers["Host"]; !ok {
-			return nil, errorutil.NewWithTag("self-contained-raw", "host header is required for relative path")
+			return nil, errkit.New("host header is required for relative path")
 		}
 		// Review: Current default scheme in self contained templates if relative path is provided is http
 		req.FullURL = fmt.Sprintf("%s://%s%s", urlutil.HTTP, strings.TrimSpace(req.Headers["Host"]), req.Path)
@@ -172,7 +178,7 @@ func readRawRequest(request string, unsafe bool) (*Request, error) {
 
 	// store body if it is unsafe request
 	if unsafe {
-		rawRequest.UnsafeRawBytes = []byte(request)
+		rawRequest.UnsafeRawBytes = stripLeadingAnnotations(request)
 	}
 
 	// parse raw request
@@ -259,6 +265,36 @@ read_line:
 
 }
 
+func stripLeadingAnnotations(request string) []byte {
+	reader := bufio.NewReader(strings.NewReader(request))
+	buffer := bufferPool.Get().(*bytes.Buffer)
+	buffer.Reset()
+	defer func() {
+		buffer.Reset()
+		bufferPool.Put(buffer)
+	}()
+
+	requestLineFound := false
+	for {
+		line, err := reader.ReadString('\n')
+		if len(line) > 0 {
+			if requestLineFound || !stringsutil.HasPrefixAny(line, "@") {
+				requestLineFound = true
+				_, _ = buffer.WriteString(line)
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return []byte(request)
+		}
+	}
+
+	return append([]byte(nil), buffer.Bytes()...)
+}
+
 // TryFillCustomHeaders after the Host header
 func (r *Request) TryFillCustomHeaders(headers []string) error {
 	unsafeBytes := bytes.ToLower(r.UnsafeRawBytes)
@@ -270,13 +306,17 @@ func (r *Request) TryFillCustomHeaders(headers []string) error {
 		if newLineIndex > 0 {
 			newLineIndex += hostHeaderIndex + 2
 			// insert custom headers
-			var buf bytes.Buffer
+			buf := bufferPool.Get().(*bytes.Buffer)
+			buf.Reset()
 			buf.Write(r.UnsafeRawBytes[:newLineIndex])
 			for _, header := range headers {
-				buf.WriteString(fmt.Sprintf("%s\r\n", header))
+				buf.WriteString(header)
+				buf.WriteString("\r\n")
 			}
 			buf.Write(r.UnsafeRawBytes[newLineIndex:])
-			r.UnsafeRawBytes = buf.Bytes()
+			r.UnsafeRawBytes = append([]byte(nil), buf.Bytes()...)
+			buf.Reset()
+			bufferPool.Put(buf)
 			return nil
 		}
 		return errors.New("no new line found at the end of host header")
@@ -300,10 +340,12 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 		for _, p := range s.Data.Params {
 			parsed.Params.Add(p.Key, p.Value)
 		}
+		r.FullURL = parsed.String()
 	case *authx.CookiesAuthStrategy:
-		var buff bytes.Buffer
+		buff := bufferPool.Get().(*bytes.Buffer)
+		buff.Reset()
 		for _, cookie := range s.Data.Cookies {
-			buff.WriteString(fmt.Sprintf("%s=%s; ", cookie.Key, cookie.Value))
+			fmt.Fprintf(buff, "%s=%s; ", cookie.Key, cookie.Value)
 		}
 		if buff.Len() > 0 {
 			if val, ok := r.Headers["Cookie"]; ok {
@@ -312,6 +354,7 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 				r.Headers["Cookie"] = buff.String()
 			}
 		}
+		bufferPool.Put(buff)
 	case *authx.HeadersAuthStrategy:
 		for _, header := range s.Data.Headers {
 			r.Headers[header.Key] = header.Value

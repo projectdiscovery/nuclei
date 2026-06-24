@@ -3,7 +3,7 @@ package smb
 import (
 	lib_smb "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/smb"
 
-	"github.com/dop251/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

@@ -1,9 +1,11 @@
 package automaticscan
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -28,14 +30,17 @@ func getTemplateDirs(opts Options) ([]string, error) {
 	}
 	allTemplates = sliceutil.Dedupe(allTemplates)
 	if len(allTemplates) == 0 {
-		return nil, errors.New("no templates found for given input")
+		return nil, fmt.Errorf("%w for given input", disk.ErrNoTemplatesFound)
 	}
 	return allTemplates, nil
 }
 
 // LoadTemplatesWithTags loads and returns templates with given tags
 func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, logInfo bool) ([]*templates.Template, error) {
-	finalTemplates := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
+	finalTemplates, err := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not load templates")
+	}
 	if len(finalTemplates) == 0 {
 		return nil, errors.New("could not find any templates with tech tag")
 	}
@@ -43,17 +48,17 @@ func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, l
 	if !opts.ExecuterOpts.Options.DisableClustering {
 		// cluster and reduce requests
 		totalReqBeforeCluster := getRequestCount(finalTemplates) * int(opts.Target.Count())
-		finalTemplates, clusterCount := templates.ClusterTemplates(finalTemplates, opts.ExecuterOpts)
+		finalTemplates, clusterCount, _ := templates.ClusterTemplates(finalTemplates, opts.ExecuterOpts)
 		totalReqAfterClustering := getRequestCount(finalTemplates) * int(opts.Target.Count())
 		if totalReqAfterClustering < totalReqBeforeCluster && logInfo {
-			gologger.Info().Msgf("Automatic scan tech-detect: Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
+			opts.ExecuterOpts.Logger.Info().Msgf("Automatic scan tech-detect: Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
 		}
 	}
 
 	// log template loaded if VerboseVerbose flag is set
 	if opts.ExecuterOpts.Options.VerboseVerbose {
 		for _, tpl := range finalTemplates {
-			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
+			opts.ExecuterOpts.Logger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
 				types.ToString(tpl.Info.Name),
 				tpl.Info.Authors.ToSlice(),
 				tpl.Info.SeverityHolder.Severity))

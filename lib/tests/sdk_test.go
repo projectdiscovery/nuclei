@@ -14,11 +14,15 @@ import (
 )
 
 var knownLeaks = []goleak.Option{
-	// prettyify the output and generate dependency graph and more details instead of just stack output
 	goleak.Pretty(),
-	// net/http transport maintains idle connections which are closed with cooldown
-	// hence they don't count as leaks
+	// net/http transport maintains idle keep-alive connections whose goroutines
+	// exit on idle timeout or explicit close - not real leaks.
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+	// expirable LRU cache creates a background goroutine for TTL expiration that persists
+	// see: https://github.com/hashicorp/golang-lru/blob/770151e9c8cdfae1797826b7b74c33d6f103fbd8/expirable/expirable_lru.go#L79
+	goleak.IgnoreAnyContainingPkg("github.com/hashicorp/golang-lru/v2/expirable"),
+	goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
+	goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 }
 
 func TestSimpleNuclei(t *testing.T) {
@@ -42,7 +46,7 @@ func TestSimpleNuclei(t *testing.T) {
 		defer ne.Close()
 	}
 
-	// this is shared test so needs to be run as seperate process
+	// this is shared test so needs to be run as separate process
 	if env.GetEnvOrDefault("TestSimpleNuclei", false) {
 		// run as new process
 		cmd := exec.Command(os.Args[0], "-test.run=TestSimpleNuclei")
@@ -81,7 +85,7 @@ func TestSimpleNucleiRemote(t *testing.T) {
 		require.Nil(t, err)
 		defer ne.Close()
 	}
-	// this is shared test so needs to be run as seperate process
+	// this is shared test so needs to be run as separate process
 	if env.GetEnvOrDefault("TestSimpleNucleiRemote", false) {
 		cmd := exec.Command(os.Args[0], "-test.run=TestSimpleNucleiRemote")
 		cmd.Env = append(os.Environ(), "TestSimpleNucleiRemote=true")
@@ -125,6 +129,40 @@ func TestThreadSafeNuclei(t *testing.T) {
 	if env.GetEnvOrDefault("TestThreadSafeNuclei", false) {
 		cmd := exec.Command(os.Args[0], "-test.run=TestThreadSafeNuclei")
 		cmd.Env = append(os.Environ(), "TestThreadSafeNuclei=true")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("process ran with error %s, output: %s", err, out)
+		}
+	} else {
+		fn()
+	}
+}
+
+func TestWithVarsNuclei(t *testing.T) {
+	fn := func() {
+		defer func() {
+			// resources like leveldb have a delay to commit in-memory resources
+			// to disk, typically 1-2 seconds, so we wait for 2 seconds
+			time.Sleep(2 * time.Second)
+			goleak.VerifyNone(t, knownLeaks...)
+		}()
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
+			nuclei.EnableSelfContainedTemplates(),
+			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{"http/token-spray/api-1forge.yaml"}}),
+			nuclei.WithVars([]string{"token=foobar"}),
+			nuclei.WithVerbosity(nuclei.VerbosityOptions{Debug: true}),
+		)
+		require.Nil(t, err)
+		ne.LoadTargets([]string{"scanme.sh"}, true) // probe http/https target is set to true here
+		err = ne.ExecuteWithCallback(nil)
+		require.Nil(t, err)
+		defer ne.Close()
+	}
+	// this is shared test so needs to be run as separate process
+	if env.GetEnvOrDefault("TestWithVarsNuclei", false) {
+		cmd := exec.Command(os.Args[0], "-test.run=TestWithVarsNuclei")
+		cmd.Env = append(os.Environ(), "TestWithVarsNuclei=true")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("process ran with error %s, output: %s", err, out)

@@ -185,21 +185,34 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
+		Proxy:   options.Options.AliveSocksProxy,
 	}
 	if len(request.Resolvers) > 0 {
-		if len(request.Resolvers) > 0 {
-			for _, resolver := range request.Resolvers {
-				if expressions.ContainsUnresolvedVariables(resolver) != nil {
-					var err error
-					resolver, err = expressions.Evaluate(resolver, metadata)
-					if err != nil {
-						return nil, errors.Wrap(err, "could not resolve resolvers expressions")
-					}
-					dnsClientOptions.Resolvers = append(dnsClientOptions.Resolvers, resolver)
+		// Build the resolver list one entry at a time so that:
+		// - static resolvers are forwarded as-is,
+		// - resolvers containing template expressions are evaluated against
+		//   the supplied metadata (template variables, payloads, dynamic
+		//   extracted values, etc.),
+		// - and at compile time (metadata == nil) unresolved entries are
+		//   skipped instead of failing — the runtime path in request.go
+		//   rebuilds the client per request once the full variable scope
+		//   is available. See https://github.com/projectdiscovery/nuclei/issues/7374.
+		resolvers := make([]string, 0, len(request.Resolvers))
+		for _, resolver := range request.Resolvers {
+			if expressions.ContainsUnresolvedVariables(resolver) != nil {
+				if metadata == nil {
+					// Defer resolution to the per-request runtime path.
+					continue
 				}
+				evaluated, err := expressions.Evaluate(resolver, metadata)
+				if err != nil {
+					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
+				}
+				resolver = evaluated
 			}
+			resolvers = append(resolvers, resolver)
 		}
-		dnsClientOptions.Resolvers = request.Resolvers
+		dnsClientOptions.Resolvers = resolvers
 	}
 	return dnsclientpool.Get(options.Options, dnsClientOptions)
 }
@@ -295,4 +308,9 @@ func classToInt(class string) uint16 {
 		result = dns.ClassANY
 	}
 	return uint16(result)
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }
