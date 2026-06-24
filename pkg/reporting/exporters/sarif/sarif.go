@@ -169,7 +169,6 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	exporter.sarif.RegisterResult(*result)
 
 	return nil
-
 }
 
 // Close Writes data and closes the exporter after operation
@@ -177,11 +176,7 @@ func (exporter *Exporter) Close() error {
 	exporter.mutex.Lock()
 	defer exporter.mutex.Unlock()
 
-	if len(exporter.rules) == 0 {
-		// no output if there are no results
-		return nil
-	}
-	// links results and rules/templates
+	// Always append tool schema details so empty scans produce valid structural validation tracking files
 	exporter.addToolDetails()
 
 	bin, err := exporter.sarif.Export()
