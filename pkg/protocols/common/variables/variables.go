@@ -27,6 +27,14 @@ type Variable struct {
 	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
+// Evaluation contains variable values and the subset produced from template
+// variable text.
+type Evaluation struct {
+	Values         map[string]interface{}
+	TemplateValues map[string]interface{}
+	InteractURLs   []string
+}
+
 func (variables Variable) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:                 "object",
@@ -70,34 +78,41 @@ func (variables *Variable) UnmarshalJSON(data []byte) error {
 
 // Evaluate returns a finished map of variables based on set values
 func (variables *Variable) Evaluate(values map[string]interface{}) map[string]interface{} {
+	return variables.EvaluateScope(NewScope().AddData(values)).Values
+}
+
+// EvaluateScope returns evaluated variables and records which returned values
+// were produced from template variable text.
+func (variables *Variable) EvaluateScope(scope *Scope) Evaluation {
 	result := make(map[string]interface{}, variables.Len())
-	combined := make(map[string]interface{}, len(values)+variables.Len())
-	generators.MergeMapsInto(combined, values)
+	templateValues := make(map[string]interface{}, variables.Len())
+	combined := scope.clone()
 
 	variables.ForEach(func(key string, value interface{}) {
+		if existingValue, ok := combined.get(key); ok && existingValue.kind == scopeValueData {
+			result[key] = existingValue.value
+			combined.AddDataValue(key, existingValue.value)
+
+			return
+		}
+
 		if sliceValue, ok := value.([]interface{}); ok {
 			// slices cannot be evaluated
 			result[key] = sliceValue
-			combined[key] = sliceValue
+			templateValues[key] = sliceValue
+			combined.AddTemplateValue(key, sliceValue)
 
 			return
 		}
 
 		valueString := types.ToString(value)
-		if existingValue, ok := combined[key]; ok {
-			valueString = types.ToString(existingValue)
-			result[key] = valueString
-			combined[key] = valueString
-
-			return
-		}
-
-		evaluated := evaluateVariableValueWithMap(valueString, combined)
+		evaluated := evaluateVariableValueWithMap(valueString, combined.Values())
 		result[key] = evaluated
-		combined[key] = evaluated
+		templateValues[key] = evaluated
+		combined.AddTemplateValue(key, evaluated)
 	})
 
-	return result
+	return Evaluation{Values: result, TemplateValues: templateValues}
 }
 
 // GetAll returns all variables as a map
@@ -112,37 +127,46 @@ func (variables *Variable) GetAll() map[string]interface{} {
 
 // EvaluateWithInteractsh returns evaluation results of variables with interactsh
 func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{}, interact *interactsh.Client) (map[string]interface{}, []string) {
+	evaluation := variables.EvaluateWithInteractshScope(NewScope().AddData(values), interact)
+	return evaluation.Values, evaluation.InteractURLs
+}
+
+// EvaluateWithInteractshScope returns evaluated variables, source-level
+// Interactsh URLs, and the subset of values produced from template variable
+// text.
+func (variables *Variable) EvaluateWithInteractshScope(scope *Scope, interact render.URLSource) Evaluation {
 	result := make(map[string]interface{}, variables.Len())
-	combined := make(map[string]interface{}, len(values)+variables.Len())
-	generators.MergeMapsInto(combined, values)
+	templateValues := make(map[string]interface{}, variables.Len())
+	combined := scope.clone()
 
 	var interactURLs []string
 
 	variables.ForEach(func(key string, value interface{}) {
+		if existingValue, ok := combined.get(key); ok && existingValue.kind == scopeValueData {
+			result[key] = existingValue.value
+			combined.AddDataValue(key, existingValue.value)
+
+			return
+		}
+
 		if sliceValue, ok := value.([]interface{}); ok {
 			// slices cannot be evaluated
 			result[key] = sliceValue
-			combined[key] = sliceValue
+			templateValues[key] = sliceValue
+			combined.AddTemplateValue(key, sliceValue)
 
 			return
 		}
 
 		valueString := types.ToString(value)
-		if existingValue, ok := combined[key]; ok {
-			valueString = types.ToString(existingValue)
-			result[key] = valueString
-			combined[key] = valueString
-
-			return
-		}
-
-		evaluated, gotURLs := renderVariableValueWithInteractsh(valueString, combined, interact, interactURLs)
+		evaluated, gotURLs := renderVariableValueWithInteractsh(valueString, combined.Values(), interact, interactURLs)
 		result[key] = evaluated
-		combined[key] = evaluated
+		templateValues[key] = evaluated
+		combined.AddTemplateValue(key, evaluated)
 		interactURLs = gotURLs
 	})
 
-	return result, interactURLs
+	return Evaluation{Values: result, TemplateValues: templateValues, InteractURLs: interactURLs}
 }
 
 // evaluateVariableValue expression and returns final value.

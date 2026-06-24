@@ -177,10 +177,16 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
+
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
-	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(target.MetaInput).GetAll()))
+	scope := request.options.NewVariablesScope(defaultVars, optionVars, dynamicValues)
+
+	request.options.AddTemplateCtxToVariablesScope(target.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+
+	variables := request.options.Variables.EvaluateScope(scope).Values
 	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	requestOptions := request.options

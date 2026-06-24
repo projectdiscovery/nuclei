@@ -224,6 +224,41 @@ func TestUseNetworkPortIPv6(t *testing.T) {
 	}
 }
 
+func TestTemplateVariableOwnershipClearsOnDataWrites(t *testing.T) {
+	ctx := New(context.Background())
+
+	ctx.MergeTemplateVariables(map[string]interface{}{
+		"token": "{{extracted_token}}",
+	})
+	require.Equal(t, map[string]interface{}{"token": "{{extracted_token}}"}, ctx.GetTemplateVariables())
+
+	ctx.Set("token", "{{runtime_token}}")
+	require.Empty(t, ctx.GetTemplateVariables())
+
+	ctx.MergeTemplateVariables(map[string]interface{}{
+		"token": "{{extracted_token}}",
+	})
+	ctx.Merge(map[string]interface{}{
+		"token": "{{runtime_token}}",
+	})
+	require.Empty(t, ctx.GetTemplateVariables())
+	require.Equal(t, map[string]interface{}{"token": "{{runtime_token}}"}, ctx.GetAll())
+}
+
+func TestTemplateVariableOwnershipIsCloned(t *testing.T) {
+	ctx := New(context.Background())
+	ctx.MergeTemplateVariables(map[string]interface{}{
+		"token": "{{extracted_token}}",
+	})
+
+	cloned := ctx.Clone()
+	require.Equal(t, map[string]interface{}{"token": "{{extracted_token}}"}, cloned.GetTemplateVariables())
+
+	cloned.Set("token", "{{runtime_token}}")
+	require.Empty(t, cloned.GetTemplateVariables())
+	require.Equal(t, map[string]interface{}{"token": "{{extracted_token}}"}, ctx.GetTemplateVariables())
+}
+
 // TestUseNetworkPortServiceNameExclude verifies excludePorts accepts service
 // names (resolved via portutil), e.g. "http" -> "80".
 func TestUseNetworkPortServiceNameExclude(t *testing.T) {

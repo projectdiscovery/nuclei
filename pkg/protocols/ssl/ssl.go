@@ -215,12 +215,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	// add template context variables to varMap
-	values := generators.MergeMaps(payloadValues, hostnameVariables)
+	scope := request.options.NewVariablesScope(payloadValues, hostnameVariables)
 	if request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
 	}
 
-	variablesMap := request.options.Variables.Evaluate(values)
+	scope.AddData(request.options.Constants)
+	variablesMap := request.options.Variables.EvaluateScope(scope).Values
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {

@@ -198,7 +198,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	allvars = generators.MergeMaps(allvars, dynamicValues, previous)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variablesMap, interactshURLs := request.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(allvars, optionVars, request.options.Constants), request.options.Interactsh)
+	scope := request.options.NewVariablesScope(allvars, optionVars, request.options.Constants)
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
 	// since we evaluate variables using allvars, give precedence to variablesMap
 	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
 	for name, value := range allvars {

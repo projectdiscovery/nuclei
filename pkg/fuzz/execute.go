@@ -156,9 +156,10 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 
 			optionVars := rule.options.Options.Vars.AsMap()
 			constants := rule.options.Constants
-			dataValues := generators.MergeMaps(baseValues, optionVars, constants)
+			dataValues := rule.options.NewVariablesScope(baseValues, optionVars, constants)
 			// get vars from variables while replacing interactsh urls
-			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(dataValues, rule.options.Interactsh)
+			evaluation := rule.options.Variables.EvaluateWithInteractshScope(dataValues, rule.options.Interactsh)
+			evaluatedValues, interactURLs := evaluation.Values, evaluation.InteractURLs
 			input.Values, dataKeys = mergeFuzzValueLayers(
 				fuzzValueLayer{values: evaluatedValues, kind: fuzzValueTemplate},
 				fuzzValueLayer{values: baseValues, kind: fuzzValueData},
@@ -203,8 +204,9 @@ mainLoop:
 func (rule *Rule) prepareGeneratorValues(values, baseValues map[string]interface{}) (map[string]interface{}, []string) {
 	optionVars := rule.options.Options.Vars.AsMap()
 	constants := rule.options.Constants
-	evaluationValues := generators.MergeMaps(values, baseValues, optionVars, constants)
-	evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(evaluationValues, rule.options.Interactsh)
+	evaluationValues := rule.options.NewVariablesScope(values, baseValues, optionVars, constants)
+	evaluation := rule.options.Variables.EvaluateWithInteractshScope(evaluationValues, rule.options.Interactsh)
+	evaluatedValues, interactURLs := evaluation.Values, evaluation.InteractURLs
 	inputValues, dataKeys := mergeFuzzValueLayers(
 		fuzzValueLayer{values: values, kind: fuzzValueTemplate},
 		fuzzValueLayer{values: evaluatedValues, kind: fuzzValueTemplate},
