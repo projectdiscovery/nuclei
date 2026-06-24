@@ -294,6 +294,13 @@ func Close(executionId string) {
 		// keep-alive connections to avoid lingering transport goroutines
 		// after shutdown.
 		dialersInstance.HTTPClientPool.Close()
+		// Stop the per-host rate limit pool so its background limiters (one
+		// goroutine each, up to the pool capacity) are released instead of
+		// leaking on shutdown or engine recreate. Typed as any here to avoid
+		// an import cycle with the httpclientpool package.
+		if pool, ok := dialersInstance.PerHostRateLimitPool.(interface{ Close() }); ok && pool != nil {
+			pool.Close()
+		}
 		dialersInstance.Fastdialer.Close()
 	}
 
