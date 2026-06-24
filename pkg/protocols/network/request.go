@@ -137,6 +137,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
+
 	if request.isUnresponsiveAddress(input) {
 		// skip on unresponsive address no need to continue
 		return nil
@@ -147,17 +148,27 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	} else {
 		address, err = getAddress(input.MetaInput.Input)
 	}
+
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
+
 	variables := protocolutils.GenerateVariables(address, false, nil)
+	scope := request.options.NewVariablesScope(variables)
+
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
+
 	// add template ctx variables to varMap
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	variablesMap, interactshURLs := request.options.Variables.EvaluateWithInteractsh(variables, request.options.Interactsh)
+
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
 	// stop at first match if requested

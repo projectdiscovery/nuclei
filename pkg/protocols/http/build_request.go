@@ -165,20 +165,13 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// 1. If request is raw request =  reqData contains raw request (i.e http request dump)
 	// 2. If request is Normal ( simply put not a raw request) (Ex: with placeholders `path`) = reqData contains relative path
 
-	// add template context values to dynamicValues (this takes care of self-contained and other types of requests)
-	// Note: `iterate-all` and flow are mutually exclusive. flow uses templateCtx and iterate-all uses dynamicValues
-	if r.request.options.HasTemplateCtx(input.MetaInput) {
-		// skip creating template context if not available
-		dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	}
-
 	isRawRequest := len(r.request.Raw) > 0
 	for payloadName, payloadValue := range payloads {
 		payloads[payloadName] = types.ToStringNSlice(payloadValue)
 	}
 
 	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
+		return r.makeSelfContainedRequest(ctx, input, reqData, payloads, dynamicValues)
 	}
 
 	// Parse target url
@@ -202,12 +195,24 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
-	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, defaultReqVars, optionVars), r.options.Interactsh)
+	scope := r.options.NewVariablesScope(dynamicValues)
+	r.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(defaultReqVars, optionVars, r.options.Constants)
+	evaluation := r.options.Variables.EvaluateWithInteractshScope(scope, r.options.Interactsh)
+
+	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
+
 	// allVars contains all variables from all sources
-	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars, variablesMap, r.options.Constants)
+	allVars := generators.MergeMaps(dynamicValues)
+
+	if r.request.options.HasTemplateCtx(input.MetaInput) {
+		allVars = generators.MergeMaps(allVars, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+
+	allVars = generators.MergeMaps(allVars, defaultReqVars, optionVars, variablesMap, r.options.Constants)
 
 	// Evaluate payload variables
 	// eg: payload variables can be username: jon.doe@{{Hostname}}
@@ -253,7 +258,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 
 // selfContained templates do not need/use target data and all values i.e {{Hostname}} , {{BaseURL}} etc are already available
 // in template . makeSelfContainedRequest parses and creates variables map and then creates corresponding http request or raw request
-func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	isRawRequest := r.request.isRaw()
 
 	values := generators.MergeMaps(
@@ -262,13 +267,23 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		payloads, // payloads should override other variables in case of duplicate vars
 	)
 	// adds all variables from `variables` section in template
-	variablesMap, interactURLs := r.request.options.Variables.EvaluateWithInteractsh(values, r.request.options.Interactsh)
+	scope := r.request.options.NewVariablesScope(generators.BuildPayloadFromOptions(r.request.options.Options), dynamicValues, payloads)
+	r.request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(r.options.Constants)
+	evaluation := r.request.options.Variables.EvaluateWithInteractshScope(scope, r.request.options.Interactsh)
+
+	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
-	values = generators.MergeMaps(variablesMap, values)
 
+	if r.request.options.HasTemplateCtx(input.MetaInput) {
+		values = generators.MergeMaps(values, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+
+	values = generators.MergeMaps(variablesMap, values)
 	signerVars := GetDefaultSignerVars(r.request.Signature.Value)
+
 	// this will ensure that default signer variables are overwritten by other variables
 	values = generators.MergeMaps(signerVars, values, r.options.Constants)
 

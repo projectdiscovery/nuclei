@@ -334,14 +334,32 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 	payloadValues["Port"] = port
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
-	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.Constants, templateCtx.GetAll())
+	scope := request.options.NewVariablesScope(payloadValues, hostnameVariables, request.options.Constants)
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
 
 	var interactshURLs []string
-	variablesMap, interactshURLs := request.options.Variables.EvaluateWithInteractsh(values, request.options.Interactsh)
+
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
+	templateVariables := generators.CopyMap(evaluation.TemplateValues)
+
+	for key := range payloadValues {
+		delete(templateVariables, key)
+	}
+
+	for key := range request.options.Constants {
+		delete(templateVariables, key)
+	}
+
+	for key := range hostnameVariables {
+		delete(templateVariables, key)
+	}
+
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants, hostnameVariables)
 
 	// export all variables to template context
 	templateCtx.Merge(payloadValues)
+	templateCtx.MergeTemplateVariables(templateVariables)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("JavaScript Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))

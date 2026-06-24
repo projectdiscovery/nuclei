@@ -6,7 +6,6 @@ import (
 
 	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
@@ -25,6 +24,15 @@ func withVariableTestHelperFunction(t *testing.T, name string, fn govaluate.Expr
 		}
 		delete(dsl.HelperFunctions, name)
 	})
+}
+
+type variableTestURLSource struct {
+	calls int
+}
+
+func (v *variableTestURLSource) NewURLWithData(string) (string, error) {
+	v.calls++
+	return "https://example.oast.fun", nil
 }
 
 func TestVariablesEvaluate(t *testing.T) {
@@ -303,6 +311,98 @@ func TestVariablesEvaluateDynamicOverrideValuesAreData(t *testing.T) {
 	require.Zero(t, waitForCalls, "dynamic override helpers must not execute")
 }
 
+func TestVariablesEvaluateMatchingDynamicHelperOverrideIsData(t *testing.T) {
+	var waitForCalls int
+	withVariableTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
+
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("token", "{{wait_for(5)}}")
+
+	result := variables.Evaluate(map[string]interface{}{
+		"token": "{{wait_for(5)}}",
+	})
+
+	require.Equal(t, "{{wait_for(5)}}", result["token"])
+	require.Zero(t, waitForCalls, "matching dynamic override helpers must not execute")
+}
+
+func TestVariablesEvaluateDataValueInsertedIntoVariableIsData(t *testing.T) {
+	var waitForCalls int
+	withVariableTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
+
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("header", "Bearer {{extracted_token}}")
+
+	result := variables.EvaluateScope(NewScope().AddData(map[string]interface{}{
+		"extracted_token": "{{wait_for(5)}}",
+	})).Values
+
+	require.Equal(t, "Bearer {{wait_for(5)}}", result["header"])
+	require.Zero(t, waitForCalls, "data inserted into template variables must not execute")
+}
+
+func TestVariablesEvaluateReevaluatesStoredDeclaredValue(t *testing.T) {
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("auth_header", "Bearer {{extracted_token}}")
+
+	result := variables.EvaluateScope(NewScope().AddTemplate(map[string]interface{}{
+		"auth_header": "Bearer {{extracted_token}}",
+	}).AddData(map[string]interface{}{
+		"extracted_token": "secret123",
+	})).Values
+
+	require.Equal(t, "Bearer secret123", result["auth_header"])
+}
+
+func TestVariablesEvaluateReevaluatesStoredDeclaredHelperValue(t *testing.T) {
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("cname_filtered", `{{trim_suffix(dns_cname,".vercel-dns.com")}}`)
+
+	result := variables.EvaluateScope(NewScope().AddTemplate(map[string]interface{}{
+		"cname_filtered": `{{trim_suffix(dns_cname,".vercel-dns.com")}}`,
+	}).AddData(map[string]interface{}{
+		"dns_cname": "cname.vercel-dns.com",
+	})).Values
+
+	require.Equal(t, "cname", result["cname_filtered"])
+}
+
+func TestVariablesEvaluateWithInteractshMatchingRuntimeOverrideIsData(t *testing.T) {
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("callback", "{{interactsh-url}}")
+
+	source := &variableTestURLSource{}
+	evaluation := variables.EvaluateWithInteractshScope(NewScope().AddData(map[string]interface{}{
+		"callback": "{{interactsh-url}}",
+	}), source)
+	result, urls := evaluation.Values, evaluation.InteractURLs
+
+	require.Empty(t, urls)
+	require.Zero(t, source.calls, "matching runtime override marker must not allocate interactsh URLs")
+	require.Equal(t, "{{interactsh-url}}", result["callback"])
+}
+
 func TestVariablesEvaluateWithInteractshDynamicOverrideIsData(t *testing.T) {
 	variables := &Variable{
 		LazyEval:                  true,
@@ -377,21 +477,13 @@ func TestEvaluateWithInteractshOverrideOrder(t *testing.T) {
 			"callback": "https://custom.{{interactsh-url}}/path",
 		}
 
-		// Create a real interactsh client for testing
-		client, err := interactsh.New(&interactsh.Options{
-			ServerURL:           "oast.fun",
-			CacheSize:           100,
-			Eviction:            60 * time.Second,
-			CooldownPeriod:      5 * time.Second,
-			PollDuration:        5 * time.Second,
-			DisableHttpFallback: true,
-		})
-		require.NoError(t, err, "could not create interactsh client")
-		defer client.Close()
+		source := &variableTestURLSource{}
 
-		result, urls := variables.EvaluateWithInteractsh(inputValues, client)
+		evaluation := variables.EvaluateWithInteractshScope(NewScope().AddData(inputValues), source)
+		result, urls := evaluation.Values, evaluation.InteractURLs
 
 		require.Empty(t, urls, "dynamic override marker should not allocate interactsh URLs")
+		require.Zero(t, source.calls, "dynamic override marker should not allocate interactsh URLs")
 		require.Equal(t, "https://custom.{{interactsh-url}}/path", result["callback"])
 	})
 
@@ -407,21 +499,14 @@ func TestEvaluateWithInteractshOverrideOrder(t *testing.T) {
 			"other_key": "other_value",
 		}
 
-		client, err := interactsh.New(&interactsh.Options{
-			ServerURL:           "oast.fun",
-			CacheSize:           100,
-			Eviction:            60 * time.Second,
-			CooldownPeriod:      5 * time.Second,
-			PollDuration:        5 * time.Second,
-			DisableHttpFallback: true,
-		})
-		require.NoError(t, err, "could not create interactsh client")
-		defer client.Close()
+		source := &variableTestURLSource{}
 
-		result, urls := variables.EvaluateWithInteractsh(inputValues, client)
+		evaluation := variables.EvaluateWithInteractshScope(NewScope().AddData(inputValues), source)
+		result, urls := evaluation.Values, evaluation.InteractURLs
 
 		// Should have 1 URL from the variable definition
 		require.Len(t, urls, 1, "should have 1 interactsh URL")
+		require.Equal(t, 1, source.calls, "should allocate from template variable source")
 
 		// The result should be the replaced interactsh URL
 		require.NotContains(t, result["callback"], "{{interactsh-url}}", "interactsh should be replaced")

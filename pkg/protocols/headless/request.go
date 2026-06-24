@@ -53,12 +53,18 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 	vars := protocolutils.GenerateVariablesWithContextArgs(input, false)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+	scope := request.options.NewVariablesScope(vars)
 	// add templatecontext variables to varMap
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	}
+
+	scope.AddData(metadata, optionVars, request.options.Constants)
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		vars = generators.MergeMaps(vars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-
-	variablesMap, interactshURLs := request.options.Variables.EvaluateWithInteractsh(vars, request.options.Interactsh)
 	vars = generators.MergeMaps(vars, metadata, optionVars, variablesMap, request.options.Constants)
 
 	// check for operator matches by wrapping callback
