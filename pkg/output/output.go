@@ -203,6 +203,12 @@ type ResultEvent struct {
 	CURLCommand string `json:"curl-command,omitempty"`
 	// MatcherStatus is the status of the match
 	MatcherStatus bool `json:"matcher-status"`
+	// Confidence is a heuristic detection-reliability tier (low/medium/high),
+	// derived from matcher composition and out-of-band confirmation, and is
+	// independent of severity.
+	Confidence string `json:"confidence,omitempty"`
+	// ConfidenceScore is the 0-100 score (QoD-style) behind Confidence.
+	ConfidenceScore int `json:"confidence-score,omitempty"`
 	// Lines is the line count for the specified match
 	Lines []int `json:"matched-line,omitempty"`
 	// GlobalMatchers identifies whether the matches was detected in the response
