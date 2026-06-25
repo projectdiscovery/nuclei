@@ -265,6 +265,58 @@ func TestConfidenceRealWorldScenarios(t *testing.T) {
 	}
 }
 
+// TestConfidenceMultiPatternBonus verifies a single matcher requiring several
+// distinct content patterns (condition: and) outscores the same matcher with a
+// single pattern, while a broad any-of (or) matcher gets no bonus.
+func TestConfidenceMultiPatternBonus(t *testing.T) {
+	single := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Part: "body", Words: []string{"a"}},
+	}}
+	multiAnd := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Part: "body", Words: []string{"a", "b", "c"}, Condition: "and"},
+	}}
+	multiOr := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Part: "body", Words: []string{"a", "b", "c"}, Condition: "or"},
+	}}
+	matchAll := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Part: "body", Words: []string{"a", "b"}, MatchAll: true},
+	}}
+
+	singleScore, _ := single.Confidence()
+	multiAndScore, _ := multiAnd.Confidence()
+	multiOrScore, _ := multiOr.Confidence()
+	matchAllScore, _ := matchAll.Confidence()
+
+	require.Greater(t, multiAndScore, singleScore, "all-of multi-pattern matcher should outscore single pattern")
+	require.Equal(t, singleScore, multiOrScore, "any-of multi-pattern matcher should not earn the bonus")
+	require.Greater(t, matchAllScore, singleScore, "match-all matcher should earn the multi-pattern bonus")
+}
+
+// TestConfidenceDSLWeakOnly verifies a dsl matcher that only inspects status or
+// size metadata is scored as weak as a status match, while a dsl that inspects
+// the body keeps strong-content reliability.
+func TestConfidenceDSLWeakOnly(t *testing.T) {
+	weak := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher}, DSL: []string{"status_code == 200"}},
+	}}
+	weakCombo := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher}, DSL: []string{"status_code == 200 && content_length > 10"}},
+	}}
+	strong := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher}, DSL: []string{"contains(body, 'SecretMarker') && status_code == 200"}},
+	}}
+
+	weakScore, weakTier := weak.Confidence()
+	weakComboScore, _ := weakCombo.Confidence()
+	strongScore, strongTier := strong.Confidence()
+
+	require.Equal(t, weightStatusOrSize, weakScore, "metadata-only dsl must score as a status match")
+	require.Equal(t, ConfidenceLow, weakTier)
+	require.Equal(t, weightStatusOrSize, weakComboScore, "status+size-only dsl is still metadata inference")
+	require.Equal(t, weightStrongContent, strongScore, "body-inspecting dsl keeps strong-content weight")
+	require.Equal(t, ConfidenceMedium, strongTier)
+}
+
 func TestScoreToTier(t *testing.T) {
 	require.Equal(t, ConfidenceLow, ScoreToTier(0))
 	require.Equal(t, ConfidenceLow, ScoreToTier(confidenceMediumThreshold-1))

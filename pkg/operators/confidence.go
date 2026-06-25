@@ -49,7 +49,56 @@ const (
 	corroborationCap      = 20
 	negativeMatcherBonus  = 5
 	extractorBonus        = 3
+	// multiPatternBonus rewards a single matcher that requires several distinct
+	// patterns to all be present (condition: and / match-all). Needing many
+	// independent strings is far harder to trigger by accident than one.
+	multiPatternBonus = 8
 )
+
+// dslWeakIndicators are DSL variables that only inspect response metadata.
+// dslContentIndicators signal that a DSL expression actually inspects the
+// response body/headers, which is a far stronger detection method.
+var (
+	dslWeakIndicators    = []string{"status_code", "content_length", "duration"}
+	dslContentIndicators = []string{"body", "header", "all_headers", "contains", "regex", "len(", "tolower", "toupper", "title", "hash", "md5", "sha", "base64", "html", "response", "data"}
+)
+
+// dslWeakOnly reports whether a DSL matcher only inspects status/size metadata.
+// Such a matcher is a "strong" matcher type but carries status-level reliability
+// (an HTTP 500 can be any error), so it must not be scored as body evidence.
+func dslWeakOnly(m *matchers.Matcher) bool {
+	if len(m.DSL) == 0 {
+		return false
+	}
+	weak := false
+	for _, expr := range m.DSL {
+		e := strings.ToLower(expr)
+		for _, c := range dslContentIndicators {
+			if strings.Contains(e, c) {
+				return false
+			}
+		}
+		for _, w := range dslWeakIndicators {
+			if strings.Contains(e, w) {
+				weak = true
+			}
+		}
+	}
+	return weak
+}
+
+// requiresAllPatterns reports whether every pattern in the matcher must be
+// present (condition: and or match-all), rather than any single one.
+func requiresAllPatterns(m *matchers.Matcher) bool {
+	return m.MatchAll || strings.EqualFold(m.Condition, "and")
+}
+
+// patternCount counts the independent content patterns a matcher carries.
+// Status/size codes are intentionally excluded: matching any of several status
+// codes broadens rather than narrows a match.
+func patternCount(m *matchers.Matcher) int {
+	return len(m.Words) + len(m.Regex) + len(m.Binary) + len(m.DSL) + len(m.XPath)
+}
 
 // isContentPart reports whether a matcher part inspects response content (body
 // or full response) rather than just status/headers. Content matches are harder
@@ -84,7 +133,17 @@ func classify(m *matchers.Matcher) (evidenceClass, int) {
 			return evidenceClass{kind: "word", content: true}, weightWordContent
 		}
 		return evidenceClass{kind: "word"}, weightWordHeader
-	default: // regex, binary, dsl, xpath
+	case matchers.DSLMatcher:
+		if dslWeakOnly(m) {
+			// a dsl that only checks status_code/content_length is metadata
+			// inference, not body evidence, despite being a "strong" type.
+			return evidenceClass{kind: "status"}, weightStatusOrSize
+		}
+		if content {
+			return evidenceClass{kind: "strong", content: true}, weightStrongContent
+		}
+		return evidenceClass{kind: "strong"}, weightStrongHeader
+	default: // regex, binary, xpath
 		if content {
 			return evidenceClass{kind: "strong", content: true}, weightStrongContent
 		}
@@ -108,6 +167,7 @@ func (operators *Operators) Confidence() (int, string) {
 	classes := make(map[evidenceClass]struct{})
 	best := 0
 	hasNegative := false
+	hasMultiPattern := false
 	for _, m := range operators.Matchers {
 		if m == nil || m.Internal {
 			// internal matchers feed dynamic extraction chains and are hidden
@@ -127,12 +187,21 @@ func (operators *Operators) Confidence() (int, string) {
 		if weight > best {
 			best = weight
 		}
+		// a single matcher that requires several distinct content patterns to
+		// all hold is highly specific. Status/size and weak-dsl matchers are
+		// excluded (weight gate) since matching any of several codes broadens.
+		if weight > weightStatusOrSize && requiresAllPatterns(m) && patternCount(m) > 1 {
+			hasMultiPattern = true
+		}
 	}
 	if best == 0 {
 		return 0, ConfidenceLow
 	}
 
 	score := best
+	if hasMultiPattern {
+		score += multiPatternBonus
+	}
 	// Independent corroboration raises confidence, but only when every matcher
 	// must hold (AND) and only across distinct evidence classes.
 	if operators.matchersCondition == matchers.ANDCondition && len(classes) > 1 {
