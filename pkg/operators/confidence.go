@@ -100,16 +100,49 @@ func patternCount(m *matchers.Matcher) int {
 	return len(m.Words) + len(m.Regex) + len(m.Binary) + len(m.DSL) + len(m.XPath)
 }
 
-// isContentPart reports whether a matcher part inspects response content (body
-// or full response) rather than just status/headers. Content matches are harder
-// to trigger by accident than metadata matches.
-func isContentPart(part string) bool {
-	switch strings.ToLower(part) {
-	case "", "body", "all", "response", "raw", "data":
-		return true
-	default:
-		return false
+// metadataParts are response parts that carry weak, false-positive-prone signal
+// across every protocol: protocol metadata (status/size/rcode/duration), HTTP
+// response headers (the generic part and the common header fields used directly)
+// and request-side echoes. Matching these is more backportable / accidental than
+// matching real response content. Everything not listed here (response bodies,
+// DNS answer/ns/extra sections, TLS certificate fields, command stdout/stderr,
+// websocket/whois/javascript payloads, ...) is treated as content, so non-HTTP
+// protocols are scored on the strength of what they actually inspect.
+var metadataParts = map[string]struct{}{
+	"header": {}, "all_headers": {}, "headers": {},
+	"status": {}, "status_code": {}, "size": {}, "content_length": {}, "duration": {},
+	"rcode": {},
+	"request": {}, "host": {}, "ip": {}, "port": {}, "matched": {}, "type": {},
+	// common HTTP response header fields that templates match on directly
+	"content_type": {}, "content-type": {}, "server": {}, "location": {},
+	"set_cookie": {}, "set-cookie": {}, "www_authenticate": {}, "www-authenticate": {},
+	"x_powered_by": {}, "x-powered-by": {}, "cache_control": {}, "cache-control": {},
+}
+
+// stripIndexSuffix removes the _<n> suffix that flow / multi-request templates
+// append to response parts (body_2, header_3, content_type_2) so they classify
+// the same as their base part.
+func stripIndexSuffix(p string) string {
+	i := strings.LastIndexByte(p, '_')
+	if i <= 0 || i == len(p)-1 {
+		return p
 	}
+	for j := i + 1; j < len(p); j++ {
+		if p[j] < '0' || p[j] > '9' {
+			return p
+		}
+	}
+	return p[:i]
+}
+
+// isContentPart reports whether a matcher part inspects response content rather
+// than protocol metadata or headers. Content is the default: only the known
+// weak metadata parts are excluded. Content matches are harder to trigger by
+// accident, so they carry higher confidence weight.
+func isContentPart(part string) bool {
+	p := stripIndexSuffix(strings.ToLower(strings.TrimSpace(part)))
+	_, meta := metadataParts[p]
+	return !meta
 }
 
 // evidenceClass identifies an independent line of evidence. Corroboration is

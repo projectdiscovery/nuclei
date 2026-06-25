@@ -335,6 +335,46 @@ func TestConfidenceDSLWeakOnly(t *testing.T) {
 	require.Equal(t, ConfidenceMedium, strongTier)
 }
 
+// TestIsContentPartAcrossProtocols verifies the part classifier recognizes
+// content vs metadata parts for every protocol, including numbered suffixes
+// emitted by multi-request / flow templates.
+func TestIsContentPartAcrossProtocols(t *testing.T) {
+	content := []string{
+		"", "body", "all", "response", "raw", "data", // http / generic
+		"body_2", "body_5", "response_2", // multi-request numbered
+		"answer", "question", "ns", "extra", "trace", "a", "aaaa", "cname", // dns
+		"stderr", "code_1_response", // code
+		"subject_dn", "issuer_cn", "fingerprint", "cipher", "domains", // ssl
+		"history", // headless
+		"domain", "registrar", // whois
+	}
+	metadata := []string{
+		"header", "all_headers", "header_2", "header_3", // http headers
+		"content_type", "content_type_2", "server", "location", "set_cookie", // header fields
+		"status", "status_code", "size", "content_length", "duration", // http metadata
+		"rcode",              // dns metadata
+		"request", "host", "ip", "port", "matched", "type", // request-side
+	}
+	for _, p := range content {
+		require.True(t, isContentPart(p), "part %q should be content", p)
+	}
+	for _, p := range metadata {
+		require.False(t, isContentPart(p), "part %q should be metadata", p)
+	}
+}
+
+// TestConfidenceNonHTTPContentParts verifies that content matches on non-HTTP
+// protocols (dns answer, code stderr, tls cert fields) are scored as content,
+// not weak metadata.
+func TestConfidenceNonHTTPContentParts(t *testing.T) {
+	for _, part := range []string{"answer", "stderr", "subject_dn", "code_1_response"} {
+		ops := &Operators{Matchers: []*matchers.Matcher{matcher(matchers.WordsMatcher, part)}}
+		score, tier := ops.Confidence()
+		require.Equal(t, weightWordContent, score, "word match on %q should score as content", part)
+		require.Equal(t, ConfidenceMedium, tier)
+	}
+}
+
 func TestScoreToTier(t *testing.T) {
 	require.Equal(t, ConfidenceLow, ScoreToTier(0))
 	require.Equal(t, ConfidenceLow, ScoreToTier(confidenceMediumThreshold-1))
