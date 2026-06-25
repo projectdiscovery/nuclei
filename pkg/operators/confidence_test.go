@@ -265,6 +265,24 @@ func TestConfidenceRealWorldScenarios(t *testing.T) {
 	}
 }
 
+// TestConfidenceNegativeOnlyIsEvidence verifies that when a detection has no
+// positive matchers, a sole negative (absence) matcher is scored as the
+// detection itself rather than discarded. This mirrors token-spray validity
+// checks and "setting reverted" CVE steps.
+func TestConfidenceNegativeOnlyIsEvidence(t *testing.T) {
+	negativeOnly := &Operators{Matchers: []*matchers.Matcher{
+		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Part: "body", Words: []string{"Access Token Invalid"}, Negative: true},
+	}}
+	positive := &Operators{Matchers: []*matchers.Matcher{matcher(matchers.WordsMatcher, "body")}}
+
+	negScore, negTier := negativeOnly.Confidence()
+	posScore, _ := positive.Confidence()
+
+	require.Equal(t, weightWordContent, negScore, "a sole negative body matcher should score as a body match")
+	require.Equal(t, ConfidenceMedium, negTier)
+	require.Equal(t, posScore, negScore, "negative-only evidence should match the equivalent positive matcher weight")
+}
+
 // TestConfidenceMultiPatternBonus verifies a single matcher requiring several
 // distinct content patterns (condition: and) outscores the same matcher with a
 // single pattern, while a broad any-of (or) matcher gets no bonus.

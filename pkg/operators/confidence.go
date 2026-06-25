@@ -164,35 +164,56 @@ func (operators *Operators) Confidence() (int, string) {
 		return 0, ConfidenceLow
 	}
 
+	// positive (direct) evidence and negative (absence) evidence are tracked
+	// separately: a negative matcher behaves as a false-positive guard when it
+	// accompanies positive evidence, but is the detection itself when it stands
+	// alone (e.g. token-spray validity checks, "setting reverted" CVE steps).
 	classes := make(map[evidenceClass]struct{})
 	best := 0
-	hasNegative := false
 	hasMultiPattern := false
+
+	negClasses := make(map[evidenceClass]struct{})
+	negBest := 0
+	negMultiPattern := false
+	negCount := 0
+
 	for _, m := range operators.Matchers {
 		if m == nil || m.Internal {
 			// internal matchers feed dynamic extraction chains and are hidden
 			// from output, so they are not evidence for the user-facing match.
 			continue
 		}
+		class, weight := classify(m)
+		// a single matcher that requires several distinct content patterns to
+		// all hold is highly specific. Status/size and weak-dsl matchers are
+		// excluded (weight gate) since matching any of several codes broadens.
+		multi := weight > weightStatusOrSize && requiresAllPatterns(m) && patternCount(m) > 1
 		if m.Negative {
-			// a negative matcher asserts the ABSENCE of noise (error pages,
-			// generic banners). It is a false-positive guard, not positive
-			// evidence, so it earns the specificity bonus below but never
-			// contributes its weight to the score or the corroboration set.
-			hasNegative = true
+			negCount++
+			negClasses[class] = struct{}{}
+			if weight > negBest {
+				negBest = weight
+			}
+			if multi {
+				negMultiPattern = true
+			}
 			continue
 		}
-		class, weight := classify(m)
 		classes[class] = struct{}{}
 		if weight > best {
 			best = weight
 		}
-		// a single matcher that requires several distinct content patterns to
-		// all hold is highly specific. Status/size and weak-dsl matchers are
-		// excluded (weight gate) since matching any of several codes broadens.
-		if weight > weightStatusOrSize && requiresAllPatterns(m) && patternCount(m) > 1 {
+		if multi {
 			hasMultiPattern = true
 		}
+	}
+
+	// a negative matcher is a guard only when it backs up positive evidence.
+	negativeAsGuard := best > 0 && negCount > 0
+	if best == 0 {
+		// no positive evidence: the absence assertions are the detection. Score
+		// them by their own weight rather than discarding the match entirely.
+		best, classes, hasMultiPattern = negBest, negClasses, negMultiPattern
 	}
 	if best == 0 {
 		return 0, ConfidenceLow
@@ -211,7 +232,7 @@ func (operators *Operators) Confidence() (int, string) {
 		}
 		score += bonus
 	}
-	if hasNegative {
+	if negativeAsGuard {
 		score += negativeMatcherBonus
 	}
 	if len(operators.Extractors) > 0 {
