@@ -1157,6 +1157,14 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+			// only worth a control request when there is an actual match; if the
+			// same matchers also fire against the host's catch-all baseline the
+			// finding is likely a false positive, so flag it for the scorer.
+			if request.options.BaselineCache != nil && internalWrappedEvent.OperatorsResult.Matched {
+				if request.baselineMatched(input, generatedRequest) {
+					internalWrappedEvent.InternalEvent[BaselineMatchedKey] = true
+				}
+			}
 		})
 
 		if hasInteractMatchers {
