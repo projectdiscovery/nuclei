@@ -130,12 +130,33 @@ func TestConfidenceCorroboration(t *testing.T) {
 // without it.
 func TestConfidenceNegativeMatcherBonus(t *testing.T) {
 	base := &Operators{Matchers: []*matchers.Matcher{matcher(matchers.RegexMatcher, "body")}}
-	withNegative := &Operators{Matchers: []*matchers.Matcher{
-		{Type: matchers.MatcherTypeHolder{MatcherType: matchers.RegexMatcher}, Part: "body", Negative: true},
-	}}
+	withNegative := &Operators{
+		matchersCondition: matchers.ANDCondition,
+		Matchers: []*matchers.Matcher{
+			matcher(matchers.RegexMatcher, "body"),
+			{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Part: "body", Negative: true},
+		},
+	}
 	baseScore, _ := base.Confidence()
 	negScore, _ := withNegative.Confidence()
 	require.Greater(t, negScore, baseScore, "negative matcher should add a specificity bonus")
+}
+
+// TestConfidenceNegativeMatcherIsNotPositiveEvidence verifies that a negative
+// (absence) guard does not contribute its matcher weight as positive evidence.
+// A status-only match guarded by "body must not contain an error string" is
+// still only a status code match and must stay low confidence.
+func TestConfidenceNegativeMatcherIsNotPositiveEvidence(t *testing.T) {
+	guarded := &Operators{
+		matchersCondition: matchers.ANDCondition,
+		Matchers: []*matchers.Matcher{
+			matcher(matchers.StatusMatcher, ""),
+			{Type: matchers.MatcherTypeHolder{MatcherType: matchers.RegexMatcher}, Part: "body", Negative: true},
+		},
+	}
+	score, tier := guarded.Confidence()
+	require.Equal(t, ConfidenceLow, tier, "a strong negative guard must not lift a status-only match out of low")
+	require.LessOrEqual(t, score, weightStatusOrSize+negativeMatcherBonus, "negative matcher weight must not count as positive evidence")
 }
 
 // TestConfidenceIgnoresInternalMatchers verifies hidden helper matchers used for
@@ -151,6 +172,97 @@ func TestConfidenceIgnoresInternalMatchers(t *testing.T) {
 	score, tier := ops.Confidence()
 	require.Equal(t, weightStatusOrSize, score, "internal matcher must be ignored, leaving only the status weight")
 	require.Equal(t, ConfidenceLow, tier)
+}
+
+// neg builds a negative matcher of the given type/part.
+func neg(t matchers.MatcherType, part string) *matchers.Matcher {
+	return &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: t}, Part: part, Negative: true}
+}
+
+// TestConfidenceRealWorldScenarios pins the score band and tier for matcher
+// compositions that mirror real nuclei templates, so the scorer stays sensible
+// as it evolves.
+func TestConfidenceRealWorldScenarios(t *testing.T) {
+	tests := []struct {
+		name      string
+		operators *Operators
+		minScore  int
+		maxScore  int
+		wantTier  string
+	}{
+		{
+			name: "host-up status probe",
+			operators: &Operators{
+				Matchers: []*matchers.Matcher{matcher(matchers.StatusMatcher, "")},
+			},
+			minScore: 1, maxScore: weightStatusOrSize, wantTier: ConfidenceLow,
+		},
+		{
+			name: "tech detection single header banner",
+			operators: &Operators{
+				Matchers: []*matchers.Matcher{matcher(matchers.WordsMatcher, "header")},
+			},
+			minScore: weightWordHeader, maxScore: weightWordHeader, wantTier: ConfidenceLow,
+		},
+		{
+			name: "exposed panel title word",
+			operators: &Operators{
+				Matchers: []*matchers.Matcher{matcher(matchers.WordsMatcher, "body")},
+			},
+			minScore: weightWordContent, maxScore: weightWordContent, wantTier: ConfidenceMedium,
+		},
+		{
+			name: "favicon hash dsl",
+			operators: &Operators{
+				Matchers: []*matchers.Matcher{matcher(matchers.DSLMatcher, "")},
+			},
+			minScore: weightStrongContent, maxScore: weightStrongContent, wantTier: ConfidenceMedium,
+		},
+		{
+			name: "cve body regex and status with extractor",
+			operators: &Operators{
+				matchersCondition: matchers.ANDCondition,
+				Matchers: []*matchers.Matcher{
+					matcher(matchers.RegexMatcher, "body"),
+					matcher(matchers.StatusMatcher, ""),
+				},
+				Extractors: []*extractors.Extractor{{}},
+			},
+			minScore: confidenceHighThreshold, maxScore: ConfidenceCertain, wantTier: ConfidenceHigh,
+		},
+		{
+			name: "strong body match guarded by negative error page",
+			operators: &Operators{
+				matchersCondition: matchers.ANDCondition,
+				Matchers: []*matchers.Matcher{
+					matcher(matchers.WordsMatcher, "body"),
+					neg(matchers.WordsMatcher, "body"),
+				},
+			},
+			minScore: weightWordContent, maxScore: weightWordContent + negativeMatcherBonus, wantTier: ConfidenceMedium,
+		},
+		{
+			name: "fingerprint or any of several strong signals",
+			operators: &Operators{
+				matchersCondition: matchers.ORCondition,
+				Matchers: []*matchers.Matcher{
+					matcher(matchers.RegexMatcher, "body"),
+					matcher(matchers.DSLMatcher, "body"),
+					matcher(matchers.WordsMatcher, "header"),
+				},
+			},
+			minScore: weightStrongContent, maxScore: weightStrongContent, wantTier: ConfidenceMedium,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			score, tier := tt.operators.Confidence()
+			require.GreaterOrEqual(t, score, tt.minScore, "score below expected band")
+			require.LessOrEqual(t, score, tt.maxScore, "score above expected band")
+			require.Equal(t, tt.wantTier, tier)
+		})
+	}
 }
 
 func TestScoreToTier(t *testing.T) {

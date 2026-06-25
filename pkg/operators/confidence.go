@@ -115,7 +115,12 @@ func (operators *Operators) Confidence() (int, string) {
 			continue
 		}
 		if m.Negative {
+			// a negative matcher asserts the ABSENCE of noise (error pages,
+			// generic banners). It is a false-positive guard, not positive
+			// evidence, so it earns the specificity bonus below but never
+			// contributes its weight to the score or the corroboration set.
 			hasNegative = true
+			continue
 		}
 		class, weight := classify(m)
 		classes[class] = struct{}{}
