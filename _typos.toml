@@ -23,6 +23,8 @@ extend-exclude = [
 ]
 
 [default.extend-identifiers]
+# Proper noun (OpenVAS scanner, source of the QoD confidence model)
+OpenVAS = "OpenVAS"
 # Go identifiers that cannot be renamed without breaking API
 MisMatched = "MisMatched"
 NoopWriter = "NoopWriter"
