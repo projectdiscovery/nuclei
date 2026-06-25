@@ -166,6 +166,14 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		},
 	}
 
+	// detection-confidence tier/score, independent of severity
+	if event.Confidence != "" {
+		result.Properties = map[string]interface{}{
+			"confidence":       event.Confidence,
+			"confidence-score": event.ConfidenceScore,
+		}
+	}
+
 	exporter.sarif.RegisterResult(*result)
 
 	return nil
