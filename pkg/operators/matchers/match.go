@@ -196,9 +196,11 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 	for i, expression := range matcher.dslCompiled {
 		if varErr := expressions.ContainsUnresolvedVariables(expression.String()); varErr != nil {
 			// the resolved expression is recompiled below; remember the
-			// original helper-call count so a substituted value cannot add
-			// new function calls to the expression.
+			// original helper-call and token counts so a substituted value can
+			// neither add new function calls nor inject extra operators that
+			// break out of a string literal and change the expression structure.
 			allowedFunctionCalls := countFunctionTokens(expression)
+			allowedTokenCount := len(expression.Tokens())
 			resolvedExpression, err := expressions.Evaluate(expression.String(), data)
 			if err != nil {
 				logExpressionEvaluationFailure(matcher.Name, err)
@@ -209,8 +211,8 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 				logExpressionEvaluationFailure(matcher.Name, err)
 				return false
 			}
-			if countFunctionTokens(expression) > allowedFunctionCalls {
-				gologger.Warning().Msgf("[%s] skipped dsl matcher %q: substitution added function calls", data["template-id"], matcher.Name)
+			if len(expression.Tokens()) > allowedTokenCount || countFunctionTokens(expression) > allowedFunctionCalls {
+				gologger.Warning().Msgf("[%s] skipped dsl matcher %q: substitution changed expression structure", data["template-id"], matcher.Name)
 				return false
 			}
 		}

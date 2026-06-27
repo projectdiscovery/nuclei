@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -56,10 +57,12 @@ func ShouldInit(id string) bool {
 func Init(options *types.Options) error {
 	if existingDialers := GetDialersWithId(options.ExecutionId); existingDialers != nil {
 		// the network policy is baked into the fastdialer when it is created,
-		// so rebuild the dialers when the RestrictLocalNetworkAccess flag
-		// changed for this execution id.
+		// so rebuild the dialers when any input to that policy changed for this
+		// execution id (the RestrictLocalNetworkAccess flag or the exclude
+		// targets denylist).
 		existingDialers.Lock()
-		policyChanged := existingDialers.RestrictLocalNetworkAccess != options.RestrictLocalNetworkAccess
+		policyChanged := existingDialers.RestrictLocalNetworkAccess != options.RestrictLocalNetworkAccess ||
+			!slices.Equal(existingDialers.ExcludeTargets, options.ExcludeTargets)
 		existingDialers.Unlock()
 		if policyChanged {
 			if existingDialers.Fastdialer != nil {
@@ -74,6 +77,7 @@ func Init(options *types.Options) error {
 		existingDialers.Lock()
 		existingDialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
 		existingDialers.RestrictLocalNetworkAccess = options.RestrictLocalNetworkAccess
+		existingDialers.ExcludeTargets = options.ExcludeTargets
 		existingDialers.Unlock()
 		SetLfaAllowed(options)
 		return nil
@@ -197,6 +201,8 @@ func initDialers(options *types.Options) error {
 	// continuing with no denylist.
 	networkPolicy, err := networkpolicy.New(*npOptions)
 	if err != nil {
+		// close the already-created dialer to avoid leaking its resources.
+		dialer.Close()
 		return errors.Wrap(err, "could not create network policy")
 	}
 
@@ -207,10 +213,12 @@ func initDialers(options *types.Options) error {
 	httpClientPool := NewHTTPPool(90*time.Second, 30*time.Second)
 
 	dialersInstance := &Dialers{
-		Fastdialer:             dialer,
-		NetworkPolicy:          networkPolicy,
-		HTTPClientPool:         httpClientPool,
-		LocalFileAccessAllowed: options.AllowLocalFileAccess,
+		Fastdialer:                 dialer,
+		NetworkPolicy:              networkPolicy,
+		HTTPClientPool:             httpClientPool,
+		LocalFileAccessAllowed:     options.AllowLocalFileAccess,
+		RestrictLocalNetworkAccess: options.RestrictLocalNetworkAccess,
+		ExcludeTargets:             options.ExcludeTargets,
 	}
 
 	_ = dialers.Set(options.ExecutionId, dialersInstance)

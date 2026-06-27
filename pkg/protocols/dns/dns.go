@@ -188,7 +188,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 // may carry a transport prefix (e.g. "udp:", "tcp:") and an optional port.
 func resolverHost(resolver string) string {
 	r := strings.TrimSpace(resolver)
-	for _, prefix := range []string{"udp:", "tcp:", "tls:", "doh:", "udp://", "tcp://", "tls://"} {
+	// strip URL-form prefixes before their shorter counterparts so that, e.g.,
+	// "udp://1.1.1.1:53" is not partially trimmed to "//1.1.1.1:53" by "udp:".
+	for _, prefix := range []string{"udp://", "tcp://", "tls://", "doh://", "udp:", "tcp:", "tls:", "doh:"} {
 		r = strings.TrimPrefix(r, prefix)
 	}
 	// strip a trailing :port if present (handles bare host or host:port).

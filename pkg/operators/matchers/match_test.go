@@ -100,9 +100,28 @@ func TestMatcher_MatchDSL_InjectionBlocked(t *testing.T) {
 	err = m.CompileMatchers()
 	require.Nil(t, err, "could not compile matcher")
 
-	injection := `x") || jarm("169.254.169.254:80") || contains(body, "`
+	// use a deterministic, side-effect-free helper call instead of a
+	// network-dependent function so the test exercises the token guard rather
+	// than network availability.
+	injection := `x") || contains(body, "anything") || contains(body, "`
 	isMatched := m.MatchDSL(map[string]interface{}{"body": "anything", "VARIABLE": injection})
 	require.False(t, isMatched, "expected matcher with added function call to be skipped")
+}
+
+// TestMatcher_MatchDSL_OperatorInjectionBlocked verifies a substituted value
+// cannot inject extra operators that change the expression structure without
+// adding any function calls.
+func TestMatcher_MatchDSL_OperatorInjectionBlocked(t *testing.T) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
+	require.Nil(t, err, "couldn't compile expression")
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
+	err = m.CompileMatchers()
+	require.Nil(t, err, "could not compile matcher")
+
+	injection := `x") || true || ("a" == "`
+	isMatched := m.MatchDSL(map[string]interface{}{"body": "anything", "VARIABLE": injection})
+	require.False(t, isMatched, "expected matcher with injected operators to be skipped")
 }
 
 // TestMatcher_MatchDSL_BenignReevalAllowed verifies a substituted literal value

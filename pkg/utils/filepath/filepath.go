@@ -54,7 +54,7 @@ func IsHardLinkedRegularFile(path string) bool {
 	if !info.Mode().IsRegular() {
 		return false
 	}
-	n, ok := hardLinkCount(info)
+	n, ok := hardLinkCount(path, info)
 	return ok && n > 1
 }
 

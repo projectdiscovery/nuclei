@@ -26,7 +26,9 @@ func newTestRequest(t *testing.T, engine []string, source string) (*Request, *te
 
 func executeRequest(t *testing.T, request *Request, info *testutils.TemplateInfo) (output.InternalEvent, error) {
 	t.Helper()
-	options := testutils.DefaultOptions
+	// copy the shared defaults before mutating so this flag does not leak into
+	// other tests and make them order-dependent.
+	options := testutils.DefaultOptions.Copy()
 	options.EnableCodeTemplates = true
 	testutils.Init(options)
 
