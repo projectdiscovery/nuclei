@@ -282,7 +282,7 @@ func interfaceAddresses(interfaceName string) ([]net.Addr, error) {
 	return addrs, nil
 }
 
-// Close closes the global shared fastdialer
+// Close closes the global shared fastdialer and associated protocol state resources
 func Close(executionId string) {
 	dialersInstance, ok := dialers.Get(executionId)
 	if !ok {
@@ -293,8 +293,18 @@ func Close(executionId string) {
 		// Drop all cached HTTP clients/transports and close their idle
 		// keep-alive connections to avoid lingering transport goroutines
 		// after shutdown.
-		dialersInstance.HTTPClientPool.Close()
-		dialersInstance.Fastdialer.Close()
+		if dialersInstance.HTTPClientPool != nil {
+			dialersInstance.HTTPClientPool.Close()
+		}
+		if dialersInstance.Fastdialer != nil {
+			dialersInstance.Fastdialer.Close()
+		}
+		if pool, ok := dialersInstance.PerHostRateLimitPool.(interface{ Close() }); ok && pool != nil {
+			pool.Close()
+		}
+		if tracker, ok := dialersInstance.HTTPToHTTPSPortTracker.(interface{ Purge() }); ok && tracker != nil {
+			tracker.Purge()
+		}
 	}
 
 	dialers.Delete(executionId)

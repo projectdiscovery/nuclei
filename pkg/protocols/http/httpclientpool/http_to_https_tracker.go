@@ -1,9 +1,10 @@
 package httpclientpool
 
 import (
-	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -14,8 +15,8 @@ import (
 // NOTE: detection and correction apply to the standard net/http (retryablehttp)
 // request path only. Unsafe/raw (rawhttp) requests bypass this scheme rewrite.
 type HTTPToHTTPSPortTracker struct {
-	// ports is a grow-only discovery cache, sync.Map gives lock-free reads
-	ports sync.Map // map[string]struct{}
+	// ports is an LRU discovery cache bounded to prevent memory leaks in long-running engines
+	ports *expirable.LRU[string, struct{}]
 
 	// Statistics
 	totalDetections  atomic.Uint64
@@ -24,12 +25,14 @@ type HTTPToHTTPSPortTracker struct {
 
 // NewHTTPToHTTPSPortTracker creates a new HTTP-to-HTTPS port tracker
 func NewHTTPToHTTPSPortTracker() *HTTPToHTTPSPortTracker {
-	return &HTTPToHTTPSPortTracker{}
+	return &HTTPToHTTPSPortTracker{
+		ports: expirable.NewLRU[string, struct{}](4096, nil, 24*time.Hour),
+	}
 }
 
 // RecordHTTPToHTTPSPort records that a host:port requires HTTPS
 func (t *HTTPToHTTPSPortTracker) RecordHTTPToHTTPSPort(hostPort string) {
-	if hostPort == "" {
+	if hostPort == "" || t.ports == nil {
 		return
 	}
 
@@ -38,9 +41,10 @@ func (t *HTTPToHTTPSPortTracker) RecordHTTPToHTTPSPort(hostPort string) {
 		return
 	}
 
-	if _, loaded := t.ports.LoadOrStore(normalizedHostPort, struct{}{}); loaded {
+	if t.ports.Contains(normalizedHostPort) {
 		return // Already recorded, no need to log again
 	}
+	t.ports.Add(normalizedHostPort, struct{}{})
 	t.totalDetections.Add(1)
 
 	gologger.Debug().Msgf("[http-to-https-tracker] Detected HTTP-to-HTTPS port mismatch for %s", normalizedHostPort)
@@ -48,7 +52,7 @@ func (t *HTTPToHTTPSPortTracker) RecordHTTPToHTTPSPort(hostPort string) {
 
 // RequiresHTTPS checks if a host:port requires HTTPS
 func (t *HTTPToHTTPSPortTracker) RequiresHTTPS(hostPort string) bool {
-	if hostPort == "" {
+	if hostPort == "" || t.ports == nil {
 		return false
 	}
 
@@ -57,7 +61,7 @@ func (t *HTTPToHTTPSPortTracker) RequiresHTTPS(hostPort string) bool {
 		return false
 	}
 
-	_, ok := t.ports.Load(normalizedHostPort)
+	_, ok := t.ports.Get(normalizedHostPort)
 	return ok
 }
 
@@ -72,7 +76,7 @@ func (t *HTTPToHTTPSPortTracker) RecordCorrection() {
 // evicted so subsequent requests (including those from unrelated templates)
 // against the same host:port are not silently broken.
 func (t *HTTPToHTTPSPortTracker) Evict(hostPort string) {
-	if hostPort == "" {
+	if hostPort == "" || t.ports == nil {
 		return
 	}
 
@@ -81,18 +85,28 @@ func (t *HTTPToHTTPSPortTracker) Evict(hostPort string) {
 		return
 	}
 
-	if _, loaded := t.ports.LoadAndDelete(normalizedHostPort); loaded {
+	if t.ports.Remove(normalizedHostPort) {
 		gologger.Debug().Msgf("[http-to-https-tracker] Reverted HTTP-to-HTTPS for %s (https attempt failed, falling back to http)", normalizedHostPort)
+	}
+}
+
+// Purge removes all tracked entries from the tracker
+func (t *HTTPToHTTPSPortTracker) Purge() {
+	if t.ports != nil {
+		t.ports.Purge()
 	}
 }
 
 // Stats returns statistics about the tracker
 func (t *HTTPToHTTPSPortTracker) Stats() HTTPToHTTPSPortStats {
+	tracked := 0
+	if t.ports != nil {
+		tracked = t.ports.Len()
+	}
 	return HTTPToHTTPSPortStats{
 		TotalDetections:  t.totalDetections.Load(),
 		TotalCorrections: t.totalCorrections.Load(),
-		// detections are incremented once per unique host:port, so this is exact
-		TrackedPorts: int(t.totalDetections.Load()),
+		TrackedPorts:     tracked,
 	}
 }
 

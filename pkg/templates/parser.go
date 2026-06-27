@@ -61,6 +61,16 @@ func (p *Parser) CompiledCache() *Cache {
 	return p.compiledTemplatesCache
 }
 
+// Purge purges both parsed and compiled template caches
+func (p *Parser) Purge() {
+	if p.parsedTemplatesCache != nil {
+		p.parsedTemplatesCache.Purge()
+	}
+	if p.compiledTemplatesCache != nil {
+		p.compiledTemplatesCache.Purge()
+	}
+}
+
 func (p *Parser) ParsedCount() int {
 	p.Lock()
 	defer p.Unlock()

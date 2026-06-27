@@ -244,6 +244,12 @@ func (e *NucleiEngine) closeInternal() {
 	if e.opts != nil {
 		generators.ClearOptionsPayloadMap(e.opts)
 	}
+	if e.parser != nil {
+		e.parser.Purge()
+	}
+	if purger, ok := e.executerOpts.Parser.(interface{ Purge() }); ok && purger != nil {
+		purger.Purge()
+	}
 }
 
 // Close all resources used by nuclei engine
