@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/pkg/errors"

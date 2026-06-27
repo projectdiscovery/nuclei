@@ -9,7 +9,6 @@ import (
 
 	"github.com/cespare/xxhash"
 	"github.com/fatih/structs"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -30,6 +29,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
@@ -266,7 +266,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	jsonData, _ := jsoniter.Marshal(response)
+	jsonData, _ := json.Marshal(response)
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})

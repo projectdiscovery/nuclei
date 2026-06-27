@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -227,7 +226,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 		return nil, err
 	}
 
-	db, err := sql.Open("mysql", dsn)
+	db, err := openDB(executionId, dsn)
 	if err != nil {
 		return nil, err
 	}

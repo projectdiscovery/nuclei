@@ -12,8 +12,7 @@ import (
 
 	"errors"
 
-	"github.com/Mzack9999/gcache"
-
+	"github.com/projectdiscovery/gcache"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"

@@ -71,15 +71,19 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	}
 
 	var workflowTemplates []*Template
+
+	caps := CapabilitiesFromOptions(options.Options)
 	for _, path := range paths {
 		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
 			continue
 		}
+
 		if template == nil {
 			continue
 		}
+
 		if template.Executer == nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
@@ -87,30 +91,28 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 
 		if options.Options.DisableUnsignedTemplates && !template.Verified {
 			// skip unverified templates when prompted to do so
-			stats.Increment(SkippedUnsignedStats)
-			continue
-		}
-		if template.UsesRequestSignature() && !template.Verified {
-			stats.Increment(SkippedRequestSignatureStats)
+			stats.Increment(SkippedUnverifiedTemplateStats)
 			continue
 		}
 
-		if template.HasCodeRequest() {
-			if !options.Options.EnableCodeTemplates {
-				// NOTE(dwisiswant0): It is safe to continue here during
-				// validation mode, because the template has already been parsed
-				// and syntax-validated by templates.Parse() above. It only
-				// prevents adding to workflow's executer list and suppresses
-				// warning messages.
-				if !options.Options.Validate {
-					gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
-				}
-				continue
-			} else if !template.Verified {
-				// unverified code templates are not allowed in workflows
-				gologger.Warning().Msgf("skipping unverified code template from workflow: %v\n", path)
-				continue
+		if template.HasCodeRequest() && !template.Verified {
+			// unverified code templates are not allowed in workflows
+			stats.Increment(SkippedUnverifiedCodeTemplateStats)
+			gologger.Warning().Msgf("Skipping unverified code template(s) from workflow: %v\n", path)
+			continue
+		}
+
+		if missingCaps := template.MissingLoadCapabilities(caps); len(missingCaps) > 0 {
+			for _, capability := range missingCaps {
+				stats.Increment(capability.Stat())
+				gologger.Warning().Msgf("Skipping workflow subtemplate: %s", capability.MissingFlagMessage(path))
 			}
+			continue
+		}
+
+		if template.UsesRequestSignature() && !template.Verified {
+			stats.Increment(SkippedRequestSignatureTemplateStats)
+			continue
 		}
 
 		// increment signed/unsigned counters

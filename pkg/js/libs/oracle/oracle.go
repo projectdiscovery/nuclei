@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
@@ -84,6 +86,11 @@ func isOracle(ctx context.Context, executionId string, host string, port int) (I
 }
 
 func (c *OracleClient) oracleDbInstance(ctx context.Context, connStr string, executionId string) (*goora.OracleConnector, error) {
+	connStr, err := sandboxDSN(executionId, connStr)
+	if err != nil {
+		return nil, err
+	}
+
 	if c.connector == nil {
 		connector := goora.NewConnector(connStr)
 		oraConnector, ok := connector.(*goora.OracleConnector)
@@ -98,6 +105,48 @@ func (c *OracleClient) oracleDbInstance(ctx context.Context, connStr string, exe
 	c.connector.Dialer(&oracleCustomDialer{executionId: executionId, ctx: ctx})
 
 	return c.connector, nil
+}
+
+func sandboxDSN(executionId string, dsn string) (string, error) {
+	parsed, err := url.Parse(dsn)
+	if err != nil {
+		return "", err
+	}
+
+	query := parsed.Query()
+	changed := false
+	for key, values := range query {
+		if !isOracleTracePathOption(key) {
+			continue
+		}
+		for i, value := range values {
+			if value == "" {
+				continue
+			}
+			normalized, err := protocolstate.NormalizePathWithExecutionId(executionId, value)
+			if err != nil {
+				return "", fmt.Errorf("oracle %s %q: %w", key, value, err)
+			}
+			values[i] = normalized
+		}
+		query[key] = values
+		changed = true
+	}
+	if !changed {
+		return dsn, nil
+	}
+
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
+}
+
+func isOracleTracePathOption(key string) bool {
+	switch strings.ToUpper(strings.TrimSpace(key)) {
+	case "TRACE FILE", "TRACE DIR", "TRACE FOLDER", "TRACE DIRECTORY":
+		return true
+	default:
+		return false
+	}
 }
 
 // Connect connects to an Oracle database

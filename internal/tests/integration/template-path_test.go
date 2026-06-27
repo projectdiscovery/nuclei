@@ -34,7 +34,7 @@ func (h *cwdTemplateTest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectPublicDNSResultsCount(results, 1)
 }
 
 type relativePathTemplateTest struct{}
@@ -45,7 +45,7 @@ func (h *relativePathTemplateTest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectPublicDNSResultsCount(results, 1)
 }
 
 type absolutePathTemplateTest struct{}
@@ -56,7 +56,7 @@ func (h *absolutePathTemplateTest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectPublicDNSResultsCount(results, 1)
 }
 
 type folderPathTemplateTest struct{}

@@ -507,11 +507,26 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		}
 	}
 
-	// Per-host clients always have keep-alive enabled for connection reuse.
-	// Only force-close connections when a template explicitly disables keep-alive.
-	if r.request.connConfiguration != nil && r.request.connConfiguration.Connection != nil &&
-		r.request.connConfiguration.Connection.DisableKeepAlive && req.Header.Get("Connection") == "" {
+	// Respect the connection reuse policy from the smart analyzer.
+	switch r.request.connectionReusePolicy {
+	case ReuseUnsafe:
+		// Force connection close for requests that must not reuse connections
+		if req.Header.Get("Connection") == "" {
+			req.Header.Set("Connection", "close")
+		}
 		req.Close = true
+	case ReuseSafe:
+		// Allow connection pooling: drop any explicit close header
+		if strings.EqualFold(req.Header.Get("Connection"), "close") {
+			req.Header.Del("Connection")
+		}
+	default:
+		// Defer to the connection-level keep-alive decision: per-host clients
+		// keep connections alive unless a template explicitly disabled it.
+		if r.request.connConfiguration != nil && r.request.connConfiguration.Connection != nil &&
+			r.request.connConfiguration.Connection.DisableKeepAlive && req.Header.Get("Connection") == "" {
+			req.Close = true
+		}
 	}
 
 	// Check if the user requested a request body

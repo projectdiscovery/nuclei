@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -425,6 +426,13 @@ func init() {
 	// If custom templates are in default locations only then they are loaded while running nuclei
 	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
 	DefaultConfig.parseDebugArgs(env.GetEnvOrDefault("NUCLEI_ARGS", ""))
+
+	// expose the templates directory to the yaml preprocessor so include
+	// directives can be confined to it without yaml importing this package
+	// (which would create an import cycle).
+	yaml.TemplateBaseDirProvider = func() string {
+		return DefaultConfig.GetTemplateDir()
+	}
 }
 
 // Add Default Config adds default when .templates-config.json file is not present

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -55,6 +56,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -405,7 +407,12 @@ func New(options *types.Options) (*Runner, error) {
 	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
 		options.RateLimitDuration = time.Second
 	}
-	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
+	// If per-host rate limiting is enabled, make global rate limiter unlimited
+	if options.PerHostRateLimit {
+		runner.rateLimiter = utils.GetRateLimiter(context.Background(), 0, 0)
+	} else {
+		runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
+	}
 
 	// Initialization successful, disable cleanup on error
 	cleanupOnError = false
@@ -432,6 +439,24 @@ func (r *Runner) Close() {
 		total := newConns + reusedConns
 		ratio := float64(reusedConns) / float64(total) * 100
 		gologger.Info().Msgf("HTTP connections: %d total, %d new, %d reused (%.1f%%)", total, newConns, reusedConns, ratio)
+
+		// Per-host breakdown is opt-in (verbose) since large scans touch many hosts.
+		if r.options.Verbose {
+			perHost := httpclientpool.GetPerHostConnectionStats()
+			sort.Slice(perHost, func(i, j int) bool {
+				return (perHost[i].New + perHost[i].Reused) > (perHost[j].New + perHost[j].Reused)
+			})
+			const maxPerHostLines = 20
+			for i, s := range perHost {
+				if i >= maxPerHostLines {
+					gologger.Info().Msgf("HTTP connections: ... and %d more host(s)", len(perHost)-maxPerHostLines)
+					break
+				}
+				hostTotal := s.New + s.Reused
+				hostRatio := float64(s.Reused) / float64(hostTotal) * 100
+				gologger.Info().Msgf("HTTP connections [%s]: %d total, %d new, %d reused (%.1f%%)", s.Host, hostTotal, s.New, s.Reused, hostRatio)
+			}
+		}
 	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {
@@ -685,7 +710,7 @@ func (r *Runner) RunEnumeration() error {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
 		}
-		if stats.GetValue(templates.SyntaxErrorStats) == 0 && stats.GetValue(templates.SyntaxWarningStats) == 0 && stats.GetValue(templates.RuntimeWarningsStats) == 0 {
+		if stats.GetValue(templates.TemplateSyntaxErrorStats) == 0 && stats.GetValue(templates.TemplateSyntaxWarningStats) == 0 && stats.GetValue(templates.TemplateRuntimeWarningStats) == 0 {
 			r.Logger.Info().Msgf("All templates validated successfully")
 		} else {
 			return errors.New("encountered errors while performing template validation")
@@ -712,6 +737,15 @@ func (r *Runner) RunEnumeration() error {
 			_ = r.inputProvider.SetWithExclusions(r.options.ExecutionId, host)
 		}
 	}
+
+	// Preflight: resolve hosts + portscan for ports required by loaded templates, then filter inputs.
+	// This reduces time spent on non-resolvable targets or targets with no relevant open ports.
+	// Preflight is a best-effort optimization: on failure we log and continue with the full input set.
+	if r.options.PreflightPortScan {
+		if err := r.preflightResolveAndPortScan(store); err != nil {
+			gologger.Warning().Msgf("preflight resolve/portscan failed, continuing without input filtering: %s", err)
+		}
+	}
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
@@ -734,13 +768,15 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
+	inputCount := int(r.inputProvider.Count())
+
 	// initialize stats worker ( this is no-op unless nuclei is built with stats build tag)
 	// during execution a directory with 2 files will be created in the current directory
 	// config.json - containing below info
 	// events.jsonl - containing all start and end times of all templates
 	events.InitWithConfig(&events.ScanConfig{
 		Name:                "nuclei-stats", // make this configurable
-		TargetCount:         int(r.inputProvider.Count()),
+		TargetCount:         inputCount,
 		TemplatesCount:      len(store.Templates()) + len(store.Workflows()),
 		TemplateConcurrency: r.options.TemplateThreads,
 		PayloadConcurrency:  r.options.PayloadConcurrency,
@@ -782,6 +818,25 @@ func (r *Runner) RunEnumeration() error {
 
 	r.progress.Stop()
 	timeTaken := time.Since(now)
+
+	// Print pool/tracker stats if available (single dialers lookup, reads under lock)
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
+		dialers.Lock()
+		perHostRateLimitPool := dialers.PerHostRateLimitPool
+		httpToHTTPSPortTracker := dialers.HTTPToHTTPSPortTracker
+		dialers.Unlock()
+
+		if pool, ok := perHostRateLimitPool.(interface{ PrintStats() }); ok {
+			pool.PrintStats()
+		}
+		if pool, ok := perHostRateLimitPool.(interface{ PrintPerHostPPSStats() }); ok {
+			pool.PrintPerHostPPSStats()
+		}
+		if tracker, ok := httpToHTTPSPortTracker.(interface{ PrintStats() }); ok {
+			tracker.PrintStats()
+		}
+	}
+
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
@@ -876,36 +931,36 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	return results, nil
 }
 
-// displayExecutionInfo displays misc info about the nuclei engine execution
+// displayExecutionInfo prints parser stats, version info, and scan counts.
 func (r *Runner) displayExecutionInfo(store *loader.Store) {
-	// Display stats for any loaded templates' syntax warnings or errors
-	stats.Display(templates.SyntaxWarningStats)
-	stats.Display(templates.SyntaxErrorStats)
-	stats.Display(templates.RuntimeWarningsStats)
+	// Display parser stats for templates loaded into the store.
+	stats.Display(templates.TemplateSyntaxWarningStats)
+	stats.Display(templates.TemplateSyntaxErrorStats)
+	stats.Display(templates.TemplateRuntimeWarningStats)
+
 	tmplCount := len(store.Templates())
 	workflowCount := len(store.Workflows())
 	if r.options.Verbose || (tmplCount == 0 && workflowCount == 0) {
-		// only print these stats in verbose mode
-		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
-		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
-		stats.ForceDisplayWarning(templates.ExcludedDastTmplStats)
-		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
-		stats.ForceDisplayWarning(templates.ExcludedFileStats)
-		stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)
+		// Excluded-template stats are noisy during normal scans, but useful in verbose mode
+		// and when no runnable templates remain.
+		for _, capability := range templates.AllCapabilities() {
+			stats.ForceDisplayWarning(capability.Stat())
+		}
+		stats.ForceDisplayWarning(templates.ExcludedWeakMatcherTemplateStats)
 	}
 
 	if tmplCount == 0 && workflowCount == 0 {
-		// if dast flag is used print explicit warning
 		if r.options.DAST {
 			r.Logger.Warning().Msg("No DAST templates found")
 		}
-		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
+		stats.ForceDisplayWarning(templates.SkippedUnverifiedCodeTemplateStats)
 	} else {
-		stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
+		stats.DisplayAsWarning(templates.SkippedUnverifiedCodeTemplateStats)
 	}
+
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
-	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
-	stats.ForceDisplayWarning(templates.SkippedRequestSignatureStats)
+	stats.ForceDisplayWarning(templates.SkippedUnverifiedTemplateStats)
+	stats.ForceDisplayWarning(templates.SkippedRequestSignatureTemplateStats)
 
 	cfg := config.DefaultConfig
 

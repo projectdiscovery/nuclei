@@ -109,7 +109,7 @@ func (t *Template) HasWorkflows() bool {
 func (t *Template) IsFuzzableRequest() bool {
 	if t.HasHTTPRequest() {
 		for _, request := range t.RequestsHTTP {
-			if request.HasFuzzing() {
+			if request != nil && request.HasFuzzing() {
 				return true
 			}
 		}
@@ -117,7 +117,7 @@ func (t *Template) IsFuzzableRequest() bool {
 
 	if t.HasHeadlessRequest() {
 		for _, request := range t.RequestsHeadless {
-			if request.HasFuzzing() {
+			if request != nil && request.HasFuzzing() {
 				return true
 			}
 		}

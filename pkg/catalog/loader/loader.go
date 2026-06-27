@@ -431,7 +431,7 @@ func (store *Store) LoadTemplateTags() (map[string]int, error) {
 		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 		if err != nil {
 			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
-				stats.Increment(templates.TemplatesExcludedStats)
+				stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
 				if config.DefaultConfig.LogAllEvents {
 					store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 				}
@@ -491,7 +491,7 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 					loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 					if !loaded {
 						if err != nil && strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
-							stats.Increment(templates.TemplatesExcludedStats)
+							stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
 							if config.DefaultConfig.LogAllEvents {
 								store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 							}
@@ -532,7 +532,7 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 
 		if err != nil {
 			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
-				stats.Increment(templates.TemplatesExcludedStats)
+				stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
 				if config.DefaultConfig.LogAllEvents {
 					store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 				}
@@ -549,13 +549,7 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	}
 
 	loadedTemplateIDs := mapsutil.NewSyncLockMap[string, struct{}]()
-	caps := templates.Capabilities{
-		Headless:      store.config.ExecutorOptions.Options.Headless,
-		Code:          store.config.ExecutorOptions.Options.EnableCodeTemplates,
-		DAST:          store.config.ExecutorOptions.Options.DAST,
-		SelfContained: store.config.ExecutorOptions.Options.EnableSelfContainedTemplates,
-		File:          store.config.ExecutorOptions.Options.EnableFileTemplates,
-	}
+	caps := templates.CapabilitiesFromOptions(store.config.ExecutorOptions.Options)
 	isListOrDisplay := store.config.ExecutorOptions.Options.TemplateList ||
 		store.config.ExecutorOptions.Options.TemplateDisplay
 
@@ -565,8 +559,11 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 			continue
 		}
 
-		if !isListOrDisplay && !template.IsEnabledFor(caps) {
-			continue
+		if !isListOrDisplay {
+			if missingCaps := template.MissingLoadCapabilities(caps); len(missingCaps) > 0 {
+				store.noteMissingCapabilities(templatePath, missingCaps)
+				continue
+			}
 		}
 
 		if loadedTemplateIDs.Has(template.ID) {
@@ -580,6 +577,15 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	}
 
 	return nil
+}
+
+func (store *Store) noteMissingCapabilities(templatePath string, missingCaps []templates.Capability) {
+	for _, capability := range missingCaps {
+		stats.Increment(capability.Stat())
+		if config.DefaultConfig.LogAllEvents {
+			store.logger.Warning().Msg(capability.MissingFlagMessage(templatePath))
+		}
+	}
 }
 
 // ValidateTemplates takes a list of templates and validates them
@@ -801,13 +807,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 			return
 		}
 
-		stats.Increment(templates.TemplatesExcludedStats)
+		stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
 		if config.DefaultConfig.LogAllEvents {
-			store.logger.Print().Msgf("[%v] %v excluded from default run using .nuclei-ignore\n", aurora.Yellow("WRN").String(), templatePath)
+			store.logger.Warning().Msgf("%v excluded from default run using .nuclei-ignore", templatePath)
 		}
 	}
 
 	typesOpts := store.config.ExecutorOptions.Options
+	caps := templates.CapabilitiesFromOptions(typesOpts)
+
 	concurrency := typesOpts.TemplateLoadingConcurrency
 	if concurrency <= 0 {
 		concurrency = types.DefaultTemplateLoadingConcurrency
@@ -872,81 +880,46 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 				if err != nil {
 					// exclude templates not compatible with offline matching from total runtime warning stats
 					if !errors.Is(err, templates.ErrIncompatibleWithOfflineMatching) {
-						stats.Increment(templates.RuntimeWarningsStats)
+						stats.Increment(templates.TemplateRuntimeWarningStats)
 					}
 					store.logger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 				} else if parsed != nil {
 					if !parsed.Verified && typesOpts.DisableUnsignedTemplates {
 						// skip unverified templates when prompted to
-						stats.Increment(templates.SkippedUnsignedStats)
+						stats.Increment(templates.SkippedUnverifiedTemplateStats)
 						return
 					}
 
-					if parsed.SelfContained && !typesOpts.EnableSelfContainedTemplates {
-						stats.Increment(templates.ExcludedSelfContainedStats)
+					// code-protocol-based templates run arbitrary commands, so an
+					// unsigned one must be reported as an unverified code template
+					// before the generic missing-capability gate can classify it as
+					// just missing -code.
+					if parsed.HasCodeRequest() && !parsed.Verified && !parsed.HasWorkflows() {
+						stats.Increment(templates.SkippedUnverifiedCodeTemplateStats)
+						if config.DefaultConfig.LogAllEvents {
+							store.logger.Warning().Msgf("Unverified code template at %q", templatePath)
+						}
 						return
 					}
 
-					if parsed.HasFileRequest() && !typesOpts.EnableFileTemplates {
-						stats.Increment(templates.ExcludedFileStats)
+					if missingCaps := parsed.MissingLoadCapabilities(caps); len(missingCaps) > 0 {
+						store.noteMissingCapabilities(templatePath, missingCaps)
 						return
 					}
 
 					// if template has request signature like aws then only signed and verified templates are allowed
 					if parsed.UsesRequestSignature() && !parsed.Verified {
-						stats.Increment(templates.SkippedRequestSignatureStats)
+						stats.Increment(templates.SkippedRequestSignatureTemplateStats)
 						return
 					}
 
-					// evaluate code-protocol gating before the DAST / headless
-					// branches below, which are mutually-exclusive and would
-					// otherwise be reached first for a template that is also a
-					// fuzzable/DAST or global-matchers template.
-					if parsed.HasCodeRequest() {
-						if !typesOpts.EnableCodeTemplates {
-							// donot include 'Code' protocol custom template in final list if code flag is not set
-							stats.Increment(templates.ExcludedCodeTmplStats)
-							if config.DefaultConfig.LogAllEvents {
-								store.logger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
-							}
-							return
-						}
-						if !parsed.Verified && !parsed.HasWorkflows() {
-							// donot include unverified 'Code' protocol custom template in final list
-							stats.Increment(templates.SkippedCodeTmplTamperedStats)
-							// these will be skipped so increment skip counter
-							stats.Increment(templates.SkippedUnsignedStats)
-							if config.DefaultConfig.LogAllEvents {
-								store.logger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
-							}
-							return
-						}
-					}
 					// DAST only templates
 					// Skip DAST filter when loading auth templates
 					if store.ID() != AuthStoreId && typesOpts.DAST {
 						// check if the template is a DAST template
 						// also allow global matchers template to be loaded
 						if parsed.IsFuzzableRequest() || parsed.IsGlobalMatchersTemplate() {
-							if parsed.HasHeadlessRequest() && !typesOpts.Headless {
-								stats.Increment(templates.ExcludedHeadlessTmplStats)
-								if config.DefaultConfig.LogAllEvents {
-									store.logger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
-								}
-							} else {
-								loadTemplate(parsed)
-							}
-						}
-					} else if parsed.HasHeadlessRequest() && !typesOpts.Headless {
-						// donot include headless template in final list if headless flag is not set
-						stats.Increment(templates.ExcludedHeadlessTmplStats)
-						if config.DefaultConfig.LogAllEvents {
-							store.logger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
-						}
-					} else if parsed.IsFuzzableRequest() && !typesOpts.DAST {
-						stats.Increment(templates.ExcludedDastTmplStats)
-						if config.DefaultConfig.LogAllEvents {
-							store.logger.Print().Msgf("[%v] -dast flag is required for DAST template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+							loadTemplate(parsed)
 						}
 					} else {
 						loadTemplate(parsed)
@@ -955,9 +928,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 			}
 			if err != nil {
 				if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
-					stats.Increment(templates.TemplatesExcludedStats)
+					stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
 					if config.DefaultConfig.LogAllEvents {
-						store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+						store.logger.Warning().Msg(err.Error())
 					}
 					return
 				}

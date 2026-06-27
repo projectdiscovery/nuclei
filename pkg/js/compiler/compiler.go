@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 

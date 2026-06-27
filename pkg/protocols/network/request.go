@@ -336,8 +336,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			dataInBytes = []byte(data)
 		}
 
-		reqBuilder.Write(dataInBytes)
-
 		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
 			return nil
@@ -351,6 +349,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 				return errors.Wrap(err, "could not write request to server")
 			}
 		}
+
+		reqBuilder.Write(dataInBytes)
 
 		if _, err := conn.Write(dataInBytes); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)

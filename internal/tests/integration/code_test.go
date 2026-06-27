@@ -34,6 +34,7 @@ var codeTestCases = []integrationCase{
 	{Path: "protocols/code/py-file.yaml", TestCase: &codeFile{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-env-var.yaml", TestCase: &codeEnvVar{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/unsigned.yaml", TestCase: &unsignedCode{}, DisableOn: isCodeDisabled},
+	{Path: "protocols/code/dast-unsigned.yaml", TestCase: &dastUnsignedCode{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-nosig.yaml", TestCase: &codePyNoSig{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() || isCodeDisabled() }},
@@ -94,6 +95,9 @@ func ensureSignedCodeTemplates() error {
 				continue
 			}
 			if _, ok := v.TestCase.(*codePyNoSig); ok {
+				continue
+			}
+			if _, ok := v.TestCase.(*dastUnsignedCode); ok {
 				continue
 			}
 			templatesToSign = append(templatesToSign, v.Path)
@@ -168,6 +172,22 @@ type unsignedCode struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *unsignedCode) Execute(filePath string) error {
 	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
+
+	// should error out
+	if err != nil {
+		return nil
+	}
+
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
+}
+
+type dastUnsignedCode struct{}
+
+// Execute runs an unsigned template that pairs a fuzzable request with a code
+// block under -dast, which must not bypass the code-signing check.
+func (h *dastUnsignedCode) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-dast")
 
 	// should error out
 	if err != nil {

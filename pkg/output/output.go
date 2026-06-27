@@ -16,11 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
-
-	jsoniter "github.com/json-iterator/go"
-	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -34,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
@@ -437,7 +436,7 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		ts := time.Now()
 		request.Timestamp = &ts
 	}
-	data, err := jsoniter.Marshal(request)
+	data, err := json.Marshal(request)
 	if err != nil {
 		return
 	}

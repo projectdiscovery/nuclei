@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -33,7 +34,6 @@ import (
 	syncutil "github.com/projectdiscovery/utils/sync"
 	unitutils "github.com/projectdiscovery/utils/unit"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
-	"gopkg.in/yaml.v2"
 )
 
 const (

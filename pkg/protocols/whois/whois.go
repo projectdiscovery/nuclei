@@ -5,10 +5,7 @@ import (
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/rdap"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
@@ -25,8 +22,9 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/rdap"
 )
 
 // Request is a request for the WHOIS protocol
@@ -138,7 +136,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	default:
 		response = res.Object
 	}
-	jsonData, _ := jsoniter.Marshal(response)
+	jsonData, _ := json.Marshal(response)
 	jsonDataString := string(jsonData)
 
 	data["type"] = request.Type().String()

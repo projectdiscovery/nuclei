@@ -7,8 +7,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestVariablesEvaluate(t *testing.T) {
