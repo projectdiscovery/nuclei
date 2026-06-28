@@ -1,6 +1,7 @@
 package httpclientpool
 
 import (
+	"sync"
 	"sync/atomic"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -22,6 +23,9 @@ const defaultHTTPToHTTPSTrackerSize = 50000
 // NOTE: detection and correction apply to the standard net/http (retryablehttp)
 // request path only. Unsafe/raw (rawhttp) requests bypass this scheme rewrite.
 type HTTPToHTTPSPortTracker struct {
+	// once guards lazy initialization of ports so a zero-value tracker
+	// (e.g. var t HTTPToHTTPSPortTracker) is safe to use directly.
+	once sync.Once
 	// ports is a bounded LRU of host:port that require HTTPS
 	ports *lru.Cache[string, struct{}]
 
@@ -44,6 +48,19 @@ func newHTTPToHTTPSPortTrackerWithSize(size int) *HTTPToHTTPSPortTracker {
 	return &HTTPToHTTPSPortTracker{ports: cache}
 }
 
+// cache returns the bounded LRU, lazily initializing it with the default size
+// when the tracker was constructed as a zero value rather than via
+// NewHTTPToHTTPSPortTracker. Since ports is a pointer, a nil cache would
+// otherwise panic on first use (unlike the previous zero-value-safe sync.Map).
+func (t *HTTPToHTTPSPortTracker) cache() *lru.Cache[string, struct{}] {
+	t.once.Do(func() {
+		if t.ports == nil {
+			t.ports, _ = lru.New[string, struct{}](defaultHTTPToHTTPSTrackerSize)
+		}
+	})
+	return t.ports
+}
+
 // RecordHTTPToHTTPSPort records that a host:port requires HTTPS
 func (t *HTTPToHTTPSPortTracker) RecordHTTPToHTTPSPort(hostPort string) {
 	if hostPort == "" {
@@ -55,7 +72,14 @@ func (t *HTTPToHTTPSPortTracker) RecordHTTPToHTTPSPort(hostPort string) {
 		return
 	}
 
-	if existed, _ := t.ports.ContainsOrAdd(normalizedHostPort, struct{}{}); existed {
+	// PeekOrAdd atomically inserts the entry only when absent, so a unique
+	// host:port is counted exactly once even under concurrent detections
+	// (ContainsOrAdd would do this too). On a hit we additionally issue a Get
+	// to refresh the LRU recency: neither Peek/PeekOrAdd nor ContainsOrAdd
+	// updates recent-ness, and an actively re-detected host:port must not be
+	// evicted while it is still in use.
+	if _, existed, _ := t.cache().PeekOrAdd(normalizedHostPort, struct{}{}); existed {
+		t.cache().Get(normalizedHostPort)
 		return // Already recorded, no need to log again
 	}
 	t.totalDetections.Add(1)
@@ -76,7 +100,7 @@ func (t *HTTPToHTTPSPortTracker) RequiresHTTPS(hostPort string) bool {
 
 	// Get (rather than Contains) so active host:ports refresh their LRU
 	// recency and are not evicted while still in use.
-	_, ok := t.ports.Get(normalizedHostPort)
+	_, ok := t.cache().Get(normalizedHostPort)
 	return ok
 }
 
@@ -100,7 +124,7 @@ func (t *HTTPToHTTPSPortTracker) Evict(hostPort string) {
 		return
 	}
 
-	if present := t.ports.Remove(normalizedHostPort); present {
+	if present := t.cache().Remove(normalizedHostPort); present {
 		gologger.Debug().Msgf("[http-to-https-tracker] Reverted HTTP-to-HTTPS for %s (https attempt failed, falling back to http)", normalizedHostPort)
 	}
 }
@@ -112,7 +136,7 @@ func (t *HTTPToHTTPSPortTracker) Stats() HTTPToHTTPSPortStats {
 		TotalCorrections: t.totalCorrections.Load(),
 		// TrackedPorts is the number of entries currently held in the bounded
 		// LRU (may be lower than TotalDetections once eviction kicks in).
-		TrackedPorts: t.ports.Len(),
+		TrackedPorts: t.cache().Len(),
 	}
 }
 

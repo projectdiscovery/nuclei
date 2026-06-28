@@ -27,7 +27,9 @@ func TestPerHostRateLimitPool_CloseReleasesLimiters(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.Equal(t, n, pool.Size())
-	require.Greater(t, runtime.NumGoroutine(), base, "limiter goroutines should be running before Close")
+	require.Eventually(t, func() bool {
+		return runtime.NumGoroutine() > base
+	}, time.Second, 20*time.Millisecond, "limiter goroutines should be running before Close")
 
 	pool.Close()
 	require.Equal(t, 0, pool.Size(), "Close must empty the pool")
