@@ -1,6 +1,7 @@
 package httpclientpool
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 // NOTE: detection and correction apply to the standard net/http (retryablehttp)
 // request path only. Unsafe/raw (rawhttp) requests bypass this scheme rewrite.
 type HTTPToHTTPSPortTracker struct {
+	mu sync.Mutex
 	// ports is an LRU discovery cache bounded to prevent memory leaks in long-running engines
 	ports *expirable.LRU[string, struct{}]
 
@@ -40,6 +42,9 @@ func (t *HTTPToHTTPSPortTracker) RecordHTTPToHTTPSPort(hostPort string) {
 	if normalizedHostPort == "" {
 		return
 	}
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	if t.ports.Contains(normalizedHostPort) {
 		return // Already recorded, no need to log again
@@ -85,7 +90,11 @@ func (t *HTTPToHTTPSPortTracker) Evict(hostPort string) {
 		return
 	}
 
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	if t.ports.Remove(normalizedHostPort) {
+		t.totalCorrections.Add(1)
 		gologger.Debug().Msgf("[http-to-https-tracker] Reverted HTTP-to-HTTPS for %s (https attempt failed, falling back to http)", normalizedHostPort)
 	}
 }
