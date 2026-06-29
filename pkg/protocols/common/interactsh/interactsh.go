@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -273,12 +274,18 @@ func (c *Client) Close() bool {
 	return c.matched.Load()
 }
 
-// ReplaceMarkers replaces the default {{interactsh-url}} placeholders with interactsh urls
+// Replace replaces the default Interactsh URL placeholders with interactsh URLs.
 func (c *Client) Replace(data string, interactshURLs []string) (string, []string) {
-	return c.ReplaceWithMarker(data, interactshURLMarkerRegex, interactshURLs)
+	for _, interactshURLMarker := range marker.FindInteractshURLMarkers(data) {
+		if url, err := c.NewURLWithData(interactshURLMarker); err == nil {
+			interactshURLs = append(interactshURLs, url)
+			data = strings.Replace(data, interactshURLMarker, url, 1)
+		}
+	}
+	return data, interactshURLs
 }
 
-// ReplaceMarkers replaces the placeholders with interactsh urls and appends them to interactshURLs
+// ReplaceWithMarker replaces custom regex matches with Interactsh URLs and appends them to interactshURLs.
 func (c *Client) ReplaceWithMarker(data string, regex *regexp.Regexp, interactshURLs []string) (string, []string) {
 	for _, interactshURLMarker := range regex.FindAllString(data, -1) {
 		if url, err := c.NewURLWithData(interactshURLMarker); err == nil {
@@ -395,7 +402,7 @@ func HasMatchers(op *operators.Operators) bool {
 
 // HasMarkers checks if the text contains interactsh markers
 func HasMarkers(data string) bool {
-	return interactshURLMarkerRegex.Match([]byte(data))
+	return marker.HasInteractshURLMarker(data)
 }
 
 func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *operators.Result) {

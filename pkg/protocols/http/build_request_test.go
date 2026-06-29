@@ -2,17 +2,20 @@ package http
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -238,6 +241,148 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	require.Equal(t, len(got.interactshURLs), 4, "could not get correct interactsh url")
 	// check if the interactsh urls are unique
 	require.True(t, areUnique(got.interactshURLs), "interactsh urls are not unique")
+}
+
+func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-self-contained-payload-interactsh"
+	request := &Request{
+		ID:            templateID,
+		Name:          "testing",
+		SelfContained: true,
+		Path:          []string{"http://{{payload}}/callback"},
+		Method:        HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Payloads: map[string]interface{}{
+			"payload": []string{"{{interactsh-url}}"},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	client, err := interactsh.New(&interactsh.Options{
+		ServerURL:           options.InteractshURL,
+		CacheSize:           options.InteractionsCacheSize,
+		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
+		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
+		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,
+		DisableHttpFallback: true,
+	})
+	require.Nil(t, err, "could not create interactsh client")
+	t.Cleanup(func() {
+		client.Close()
+	})
+	executerOpts.Interactsh = client
+
+	err = request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	got, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), ""), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make self-contained http request")
+
+	require.Len(t, got.interactshURLs, 1)
+	require.Equal(t, "http://"+got.interactshURLs[0]+"/callback", got.request.String())
+	require.NotContains(t, got.request.String(), "{{interactsh-url}}")
+}
+
+func TestMakeSelfContainedRequestDoesNotAllocateRuntimeInteractshMarkerFromPayload(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-self-contained-runtime-interactsh"
+	request := &Request{
+		ID:            templateID,
+		Name:          "testing",
+		SelfContained: true,
+		Path:          []string{"http://example.com/callback"},
+		Method:        HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Body:          "{{payload}}",
+		Payloads: map[string]interface{}{
+			"payload": []string{"{{server_value}}"},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	client, err := interactsh.New(&interactsh.Options{
+		ServerURL:           options.InteractshURL,
+		CacheSize:           options.InteractionsCacheSize,
+		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
+		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
+		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,
+		DisableHttpFallback: true,
+	})
+	require.Nil(t, err, "could not create interactsh client")
+	t.Cleanup(func() {
+		client.Close()
+	})
+	executerOpts.Interactsh = client
+
+	err = request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	got, err := generator.Make(
+		context.Background(),
+		contextargs.NewWithInput(context.Background(), ""),
+		inputData,
+		payloads,
+		map[string]interface{}{
+			"server_value": "{{interactsh-url}}",
+		},
+	)
+	require.Nil(t, err, "could not make self-contained http request")
+	body, err := got.request.BodyBytes()
+	require.Nil(t, err, "could not read request body")
+
+	require.Empty(t, got.interactshURLs)
+	require.Equal(t, "{{interactsh-url}}", string(body))
+}
+
+func TestExecuteRequestDoesNotReevaluateGeneratedPayloadMetadata(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http-payload-metadata-data"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	t.Cleanup(server.Close)
+
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Path:   []string{server.URL},
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	input := contextargs.NewWithInput(context.Background(), server.URL)
+	generated, err := generator.Make(context.Background(), input, inputData, payloads, map[string]interface{}{
+		"secret": "leaked-secret",
+	})
+	require.Nil(t, err, "could not make http request")
+	generated.meta = map[string]interface{}{
+		"payload": "{{secret}}",
+	}
+
+	err = request.executeRequest(input, generated, nil, false, func(*output.InternalWrappedEvent) {}, 0)
+
+	require.Nil(t, err, "could not execute http request")
+	require.Equal(t, "{{secret}}", generated.meta["payload"])
 }
 
 // areUnique checks if the elements of string slice are unique

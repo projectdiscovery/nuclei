@@ -92,9 +92,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defaultVars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatectx variables to varMap
-	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(input.MetaInput).GetAll()))
+	scope := request.options.NewVariablesScope(defaultVars, optionVars, dynamicValues, previous)
 
-	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+
+	vars := request.options.Variables.EvaluateScope(scope).Values
+	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, previous)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	variables = generators.MergeMaps(variables, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Whois Protocol request variables: %s\n", vardump.DumpVariables(variables))

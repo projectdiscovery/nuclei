@@ -21,6 +21,7 @@ type MultiProtocol struct {
 	options      *protocols.ExecutorOptions
 	results      *atomic.Bool
 	readOnlyArgs map[string]interface{} // readOnlyArgs are readonly args that are available after compilation
+	readOnlyVars map[string]interface{} // readOnlyVars are the template-owned subset of readOnlyArgs.
 }
 
 // NewMultiProtocol creates a new multiprotocol template engine from a list of requests
@@ -33,15 +34,30 @@ func NewMultiProtocol(requests []protocols.Request, options *protocols.ExecutorO
 
 // Compile engine specific compilation
 func (m *MultiProtocol) Compile() error {
-	// load all variables and evaluate with existing data
-	variableMap := m.options.Variables.GetAll()
-	// cli options
 	optionVars := generators.BuildPayloadFromOptions(m.options.Options)
-	// constants
 	constants := m.options.Constants
-	allVars := generators.MergeMaps(variableMap, constants, optionVars)
-	allVars = m.options.Variables.Evaluate(allVars)
+	scope := m.options.NewVariablesScope(constants, optionVars)
+	evaluation := m.options.Variables.EvaluateScope(scope)
+	allVars := generators.MergeMaps(evaluation.Values, constants, optionVars)
+
+	templateVariables := make(map[string]interface{}, len(evaluation.TemplateValues))
+	for key := range evaluation.TemplateValues {
+		if _, ok := constants[key]; ok {
+			continue
+		}
+
+		if _, ok := optionVars[key]; ok {
+			continue
+		}
+
+		if value, ok := allVars[key]; ok {
+			templateVariables[key] = value
+		}
+	}
+
 	m.readOnlyArgs = allVars
+	m.readOnlyVars = templateVariables
+
 	// no need to load files since they are done at template level
 	return nil
 }
@@ -56,6 +72,7 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// put all readonly args into template context
 	m.options.GetTemplateCtx(ctx.Input.MetaInput).Merge(m.readOnlyArgs)
+	m.options.GetTemplateCtx(ctx.Input.MetaInput).MergeTemplateVariables(m.readOnlyVars)
 
 	// add all input args to template context
 	ctx.Input.ForEach(func(key string, value interface{}) {
@@ -119,9 +136,14 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			}
 
 			// evaluate all variables after execution of each protocol
-			variableMap := m.options.Variables.Evaluate(m.options.GetTemplateCtx(ctx.Input.MetaInput).GetAll())
-			m.options.GetTemplateCtx(ctx.Input.MetaInput).Merge(variableMap) // merge all variables into template context
+			scope := m.options.NewVariablesScope()
+			m.options.AddTemplateCtxToVariablesScope(ctx.Input.MetaInput, scope)
+			evaluation := m.options.Variables.EvaluateScope(scope)
+			templateCtx := m.options.GetTemplateCtx(ctx.Input.MetaInput)
+			templateCtx.Merge(evaluation.Values)
+			templateCtx.MergeTemplateVariables(evaluation.TemplateValues)
 		})
+
 		// in case of fatal error skip execution of next protocols
 		if err != nil {
 			// always log errors
@@ -135,6 +157,7 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			}
 		}
 	}
+
 	return nil
 }
 

@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
@@ -136,6 +137,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
+
 	if request.isUnresponsiveAddress(input) {
 		// skip on unresponsive address no need to continue
 		return nil
@@ -146,17 +148,27 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	} else {
 		address, err = getAddress(input.MetaInput.Input)
 	}
+
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
+
 	variables := protocolutils.GenerateVariables(address, false, nil)
+	scope := request.options.NewVariablesScope(variables)
+
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
+
 	// add template ctx variables to varMap
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	variablesMap := request.options.Variables.Evaluate(variables)
+
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
 	// stop at first match if requested
@@ -181,21 +193,26 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		if visited.Has(actualAddress) && !request.options.Options.DisableClustering {
 			continue
 		}
+
 		visited.Set(actualAddress, struct{}{})
-		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, wrappedCallback); err != nil {
+
+		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, interactshURLs, wrappedCallback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
-			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
+
+			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 		}
+
 		if shouldStopAtFirstMatch && atomicBool.Load() {
 			break
 		}
 	}
+
 	return err
 }
 
 // executeAddress executes the request for an address
-func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
 	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 
@@ -245,35 +262,53 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				return nil
 			}
 
-			value = generators.MergeMaps(value, payloads)
+			renderedValue, err := render.RenderMap(render.MapInput{
+				Source:       value,
+				Data:         payloads,
+				Values:       generators.MergeMaps(variables, value, payloads),
+				Interactsh:   request.options.Interactsh,
+				InteractURLs: interactshURLs,
+			})
+			if err != nil {
+				m.Lock()
+				multiErr = multierr.Append(multiErr, errors.Wrap(err, "could not evaluate payload helper expressions"))
+				m.Unlock()
+				continue
+			}
+
 			swg.Add()
-			go func(vars map[string]interface{}) {
+			go func(vars map[string]interface{}, urls []string) {
 				defer swg.Done()
+
 				if request.isUnresponsiveAddress(updatedTarget) {
 					// skip on unresponsive address no need to continue
 					return
 				}
-				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, callback); err != nil {
+
+				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, urls, callback); err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
 					m.Unlock()
 				}
-			}(value)
+			}(renderedValue.Values, renderedValue.InteractURLs)
 		}
+
 		swg.Wait()
+
 		if multiErr != nil {
 			return multiErr
 		}
 	} else {
 		value := maps.Clone(payloads)
-		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, interactshURLs, callback); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
 	var (
 		hostname string
 		conn     net.Conn
@@ -307,7 +342,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}()
 	_ = conn.SetDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
-	var interactshURLs []string
+	interactshURLs = append([]string(nil), interactshURLs...)
 
 	var responseBuilder, reqBuilder strings.Builder
 
@@ -320,21 +355,22 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	inputEvents := make(map[string]interface{})
 
 	for _, input := range request.Inputs {
-		dataInBytes := []byte(input.Data)
-		var err error
-
-		dataInBytes, err = expressions.EvaluateByte(dataInBytes, interimValues)
+		result, err := render.Render(render.Input{
+			Text:         input.Data,
+			Values:       interimValues,
+			Interactsh:   request.options.Interactsh,
+			InteractURLs: interactshURLs,
+		})
 		if err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
+
 			return errors.Wrap(err, "could not evaluate template expressions")
 		}
 
-		data := string(dataInBytes)
-		if request.options.Interactsh != nil {
-			data, interactshURLs = request.options.Interactsh.Replace(data, []string{})
-			dataInBytes = []byte(data)
-		}
+		data := result.Text
+		dataInBytes := []byte(data)
+		interactshURLs = result.InteractURLs
 
 		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
