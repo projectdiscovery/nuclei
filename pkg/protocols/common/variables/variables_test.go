@@ -418,6 +418,17 @@ func TestVariablesEvaluateWithInteractshDynamicOverrideIsData(t *testing.T) {
 	require.Equal(t, "https://dynamic.{{interactsh-url}}/path", result["callback"])
 }
 
+func TestRenderVariableValueWithInteractshKeepsURLsOnRenderError(t *testing.T) {
+	source := &variableTestURLSource{}
+
+	result, urls := renderVariableValueWithInteractsh("{{interactsh-url}} {{md5(missing)}}", nil, source, nil)
+
+	require.Equal(t, 1, source.calls)
+	require.Len(t, urls, 1)
+	require.Contains(t, result, "https://example.oast.fun")
+	require.NotContains(t, result, "{{interactsh-url}}")
+}
+
 func TestVariablesEvaluatePreservesDynamicShadowingCompatibility(t *testing.T) {
 	t.Run("login-token-replaces-declared-empty-token", func(t *testing.T) {
 		variables := &Variable{

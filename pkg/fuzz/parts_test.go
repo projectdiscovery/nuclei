@@ -58,8 +58,9 @@ func TestPrepareGeneratorValuesRendersDirectPayloadInteractshMarker(t *testing.T
 	values, urls := rule.prepareGeneratorValues(map[string]interface{}{
 		"ssrf": "{{interactsh-url}}",
 	}, nil)
-	got, urls := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "https://{{ssrf}}", urls)
+	got, urls, err := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "https://{{ssrf}}", urls)
 
+	require.NoError(t, err)
 	require.Len(t, urls, 1)
 	require.Equal(t, "https://"+urls[0], got)
 	require.NotContains(t, got, "{{interactsh-url}}")
@@ -71,8 +72,9 @@ func TestPrepareGeneratorValuesRendersHelperEncodedPayloadInteractshMarker(t *te
 	values, urls := rule.prepareGeneratorValues(map[string]interface{}{
 		"ssrf": "{{url_encode('{{interactsh-url}}')}}",
 	}, nil)
-	got, urls := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{ssrf}}", urls)
+	got, urls, err := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{ssrf}}", urls)
 
+	require.NoError(t, err)
 	require.Len(t, urls, 1)
 	require.Equal(t, urls[0], got)
 	require.NotContains(t, got, "{{interactsh-url}}")
@@ -87,8 +89,9 @@ func TestPrepareGeneratorValuesRendersVariableIndirectPayloadInteractshMarker(t 
 	values, urls := rule.prepareGeneratorValues(map[string]interface{}{
 		"interaction": "|nslookup {{marker}}|curl {{marker}}",
 	}, nil)
-	got, urls := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{interaction}}", urls)
+	got, urls, err := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{interaction}}", urls)
 
+	require.NoError(t, err)
 	require.Len(t, urls, 1)
 	require.Equal(t, "|nslookup "+urls[0]+"|curl "+urls[0], got)
 	require.NotContains(t, got, "{{marker}}")
@@ -106,8 +109,9 @@ func TestPrepareGeneratorValuesDoesNotAllocateRuntimeInteractshMarker(t *testing
 			"server_value": "{{interactsh-url}}",
 		},
 	)
-	got, urls := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{payload}}", urls)
+	got, urls, err := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{payload}}", urls)
 
+	require.NoError(t, err)
 	require.Empty(t, urls)
 	require.Equal(t, "{{interactsh-url}}", got)
 }
@@ -124,10 +128,24 @@ func TestPrepareGeneratorValuesDoesNotRenderConstantOverride(t *testing.T) {
 		},
 		nil,
 	)
-	got, urls := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{payload}}", urls)
+	got, urls, err := rule.executeEvaluate(&ExecuteRuleInput{Values: values}, "", "original", "{{payload}}", urls)
 
+	require.NoError(t, err)
 	require.Empty(t, urls)
 	require.Equal(t, "{{interactsh-url}}", got)
+}
+
+func TestMergeInteractURLsPreservesCallerURLs(t *testing.T) {
+	got := mergeInteractURLs(
+		[]string{"https://caller.example/a", "https://shared.example"},
+		[]string{"https://generated.example/b", "https://shared.example"},
+	)
+
+	require.Equal(t, []string{
+		"https://caller.example/a",
+		"https://shared.example",
+		"https://generated.example/b",
+	}, got)
 }
 
 func TestExecuteEvaluateDoesNotReevaluateRenderedPayload(t *testing.T) {
@@ -150,10 +168,30 @@ func TestExecuteEvaluateDoesNotReevaluateRenderedPayload(t *testing.T) {
 		},
 	}
 
-	got, urls := rule.executeEvaluate(input, "", "original", "{{server_value}}", nil)
+	got, urls, err := rule.executeEvaluate(input, "", "original", "{{server_value}}", nil)
 
+	require.NoError(t, err)
 	require.Empty(t, urls)
 	require.Equal(t, "{{secret}}", got)
+}
+
+func TestExecuteEvaluateReturnsRenderError(t *testing.T) {
+	templateVars := variables.Variable{
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(0),
+	}
+	rule := &Rule{
+		ruleType: replaceRuleType,
+		options: &protocols.ExecutorOptions{
+			Variables: templateVars,
+			Options:   &types.Options{},
+		},
+	}
+
+	got, urls, err := rule.executeEvaluate(&ExecuteRuleInput{}, "", "original", "{{md5(missing)}}", nil)
+
+	require.Error(t, err)
+	require.Empty(t, urls)
+	require.Equal(t, "{{md5(missing)}}", got)
 }
 
 func TestExecuteEvaluateReplacesHelperEncodedTemplateInteractshMarker(t *testing.T) {
@@ -169,8 +207,9 @@ func TestExecuteEvaluateReplacesHelperEncodedTemplateInteractshMarker(t *testing
 		},
 	}
 
-	got, urls := rule.executeEvaluate(&ExecuteRuleInput{}, "", "original", "{{url_encode('{{interactsh-url}}')}}", nil)
+	got, urls, err := rule.executeEvaluate(&ExecuteRuleInput{}, "", "original", "{{url_encode('{{interactsh-url}}')}}", nil)
 
+	require.NoError(t, err)
 	require.Len(t, urls, 1)
 	require.Equal(t, urls[0], got)
 	require.NotContains(t, got, "{{interactsh-url}}")
@@ -205,8 +244,9 @@ func TestExecuteEvaluateDoesNotReplaceRuntimeInteractshMarkers(t *testing.T) {
 				},
 			}
 
-			got, urls := rule.executeEvaluate(input, "", "original", "{{server_value}}", nil)
+			got, urls, err := rule.executeEvaluate(input, "", "original", "{{server_value}}", nil)
 
+			require.NoError(t, err)
 			require.Empty(t, urls)
 			require.Equal(t, item.value, got)
 		})
@@ -252,8 +292,9 @@ func TestExecuteEvaluateUsesRenderedPayloadForAllRuleTypes(t *testing.T) {
 				},
 			}
 
-			got, urls := rule.executeEvaluate(input, "", item.value, "{{server_value}}", nil)
+			got, urls, err := rule.executeEvaluate(input, "", item.value, "{{server_value}}", nil)
 
+			require.NoError(t, err)
 			require.Empty(t, urls)
 			require.Equal(t, item.expected, got)
 		})

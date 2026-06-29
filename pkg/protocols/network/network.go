@@ -199,7 +199,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			continue
 		}
 
-		if result, evalErr := render.Render(render.Input{Text: input.Data, Values: preCompileVars}); evalErr == nil {
+		if result, evalErr := render.Render(render.Input{Text: input.Data, Values: preCompileVars}); evalErr == nil && !interactsh.HasMarkers(result.Text) {
 			input.Data = result.Text
 		}
 	}

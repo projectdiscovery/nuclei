@@ -215,14 +215,18 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	// add template context variables to varMap
-	scope := request.options.NewVariablesScope(payloadValues, hostnameVariables)
+	scope := request.options.NewVariablesScope(payloadValues, hostnameVariables, previous)
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
 	}
 
 	scope.AddData(request.options.Constants)
 	variablesMap := request.options.Variables.EvaluateScope(scope).Values
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
+	payloadValues = generators.MergeMaps(variablesMap, payloadValues, previous)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		payloadValues = generators.MergeMaps(payloadValues, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	payloadValues = generators.MergeMaps(payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("SSL Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))

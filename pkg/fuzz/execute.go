@@ -150,6 +150,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	}
 
 	baseValues := input.Values
+	baseInteractURLs := append([]string(nil), input.InteractURLs...)
 	if rule.generator == nil {
 		for _, component := range finalComponentList {
 			var dataKeys map[string]struct{}
@@ -168,7 +169,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 			)
 			// Replace template-text interactsh markers without evaluating runtime values.
 			input.Values, interactURLs = rule.evaluateVarsWithInteractsh(input.Values, interactURLs, dataKeys)
-			input.InteractURLs = interactURLs
+			input.InteractURLs = mergeInteractURLs(baseInteractURLs, interactURLs)
 
 			err := rule.executeRuleValues(input, component)
 			if err != nil {
@@ -187,7 +188,7 @@ mainLoop:
 			}
 			var interactURLs []string
 			input.Values, interactURLs = rule.prepareGeneratorValues(values, baseValues)
-			input.InteractURLs = interactURLs
+			input.InteractURLs = mergeInteractURLs(baseInteractURLs, interactURLs)
 
 			if err := rule.executeRuleValues(input, component); err != nil {
 				if err == io.EOF {
@@ -199,6 +200,35 @@ mainLoop:
 		}
 	}
 	return nil
+}
+
+func mergeInteractURLs(base, urls []string) []string {
+	if len(base)+len(urls) == 0 {
+		return nil
+	}
+
+	merged := make([]string, 0, len(base)+len(urls))
+	seen := make(map[string]struct{}, len(base)+len(urls))
+
+	for _, url := range base {
+		if _, ok := seen[url]; ok {
+			continue
+		}
+
+		seen[url] = struct{}{}
+		merged = append(merged, url)
+	}
+
+	for _, url := range urls {
+		if _, ok := seen[url]; ok {
+			continue
+		}
+
+		seen[url] = struct{}{}
+		merged = append(merged, url)
+	}
+
+	return merged
 }
 
 func (rule *Rule) prepareGeneratorValues(values, baseValues map[string]interface{}) (map[string]interface{}, []string) {
@@ -353,15 +383,18 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 					// ex: fuzzing string value in a json int field
 					continue
 				}
+
 				return err
 			}
 		}
+
 		return nil
 	}
 
 	// if we are fuzzing both keys and values
 	if rule.Fuzz.KV != nil {
 		var gotErr error
+
 		rule.Fuzz.KV.Iterate(func(key, value string) bool {
 			if err := rule.executePartRule(input, ValueOrKeyValue{Key: key, Value: value}, ruleComponent); err != nil {
 				if component.IsErrSetValue(err) {
@@ -370,28 +403,47 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 					return true
 				}
 				gotErr = err
+
 				return false
 			}
+
 			return true
 		})
+
 		// if mode is multiple now build and execute it
 		if rule.modeType == multipleModeType {
 			rule.Fuzz.KV.Iterate(func(key, value string) bool {
 				var evaluated string
-				evaluated, input.InteractURLs = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+				var err error
+
+				evaluated, input.InteractURLs, err = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+				if err != nil {
+					gotErr = err
+
+					return false
+				}
+
 				if err := ruleComponent.SetValue(key, evaluated); err != nil {
 					return true
 				}
+
 				return true
 			})
+
+			if gotErr != nil {
+				return gotErr
+			}
+
 			req, err := ruleComponent.Rebuild()
 			if err != nil {
 				return err
 			}
+
 			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", ""); gotErr != nil {
 				return gotErr
 			}
 		}
+
 		return gotErr
 	}
 

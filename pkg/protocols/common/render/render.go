@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 )
 
-var interactshURLMarkerRegex = regexp.MustCompile(`(%7[B|b]|\{){2}(interactsh-url(?:_[0-9]+){0,3})(%7[D|d]|\}){2}`)
+var interactshURLMarkerRegex = regexp.MustCompile(`(%7[Bb]|\{){2}(interactsh-url(?:_[0-9]+){0,3})(%7[Dd]|\}){2}`)
 
 // Values contains render values. Values are inserted as data; they are not
 // scanned as new template text after insertion.
@@ -62,7 +62,10 @@ type MapResult struct {
 // Values are data and rendered output is terminal data; neither is rescanned for
 // DSL expressions or Interactsh markers.
 func Render(input Input) (Result, error) {
-	prepared := ReplaceInteractshMarkers(input.Text, input.Interactsh, input.InteractURLs)
+	prepared, err := ReplaceInteractshMarkers(input.Text, input.Interactsh, input.InteractURLs)
+	if err != nil {
+		return prepared, err
+	}
 
 	result, err := expressions.Evaluate(prepared.Text, input.Values)
 	if err != nil {
@@ -94,7 +97,7 @@ func RenderMap(input MapInput) (MapResult, error) {
 			InteractURLs: urls,
 		})
 		if err != nil {
-			return MapResult{InteractURLs: urls}, err
+			return MapResult{InteractURLs: result.InteractURLs}, err
 		}
 
 		values[key] = result.Text
@@ -110,21 +113,21 @@ func RenderMap(input MapInput) (MapResult, error) {
 
 // ReplaceInteractshMarkers allocates Interactsh URLs for markers that appear in
 // template text. It does not evaluate DSL expressions or inspect values.
-func ReplaceInteractshMarkers(text string, source URLSource, interactURLs []string) Result {
+func ReplaceInteractshMarkers(text string, source URLSource, interactURLs []string) (Result, error) {
 	urls := append([]string(nil), interactURLs...)
 	if source == nil {
-		return Result{Text: text, InteractURLs: urls}
+		return Result{Text: text, InteractURLs: urls}, nil
 	}
 
 	for _, marker := range interactshURLMarkerRegex.FindAllString(text, -1) {
 		url, err := source.NewURLWithData(marker)
 		if err != nil {
-			continue
+			return Result{Text: text, InteractURLs: urls}, fmt.Errorf("replace interactsh marker %q: %w", marker, err)
 		}
 
 		urls = append(urls, url)
 		text = strings.Replace(text, marker, url, 1)
 	}
 
-	return Result{Text: text, InteractURLs: urls}
+	return Result{Text: text, InteractURLs: urls}, nil
 }

@@ -15,6 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestHasMarkersDoesNotTreatPipeAsEncodedBrace(t *testing.T) {
+	require.True(t, HasMarkers("{{interactsh-url}}"))
+	require.True(t, HasMarkers("%7B%7Binteractsh-url%7D%7D"))
+	require.False(t, HasMarkers("%7|%7|interactsh-url%7|%7|"))
+}
+
 func TestProcessInteractionForRequestConcurrentEventUpdate(t *testing.T) {
 	const (
 		keyCount        = 4096

@@ -1,6 +1,7 @@
 package render
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/projectdiscovery/govaluate"
@@ -11,10 +12,14 @@ import (
 type testURLSource struct {
 	urls []string
 	data []string
+	err  error
 }
 
 func (s *testURLSource) NewURLWithData(data string) (string, error) {
 	s.data = append(s.data, data)
+	if s.err != nil {
+		return "", s.err
+	}
 	url := "https://scan.example/a b"
 	if len(s.urls) > 0 {
 		url = s.urls[0]
@@ -115,6 +120,23 @@ func TestRenderReplacesTemplateInteractshMarkers(t *testing.T) {
 	require.Equal(t, []string{"{{interactsh-url}}"}, source.data)
 }
 
+func TestRenderRejectsFailedInteractshAllocation(t *testing.T) {
+	source := &testURLSource{err: errors.New("allocation failed")}
+
+	result, err := Render(Input{
+		Text:         "callback={{interactsh-url}}",
+		Values:       Values{},
+		Interactsh:   source,
+		InteractURLs: []string{"https://existing.example"},
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "replace interactsh marker")
+	require.Equal(t, "callback={{interactsh-url}}", result.Text)
+	require.Equal(t, []string{"https://existing.example"}, result.InteractURLs)
+	require.Equal(t, []string{"{{interactsh-url}}"}, source.data)
+}
+
 func TestRenderTransformsTemplateInteractshMarkersThroughHelpers(t *testing.T) {
 	source := &testURLSource{urls: []string{"https://scan.example/a b"}}
 
@@ -128,6 +150,21 @@ func TestRenderTransformsTemplateInteractshMarkersThroughHelpers(t *testing.T) {
 	require.Equal(t, "https%3A%2F%2Fscan.example%2Fa%20b", result.Text)
 	require.Equal(t, []string{"https://scan.example/a b"}, result.InteractURLs)
 	require.Equal(t, []string{"{{interactsh-url}}"}, source.data)
+}
+
+func TestRenderDoesNotTreatPipeAsEncodedInteractshBrace(t *testing.T) {
+	source := &testURLSource{urls: []string{"https://scan.example/pipe"}}
+
+	result, err := Render(Input{
+		Text:       "%7|%7|interactsh-url%7|%7|",
+		Values:     Values{},
+		Interactsh: source,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "%7|%7|interactsh-url%7|%7|", result.Text)
+	require.Empty(t, result.InteractURLs)
+	require.Empty(t, source.data)
 }
 
 func TestRenderDoesNotReplaceInteractshMarkersFromValues(t *testing.T) {

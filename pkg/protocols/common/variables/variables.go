@@ -207,7 +207,7 @@ func renderVariableValueWithInteractsh(expression string, combinedMap map[string
 		InteractURLs: interactURLs,
 	})
 	if err != nil {
-		return expression, interactURLs
+		return result.Text, result.InteractURLs
 	}
 
 	return result.Text, result.InteractURLs

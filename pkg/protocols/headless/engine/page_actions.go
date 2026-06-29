@@ -977,7 +977,10 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 
 	argValue := action.GetArg(arg)
 
-	prepared := render.ReplaceInteractshMarkers(argValue, p.instance.interactsh, nil)
+	prepared, err := render.ReplaceInteractshMarkers(argValue, p.instance.interactsh, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not replace interactsh marker for argument %q: %w", arg, err)
+	}
 	argValue = prepared.Text
 
 	exprs := getExpressions(argValue, p.variables)

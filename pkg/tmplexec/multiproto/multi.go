@@ -38,8 +38,25 @@ func (m *MultiProtocol) Compile() error {
 	constants := m.options.Constants
 	scope := m.options.NewVariablesScope(constants, optionVars)
 	evaluation := m.options.Variables.EvaluateScope(scope)
-	m.readOnlyArgs = evaluation.Values
-	m.readOnlyVars = evaluation.TemplateValues
+	allVars := generators.MergeMaps(evaluation.Values, constants, optionVars)
+
+	templateVariables := make(map[string]interface{}, len(evaluation.TemplateValues))
+	for key := range evaluation.TemplateValues {
+		if _, ok := constants[key]; ok {
+			continue
+		}
+
+		if _, ok := optionVars[key]; ok {
+			continue
+		}
+
+		if value, ok := allVars[key]; ok {
+			templateVariables[key] = value
+		}
+	}
+
+	m.readOnlyArgs = allVars
+	m.readOnlyVars = templateVariables
 
 	// no need to load files since they are done at template level
 	return nil
