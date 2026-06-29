@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/baseline"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
@@ -98,6 +99,10 @@ type ExecutorOptions struct {
 	Interactsh *interactsh.Client
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// BaselineCache is an optional per-host catch-all baseline cache used to
+	// lower confidence on likely false-positive matches. Enabled via the
+	// ConfidenceBaseline option.
+	BaselineCache *baseline.Cache
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -289,6 +294,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Browser:             e.Browser,
 		Interactsh:          e.Interactsh,
 		HostErrorsCache:     e.HostErrorsCache,
+		BaselineCache:       e.BaselineCache,
 		StopAtFirstMatch:    e.StopAtFirstMatch,
 		Variables:           e.Variables,
 		Constants:           e.Constants,
@@ -365,11 +371,27 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 
 	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
+	// confidence is a static, deterministic signal derived from the matcher
+	// composition, so it is identical for every result event of this match.
+	confidenceScore, confidenceTier := wrapped.OperatorsResult.Operators.Confidence()
+	// out-of-band confirmation (an interactsh interaction) is unambiguous proof
+	// of the issue, so it outranks any in-band static score. A catch-all baseline
+	// match (the same matchers fire on a non-existent path) only clamps in-band
+	// matches: real out-of-band proof is unaffected.
+	switch {
+	case isOutOfBandConfirmed(wrapped.InternalEvent):
+		confidenceScore, confidenceTier = operators.ConfidenceCertain, operators.ConfidenceHigh
+	case isCatchAllBaselineMatch(wrapped.InternalEvent):
+		confidenceScore, confidenceTier = operators.ConfidenceCatchAll, operators.ConfidenceLow
+	}
+
 	// If we have multiple matchers with names, write each of them separately.
 	if len(wrapped.OperatorsResult.Matches) > 0 {
 		for matcherNames := range wrapped.OperatorsResult.Matches {
 			data := request.MakeResultEventItem(wrapped)
 			data.MatcherName = matcherNames
+			data.Confidence = confidenceTier
+			data.ConfidenceScore = confidenceScore
 			results = append(results, data)
 		}
 	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
@@ -377,13 +399,39 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 			data := request.MakeResultEventItem(wrapped)
 			data.ExtractorName = k
 			data.ExtractedResults = v
+			data.Confidence = confidenceTier
+			data.ConfidenceScore = confidenceScore
 			results = append(results, data)
 		}
 	} else {
 		data := request.MakeResultEventItem(wrapped)
+		data.Confidence = confidenceTier
+		data.ConfidenceScore = confidenceScore
 		results = append(results, data)
 	}
 	return results
+}
+
+// isOutOfBandConfirmed reports whether the match was corroborated by an
+// out-of-band interaction (interactsh), which the interactsh client records on
+// the event before re-running the result builder.
+func isOutOfBandConfirmed(event output.InternalEvent) bool {
+	if event == nil {
+		return false
+	}
+	return types.ToString(event["interactsh_protocol"]) != ""
+}
+
+// isCatchAllBaselineMatch reports whether the match also fired against the
+// host's catch-all baseline (set by the HTTP baseline detector), indicating a
+// likely false positive. The key mirrors http.BaselineMatchedKey; it is not
+// referenced directly to avoid an import cycle.
+func isCatchAllBaselineMatch(event output.InternalEvent) bool {
+	if event == nil {
+		return false
+	}
+	matched, _ := event["baseline_matched"].(bool)
+	return matched
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.

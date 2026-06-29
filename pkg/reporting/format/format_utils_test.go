@@ -49,6 +49,30 @@ func TestToMarkdownTableString(t *testing.T) {
 	require.ElementsMatch(t, expectedDynamicAttributes, actualAttributeSlice[dynamicAttributeIndex:])              // dynamic parameters are not ordered
 }
 
+func TestCreateReportDescription_Confidence(t *testing.T) {
+	base := &output.ResultEvent{
+		TemplateID: "test-template",
+		Host:       "example.com",
+		Matched:    "https://example.com/x",
+		Type:       "http",
+		Info: model.Info{
+			Name:           "Test Template",
+			SeverityHolder: severity.Holder{Severity: severity.High},
+		},
+	}
+
+	withConfidence := *base
+	withConfidence.Confidence = "high"
+	withConfidence.ConfidenceScore = 85
+	result := CreateReportDescription(&withConfidence, &util.MarkdownFormatter{}, true)
+	require.Contains(t, result, "Confidence")
+	require.Contains(t, result, "High (85)")
+
+	// confidence row is omitted entirely when no score was computed
+	without := CreateReportDescription(base, &util.MarkdownFormatter{}, true)
+	require.NotContains(t, without, "Confidence")
+}
+
 func TestCreateReportDescription_MarkdownInjection(t *testing.T) {
 	// Setup a mock result event with malicious payload in various fields
 	event := &output.ResultEvent{

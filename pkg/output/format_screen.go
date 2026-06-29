@@ -9,6 +9,18 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
+// confidenceColor colorizes the confidence tier for screen output.
+func (w *StandardWriter) confidenceColor(confidence string) string {
+	switch confidence {
+	case "high":
+		return w.aurora.BrightGreen(confidence).String()
+	case "medium":
+		return w.aurora.BrightYellow(confidence).String()
+	default:
+		return w.aurora.BrightBlack(confidence).String()
+	}
+}
+
 // formatScreen formats the output for showing on screen.
 func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 	builder := &bytes.Buffer{}
@@ -51,6 +63,12 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString("[")
 		builder.WriteString(w.severityColors(output.Info.SeverityHolder.Severity))
 		builder.WriteString("] ")
+
+		if output.Confidence != "" {
+			builder.WriteString("[")
+			builder.WriteString(w.confidenceColor(output.Confidence))
+			builder.WriteString("] ")
+		}
 	}
 	if output.Matched != "" {
 		builder.WriteString(output.Matched)
