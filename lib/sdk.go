@@ -80,6 +80,7 @@ type NucleiEngine struct {
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
 	parser           *templates.Parser
+	ownsParser       bool // true when the engine created the parser and may purge it on Close
 	authprovider     authprovider.AuthProvider
 
 	// unexported meta options
@@ -243,6 +244,13 @@ func (e *NucleiEngine) closeInternal() {
 	}
 	if e.opts != nil {
 		generators.ClearOptionsPayloadMap(e.opts)
+	}
+	// Purge the template caches (compiled templates are heap-heavy) so a
+	// long-running embedder does not retain them for the process lifetime.
+	// Only do this when the engine created the parser; a caller-supplied
+	// parser is an opt-in shared cache the caller owns.
+	if e.ownsParser && e.parser != nil {
+		e.parser.Purge()
 	}
 }
 
