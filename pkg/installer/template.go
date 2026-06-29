@@ -204,6 +204,12 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 
 	// remove deleted templates
 	for _, deletion := range results.deletions {
+		// the deletion list comes from the on-disk .checksum file; only remove
+		// paths inside the templates directory.
+		if !filepathutil.IsPathWithinDirectory(deletion, dir) {
+			gologger.Warning().Msgf("skipping deletion of %s: path is outside templates directory %s", deletion, dir)
+			continue
+		}
 		if err := os.Remove(deletion); err != nil && !os.IsNotExist(err) {
 			gologger.Warning().Msgf("failed to remove deleted template %s: %s", deletion, err)
 		}
@@ -346,8 +352,12 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 					}
 					// Track the new path as written
 					_ = writtenPaths.Set(writePath, struct{}{})
-					// after successful write, remove old template
-					if err := os.Remove(oldPath); err != nil {
+					// after successful write, remove old template. oldPath comes
+					// from the on-disk .templates-index; only remove paths inside
+					// the templates directory.
+					if !filepathutil.IsPathWithinDirectory(oldPath, dir) {
+						gologger.Warning().Msgf("skipping removal of old template %s: path is outside templates directory %s", oldPath, dir)
+					} else if err := os.Remove(oldPath); err != nil {
 						gologger.Warning().Msgf("failed to remove old template %s: %s", oldPath, err)
 					}
 					return nil

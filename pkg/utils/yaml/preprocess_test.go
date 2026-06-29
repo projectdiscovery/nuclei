@@ -21,7 +21,7 @@ func TestPreProcessIncludesFileAtStartOfData(t *testing.T) {
 		err    error
 	)
 	require.NotPanics(t, func() {
-		output, err = PreProcess([]byte(fmt.Sprintf("# !include:%s\nroot: true\n", includedPath)))
+		output, err = PreProcess([]byte(fmt.Sprintf("# !include:%s\nroot: true\n", includedPath)), filepath.Join(dir, "root.yaml"))
 	})
 	require.NoError(t, err)
 	require.NotContains(t, string(output), "# !include:")
@@ -45,7 +45,7 @@ func TestPreProcessExpandsRepeatedIncludeWithPerOccurrenceIndentation(t *testing
 		err    error
 	)
 	require.NotPanics(t, func() {
-		output, err = PreProcess(data)
+		output, err = PreProcess(data, filepath.Join(dir, "root.yaml"))
 	})
 	require.NoError(t, err)
 
@@ -65,7 +65,7 @@ func TestPreProcessRejectsCircularInclude(t *testing.T) {
 
 	var err error
 	require.NotPanics(t, func() {
-		_, err = PreProcess(template)
+		_, err = PreProcess(template, templatePath)
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "circular include")
@@ -87,7 +87,7 @@ func TestPreProcessRejectsExcessiveIncludeDepth(t *testing.T) {
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
 	}
 
-	_, err := PreProcess([]byte(fmt.Sprintf("# !include:%s\nid: root\n", paths[0])))
+	_, err := PreProcess([]byte(fmt.Sprintf("# !include:%s\nid: root\n", paths[0])), filepath.Join(dir, "root.yaml"))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "maximum include depth")
 }

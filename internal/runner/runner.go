@@ -183,6 +183,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	yaml.StrictSyntax = !options.NoStrictSyntax
+	yaml.AllowLocalFileAccess = options.AllowLocalFileAccess
 
 	if options.Headless {
 		if engine.MustDisableSandbox() {

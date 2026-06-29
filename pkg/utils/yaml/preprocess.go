@@ -9,6 +9,8 @@ import (
 	"regexp"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -20,12 +22,26 @@ const maxIncludeDepth = 32
 // StrictSyntax determines if pre-processing directives should be observed
 var StrictSyntax bool
 
-// PreProcess all include directives
-func PreProcess(data []byte) ([]byte, error) {
-	return preProcess(data, make(map[string]struct{}), 0)
+// AllowLocalFileAccess mirrors the -allow-local-file-access (-lfa) option for
+// the preprocessing stage. When false (the default), include directives are
+// confined to the nuclei-templates directory and the including template's own
+// directory.
+var AllowLocalFileAccess bool
+
+// TemplateBaseDirProvider, when set, returns an additional directory under which
+// include directives are permitted (in addition to the including template's own
+// directory). It is wired up by the catalog/config package to avoid an import
+// cycle between this low-level utility package and catalog/config.
+var TemplateBaseDirProvider func() string
+
+// PreProcess all include directives. templatePath is the path of the template
+// currently being processed and is used to resolve relative include paths and
+// to validate them.
+func PreProcess(data []byte, templatePath string) ([]byte, error) {
+	return preProcess(data, templatePath, make(map[string]struct{}), 0)
 }
 
-func preProcess(data []byte, includeStack map[string]struct{}, depth int) ([]byte, error) {
+func preProcess(data []byte, templatePath string, includeStack map[string]struct{}, depth int) ([]byte, error) {
 	// find all matches like !include:path\n
 	// FindAllSubmatchIndex is used (instead of FindAllSubmatch) so each match
 	// carries its own offset; relying on bytes.Index would always resolve to the
@@ -56,12 +72,26 @@ func preProcess(data []byte, includeStack map[string]struct{}, depth int) ([]byt
 			includeFileName = string(data[match[2]:match[3]])
 		}
 
+		// resolve relative include paths against the including template's
+		// directory rather than the process working directory.
+		resolvedInclude := includeFileName
+		if !filepath.IsAbs(resolvedInclude) && templatePath != "" {
+			resolvedInclude = filepath.Join(filepath.Dir(templatePath), resolvedInclude)
+		}
+
+		// validate the include path unless local file access is enabled.
+		if !AllowLocalFileAccess {
+			if err := validateIncludePath(resolvedInclude, templatePath); err != nil {
+				return nil, err
+			}
+		}
+
 		// check if the file exists; otherwise leave the directive untouched
-		if !fileutil.FileExists(includeFileName) {
+		if !fileutil.FileExists(resolvedInclude) {
 			continue
 		}
 
-		includeFileContent, err := readIncludedFile(includeFileName, includeStack, depth)
+		includeFileContent, err := readIncludedFile(resolvedInclude, includeStack, depth)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +138,7 @@ func readIncludedFile(includeFileName string, includeStack map[string]struct{}, 
 		if depth >= maxIncludeDepth {
 			return nil, fmt.Errorf("include directive exceeded maximum include depth of %d", maxIncludeDepth)
 		}
-		includeFileContent, err = preProcess(includeFileContent, includeStack, depth+1)
+		includeFileContent, err = preProcess(includeFileContent, includeFileName, includeStack, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -126,4 +156,26 @@ func includePathKey(includeFileName string) string {
 		return evaluatedPath
 	}
 	return includePath
+}
+
+// validateIncludePath checks that an include path resolves within the
+// nuclei-templates directory or the including template's directory, and is not
+// a hard-linked regular file.
+func validateIncludePath(includePath, templatePath string) error {
+	var allowedDirs []string
+	if TemplateBaseDirProvider != nil {
+		if baseDir := TemplateBaseDirProvider(); baseDir != "" {
+			allowedDirs = append(allowedDirs, baseDir)
+		}
+	}
+	if templatePath != "" {
+		allowedDirs = append(allowedDirs, filepath.Dir(templatePath))
+	}
+	if !filepathutil.IsPathWithinAnyDirectory(includePath, allowedDirs...) {
+		return errkit.Newf("include path %v is outside the templates directory and -lfa is not enabled", includePath)
+	}
+	if filepathutil.IsHardLinkedRegularFile(includePath) {
+		return errkit.Newf("include path %v denied (hard link)", includePath)
+	}
+	return nil
 }

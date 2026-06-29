@@ -90,6 +90,54 @@ func TestMatcher_MatchDSL(t *testing.T) {
 	}
 }
 
+// TestMatcher_MatchDSL_InjectionBlocked verifies a substituted value cannot add
+// new function calls to a re-evaluated DSL matcher.
+func TestMatcher_MatchDSL_InjectionBlocked(t *testing.T) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
+	require.Nil(t, err, "couldn't compile expression")
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
+	err = m.CompileMatchers()
+	require.Nil(t, err, "could not compile matcher")
+
+	// use a deterministic, side-effect-free helper call instead of a
+	// network-dependent function so the test exercises the token guard rather
+	// than network availability.
+	injection := `x") || contains(body, "anything") || contains(body, "`
+	isMatched := m.MatchDSL(map[string]interface{}{"body": "anything", "VARIABLE": injection})
+	require.False(t, isMatched, "expected matcher with added function call to be skipped")
+}
+
+// TestMatcher_MatchDSL_OperatorInjectionBlocked verifies a substituted value
+// cannot inject extra operators that change the expression structure without
+// adding any function calls.
+func TestMatcher_MatchDSL_OperatorInjectionBlocked(t *testing.T) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
+	require.Nil(t, err, "couldn't compile expression")
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
+	err = m.CompileMatchers()
+	require.Nil(t, err, "could not compile matcher")
+
+	injection := `x") || true || ("a" == "`
+	isMatched := m.MatchDSL(map[string]interface{}{"body": "anything", "VARIABLE": injection})
+	require.False(t, isMatched, "expected matcher with injected operators to be skipped")
+}
+
+// TestMatcher_MatchDSL_BenignReevalAllowed verifies a substituted literal value
+// keeps a re-evaluated DSL matcher working.
+func TestMatcher_MatchDSL_BenignReevalAllowed(t *testing.T) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
+	require.Nil(t, err, "couldn't compile expression")
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
+	err = m.CompileMatchers()
+	require.Nil(t, err, "could not compile matcher")
+
+	isMatched := m.MatchDSL(map[string]interface{}{"body": "hello world", "VARIABLE": "hello"})
+	require.True(t, isMatched, "benign re-evaluated matcher must still work")
+}
+
 func TestMatcher_MatchXPath_HTML(t *testing.T) {
 	body := `<!doctype html>
 <html>

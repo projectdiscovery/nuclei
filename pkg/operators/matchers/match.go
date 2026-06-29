@@ -195,6 +195,12 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 	// Iterate over all the expressions accepted as valid
 	for i, expression := range matcher.dslCompiled {
 		if varErr := expressions.ContainsUnresolvedVariables(expression.String()); varErr != nil {
+			// the resolved expression is recompiled below; remember the
+			// original helper-call and token counts so a substituted value can
+			// neither add new function calls nor inject extra operators that
+			// break out of a string literal and change the expression structure.
+			allowedFunctionCalls := countFunctionTokens(expression)
+			allowedTokenCount := len(expression.Tokens())
 			resolvedExpression, err := expressions.Evaluate(expression.String(), data)
 			if err != nil {
 				logExpressionEvaluationFailure(matcher.Name, err)
@@ -203,6 +209,10 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 			expression, err = govaluate.NewEvaluableExpressionWithFunctions(resolvedExpression, dsl.HelperFunctions)
 			if err != nil {
 				logExpressionEvaluationFailure(matcher.Name, err)
+				return false
+			}
+			if len(expression.Tokens()) > allowedTokenCount || countFunctionTokens(expression) > allowedFunctionCalls {
+				gologger.Warning().Msgf("[%s] skipped dsl matcher %q: substitution changed expression structure", data["template-id"], matcher.Name)
 				return false
 			}
 		}
@@ -243,6 +253,21 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 		}
 	}
 	return false
+}
+
+// countFunctionTokens returns the number of FUNCTION tokens in a compiled DSL
+// expression.
+func countFunctionTokens(expression *govaluate.EvaluableExpression) int {
+	if expression == nil {
+		return 0
+	}
+	count := 0
+	for _, token := range expression.Tokens() {
+		if token.Kind == govaluate.FUNCTION {
+			count++
+		}
+	}
+	return count
 }
 
 // MatchXPath matches on a generic map result
