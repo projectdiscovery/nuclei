@@ -216,6 +216,9 @@ type Options struct {
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
 	AutomaticScan bool
+	// AutomaticScanCoverage tunes automatic scan selection breadth:
+	// "lean" (dependents only), "balanced" (default), or "thorough".
+	AutomaticScanCoverage string
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Validate validates the templates passed to nuclei.
@@ -580,6 +583,7 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
+		AutomaticScanCoverage:          options.AutomaticScanCoverage,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
 		NoStrictSyntax:                 options.NoStrictSyntax,
