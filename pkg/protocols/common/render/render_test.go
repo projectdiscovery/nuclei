@@ -120,6 +120,21 @@ func TestRenderReplacesTemplateInteractshMarkers(t *testing.T) {
 	require.Equal(t, []string{"{{interactsh-url}}"}, source.data)
 }
 
+func TestRenderReplacesEncodedTemplateInteractshMarkers(t *testing.T) {
+	source := &testURLSource{urls: []string{"https://scan.example/encoded"}}
+
+	result, err := Render(Input{
+		Text:       "callback=%7B%7Binteractsh-url%7D%7D",
+		Values:     Values{},
+		Interactsh: source,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "callback=https://scan.example/encoded", result.Text)
+	require.Equal(t, []string{"https://scan.example/encoded"}, result.InteractURLs)
+	require.Equal(t, []string{"%7B%7Binteractsh-url%7D%7D"}, source.data)
+}
+
 func TestRenderRejectsFailedInteractshAllocation(t *testing.T) {
 	source := &testURLSource{err: errors.New("allocation failed")}
 
@@ -165,6 +180,35 @@ func TestRenderDoesNotTreatPipeAsEncodedInteractshBrace(t *testing.T) {
 	require.Equal(t, "%7|%7|interactsh-url%7|%7|", result.Text)
 	require.Empty(t, result.InteractURLs)
 	require.Empty(t, source.data)
+}
+
+func TestRenderDoesNotTreatMixedRawEncodedBracesAsInteractshMarkers(t *testing.T) {
+	items := []struct {
+		name string
+		text string
+	}{
+		{name: "mixed opening pair", text: "%7B{interactsh-url}}"},
+		{name: "mixed closing pair", text: "{{interactsh-url}%7D"},
+		{name: "encoded opening raw closing", text: "%7B%7Binteractsh-url}}"},
+		{name: "raw opening encoded closing", text: "{{interactsh-url%7D%7D"},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			source := &testURLSource{urls: []string{"https://scan.example/mixed"}}
+
+			result, err := Render(Input{
+				Text:       item.text,
+				Values:     Values{},
+				Interactsh: source,
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, item.text, result.Text)
+			require.Empty(t, result.InteractURLs)
+			require.Empty(t, source.data)
+		})
+	}
 }
 
 func TestRenderDoesNotReplaceInteractshMarkersFromValues(t *testing.T) {
@@ -233,6 +277,32 @@ func TestRenderMapTreatsValuesAsData(t *testing.T) {
 	require.Equal(t, "kept", result.Values["runtime"])
 	require.Empty(t, result.InteractURLs)
 	require.Empty(t, source.data)
+}
+
+func TestRenderMapPreservesAccumulatedValuesOnError(t *testing.T) {
+	calls := 0
+	withRenderTestHelperFunction(t, "test_render_map_error", func(args ...interface{}) (interface{}, error) {
+		calls++
+		if calls == 1 {
+			return "rendered", nil
+		}
+		return nil, errors.New("render failed")
+	})
+
+	result, err := RenderMap(MapInput{
+		Source: Values{
+			"first":  "{{test_render_map_error()}}",
+			"second": "{{test_render_map_error()}}",
+		},
+		Values: Values{},
+	})
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "render failed")
+	require.Len(t, result.Values, 1)
+	for _, value := range result.Values {
+		require.Equal(t, "rendered", value)
+	}
 }
 
 func TestRenderMapOverlaysDataWithoutRenderingIt(t *testing.T) {

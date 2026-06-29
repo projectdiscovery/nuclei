@@ -21,6 +21,21 @@ func TestHasMarkersDoesNotTreatPipeAsEncodedBrace(t *testing.T) {
 	require.False(t, HasMarkers("%7|%7|interactsh-url%7|%7|"))
 }
 
+func TestHasMarkersDoesNotTreatMixedRawEncodedBracesAsMarker(t *testing.T) {
+	items := []string{
+		"%7B{interactsh-url}}",
+		"{{interactsh-url}%7D",
+		"%7B%7Binteractsh-url}}",
+		"{{interactsh-url%7D%7D",
+	}
+
+	for _, item := range items {
+		t.Run(item, func(t *testing.T) {
+			require.False(t, HasMarkers(item))
+		})
+	}
+}
+
 func TestProcessInteractionForRequestConcurrentEventUpdate(t *testing.T) {
 	const (
 		keyCount        = 4096

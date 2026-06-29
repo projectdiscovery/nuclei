@@ -3,13 +3,11 @@ package render
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 )
-
-var interactshURLMarkerRegex = regexp.MustCompile(`(%7[Bb]|\{){2}(interactsh-url(?:_[0-9]+){0,3})(%7[Dd]|\}){2}`)
 
 // Values contains render values. Values are inserted as data; they are not
 // scanned as new template text after insertion.
@@ -97,7 +95,7 @@ func RenderMap(input MapInput) (MapResult, error) {
 			InteractURLs: urls,
 		})
 		if err != nil {
-			return MapResult{InteractURLs: result.InteractURLs}, err
+			return MapResult{Values: values, InteractURLs: result.InteractURLs}, err
 		}
 
 		values[key] = result.Text
@@ -119,14 +117,14 @@ func ReplaceInteractshMarkers(text string, source URLSource, interactURLs []stri
 		return Result{Text: text, InteractURLs: urls}, nil
 	}
 
-	for _, marker := range interactshURLMarkerRegex.FindAllString(text, -1) {
-		url, err := source.NewURLWithData(marker)
+	for _, interactshURLMarker := range marker.FindInteractshURLMarkers(text) {
+		url, err := source.NewURLWithData(interactshURLMarker)
 		if err != nil {
-			return Result{Text: text, InteractURLs: urls}, fmt.Errorf("replace interactsh marker %q: %w", marker, err)
+			return Result{Text: text, InteractURLs: urls}, fmt.Errorf("replace interactsh marker %q: %w", interactshURLMarker, err)
 		}
 
 		urls = append(urls, url)
-		text = strings.Replace(text, marker, url, 1)
+		text = strings.Replace(text, interactshURLMarker, url, 1)
 	}
 
 	return Result{Text: text, InteractURLs: urls}, nil
