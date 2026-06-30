@@ -14,8 +14,6 @@ import (
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
-
-	"gopkg.in/yaml.v2"
 )
 
 type Parser struct {
@@ -51,6 +49,17 @@ func NewParserWithParsedCache(cache *Cache) *Parser {
 		parsedTemplatesCache:   cache,
 		compiledTemplatesCache: NewCache(),
 	}
+}
+
+// Purge clears the parsed and compiled template caches. It should be called
+// when the parser is no longer needed (e.g. on engine Close) so a long-running
+// embedder does not retain every compiled template (a heap-heavy object) for
+// the entire process lifetime.
+func (p *Parser) Purge() {
+	p.Lock()
+	defer p.Unlock()
+	p.parsedTemplatesCache.Purge()
+	p.compiledTemplatesCache.Purge()
 }
 
 // Cache returns the parsed templates cache
@@ -104,7 +113,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 
 	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
-		stats.Increment(SyntaxErrorStats)
+		stats.Increment(TemplateSyntaxErrorStats)
 		return false, errkit.Newf("Could not load template %s: %s", templatePath, validationError)
 	}
 
@@ -117,7 +126,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	if ret {
 		validationWarning := validateTemplateOptionalFields(template)
 		if validationWarning != nil {
-			stats.Increment(SyntaxWarningStats)
+			stats.Increment(TemplateSyntaxWarningStats)
 			checkOpenFileError(validationWarning)
 			return ret, errkit.Newf("Could not load template %s: %s", templatePath, validationWarning)
 		}
@@ -172,13 +181,13 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		if data != nil {
 			// Already read and preprocessed
 			if p.NoStrictSyntax {
-				err = yaml.Unmarshal(data, template)
+				err = yamlutil.Unmarshal(data, template)
 			} else {
-				err = yaml.UnmarshalStrict(data, template)
+				err = yamlutil.UnmarshalStrict(data, template)
 			}
 		} else {
 			// Stream directly from reader
-			decoder := yaml.NewDecoder(reader)
+			decoder := yamlutil.NewDecoder(reader)
 			if !p.NoStrictSyntax {
 				decoder.SetStrict(true)
 			}
@@ -210,7 +219,7 @@ func (p *Parser) LoadWorkflow(templatePath string, catalog catalog.Catalog) (boo
 
 	if len(template.Workflows) > 0 {
 		if validationError := validateTemplateMandatoryFields(template); validationError != nil {
-			stats.Increment(SyntaxErrorStats)
+			stats.Increment(TemplateSyntaxErrorStats)
 			return false, validationError
 		}
 		return true, nil

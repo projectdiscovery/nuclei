@@ -16,7 +16,6 @@ import (
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
-	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -187,11 +186,11 @@ func initDialers(options *types.Options) error {
 
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
-	httpClientPool := mapsutil.NewSyncLockMap(
-		// evicts inactive httpclientpool entries after 24 hours
-		// of inactivity (long running instances)
-		mapsutil.WithEviction[string, *retryablehttp.Client](24*time.Hour, 12*time.Hour),
-	)
+	// Per-host HTTP clients and transports are evicted after 90 seconds of
+	// inactivity (checked lazily every 30 seconds). Evicted transports get
+	// their idle connections closed immediately, so connections to
+	// already-scanned hosts are cleaned up promptly.
+	httpClientPool := NewHTTPPool(90*time.Second, 30*time.Second)
 
 	dialersInstance := &Dialers{
 		Fastdialer:             dialer,
@@ -291,6 +290,17 @@ func Close(executionId string) {
 	}
 
 	if dialersInstance != nil {
+		// Drop all cached HTTP clients/transports and close their idle
+		// keep-alive connections to avoid lingering transport goroutines
+		// after shutdown.
+		dialersInstance.HTTPClientPool.Close()
+		// Stop the per-host rate limit pool so its background limiters (one
+		// goroutine each, up to the pool capacity) are released instead of
+		// leaking on shutdown or engine recreate. Typed as any here to avoid
+		// an import cycle with the httpclientpool package.
+		if pool, ok := dialersInstance.PerHostRateLimitPool.(interface{ Close() }); ok && pool != nil {
+			pool.Close()
+		}
 		dialersInstance.Fastdialer.Close()
 	}
 

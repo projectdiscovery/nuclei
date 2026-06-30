@@ -173,6 +173,14 @@ func (c *Cache) MarkFailed(protoType string, ctx *contextargs.Context, err error
 
 // MarkFailedOrRemove marks a host as failed previously or removes it
 func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, err error) {
+	// A failure that occurs because the caller's context was cancelled or hit its
+	// deadline is not the host's fault (e.g. the parent scan was cancelled). Such
+	// errors classify as temporary/deadline and would otherwise be counted, so
+	// ignore them. A nil error (success) still resets the host below.
+	if err != nil && ctx != nil && ctx.Context() != nil && ctx.Context().Err() != nil {
+		return
+	}
+
 	if err != nil && !c.checkError(protoType, err) {
 		return
 	}
@@ -280,7 +288,7 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 	return finalValue
 }
 
-var reCheckError = regexp.MustCompile(`(no address found for host|could not resolve host|connection refused|connection reset by peer|could not connect to any address found for host|timeout awaiting response headers)`)
+var reCheckError = regexp.MustCompile(`(no address found for host|could not resolve host|connection refused|connection reset by peer|could not connect to any address found for host|timeout awaiting response headers|i/o timeout)`)
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
@@ -300,8 +308,11 @@ func (c *Cache) checkError(protoType string, err error) bool {
 		// and are due to template logic
 		return false
 	case errkit.ErrKindNetworkTemporary:
-		// these should not be counted as host errors
-		return false
+		// a single temporary error (timeout, i/o reset) is transient, but a host
+		// that produces them on every request with no success in between is
+		// unresponsive. Count it; MarkFailedOrRemove resets the host on the next
+		// successful response, so only consecutive failures reach MaxHostError.
+		return true
 	case errkit.ErrKindNetworkPermanent:
 		// these should be counted as host errors
 		return true

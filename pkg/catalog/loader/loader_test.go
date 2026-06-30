@@ -1,11 +1,18 @@
 package loader
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,4 +107,102 @@ func TestRemoteTemplates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoadTemplatesRecordsUnsignedCodeTemplateOnlyAsCodeSkip(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "unsigned-code.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: unsigned-code-template
+
+info:
+  name: Unsigned Code Template
+  author: pdteam
+  severity: info
+
+code:
+  - engine:
+      - sh
+    source: |
+      echo unsigned-code-template
+`), 0o600)
+	require.NoError(t, err)
+
+	options := testutils.DefaultOptions.Copy()
+	options.Logger = &gologger.Logger{}
+	options.ExecutionId = "loader-unsigned-code-template"
+	options.EnableCodeTemplates = false
+	options.DisableUnsignedTemplates = false
+	options.TemplateLoadingConcurrency = 1
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	executerOpts.Parser = templates.NewParser()
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	store, err := New(NewConfig(options, catalog, executerOpts))
+	require.NoError(t, err)
+
+	initialUnverifiedCode := stats.GetValue(templates.SkippedUnverifiedCodeTemplateStats)
+	initialUnverified := stats.GetValue(templates.SkippedUnverifiedTemplateStats)
+
+	loaded, err := store.LoadTemplates([]string{templatePath})
+	require.NoError(t, err)
+	require.Empty(t, loaded)
+	require.Equal(t, initialUnverifiedCode+1, stats.GetValue(templates.SkippedUnverifiedCodeTemplateStats))
+	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
+}
+
+func TestLoadTemplatesDoesNotRequireGlobalMatchersFlagToLoadTemplate(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "global-matchers.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: global-matchers-template
+
+info:
+  name: Global Matchers Template
+  author: pdteam
+  severity: info
+
+http:
+  - global-matchers: true
+    matchers:
+      - type: word
+        words:
+          - global-matchers-template
+`), 0o600)
+	require.NoError(t, err)
+
+	options := testutils.DefaultOptions.Copy()
+	options.Logger = &gologger.Logger{}
+	options.ExecutionId = "loader-global-matchers-template"
+	options.EnableGlobalMatchersTemplates = false
+	options.TemplateLoadingConcurrency = 1
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	executerOpts.Parser = templates.NewParser()
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	store, err := New(NewConfig(options, catalog, executerOpts))
+	require.NoError(t, err)
+
+	loaded, err := store.LoadTemplates([]string{templatePath})
+	require.NoError(t, err)
+	require.Len(t, loaded, 1)
+	require.Equal(t, "global-matchers-template", loaded[0].ID)
 }

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
+	"github.com/projectdiscovery/goja"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
@@ -188,8 +188,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}()
 
-	var interactshURLs []string
-
 	// inject all template context values as gozero env allvars
 	allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	// add template context values if available
@@ -200,13 +198,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	allvars = generators.MergeMaps(allvars, dynamicValues, previous)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variablesMap := request.options.Variables.Evaluate(allvars)
+	scope := request.options.NewVariablesScope(allvars, optionVars, request.options.Constants)
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
 	// since we evaluate variables using allvars, give precedence to variablesMap
 	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
 	for name, value := range allvars {
 		v := fmt.Sprint(value)
-		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
-		// if value is updated by interactsh, update allvars to reflect the change downstream
 		allvars[name] = v
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}

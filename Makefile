@@ -23,7 +23,7 @@ endif
 
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs fuzz fuzz-ci fuzz-tools
 .PHONY: devtools-tsgen docs docgen dsl-docs functional go-build lint lint-strict fuzzplayground syntax-docs
-.PHONY: integration integration-debug jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
+.PHONY: integration integration-debug regression jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
 .PHONY: tidy ts verify download vet template-validate build-fuzz discover-fuzz-packages
 
 all: build
@@ -82,7 +82,11 @@ syntax-docs: docgen
 syntax-docs:
 	./bin/docgen SYNTAX-REFERENCE.md nuclei-jsonschema.json
 
-test: GOFLAGS = -race -v -timeout 1h -count 1
+# RACE controls the data-race detector (on by default for local runs). CI builds
+# the race variant on a single OS and passes RACE= elsewhere, since data races are
+# OS-independent and the detector costs ~2-3x build+run time on every runner.
+RACE ?= -race
+test: GOFLAGS = $(RACE) -v -timeout 1h -count 1
 test:
 	$(GOTEST) $(GOFLAGS) ./...
 
@@ -91,6 +95,12 @@ integration:
 
 integration-debug:
 	$(GOTEST) -tags=integration ./internal/tests/integration -v $(GO_TEST_ARGS) -args $(INTEGRATION_ARGS)
+
+# Opt-in HTTP engine scale regression harness (not part of CI). Stands up many
+# loopback hosts and asserts finding parity across a diverse template set.
+# Override host count with NUCLEI_SCALE_HOSTS, e.g. NUCLEI_SCALE_HOSTS=500 make regression
+regression:
+	$(GOTEST) -tags=regression -timeout 30m ./lib/tests -run TestScaleRegression -v
 
 functional: build
 	@release_binary="$$(command -v nuclei.exe 2>/dev/null || command -v nuclei 2>/dev/null)"; \
