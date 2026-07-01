@@ -31,6 +31,7 @@ func javascriptGoExecSambaDisabled() bool {
 
 var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/redis-lua-script.yaml", TestCase: &javascriptRedisLuaScript{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
@@ -104,6 +105,16 @@ func (j *javascriptNetHttps) Execute(filePath string) error {
 type javascriptRedisPassBrute struct{}
 
 func (j *javascriptRedisPassBrute) Execute(filePath string) error {
+	return runJavascriptDockerCase(filePath, newJavascriptDockerSpec("6379/tcp", &dockertest.RunOptions{
+		Repository: "redis",
+		Tag:        "latest",
+		Cmd:        []string{"redis-server", "--requirepass", "iamadmin"},
+	}, javascriptServiceReadyTimeout, 0, nil))
+}
+
+type javascriptRedisLuaScript struct{}
+
+func (j *javascriptRedisLuaScript) Execute(filePath string) error {
 	return runJavascriptDockerCase(filePath, newJavascriptDockerSpec("6379/tcp", &dockertest.RunOptions{
 		Repository: "redis",
 		Tag:        "latest",

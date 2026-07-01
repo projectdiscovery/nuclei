@@ -734,16 +734,23 @@ func TestActionSleep(t *testing.T) {
 }
 
 func TestActionWaitVisible(t *testing.T) {
-	response := `
+	// responseWithDelay renders a button that becomes visible after appearDelayMs.
+	// Each subtest uses its own delay so the page timing and the action timeout
+	// never race at the same boundary, which previously caused flaky failures on
+	// slower runners (e.g. windows CI) where navigation/startup overhead shifted
+	// the moment the wait actually began.
+	responseWithDelay := func(appearDelayMs int) string {
+		return fmt.Sprintf(`
 		<html>
 			<head>
 				<title>Nuclei Test Page</title>
 			</head>
 			<button style="display:none" id="test">Wait for me!</button>
 			<script>
-				setTimeout(() => document.querySelector('#test').style.display = '', 1000);
+				setTimeout(() => document.querySelector('#test').style.display = '', %d);
 			</script>
-		</html>`
+		</html>`, appearDelayMs)
+	}
 
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
@@ -751,7 +758,9 @@ func TestActionWaitVisible(t *testing.T) {
 	}
 
 	t.Run("wait for an element being visible", func(t *testing.T) {
-		testHeadlessSimpleResponse(t, response, actions, 2*time.Second, func(page *Page, err error, out ActionData) {
+		// element appears quickly (500ms) and the wait has a generous timeout (5s),
+		// so it reliably becomes visible before the action times out.
+		testHeadlessSimpleResponse(t, responseWithDelay(500), actions, 5*time.Second, func(page *Page, err error, out ActionData) {
 			require.Nil(t, err, "could not run page actions")
 
 			page.Page().MustElement("button").MustVisible()
@@ -759,8 +768,9 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 
 	t.Run("timeout because of element not visible", func(t *testing.T) {
-		// increased timeout from time.Second/2 to time.Second due to random fails (probably due to overhead and system)
-		testHeadlessSimpleResponse(t, response, actions, time.Second, func(page *Page, err error, out ActionData) {
+		// element only appears after 10s while the wait times out at 1s, leaving a
+		// wide margin so the timeout reliably fires before the element is shown.
+		testHeadlessSimpleResponse(t, responseWithDelay(10000), actions, time.Second, func(page *Page, err error, out ActionData) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
 		})
