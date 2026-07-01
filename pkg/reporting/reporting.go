@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/dedupe"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/csv"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/es"
 	json_exporter "github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
@@ -149,6 +150,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.CSVExporter != nil {
+		exporter, err := csv.New(options.CSVExporter)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "could not create export client: %v", ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 	if options.PDFExporter != nil {
 		exporter, err := pdf.New(options.PDFExporter)
 		if err != nil {
@@ -229,6 +237,7 @@ func CreateConfigIfNotExists() error {
 		SplunkExporter:        &splunk.Options{},
 		JSONExporter:          &json_exporter.Options{},
 		JSONLExporter:         &jsonl.Options{},
+		CSVExporter:           &csv.Options{},
 		PDFExporter:           &pdf.Options{},
 		MongoDBExporter:       &mongo.Options{},
 	}
