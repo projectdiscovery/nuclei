@@ -49,6 +49,12 @@ func TestTemplateSignerSignAndVerify(t *testing.T) {
 			wantVerified: true,
 		},
 		{
+			name:         "Template with CRLF line endings",
+			data:         []byte("id: test-template\r\ninfo:\r\n  name: Test Template"),
+			tmpl:         &mockSignableTemplate{},
+			wantVerified: true,
+		},
+		{
 			name: "Template with imports",
 			data: []byte("id: test-template\ninfo:\n  name: Test Template"),
 			tmpl: &mockSignableTemplate{imports: []string{
