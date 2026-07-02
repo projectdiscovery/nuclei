@@ -35,6 +35,8 @@ type Client struct {
 
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
+	// localCallback is a local HTTP callback server for offline OAST testing.
+	localCallback *localCallbackServer
 	// requests is a stored cache for interactsh-url->request-event data.
 	requests gcache.Cache[string, *RequestData]
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
@@ -80,6 +82,23 @@ func (c *Client) poll() error {
 		// do not init if disabled
 		return ErrInteractshClientNotInitialized
 	}
+	if c.options.LocalCallbackListen != "" || c.options.LocalCallbackURL != "" || c.options.LocalCallbackInterface != "" {
+		localCallback, err := newLocalCallbackServer(localCallbackOptions{
+			listenAddress: c.options.LocalCallbackListen,
+			callbackURL:   c.options.LocalCallbackURL,
+			interfaceName: c.options.LocalCallbackInterface,
+			port:          c.options.LocalCallbackPort,
+		}, c.handleInteraction)
+		if err != nil {
+			return errkit.Wrap(err, "could not create local callback server")
+		}
+		c.localCallback = localCallback
+		c.setHostname(localCallback.hostname())
+		gologger.Info().Msgf("Using local HTTP callback listener: %s", localCallback.hostname())
+		go localCallback.start()
+		return nil
+	}
+
 	interactsh, err := client.New(&client.Options{
 		ServerURL:           c.options.ServerURL,
 		Token:               c.options.Authorization,
@@ -99,38 +118,54 @@ func (c *Client) poll() error {
 
 	c.setHostname(interactDomain)
 
-	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
-		request, err := c.requests.Get(interaction.UniqueID)
-		// for more context in github actions
-		if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
-			gologger.DefaultLogger.Print().Msgf("[Interactsh]: got interaction of %v for request %v and error %v", interaction, request, err)
-		}
-		if errors.Is(err, gcache.KeyNotFoundError) || request == nil {
-			// If we don't have any request for this ID, add it to temporary
-			// lru cache, so we can correlate when we get an add request.
-			items, err := c.interactions.Get(interaction.UniqueID)
-			if errkit.Is(err, gcache.KeyNotFoundError) || items == nil {
-				_ = c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
-			} else {
-				items = append(items, interaction)
-				_ = c.interactions.SetWithExpire(interaction.UniqueID, items, defaultInteractionDuration)
-			}
-			return
-		}
-
-		if requestShouldStopAtFirstMatch(request) || c.options.StopAtFirstMatch {
-			if gotItem, err := c.matchedTemplates.Get(eventHash(request.Event)); gotItem && err == nil {
-				return
-			}
-		}
-
-		_ = c.processInteractionForRequest(interaction, request)
-	})
+	err = interactsh.StartPolling(c.pollDuration, c.handleInteraction)
 
 	if err != nil {
 		return errkit.Wrap(err, "could not perform interactsh polling")
 	}
 	return nil
+}
+
+func (c *Client) handleInteraction(interaction *server.Interaction) {
+	request, err := c.requests.Get(interaction.UniqueID)
+	// for more context in github actions
+	if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
+		gologger.DefaultLogger.Print().Msgf("[Interactsh]: got interaction of %v for request %v and error %v", interaction, request, err)
+	}
+	interactions := c.interactionVariants(interaction)
+	if errors.Is(err, gcache.KeyNotFoundError) || request == nil {
+		// If we don't have any request for this ID, add it to temporary
+		// lru cache, so we can correlate when we get an add request.
+		items, err := c.interactions.Get(interaction.UniqueID)
+		if errkit.Is(err, gcache.KeyNotFoundError) || items == nil {
+			_ = c.interactions.SetWithExpire(interaction.UniqueID, interactions, defaultInteractionDuration)
+		} else {
+			items = append(items, interactions...)
+			_ = c.interactions.SetWithExpire(interaction.UniqueID, items, defaultInteractionDuration)
+		}
+		return
+	}
+
+	if requestShouldStopAtFirstMatch(request) || c.options.StopAtFirstMatch {
+		if gotItem, err := c.matchedTemplates.Get(eventHash(request.Event)); gotItem && err == nil {
+			return
+		}
+	}
+
+	for _, current := range interactions {
+		if c.processInteractionForRequest(current, request) {
+			return
+		}
+	}
+}
+
+func (c *Client) interactionVariants(interaction *server.Interaction) []*server.Interaction {
+	if c.localCallback == nil || !strings.EqualFold(interaction.Protocol, "http") {
+		return []*server.Interaction{interaction}
+	}
+	dnsInteraction := *interaction
+	dnsInteraction.Protocol = "dns"
+	return []*server.Interaction{interaction, &dnsInteraction}
 }
 
 // requestShouldStopAtFirstmatch checks if further interactions should be stopped
@@ -248,11 +283,14 @@ func (c *Client) URL() (string, error) {
 		return "", errkit.Wrap(ErrInteractshClientNotInitialized, err.Error())
 	}
 
-	if c.interactsh == nil {
+	if c.localCallback == nil && c.interactsh == nil {
 		return "", ErrInteractshClientNotInitialized
 	}
 
 	c.generated.Store(true)
+	if c.localCallback != nil {
+		return c.localCallback.newURL()
+	}
 	return c.interactsh.URL(), nil
 }
 
@@ -264,6 +302,9 @@ func (c *Client) Close() bool {
 	if c.interactsh != nil {
 		_ = c.interactsh.StopPolling()
 		_ = c.interactsh.Close()
+	}
+	if c.localCallback != nil {
+		c.localCallback.close()
 	}
 
 	c.requests.Purge()
@@ -322,11 +363,11 @@ func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 			c.interactshURLs.Remove(url)
 
 			data[interactshMarker] = url
-			urlIndex := strings.Index(url, ".")
-			if urlIndex == -1 {
+			id := c.interactionIDFromURL(url)
+			if id == "" {
 				continue
 			}
-			data[strings.Replace(interactshMarker, "url", "id", 1)] = url[:urlIndex]
+			data[strings.Replace(interactshMarker, "url", "id", 1)] = id
 		}
 	}
 }
@@ -349,7 +390,7 @@ type RequestData struct {
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
-		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
+		id := c.interactionIDFromURL(interactshURL)
 
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
 			gotItem, err := c.matchedTemplates.Get(eventHash(data.Event))
@@ -370,6 +411,13 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 			_ = c.requests.SetWithExpire(id, data, c.eviction)
 		}
 	}
+}
+
+func (c *Client) interactionIDFromURL(interactshURL string) string {
+	if c.localCallback != nil {
+		return c.localCallback.idFromURL(interactshURL)
+	}
+	return strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 }
 
 // HasMatchers returns true if an operator has interactsh part

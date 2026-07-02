@@ -375,6 +375,10 @@ func New(options *types.Options) (*Runner, error) {
 	opts.CooldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second
 	opts.NoInteractsh = runner.options.NoInteractsh
+	opts.LocalCallbackListen = runner.options.LocalCallbackListen
+	opts.LocalCallbackURL = runner.options.LocalCallbackURL
+	opts.LocalCallbackInterface = runner.options.LocalCallbackInterface
+	opts.LocalCallbackPort = runner.options.LocalCallbackPort
 	opts.StopAtFirstMatch = runner.options.StopAtFirstMatch
 	opts.Debug = runner.options.Debug
 	opts.DebugRequest = runner.options.DebugRequests

@@ -388,6 +388,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.InteractionsPollDuration, "interactions-poll-duration", 5, "number of seconds to wait before each interaction poll request"),
 		flagSet.IntVar(&options.InteractionsCoolDownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
+		flagSet.StringVar(&options.LocalCallbackListen, "callback-listen", "", "local HTTP callback listen address for offline OAST testing (host:port)"),
+		flagSet.StringVar(&options.LocalCallbackURL, "callback-url", "", "externally reachable local HTTP callback URL for offline OAST testing"),
+		flagSet.StringVar(&options.LocalCallbackInterface, "callback-interface", "", "network interface to use for local HTTP callback listener"),
+		flagSet.IntVar(&options.LocalCallbackPort, "callback-port", 0, "local HTTP callback port when using -callback-interface (default random)"),
 	)
 
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
