@@ -222,6 +222,80 @@ func TestAnalyzeReflectionContext(t *testing.T) {
 			expected: ContextHTMLAttributeURL,
 		},
 
+		// === C0 control character bypass in javascript: URI ===
+		{
+			name:     "NULL byte in javascript: URI scheme",
+			body:     "<a href=\"java\x00script:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "form feed (0x0C) in javascript: URI scheme",
+			body:     "<a href=\"java\x0cscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "vertical tab (0x0B) in javascript: URI scheme",
+			body:     "<a href=\"java\x0bscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "bell (0x07) in javascript: URI scheme",
+			body:     "<a href=\"\x07javascript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "backspace (0x08) in javascript: URI scheme",
+			body:     "<a href=\"java\x08script:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "DEL (0x7F) in javascript: URI scheme",
+			body:     "<a href=\"java\x7fscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "multiple mixed C0 control chars in javascript: URI",
+			body:     "<a href=\"\x01j\x02a\x03v\x04a\x05s\x06c\x07r\x08i\x0ep\x0ft:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "C0 chars in vbscript: URI in href",
+			body:     "<a href=\"\x00vb\x0bscript:msgbox(FUZZ1337MARKER)\">click</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "C0 chars in data:text/html URI in iframe src",
+			body:     "<iframe src=\"\x0cdata:text/html,<h1>FUZZ1337MARKER</h1>\">",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "tab (0x09) mid-scheme in javascript: URI",
+			body:     "<a href=\"java\x09script:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "LF (0x0A) mid-scheme in javascript: URI",
+			body:     "<a href=\"java\x0ascript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+		{
+			name:     "CR (0x0D) mid-scheme in javascript: URI",
+			body:     "<a href=\"java\x0dscript:alert('FUZZ1337MARKER')\">xss</a>",
+			marker:   marker,
+			expected: ContextScript,
+		},
+
 		// === ScriptData Context (non-executable script) ===
 		{
 			name:     "reflection in script type=application/json",
