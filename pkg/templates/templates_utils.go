@@ -87,6 +87,12 @@ func (t *Template) HasJavascriptRequest(n ...int) bool {
 	return HasRequest(t.RequestsJavascript, n...)
 }
 
+// IsUnsignedJavascriptTemplate returns true if the template has a Javascript
+// protocol request but no verified template signature.
+func (t *Template) IsUnsignedJavascriptTemplate() bool {
+	return t.HasJavascriptRequest() && !t.Verified
+}
+
 // HasQueueRequests returns true if the template has queued requests.
 //
 // Queued requests contain all template requests in order (both protocol &

@@ -160,6 +160,122 @@ code:
 	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
 }
 
+func loadSingleTemplateForTest(t *testing.T, templatePath, executionID string) []*templates.Template {
+	t.Helper()
+
+	options := testutils.DefaultOptions.Copy()
+	options.Logger = &gologger.Logger{}
+	options.ExecutionId = executionID
+	options.DisableUnsignedTemplates = false
+	options.TemplateLoadingConcurrency = 1
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	executerOpts.Parser = templates.NewParser()
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	store, err := New(NewConfig(options, catalog, executerOpts))
+	require.NoError(t, err)
+
+	loaded, err := store.LoadTemplates([]string{templatePath})
+	require.NoError(t, err)
+	return loaded
+}
+
+func TestLoadTemplatesRecordsUnsignedJavascriptTemplateOnlyAsJavascriptSkip(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "unsigned-javascript.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: unsigned-javascript-template
+
+info:
+  name: Unsigned Javascript Template
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      Export("unsigned-javascript-template")
+`), 0o600)
+	require.NoError(t, err)
+
+	initialUnverifiedJavascript := stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats)
+	initialUnverified := stats.GetValue(templates.SkippedUnverifiedTemplateStats)
+
+	loaded := loadSingleTemplateForTest(t, templatePath, "loader-unsigned-javascript-template")
+	require.Empty(t, loaded)
+	require.Equal(t, initialUnverifiedJavascript+1, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
+	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
+}
+
+func TestLoadTemplatesTreatsMixedTemplateWithJavascriptAsJavascriptSensitive(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "mixed-javascript.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: mixed-javascript-template
+
+info:
+  name: Mixed Javascript Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - mixed-javascript-template
+
+javascript:
+  - code: |
+      Export("mixed-javascript-template")
+`), 0o600)
+	require.NoError(t, err)
+
+	initialUnverifiedJavascript := stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats)
+
+	loaded := loadSingleTemplateForTest(t, templatePath, "loader-mixed-javascript-template")
+	require.Empty(t, loaded)
+	require.Equal(t, initialUnverifiedJavascript+1, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
+}
+
+func TestLoadTemplatesAllowsUnsignedFlowTemplateWithoutJavascriptProtocol(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "flow-only.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: unsigned-flow-template
+
+info:
+  name: Unsigned Flow Template
+  author: pdteam
+  severity: info
+
+flow: http(1)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - unsigned-flow-template
+`), 0o600)
+	require.NoError(t, err)
+
+	initialUnverifiedJavascript := stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats)
+
+	loaded := loadSingleTemplateForTest(t, templatePath, "loader-unsigned-flow-template")
+	require.Len(t, loaded, 1)
+	require.Equal(t, "unsigned-flow-template", loaded[0].ID)
+	require.Equal(t, initialUnverifiedJavascript, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
+}
+
 func TestLoadTemplatesDoesNotRequireGlobalMatchersFlagToLoadTemplate(t *testing.T) {
 	templatePath := filepath.Join(t.TempDir(), "global-matchers.yaml")
 	err := os.WriteFile(templatePath, []byte(`id: global-matchers-template

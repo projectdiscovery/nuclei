@@ -902,6 +902,16 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 						return
 					}
 
+					// javascript-protocol templates expose Go-backed modules through
+					// the JS runtime, so unsigned ones are rejected before execution.
+					if parsed.IsUnsignedJavascriptTemplate() {
+						stats.Increment(templates.SkippedUnverifiedJavascriptTemplateStats)
+						if config.DefaultConfig.LogAllEvents {
+							store.logger.Warning().Msgf("Unverified javascript template at %q", templatePath)
+						}
+						return
+					}
+
 					if missingCaps := parsed.MissingLoadCapabilities(caps); len(missingCaps) > 0 {
 						store.noteMissingCapabilities(templatePath, missingCaps)
 						return

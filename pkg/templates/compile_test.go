@@ -284,6 +284,55 @@ workflows:
 	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
 }
 
+func Test_ParseWorkflowRecordsUnsignedJavascriptSubtemplateOnlyAsJavascriptSkip(t *testing.T) {
+	setup()
+	previousDisableUnsigned := executerOpts.Options.DisableUnsignedTemplates
+	defer func() {
+		executerOpts.Options.DisableUnsignedTemplates = previousDisableUnsigned
+	}()
+
+	executerOpts.Options.DisableUnsignedTemplates = false
+
+	dir := t.TempDir()
+	javascriptTemplatePath := filepath.Join(dir, "unsigned-javascript.yaml")
+	err := os.WriteFile(javascriptTemplatePath, []byte(`id: workflow-unsigned-javascript
+
+info:
+  name: Workflow Unsigned Javascript
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      Export("workflow-unsigned-javascript")
+`), 0o600)
+	require.NoError(t, err)
+
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err = os.WriteFile(workflowPath, []byte(fmt.Sprintf(`id: workflow-unsigned-javascript-gate
+
+info:
+  name: Workflow Unsigned Javascript Gate
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: %q
+`, javascriptTemplatePath)), 0o600)
+	require.NoError(t, err)
+
+	initialUnverifiedJavascript := stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats)
+	initialUnverified := stats.GetValue(templates.SkippedUnverifiedTemplateStats)
+
+	got, err := templates.Parse(workflowPath, nil, executerOpts)
+	require.NoError(t, err)
+	require.NotNil(t, got.CompiledWorkflow)
+	require.Len(t, got.CompiledWorkflow.Workflows, 1)
+	require.Empty(t, got.CompiledWorkflow.Workflows[0].Executers)
+	require.Equal(t, initialUnverifiedJavascript+1, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
+	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
+}
+
 func Test_WrongTemplate(t *testing.T) {
 	setup()
 

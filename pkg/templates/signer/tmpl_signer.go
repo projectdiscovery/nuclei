@@ -73,6 +73,7 @@ func (t *TemplateSigner) GetUserFragment() string {
 // Sign signs the given template with the template signer and returns the signature
 func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error) {
 	existingSignature, content := ExtractSignatureAndContent(data)
+	content = normalizeTemplateContentForSignature(content)
 
 	// while re-signing template check if it has a code protocol
 	// if it does then verify that it is signed by current signer
@@ -146,9 +147,7 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 		return false, err
 	}
 
-	// normalize content by removing \r\n everywhere since this only done for verification
-	// it does not affect the actual template
-	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+	content = normalizeTemplateContentForSignature(content)
 
 	buff := bytes.NewBuffer(content)
 	// if file has any imports process them
@@ -162,6 +161,10 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	}
 
 	return t.verify(buff.Bytes(), digest)
+}
+
+func normalizeTemplateContentForSignature(content []byte) []byte {
+	return bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 }
 
 // Verify verifies the given data with the template signer

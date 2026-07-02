@@ -953,8 +953,10 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			r.Logger.Warning().Msg("No DAST templates found")
 		}
 		stats.ForceDisplayWarning(templates.SkippedUnverifiedCodeTemplateStats)
+		stats.ForceDisplayWarning(templates.SkippedUnverifiedJavascriptTemplateStats)
 	} else {
 		stats.DisplayAsWarning(templates.SkippedUnverifiedCodeTemplateStats)
+		stats.DisplayAsWarning(templates.SkippedUnverifiedJavascriptTemplateStats)
 	}
 
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
