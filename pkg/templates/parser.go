@@ -51,6 +51,17 @@ func NewParserWithParsedCache(cache *Cache) *Parser {
 	}
 }
 
+// Purge clears the parsed and compiled template caches. It should be called
+// when the parser is no longer needed (e.g. on engine Close) so a long-running
+// embedder does not retain every compiled template (a heap-heavy object) for
+// the entire process lifetime.
+func (p *Parser) Purge() {
+	p.Lock()
+	defer p.Unlock()
+	p.parsedTemplatesCache.Purge()
+	p.compiledTemplatesCache.Purge()
+}
+
 // Cache returns the parsed templates cache
 func (p *Parser) Cache() *Cache {
 	return p.parsedTemplatesCache

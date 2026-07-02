@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
@@ -222,11 +223,11 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 					// Defer resolution to the per-request runtime path.
 					continue
 				}
-				evaluated, err := expressions.Evaluate(resolver, metadata)
+				result, err := render.Render(render.Input{Text: resolver, Values: metadata})
 				if err != nil {
 					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
 				}
-				resolver = evaluated
+				resolver = result.Text
 			}
 			// validate template-specified resolvers against the network policy.
 			if host := resolverHost(resolver); host != "" {

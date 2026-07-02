@@ -8,6 +8,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func withMatcherTestHelperFunction(t *testing.T, name string, fn govaluate.ExpressionFunction) {
+	t.Helper()
+
+	originalFn, hadFn := dsl.HelperFunctions[name]
+	dsl.HelperFunctions[name] = fn
+	t.Cleanup(func() {
+		if hadFn {
+			dsl.HelperFunctions[name] = originalFn
+			return
+		}
+		delete(dsl.HelperFunctions, name)
+	})
+}
+
+func mustCompileDSLMatcher(t *testing.T, expression string) *Matcher {
+	t.Helper()
+
+	matcher := &Matcher{
+		Type: MatcherTypeHolder{MatcherType: DSLMatcher},
+		DSL:  []string{expression},
+	}
+	require.NoError(t, matcher.CompileMatchers())
+	return matcher
+}
+
 func TestWordANDCondition(t *testing.T) {
 	m := &Matcher{condition: ANDCondition, Words: []string{"a", "b"}}
 
@@ -90,52 +115,146 @@ func TestMatcher_MatchDSL(t *testing.T) {
 	}
 }
 
-// TestMatcher_MatchDSL_InjectionBlocked verifies a substituted value cannot add
-// new function calls to a re-evaluated DSL matcher.
-func TestMatcher_MatchDSL_InjectionBlocked(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
-	require.Nil(t, err, "couldn't compile expression")
+func TestMatcherMatchDSLDoesNotExecuteHelpersFromResolvedValues(t *testing.T) {
+	var waitForCalls int
+	withMatcherTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
 
-	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
-	err = m.CompileMatchers()
-	require.Nil(t, err, "could not compile matcher")
+	items := []struct {
+		name       string
+		expression string
+		value      string
+	}{
+		{
+			name:       "single quoted placeholder",
+			expression: "contains(body, '{{server_token}}')",
+			value:      "') && wait_for(5) && contains(body, '",
+		},
+		{
+			name:       "double quoted placeholder",
+			expression: `contains(body, "{{server_token}}")`,
+			value:      `") && wait_for(5) && contains(body, "`,
+		},
+	}
 
-	// use a deterministic, side-effect-free helper call instead of a
-	// network-dependent function so the test exercises the token guard rather
-	// than network availability.
-	injection := `x") || contains(body, "anything") || contains(body, "`
-	isMatched := m.MatchDSL(map[string]interface{}{"body": "anything", "VARIABLE": injection})
-	require.False(t, isMatched, "expected matcher with added function call to be skipped")
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			matcher := mustCompileDSLMatcher(t, item.expression)
+
+			require.False(t, matcher.MatchDSL(map[string]interface{}{
+				"template-id":  "test-template",
+				"body":         "safe body",
+				"server_token": item.value,
+			}))
+			require.Zero(t, waitForCalls)
+		})
+	}
 }
 
-// TestMatcher_MatchDSL_OperatorInjectionBlocked verifies a substituted value
-// cannot inject extra operators that change the expression structure without
-// adding any function calls.
-func TestMatcher_MatchDSL_OperatorInjectionBlocked(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
-	require.Nil(t, err, "couldn't compile expression")
+func TestMatcherMatchDSLMatchesResolvedValuesLiterally(t *testing.T) {
+	var waitForCalls int
+	withMatcherTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
 
-	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
-	err = m.CompileMatchers()
-	require.Nil(t, err, "could not compile matcher")
+	items := []struct {
+		name       string
+		expression string
+		value      string
+	}{
+		{
+			name:       "single quoted placeholder",
+			expression: "contains(body, '{{server_token}}')",
+			value:      "') && wait_for(5) && contains(body, '",
+		},
+		{
+			name:       "double quoted placeholder",
+			expression: `contains(body, "{{server_token}}")`,
+			value:      `") && wait_for(5) && contains(body, "`,
+		},
+	}
 
-	injection := `x") || true || ("a" == "`
-	isMatched := m.MatchDSL(map[string]interface{}{"body": "anything", "VARIABLE": injection})
-	require.False(t, isMatched, "expected matcher with injected operators to be skipped")
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			matcher := mustCompileDSLMatcher(t, item.expression)
+
+			require.True(t, matcher.MatchDSL(map[string]interface{}{
+				"template-id":  "test-template",
+				"body":         "prefix " + item.value + " suffix",
+				"server_token": item.value,
+			}))
+			require.Zero(t, waitForCalls)
+		})
+	}
 }
 
-// TestMatcher_MatchDSL_BenignReevalAllowed verifies a substituted literal value
-// keeps a re-evaluated DSL matcher working.
-func TestMatcher_MatchDSL_BenignReevalAllowed(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
-	require.Nil(t, err, "couldn't compile expression")
+func TestMatcherMatchDSLResolvedValuesPreserveBytes(t *testing.T) {
+	items := []struct {
+		name  string
+		value string
+	}{
+		{
+			name:  "newline",
+			value: "a\nb",
+		},
+		{
+			name:  "tab",
+			value: "a\tb",
+		},
+		{
+			name:  "carriage return",
+			value: "a\rb",
+		},
+		{
+			name:  "backslash",
+			value: `a\b`,
+		},
+		{
+			name:  "single quote",
+			value: "a'b",
+		},
+		{
+			name:  "double quote",
+			value: `a"b`,
+		},
+		{
+			name:  "mixed quotes and controls",
+			value: "a\nb\tc\rd\\e'f\"g",
+		},
+	}
 
-	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
-	err = m.CompileMatchers()
-	require.Nil(t, err, "could not compile matcher")
+	expressions := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "single quoted placeholder",
+			expression: "contains(body, '{{server_token}}')",
+		},
+		{
+			name:       "double quoted placeholder",
+			expression: `contains(body, "{{server_token}}")`,
+		},
+	}
 
-	isMatched := m.MatchDSL(map[string]interface{}{"body": "hello world", "VARIABLE": "hello"})
-	require.True(t, isMatched, "benign re-evaluated matcher must still work")
+	for _, expression := range expressions {
+		t.Run(expression.name, func(t *testing.T) {
+			for _, item := range items {
+				t.Run(item.name, func(t *testing.T) {
+					matcher := mustCompileDSLMatcher(t, expression.expression)
+
+					require.True(t, matcher.MatchDSL(map[string]interface{}{
+						"template-id":  "test-template",
+						"body":         "prefix " + item.value + " suffix",
+						"server_token": item.value,
+					}))
+				})
+			}
+		})
+	}
 }
 
 func TestMatcher_MatchXPath_HTML(t *testing.T) {
