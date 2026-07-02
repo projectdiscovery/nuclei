@@ -193,6 +193,8 @@ type Configuration struct {
 	Connection *ConnectionConfiguration
 	// ResponseHeaderTimeout is the timeout for response body to be read from the server
 	ResponseHeaderTimeout time.Duration
+	// DisableDecompression disables automatic response decompression
+	DisableDecompression bool
 }
 
 func (c *Configuration) Clone() *Configuration {
@@ -241,13 +243,15 @@ func (c *Configuration) Hash() string {
 	}
 	builder.WriteString("r")
 	builder.WriteString(strconv.FormatInt(int64(c.ResponseHeaderTimeout.Seconds()), 10))
+	builder.WriteString("dd")
+	builder.WriteString(strconv.FormatBool(c.DisableDecompression))
 	hash := builder.String()
 	return hash
 }
 
 // HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
-	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0
+	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0 && !c.DisableDecompression
 }
 
 // GetRawHTTP returns the rawhttp request client
@@ -347,7 +351,7 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	// actually live on http.Transport participate in the key, so clients
 	// that differ in client-level settings (redirect policy, cookies,
 	// timeout) still share a single connection pool per host.
-	transportKey := transportHash(host, disableKeepAlives, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost, responseHeaderTimeout)
+	transportKey := transportHash(host, disableKeepAlives, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost, responseHeaderTimeout, configuration.DisableDecompression)
 
 	createTransport := func() (http.RoundTripper, error) {
 		// Set the base TLS configuration definition
@@ -386,6 +390,7 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 			DisableKeepAlives:     disableKeepAlives,
 			IdleConnTimeout:       30 * time.Second,
 			ResponseHeaderTimeout: responseHeaderTimeout,
+			DisableCompression:    configuration.DisableDecompression,
 		}
 
 		if options.AliveHttpProxy != "" {
@@ -504,7 +509,7 @@ var sharedTLSSessionCache = tls.NewLRUClientSessionCache(2048)
 // transportHash identifies a shareable transport. Only parameters that live
 // on http.Transport participate; everything else (redirects, cookie jars,
 // client timeouts) is layered on top by the per-configuration client.
-func transportHash(host string, disableKeepAlives bool, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost int, responseHeaderTimeout time.Duration) string {
+func transportHash(host string, disableKeepAlives bool, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost int, responseHeaderTimeout time.Duration, disableCompression bool) string {
 	builder := &strings.Builder{}
 	builder.Grow(len(host) + 32)
 	builder.WriteString(host)
@@ -518,6 +523,8 @@ func transportHash(host string, disableKeepAlives bool, maxIdleConns, maxIdleCon
 	builder.WriteString(strconv.Itoa(maxConnsPerHost))
 	builder.WriteString("|rht")
 	builder.WriteString(strconv.FormatInt(int64(responseHeaderTimeout), 10))
+	builder.WriteString("|dc")
+	builder.WriteString(strconv.FormatBool(disableCompression))
 	return builder.String()
 }
 

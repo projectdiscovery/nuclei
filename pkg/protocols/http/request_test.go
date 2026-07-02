@@ -1,8 +1,13 @@
 package http
 
 import (
+	"bytes"
+	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"fmt"
+	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/zstd"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -720,4 +725,125 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
 	})
+}
+
+func TestHTTPDisableDecompression(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	tests := []struct {
+		encoding string
+		compress func([]byte) []byte
+	}{
+		{
+			encoding: "gzip",
+			compress: func(data []byte) []byte {
+				var buf bytes.Buffer
+				zw := gzip.NewWriter(&buf)
+				_, _ = zw.Write(data)
+				zw.Close()
+				return buf.Bytes()
+			},
+		},
+		{
+			encoding: "deflate",
+			compress: func(data []byte) []byte {
+				var buf bytes.Buffer
+				zw := zlib.NewWriter(&buf)
+				_, _ = zw.Write(data)
+				zw.Close()
+				return buf.Bytes()
+			},
+		},
+		{
+			encoding: "br",
+			compress: func(data []byte) []byte {
+				var buf bytes.Buffer
+				zw := brotli.NewWriter(&buf)
+				_, _ = zw.Write(data)
+				zw.Close()
+				return buf.Bytes()
+			},
+		},
+		{
+			encoding: "zstd",
+			compress: func(data []byte) []byte {
+				var buf bytes.Buffer
+				zw, _ := zstd.NewWriter(&buf)
+				_, _ = zw.Write(data)
+				zw.Close()
+				return buf.Bytes()
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.encoding, func(t *testing.T) {
+			rawContent := []byte("hello-decompression-test-" + tc.encoding)
+			compressedContent := tc.compress(rawContent)
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Encoding", tc.encoding)
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(200)
+				_, _ = w.Write(compressedContent)
+			}))
+			defer ts.Close()
+
+			// 1. With DisableDecompression = false (default) -> should decompress
+			{
+				request := &Request{
+					ID:     "test-decompression-enabled-" + tc.encoding,
+					Path:   []string{"{{BaseURL}}"},
+					Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+				}
+
+				executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+					ID:   "test-decompression-enabled-" + tc.encoding,
+					Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+				})
+
+				err := request.Compile(executerOpts)
+				require.Nil(t, err)
+
+				metadata := make(output.InternalEvent)
+				previous := make(output.InternalEvent)
+				ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+				var body string
+				err = request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
+					body = event.InternalEvent["body"].(string)
+				})
+				require.Nil(t, err)
+				require.Equal(t, string(rawContent), body)
+			}
+
+			// 2. With DisableDecompression = true -> should NOT decompress
+			{
+				request := &Request{
+					ID:                   "test-decompression-disabled-" + tc.encoding,
+					Path:                 []string{"{{BaseURL}}"},
+					Method:               HTTPMethodTypeHolder{MethodType: HTTPGet},
+					DisableDecompression: true,
+				}
+
+				executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+					ID:   "test-decompression-disabled-" + tc.encoding,
+					Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+				})
+
+				err := request.Compile(executerOpts)
+				require.Nil(t, err)
+
+				metadata := make(output.InternalEvent)
+				previous := make(output.InternalEvent)
+				ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+				var body string
+				err = request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
+					body = event.InternalEvent["body"].(string)
+				})
+				require.Nil(t, err)
+				require.Equal(t, string(compressedContent), body)
+			}
+		})
+	}
 }

@@ -1010,7 +1010,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// evaluate responses continuously until first redirect request in reverse order
 	for respChain.Has() {
 		// fill buffers, read response body and reuse connection
-		if err := respChain.Fill(); err != nil {
+		if err := request.fillPreservingEncoding(respChain); err != nil {
 			return errors.Wrap(err, "could not generate response chain")
 		}
 
@@ -1394,4 +1394,22 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
+}
+
+// fillPreservingEncoding calls respChain.Fill() while preserving the raw Content-Encoding header
+// when DisableDecompression is enabled.
+func (request *Request) fillPreservingEncoding(respChain *httpUtils.ResponseChain) error {
+	var contentEncoding string
+	if request.DisableDecompression && respChain.Response() != nil {
+		contentEncoding = respChain.Response().Header.Get("Content-Encoding")
+		respChain.Response().Header.Del("Content-Encoding")
+	}
+
+	err := respChain.Fill()
+
+	if request.DisableDecompression && respChain.Response() != nil && contentEncoding != "" {
+		respChain.Response().Header.Set("Content-Encoding", contentEncoding)
+	}
+
+	return err
 }

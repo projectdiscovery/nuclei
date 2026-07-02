@@ -174,6 +174,10 @@ type Request struct {
 	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
 
 	// description: |
+	//   DisableDecompression disables automatic response decompression
+	DisableDecompression bool `yaml:"disable-decompression,omitempty" json:"disable-decompression,omitempty" jsonschema:"title=disable automatic response decompression,description=Disables automatic response decompression"`
+
+	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring
 	//   any specified content length headers.
 	ForceReadAllBody bool `yaml:"read-all,omitempty" json:"read-all,omitempty" jsonschema:"title=force read all body,description=Enables force reading of entire unsafe http request body"`
@@ -333,10 +337,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:       request.Threads,
-		MaxRedirects:  request.MaxRedirects,
-		NoTimeout:     false,
-		DisableCookie: request.DisableCookie,
+		Threads:              request.Threads,
+		MaxRedirects:         request.MaxRedirects,
+		NoTimeout:            false,
+		DisableCookie:        request.DisableCookie,
+		DisableDecompression: request.DisableDecompression,
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: disableKeepAlive,
 		},
