@@ -1,10 +1,9 @@
 package protocolstate
 
 import (
-	"strings"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -71,7 +70,12 @@ func NormalizePath(options *types.Options, filePath string) (string, error) {
 	}
 	// only allow files inside nuclei-templates directory
 	// even current working directory is not allowed
-	if strings.HasPrefix(cleaned, config.DefaultConfig.GetTemplateDir()) {
+	if filepathutil.IsPathWithinDirectory(cleaned, config.DefaultConfig.GetTemplateDir()) {
+		// reject hard-linked regular files, whose inode can alias content
+		// outside the templates directory.
+		if filepathutil.IsHardLinkedRegularFile(cleaned) {
+			return "", errkit.Newf("path %v denied (hard link)", filePath)
+		}
 		return cleaned, nil
 	}
 	return "", errkit.Newf("path %v is outside nuclei-template directory and -lfa is not enabled", filePath)

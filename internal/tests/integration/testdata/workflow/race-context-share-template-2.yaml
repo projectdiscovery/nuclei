@@ -1,0 +1,29 @@
+id: race-context-share-template-2
+
+info:
+  name: race-context-share-template-2
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        POST / HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        name={{whoami}}
+
+    race: true
+    race_count: 1
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "ok"

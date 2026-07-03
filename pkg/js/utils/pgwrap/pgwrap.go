@@ -20,6 +20,7 @@ const (
 
 type pgDial struct {
 	executionId string
+	ctx         context.Context
 }
 
 func (p *pgDial) Dial(network, address string) (net.Conn, error) {
@@ -27,7 +28,11 @@ func (p *pgDial) Dial(network, address string) (net.Conn, error) {
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
-	return dialers.Fastdialer.Dial(context.TODO(), network, address)
+	ctx := p.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return dialers.Fastdialer.Dial(ctx, network, address)
 }
 
 func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
@@ -35,17 +40,36 @@ func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (ne
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
-	ctx, cancel := context.WithTimeoutCause(context.Background(), timeout, fastdialer.ErrDialTimeout)
+	baseCtx := p.ctx
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+	ctx, cancel := context.WithTimeoutCause(baseCtx, timeout, fastdialer.ErrDialTimeout)
 	defer cancel()
 	return dialers.Fastdialer.Dial(ctx, network, address)
 }
 
 func (p *pgDial) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	if ctx == nil {
+		ctx = p.ctx
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	dialers := protocolstate.GetDialersWithId(p.executionId)
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
 	return dialers.Fastdialer.Dial(ctx, network, address)
+}
+
+func OpenDB(ctx context.Context, executionId string, dsn string) (*sql.DB, error) {
+	connector, err := pq.NewConnector(dsn)
+	if err != nil {
+		return nil, err
+	}
+	connector.Dialer(&pgDial{executionId: executionId, ctx: ctx})
+	return sql.OpenDB(connector), nil
 }
 
 // Unfortunately lib/pq does not provide easy to customize or

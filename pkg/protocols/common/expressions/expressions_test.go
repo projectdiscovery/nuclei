@@ -105,3 +105,125 @@ func TestEvaluateDoesNotReinterpretResolvedValues(t *testing.T) {
 		})
 	}
 }
+
+func TestEvaluateDoesNotExecuteHelpersFromResolvedValues(t *testing.T) {
+	var calls int
+
+	withTestHelperFunction(t, "test_side_effect", func(args ...interface{}) (interface{}, error) {
+		calls++
+		return "ok", nil
+	})
+
+	value, err := Evaluate("{{body}}", map[string]interface{}{
+		"body": "{{test_side_effect(1)}}",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "{{test_side_effect(1)}}", value)
+	require.Zero(t, calls)
+}
+
+func TestEvaluateDoesNotCompileResolvedValuesInsideHelperExpressions(t *testing.T) {
+	var calls int
+
+	withTestHelperFunction(t, "test_side_effect", func(args ...interface{}) (interface{}, error) {
+		calls++
+		return true, nil
+	})
+
+	items := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "parenthesis marker",
+			expression: "{{contains('{{body}}', 'needle')}}",
+		},
+		{
+			name:       "general marker",
+			expression: "{{contains('§body§', 'needle')}}",
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			calls = 0
+
+			value, err := Evaluate(item.expression, map[string]interface{}{
+				"body": "value', 'missing') || test_side_effect() || contains('",
+			})
+			require.NoError(t, err)
+			require.Equal(t, "false", value)
+			require.Zero(t, calls)
+		})
+	}
+}
+
+func TestEvaluatePreservesStringLiteralPlaceholderBytes(t *testing.T) {
+	withTestHelperFunction(t, "test_echo", func(args ...interface{}) (interface{}, error) {
+		require.Len(t, args, 1)
+		return args[0], nil
+	})
+
+	items := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "parenthesis marker",
+			expression: "{{test_echo('{{body}}')}}",
+		},
+		{
+			name:       "general marker",
+			expression: "{{test_echo('§body§')}}",
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			value, err := Evaluate(item.expression, map[string]interface{}{
+				"body": "a\nb\tc\rd\\e'f\"g",
+			})
+			require.NoError(t, err)
+			require.Equal(t, "a\nb\tc\rd\\e'f\"g", value)
+		})
+	}
+}
+
+func TestEvaluateHyphenatedPlaceholderNames(t *testing.T) {
+	value, err := Evaluate("foo-bar: {{foo-bar}}", map[string]interface{}{
+		"foo-bar": "baz",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "foo-bar: baz", value)
+}
+
+func TestEvaluateReturnsErrorForInvalidTemplateExpression(t *testing.T) {
+	_, err := Evaluate("{{base64()}}", map[string]interface{}{})
+	require.Error(t, err)
+	require.ErrorContains(t, err, `failed to evaluate expression "base64()"`)
+}
+
+func TestEvaluateErrorDoesNotLeakResolvedValues(t *testing.T) {
+	_, err := Evaluate("{{base64('{{secret_token}}', 'extra')}}", map[string]interface{}{
+		"secret_token": "top-secret-cia-mi6-kgb-mossad-classified",
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, `failed to evaluate expression "base64('{{secret_token}}', 'extra')"`)
+	require.NotContains(t, err.Error(), "top-secret-cia-mi6-kgb-mossad-classified")
+}
+
+func TestEvaluatePlainExpressionsWithMarkerLikeValues(t *testing.T) {
+	value, err := Evaluate("{{body != ''}}", map[string]interface{}{
+		"body": "{{contact_id}}",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "true", value)
+}
+
+func TestEvaluatePreservesVisibleMarkersFromHelperResults(t *testing.T) {
+	value, err := Evaluate("{{concat(body, '-x')}}", map[string]interface{}{
+		"body": "{{contact_id}}",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "{{contact_id}}-x", value)
+}

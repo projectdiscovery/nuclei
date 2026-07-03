@@ -175,10 +175,137 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	require.Equal(t, "", secondInput, "could not get correct second input")
 }
 
+func TestWorkflowsSubtemplatesPropagateParentContextToChildTemplateCtx(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
+	childOptions := &protocols.ExecutorOptions{TemplateID: "child-template", Progress: progressBar}
+	var childWhoami interface{}
+
+	workflow := &workflows.Workflow{
+		Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}},
+		Workflows: []*workflows.WorkflowTemplate{{
+			Executers: []*workflows.ProtocolExecuterPair{{
+				Executer: &mockExecuter{result: true, outputs: []*output.InternalWrappedEvent{{
+					OperatorsResult: &operators.Result{Extracts: map[string][]string{"whoami": {"foo"}}},
+					Results:         []*output.ResultEvent{{}},
+				}}},
+				Options: &protocols.ExecutorOptions{TemplateID: "parent-template", Progress: progressBar},
+			}},
+			Subtemplates: []*workflows.WorkflowTemplate{{
+				Executers: []*workflows.ProtocolExecuterPair{{
+					Executer: &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+						childWhoami, _ = childOptions.GetTemplateCtx(ctx.Input.MetaInput).Get("whoami")
+					}},
+					Options: childOptions,
+				}},
+			}},
+		}},
+	}
+
+	engine := &Engine{}
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
+	matched := engine.executeWorkflow(ctx, workflow)
+	require.True(t, matched, "could not get correct match value")
+
+	require.Equal(t, "foo", childWhoami, "could not inherit workflow context into child template context")
+}
+
+func TestWorkflowsSubtemplatesDoNotShareSiblingContext(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
+	firstSiblingReady := make(chan struct{})
+	var secondSiblingHasSiblingValue bool
+
+	workflow := &workflows.Workflow{
+		Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}},
+		Workflows: []*workflows.WorkflowTemplate{{
+			Executers: []*workflows.ProtocolExecuterPair{{
+				Executer: &mockExecuter{result: true, outputs: []*output.InternalWrappedEvent{{
+					OperatorsResult: &operators.Result{},
+					Results:         []*output.ResultEvent{{}},
+				}}},
+				Options: &protocols.ExecutorOptions{TemplateID: "parent-template", Progress: progressBar},
+			}},
+			Subtemplates: []*workflows.WorkflowTemplate{
+				{
+					Executers: []*workflows.ProtocolExecuterPair{{
+						Executer: &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+							ctx.Input.Set("sibling-only", "from-first-sibling")
+							close(firstSiblingReady)
+						}},
+						Options: &protocols.ExecutorOptions{TemplateID: "first-child-template", Progress: progressBar},
+					}},
+				},
+				{
+					Executers: []*workflows.ProtocolExecuterPair{{
+						Executer: &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+							<-firstSiblingReady
+							_, secondSiblingHasSiblingValue = ctx.Input.Get("sibling-only")
+						}},
+						Options: &protocols.ExecutorOptions{TemplateID: "second-child-template", Progress: progressBar},
+					}},
+				},
+			},
+		}},
+	}
+
+	engine := &Engine{}
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
+	matched := engine.executeWorkflow(ctx, workflow)
+	require.True(t, matched, "could not get correct match value")
+
+	require.False(t, secondSiblingHasSiblingValue, "sibling subtemplate inherited workflow context from another sibling")
+}
+
+func TestWorkflowsSameStepExecutersRefreshTemplateContext(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
+	secondOptions := &protocols.ExecutorOptions{TemplateID: "second-template", Progress: progressBar}
+	var secondWhoami interface{}
+
+	workflow := &workflows.Workflow{
+		Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}},
+		Workflows: []*workflows.WorkflowTemplate{{
+			Executers: []*workflows.ProtocolExecuterPair{
+				{
+					Executer: &mockExecuter{result: true, outputs: []*output.InternalWrappedEvent{{
+						OperatorsResult: &operators.Result{Extracts: map[string][]string{"whoami": {"foo"}}},
+						Results:         []*output.ResultEvent{{}},
+					}}},
+					Options: &protocols.ExecutorOptions{TemplateID: "first-template", Progress: progressBar},
+				},
+				{
+					Executer: &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+						secondWhoami, _ = secondOptions.GetTemplateCtx(ctx.Input.MetaInput).Get("whoami")
+					}},
+					Options: secondOptions,
+				},
+			},
+			Subtemplates: []*workflows.WorkflowTemplate{{
+				Executers: []*workflows.ProtocolExecuterPair{{
+					Executer: &mockExecuter{result: true},
+					Options:  &protocols.ExecutorOptions{TemplateID: "child-template", Progress: progressBar},
+				}},
+			}},
+		}},
+	}
+
+	engine := &Engine{}
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
+	matched := engine.executeWorkflow(ctx, workflow)
+	require.True(t, matched, "could not get correct match value")
+
+	require.Equal(t, "foo", secondWhoami, "could not refresh workflow context into later executers in the same step")
+}
+
 type mockExecuter struct {
-	result      bool
-	executeHook func(input *contextargs.MetaInput)
-	outputs     []*output.InternalWrappedEvent
+	result          bool
+	executeHook     func(input *contextargs.MetaInput)
+	executeScanHook func(ctx *scan.ScanContext)
+	outputs         []*output.InternalWrappedEvent
 }
 
 // Compile compiles the execution generators preparing any requests possible.
@@ -196,6 +323,9 @@ func (m *mockExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if m.executeHook != nil {
 		m.executeHook(ctx.Input.MetaInput)
 	}
+	if m.executeScanHook != nil {
+		m.executeScanHook(ctx)
+	}
 	return m.result, nil
 }
 
@@ -203,6 +333,9 @@ func (m *mockExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 func (m *mockExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
 	if m.executeHook != nil {
 		m.executeHook(ctx.Input.MetaInput)
+	}
+	if m.executeScanHook != nil {
+		m.executeScanHook(ctx)
 	}
 	for _, output := range m.outputs {
 		ctx.LogEvent(output)

@@ -11,7 +11,7 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -73,6 +73,10 @@ type ExecutorOptions struct {
 	TemplateInfo model.Info
 	// TemplateVerifier is the verifier for the template
 	TemplateVerifier string
+	// Verified reports whether the template's signature was successfully
+	// verified by a trusted verifier. It is checked by the code protocol at
+	// execution time.
+	Verified bool
 	// TemplateVerificationCallback returns cached verification info for a template path.
 	// If it returns nil, verification should be computed normally.
 	TemplateVerificationCallback func(templatePath string) *TemplateVerification
@@ -119,7 +123,7 @@ type ExecutorOptions struct {
 	// DoNotCache bool disables optional caching of the templates structure
 	DoNotCache bool
 
-	Colorizer      aurora.Aurora
+	Colorizer      *aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 	ResumeCfg      *types.ResumeCfg
 	// ProtocolType is the type of the template
@@ -221,6 +225,24 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 	return templateCtx
 }
 
+// NewVariablesScope creates a variable evaluation scope with terminal data
+// layers applied in order.
+func (e *ExecutorOptions) NewVariablesScope(values ...map[string]interface{}) *variables.Scope {
+	return variables.NewScope().AddData(values...)
+}
+
+// AddTemplateCtxToVariablesScope adds template context values to a variable
+// scope while preserving which keys came from prior variable evaluation.
+func (e *ExecutorOptions) AddTemplateCtxToVariablesScope(input *contextargs.MetaInput, scope *variables.Scope) {
+	if input == nil || scope == nil || !e.HasTemplateCtx(input) {
+		return
+	}
+
+	templateCtx := e.GetTemplateCtx(input)
+	scope.AddData(templateCtx.GetAll())
+	scope.AddTemplate(templateCtx.GetTemplateVariables())
+}
+
 // AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
 func (e *ExecutorOptions) AddTemplateVars(input *contextargs.MetaInput, reqType templateTypes.ProtocolType, reqID string, vars map[string]interface{}) {
@@ -273,44 +295,45 @@ func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateT
 // Copy returns a copy of the executeroptions structure
 func (e *ExecutorOptions) Copy() *ExecutorOptions {
 	copy := &ExecutorOptions{
-		TemplateID:          e.TemplateID,
-		TemplatePath:        e.TemplatePath,
-		TemplateInfo:        e.TemplateInfo,
-		TemplateVerifier:    e.TemplateVerifier,
+		TemplateID:                   e.TemplateID,
+		TemplatePath:                 e.TemplatePath,
+		TemplateInfo:                 e.TemplateInfo,
+		TemplateVerifier:             e.TemplateVerifier,
+		Verified:                     e.Verified,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
-		RawTemplate:         e.RawTemplate,
-		Output:              e.Output,
-		Options:             e.Options,
-		IssuesClient:        e.IssuesClient,
-		Progress:            e.Progress,
-		RateLimiter:         e.RateLimiter,
-		Catalog:             e.Catalog,
-		ProjectFile:         e.ProjectFile,
-		Browser:             e.Browser,
-		Interactsh:          e.Interactsh,
-		HostErrorsCache:     e.HostErrorsCache,
-		StopAtFirstMatch:    e.StopAtFirstMatch,
-		Variables:           e.Variables,
-		Constants:           e.Constants,
-		ExcludeMatchers:     e.ExcludeMatchers,
-		InputHelper:         e.InputHelper,
-		FuzzParamsFrequency: e.FuzzParamsFrequency,
-		FuzzStatsDB:         e.FuzzStatsDB,
-		Operators:           e.Operators,
-		DoNotCache:          e.DoNotCache,
-		Colorizer:           e.Colorizer,
-		WorkflowLoader:      e.WorkflowLoader,
-		ResumeCfg:           e.ResumeCfg,
-		ProtocolType:        e.ProtocolType,
-		Flow:                e.Flow,
-		IsMultiProtocol:     e.IsMultiProtocol,
-		JsCompiler:          e.JsCompiler,
-		AuthProvider:        e.AuthProvider,
-		TemporaryDirectory:  e.TemporaryDirectory,
-		Parser:              e.Parser,
-		ExportReqURLPattern: e.ExportReqURLPattern,
-		GlobalMatchers:      e.GlobalMatchers,
-		Logger:              e.Logger,
+		RawTemplate:                  e.RawTemplate,
+		Output:                       e.Output,
+		Options:                      e.Options,
+		IssuesClient:                 e.IssuesClient,
+		Progress:                     e.Progress,
+		RateLimiter:                  e.RateLimiter,
+		Catalog:                      e.Catalog,
+		ProjectFile:                  e.ProjectFile,
+		Browser:                      e.Browser,
+		Interactsh:                   e.Interactsh,
+		HostErrorsCache:              e.HostErrorsCache,
+		StopAtFirstMatch:             e.StopAtFirstMatch,
+		Variables:                    e.Variables,
+		Constants:                    e.Constants,
+		ExcludeMatchers:              e.ExcludeMatchers,
+		InputHelper:                  e.InputHelper,
+		FuzzParamsFrequency:          e.FuzzParamsFrequency,
+		FuzzStatsDB:                  e.FuzzStatsDB,
+		Operators:                    e.Operators,
+		DoNotCache:                   e.DoNotCache,
+		Colorizer:                    e.Colorizer,
+		WorkflowLoader:               e.WorkflowLoader,
+		ResumeCfg:                    e.ResumeCfg,
+		ProtocolType:                 e.ProtocolType,
+		Flow:                         e.Flow,
+		IsMultiProtocol:              e.IsMultiProtocol,
+		JsCompiler:                   e.JsCompiler,
+		AuthProvider:                 e.AuthProvider,
+		TemporaryDirectory:           e.TemporaryDirectory,
+		Parser:                       e.Parser,
+		ExportReqURLPattern:          e.ExportReqURLPattern,
+		GlobalMatchers:               e.GlobalMatchers,
+		Logger:                       e.Logger,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()

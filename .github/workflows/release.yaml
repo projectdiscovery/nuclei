@@ -16,7 +16,7 @@ jobs:
     needs: ["pgo"]
     runs-on: ubuntu-latest-16-cores
     steps: 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with: 
           fetch-depth: 0
       - uses: actions/download-artifact@v8

@@ -6,7 +6,7 @@ import (
 	_ "net/http/pprof"
 	"strings"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
@@ -55,7 +55,7 @@ type NucleiExecutorOptions struct {
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser
 	FuzzStatsDB        *stats.Tracker
-	Colorizer          aurora.Aurora
+	Colorizer          *aurora.Aurora
 	Parser             parser.Parser
 	TemporaryDirectory string
 	Logger             *gologger.Logger
@@ -190,10 +190,13 @@ func (n *nucleiExecutor) ExecuteScan(target PostRequestsHandlerRequest) error {
 }
 
 func (n *nucleiExecutor) Close() {
+	if n == nil || n.executorOpts == nil {
+		return
+	}
 	if n.executorOpts.FuzzStatsDB != nil {
 		n.executorOpts.FuzzStatsDB.Close()
 	}
-	if n.options.Interactsh != nil {
+	if n.options != nil && n.options.Interactsh != nil {
 		_ = n.options.Interactsh.Close()
 	}
 	if n.executorOpts.InputHelper != nil {

@@ -1,0 +1,17 @@
+id: race-context-share-template-1
+
+info:
+  name: race-context-share-template-1
+  author: pdteam
+  severity: info
+
+http:
+  - path:
+      - "{{BaseURL}}/context"
+
+    extractors:
+      - type: json
+        name: whoami
+        part: body
+        json:
+          - ".name"

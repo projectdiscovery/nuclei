@@ -1501,6 +1501,21 @@ This can be used in conjunction with `max-redirects` to control the HTTP request
 
 <div class="dd">
 
+<code>protocol-redirects</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+ProtocolRedirects specifies whether only redirects within the same protocol should be followed.
+
+When set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>pipeline</code>  <i>bool</i>
 
 </div>
@@ -2066,6 +2081,8 @@ Valid values:
 
 
   - <code>time_delay</code>
+
+  - <code>xss_context</code>
 </div>
 
 <hr />
@@ -3219,7 +3236,7 @@ Inputs contains inputs for the network socket
 
 description: |
    Port is the port to send network requests to. this acts as default port but is overridden if target/input contains
- non-http(s) ports like 80,8080,8081 etc
+ non-http(s) ports like 80,8080,8081 etc. Supports both numeric ports and IANA service names (e.g. ftp, ssh, smtp).
 
 </div>
 

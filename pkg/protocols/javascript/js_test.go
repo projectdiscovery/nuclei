@@ -9,10 +9,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	javascript "github.com/projectdiscovery/nuclei/v3/pkg/protocols/javascript"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/stretchr/testify/require"
 )
@@ -72,4 +75,36 @@ func TestCompile(t *testing.T) {
 			require.Equal(t, 1, template.TotalRequests, "template : %v", tpl)
 		}
 	}
+}
+
+func TestExecuteWithResultsReturnsArgEvaluationErrorWithoutPanic(t *testing.T) {
+	options := testutils.DefaultOptions
+	tmplInfo := &testutils.TemplateInfo{ID: "execute-with-results-arg-evaluation-error"}
+
+	testutils.Init(options)
+
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executorOptions := testutils.NewMockExecuterOptions(options, tmplInfo)
+	executorOptions.JsCompiler = templates.GetJsCompiler()
+
+	request := &javascript.Request{
+		Args: map[string]interface{}{
+			"token": "{{base64()}}",
+		},
+		Code: `module.exports = { success: true, response: "ok" }`,
+	}
+	require.NoError(t, request.Compile(executorOptions))
+
+	target := contextargs.NewWithInput(context.Background(), "https://example.com:443")
+
+	var err error
+	require.NotPanics(t, func() {
+		err = request.ExecuteWithResults(target, nil, nil, func(*output.InternalWrappedEvent) {
+			t.Fatal("unexpected callback on argument evaluation failure")
+		})
+	})
+	require.ErrorContains(t, err, `failed to evaluate expression "base64()"`)
 }

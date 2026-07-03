@@ -65,14 +65,52 @@ func TestHTTPVariables(t *testing.T) {
 }
 
 func TestGenerateDNSVariables(t *testing.T) {
-	vars := GenerateDNSVariables("www.projectdiscovery.io")
-	require.Equal(t, map[string]interface{}{
-		"FQDN": "www.projectdiscovery.io",
-		"RDN":  "projectdiscovery.io",
-		"DN":   "projectdiscovery",
-		"TLD":  "io",
-		"SD":   "www",
-	}, vars, "could not get dns variables")
+	testCases := []struct {
+		name     string
+		input    string
+		expected map[string]interface{}
+	}{
+		{
+			name:  "simple domain",
+			input: "www.projectdiscovery.io",
+			expected: map[string]interface{}{
+				"FQDN": "www.projectdiscovery.io",
+				"RDN":  "projectdiscovery.io",
+				"DN":   "projectdiscovery",
+				"TLD":  "io",
+				"SD":   "www",
+			},
+		},
+		{
+			name:  "multi label public suffix",
+			input: "api.service.example.co.uk",
+			expected: map[string]interface{}{
+				"FQDN": "api.service.example.co.uk",
+				"RDN":  "example.co.uk",
+				"DN":   "example",
+				"TLD":  "co.uk",
+				"SD":   "api.service",
+			},
+		},
+		{
+			name:  "trailing dot",
+			input: "www.projectdiscovery.io.",
+			expected: map[string]interface{}{
+				"FQDN": "www.projectdiscovery.io.",
+				"RDN":  "projectdiscovery.io",
+				"DN":   "projectdiscovery",
+				"TLD":  "io",
+				"SD":   "www",
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			vars := GenerateDNSVariables(testCase.input)
+			require.Equal(t, testCase.expected, vars, "could not get dns variables")
+		})
+	}
 }
 
 func TestGenerateVariablesForDNS(t *testing.T) {

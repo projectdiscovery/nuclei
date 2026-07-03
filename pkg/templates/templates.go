@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"bytes"
 	"io"
 	"path/filepath"
 	"strconv"
@@ -23,11 +24,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
 )
 
 // Template is a YAML input file which defines all the requests and
@@ -559,25 +560,67 @@ func (template *Template) MarshalJSON() ([]byte, error) {
 	return out, multierr.Append(marshalErr, errValidate)
 }
 
-// UnmarshalJSON forces recursive struct validation after unmarshal operation
+// templateAlias is an internal alias of [Template] that intentionally
+// drops Template's custom JSON/YAML methods so the JSON decoder reflects
+// over the underlying fields. Used by both the lax and strict JSON paths.
+type templateAlias Template
+
+// UnmarshalJSON forces recursive struct validation after unmarshal operation.
+// This is the permissive path used by external callers of [json.Unmarshal];
+// strict template loading goes through [Template.unmarshalJSONStrict] which
+// is what the parser uses by default — see [Parser.ParseTemplate].
 func (template *Template) UnmarshalJSON(data []byte) error {
-	type Alias Template
-	alias := &Alias{}
-	err := json.Unmarshal(data, alias)
-	if err != nil {
+	alias := &templateAlias{}
+	if err := json.Unmarshal(data, alias); err != nil {
 		return err
 	}
 	*template = Template(*alias)
-	err = tplValidator.Struct(template)
-	if err != nil {
+	return template.finalizeFromJSON(data)
+}
+
+// unmarshalJSONStrict is the strict equivalent of [Template.UnmarshalJSON]:
+// it rejects unknown fields and any trailing data after the JSON document,
+// matching the [yaml.UnmarshalStrict] semantics used for YAML templates.
+//
+// The encoding/json contract cannot propagate [DisallowUnknownFields] through
+// a custom [Template.UnmarshalJSON], so the strict path decodes into the
+// internal alias directly. Per-call (rather than a process-wide toggle) so
+// concurrent parsers with different strictness settings (cf. #6322) cannot
+// interfere with each other.
+func (template *Template) unmarshalJSONStrict(data []byte) error {
+	alias := &templateAlias{}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(alias); err != nil {
+		return err
+	}
+	// Reject trailing data after the first JSON value. json.Decoder by
+	// design only consumes one top-level value, so without this check a
+	// template like `{"id":"a",...}{"id":"hijack",...}` would silently
+	// load the first document. A second Decode into a throwaway must
+	// return io.EOF (i.e. only whitespace remained).
+	var rest interface{}
+	if err := dec.Decode(&rest); err != io.EOF {
+		if err == nil {
+			return errkit.Newf("unexpected trailing data after JSON template")
+		}
+		return err
+	}
+	*template = Template(*alias)
+	return template.finalizeFromJSON(data)
+}
+
+// finalizeFromJSON runs the post-decode struct validation and multi-protocol
+// bookkeeping shared by the lax and strict JSON paths.
+func (template *Template) finalizeFromJSON(data []byte) error {
+	if err := tplValidator.Struct(template); err != nil {
 		return err
 	}
 	// check if the template contains more than 1 protocol request
 	// if so  preserve the order of the protocols and requests
 	if template.hasMultipleRequests() {
 		var tempMap map[string]interface{}
-		err = json.Unmarshal(data, &tempMap)
-		if err != nil {
+		if err := json.Unmarshal(data, &tempMap); err != nil {
 			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
 		arr := []string{}
@@ -590,6 +633,8 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 }
 
 // Requirements holds the required options for a template to be enabled.
+//
+// Deprecated: use [Template.RequiredCapabilities] instead.
 type Requirements struct {
 	Headless      bool
 	Code          bool
@@ -599,6 +644,8 @@ type Requirements struct {
 }
 
 // Requirements returns what options must be enabled for the template to run.
+//
+// Deprecated: use [Template.RequiredCapabilities] instead.
 func (template *Template) Requirements() Requirements {
 	return Requirements{
 		Headless:      template.HasHeadlessRequest(),
@@ -610,6 +657,8 @@ func (template *Template) Requirements() Requirements {
 }
 
 // Capabilities represents the enabled options/capabilities.
+//
+// Deprecated: use [CapabilitySet] and [CapabilitiesFromOptions] instead.
 type Capabilities struct {
 	Headless      bool
 	Code          bool
@@ -620,28 +669,18 @@ type Capabilities struct {
 
 // IsEnabledFor checks if all template requirements are satisfied by the given
 // capabilities.
+//
+// Deprecated: use [Template.MissingCapabilities] instead.
 func (template *Template) IsEnabledFor(caps Capabilities) bool {
-	reqs := template.Requirements()
+	return len(template.MissingCapabilities(caps.toCapabilitySet())) == 0
+}
 
-	if reqs.Headless && !caps.Headless {
-		return false
+func (caps Capabilities) toCapabilitySet() CapabilitySet {
+	return CapabilitySet{
+		CapabilityHeadless:      caps.Headless,
+		CapabilityCode:          caps.Code,
+		CapabilityDAST:          caps.DAST,
+		CapabilitySelfContained: caps.SelfContained,
+		CapabilityFile:          caps.File,
 	}
-
-	if reqs.Code && !caps.Code {
-		return false
-	}
-
-	if reqs.DAST && !caps.DAST {
-		return false
-	}
-
-	if reqs.SelfContained && !caps.SelfContained {
-		return false
-	}
-
-	if reqs.File && !caps.File {
-		return false
-	}
-
-	return true
 }

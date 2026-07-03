@@ -16,7 +16,7 @@ import (
 // Integration is a client for an issue tracker integration
 type Integration struct {
 	client  *gitlab.Client
-	userID  int
+	userID  int64
 	options *Options
 }
 
@@ -85,7 +85,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 		labels = append(labels, label)
 	}
 	customLabels := gitlab.LabelOptions(labels)
-	assigneeIDs := []int{i.userID}
+	assigneeIDs := []int64{i.userID}
 
 	var issue *gitlab.Issue
 	if i.options.DuplicateIssueCheck {
@@ -113,7 +113,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 			}
 		}
 		return &filters.CreateIssueResponse{
-			IssueID:  strconv.FormatInt(int64(issue.ID), 10),
+			IssueID:  strconv.FormatInt(issue.ID, 10),
 			IssueURL: issue.WebURL,
 		}, nil
 	}
@@ -127,7 +127,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 		return nil, err
 	}
 	return &filters.CreateIssueResponse{
-		IssueID:  strconv.FormatInt(int64(createdIssue.ID), 10),
+		IssueID:  strconv.FormatInt(createdIssue.ID, 10),
 		IssueURL: createdIssue.WebURL,
 	}, nil
 }
@@ -177,8 +177,8 @@ func (i *Integration) findIssueByTitle(title string) (*gitlab.Issue, error) {
 			State:  &searchState,
 			Search: &title,
 			ListOptions: gitlab.ListOptions{
-				Page:    page,
-				PerPage: pageSize,
+				Page:    int64(page),
+				PerPage: int64(pageSize),
 			},
 		})
 		if err != nil {

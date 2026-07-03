@@ -27,6 +27,7 @@ type AnalyzerTemplate struct {
 	//   Name is the name of the analyzer to use
 	// values:
 	//   - time_delay
+	//   - xss_context
 	Name string `json:"name" yaml:"name"`
 	// description: |
 	//   Parameters is the parameters for the analyzer

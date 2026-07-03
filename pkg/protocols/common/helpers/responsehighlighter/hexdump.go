@@ -82,7 +82,7 @@ func highlightAsciiSection(hexDump HighlightableHexDump, snippetToColor string) 
 		if IsASCIIPrintable(v) {
 			value = regexp.QuoteMeta(string(v))
 		} else {
-			value = "."
+			value = `\.`
 		}
 		snippetCharactersMatchPattern += fmt.Sprintf(`(%s\n*)`, value)
 	}

@@ -21,6 +21,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -128,7 +130,12 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 		case ActionWaitDialog:
 			err = p.HandleDialog(act, outData)
 		case ActionFilesInput:
-			if p.options.Options.AllowLocalFileAccess {
+			// Use the same canonical predicate used by the screenshot action
+			// rather than reading Options.AllowLocalFileAccess directly so the
+			// two file-touching actions cannot disagree about whether LFA is
+			// enabled (e.g. when callers use protocolstate.SetLfaAllowed
+			// without also flipping the field on Options).
+			if protocolstate.IsLfaAllowed(p.options.Options) {
 				err = p.FilesInput(act, outData)
 			} else {
 				err = ErrLFAccessDenied
@@ -280,7 +287,7 @@ func (p *Page) ActionAddHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionAddHeader,
 		Part:   part,
 		Args:   args,
@@ -308,7 +315,7 @@ func (p *Page) ActionSetHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetHeader,
 		Part:   part,
 		Args:   args,
@@ -331,7 +338,7 @@ func (p *Page) ActionDeleteHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionDeleteHeader,
 		Part:   part,
 		Args:   args,
@@ -354,7 +361,7 @@ func (p *Page) ActionSetBody(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetBody,
 		Part:   part,
 		Args:   args,
@@ -377,7 +384,7 @@ func (p *Page) ActionSetMethod(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetMethod,
 		Part:   part,
 		Args:   args,
@@ -527,17 +534,17 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		return errkit.Newf("could not clean output screenshot path %s", to)
 	}
 
-	// allow if targetPath is child of current working directory
-	if !protocolstate.IsLfaAllowed(p.options.Options) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return errkit.Wrap(err, "could not get current working directory")
-		}
+	// Build the final write path (with .png) BEFORE running any containment
+	// gate. Otherwise inputs like "." or a bare directory name pass the gate
+	// against `to` and then the .png suffix moves the actual write outside
+	// cwd (e.g. <cwd>.png is a sibling of cwd and not contained by it).
+	filePath := to
+	if !strings.HasSuffix(filePath, ".png") {
+		filePath += ".png"
+	}
 
-		if !strings.HasPrefix(to, cwd) {
-			// writing outside of cwd requires -lfa flag
-			return ErrLFAccessDenied
-		}
+	if err := p.isScreenshotPathAllowed(filePath); err != nil {
+		return err
 	}
 
 	mkdir, err := p.getActionArg(act, "mkdir")
@@ -546,18 +553,12 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 
 	// edgecase create directory if mkdir=true and path contains directory
-	if mkdir == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
-		// creates new directory if needed based on path `to`
+	if mkdir == "true" && stringsutil.ContainsAny(filePath, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
+		// creates new directory if needed based on the final filePath
 		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
-		if err := os.MkdirAll(filepath.Dir(to), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(filePath), 0700); err != nil {
 			return errkit.Wrap(err, "failed to create directory while writing screenshot")
 		}
-	}
-
-	// actual file path to write
-	filePath := to
-	if !strings.HasSuffix(filePath, ".png") {
-		filePath += ".png"
 	}
 
 	if fileutil.FileExists(filePath) {
@@ -570,6 +571,45 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 	gologger.Info().Msgf("Screenshot successfully saved at %v\n", filePath)
 	return nil
+}
+
+func (p *Page) isScreenshotPathAllowed(to string) error {
+	if protocolstate.IsLfaAllowed(p.options.Options) {
+		return nil
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return errkit.Wrap(err, "could not get current working directory")
+	}
+
+	if !isScreenshotPathWithinDirectory(to, cwd) {
+		// writing outside of cwd requires -lfa flag
+		return ErrLFAccessDenied
+	}
+
+	return nil
+}
+
+func isScreenshotPathWithinDirectory(to, cwd string) bool {
+	if !filepathutil.IsPathWithinDirectory(to, cwd) {
+		return false
+	}
+
+	existingParent := filepath.Dir(to)
+	for {
+		if _, err := os.Stat(existingParent); err == nil {
+			return filepathutil.IsPathWithinDirectory(existingParent, cwd)
+		} else if !os.IsNotExist(err) {
+			return false
+		}
+
+		parent := filepath.Dir(existingParent)
+		if parent == existingParent {
+			return false
+		}
+		existingParent = parent
+	}
 }
 
 // InputElement executes input element actions for an element.
@@ -937,11 +977,11 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 
 	argValue := action.GetArg(arg)
 
-	if p.instance.interactsh != nil {
-		var interactshURLs []string
-		argValue, interactshURLs = p.instance.interactsh.Replace(argValue, p.InteractshURLs)
-		p.addInteractshURL(interactshURLs...)
+	prepared, err := render.ReplaceInteractshMarkers(argValue, p.instance.interactsh, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not replace interactsh marker for argument %q: %w", arg, err)
 	}
+	argValue = prepared.Text
 
 	exprs := getExpressions(argValue, p.variables)
 
@@ -950,10 +990,15 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 		return "", errkit.Wrapf(err, "argument %q, value: %q", arg, argValue)
 	}
 
-	argValue, err = expressions.Evaluate(argValue, p.variables)
+	result, err := render.Render(render.Input{
+		Text:         argValue,
+		Values:       p.variables,
+		InteractURLs: prepared.InteractURLs,
+	})
 	if err != nil {
 		return "", fmt.Errorf("could not get value for argument %q: %s", arg, err)
 	}
+	p.addInteractshURL(result.InteractURLs...)
 
-	return argValue, nil
+	return result.Text, nil
 }

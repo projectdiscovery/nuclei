@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -297,6 +299,17 @@ func validateDASTOptions(options *types.Options) error {
 	return nil
 }
 
+// LoadReportingOptionsFromBytes parses YAML reporting-config bytes into a
+// *reporting.Options with env-var expansion, matching the CLI's -report-config.
+func LoadReportingOptionsFromBytes(data []byte) (*reporting.Options, error) {
+	reportingOptions := &reporting.Options{}
+	if err := yaml.DecodeAndValidate(bytes.NewReader(data), reportingOptions); err != nil {
+		return nil, errors.Wrap(err, "could not parse reporting config file")
+	}
+	Walk(reportingOptions, expandEndVars)
+	return reportingOptions, nil
+}
+
 func createReportingOptions(options *types.Options) (*reporting.Options, error) {
 	var reportingOptions = &reporting.Options{}
 	if options.ReportingConfig != "" {
@@ -338,6 +351,17 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		} else {
 			reportingOptions.JSONLExporter = &jsonl.Options{
 				File:    options.JSONLExport,
+				OmitRaw: options.OmitRawRequests,
+			}
+		}
+	}
+	if options.PDFExport != "" {
+		if reportingOptions.PDFExporter != nil {
+			reportingOptions.PDFExporter.File = options.PDFExport
+			reportingOptions.PDFExporter.OmitRaw = options.OmitRawRequests
+		} else {
+			reportingOptions.PDFExporter = &pdf.Options{
+				File:    options.PDFExport,
 				OmitRaw: options.OmitRawRequests,
 			}
 		}

@@ -865,6 +865,11 @@
           "title": "follow same host http redirects",
           "description": "Specifies whether redirects to the same host should be followed by the HTTP Client"
         },
+        "protocol-redirects": {
+          "type": "boolean",
+          "title": "follow same protocol http redirects",
+          "description": "Specifies whether only same-protocol redirects should be followed by the HTTP Client"
+        },
         "pipeline": {
           "type": "boolean",
           "title": "perform HTTP 1.1 pipelining",
@@ -1395,7 +1400,7 @@
             }
           ],
           "title": "port to send requests to",
-          "description": "Port to send network requests to"
+          "description": "Port to send network requests to. Supports numeric ports and service names (e.g. ftp, ssh, smtp)"
         },
         "exclude-ports": {
           "type": "string",

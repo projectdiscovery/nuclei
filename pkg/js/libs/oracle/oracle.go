@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
@@ -48,11 +50,11 @@ type (
 // ```
 func (c *OracleClient) IsOracle(ctx context.Context, host string, port int) (IsOracleResponse, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisOracle(executionId, host, port)
+	return memoizedisOracle(ctx, executionId, host, port)
 }
 
 // @memo
-func isOracle(executionId string, host string, port int) (IsOracleResponse, error) {
+func isOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -61,7 +63,7 @@ func isOracle(executionId string, host string, port int) (IsOracleResponse, erro
 	}
 
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
@@ -83,27 +85,68 @@ func isOracle(executionId string, host string, port int) (IsOracleResponse, erro
 	return resp, nil
 }
 
-func (c *OracleClient) oracleDbInstance(connStr string, executionId string) (*goora.OracleConnector, error) {
-	if c.connector != nil {
-		return c.connector, nil
+func (c *OracleClient) oracleDbInstance(ctx context.Context, connStr string, executionId string) (*goora.OracleConnector, error) {
+	connStr, err := sandboxDSN(executionId, connStr)
+	if err != nil {
+		return nil, err
 	}
 
-	connector := goora.NewConnector(connStr)
-	oraConnector, ok := connector.(*goora.OracleConnector)
-	if !ok {
-		return nil, fmt.Errorf("failed to cast connector to OracleConnector")
+	if c.connector == nil {
+		connector := goora.NewConnector(connStr)
+		oraConnector, ok := connector.(*goora.OracleConnector)
+		if !ok {
+			return nil, fmt.Errorf("failed to cast connector to OracleConnector")
+		}
+		c.connector = oraConnector
 	}
 
-	// Create custom dialer wrapper
-	customDialer := &oracleCustomDialer{
-		executionId: executionId,
+	// Refresh the dialer on every call so the connector uses the current
+	// execution context instead of a stale or already-canceled one.
+	c.connector.Dialer(&oracleCustomDialer{executionId: executionId, ctx: ctx})
+
+	return c.connector, nil
+}
+
+func sandboxDSN(executionId string, dsn string) (string, error) {
+	parsed, err := url.Parse(dsn)
+	if err != nil {
+		return "", err
 	}
 
-	oraConnector.Dialer(customDialer)
+	query := parsed.Query()
+	changed := false
+	for key, values := range query {
+		if !isOracleTracePathOption(key) {
+			continue
+		}
+		for i, value := range values {
+			if value == "" {
+				continue
+			}
+			normalized, err := protocolstate.NormalizePathWithExecutionId(executionId, value)
+			if err != nil {
+				return "", fmt.Errorf("oracle %s %q: %w", key, value, err)
+			}
+			values[i] = normalized
+		}
+		query[key] = values
+		changed = true
+	}
+	if !changed {
+		return dsn, nil
+	}
 
-	c.connector = oraConnector
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
+}
 
-	return oraConnector, nil
+func isOracleTracePathOption(key string) bool {
+	switch strings.ToUpper(strings.TrimSpace(key)) {
+	case "TRACE FILE", "TRACE DIR", "TRACE FOLDER", "TRACE DIRECTORY":
+		return true
+	default:
+		return false
+	}
 }
 
 // Connect connects to an Oracle database
@@ -122,7 +165,7 @@ func (c *OracleClient) Connect(ctx context.Context, host string, port int, servi
 func (c *OracleClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
 
-	connector, err := c.oracleDbInstance(dsn, executionId)
+	connector, err := c.oracleDbInstance(ctx, dsn, executionId)
 	if err != nil {
 		return false, err
 	}
@@ -136,7 +179,7 @@ func (c *OracleClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, er
 	db.SetMaxIdleConns(0)
 
 	// Test the connection
-	err = db.Ping()
+	err = db.PingContext(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -182,7 +225,7 @@ func (c *OracleClient) ExecuteQuery(ctx context.Context, host string, port int, 
 func (c *OracleClient) ExecuteQueryWithDSN(ctx context.Context, dsn string, query string) (*utils.SQLResult, error) {
 	executionId := ctx.Value("executionId").(string)
 
-	connector, err := c.oracleDbInstance(dsn, executionId)
+	connector, err := c.oracleDbInstance(ctx, dsn, executionId)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +237,7 @@ func (c *OracleClient) ExecuteQueryWithDSN(ctx context.Context, dsn string, quer
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)
 
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

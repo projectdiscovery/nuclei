@@ -75,6 +75,41 @@ func ExampleThreadSafeNucleiEngine() {
 	// [caa-fingerprint] honey.scanme.sh
 }
 
+// ExampleWithPDCPUpload uploads findings to the PDCP dashboard from SDK code,
+// matching `-dashboard -scan-id -team-id` on the CLI. Pass an existing scanID
+// to append; pass empty to let the server create a new scan.
+func ExampleWithPDCPUpload() {
+	ne, err := nuclei.NewNucleiEngine(
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"self-signed-ssl"}}),
+		nuclei.WithPDCPUpload("" /* scanID */, "" /* teamID, "" = personal */),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer ne.Close()
+	ne.LoadTargets([]string{"scanme.sh"}, false)
+	if err := ne.ExecuteWithCallback(nil); err != nil {
+		panic(err)
+	}
+}
+
+// ExampleWithConfigFile ingests a RuntimeConfig YAML (tags, severity,
+// exclude-tags, headers, vars, etc.) and merges it into the engine options.
+func ExampleWithConfigFile() {
+	ne, err := nuclei.NewNucleiEngine(
+		nuclei.WithConfigFile("nuclei.yaml"),
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"self-signed-ssl"}}),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer ne.Close()
+	ne.LoadTargets([]string{"scanme.sh"}, false)
+	if err := ne.ExecuteWithCallback(nil); err != nil {
+		panic(err)
+	}
+}
+
 func TestMain(m *testing.M) {
 	// this file only contains testtables examples https://go.dev/blog/examples
 	// and actual functionality test are in sdk_test.go

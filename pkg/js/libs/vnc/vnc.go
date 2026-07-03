@@ -50,11 +50,11 @@ type (
 // ```
 func (c *VNCClient) Connect(ctx context.Context, host string, port int, password string) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return connect(executionId, host, port, password)
+	return connect(ctx, executionId, host, port, password)
 }
 
 // connect attempts to authenticate with a VNC server using the given password
-func connect(executionId string, host string, port int, password string) (bool, error) {
+func connect(ctx context.Context, executionId string, host string, port int, password string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
@@ -68,7 +68,7 @@ func connect(executionId string, host string, port int, password string) (bool, 
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
@@ -83,7 +83,7 @@ func connect(executionId string, host string, port int, password string) (bool, 
 	vncConfig := vnclib.NewClientConfig(password)
 
 	// Attempt to connect and authenticate
-	c, err := vnclib.Connect(context.TODO(), conn, vncConfig)
+	c, err := vnclib.Connect(ctx, conn, vncConfig)
 	if err != nil {
 		// Check for specific authentication errors
 		if isAuthError(err) {
@@ -120,11 +120,11 @@ func isAuthError(err error) bool {
 // ```
 func IsVNC(ctx context.Context, host string, port int) (IsVNCResponse, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisVNC(executionId, host, port)
+	return memoizedisVNC(ctx, executionId, host, port)
 }
 
 // @memo
-func isVNC(executionId string, host string, port int) (IsVNCResponse, error) {
+func isVNC(ctx context.Context, executionId string, host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second
@@ -132,7 +132,7 @@ func isVNC(executionId string, host string, port int) (IsVNCResponse, error) {
 	if dialer == nil {
 		return IsVNCResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

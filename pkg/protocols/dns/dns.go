@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"net"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -10,6 +11,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
@@ -182,25 +185,59 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	return nil
 }
 
+// resolverHost extracts the host/IP from a retryabledns resolver entry, which
+// may carry a transport prefix (e.g. "udp:", "tcp:") and an optional port.
+func resolverHost(resolver string) string {
+	r := strings.TrimSpace(resolver)
+	// strip URL-form prefixes before their shorter counterparts so that, e.g.,
+	// "udp://1.1.1.1:53" is not partially trimmed to "//1.1.1.1:53" by "udp:".
+	for _, prefix := range []string{"udp://", "tcp://", "tls://", "doh://", "udp:", "tcp:", "tls:", "doh:"} {
+		r = strings.TrimPrefix(r, prefix)
+	}
+	// strip a trailing :port if present (handles bare host or host:port).
+	if host, _, err := net.SplitHostPort(r); err == nil {
+		return host
+	}
+	return r
+}
+
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
 		Proxy:   options.Options.AliveSocksProxy,
 	}
 	if len(request.Resolvers) > 0 {
-		if len(request.Resolvers) > 0 {
-			for _, resolver := range request.Resolvers {
-				if expressions.ContainsUnresolvedVariables(resolver) != nil {
-					var err error
-					resolver, err = expressions.Evaluate(resolver, metadata)
-					if err != nil {
-						return nil, errors.Wrap(err, "could not resolve resolvers expressions")
-					}
-					dnsClientOptions.Resolvers = append(dnsClientOptions.Resolvers, resolver)
+		// Build the resolver list one entry at a time so that:
+		// - static resolvers are forwarded as-is,
+		// - resolvers containing template expressions are evaluated against
+		//   the supplied metadata (template variables, payloads, dynamic
+		//   extracted values, etc.),
+		// - and at compile time (metadata == nil) unresolved entries are
+		//   skipped instead of failing — the runtime path in request.go
+		//   rebuilds the client per request once the full variable scope
+		//   is available. See https://github.com/projectdiscovery/nuclei/issues/7374.
+		resolvers := make([]string, 0, len(request.Resolvers))
+		for _, resolver := range request.Resolvers {
+			if expressions.ContainsUnresolvedVariables(resolver) != nil {
+				if metadata == nil {
+					// Defer resolution to the per-request runtime path.
+					continue
+				}
+				result, err := render.Render(render.Input{Text: resolver, Values: metadata})
+				if err != nil {
+					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
+				}
+				resolver = result.Text
+			}
+			// validate template-specified resolvers against the network policy.
+			if host := resolverHost(resolver); host != "" {
+				if !protocolstate.IsHostAllowed(options.Options.ExecutionId, host) {
+					return nil, errors.Errorf("dns resolver %s is blocked by network policy", resolver)
 				}
 			}
+			resolvers = append(resolvers, resolver)
 		}
-		dnsClientOptions.Resolvers = request.Resolvers
+		dnsClientOptions.Resolvers = resolvers
 	}
 	return dnsclientpool.Get(options.Options, dnsClientOptions)
 }

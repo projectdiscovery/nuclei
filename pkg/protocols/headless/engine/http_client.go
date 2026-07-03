@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"golang.org/x/net/http2"
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
@@ -67,7 +68,7 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 	} else if options.AliveSocksProxy != "" {
 		socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
 		if proxyErr != nil {
-			return nil, err
+			return nil, proxyErr
 		}
 		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
 		if err != nil {
@@ -80,10 +81,28 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 		transport.DialContext = dc.DialContext
 	}
 
+	var roundTripper http.RoundTripper = transport
+
+	// TLS impersonation via utls advertises h2 in ALPN to mimic a real browser.
+	// Since utls returns *utls.UConn (not *tls.Conn), Go's http.Transport can't
+	// detect the negotiated protocol and tries HTTP/1.x on an h2 connection,
+	// causing "malformed HTTP response" errors. We use http2.Transport directly
+	// with utls dialing to properly handle h2 connections (see #6360).
+	if options.TlsImpersonate {
+		roundTripper = &http2.Transport{
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+			},
+			TLSClientConfig:    tlsConfig,
+			AllowHTTP:          false,
+			DisableCompression: false,
+		}
+	}
+
 	jar, _ := cookiejar.New(nil)
 
 	httpclient := &http.Client{
-		Transport: transport,
+		Transport: roundTripper,
 		Timeout:   time.Duration(options.Timeout*3) * time.Second,
 		Jar:       jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -94,3 +113,4 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 
 	return httpclient, nil
 }
+

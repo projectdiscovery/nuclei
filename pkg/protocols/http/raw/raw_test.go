@@ -1,11 +1,165 @@
 package raw
 
 import (
+	"encoding/base64"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
+
+func TestApplyAuthStrategy_QueryAuth_PersistsParams(t *testing.T) {
+	r := &Request{
+		FullURL: "https://example.com/api/resource",
+		Headers: map[string]string{},
+	}
+	strategy := authx.NewQueryAuthStrategy(&authx.Secret{
+		Type: "query",
+		Params: []authx.KV{
+			{Key: "api_key", Value: "s3cret"},
+			{Key: "tenant", Value: "acme"},
+		},
+	})
+	r.ApplyAuthStrategy(strategy)
+
+	parsed, err := urlutil.Parse(r.FullURL)
+	require.NoError(t, err, "fixed URL must parse")
+	require.Equal(t, "s3cret", parsed.Params.Get("api_key"), "QueryAuthStrategy must persist api_key on r.FullURL")
+	require.Equal(t, "acme", parsed.Params.Get("tenant"), "QueryAuthStrategy must persist tenant on r.FullURL")
+}
+
+func TestApplyAuthStrategy_QueryAuth_PreservesExistingParams(t *testing.T) {
+	r := &Request{
+		FullURL: "https://example.com/api/resource?foo=bar&baz=qux",
+		Headers: map[string]string{},
+	}
+	strategy := authx.NewQueryAuthStrategy(&authx.Secret{
+		Type: "query",
+		Params: []authx.KV{
+			{Key: "api_key", Value: "s3cret"},
+		},
+	})
+	r.ApplyAuthStrategy(strategy)
+
+	parsed, err := urlutil.Parse(r.FullURL)
+	require.NoError(t, err, "result URL must parse")
+	require.Equal(t, "bar", parsed.Params.Get("foo"), "pre-existing foo param must be preserved")
+	require.Equal(t, "qux", parsed.Params.Get("baz"), "pre-existing baz param must be preserved")
+	require.Equal(t, "s3cret", parsed.Params.Get("api_key"), "auth param must be added alongside existing params")
+}
+
+func TestApplyAuthStrategy_QueryAuth_InvalidURLLeavesFullURLUnchanged(t *testing.T) {
+	// invalid percent-encoding causes urlutil.Parse to fail; the function logs and returns.
+	const badURL = "http://example.com/%zz"
+	r := &Request{
+		FullURL: badURL,
+		Headers: map[string]string{},
+	}
+	strategy := authx.NewQueryAuthStrategy(&authx.Secret{
+		Type: "query",
+		Params: []authx.KV{
+			{Key: "api_key", Value: "s3cret"},
+		},
+	})
+	r.ApplyAuthStrategy(strategy)
+
+	require.Equal(t, badURL, r.FullURL, "FullURL must not be rewritten when parsing fails")
+}
+
+func TestApplyAuthStrategy_NilStrategyIsNoOp(t *testing.T) {
+	r := &Request{
+		FullURL: "https://example.com/api/resource",
+		Headers: map[string]string{"X-Existing": "1"},
+	}
+	require.NotPanics(t, func() { r.ApplyAuthStrategy(nil) }, "nil strategy must not panic")
+	require.Equal(t, "https://example.com/api/resource", r.FullURL, "nil strategy must not mutate FullURL")
+	require.Equal(t, map[string]string{"X-Existing": "1"}, r.Headers, "nil strategy must not mutate headers")
+}
+
+func TestApplyAuthStrategy_CookiesAuth(t *testing.T) {
+	strategy := authx.NewCookiesAuthStrategy(&authx.Secret{
+		Type: "cookie",
+		Cookies: []authx.Cookie{
+			{Key: "sessionid", Value: "abc"},
+			{Key: "csrf", Value: "xyz"},
+		},
+	})
+
+	t.Run("no-existing-cookie-header", func(t *testing.T) {
+		r := &Request{Headers: map[string]string{}}
+		r.ApplyAuthStrategy(strategy)
+		require.Equal(t, "sessionid=abc; csrf=xyz; ", r.Headers["Cookie"], "Cookie header must be built from auth cookies")
+	})
+
+	t.Run("appends-to-existing-cookie-header", func(t *testing.T) {
+		r := &Request{Headers: map[string]string{"Cookie": "foo=bar"}}
+		r.ApplyAuthStrategy(strategy)
+		require.Equal(t, "foo=bar; sessionid=abc; csrf=xyz; ", r.Headers["Cookie"], "existing cookies must be preserved and joined")
+	})
+
+	t.Run("trims-trailing-semicolon-from-existing", func(t *testing.T) {
+		r := &Request{Headers: map[string]string{"Cookie": "foo=bar; "}}
+		r.ApplyAuthStrategy(strategy)
+		require.Equal(t, "foo=bar; sessionid=abc; csrf=xyz; ", r.Headers["Cookie"], "trailing semicolon on existing Cookie must be normalized")
+	})
+}
+
+func TestApplyAuthStrategy_HeadersAuth(t *testing.T) {
+	strategy := authx.NewHeadersAuthStrategy(&authx.Secret{
+		Type: "header",
+		Headers: []authx.KV{
+			{Key: "X-Api-Key", Value: "s3cret"},
+			{Key: "X-Tenant", Value: "acme"},
+		},
+	})
+
+	t.Run("adds-new-headers", func(t *testing.T) {
+		r := &Request{Headers: map[string]string{}}
+		r.ApplyAuthStrategy(strategy)
+		require.Equal(t, "s3cret", r.Headers["X-Api-Key"], "X-Api-Key must be set")
+		require.Equal(t, "acme", r.Headers["X-Tenant"], "X-Tenant must be set")
+	})
+
+	t.Run("overrides-existing-header", func(t *testing.T) {
+		r := &Request{Headers: map[string]string{"X-Api-Key": "stale"}}
+		r.ApplyAuthStrategy(strategy)
+		require.Equal(t, "s3cret", r.Headers["X-Api-Key"], "auth strategy must override an existing header with same key")
+	})
+}
+
+func TestApplyAuthStrategy_BearerTokenAuth(t *testing.T) {
+	strategy := authx.NewBearerTokenAuthStrategy(&authx.Secret{
+		Type:  "bearer",
+		Token: "tok-123",
+	})
+
+	t.Run("sets-authorization", func(t *testing.T) {
+		r := &Request{Headers: map[string]string{}}
+		r.ApplyAuthStrategy(strategy)
+		require.Equal(t, "Bearer tok-123", r.Headers["Authorization"], "Authorization must be set to Bearer <token>")
+	})
+
+	t.Run("overrides-existing-authorization", func(t *testing.T) {
+		r := &Request{Headers: map[string]string{"Authorization": "Basic stale"}}
+		r.ApplyAuthStrategy(strategy)
+		require.Equal(t, "Bearer tok-123", r.Headers["Authorization"], "Bearer must override an existing Authorization header")
+	})
+}
+
+func TestApplyAuthStrategy_BasicAuth(t *testing.T) {
+	strategy := authx.NewBasicAuthStrategy(&authx.Secret{
+		Type:     "basic",
+		Username: "admin",
+		Password: "p@ss:word",
+	})
+
+	r := &Request{Headers: map[string]string{}}
+	r.ApplyAuthStrategy(strategy)
+
+	expected := "Basic " + base64.StdEncoding.EncodeToString([]byte("admin:p@ss:word"))
+	require.Equal(t, expected, r.Headers["Authorization"], "Authorization must be set to Basic <base64(user:pass)>")
+}
 
 func TestTryFillCustomHeaders_BufferDetached(t *testing.T) {
 	r := &Request{

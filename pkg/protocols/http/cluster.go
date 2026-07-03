@@ -11,7 +11,7 @@ import (
 // TmplClusterKey generates a unique key for the request
 // to be used in the clustering process.
 func (request *Request) TmplClusterKey() uint64 {
-	inp := fmt.Sprintf("%s-%d-%t-%t-%s-%d", request.Method.String(), request.MaxRedirects, request.DisableCookie, request.Redirects, strings.Join(request.Path, "-"), utils.MapHash(request.Headers))
+	inp := fmt.Sprintf("%s-%d-%t-%t-%t-%s-%d", request.Method.String(), request.MaxRedirects, request.DisableCookie, request.Redirects, request.ProtocolRedirects, strings.Join(request.Path, "-"), utils.MapHash(request.Headers))
 	return xxhash.Sum64String(inp)
 }
 

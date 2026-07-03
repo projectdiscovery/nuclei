@@ -1,12 +1,13 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 )
 
 // temporary on demand runtime to throw errors when vm is not available
@@ -48,6 +49,20 @@ func (j *NucleiJS) ExecutionId() string {
 		return ""
 	}
 	return executionId.(string)
+}
+
+// Context returns the execution context from the goja runtime, or
+// context.Background() if none is set.
+func (j *NucleiJS) Context() context.Context {
+	if j == nil || j.vm == nil {
+		return context.Background()
+	}
+	if ctx, ok := j.vm.GetContextValue("ctx"); ok {
+		if c, valid := ctx.(context.Context); valid {
+			return c
+		}
+	}
+	return context.Background()
 }
 
 // see: https://arc.net/l/quote/wpenftpc for throwing docs

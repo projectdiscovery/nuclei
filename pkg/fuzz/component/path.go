@@ -14,7 +14,8 @@ import (
 type Path struct {
 	value *Value
 
-	req *retryablehttp.Request
+	originalPath string
+	req          *retryablehttp.Request
 }
 
 var _ Component = &Path{}
@@ -33,6 +34,7 @@ func (q *Path) Name() string {
 // parsed component
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
+	q.originalPath = req.Path
 	q.value = NewValue("")
 
 	split := strings.Split(req.Path, "/")
@@ -87,8 +89,8 @@ func (q *Path) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	// Get the original path segments
-	originalSplit := strings.Split(q.req.Path, "/")
+	// Use the snapshot of the original path to avoid mutation from Clone/UpdateRelPath
+	originalSplit := strings.Split(q.originalPath, "/")
 
 	// Create a new slice to hold the rebuilt segments
 	rebuiltSegments := make([]string, 0, len(originalSplit))
@@ -141,7 +143,8 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 // Clones current state to a new component
 func (q *Path) Clone() Component {
 	return &Path{
-		value: q.value.Clone(),
-		req:   q.req.Clone(context.Background()),
+		value:        q.value.Clone(),
+		originalPath: q.originalPath,
+		req:          q.req.Clone(context.Background()),
 	}
 }

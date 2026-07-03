@@ -2,17 +2,19 @@
 package rsync
 
 import (
+	"context"
 	"errors"
+
 	"fmt"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisRsync(executionId string, host string, port int) (IsRsyncResponse, error) {
+func memoizedisRsync(ctx context.Context, executionId string, host string, port int) (IsRsyncResponse, error) {
 	hash := "isRsync" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isRsync(executionId, host, port)
+		return isRsync(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return IsRsyncResponse{}, err

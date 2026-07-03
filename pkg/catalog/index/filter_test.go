@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFilterMatches(t *testing.T) {
@@ -196,8 +197,8 @@ func TestMatchesID(t *testing.T) {
 		expected bool
 	}{
 		{"exact match", "CVE-2021-1234", "CVE-2021-1234", true},
-		{"wildcard prefix", "CVE-2021-1234", "CVE-*", true},
-		{"wildcard suffix", "CVE-2021-1234", "*-1234", true},
+		{"wildcard suffix", "CVE-2021-1234", "CVE-*", true},
+		{"wildcard prefix", "CVE-2021-1234", "*-1234", true},
 		{"wildcard middle", "CVE-2021-1234", "CVE-*-1234", true},
 		{"no match", "CVE-2021-1234", "CVE-2022-*", false},
 		{"partial no match", "CVE-2021-1234", "CVE-2021-12", false},
@@ -207,7 +208,9 @@ func TestMatchesID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := matchesID(tt.id, tt.pattern)
+			filter := &Filter{IDs: []string{tt.pattern}}
+			filter.Compile()
+			result := filter.matchesIncludeID(tt.id)
 			require.Equal(t, tt.expected, result)
 		})
 	}

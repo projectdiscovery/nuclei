@@ -2,10 +2,12 @@ package output
 
 import (
 	"encoding/base64"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"maps"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,11 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
-
-	jsoniter "github.com/json-iterator/go"
-	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -27,10 +27,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
@@ -38,12 +40,16 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
+// ErrHoneypotSuppressed is returned by the output writer when a match result is suppressed
+// due to honeypot detection.
+var ErrHoneypotSuppressed = stderrors.New("honeypot suppressed result")
+
 // Writer is an interface which writes output to somewhere for nuclei events.
 type Writer interface {
 	// Close closes the output writer interface
 	Close()
 	// Colorizer returns the colorizer instance for writer
-	Colorizer() aurora.Aurora
+	Colorizer() *aurora.Aurora
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
 	// WriteFailure writes the optional failure event for template to file and/or screen.
@@ -65,8 +71,11 @@ type StandardWriter struct {
 	timestamp             bool
 	noMetadata            bool
 	matcherStatus         bool
+	honeypotDetector      *honeypotdetector.Detector
+	suppressHoneypot      bool
+	honeypotThreshold     int
 	mutex                 *sync.Mutex
-	aurora                aurora.Aurora
+	aurora                *aurora.Aurora
 	outputFile            io.WriteCloser
 	traceFile             io.WriteCloser
 	errorFile             io.WriteCloser
@@ -77,6 +86,11 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+
+	// redactPatterns caches the compiled credential-redaction regexes so they
+	// are not recompiled on every Write call.
+	redactPatternsOnce sync.Once
+	redactPatterns     []*regexp.Regexp
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -231,7 +245,7 @@ type IssueTrackerMetadata struct {
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	resumeBool := options.Resume != ""
 
-	auroraColorizer := aurora.NewAurora(!options.NoColor)
+	auroraColorizer := aurora.New(aurora.WithColors(!options.NoColor))
 
 	var outputFile io.WriteCloser
 	if options.Output != "" {
@@ -265,21 +279,23 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	}
 
 	writer := &StandardWriter{
-		json:             options.JSONL,
-		jsonReqResp:      !options.OmitRawRequests,
-		noMetadata:       options.NoMeta,
-		matcherStatus:    options.MatcherStatus,
-		timestamp:        options.Timestamp,
-		aurora:           auroraColorizer,
-		mutex:            &sync.Mutex{},
-		outputFile:       outputFile,
-		traceFile:        traceOutput,
-		errorFile:        errorOutput,
-		severityColors:   colorizer.New(auroraColorizer),
-		storeResponse:    options.StoreResponse,
-		storeResponseDir: options.StoreResponseDir,
-		omitTemplate:     options.OmitTemplate,
-		KeysToRedact:     options.Redact,
+		json:              options.JSONL,
+		jsonReqResp:       !options.OmitRawRequests,
+		noMetadata:        options.NoMeta,
+		matcherStatus:     options.MatcherStatus,
+		timestamp:         options.Timestamp,
+		suppressHoneypot:  options.SuppressHoneypotResults,
+		honeypotThreshold: options.HoneypotThreshold,
+		aurora:            auroraColorizer,
+		mutex:             &sync.Mutex{},
+		outputFile:        outputFile,
+		traceFile:         traceOutput,
+		errorFile:         errorOutput,
+		severityColors:    colorizer.New(auroraColorizer),
+		storeResponse:     options.StoreResponse,
+		storeResponseDir:  options.StoreResponseDir,
+		omitTemplate:      options.OmitTemplate,
+		KeysToRedact:      options.Redact,
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -287,6 +303,14 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	}
 
 	return writer, nil
+}
+
+// SetHoneypotDetector attaches an initialized honeypot detector to the writer.
+func (w *StandardWriter) SetHoneypotDetector(detector *honeypotdetector.Detector) {
+	w.honeypotDetector = detector
+	if detector != nil {
+		w.honeypotThreshold = detector.Threshold()
+	}
 }
 
 func (w *StandardWriter) ResultCount() int {
@@ -299,17 +323,42 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		return nil
 	}
 
+	// Honeypot detection is performed only for successful matches.
+	if event.MatcherStatus && w.honeypotDetector != nil {
+		hostKey := event.URL
+		if hostKey == "" && event.Host != "" {
+			hostKey = event.Host
+			if event.Port != "" {
+				hostKey = net.JoinHostPort(event.Host, event.Port)
+			}
+		}
+
+		if hostKey != "" {
+			justFlagged := w.honeypotDetector.RecordMatch(hostKey, event.TemplateID)
+			if justFlagged {
+				normalized := honeypotdetector.NormalizeHostKey(hostKey)
+				gologger.Warning().Msgf("Potential honeypot detected: %s (matched %d distinct templates)", normalized, w.honeypotThreshold)
+			}
+
+			if w.suppressHoneypot && w.honeypotDetector.IsFlagged(hostKey) {
+				return ErrHoneypotSuppressed
+			}
+		}
+	}
+
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID), event.TemplateVerifier)
 	}
 
-	if len(w.KeysToRedact) > 0 {
-		event.Request = redactKeys(event.Request, w.KeysToRedact)
-		event.Response = redactKeys(event.Response, w.KeysToRedact)
-		event.CURLCommand = redactKeys(event.CURLCommand, w.KeysToRedact)
-		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
-	}
+	// redact the default credential-bearing keys in addition to any
+	// user-supplied -redact keys. patterns are compiled once and cached to
+	// avoid recompiling regexes on every event in the write hot path.
+	patterns := w.redactionPatterns()
+	event.Request = redactWithPatterns(event.Request, patterns)
+	event.Response = redactWithPatterns(event.Response, patterns)
+	event.CURLCommand = redactWithPatterns(event.CURLCommand, patterns)
+	event.Matched = redactWithPatterns(event.Matched, patterns)
 
 	event.Timestamp = time.Now()
 
@@ -350,10 +399,48 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	return nil
 }
 
-func redactKeys(data string, keysToRedact []string) string {
-	for _, key := range keysToRedact {
-		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
-		data = keyPattern.ReplaceAllString(data, `$1***$2`)
+// defaultRedactKeys are header and parameter names that are always redacted
+// from output regardless of the -redact flag.
+var defaultRedactKeys = []string{
+	"Authorization",
+	"Proxy-Authorization",
+	"Cookie",
+	"Set-Cookie",
+	"X-Api-Key",
+}
+
+// defaultRedactPatterns are the precompiled regexes for defaultRedactKeys.
+var defaultRedactPatterns = compileRedactPatterns(defaultRedactKeys)
+
+// compileRedactPatterns builds the credential-redaction regexes for the given keys.
+func compileRedactPatterns(keys []string) []*regexp.Regexp {
+	patterns := make([]*regexp.Regexp, 0, len(keys))
+	for _, key := range keys {
+		patterns = append(patterns, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key))))
+	}
+	return patterns
+}
+
+// redactionPatterns returns the cached set of redaction patterns for this
+// writer (default keys plus any user-supplied -redact keys), compiling them on
+// first use.
+func (w *StandardWriter) redactionPatterns() []*regexp.Regexp {
+	w.redactPatternsOnce.Do(func() {
+		if len(w.KeysToRedact) == 0 {
+			w.redactPatterns = defaultRedactPatterns
+			return
+		}
+		patterns := make([]*regexp.Regexp, 0, len(defaultRedactPatterns)+len(w.KeysToRedact))
+		patterns = append(patterns, defaultRedactPatterns...)
+		patterns = append(patterns, compileRedactPatterns(w.KeysToRedact)...)
+		w.redactPatterns = patterns
+	})
+	return w.redactPatterns
+}
+
+func redactWithPatterns(data string, patterns []*regexp.Regexp) string {
+	for _, pattern := range patterns {
+		data = pattern.ReplaceAllString(data, `$1***$2`)
 	}
 	return data
 }
@@ -381,7 +468,7 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		ts := time.Now()
 		request.Timestamp = &ts
 	}
-	data, err := jsoniter.Marshal(request)
+	data, err := json.Marshal(request)
 	if err != nil {
 		return
 	}
@@ -447,7 +534,7 @@ func getJSONLogRequestFromError(templatePath, input, requestType string, request
 }
 
 // Colorizer returns the colorizer instance for writer
-func (w *StandardWriter) Colorizer() aurora.Aurora {
+func (w *StandardWriter) Colorizer() *aurora.Aurora {
 	return w.aurora
 }
 

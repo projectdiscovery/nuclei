@@ -5,7 +5,6 @@ package kerberos
 // it is copied here because the library does not export "SendToKDC()"
 
 import (
-	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -74,6 +73,7 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
+	dialCtx := kclient.nj.Context()
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		host, port, err := net.SplitHostPort(kdcs[i])
@@ -81,7 +81,7 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		tcpConn, err := dialers.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+		tcpConn, err := dialers.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue
@@ -114,6 +114,7 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
+	dialCtx := kclient.nj.Context()
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		host, port, err := net.SplitHostPort(kdcs[i])
@@ -121,7 +122,7 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		udpConn, err := dialers.Fastdialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+		udpConn, err := dialers.Fastdialer.Dial(dialCtx, "udp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue

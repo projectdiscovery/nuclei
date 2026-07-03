@@ -9,7 +9,6 @@ import (
 
 	"github.com/cespare/xxhash"
 	"github.com/fatih/structs"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -21,15 +20,16 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
@@ -215,25 +215,33 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	// add template context variables to varMap
-	values := generators.MergeMaps(payloadValues, hostnameVariables)
+	scope := request.options.NewVariablesScope(payloadValues, hostnameVariables, previous)
 	if request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
 	}
 
-	variablesMap := request.options.Variables.Evaluate(values)
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
+	scope.AddData(request.options.Constants)
+	variablesMap := request.options.Variables.EvaluateScope(scope).Values
+	payloadValues = generators.MergeMaps(variablesMap, payloadValues, previous)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		payloadValues = generators.MergeMaps(payloadValues, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	payloadValues = generators.MergeMaps(payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("SSL Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
-	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
+	result, dataErr := render.Render(render.Input{Text: request.Address, Values: payloadValues})
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
-	addressToDial := string(finalAddress)
+
+	addressToDial := result.Text
+
 	host, port, err := net.SplitHostPort(addressToDial)
 	if err != nil {
 		return errkit.Wrap(err, "could not split input host port")
@@ -266,7 +274,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	jsonData, _ := jsoniter.Marshal(response)
+	jsonData, _ := json.Marshal(response)
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})

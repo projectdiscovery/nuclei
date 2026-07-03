@@ -123,6 +123,16 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		if err != nil {
 			return 0, errors.Wrap(err, "could not rebuild request")
 		}
+
+		// copy headers from the original request since Rebuild() only
+		// carries headers present at parse time, not post-parse injections
+		for k, vs := range gr.Request.Header {
+			if gr.Component.Name() == "header" && k == gr.Key {
+				continue
+			}
+			rebuilt.Header[k] = vs
+		}
+
 		gologger.Verbose().Msgf("[%s] Sending request with %d delay for: %s", a.Name(), delay, rebuilt.String())
 
 		timeTaken, err := doHTTPRequestWithTimeTracing(rebuilt, options.HttpClient)

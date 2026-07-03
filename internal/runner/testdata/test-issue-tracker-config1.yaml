@@ -1,0 +1,68 @@
+allow-list:
+  severity: high, critical
+deny-list:
+  severity: low
+
+# GitHub contains configuration options for GitHub issue tracker
+github:
+  # base-url is the optional self-hosted GitHub application url
+  base-url: https://localhost:8443/github
+  # username is the username of the GitHub user
+  username: test-username
+  # owner is the owner name of the repository for issues
+  owner: test-owner
+  # token is the token for GitHub account
+  token: test-token
+  # project-name is the name of the repository
+  project-name: test-project
+  # issue-label is the label of the created issue type
+  issue-label: bug
+
+# GitLab contains configuration options for gitlab issue tracker
+gitlab:
+  # base-url is the optional self-hosted GitLab application url
+  base-url: https://localhost:8443/gitlab
+  # username is the username of the GitLab user
+  username: test-username
+  # token is the token for GitLab account
+  token: test-token
+  # project-name is the name/id of the project(repository)
+  project-name: "1234"
+  # issue-label is the label of the created issue type
+  issue-label: bug
+
+# Jira contains configuration options for Jira issue tracker
+jira:
+  # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
+  cloud: true
+  # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
+  update-existing: false
+  # URL is the jira application url
+  url: https://localhost/jira
+  # account-id is the account-id of the Jira user or username in case of on-prem Jira
+  account-id: test-account-id
+  # email is the email of the user for Jira instance
+  email: test@test.com
+  # token is the token for Jira instance or password in case of on-prem Jira
+  token: test-token
+  # project-name is the name of the project.
+  project-name: test-project-name
+  # issue-type is the name of the created issue type
+  issue-type: bug
+
+# elasticsearch contains configuration options for elasticsearch exporter
+elasticsearch:
+  # IP for elasticsearch instance
+  ip: 127.0.0.1
+  # Port is the port of elasticsearch instance
+  port: 9200
+  # IndexName is the name of the elasticsearch index
+  index-name: nuclei
+  # SSL enables ssl for elasticsearch connection
+  ssl: false
+  # SSLVerification disables SSL verification for elasticsearch
+  ssl-verification: false
+  # Username for the elasticsearch instance
+  username: test
+  # Password is the password for elasticsearch instance
+  password: test

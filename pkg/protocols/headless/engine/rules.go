@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -16,7 +17,10 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 	return func(ctx *rod.Hijack) {
 		// usually browsers don't use chunked transfer encoding, so we set the content-length nevertheless
 		ctx.Request.Req().ContentLength = int64(len(ctx.Request.Body()))
-		for _, rule := range p.rules {
+		// snapshot the rules once: ExecuteActions may still be appending rules
+		// from another goroutine while this hijack handler runs.
+		rules := p.rulesSnapshot()
+		for _, rule := range rules {
 			if rule.Part != "request" {
 				continue
 			}
@@ -48,7 +52,9 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 		}
 
 		// perform the request
-		_ = ctx.LoadResponse(httpClient, true)
+		if err := ctx.LoadResponse(httpClient, true); err != nil {
+			gologger.Verbose().Msgf("headless: failed to load response for %s: %s", ctx.Request.URL(), err)
+		}
 
 		if !p.options.DisableCookie {
 			// retrieve the updated cookies from the native http client and inject them into the shared cookie jar
@@ -58,7 +64,7 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 			}
 		}
 
-		for _, rule := range p.rules {
+		for _, rule := range rules {
 			if rule.Part != "response" {
 				continue
 			}

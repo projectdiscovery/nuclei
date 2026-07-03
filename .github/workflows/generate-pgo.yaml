@@ -18,10 +18,9 @@ jobs:
       TARGET_LIST: "/tmp/targets.txt"
       PROFILE_MEM: "/tmp/nuclei-profile"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/actions/cache/go-rod-browser@v1
-      - uses: projectdiscovery/actions/cache/nuclei@v1
+      - uses: projectdiscovery/nuclei-action/cache@v3
       - run: |
           for i in {1..${{ env.TARGET_COUNT }}}; do
               echo "${{ env.TARGET }}/-/?_=${i}" >> "${{ env.TARGET_LIST }}";

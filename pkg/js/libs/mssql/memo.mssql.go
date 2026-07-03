@@ -2,7 +2,9 @@
 package mssql
 
 import (
+	"context"
 	"errors"
+
 	"fmt"
 
 	_ "github.com/microsoft/go-mssqldb"
@@ -10,11 +12,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedconnect(executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
+func memoizedconnect(ctx context.Context, executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
 	hash := "connect" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(username) + ":" + fmt.Sprint(password) + ":" + fmt.Sprint(dbName)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connect(executionId, host, port, username, password, dbName)
+		return connect(ctx, executionId, host, port, username, password, dbName)
 	})
 	if err != nil {
 		return false, err
@@ -26,11 +28,11 @@ func memoizedconnect(executionId string, host string, port int, username string,
 	return false, errors.New("could not convert cached result")
 }
 
-func memoizedisMssql(executionId string, host string, port int) (bool, error) {
+func memoizedisMssql(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	hash := "isMssql" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isMssql(executionId, host, port)
+		return isMssql(ctx, executionId, host, port)
 	})
 	if err != nil {
 		return false, err

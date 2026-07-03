@@ -1,7 +1,7 @@
 list: pkg/input/formats/testdata/ytt/ginandjuice.ytt.yaml
 input-mode: yaml
 templates: 
-  - integration_tests/fuzz/fuzz-body.yaml
+  - internal/tests/integration/testdata/fuzz/fuzz-body.yaml
 var:
   - debug=true
   - bar=bar

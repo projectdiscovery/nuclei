@@ -36,11 +36,11 @@ type (
 // ```
 func IsPOP3(ctx context.Context, host string, port int) (IsPOP3Response, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedisPoP3(executionId, host, port)
+	return memoizedisPoP3(ctx, executionId, host, port)
 }
 
 // @memo
-func isPoP3(executionId string, host string, port int) (IsPOP3Response, error) {
+func isPoP3(ctx context.Context, executionId string, host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -49,7 +49,7 @@ func isPoP3(executionId string, host string, port int) (IsPOP3Response, error) {
 	}
 
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

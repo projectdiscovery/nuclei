@@ -23,7 +23,7 @@ type Options struct {
 	// Host is the hostname of the elasticsearch instance
 	Host string `yaml:"host" validate:"required_without=IP"`
 	// IP for elasticsearch instance
-	IP string `yaml:"ip" validate:"required,ip"`
+	IP string `yaml:"ip" validate:"required_without=Host,omitempty,ip"`
 	// Port is the port of elasticsearch instance
 	Port int `yaml:"port" validate:"gte=0,lte=65535"`
 	// SSL (optional) enables ssl for elasticsearch connection

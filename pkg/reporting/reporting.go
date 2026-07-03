@@ -1,28 +1,23 @@
 package reporting
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	json_exporter "github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
-
-	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
-
-	"errors"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/dedupe"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/es"
+	json_exporter "github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
@@ -31,8 +26,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"go.uber.org/multierr"
 )
 
 var (
@@ -152,6 +149,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.PDFExporter != nil {
+		exporter, err := pdf.New(options.PDFExporter)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "could not create export client: %v", ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 	if options.ElasticsearchExporter != nil {
 		options.ElasticsearchExporter.HttpClient = options.HttpClient
 		options.ElasticsearchExporter.ExecutionId = options.ExecutionId
@@ -225,6 +229,7 @@ func CreateConfigIfNotExists() error {
 		SplunkExporter:        &splunk.Options{},
 		JSONExporter:          &json_exporter.Options{},
 		JSONLExporter:         &jsonl.Options{},
+		PDFExporter:           &pdf.Options{},
 		MongoDBExporter:       &mongo.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)

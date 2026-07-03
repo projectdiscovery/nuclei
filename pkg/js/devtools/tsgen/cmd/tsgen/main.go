@@ -26,6 +26,8 @@ var (
 	out    string
 )
 
+const jsGenIgnoreFile = ".nuclei-jsgen-ignore"
+
 func main() {
 	flag.StringVar(&source, "dir", "", "Directory to parse")
 	flag.StringVar(&out, "out", "src", "Typescript files Output directory")
@@ -58,6 +60,11 @@ func main() {
 	_ = filepath.WalkDir(source, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() {
+			if _, err := os.Stat(filepath.Join(path, jsGenIgnoreFile)); err == nil {
+				return filepath.SkipDir
+			}
 		}
 		// only load module directory skip root directory
 		if d.IsDir() {

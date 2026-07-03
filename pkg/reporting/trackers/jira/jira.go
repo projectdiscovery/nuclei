@@ -408,14 +408,16 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	} else if issue.ID != "" {
-		// Lazy load the transitions ID in case it's not set
+		// Lazy load the transitions ID in case it's not set.
+		// StatusNot is a target status name (matches JQL usage below and the
+		// field's semantics); find the transition that moves to that status.
 		i.once.Do(func() {
 			transitions, _, err := i.jira.Issue.GetTransitions(issue.ID)
 			if err != nil {
 				return
 			}
 			for _, transition := range transitions {
-				if transition.Name == i.options.StatusNot {
+				if transition.To.Name == i.options.StatusNot {
 					i.transitionID = transition.ID
 					break
 				}
