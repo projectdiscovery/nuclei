@@ -24,7 +24,9 @@ func Detect(responseBody string, headers string) float64 {
 			matchedWeight += sig.Weight
 		}
 	}
-	if totalWeight == 0 { return 0 }
+	if totalWeight == 0 {
+    return 0
+}
 	return matchedWeight / totalWeight
 }
 
