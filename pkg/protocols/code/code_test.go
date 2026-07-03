@@ -36,6 +36,7 @@ func executeRequest(t *testing.T, request *Request, info *testutils.TemplateInfo
 	// other tests and make them order-dependent.
 	options := testutils.DefaultOptions.Copy()
 	options.EnableCodeTemplates = true
+	options.DisableSandbox = true
 	testutils.Init(options)
 
 	executerOpts := testutils.NewMockExecuterOptions(options, info)
@@ -122,6 +123,7 @@ func executeCodeProtocolWithCallbackOverride(t *testing.T, configure func(*types
 	// code templates are gated behind -code and signature verification, so
 	// enable both for this helper the same way executeRequest does.
 	options.EnableCodeTemplates = true
+	options.DisableSandbox = true
 	options.InteractionsCoolDownPeriod = 0
 	testutils.Init(options)
 	t.Cleanup(func() {

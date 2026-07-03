@@ -100,7 +100,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.71
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e
-	github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76
+	github.com/projectdiscovery/gozero v0.1.1-0.20260703172012-da246c14fea6
 	github.com/projectdiscovery/httpx v1.9.0
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
