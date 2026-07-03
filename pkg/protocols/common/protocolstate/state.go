@@ -178,13 +178,17 @@ func initDialers(options *types.Options) error {
 	// dial history is required to get dialed ip of a host
 	opts.WithDialerHistory = true
 
+	networkPolicy, err := networkpolicy.New(*npOptions)
+	if err != nil {
+		return errors.Wrap(err, "could not create network policy")
+	}
+	opts.NetworkPolicy = networkPolicy
+
 	// fastdialer now by default fallbacks to ztls when there are tls related errors
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")
 	}
-
-	networkPolicy, _ := networkpolicy.New(*npOptions)
 
 	// Per-host HTTP clients and transports are evicted after 90 seconds of
 	// inactivity (checked lazily every 30 seconds). Evicted transports get
@@ -215,11 +219,7 @@ func initDialers(options *types.Options) error {
 		if val := ctx.Value("executionId"); val != nil {
 			executionId = val.(string)
 		}
-		dialer := GetDialersWithId(executionId)
-		if dialer == nil {
-			return nil, fmt.Errorf("dialers not initialized for %s", executionId)
-		}
-		return dialer.Fastdialer.Dial(ctx, "tcp", addr)
+		return DialAllowedWithExecutionID(ctx, executionId, "tcp", addr)
 	})
 
 	StartActiveMemGuardian(context.Background())

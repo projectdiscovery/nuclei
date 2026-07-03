@@ -156,7 +156,7 @@ func isAuthenticated(ctx context.Context, executionId string, host string, port 
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}

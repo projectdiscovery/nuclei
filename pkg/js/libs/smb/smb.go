@@ -52,7 +52,7 @@ func connectSMBInfoMode(ctx context.Context, executionId string, host string, po
 	}
 	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	dialSMBInfo := func(ctx context.Context) (net.Conn, error) {
-		return dialer.Fastdialer.Dial(ctx, "tcp", address)
+		return protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", address)
 	}
 	conn, err := dialSMBInfo(ctx)
 	if err != nil {
@@ -132,7 +132,7 @@ func listShares(ctx context.Context, executionId string, host string, port int, 
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}

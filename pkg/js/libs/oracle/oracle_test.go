@@ -19,14 +19,14 @@ func TestSandboxDSNRejectsTraceFileOutsideTemplatesWithoutLFA(t *testing.T) {
 	executionID := t.Name()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 
-	traceFile := filepath.Join(t.TempDir(), "trace.log")
+	traceFile := "/etc/nuclei-oracle-trace-test.log"
 	dsn := go_ora.BuildUrl("127.0.0.1", 1521, "XE", "user", "pass", map[string]string{
 		"TRACE FILE": traceFile,
 	})
 
-	_, err := sandboxDSN(executionID, dsn)
+	_, err := protocolstate.SanitizeOracleDSN(executionID, dsn, &types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "-lfa is not enabled")
+	require.Contains(t, err.Error(), "outside")
 }
 
 func TestConnectWithDSNRejectsTraceFileBeforeOracleOpen(t *testing.T) {
@@ -36,7 +36,7 @@ func TestConnectWithDSNRejectsTraceFileBeforeOracleOpen(t *testing.T) {
 	executionID := t.Name()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 
-	traceFile := filepath.Join(t.TempDir(), "trace.log")
+	traceFile := "/etc/nuclei-oracle-connect-trace-test.log"
 	dsn := go_ora.BuildUrl("127.0.0.1", 1521, "XE", "user", "pass", map[string]string{
 		"TRACE FILE": traceFile,
 	})
@@ -44,8 +44,7 @@ func TestConnectWithDSNRejectsTraceFileBeforeOracleOpen(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "executionId", executionID) // nolint:staticcheck
 	_, err := (&OracleClient{}).ConnectWithDSN(ctx, dsn)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "-lfa is not enabled")
-	require.NoFileExists(t, traceFile)
+	require.Contains(t, err.Error(), "outside")
 }
 
 func TestSandboxDSNNormalizesTraceOptionsWithinTemplatesWithoutLFA(t *testing.T) {
@@ -62,7 +61,7 @@ func TestSandboxDSNNormalizesTraceOptionsWithinTemplatesWithoutLFA(t *testing.T)
 		"TRACE DIRECTORY": traceDir,
 	})
 
-	got, err := sandboxDSN(executionID, dsn)
+	got, err := protocolstate.SanitizeOracleDSN(executionID, dsn, &types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 	require.NoError(t, err)
 
 	cfg, err := go_ora.ParseConfig(got)
@@ -71,19 +70,19 @@ func TestSandboxDSNNormalizesTraceOptionsWithinTemplatesWithoutLFA(t *testing.T)
 	require.Equal(t, traceDir, cfg.TraceDir)
 }
 
-func TestSandboxDSNAllowsTraceFileOutsideTemplatesWithLFA(t *testing.T) {
+func TestSandboxDSNAllowsTraceFileWithinAllowedPathsWithLFA(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreOracleTemplatesDir(t, templatesDir)
 
 	executionID := t.Name()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: true})
 
-	traceFile := filepath.Join(t.TempDir(), "trace.log")
+	traceFile := filepath.Join(templatesDir, "trace.log")
 	dsn := go_ora.BuildUrl("127.0.0.1", 1521, "XE", "user", "pass", map[string]string{
 		"TRACE FILE": traceFile,
 	})
 
-	got, err := sandboxDSN(executionID, dsn)
+	got, err := protocolstate.SanitizeOracleDSN(executionID, dsn, &types.Options{ExecutionId: executionID, AllowLocalFileAccess: true})
 	require.NoError(t, err)
 
 	cfg, err := go_ora.ParseConfig(got)

@@ -13,11 +13,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func outsideSandboxPath(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(os.Getenv("HOME"), ".nuclei-krbforge-outside-"+t.Name(), "ticket.ccache")
+}
+
 func TestBuildConfigRejectsOutputFileOutsideSandbox(t *testing.T) {
 	setTemplateDir(t)
 	executionID := "deny-" + t.Name()
 	setLocalFileAccess(executionID, false)
-	outsidePath := filepath.Join(t.TempDir(), "ticket.ccache")
+	outsidePath := outsideSandboxPath(t)
 
 	t.Run("request output_file", func(t *testing.T) {
 		req := validTicketRequest()
@@ -25,13 +30,13 @@ func TestBuildConfigRejectsOutputFileOutsideSandbox(t *testing.T) {
 
 		_, err := buildConfig(executionID, req, "")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "-allow-local-file-access is not enabled")
+		require.Contains(t, err.Error(), "outside")
 	})
 
 	t.Run("silver outputFile argument", func(t *testing.T) {
 		_, err := buildConfig(executionID, validTicketRequest(), outsidePath)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "-allow-local-file-access is not enabled")
+		require.Contains(t, err.Error(), "outside")
 	})
 }
 
@@ -63,7 +68,9 @@ func TestBuildConfigAllowsOutputFileWhenLocalFileAccessEnabled(t *testing.T) {
 	setTemplateDir(t)
 	executionID := "allow-" + t.Name()
 	setLocalFileAccess(executionID, true)
-	outsidePath := filepath.Join(t.TempDir(), "ticket.ccache")
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	outsidePath := filepath.Join(cwd, ".nuclei-krbforge-lfa-"+t.Name(), "ticket.ccache")
 
 	cfg, err := buildConfig(executionID, validTicketRequest(), outsidePath)
 	require.NoError(t, err)
@@ -79,7 +86,7 @@ func TestCreateGoldenTicketRejectsOutputFileOutsideSandboxFromRuntime(t *testing
 	runtime.SetContextValue("executionId", executionID)
 
 	req := validTicketRequest()
-	req.OutputFile = filepath.Join(t.TempDir(), "ticket.ccache")
+	req.OutputFile = outsideSandboxPath(t)
 
 	var panicValue any
 	func() {
@@ -93,7 +100,7 @@ func TestCreateGoldenTicketRejectsOutputFileOutsideSandboxFromRuntime(t *testing
 	}()
 
 	require.NotNil(t, panicValue)
-	require.Contains(t, fmt.Sprint(panicValue), "-allow-local-file-access is not enabled")
+	require.Contains(t, fmt.Sprint(panicValue), "outside")
 }
 
 func TestCreateSilverTicketDoesNotWriteDefaultCCache(t *testing.T) {

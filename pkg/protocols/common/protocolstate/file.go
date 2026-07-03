@@ -3,9 +3,7 @@ package protocolstate
 import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
-	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -54,24 +52,23 @@ func NormalizePathWithExecutionId(executionId string, filePath string) (string, 
 	return NormalizePath(options, filePath)
 }
 
-// Normalizepath normalizes path and returns absolute path
-// it returns error if path is not allowed
-// this respects the sandbox rules and only loads files from
-// allowed directories
+// NormalizePath normalizes path and returns absolute path.
+// It returns an error when the resolved path is outside the computed
+// filesystem allowlist. -lfa expands the allowlist but never disables it.
 func NormalizePath(options *types.Options, filePath string) (string, error) {
-	// TODO: this should be tied to executionID using *types.Options
-	if IsLfaAllowed(options) {
-		// if local file access is allowed, we can return the absolute path
-		return filePath, nil
+	if filePath == "" {
+		return "", errkit.New("empty file path is not allowed")
 	}
-	cleaned, err := fileutil.ResolveNClean(filePath, config.DefaultConfig.GetTemplateDir())
+	baseDir := config.DefaultConfig.GetTemplateDir()
+	cleaned, err := resolveAndCleanPath(filePath, baseDir)
 	if err != nil {
 		return "", errkit.Wrapf(err, "could not resolve and clean path %v", filePath)
 	}
-	// only allow files inside nuclei-templates directory
-	// even current working directory is not allowed
-	if filepathutil.IsPathWithinDirectory(cleaned, config.DefaultConfig.GetTemplateDir()) {
+	if isPathAllowed(options, cleaned) {
 		return cleaned, nil
+	}
+	if options != nil && IsLfaAllowed(options) {
+		return "", errkit.Newf("path %v is outside allowed directories (use --allowed-paths to grant access)", filePath)
 	}
 	return "", errkit.Newf("path %v is outside nuclei-template directory and -lfa is not enabled", filePath)
 }

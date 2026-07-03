@@ -44,20 +44,9 @@ func NewExecDialer(execID string) *gptransport.Dialer {
 }
 
 // dialWithExec performs the actual fastdialer dial after enforcing the
-// per-execution host policy.
+// per-execution host policy via the centralized dial broker.
 func dialWithExec(ctx context.Context, execID, network, address string) (net.Conn, error) {
-	host, _, err := net.SplitHostPort(address)
-	if err != nil {
-		return nil, fmt.Errorf("invalid address %q: %w", address, err)
-	}
-	if !protocolstate.IsHostAllowed(execID, host) {
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
-	}
-	dialer := protocolstate.GetDialersWithId(execID)
-	if dialer == nil || dialer.Fastdialer == nil {
-		return nil, fmt.Errorf("goimpacket: no fastdialer registered for executionId %q", execID)
-	}
-	return dialer.Fastdialer.Dial(ctx, network, address)
+	return protocolstate.DialAllowedWithExecutionID(ctx, execID, network, address)
 }
 
 // executionIDFromCtx pulls the executionId set by nuclei on its goja runtime

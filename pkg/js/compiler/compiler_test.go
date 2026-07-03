@@ -46,13 +46,21 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 	}
 }
 
+func outsideModulePath(t *testing.T, name string) string {
+	t.Helper()
+	outsideDir := filepath.Join(os.Getenv("HOME"), ".nuclei-test-outside-"+t.Name())
+	require.NoError(t, os.MkdirAll(outsideDir, 0o700))
+	t.Cleanup(func() { _ = os.RemoveAll(outsideDir) })
+	return writeModuleFile(t, outsideDir, name, `module.exports = { value: "outside-secret" };`)
+}
+
 func TestRequireLocalFileAccessDenied(t *testing.T) {
-	modulePath := writeModuleFile(t, t.TempDir(), "outside.js", `module.exports = { value: "outside-secret" };`)
+	modulePath := outsideModulePath(t, "outside.js")
 	script := fmt.Sprintf(`var helper = require(%q); ExportAs("value", helper.value); true;`, modulePath)
 
 	result, err := executeScript(t, t.Name(), false, script)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "-lfa is not enabled")
+	require.Contains(t, err.Error(), "outside")
 	require.Equal(t, err.Error(), result["error"])
 }
 
@@ -83,7 +91,12 @@ func TestRequireLocalFileAccessAllowed(t *testing.T) {
 }
 
 func TestRequireDoesNotReusePrivilegedModuleCacheAcrossExecutions(t *testing.T) {
-	modulePath := writeModuleFile(t, t.TempDir(), "outside.js", `module.exports = { value: "outside-ok" };`)
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	moduleDir := filepath.Join(cwd, ".nuclei-module-cache-test-"+t.Name())
+	require.NoError(t, os.MkdirAll(moduleDir, 0o700))
+	t.Cleanup(func() { _ = os.RemoveAll(moduleDir) })
+	modulePath := writeModuleFile(t, moduleDir, "outside.js", `module.exports = { value: "outside-ok" };`)
 	program, err := goja.Compile("", fmt.Sprintf(`require(%q).value`, modulePath), false)
 	require.NoError(t, err)
 
@@ -103,7 +116,7 @@ func TestRequireDoesNotReusePrivilegedModuleCacheAcrossExecutions(t *testing.T) 
 		ExecutionId: denyExecutionID,
 	}, nil)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "-lfa is not enabled")
+	require.Contains(t, err.Error(), "outside")
 }
 
 func TestExecuteWithRuntimeCleansUpAfterCallbackPanic(t *testing.T) {

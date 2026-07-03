@@ -14,7 +14,6 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
-	"github.com/projectdiscovery/gozero/sandbox"
 	gozerotypes "github.com/projectdiscovery/gozero/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -249,18 +248,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
-		if request.useSandbox() {
-			return request.gozero.EvalWithVirtualEnv(
-				ctx, gozero.VirtualEnvDocker,
-				request.src,
-				metaSrc,
-				&sandbox.DockerConfiguration{
-					WorkingDir: request.Sandbox.WorkingDir,
-					Image:      request.Sandbox.Image,
-				},
-			)
-		}
-		return request.gozero.Eval(ctx, request.src, metaSrc)
+		return request.evalCode(ctx, metaSrc)
 	})
 	if gOutput == nil {
 		// write error to stderr buff

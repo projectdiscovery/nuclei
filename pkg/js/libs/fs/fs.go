@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // ListDir lists itemType values within a directory
@@ -61,12 +62,7 @@ func ListDir(ctx context.Context, path string, itemType string) ([]string, error
 // ```
 func ReadFile(ctx context.Context, path string) ([]byte, error) {
 	executionId := ctx.Value("executionId").(string)
-	finalPath, err := protocolstate.NormalizePathWithExecutionId(executionId, path)
-	if err != nil {
-		return nil, err
-	}
-	bin, err := os.ReadFile(finalPath)
-	return bin, err
+	return protocolstate.ReadFileAllowed(&types.Options{ExecutionId: executionId}, path)
 }
 
 // ReadFileAsString reads file contents within permitted paths

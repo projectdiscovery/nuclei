@@ -90,6 +90,12 @@ func WithExtraArgs(args ...string) RunnerOption {
 	}
 }
 
+func WithAllowLocalFileAccess(allow bool) RunnerOption {
+	return func(r *Runner) {
+		r.AllowLocalFileAccess = allow
+	}
+}
+
 var defaultRunner = NewRunner()
 
 func DefaultRunner() *Runner {

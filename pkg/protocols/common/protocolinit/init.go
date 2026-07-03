@@ -3,6 +3,7 @@ package protocolinit
 import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/sandbox"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
@@ -16,6 +17,10 @@ func Init(options *types.Options) error {
 	if err := protocolstate.Init(options); err != nil {
 		return err
 	}
+	_ = sandbox.Apply(sandbox.Config{
+		AllowedRoots: protocolstate.AllowedFileRoots(options),
+		Disabled:     options.DisableSandbox,
+	})
 	if err := dnsclientpool.Init(options); err != nil {
 		return err
 	}

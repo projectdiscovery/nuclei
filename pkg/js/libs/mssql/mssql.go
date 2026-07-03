@@ -122,7 +122,7 @@ func isMssql(ctx context.Context, executionId string, host string, port int) (bo
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -203,5 +203,5 @@ func mssqlConnString(target, username, password, dbName string) string {
 		url.PathEscape(username),
 		url.PathEscape(password),
 		target,
-		url.QueryEscape(dbName))
+		protocolstate.SanitizeMSSQLDatabaseName(dbName))
 }

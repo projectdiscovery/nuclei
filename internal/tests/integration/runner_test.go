@@ -112,6 +112,7 @@ func integrationFamilies() []integrationFamily {
 		{Name: "generic", Cases: genericTestcases},
 		{Name: "dsl", Cases: dslTestcases},
 		{Name: "javascript", Cases: jsTestcases},
+		{Name: "security-hardening", Cases: securityHardeningTestcases},
 		{Name: "matcher-status", Cases: matcherStatusTestcases},
 		{Name: "exporters", Cases: exportersTestCases},
 		{Name: "profile-loader", Cases: profileLoaderTestcases},
