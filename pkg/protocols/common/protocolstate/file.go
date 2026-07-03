@@ -3,6 +3,7 @@ package protocolstate
 import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -65,6 +66,9 @@ func NormalizePath(options *types.Options, filePath string) (string, error) {
 		return "", errkit.Wrapf(err, "could not resolve and clean path %v", filePath)
 	}
 	if isPathAllowed(options, cleaned) {
+		if filepathutil.IsHardLinkedRegularFile(cleaned) {
+			return "", errkit.Newf("path %v denied (hard link)", filePath)
+		}
 		return cleaned, nil
 	}
 	if options != nil && IsLfaAllowed(options) {

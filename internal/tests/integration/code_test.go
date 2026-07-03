@@ -17,8 +17,8 @@ import (
 )
 
 var isCodeDisabled = func() bool { return osutils.IsWindows() && os.Getenv("CI") == "true" }
-var signedCodeTemplates sync.Once
-var signedCodeTemplatesErr error
+var signedIntegrationTemplates sync.Once
+var signedIntegrationTemplatesErr error
 
 func hasAnyExecutable(names ...string) bool {
 	for _, name := range names {
@@ -51,23 +51,20 @@ const (
 
 var testcertpath = ""
 
-func ensureSignedCodeTemplates() error {
-	if isCodeDisabled() {
-		return nil
-	}
-	signedCodeTemplates.Do(func() {
+func ensureSignedIntegrationTemplates() error {
+	signedIntegrationTemplates.Do(func() {
 		previousWD, err := os.Getwd()
 		if err != nil {
-			signedCodeTemplatesErr = err
+			signedIntegrationTemplatesErr = err
 			return
 		}
 		if err := os.Chdir(suite.fixturesDir); err != nil {
-			signedCodeTemplatesErr = err
+			signedIntegrationTemplatesErr = err
 			return
 		}
 		defer func() {
-			if chdirErr := os.Chdir(previousWD); chdirErr != nil && signedCodeTemplatesErr == nil {
-				signedCodeTemplatesErr = chdirErr
+			if chdirErr := os.Chdir(previousWD); chdirErr != nil && signedIntegrationTemplatesErr == nil {
+				signedIntegrationTemplatesErr = chdirErr
 			}
 		}()
 
@@ -79,13 +76,16 @@ func ensureSignedCodeTemplates() error {
 
 		tsigner, err := signer.NewTemplateSignerFromFiles(certPath, keyPath)
 		if err != nil {
-			signedCodeTemplatesErr = err
+			signedIntegrationTemplatesErr = err
 			return
 		}
 
-		templatesToSign := []string{
-			"workflow/code-template-1.yaml",
-			"workflow/code-template-2.yaml",
+		var templatesToSign []string
+		if !isCodeDisabled() {
+			templatesToSign = append(templatesToSign,
+				"workflow/code-template-1.yaml",
+				"workflow/code-template-2.yaml",
+			)
 		}
 		for _, v := range codeTestCases {
 			if v.DisableOn != nil && v.DisableOn() {
@@ -102,20 +102,35 @@ func ensureSignedCodeTemplates() error {
 			}
 			templatesToSign = append(templatesToSign, v.Path)
 		}
+		for _, v := range jsTestcases {
+			if v.DisableOn != nil && v.DisableOn() {
+				continue
+			}
+			templatesToSign = append(templatesToSign, v.Path)
+		}
 		for _, templatePath := range templatesToSign {
 			if err := templates.SignTemplate(tsigner, fixturePath(templatePath)); err != nil {
-				signedCodeTemplatesErr = err
+				signedIntegrationTemplatesErr = err
 				return
 			}
 		}
 	})
-	return signedCodeTemplatesErr
+	return signedIntegrationTemplatesErr
 }
 
 func getEnvValues() []string {
 	return []string{
 		signer.CertEnvVarName + "=" + testcertpath,
 	}
+}
+
+func runSignedNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
+	if err := ensureSignedIntegrationTemplates(); err != nil {
+		return nil, err
+	}
+	args := []string{"-t", template, "-target", url}
+	args = append(args, extra...)
+	return testutils.RunNucleiBareArgsAndGetResults(debug, getEnvValues(), args...)
 }
 
 type codeSnippet struct{}

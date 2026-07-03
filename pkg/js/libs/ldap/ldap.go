@@ -98,6 +98,9 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	dialCtx := c.nj.Context()
 	var conn net.Conn
 	if u.Scheme == "ldapi" {
+		// the ldapi unix domain socket is not covered by the IP-based network
+		// policy directly, so gate it on whether loopback access is permitted
+		// (blocked when local network access is restricted via -lna).
 		const ldapiPolicyHost = "127.0.0.1"
 
 		c.nj.Require(protocolstate.IsHostAllowed(executionId, ldapiPolicyHost), protocolstate.ErrHostDenied.Msgf(ldapiPolicyHost).Error())

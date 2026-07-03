@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"net"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -10,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
@@ -183,6 +185,22 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	return nil
 }
 
+// resolverHost extracts the host/IP from a retryabledns resolver entry, which
+// may carry a transport prefix (e.g. "udp:", "tcp:") and an optional port.
+func resolverHost(resolver string) string {
+	r := strings.TrimSpace(resolver)
+	// strip URL-form prefixes before their shorter counterparts so that, e.g.,
+	// "udp://1.1.1.1:53" is not partially trimmed to "//1.1.1.1:53" by "udp:".
+	for _, prefix := range []string{"udp://", "tcp://", "tls://", "doh://", "udp:", "tcp:", "tls:", "doh:"} {
+		r = strings.TrimPrefix(r, prefix)
+	}
+	// strip a trailing :port if present (handles bare host or host:port).
+	if host, _, err := net.SplitHostPort(r); err == nil {
+		return host
+	}
+	return r
+}
+
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
@@ -210,6 +228,12 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
 				}
 				resolver = result.Text
+			}
+			// validate template-specified resolvers against the network policy.
+			if host := resolverHost(resolver); host != "" {
+				if !protocolstate.IsHostAllowed(options.Options.ExecutionId, host) {
+					return nil, errors.Errorf("dns resolver %s is blocked by network policy", resolver)
+				}
 			}
 			resolvers = append(resolvers, resolver)
 		}
