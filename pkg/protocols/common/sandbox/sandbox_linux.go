@@ -6,10 +6,17 @@ import (
 	"fmt"
 
 	landlock "github.com/landlock-lsm/go-landlock/landlock"
+	llsyscall "github.com/landlock-lsm/go-landlock/landlock/syscall"
 )
 
+// platformSupported probes the running kernel for Landlock support instead of
+// assuming it is always present on Linux. Without this, Supported() reports
+// true on kernels that cannot enforce Landlock (e.g. CONFIG_SECURITY_LANDLOCK
+// disabled, or the LSM not enabled at boot), which combined with BestEffort()
+// would let Apply() return nil while the sandbox is effectively off.
 func platformSupported() bool {
-	return true
+	v, err := llsyscall.LandlockGetABIVersion()
+	return err == nil && v > 0
 }
 
 func applyPlatform(roots []string) error {

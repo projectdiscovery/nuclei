@@ -48,7 +48,13 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 
 func outsideModulePath(t *testing.T, name string) string {
 	t.Helper()
-	outsideDir := filepath.Join(os.Getenv("HOME"), ".nuclei-test-outside-"+t.Name())
+	// os.UserHomeDir (not os.Getenv("HOME")) so this resolves to an absolute,
+	// writable location outside the templates allowlist on every OS. HOME is
+	// unset on GitHub Actions windows-latest, which would otherwise collapse to
+	// a relative path resolved under the templates dir and void the denial test.
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	outsideDir := filepath.Join(home, ".nuclei-test-outside-"+t.Name())
 	require.NoError(t, os.MkdirAll(outsideDir, 0o700))
 	t.Cleanup(func() { _ = os.RemoveAll(outsideDir) })
 	return writeModuleFile(t, outsideDir, name, `module.exports = { value: "outside-secret" };`)

@@ -10,13 +10,17 @@ import (
 	"testing"
 )
 
+// forbiddenSelectors is keyed by the package *identifier* used at the call
+// site, not the import path. `import "os/exec"` binds the identifier `exec`, so
+// a direct `exec.Command(...)` yields the selector key "exec.Command" — the
+// import path form "os/exec.Command" would never match.
 var forbiddenSelectors = map[string]struct{}{
-	"net.Dial":        {},
-	"net.Dialer":      {},
-	"os.Open":         {},
-	"os.ReadFile":     {},
-	"os.WriteFile":    {},
-	"os/exec.Command": {},
+	"net.Dial":     {},
+	"net.Dialer":   {},
+	"exec.Command": {},
+	"os.Open":      {},
+	"os.ReadFile":  {},
+	"os.WriteFile": {},
 }
 
 func TestJSLibsDoNotUseForbiddenSyscalls(t *testing.T) {
@@ -38,12 +42,11 @@ func TestJSLibsDoNotUseForbiddenSyscalls(t *testing.T) {
 			return err
 		}
 
+		// Inspect every selector expression (pkg.Name), not just call
+		// expressions: this catches type references such as net.Dialer and
+		// composite literals like net.Dialer{}, not only direct calls.
 		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
+			sel, ok := n.(*ast.SelectorExpr)
 			if !ok {
 				return true
 			}
@@ -53,7 +56,7 @@ func TestJSLibsDoNotUseForbiddenSyscalls(t *testing.T) {
 			}
 			key := pkg.Name + "." + sel.Sel.Name
 			if _, blocked := forbiddenSelectors[key]; blocked {
-				t.Fatalf("%s uses forbidden call %s", path, key)
+				t.Fatalf("%s uses forbidden selector %s", path, key)
 			}
 			return true
 		})

@@ -41,7 +41,9 @@ func TestReadFileRejectsPathOutsideAllowlist(t *testing.T) {
 	config.DefaultConfig.SetTemplatesDir(templatesDir)
 	t.Cleanup(func() { config.DefaultConfig.SetTemplatesDir(old) })
 
-	outside := filepath.Join(os.Getenv("HOME"), ".nuclei-fs-module-"+t.Name(), "secret.txt")
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	outside := filepath.Join(home, ".nuclei-fs-module-"+t.Name(), "secret.txt")
 	require.NoError(t, os.MkdirAll(filepath.Dir(outside), 0o700))
 	require.NoError(t, os.WriteFile(outside, []byte("x"), 0o600))
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(outside)) })
@@ -50,7 +52,7 @@ func TestReadFileRejectsPathOutsideAllowlist(t *testing.T) {
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 	ctx := context.WithValue(context.Background(), "executionId", executionID) //nolint:staticcheck
 
-	_, err := ReadFile(ctx, outside)
+	_, err = ReadFile(ctx, outside)
 	require.Error(t, err)
 }
 

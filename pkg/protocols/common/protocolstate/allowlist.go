@@ -34,7 +34,12 @@ func AllowedFileRoots(options *types.Options) []string {
 		roots = append(roots, canonicalRoot(cwd))
 	}
 	if options != nil {
-		for _, allowedPath := range options.AllowedPaths {
+		// Merge the paths passed directly on options with any recorded for this
+		// execution id, so execution-id-only callers (that build a bare
+		// *types.Options with just ExecutionId) still honour --allowed-paths.
+		allowed := append([]string(nil), options.AllowedPaths...)
+		allowed = append(allowed, GetAllowedPaths(options.ExecutionId)...)
+		for _, allowedPath := range allowed {
 			if allowedPath == "" {
 				continue
 			}

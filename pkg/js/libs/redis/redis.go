@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -31,7 +32,7 @@ func getServerInfo(ctx context.Context, executionId string, host string, port in
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
+		Addr:     net.JoinHostPort(host, fmt.Sprintf("%d", port)),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -73,7 +74,7 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
+		Addr:     net.JoinHostPort(host, fmt.Sprintf("%d", port)),
 		Password: password, // no password set
 		DB:       0,        // use default DB
 	})
@@ -113,7 +114,7 @@ func getServerInfoAuth(ctx context.Context, executionId string, host string, por
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
+		Addr:     net.JoinHostPort(host, fmt.Sprintf("%d", port)),
 		Password: password, // no password set
 		DB:       0,        // use default DB
 	})
@@ -156,7 +157,7 @@ func isAuthenticated(ctx context.Context, executionId string, host string, port 
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -185,7 +186,7 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
+		Addr:     net.JoinHostPort(host, fmt.Sprintf("%d", port)),
 		Password: password,
 		DB:       0, // use default DB
 	})

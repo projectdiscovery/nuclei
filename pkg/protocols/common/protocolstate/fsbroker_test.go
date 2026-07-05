@@ -10,6 +10,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// outsideHomePath builds an absolute, writable path under the user's home
+// directory, which sits outside the templates/temp allowlist on every OS.
+// os.UserHomeDir is used instead of os.Getenv("HOME") because HOME is unset on
+// GitHub Actions windows-latest, where a relative path would resolve against
+// the test CWD and weaken the negative-path assertions.
+func outsideHomePath(t *testing.T, parts ...string) string {
+	t.Helper()
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	return filepath.Join(append([]string{home}, parts...)...)
+}
+
 func TestReadFileAllowedReadsInsideTemplates(t *testing.T) {
 	templatesDir := t.TempDir()
 	secret := []byte("template-secret")
@@ -27,7 +39,7 @@ func TestReadFileAllowedRejectsOutsideTemplates(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreTemplatesDir(t, templatesDir)
 
-	outside := filepath.Join(os.Getenv("HOME"), ".nuclei-fsbroker-outside-"+t.Name(), "secret.txt")
+	outside := outsideHomePath(t, ".nuclei-fsbroker-outside-"+t.Name(), "secret.txt")
 	require.NoError(t, os.MkdirAll(filepath.Dir(outside), 0o700))
 	require.NoError(t, os.WriteFile(outside, []byte("x"), 0o600))
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(outside)) })
@@ -54,7 +66,7 @@ func TestWriteFileAllowedRejectsOutsideTemplates(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreTemplatesDir(t, templatesDir)
 
-	outside := filepath.Join(os.Getenv("HOME"), ".nuclei-fsbroker-write-"+t.Name(), "out.txt")
+	outside := outsideHomePath(t, ".nuclei-fsbroker-write-"+t.Name(), "out.txt")
 	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
 	err := protocolstate.WriteFileAllowed(opts, outside, []byte("x"), 0o600)
 	require.Error(t, err)
