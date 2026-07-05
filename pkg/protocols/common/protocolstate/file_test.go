@@ -12,6 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// outsideAllowlistPath returns an absolute path outside the sandbox allowlist
+// on every OS. "/etc/passwd" is not absolute on Windows and would resolve
+// relative to the templates dir (failing with "does not exist" before the
+// allowlist check); rooting at the temp volume keeps it drive-qualified yet
+// outside the templates/temp/cwd roots.
+func outsideAllowlistPath(name string) string {
+	root := filepath.VolumeName(os.TempDir()) + string(os.PathSeparator)
+	return filepath.Join(root, "nuclei-denied", name)
+}
+
 func TestNormalizePathRejectsOutsideAllowlistWithoutLFA(t *testing.T) {
 	templatesDir := t.TempDir()
 	old := config.DefaultConfig.TemplatesDirectory
@@ -19,7 +29,7 @@ func TestNormalizePathRejectsOutsideAllowlistWithoutLFA(t *testing.T) {
 	t.Cleanup(func() { config.DefaultConfig.SetTemplatesDir(old) })
 
 	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
-	_, err := protocolstate.NormalizePath(opts, "/etc/passwd")
+	_, err := protocolstate.NormalizePath(opts, outsideAllowlistPath("passwd"))
 	require.Error(t, err)
 }
 
@@ -44,7 +54,7 @@ func TestNormalizePathLFADoesNotBypassAllowlist(t *testing.T) {
 	t.Cleanup(func() { config.DefaultConfig.SetTemplatesDir(old) })
 
 	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: true}
-	_, err := protocolstate.NormalizePath(opts, "/etc/passwd")
+	_, err := protocolstate.NormalizePath(opts, outsideAllowlistPath("passwd"))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "allowed directories")
 }

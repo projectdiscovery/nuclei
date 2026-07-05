@@ -15,7 +15,12 @@ import (
 
 func outsideSandboxPath(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(os.Getenv("HOME"), ".nuclei-krbforge-outside-"+t.Name(), "ticket.ccache")
+	// Absolute on every OS and rooted at the temp volume so it is never inside
+	// the templates/temp/cwd sandbox allowlist. os.Getenv("HOME") is empty on
+	// Windows, which would yield a relative path resolved inside the templates
+	// dir and mask the rejection under test.
+	root := filepath.VolumeName(os.TempDir()) + string(os.PathSeparator)
+	return filepath.Join(root, "nuclei-krbforge-outside", "ticket.ccache")
 }
 
 func TestBuildConfigRejectsOutputFileOutsideSandbox(t *testing.T) {
