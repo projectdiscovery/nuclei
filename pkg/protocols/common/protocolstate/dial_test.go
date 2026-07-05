@@ -82,7 +82,7 @@ func TestIsHostAllowedAllowsNonExcludedHost(t *testing.T) {
 
 func TestExecutionIDFromContext(t *testing.T) {
 	require.Equal(t, "", protocolstate.ExecutionIDFromContext(context.Background()))
-	require.Equal(t, "", protocolstate.ExecutionIDFromContext(nil))
+	require.Equal(t, "", protocolstate.ExecutionIDFromContext(nil)) //nolint:staticcheck // deliberately asserting nil-context handling
 
 	ctx := context.WithValue(context.Background(), "executionId", "abc") //nolint:staticcheck
 	require.Equal(t, "abc", protocolstate.ExecutionIDFromContext(ctx))
