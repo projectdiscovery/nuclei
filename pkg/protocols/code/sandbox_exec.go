@@ -23,6 +23,18 @@ func (request *Request) confinementPolicy() *confine.Policy {
 	// the payload cannot read arbitrary host files through native read-only
 	// mounts; missing Docker is a hard error, not a fallback.
 	policy.Backend = confine.BackendDocker
+	// Run the payload as a non-root identity inside the container so a
+	// hypothetical kernel/runc container escape maps to an unprivileged host uid
+	// rather than root. 65534 is the conventional "nobody" uid/gid. The gozero
+	// Docker backend widens the injected source to be readable by this uid.
+	policy.RunAsUID = 65534
+	policy.RunAsGID = 65534
+	// NOTE(max-hardening): Docker+runc shares the host kernel, so this closes the
+	// application-level escape surface (no shell injection, no unconfined
+	// fallback, deny-by-default, non-root) but not a kernel/runc 0-day escape.
+	// For hostile multi-tenant use, run the daemon on a kernel-isolating runtime
+	// (gVisor runsc or Kata microVM) so a container escape does not reach the
+	// host kernel.
 	if request.Sandbox != nil && request.Sandbox.Image != "" {
 		policy.DockerImage = request.Sandbox.Image
 	}

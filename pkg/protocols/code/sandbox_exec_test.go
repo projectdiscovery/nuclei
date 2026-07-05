@@ -80,6 +80,8 @@ func TestCodeProtocolConfinementPolicyIsHardened(t *testing.T) {
 	require.True(t, policy.ReadonlyRootfs)
 	require.True(t, policy.DropAllCapabilities)
 	require.True(t, policy.NoNewPrivileges)
+	require.Equal(t, 65534, policy.RunAsUID, "payload must run as a non-root uid")
+	require.Equal(t, 65534, policy.RunAsGID, "payload must run as a non-root gid")
 	require.Equal(t, 3*time.Second, policy.Timeout)
 	require.Empty(t, policy.Workspace, "template working-dir must not become a host workspace")
 }
