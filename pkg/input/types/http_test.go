@@ -66,6 +66,61 @@ func TestParseHttpRequest(t *testing.T) {
 	}
 }
 
+func TestParseRawRequestBodyTrailingNewlines(t *testing.T) {
+	tests := []struct {
+		name         string
+		raw          string
+		expectedBody string
+	}{
+		{
+			name:         "single lf body",
+			raw:          "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 1\r\n\r\n\n",
+			expectedBody: "",
+		},
+		{
+			name:         "crlf body",
+			raw:          "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 2\r\n\r\n\r\n",
+			expectedBody: "",
+		},
+		{
+			name:         "empty body",
+			raw:          "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0\r\n\r\n",
+			expectedBody: "",
+		},
+		{
+			name:         "body ending in lf",
+			raw:          "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 2\r\n\r\nA\n",
+			expectedBody: "A",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Run("ParseRawRequest", func(t *testing.T) {
+				var rr *RequestResponse
+				var err error
+				require.NotPanics(t, func() {
+					rr, err = ParseRawRequest(tt.raw)
+				})
+				require.NoError(t, err)
+				require.NotNil(t, rr)
+				require.Equal(t, tt.expectedBody, rr.Request.Body)
+			})
+
+			t.Run("ParseRawRequestWithURL", func(t *testing.T) {
+				var rr *RequestResponse
+				var err error
+				require.NotPanics(t, func() {
+					rr, err = ParseRawRequestWithURL(tt.raw, "http://example.com/")
+				})
+				require.NoError(t, err)
+				require.NotNil(t, rr)
+				require.Equal(t, tt.expectedBody, rr.Request.Body)
+			})
+		})
+	}
+}
+
 func TestUnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name           string
