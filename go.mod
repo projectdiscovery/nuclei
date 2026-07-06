@@ -17,12 +17,12 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.4
-	github.com/projectdiscovery/fastdialer v0.5.11
+	github.com/projectdiscovery/fastdialer v0.5.12
 	github.com/projectdiscovery/hmap v0.0.101
 	github.com/projectdiscovery/interactsh v1.3.1
 	github.com/projectdiscovery/rawhttp v0.1.90
 	github.com/projectdiscovery/retryabledns v1.0.115
-	github.com/projectdiscovery/retryablehttp-go v1.3.16
+	github.com/projectdiscovery/retryablehttp-go v1.3.17
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -103,7 +103,7 @@ require (
 	github.com/projectdiscovery/httpx v1.9.0
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.41
+	github.com/projectdiscovery/networkpolicy v0.1.42
 	github.com/projectdiscovery/ratelimit v0.0.88
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.1.0
@@ -111,7 +111,7 @@ require (
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.108
 	github.com/projectdiscovery/utils v0.11.1
-	github.com/projectdiscovery/wappalyzergo v0.2.87
+	github.com/projectdiscovery/wappalyzergo v0.2.88
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -320,7 +320,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/cdncheck v1.2.42 // indirect
+	github.com/projectdiscovery/cdncheck v1.2.43 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
