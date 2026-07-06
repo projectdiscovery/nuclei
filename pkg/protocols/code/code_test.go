@@ -32,10 +32,14 @@ func newTestRequest(t *testing.T, engine []string, source string) (*Request, *te
 
 func executeRequest(t *testing.T, request *Request, info *testutils.TemplateInfo) (output.InternalEvent, error) {
 	t.Helper()
-	options := testutils.DefaultOptions
+	// copy the shared defaults before mutating so this flag does not leak into
+	// other tests and make them order-dependent.
+	options := testutils.DefaultOptions.Copy()
+	options.EnableCodeTemplates = true
 	testutils.Init(options)
 
 	executerOpts := testutils.NewMockExecuterOptions(options, info)
+	executerOpts.Verified = true
 	err := request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile code request")
 
@@ -115,6 +119,9 @@ func executeCodeProtocolWithCallbackOverride(t *testing.T, configure func(*types
 	t.Helper()
 
 	options := testutils.DefaultOptions.Copy()
+	// code templates are gated behind -code and signature verification, so
+	// enable both for this helper the same way executeRequest does.
+	options.EnableCodeTemplates = true
 	options.InteractionsCoolDownPeriod = 0
 	testutils.Init(options)
 	t.Cleanup(func() {
@@ -123,6 +130,7 @@ func executeCodeProtocolWithCallbackOverride(t *testing.T, configure func(*types
 
 	request, info := newTestRequest(t, []string{"sh"}, "echo $callback")
 	executerOpts := testutils.NewMockExecuterOptions(options, info)
+	executerOpts.Verified = true
 	configure(options, executerOpts)
 	executerOpts.Variables = variables.Variable{
 		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),

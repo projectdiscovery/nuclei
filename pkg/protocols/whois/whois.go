@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -110,6 +111,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// and replace placeholders
 	query := replacer.Replace(request.Query, variables)
+	// validate a template-specified server against the network policy.
+	if request.parsedServerURL != nil {
+		if host := request.parsedServerURL.Hostname(); host != "" {
+			if !protocolstate.IsHostAllowed(request.options.Options.ExecutionId, host) {
+				return errors.Errorf("whois server %s is blocked by network policy", host)
+			}
+		}
+	}
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
 	rdapReq.Server = request.parsedServerURL

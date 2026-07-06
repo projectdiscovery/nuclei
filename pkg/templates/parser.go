@@ -156,7 +156,7 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		if err != nil {
 			return nil, err
 		}
-		data, err = yamlutil.PreProcess(data)
+		data, err = yamlutil.PreProcess(data, templatePath)
 		if err != nil {
 			return nil, err
 		}

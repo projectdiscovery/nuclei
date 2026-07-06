@@ -19,6 +19,7 @@ type Dialers struct {
 	NetworkPolicy              *networkpolicy.NetworkPolicy
 	LocalFileAccessAllowed     bool
 	RestrictLocalNetworkAccess bool
+	ExcludeTargets             []string
 
 	sync.Mutex
 }

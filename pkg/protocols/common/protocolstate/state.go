@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -55,16 +56,28 @@ func ShouldInit(id string) bool {
 // Init creates the Dialers instance based on user configuration
 func Init(options *types.Options) error {
 	if existingDialers := GetDialersWithId(options.ExecutionId); existingDialers != nil {
-		// Dialers already exist for this ExecutionId. Refresh the LFA /
-		// network-policy state derived from options so that a second
-		// Init call with different options (e.g. flipping
-		// AllowLocalFileAccess) is reflected in IsLfaAllowed and the
-		// per-execution dialer state. Without this refresh the second
-		// caller silently keeps the first caller's settings, which is a
-		// footgun for tests and SDK callers that share an execution id.
+		// the network policy is baked into the fastdialer when it is created,
+		// so rebuild the dialers when any input to that policy changed for this
+		// execution id (the RestrictLocalNetworkAccess flag or the exclude
+		// targets denylist).
+		existingDialers.Lock()
+		policyChanged := existingDialers.RestrictLocalNetworkAccess != options.RestrictLocalNetworkAccess ||
+			!slices.Equal(existingDialers.ExcludeTargets, options.ExcludeTargets)
+		existingDialers.Unlock()
+		if policyChanged {
+			if existingDialers.Fastdialer != nil {
+				existingDialers.Fastdialer.Close()
+			}
+			dialers.Delete(options.ExecutionId)
+			return initDialers(options)
+		}
+
+		// otherwise refresh the LFA / network-policy state derived from options
+		// so a second Init call with different options is reflected.
 		existingDialers.Lock()
 		existingDialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
 		existingDialers.RestrictLocalNetworkAccess = options.RestrictLocalNetworkAccess
+		existingDialers.ExcludeTargets = options.ExcludeTargets
 		existingDialers.Unlock()
 		SetLfaAllowed(options)
 		return nil
@@ -184,7 +197,14 @@ func initDialers(options *types.Options) error {
 		return errors.Wrap(err, "could not create dialer")
 	}
 
-	networkPolicy, _ := networkpolicy.New(*npOptions)
+	// fail initialization if the network policy cannot be created rather than
+	// continuing with no denylist.
+	networkPolicy, err := networkpolicy.New(*npOptions)
+	if err != nil {
+		// close the already-created dialer to avoid leaking its resources.
+		dialer.Close()
+		return errors.Wrap(err, "could not create network policy")
+	}
 
 	// Per-host HTTP clients and transports are evicted after 90 seconds of
 	// inactivity (checked lazily every 30 seconds). Evicted transports get
@@ -193,10 +213,12 @@ func initDialers(options *types.Options) error {
 	httpClientPool := NewHTTPPool(90*time.Second, 30*time.Second)
 
 	dialersInstance := &Dialers{
-		Fastdialer:             dialer,
-		NetworkPolicy:          networkPolicy,
-		HTTPClientPool:         httpClientPool,
-		LocalFileAccessAllowed: options.AllowLocalFileAccess,
+		Fastdialer:                 dialer,
+		NetworkPolicy:              networkPolicy,
+		HTTPClientPool:             httpClientPool,
+		LocalFileAccessAllowed:     options.AllowLocalFileAccess,
+		RestrictLocalNetworkAccess: options.RestrictLocalNetworkAccess,
+		ExcludeTargets:             options.ExcludeTargets,
 	}
 
 	_ = dialers.Set(options.ExecutionId, dialersInstance)

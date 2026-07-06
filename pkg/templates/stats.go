@@ -25,6 +25,10 @@ var templateStatEntries = []templateStatEntry{
 		description: "Found %d unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)",
 	},
 	{
+		name:        SkippedUnverifiedJavascriptTemplateStats,
+		description: "Found %d unsigned or tampered javascript template (carefully examine before using it & use -sign flag to sign them)",
+	},
+	{
 		name:        ExcludedHeadlessTemplateStats,
 		description: "Excluded %d headless template[s] (disabled as default), use -headless option to run headless templates.",
 	},

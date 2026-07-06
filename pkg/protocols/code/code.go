@@ -178,6 +178,18 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) (err error) {
+	// code execution requires the -code flag, enforced here as well as in the
+	// loader so it also applies to the SDK/direct Parse and multiprotocol paths.
+	if request.options == nil || request.options.Options == nil || !request.options.Options.EnableCodeTemplates {
+		return errkit.New("code templates are disabled; enable them with -code to run this template")
+	}
+
+	// code templates must be signature-verified to run, enforced here so it
+	// also applies to paths that do not go through the loader/workflow checks.
+	if !request.options.Verified {
+		return errkit.New("refusing to execute unverified code template; sign it (-sign) or run a verified template")
+	}
+
 	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "", request.options.TemporaryDirectory)
 	if err != nil {
 		return err
@@ -206,7 +218,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	for name, value := range allvars {
 		v := fmt.Sprint(value)
 		allvars[name] = v
-		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
+		// strip NUL bytes from values passed into the subprocess environment;
+		// the raw value is preserved in allvars for downstream templating.
+		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: sanitizeEnvValue(v)})
 	}
 
 	if request.PreCondition != "" {
@@ -481,4 +495,13 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 
 func (r *Request) useSandbox() bool {
 	return r.Sandbox != nil && r.Sandbox.Image != ""
+}
+
+// sanitizeEnvValue removes NUL bytes, which are invalid in a subprocess
+// environment entry, from a value.
+func sanitizeEnvValue(value string) string {
+	if !strings.ContainsRune(value, 0) {
+		return value
+	}
+	return strings.ReplaceAll(value, "\x00", "")
 }

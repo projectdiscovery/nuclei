@@ -73,6 +73,10 @@ type ExecutorOptions struct {
 	TemplateInfo model.Info
 	// TemplateVerifier is the verifier for the template
 	TemplateVerifier string
+	// Verified reports whether the template's signature was successfully
+	// verified by a trusted verifier. It is checked by the code protocol at
+	// execution time.
+	Verified bool
 	// TemplateVerificationCallback returns cached verification info for a template path.
 	// If it returns nil, verification should be computed normally.
 	TemplateVerificationCallback func(templatePath string) *TemplateVerification
@@ -295,6 +299,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		TemplatePath:                 e.TemplatePath,
 		TemplateInfo:                 e.TemplateInfo,
 		TemplateVerifier:             e.TemplateVerifier,
+		Verified:                     e.Verified,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
 		RawTemplate:                  e.RawTemplate,
 		Output:                       e.Output,

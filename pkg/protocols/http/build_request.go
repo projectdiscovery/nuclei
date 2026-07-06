@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/race"
@@ -256,6 +257,19 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	return r.generateHttpRequest(ctx, reqURL, finalVars, payloads)
 }
 
+// validateSelfContainedHost validates a self-contained request's destination
+// host against the execution network policy.
+func (r *requestGenerator) validateSelfContainedHost(host string) error {
+	if host == "" {
+		return nil
+	}
+	executionId := r.request.options.Options.ExecutionId
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return errkit.Newf("self-contained request host %s is blocked by network policy", host)
+	}
+	return nil
+}
+
 // selfContained templates do not need/use target data and all values i.e {{Hostname}} , {{BaseURL}} etc are already available
 // in template . makeSelfContainedRequest parses and creates variables map and then creates corresponding http request or raw request
 func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
@@ -336,7 +350,11 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
-
+		// self-contained requests choose their own destination URL, so validate
+		// that host against the network policy.
+		if err := r.validateSelfContainedHost(parsed.Hostname()); err != nil {
+			return nil, err
+		}
 		values = generators.MergeMaps(
 			generators.MergeMaps(dynamicValues, protocolutils.GenerateVariables(parsed, false, nil)),
 			values,
@@ -360,7 +378,10 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to parse %v in self contained request", data)
 	}
-
+	// validate the self-chosen destination host against the network policy.
+	if err := r.validateSelfContainedHost(urlx.Hostname()); err != nil {
+		return nil, err
+	}
 	return r.generateHttpRequest(ctx, urlx, values, payloads)
 }
 
