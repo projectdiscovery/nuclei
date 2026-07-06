@@ -205,6 +205,13 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
+	// before running templates. Disabled by default.
+	PreflightPortScan bool
+	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
+	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
+	// Disabled by default.
+	PerHostRateLimit bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -598,6 +605,8 @@ func (options *Options) Copy() *Options {
 		DebugRequests:                  options.DebugRequests,
 		DebugResponse:                  options.DebugResponse,
 		DisableHTTPProbe:               options.DisableHTTPProbe,
+		PreflightPortScan:              options.PreflightPortScan,
+		PerHostRateLimit:               options.PerHostRateLimit,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
@@ -886,6 +895,11 @@ func (options *Options) defaultLoadHelperFile(helperFile, templatePath string, c
 		if err != nil {
 			return nil, err
 		}
+		// reject hard-linked regular files, whose inode can alias content
+		// outside the allowed directory.
+		if filepathutil.IsHardLinkedRegularFile(absPath) {
+			return nil, errkit.Newf("access to helper file %v denied (hard link)", helperFile)
+		}
 		helperFile = absPath
 	}
 	f, err := os.Open(helperFile)
@@ -912,22 +926,35 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 		}
 	}
 
-	// CleanPath resolves using CWD and cleans the path
-	helperFilePath, err = fileutil.CleanPath(helperFilePath)
-	if err != nil {
-		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
-	}
-
-	templatePath, err = fileutil.CleanPath(templatePath)
+	// templatePath must be absolute for the rule-2 sandbox checks below.
+	cleanedTemplatePath, err := fileutil.CleanPath(templatePath)
 	if err != nil {
 		return "", errkit.Wrapf(err, "could not clean template path %v", templatePath)
 	}
 
+	// Resolve relative helper paths against the template's own directory
+	// rather than the process CWD. fileutil.CleanPath on a relative path
+	// uses os.Getwd(), which silently turns a helper reference like
+	// "payloads.txt" into "<cwd>/payloads.txt"; that disagrees with how
+	// templates expect helpers to be looked up (relative to the template
+	// file itself) and makes rule 2 effectively unreachable unless the
+	// process happens to be running from the template's directory.
+	cleanedHelperPath := helperFilePath
+	if !filepath.IsAbs(cleanedHelperPath) {
+		cleanedHelperPath = filepath.Join(filepath.Dir(cleanedTemplatePath), cleanedHelperPath)
+	}
+	cleanedHelperPath, err = fileutil.CleanPath(cleanedHelperPath)
+	if err != nil {
+		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
+	}
+
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
-	// and both of them are present in user home directory, allow it
-	// Review: should we keep this rule ? add extra option to disable this ?
-	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
-		return helperFilePath, nil
+	// and both of them are present in user home directory, allow it.
+	// The case where the template's own directory is the home directory root is
+	// refused so it does not expand the allowed directory to the whole home dir.
+	templateDir := filepath.Dir(cleanedTemplatePath)
+	if isHomeDir(cleanedHelperPath) && isHomeDir(cleanedTemplatePath) && !isHomeDirRoot(templateDir) && filepathutil.IsPathWithinDirectory(cleanedHelperPath, templateDir) {
+		return cleanedHelperPath, nil
 	}
 
 	// all other cases are denied
@@ -951,5 +978,32 @@ func (options *Options) GetExecutionID() string {
 // isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
-	return strings.HasPrefix(path, homeDir)
+	if homeDir == "" {
+		return false
+	}
+	return filepathutil.IsPathWithinDirectory(path, homeDir)
+}
+
+// isHomeDirRoot reports whether path resolves to the user's home directory root
+// itself (as opposed to a subdirectory of it).
+func isHomeDirRoot(path string) bool {
+	homeDir := folderutil.HomeDirOrDefault("")
+	if homeDir == "" || path == "" {
+		return false
+	}
+	absHome, err := filepath.Abs(homeDir)
+	if err != nil {
+		return false
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	if resolved, err := filepath.EvalSymlinks(absPath); err == nil {
+		absPath = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(absHome); err == nil {
+		absHome = resolved
+	}
+	return filepath.Clean(absPath) == filepath.Clean(absHome)
 }

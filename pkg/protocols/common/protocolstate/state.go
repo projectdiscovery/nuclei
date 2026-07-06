@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -16,7 +17,6 @@ import (
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
-	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -55,7 +55,31 @@ func ShouldInit(id string) bool {
 
 // Init creates the Dialers instance based on user configuration
 func Init(options *types.Options) error {
-	if GetDialersWithId(options.ExecutionId) != nil {
+	if existingDialers := GetDialersWithId(options.ExecutionId); existingDialers != nil {
+		// the network policy is baked into the fastdialer when it is created,
+		// so rebuild the dialers when any input to that policy changed for this
+		// execution id (the RestrictLocalNetworkAccess flag or the exclude
+		// targets denylist).
+		existingDialers.Lock()
+		policyChanged := existingDialers.RestrictLocalNetworkAccess != options.RestrictLocalNetworkAccess ||
+			!slices.Equal(existingDialers.ExcludeTargets, options.ExcludeTargets)
+		existingDialers.Unlock()
+		if policyChanged {
+			if existingDialers.Fastdialer != nil {
+				existingDialers.Fastdialer.Close()
+			}
+			dialers.Delete(options.ExecutionId)
+			return initDialers(options)
+		}
+
+		// otherwise refresh the LFA / network-policy state derived from options
+		// so a second Init call with different options is reflected.
+		existingDialers.Lock()
+		existingDialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
+		existingDialers.RestrictLocalNetworkAccess = options.RestrictLocalNetworkAccess
+		existingDialers.ExcludeTargets = options.ExcludeTargets
+		existingDialers.Unlock()
+		SetLfaAllowed(options)
 		return nil
 	}
 
@@ -173,19 +197,28 @@ func initDialers(options *types.Options) error {
 		return errors.Wrap(err, "could not create dialer")
 	}
 
-	networkPolicy, _ := networkpolicy.New(*npOptions)
+	// fail initialization if the network policy cannot be created rather than
+	// continuing with no denylist.
+	networkPolicy, err := networkpolicy.New(*npOptions)
+	if err != nil {
+		// close the already-created dialer to avoid leaking its resources.
+		dialer.Close()
+		return errors.Wrap(err, "could not create network policy")
+	}
 
-	httpClientPool := mapsutil.NewSyncLockMap(
-		// evicts inactive httpclientpool entries after 24 hours
-		// of inactivity (long running instances)
-		mapsutil.WithEviction[string, *retryablehttp.Client](24*time.Hour, 12*time.Hour),
-	)
+	// Per-host HTTP clients and transports are evicted after 90 seconds of
+	// inactivity (checked lazily every 30 seconds). Evicted transports get
+	// their idle connections closed immediately, so connections to
+	// already-scanned hosts are cleaned up promptly.
+	httpClientPool := NewHTTPPool(90*time.Second, 30*time.Second)
 
 	dialersInstance := &Dialers{
-		Fastdialer:             dialer,
-		NetworkPolicy:          networkPolicy,
-		HTTPClientPool:         httpClientPool,
-		LocalFileAccessAllowed: options.AllowLocalFileAccess,
+		Fastdialer:                 dialer,
+		NetworkPolicy:              networkPolicy,
+		HTTPClientPool:             httpClientPool,
+		LocalFileAccessAllowed:     options.AllowLocalFileAccess,
+		RestrictLocalNetworkAccess: options.RestrictLocalNetworkAccess,
+		ExcludeTargets:             options.ExcludeTargets,
 	}
 
 	_ = dialers.Set(options.ExecutionId, dialersInstance)
@@ -279,6 +312,17 @@ func Close(executionId string) {
 	}
 
 	if dialersInstance != nil {
+		// Drop all cached HTTP clients/transports and close their idle
+		// keep-alive connections to avoid lingering transport goroutines
+		// after shutdown.
+		dialersInstance.HTTPClientPool.Close()
+		// Stop the per-host rate limit pool so its background limiters (one
+		// goroutine each, up to the pool capacity) are released instead of
+		// leaking on shutdown or engine recreate. Typed as any here to avoid
+		// an import cycle with the httpclientpool package.
+		if pool, ok := dialersInstance.PerHostRateLimitPool.(interface{ Close() }); ok && pool != nil {
+			pool.Close()
+		}
 		dialersInstance.Fastdialer.Close()
 	}
 

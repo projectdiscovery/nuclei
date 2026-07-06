@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -85,7 +86,7 @@ func IsTemplateWithRoot(fpath, rootDir string) bool {
 	if rootDir != "" {
 		if filepath.IsAbs(fpath) {
 			rel, err := filepath.Rel(rootDir, fpath)
-			if err == nil && !strings.HasPrefix(rel, "..") {
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 				pathToCheck = rel
 			} else {
 				pathToCheck = fpath
@@ -184,7 +185,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 			DefaultConfig.Logger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
 			return nil
 		}
-		if d.IsDir() || !IsTemplateWithRoot(path, DefaultConfig.TemplatesDirectory) || stringsutil.ContainsAny(path, ignoreDirs...) {
+		if d.IsDir() || !IsTemplateWithRoot(path, DefaultConfig.TemplatesDirectory) || filepathutil.IsPathWithinAnyDirectory(path, ignoreDirs...) {
 			return nil
 		}
 		// Normalize path for consistent comparison (handles Windows path issues)

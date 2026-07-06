@@ -1,0 +1,7 @@
+method=GET
+path=
+host={{Hostname}}
+input-url=https://example.com/base?debug=true
+unsafe=false
+disable-automerge=false
+header=Accept: */*

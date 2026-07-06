@@ -3,13 +3,12 @@ package fuzzplayground
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
 	"strings"
 	"sync"
-
-	"github.com/labstack/echo/v4"
 )
 
 // This file turns the playground into a small but realistic "modern app" auth
@@ -95,13 +94,13 @@ func (s *authStore) consumeCSRF(tok string) bool {
 
 // authenticatedUser resolves the caller's identity from either the session
 // cookie or a bearer token (the JWT carries the hex-encoded session id).
-func (s *authStore) authenticatedUser(ctx echo.Context) (string, bool) {
-	if c, err := ctx.Cookie(authSessionCookie); err == nil && c.Value != "" {
+func (s *authStore) authenticatedUser(r *http.Request) (string, bool) {
+	if c, err := r.Cookie(authSessionCookie); err == nil && c.Value != "" {
 		if u, ok := s.userFor(c.Value); ok {
 			return u, true
 		}
 	}
-	auth := ctx.Request().Header.Get("Authorization")
+	auth := r.Header.Get("Authorization")
 	if strings.HasPrefix(auth, "Bearer ") {
 		if sess := sessionFromJWT(strings.TrimPrefix(auth, "Bearer ")); sess != "" {
 			if u, ok := s.userFor(sess); ok {
@@ -125,8 +124,8 @@ func sessionFromJWT(token string) string {
 	return string(raw)
 }
 
-func setSessionCookie(ctx echo.Context, session string) {
-	ctx.SetCookie(&http.Cookie{
+func setSessionCookie(w http.ResponseWriter, session string) {
+	http.SetCookie(w, &http.Cookie{
 		Name:     authSessionCookie,
 		Value:    session,
 		Path:     "/",
@@ -136,205 +135,218 @@ func setSessionCookie(ctx echo.Context, session string) {
 
 // registerAuthRoutes wires every login style and the protected endpoints onto a
 // per-server auth store.
-func registerAuthRoutes(e *echo.Echo) {
+func registerAuthRoutes(mux *http.ServeMux) {
 	st := newAuthStore()
 
 	// 1. Classic server-rendered form login (works with the static HTTP engine).
-	e.GET("/auth/form-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, formLoginPage("", ""))
+	mux.HandleFunc("GET /auth/form-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, formLoginPage("", ""))
 	})
-	e.POST("/auth/form-login", func(c echo.Context) error {
-		if c.FormValue("username") == AuthUsername && c.FormValue("password") == AuthPassword {
+	mux.HandleFunc("POST /auth/form-login", func(w http.ResponseWriter, r *http.Request) {
+		if r.FormValue("username") == AuthUsername && r.FormValue("password") == AuthPassword {
 			session, _ := st.issue(AuthUsername)
-			setSessionCookie(c, session)
-			return c.Redirect(http.StatusFound, "/auth/dashboard")
+			setSessionCookie(w, session)
+			http.Redirect(w, r, "/auth/dashboard", http.StatusFound)
+			return
 		}
-		return c.HTML(http.StatusOK, formLoginPage(c.FormValue("username"), "Invalid credentials"))
+		writeHTML(w, http.StatusOK, formLoginPage(r.FormValue("username"), "Invalid credentials"))
 	})
 
 	// 2. CSRF-protected server-rendered form: a hidden token must be echoed back.
-	e.GET("/auth/csrf-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, csrfLoginPage(st.issueCSRF(), ""))
+	mux.HandleFunc("GET /auth/csrf-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, csrfLoginPage(st.issueCSRF(), ""))
 	})
-	e.POST("/auth/csrf-login", func(c echo.Context) error {
-		if !st.consumeCSRF(c.FormValue("csrf_token")) {
-			return c.HTML(http.StatusForbidden, csrfLoginPage(st.issueCSRF(), "Invalid CSRF token"))
+	mux.HandleFunc("POST /auth/csrf-login", func(w http.ResponseWriter, r *http.Request) {
+		if !st.consumeCSRF(r.FormValue("csrf_token")) {
+			writeHTML(w, http.StatusForbidden, csrfLoginPage(st.issueCSRF(), "Invalid CSRF token"))
+			return
 		}
-		if c.FormValue("username") == AuthUsername && c.FormValue("password") == AuthPassword {
+		if r.FormValue("username") == AuthUsername && r.FormValue("password") == AuthPassword {
 			session, _ := st.issue(AuthUsername)
-			setSessionCookie(c, session)
-			return c.Redirect(http.StatusFound, "/auth/dashboard")
+			setSessionCookie(w, session)
+			http.Redirect(w, r, "/auth/dashboard", http.StatusFound)
+			return
 		}
-		return c.HTML(http.StatusOK, csrfLoginPage(st.issueCSRF(), "Invalid credentials"))
+		writeHTML(w, http.StatusOK, csrfLoginPage(st.issueCSRF(), "Invalid credentials"))
 	})
 
 	// 3. JS/SPA-rendered form: the raw HTML has no <form>; JS builds it and posts
 	//    via fetch. Only a real browser can log in here.
-	e.GET("/auth/spa-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, spaLoginPage)
+	mux.HandleFunc("GET /auth/spa-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, spaLoginPage)
 	})
-	e.POST("/auth/api/login", func(c echo.Context) error {
+	mux.HandleFunc("POST /auth/api/login", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
 		}
-		if err := c.Bind(&body); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request"})
+			return
 		}
 		if body.Username == AuthUsername && body.Password == AuthPassword {
 			session, jwt := st.issue(AuthUsername)
-			setSessionCookie(c, session)
-			return c.JSON(http.StatusOK, map[string]string{"token": jwt})
+			setSessionCookie(w, session)
+			writeJSON(w, http.StatusOK, map[string]string{"token": jwt})
+			return
 		}
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 	})
 
 	// 4. Username-first multi-step flow (Google/Microsoft-style): password field
 	//    is revealed only after the "Next" button.
-	e.GET("/auth/multistep-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, multiStepLoginPage)
+	mux.HandleFunc("GET /auth/multistep-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, multiStepLoginPage)
 	})
 
 	// 5. Disabled-until-valid submit button — a real regression class: the submit
 	//    stays disabled until JS marks the form valid, so a naive immediate click
 	//    hangs. The engine must settle/fall back to Enter.
-	e.GET("/auth/strict-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, strictLoginPage)
+	mux.HandleFunc("GET /auth/strict-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, strictLoginPage)
 	})
 
 	// 6. SPA login that stores a JWT in localStorage (no cookie at all).
-	e.GET("/auth/spa-token-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, spaTokenLoginPage)
+	mux.HandleFunc("GET /auth/spa-token-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, spaTokenLoginPage)
 	})
 
 	// 7. OAuth-style redirect flow: authorize -> (auto consent) -> callback sets
 	//    the session and redirects to the dashboard.
-	e.GET("/auth/oauth/authorize", func(c echo.Context) error {
-		return c.Redirect(http.StatusFound, "/auth/oauth/callback?code="+randToken())
+	mux.HandleFunc("GET /auth/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/auth/oauth/callback?code="+randToken(), http.StatusFound)
 	})
-	e.GET("/auth/oauth/callback", func(c echo.Context) error {
-		if c.QueryParam("code") == "" {
-			return c.String(http.StatusBadRequest, "missing code")
+	mux.HandleFunc("GET /auth/oauth/callback", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("code") == "" {
+			writeString(w, http.StatusBadRequest, "missing code")
+			return
 		}
 		session, _ := st.issue(AuthUsername)
-		setSessionCookie(c, session)
-		return c.Redirect(http.StatusFound, "/auth/dashboard")
+		setSessionCookie(w, session)
+		http.Redirect(w, r, "/auth/dashboard", http.StatusFound)
 	})
 
 	// 8. Multi-form page: a decoy search form (no password) precedes the real
 	//    login form. The detector must score forms and pick the credential one
 	//    rather than blindly taking the first <form>.
-	e.GET("/auth/multiform-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, multiFormLoginPage)
+	mux.HandleFunc("GET /auth/multiform-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, multiFormLoginPage)
 	})
 
 	// 9. JS-set cookie: login succeeds via XHR that returns the session id in the
 	//    body (no Set-Cookie), and client JS writes document.cookie. The headless
 	//    engine must capture cookies from the browser jar, not just Set-Cookie.
-	e.GET("/auth/jscookie-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, jsCookieLoginPage)
+	mux.HandleFunc("GET /auth/jscookie-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, jsCookieLoginPage)
 	})
-	e.POST("/auth/api/login-jsbody", func(c echo.Context) error {
+	mux.HandleFunc("POST /auth/api/login-jsbody", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
 		}
-		if err := c.Bind(&body); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request"})
+			return
 		}
 		if body.Username == AuthUsername && body.Password == AuthPassword {
 			session, _ := st.issue(AuthUsername)
 			// Deliberately no Set-Cookie: the client sets the cookie via JS.
-			return c.JSON(http.StatusOK, map[string]string{"session": session})
+			writeJSON(w, http.StatusOK, map[string]string{"session": session})
+			return
 		}
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 	})
 
 	// 10. Delayed render: the login form is injected after an async tick, so an
 	//     engine that probes for the password field immediately would miss it and
 	//     must wait for it to appear.
-	e.GET("/auth/delayed-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, delayedLoginPage)
+	mux.HandleFunc("GET /auth/delayed-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, delayedLoginPage)
 	})
 
 	// 11. Header-token login: a server-rendered form whose POST returns the
 	//     session token in a response header (no cookie), the token-in-header
 	//     API style. The engine must read the token from the header.
-	e.GET("/auth/header-token-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, headerTokenLoginPage(""))
+	mux.HandleFunc("GET /auth/header-token-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, headerTokenLoginPage(""))
 	})
-	e.POST("/auth/header-token-login", func(c echo.Context) error {
-		if c.FormValue("username") == AuthUsername && c.FormValue("password") == AuthPassword {
+	mux.HandleFunc("POST /auth/header-token-login", func(w http.ResponseWriter, r *http.Request) {
+		if r.FormValue("username") == AuthUsername && r.FormValue("password") == AuthPassword {
 			_, jwt := st.issue(AuthUsername)
 			// Token in a header, deliberately no Set-Cookie.
-			c.Response().Header().Set("X-Auth-Token", jwt)
-			return c.HTML(http.StatusOK, `<html><head><title>Dashboard</title></head><body><h1>Welcome, signed in</h1></body></html>`)
+			w.Header().Set("X-Auth-Token", jwt)
+			writeHTML(w, http.StatusOK, `<html><head><title>Dashboard</title></head><body><h1>Welcome, signed in</h1></body></html>`)
+			return
 		}
-		return c.HTML(http.StatusOK, headerTokenLoginPage("Invalid credentials"))
+		writeHTML(w, http.StatusOK, headerTokenLoginPage("Invalid credentials"))
 	})
 
 	// 12. SPA whose XHR login returns the token only in a response header (no
 	//     cookie, no body/storage token). Exercises the headless engine's
 	//     passive response-header interception.
-	e.GET("/auth/spa-header-token-login", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, spaHeaderTokenLoginPage)
+	mux.HandleFunc("GET /auth/spa-header-token-login", func(w http.ResponseWriter, _ *http.Request) {
+		writeHTML(w, http.StatusOK, spaHeaderTokenLoginPage)
 	})
-	e.POST("/auth/api/login-header", func(c echo.Context) error {
+	mux.HandleFunc("POST /auth/api/login-header", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Username string `json:"username"`
 			Password string `json:"password"`
 		}
-		if err := c.Bind(&body); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request"})
+			return
 		}
 		if body.Username == AuthUsername && body.Password == AuthPassword {
 			_, jwt := st.issue(AuthUsername)
-			c.Response().Header().Set("X-Auth-Token", jwt)
-			return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+			w.Header().Set("X-Auth-Token", jwt)
+			writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+			return
 		}
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 	})
 
 	// Protected landing page: the login-success heuristic relies on the final
 	// page having no password field, which this page satisfies.
-	e.GET("/auth/dashboard", func(c echo.Context) error {
-		user, ok := st.authenticatedUser(c)
+	mux.HandleFunc("GET /auth/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		user, ok := st.authenticatedUser(r)
 		if !ok {
-			return c.Redirect(http.StatusFound, "/auth/form-login")
+			http.Redirect(w, r, "/auth/form-login", http.StatusFound)
+			return
 		}
-		return c.HTML(http.StatusOK, fmt.Sprintf(`<html><head><title>Dashboard</title></head>
+		writeHTML(w, http.StatusOK, fmt.Sprintf(`<html><head><title>Dashboard</title></head>
 <body><h1>Welcome, %s</h1><a href="/auth/logout">Logout</a></body></html>`, html.EscapeString(user)))
 	})
 
 	// whoami: protected API used to assert a captured session authenticates.
-	e.GET("/auth/whoami", func(c echo.Context) error {
-		user, ok := st.authenticatedUser(c)
+	mux.HandleFunc("GET /auth/whoami", func(w http.ResponseWriter, r *http.Request) {
+		user, ok := st.authenticatedUser(r)
 		if !ok {
-			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			return
 		}
-		return c.JSON(http.StatusOK, map[string]string{"user": user})
+		writeJSON(w, http.StatusOK, map[string]string{"user": user})
 	})
 
 	// Authenticated, fuzzable endpoint: only reachable with a valid session, and
 	// reflects q without sanitization (reflected XSS) so authenticated fuzzing
 	// has a genuine target behind the login wall.
-	e.GET("/auth/api/search", func(c echo.Context) error {
-		if _, ok := st.authenticatedUser(c); !ok {
-			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	mux.HandleFunc("GET /auth/api/search", func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := st.authenticatedUser(r); !ok {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			return
 		}
-		q := c.QueryParam("q")
-		return c.HTML(http.StatusOK, fmt.Sprintf("<html><body><div>results for: %s</div></body></html>", q))
+		q := r.URL.Query().Get("q")
+		writeHTML(w, http.StatusOK, fmt.Sprintf("<html><body><div>results for: %s</div></body></html>", q))
 	})
 
-	e.GET("/auth/logout", func(c echo.Context) error {
-		ctx := c
-		if ck, err := ctx.Cookie(authSessionCookie); err == nil {
+	mux.HandleFunc("GET /auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		if ck, err := r.Cookie(authSessionCookie); err == nil {
 			st.mu.Lock()
 			delete(st.sessions, ck.Value)
 			st.mu.Unlock()
 		}
-		setSessionCookie(c, "")
-		return c.Redirect(http.StatusFound, "/auth/form-login")
+		setSessionCookie(w, "")
+		http.Redirect(w, r, "/auth/form-login", http.StatusFound)
 	})
 }
 

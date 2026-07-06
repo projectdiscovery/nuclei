@@ -98,3 +98,38 @@ func TestIsTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestGetNucleiTemplatesIndexIncludesCustomDirSiblingPrefix(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgDir := t.TempDir()
+
+	oldConfigDir := DefaultConfig.GetConfigDir()
+	oldTemplatesDir := DefaultConfig.TemplatesDirectory
+	DefaultConfig.SetConfigDir(cfgDir)
+	DefaultConfig.SetTemplatesDir(tmpDir)
+	t.Cleanup(func() {
+		DefaultConfig.SetConfigDir(oldConfigDir)
+		DefaultConfig.SetTemplatesDir(oldTemplatesDir)
+	})
+
+	customGitHubDir := filepath.Join(tmpDir, "github")
+	require.NoError(t, os.MkdirAll(customGitHubDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(customGitHubDir, "custom-template.yaml"), []byte(`id: custom-template
+info:
+  name: Custom Template
+  author: test
+  severity: info`), 0644))
+
+	siblingDir := filepath.Join(tmpDir, "github-evil")
+	require.NoError(t, os.MkdirAll(siblingDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(siblingDir, "sibling-template.yaml"), []byte(`id: sibling-template
+info:
+  name: Sibling Template
+  author: test
+  severity: info`), 0644))
+
+	index, err := GetNucleiTemplatesIndex()
+	require.NoError(t, err)
+	require.NotContains(t, index, "custom-template", "custom template directory should be excluded")
+	require.Contains(t, index, "sibling-template", "custom directory sibling prefix should be indexed")
+}

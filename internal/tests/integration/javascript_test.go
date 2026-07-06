@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/go-pg/pg/v10"
@@ -22,6 +23,10 @@ import (
 
 func javascriptDockerDisabled() bool {
 	return !osutils.IsLinux() || !hasAnyExecutable("docker", "podman")
+}
+
+func javascriptGoExecSambaDisabled() bool {
+	return javascriptDockerDisabled() || os.Getenv("RUN_GOEXEC_SAMBA_LOCAL") != "1"
 }
 
 var jsTestcases = []integrationCase{
@@ -40,7 +45,7 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/wmi-command.yaml", TestCase: &javascriptWMICommand{}},
 	{Path: "protocols/javascript/goexec-redaction.yaml", TestCase: &javascriptGoExecRedaction{}},
 	{Path: "protocols/javascript/goexec-modules.yaml", TestCase: &javascriptGoExecModules{}},
-	{Path: "protocols/javascript/goexec-samba-ntlm.yaml", TestCase: &javascriptGoExecSambaNTLM{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/goexec-samba-ntlm.yaml", TestCase: &javascriptGoExecSambaNTLM{}, DisableOn: javascriptGoExecSambaDisabled, Serial: true},
 }
 
 var (
@@ -48,7 +53,6 @@ var (
 )
 
 const (
-	javascriptContainerTTLSeconds  = 300
 	javascriptDatabaseReadyTimeout = 3 * time.Minute
 	javascriptServiceReadyTimeout  = 45 * time.Second
 	javascriptRetryDelay           = 500 * time.Millisecond
@@ -90,7 +94,7 @@ func newJavascriptDockerSpec(port string, options *dockertest.RunOptions, readyT
 type javascriptNetHttps struct{}
 
 func (j *javascriptNetHttps) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
 	if err != nil {
 		return err
 	}
@@ -163,7 +167,7 @@ type javascriptMultiPortsSSH struct{}
 
 func (j *javascriptMultiPortsSSH) Execute(filePath string) error {
 	// use scanme.sh as target to ensure we match on the 2nd default port 22
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
 	if err != nil {
 		return err
 	}
@@ -173,7 +177,7 @@ func (j *javascriptMultiPortsSSH) Execute(filePath string) error {
 type javascriptNoPortArgs struct{}
 
 func (j *javascriptNoPortArgs) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "yo.dawg", debug)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "yo.dawg", debug)
 	if err != nil {
 		return err
 	}
@@ -188,7 +192,7 @@ func (j *javascriptWMICommand) Execute(filePath string) error {
 	// the exclude list and short-circuits before any dial, so the JSON result
 	// must contain "ok":false plus "network policy" in the error while not
 	// leaking the password.
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-eh", "203.0.113.10")
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-eh", "203.0.113.10")
 	if err != nil {
 		return err
 	}
@@ -200,7 +204,7 @@ type javascriptGoExecRedaction struct{}
 func (j *javascriptGoExecRedaction) Execute(filePath string) error {
 	listener := newGoExecCloseListener()
 	defer listener.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, listener.host, debug, "-V", "RPCEndpoint="+listener.binding)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, listener.host, debug, "-V", "RPCEndpoint="+listener.binding)
 	if err != nil {
 		return err
 	}
@@ -212,7 +216,7 @@ type javascriptGoExecModules struct{}
 func (j *javascriptGoExecModules) Execute(filePath string) error {
 	listener := newGoExecCloseListener()
 	defer listener.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, listener.host, debug, "-V", "RPCEndpoint="+listener.binding)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, listener.host, debug, "-V", "RPCEndpoint="+listener.binding)
 	if err != nil {
 		return err
 	}
@@ -257,10 +261,6 @@ func (j *javascriptGoExecSambaNTLM) Execute(filePath string) error {
 	}
 	defer purge(pool, resource)
 
-	if err := resource.Expire(javascriptContainerTTLSeconds); err != nil {
-		return fmt.Errorf("could not expire samba: %w", err)
-	}
-
 	targetAddress := "127.0.0.1:445"
 	if err := waitForTCPService(targetAddress, javascriptServiceReadyTimeout); err != nil {
 		return err
@@ -275,7 +275,7 @@ func (j *javascriptGoExecSambaNTLM) Execute(filePath string) error {
 
 	errS := make([]error, 0, defaultRetry)
 	for attempt := 1; attempt <= defaultRetry; attempt++ {
-		results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug)
+		results, err := runSignedNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug)
 		if err == nil {
 			if countErr := expectResultsCount(results, 1); countErr == nil {
 				return nil
@@ -383,7 +383,7 @@ func (j *networkMultiStep) Execute(filePath string) error {
 	})
 	defer server.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, server.URL, debug)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, server.URL, debug)
 	if err != nil {
 		return err
 	}
@@ -419,10 +419,6 @@ func runJavascriptDockerCase(filePath string, spec javascriptDockerSpec, expecte
 	}
 	defer purge(pool, resource)
 
-	if err := resource.Expire(javascriptContainerTTLSeconds); err != nil {
-		return fmt.Errorf("could not expire resource for %s: %w", filePath, err)
-	}
-
 	mappedPort := resource.GetPort(spec.port)
 	if mappedPort == "" {
 		return fmt.Errorf("missing mapped port for %s", spec.port)
@@ -443,7 +439,7 @@ func runJavascriptDockerCase(filePath string, spec javascriptDockerSpec, expecte
 
 	errS := make([]error, 0, defaultRetry)
 	for attempt := 1; attempt <= defaultRetry; attempt++ {
-		results, err := testutils.RunNucleiTemplateAndGetResults(filePath, targetAddress, debug)
+		results, err := runSignedNucleiTemplateAndGetResults(filePath, targetAddress, debug)
 		if err == nil {
 			if countErr := expectResultsCount(results, expectedNumbers...); countErr == nil {
 				return nil
@@ -586,7 +582,6 @@ func purge(pool *dockertest.Pool, resource *dockertest.Resource) {
 		return
 	}
 	containerName := resource.Container.Name
-	_ = pool.Client.StopContainer(resource.Container.ID, 0)
 	_ = pool.Purge(resource)
 	_ = pool.RemoveContainerByName(containerName)
 }

@@ -170,6 +170,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 
 	if e.parser == nil {
 		e.parser = templates.NewParser()
+		e.ownsParser = true
 	}
 
 	if protocolstate.ShouldInit(e.opts.ExecutionId) {
@@ -177,7 +178,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	if e.opts.ProxyInternal && e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "" {
-		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
+		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{}, "")
 		if err != nil {
 			return err
 		}
@@ -314,6 +315,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.parser == nil {
 		op := templates.NewParser()
 		e.parser = op
+		e.ownsParser = true
 		e.opts.Parser = op
 		e.executerOpts.Parser = op
 		e.executerOpts.Options.Parser = op

@@ -3,7 +3,7 @@ package kerberos
 import (
 	"strings"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	kclient "github.com/jcmturner/gokrb5/v8/client"
 	kconfig "github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/iana/errorcode"

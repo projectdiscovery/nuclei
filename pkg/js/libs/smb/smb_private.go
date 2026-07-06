@@ -12,6 +12,8 @@ import (
 	zgrabsmb "github.com/zmap/zgrab2/lib/smb/smb"
 )
 
+type smbInfoDialFunc func(context.Context) (net.Conn, error)
+
 // ==== private helper functions/methods ====
 
 // collectSMBv2Metadata collects metadata for SMBv2 services.
@@ -52,4 +54,24 @@ func getSMBInfo(conn net.Conn, setupSession, v1 bool) (*zgrabsmb.SMBLog, error) 
 		return nil, err
 	}
 	return result, nil
+}
+
+func updateSMBv1Support(ctx context.Context, result *zgrabsmb.SMBLog, dial smbInfoDialFunc) {
+	if result == nil || result.SupportV1 {
+		return
+	}
+
+	conn, err := dial(ctx)
+	if err != nil {
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	v1Result, err := getSMBInfo(conn, false, true)
+	if err != nil || v1Result == nil || !v1Result.SupportV1 {
+		return
+	}
+	result.SupportV1 = true
 }

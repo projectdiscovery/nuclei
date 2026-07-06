@@ -16,7 +16,7 @@ jobs:
     env:
       OUTPUT: "/tmp/results.sarif"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
         with:
           go-version-file: go.tool.mod

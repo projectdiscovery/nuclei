@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 )
 
 // temporary on demand runtime to throw errors when vm is not available

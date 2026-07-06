@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -64,13 +65,14 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 			data = make(map[string]interface{})
 		}
 
-		var err error
-		word, err = expressions.Evaluate(word, data)
+		result, err := render.Render(render.Input{Text: word, Values: data})
 		if err != nil {
 			gologger.Warning().Msgf("Error while evaluating word matcher: %q", word)
 			if matcher.condition == ANDCondition {
 				return false, []string{}
 			}
+		} else {
+			word = result.Text
 		}
 		// Continue if the word doesn't match
 		if !strings.Contains(corpus, word) {
@@ -195,7 +197,7 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 	// Iterate over all the expressions accepted as valid
 	for i, expression := range matcher.dslCompiled {
 		if varErr := expressions.ContainsUnresolvedVariables(expression.String()); varErr != nil {
-			resolvedExpression, err := expressions.Evaluate(expression.String(), data)
+			resolvedExpression, err := resolveDSLStringMarkers(expression.String(), data)
 			if err != nil {
 				logExpressionEvaluationFailure(matcher.Name, err)
 				return false

@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -13,33 +14,59 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
-func GetPlaygroundServer() *echo.Echo {
-	e := echo.New()
-	e.Use(middleware.Recover())
-	e.Use(middleware.Logger())
+// PlaygroundServer wraps the fuzz playground handler with the lifecycle methods
+// used by the integration tests and the standalone playground command.
+type PlaygroundServer struct {
+	handler http.Handler
+	server  *http.Server
+}
 
-	e.GET("/", indexHandler)
-	e.GET("/info", infoHandler)
-	e.GET("/redirect", redirectHandler)
-	e.GET("/request", requestHandler)
-	e.GET("/email", emailHandler)
-	e.GET("/permissions", permissionsHandler)
+func GetPlaygroundServer() *PlaygroundServer {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", indexHandler)
+	mux.HandleFunc("GET /info", infoHandler)
+	mux.HandleFunc("GET /redirect", redirectHandler)
+	mux.HandleFunc("GET /request", requestHandler)
+	mux.HandleFunc("GET /email", emailHandler)
+	mux.HandleFunc("GET /permissions", permissionsHandler)
 
-	e.GET("/blog/post", numIdorHandler) // for num based idors like ?id=44
-	e.POST("/reset-password", resetPasswordHandler)
-	e.GET("/host-header-lab", hostHeaderLabHandler)
-	e.GET("/user/:id/profile", userProfileHandler)
-	e.POST("/user", patchUnsanitizedUserHandler)
-	e.GET("/blog/posts", getPostsHandler)
+	mux.HandleFunc("GET /blog/post", numIdorHandler) // for num based idors like ?id=44
+	mux.HandleFunc("POST /reset-password", resetPasswordHandler)
+	mux.HandleFunc("GET /host-header-lab", hostHeaderLabHandler)
+	mux.HandleFunc("GET /user/{id}/profile", userProfileHandler)
+	mux.HandleFunc("POST /user", patchUnsanitizedUserHandler)
+	mux.HandleFunc("GET /blog/posts", getPostsHandler)
 
-	registerAnalyzerRoutes(e)
-	registerAuthRoutes(e)
-	return e
+	registerAnalyzerRoutes(mux)
+	registerAuthRoutes(mux)
+
+	handler := recoverPlaygroundRequest(logPlaygroundRequest(mux))
+	return &PlaygroundServer{handler: handler}
+}
+
+func (s *PlaygroundServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.handler.ServeHTTP(w, r)
+}
+
+func (s *PlaygroundServer) Start(addr string) error {
+	s.server = &http.Server{
+		Addr:    addr,
+		Handler: s.handler,
+	}
+	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}
+
+func (s *PlaygroundServer) Close() error {
+	if s.server == nil {
+		return nil
+	}
+	return s.server.Close()
 }
 
 // registerAnalyzerRoutes wires a dedicated, analyzer-friendly test bench used by
@@ -47,32 +74,32 @@ func GetPlaygroundServer() *echo.Echo {
 // responds purely in-band and deterministically (no external network egress),
 // so the corresponding analyzer's generic probes reliably trigger detection in
 // CI. The query parameter is always "q" to keep the templates uniform.
-func registerAnalyzerRoutes(e *echo.Echo) {
-	e.GET("/analyzer/sqli", analyzerSQLiHandler)
-	e.GET("/analyzer/ssti", analyzerSSTIHandler)
-	e.GET("/analyzer/lfi", analyzerLFIHandler)
-	e.GET("/analyzer/cmdi", analyzerCMDiHandler)
-	e.GET("/analyzer/ssrf", analyzerSSRFHandler)
-	e.GET("/analyzer/redirect", analyzerRedirectHandler)
-	e.GET("/analyzer/crlf", analyzerCRLFHandler)
-	e.GET("/analyzer/cors", analyzerCORSHandler)
-	e.GET("/analyzer/host-header", analyzerHostHeaderHandler)
+func registerAnalyzerRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /analyzer/sqli", analyzerSQLiHandler)
+	mux.HandleFunc("GET /analyzer/ssti", analyzerSSTIHandler)
+	mux.HandleFunc("GET /analyzer/lfi", analyzerLFIHandler)
+	mux.HandleFunc("GET /analyzer/cmdi", analyzerCMDiHandler)
+	mux.HandleFunc("GET /analyzer/ssrf", analyzerSSRFHandler)
+	mux.HandleFunc("GET /analyzer/redirect", analyzerRedirectHandler)
+	mux.HandleFunc("GET /analyzer/crlf", analyzerCRLFHandler)
+	mux.HandleFunc("GET /analyzer/cors", analyzerCORSHandler)
+	mux.HandleFunc("GET /analyzer/host-header", analyzerHostHeaderHandler)
 
 	// Benign counterparts: these reflect or echo input but are NOT vulnerable,
 	// so the analyzers must NOT raise a finding against them (false-positive
 	// guard at the CLI level).
-	e.GET("/analyzer/safe/reflect", analyzerSafeReflectHandler)
-	e.GET("/analyzer/safe/redirect", analyzerSafeRedirectHandler)
-	e.GET("/analyzer/safe/cors", analyzerSafeCORSHandler)
-	e.GET("/analyzer/safe/headers", analyzerSafeHeadersHandler)
-	e.GET("/analyzer/safe/host", analyzerSafeHostHandler)
+	mux.HandleFunc("GET /analyzer/safe/reflect", analyzerSafeReflectHandler)
+	mux.HandleFunc("GET /analyzer/safe/redirect", analyzerSafeRedirectHandler)
+	mux.HandleFunc("GET /analyzer/safe/cors", analyzerSafeCORSHandler)
+	mux.HandleFunc("GET /analyzer/safe/headers", analyzerSafeHeadersHandler)
+	mux.HandleFunc("GET /analyzer/safe/host", analyzerSafeHostHandler)
 
 	// Non-query positions: prove the analyzers fuzz path / header / cookie / body
 	// components through the real pipeline, not just query parameters.
-	e.GET("/analyzer/path/sqli/:id", analyzerPathSQLiHandler)
-	e.GET("/analyzer/header/sqli", analyzerHeaderSQLiHandler)
-	e.POST("/analyzer/body/sqli", analyzerBodySQLiHandler)
-	e.GET("/analyzer/cookie/ssti", analyzerCookieSSTIHandler)
+	mux.HandleFunc("GET /analyzer/path/sqli/{id}", analyzerPathSQLiHandler)
+	mux.HandleFunc("GET /analyzer/header/sqli", analyzerHeaderSQLiHandler)
+	mux.HandleFunc("POST /analyzer/body/sqli", analyzerBodySQLiHandler)
+	mux.HandleFunc("GET /analyzer/cookie/ssti", analyzerCookieSSTIHandler)
 }
 
 // reArithmeticTemplate emulates a real template engine: it matches an arithmetic
@@ -90,71 +117,74 @@ var analyzerCmdiSeparators = []string{";id", "|id", "||id", "&&id", "&id", "`id`
 // analyzerSQLiHandler is vulnerable to error-based SQLi via the real sqlite DB:
 // a quote in q breaks the query and surfaces a genuine "unrecognized token"
 // sqlite error, which the sqli_error analyzer fingerprints.
-func analyzerSQLiHandler(ctx echo.Context) error {
-	q := ctx.QueryParam("q")
+func analyzerSQLiHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
 	posts, err := getUnsanitizedPostsByLang(db, q)
 	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		writeString(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return ctx.JSON(http.StatusOK, posts)
+	writeJSON(w, http.StatusOK, posts)
 }
 
 // analyzerSSTIHandler evaluates arithmetic template expressions in q.
-func analyzerSSTIHandler(ctx echo.Context) error {
-	out := reArithmeticTemplate.ReplaceAllStringFunc(ctx.QueryParam("q"), func(m string) string {
+func analyzerSSTIHandler(w http.ResponseWriter, r *http.Request) {
+	out := reArithmeticTemplate.ReplaceAllStringFunc(r.URL.Query().Get("q"), func(m string) string {
 		sub := reArithmeticTemplate.FindStringSubmatch(m)
 		a, _ := strconv.Atoi(sub[1])
 		b, _ := strconv.Atoi(sub[2])
 		return strconv.Itoa(a * b)
 	})
-	return ctx.HTML(http.StatusOK, fmt.Sprintf(bodyTemplate, out))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, out))
 }
 
 // analyzerLFIHandler returns file contents for path-traversal payloads in q.
-func analyzerLFIHandler(ctx echo.Context) error {
-	q := ctx.QueryParam("q")
+func analyzerLFIHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
 	switch {
 	case strings.Contains(q, "etc/passwd"):
-		return ctx.String(http.StatusOK, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
+		writeString(w, http.StatusOK, "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n")
 	case strings.Contains(strings.ToLower(q), "win.ini"):
-		return ctx.String(http.StatusOK, "; for 16-bit app support\r\n[fonts]\r\n")
+		writeString(w, http.StatusOK, "; for 16-bit app support\r\n[fonts]\r\n")
 	default:
-		return ctx.String(http.StatusOK, "file not found")
+		writeString(w, http.StatusOK, "file not found")
 	}
 }
 
 // analyzerCMDiHandler simulates a shell that concatenates q: an injected
 // separator followed by `id` yields command output.
-func analyzerCMDiHandler(ctx echo.Context) error {
-	q := ctx.QueryParam("q")
+func analyzerCMDiHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
 	for _, sep := range analyzerCmdiSeparators {
 		if strings.Contains(q, sep) {
-			return ctx.String(http.StatusOK, "uid=0(root) gid=0(root) groups=0(root)")
+			writeString(w, http.StatusOK, "uid=0(root) gid=0(root) groups=0(root)")
+			return
 		}
 	}
-	return ctx.String(http.StatusOK, fmt.Sprintf("ping output for %s", q))
+	writeString(w, http.StatusOK, fmt.Sprintf("ping output for %s", q))
 }
 
 // analyzerSSRFHandler simulates an in-band SSRF: requesting a cloud metadata
 // endpoint returns the (mock) instance identity document. It does NOT perform a
 // real outbound request, keeping the test hermetic.
-func analyzerSSRFHandler(ctx echo.Context) error {
-	q := ctx.QueryParam("q")
+func analyzerSSRFHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
 	if strings.Contains(q, "169.254.169.254") || strings.Contains(q, "metadata.google.internal") {
-		return ctx.String(http.StatusOK, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
+		writeString(w, http.StatusOK, `{"accountId":"123456789012","imageId":"ami-0abcd1234ef567890","instanceId":"i-0abcd1234ef567890","region":"us-east-1"}`)
+		return
 	}
-	return ctx.String(http.StatusOK, "fetched: nothing interesting")
+	writeString(w, http.StatusOK, "fetched: nothing interesting")
 }
 
 // analyzerRedirectHandler reflects q straight into the Location header.
-func analyzerRedirectHandler(ctx echo.Context) error {
-	return ctx.Redirect(http.StatusFound, ctx.QueryParam("q"))
+func analyzerRedirectHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, r.URL.Query().Get("q"), http.StatusFound)
 }
 
 // analyzerCRLFHandler naively builds response headers from q, splitting on
 // newlines — a textbook response-splitting bug.
-func analyzerCRLFHandler(ctx echo.Context) error {
-	for _, line := range strings.Split(ctx.QueryParam("q"), "\n") {
+func analyzerCRLFHandler(w http.ResponseWriter, r *http.Request) {
+	for _, line := range strings.Split(r.URL.Query().Get("q"), "\n") {
 		line = strings.TrimRight(line, "\r")
 		idx := strings.Index(line, ": ")
 		if idx <= 0 || strings.ContainsAny(line[:idx], " \t") {
@@ -162,31 +192,31 @@ func analyzerCRLFHandler(ctx echo.Context) error {
 		}
 		name, val := line[:idx], line[idx+2:]
 		if strings.EqualFold(name, "Set-Cookie") {
-			ctx.Response().Header().Add("Set-Cookie", val)
+			w.Header().Add("Set-Cookie", val)
 		} else {
-			ctx.Response().Header().Set(name, val)
+			w.Header().Set(name, val)
 		}
 	}
-	return ctx.String(http.StatusOK, "ok")
+	writeString(w, http.StatusOK, "ok")
 }
 
 // analyzerCORSHandler reflects an arbitrary Origin and allows credentials.
-func analyzerCORSHandler(ctx echo.Context) error {
-	if origin := ctx.Request().Header.Get("Origin"); origin != "" {
-		ctx.Response().Header().Set("Access-Control-Allow-Origin", origin)
-		ctx.Response().Header().Set("Access-Control-Allow-Credentials", "true")
+func analyzerCORSHandler(w http.ResponseWriter, r *http.Request) {
+	if origin := r.Header.Get("Origin"); origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
-	return ctx.String(http.StatusOK, "ok")
+	writeString(w, http.StatusOK, "ok")
 }
 
 // analyzerHostHeaderHandler reflects the (attacker-controlled) X-Forwarded-Host
 // into an absolute link in the body, without performing any outbound request.
-func analyzerHostHeaderHandler(ctx echo.Context) error {
-	host := ctx.Request().Header.Get("X-Forwarded-Host")
+func analyzerHostHeaderHandler(w http.ResponseWriter, r *http.Request) {
+	host := r.Header.Get("X-Forwarded-Host")
 	if host == "" {
-		host = ctx.Request().Host
+		host = r.Host
 	}
-	return ctx.HTML(http.StatusOK, fmt.Sprintf(`<a href="https://%s/reset?token=abc">reset</a>`, host))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(`<a href="https://%s/reset?token=abc">reset</a>`, host))
 }
 
 // --- Benign handlers (must not trigger any analyzer) -----------------------
@@ -194,72 +224,73 @@ func analyzerHostHeaderHandler(ctx echo.Context) error {
 // analyzerSafeReflectHandler reflects q verbatim with no evaluation, no DB, no
 // command execution and no file access; it is the benign counterpart for the
 // ssti, sqli, cmdi, lfi and ssrf analyzers.
-func analyzerSafeReflectHandler(ctx echo.Context) error {
-	return ctx.HTML(http.StatusOK, fmt.Sprintf(bodyTemplate, "you searched for: "+ctx.QueryParam("q")))
+func analyzerSafeReflectHandler(w http.ResponseWriter, r *http.Request) {
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, "you searched for: "+r.URL.Query().Get("q")))
 }
 
 // analyzerSafeRedirectHandler always redirects to a fixed trusted location,
 // ignoring user input.
-func analyzerSafeRedirectHandler(ctx echo.Context) error {
-	return ctx.Redirect(http.StatusFound, "/home")
+func analyzerSafeRedirectHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/home", http.StatusFound)
 }
 
 // analyzerSafeCORSHandler only ever allows a single trusted origin.
-func analyzerSafeCORSHandler(ctx echo.Context) error {
-	ctx.Response().Header().Set("Access-Control-Allow-Origin", "https://trusted.example.com")
-	return ctx.String(http.StatusOK, "ok")
+func analyzerSafeCORSHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "https://trusted.example.com")
+	writeString(w, http.StatusOK, "ok")
 }
 
 // analyzerSafeHeadersHandler returns static headers and never reflects input.
-func analyzerSafeHeadersHandler(ctx echo.Context) error {
-	ctx.Response().Header().Set("X-Static", "constant")
-	return ctx.String(http.StatusOK, "ok")
+func analyzerSafeHeadersHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("X-Static", "constant")
+	writeString(w, http.StatusOK, "ok")
 }
 
 // analyzerSafeHostHandler always builds links from a fixed, trusted host.
-func analyzerSafeHostHandler(ctx echo.Context) error {
-	return ctx.HTML(http.StatusOK, `<a href="https://app.example.com/reset?token=abc">reset</a>`)
+func analyzerSafeHostHandler(w http.ResponseWriter, _ *http.Request) {
+	writeHTML(w, http.StatusOK, `<a href="https://app.example.com/reset?token=abc">reset</a>`)
 }
 
 // --- Non-query position handlers -------------------------------------------
 
 // sqliFromValue runs the value through the real sqlite query so a quote yields a
 // genuine "unrecognized token" error that the sqli_error analyzer fingerprints.
-func sqliFromValue(ctx echo.Context, value string) error {
+func sqliFromValue(w http.ResponseWriter, value string) {
 	posts, err := getUnsanitizedPostsByLang(db, value)
 	if err != nil {
-		return ctx.String(http.StatusInternalServerError, err.Error())
+		writeString(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return ctx.JSON(http.StatusOK, posts)
+	writeJSON(w, http.StatusOK, posts)
 }
 
-// analyzerPathSQLiHandler is error-based SQLi on a path segment (:id).
-func analyzerPathSQLiHandler(ctx echo.Context) error {
-	return sqliFromValue(ctx, ctx.Param("id"))
+// analyzerPathSQLiHandler is error-based SQLi on a path segment ({id}).
+func analyzerPathSQLiHandler(w http.ResponseWriter, r *http.Request) {
+	sqliFromValue(w, r.PathValue("id"))
 }
 
 // analyzerHeaderSQLiHandler is error-based SQLi on the X-Search request header.
-func analyzerHeaderSQLiHandler(ctx echo.Context) error {
-	return sqliFromValue(ctx, ctx.Request().Header.Get("X-Search"))
+func analyzerHeaderSQLiHandler(w http.ResponseWriter, r *http.Request) {
+	sqliFromValue(w, r.Header.Get("X-Search"))
 }
 
 // analyzerBodySQLiHandler is error-based SQLi on the JSON body "name" field.
-func analyzerBodySQLiHandler(ctx echo.Context) error {
+func analyzerBodySQLiHandler(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Name string `json:"name"`
 	}
-	body, _ := io.ReadAll(ctx.Request().Body)
+	body, _ := io.ReadAll(r.Body)
 	_ = json.Unmarshal(body, &payload)
-	return sqliFromValue(ctx, payload.Name)
+	sqliFromValue(w, payload.Name)
 }
 
 // analyzerCookieSSTIHandler evaluates arithmetic template expressions found in
 // the "lang" cookie. SSTI (not SQLi) is used here because Go's cookie value
 // sanitization strips the quotes SQLi relies on, whereas SSTI payload
 // characters ({ } * $) are cookie-legal.
-func analyzerCookieSSTIHandler(ctx echo.Context) error {
+func analyzerCookieSSTIHandler(w http.ResponseWriter, r *http.Request) {
 	val := "en"
-	if c, err := ctx.Cookie("lang"); err == nil {
+	if c, err := r.Cookie("lang"); err == nil {
 		val = c.Value
 	}
 	out := reArithmeticTemplate.ReplaceAllStringFunc(val, func(m string) string {
@@ -268,7 +299,7 @@ func analyzerCookieSSTIHandler(ctx echo.Context) error {
 		b, _ := strconv.Atoi(sub[2])
 		return strconv.Itoa(a * b)
 	})
-	return ctx.HTML(http.StatusOK, fmt.Sprintf(bodyTemplate, "lang="+out))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, "lang="+out))
 }
 
 var bodyTemplate = `<html>
@@ -280,8 +311,8 @@ var bodyTemplate = `<html>
 </body>
 </html>`
 
-func indexHandler(ctx echo.Context) error {
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, `<h1>Fuzzing Playground</h1><hr>
+func indexHandler(w http.ResponseWriter, _ *http.Request) {
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, `<h1>Fuzzing Playground</h1><hr>
 	<ul>
 		
 	<li><a href="/info?name=test&another=value&random=data">Info Page XSS</a></li>
@@ -309,154 +340,172 @@ func indexHandler(ctx echo.Context) error {
 `))
 }
 
-func infoHandler(ctx echo.Context) error {
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Name of user: %s%s%s", ctx.QueryParam("name"), ctx.QueryParam("another"), ctx.QueryParam("random"))))
+func infoHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Name of user: %s%s%s", query.Get("name"), query.Get("another"), query.Get("random"))))
 }
 
-func redirectHandler(ctx echo.Context) error {
-	url := ctx.QueryParam("redirect_url")
-	return ctx.Redirect(302, url)
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, r.URL.Query().Get("redirect_url"), http.StatusFound)
 }
 
-func requestHandler(ctx echo.Context) error {
-	url := ctx.QueryParam("url")
-	data, err := retryablehttp.DefaultClient().Get(url)
+func requestHandler(w http.ResponseWriter, r *http.Request) {
+	requestURL := r.URL.Query().Get("url")
+	data, err := retryablehttp.DefaultClient().Get(requestURL)
 	if err != nil {
-		return ctx.HTML(500, err.Error())
+		writeHTML(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 	defer func() {
 		_ = data.Body.Close()
 	}()
 
 	body, _ := io.ReadAll(data.Body)
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(body)))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, string(body)))
 }
 
-func emailHandler(ctx echo.Context) error {
-	text := ctx.QueryParam("text")
+func emailHandler(w http.ResponseWriter, r *http.Request) {
+	text := r.URL.Query().Get("text")
 	if strings.Contains(text, "{{") {
 		trimmed := strings.SplitN(strings.Trim(text[strings.Index(text, "{"):], "{}"), "*", 2)
 		if len(trimmed) < 2 {
-			return ctx.HTML(500, "invalid template")
+			writeHTML(w, http.StatusInternalServerError, "invalid template")
+			return
 		}
 		first, _ := strconv.Atoi(trimmed[0])
 		second, _ := strconv.Atoi(trimmed[1])
 		text = strconv.Itoa(first * second)
 	}
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Text: %s", text)))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, fmt.Sprintf("Text: %s", text)))
 }
 
-func permissionsHandler(ctx echo.Context) error {
-	command := ctx.QueryParam("cmd")
+func permissionsHandler(w http.ResponseWriter, r *http.Request) {
+	command := r.URL.Query().Get("cmd")
 	fields := strings.Fields(command)
 	cmd := exec.Command(fields[0], fields[1:]...)
 	data, _ := cmd.CombinedOutput()
 
-	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(data)))
+	writeHTML(w, http.StatusOK, fmt.Sprintf(bodyTemplate, string(data)))
 }
 
-func numIdorHandler(ctx echo.Context) error {
+func numIdorHandler(w http.ResponseWriter, r *http.Request) {
 	// validate if any numerical query param is present
 	// if not, return 400 if so, return 200
-	for k := range ctx.QueryParams() {
-		if _, err := strconv.Atoi(ctx.QueryParam(k)); err == nil {
-			return ctx.JSON(200, "Profile Info for user with id "+ctx.QueryParam(k))
+	for k := range r.URL.Query() {
+		value := r.URL.Query().Get(k)
+		if _, err := strconv.Atoi(value); err == nil {
+			writeJSON(w, http.StatusOK, "Profile Info for user with id "+value)
+			return
 		}
 	}
-	return ctx.JSON(400, "No numerical query param found")
+	writeJSON(w, http.StatusBadRequest, "No numerical query param found")
 }
 
-func patchUnsanitizedUserHandler(ctx echo.Context) error {
+func patchUnsanitizedUserHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 
-	contentType := ctx.Request().Header.Get("Content-Type")
+	contentType := r.Header.Get("Content-Type")
 	// manually handle unmarshalling data
 	if strings.Contains(contentType, "application/json") {
-		err := ctx.Bind(&user)
-		if err != nil {
-			return ctx.JSON(500, "Invalid JSON data")
+		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+			writeJSON(w, http.StatusInternalServerError, "Invalid JSON data")
+			return
 		}
 	} else if strings.Contains(contentType, "application/x-www-form-urlencoded") {
-		user.Name = ctx.FormValue("name")
-		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
-		user.Role = ctx.FormValue("role")
-		user.ID, _ = strconv.Atoi(ctx.FormValue("id"))
+		user.Name = r.FormValue("name")
+		user.Age, _ = strconv.Atoi(r.FormValue("age"))
+		user.Role = r.FormValue("role")
+		user.ID, _ = strconv.Atoi(r.FormValue("id"))
 	} else if strings.Contains(contentType, "application/xml") {
-		bin, _ := io.ReadAll(ctx.Request().Body)
+		bin, _ := io.ReadAll(r.Body)
 		err := xml.Unmarshal(bin, &user)
 		if err != nil {
-			return ctx.JSON(500, "Invalid XML data")
+			writeJSON(w, http.StatusInternalServerError, "Invalid XML data")
+			return
 		}
 	} else if strings.Contains(contentType, "multipart/form-data") {
-		user.Name = ctx.FormValue("name")
-		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
-		user.Role = ctx.FormValue("role")
-		user.ID, _ = strconv.Atoi(ctx.FormValue("id"))
+		user.Name = r.FormValue("name")
+		user.Age, _ = strconv.Atoi(r.FormValue("age"))
+		user.Role = r.FormValue("role")
+		user.ID, _ = strconv.Atoi(r.FormValue("id"))
 	} else {
-		return ctx.JSON(500, "Invalid Content-Type")
+		writeJSON(w, http.StatusInternalServerError, "Invalid Content-Type")
+		return
 	}
 
 	err := patchUnsanitizedUser(db, user)
 	if err != nil {
-		return ctx.JSON(500, err.Error())
+		writeJSON(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return ctx.JSON(200, "User updated successfully")
+	writeJSON(w, http.StatusOK, "User updated successfully")
 }
 
 // resetPassword mock
-func resetPasswordHandler(c echo.Context) error {
+func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var m map[string]interface{}
-	if err := c.Bind(&m); err != nil {
-		return c.JSON(500, "Something went wrong")
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
 	}
 
-	host := c.Request().Header.Get("X-Forwarded-For")
+	host := r.Header.Get("X-Forwarded-For")
 	if host == "" {
-		return c.JSON(500, "Something went wrong")
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
 	}
-	resp, err := http.Get("http://internal." + host + "/update?user=1337&pass=" + m["password"].(string))
+	password, ok := m["password"].(string)
+	if !ok {
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	resp, err := http.Get("http://internal." + host + "/update?user=1337&pass=" + password)
 	if err != nil {
-		return c.JSON(500, "Something went wrong")
+		writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+		return
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	return c.JSON(200, "Password reset successfully")
+	writeJSON(w, http.StatusOK, "Password reset successfully")
 }
 
-func hostHeaderLabHandler(c echo.Context) error {
+func hostHeaderLabHandler(w http.ResponseWriter, r *http.Request) {
 	// vulnerable app has custom routing and trusts x-forwarded-host
 	// to route to internal services
-	if c.Request().Header.Get("X-Forwarded-Host") != "" {
-		resp, err := http.Get("http://" + c.Request().Header.Get("X-Forwarded-Host"))
+	if r.Header.Get("X-Forwarded-Host") != "" {
+		resp, err := http.Get("http://" + r.Header.Get("X-Forwarded-Host"))
 		if err != nil {
-			return c.JSON(500, "Something went wrong")
+			writeJSON(w, http.StatusInternalServerError, "Something went wrong")
+			return
 		}
 		defer func() {
 			_ = resp.Body.Close()
 		}()
-		c.Response().Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-		c.Response().WriteHeader(resp.StatusCode)
-		_, err = io.Copy(c.Response().Writer, resp.Body)
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		w.WriteHeader(resp.StatusCode)
+		_, err = io.Copy(w, resp.Body)
 		if err != nil {
-			return c.JSON(500, "Something went wrong")
+			return
 		}
+		return
 	}
-	return c.JSON(200, "Not a Teapot")
+	writeJSON(w, http.StatusOK, "Not a Teapot")
 }
 
-func userProfileHandler(ctx echo.Context) error {
-	val, _ := url.PathUnescape(ctx.Param("id"))
+func userProfileHandler(w http.ResponseWriter, r *http.Request) {
+	val, _ := url.PathUnescape(r.PathValue("id"))
 	fmt.Printf("Unescaped: %s\n", val)
 	user, err := getUnsanitizedUser(db, val)
 	if err != nil {
-		return ctx.JSON(500, err.Error())
+		writeJSON(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return ctx.JSON(200, user)
+	writeJSON(w, http.StatusOK, user)
 }
 
-func getPostsHandler(c echo.Context) error {
-	lang, err := c.Cookie("lang")
+func getPostsHandler(w http.ResponseWriter, r *http.Request) {
+	lang, err := r.Cookie("lang")
 	if err != nil {
 		// If the language cookie is missing, default to English
 		lang = new(http.Cookie)
@@ -464,7 +513,44 @@ func getPostsHandler(c echo.Context) error {
 	}
 	posts, err := getUnsanitizedPostsByLang(db, lang.Value)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		writeJSON(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	return c.JSON(http.StatusOK, posts)
+	writeJSON(w, http.StatusOK, posts)
+}
+
+func writeHTML(w http.ResponseWriter, statusCode int, value string) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_, _ = io.WriteString(w, value)
+}
+
+func writeJSON(w http.ResponseWriter, statusCode int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(value)
+}
+
+func writeString(w http.ResponseWriter, statusCode int, value string) {
+	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_, _ = io.WriteString(w, value)
+}
+
+func recoverPlaygroundRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func logPlaygroundRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s", r.Method, r.URL.RequestURI())
+		next.ServeHTTP(w, r)
+	})
 }
