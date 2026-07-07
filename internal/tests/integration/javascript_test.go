@@ -34,6 +34,8 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
+	{Path: "protocols/javascript/grpc-health.yaml", TestCase: &javascriptGRPCHealth{}},
+	{Path: "protocols/javascript/grpc-denied.yaml", TestCase: &javascriptGRPCDenied{}},
 	{Path: "protocols/javascript/rsync-test.yaml", TestCase: &javascriptRsyncTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
