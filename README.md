@@ -662,3 +662,12 @@ Thanks to all the amazing [**`community contributors for sending PRs`**](https:/
   <sub>**`nuclei`** is distributed under [**MIT License**](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)</sub>
 
 </div>
+
+
+## Known Issues and Workarounds
+
+The maintainers are aware of the following issues:
+
+- Issue mentioned in the bug tracker
+- Users should follow the recommended practices
+- See the documentation for more details
