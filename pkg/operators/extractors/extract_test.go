@@ -18,6 +18,20 @@ func TestExtractor_ExtractRegex(t *testing.T) {
 	require.Equal(t, map[string]struct{}{}, got)
 }
 
+func TestExtractor_ExtractRegexNegativeGroup(t *testing.T) {
+	// A template with a negative group would index match[-1] and panic,
+	// aborting the whole scan on the standard protocol path (no recover).
+	// The extractor should just return no results instead.
+	e := &Extractor{Type: ExtractorTypeHolder{ExtractorType: RegexExtractor}, Regex: []string{`([A-Z])\w+`}, RegexGroup: -1}
+	err := e.CompileExtractors()
+	require.Nil(t, err)
+
+	require.NotPanics(t, func() {
+		got := e.ExtractRegex("RegEx")
+		require.Equal(t, map[string]struct{}{}, got)
+	})
+}
+
 func TestExtractor_ExtractKval(t *testing.T) {
 	e := &Extractor{Type: ExtractorTypeHolder{ExtractorType: KValExtractor}, KVal: []string{"content_type"}}
 	err := e.CompileExtractors()
