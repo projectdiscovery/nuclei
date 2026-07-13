@@ -27,6 +27,11 @@ var (
 // ```
 func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
 	executionId := ctx.Value("executionId").(string)
+	host, _, _ := net.SplitHostPort(address)
+	if host != "" && !protocolstate.IsHostAllowed(executionId, host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
@@ -54,6 +59,10 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 		config = c
 	}
 	executionId := ctx.Value("executionId").(string)
+	if host != "" && !protocolstate.IsHostAllowed(executionId, host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
