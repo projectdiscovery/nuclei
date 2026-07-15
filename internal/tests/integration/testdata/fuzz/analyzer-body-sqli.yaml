@@ -1,0 +1,35 @@
+id: analyzer-body-sqli
+
+info:
+  name: Body-position error-based SQLi via analyzer
+  author: pdteam
+  severity: high
+  description: |
+    Drives the sqli_error analyzer while fuzzing the JSON body "name" field,
+    proving the analyzer works on the body component through the real pipeline.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "POST"'
+        condition: and
+
+    payloads:
+      seed:
+        - "en"
+
+    fuzzing:
+      - part: body
+        type: replace
+        mode: single
+        keys:
+          - "name"
+        fuzz:
+          - "{{seed}}"
+    analyzer:
+      name: sqli_error
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

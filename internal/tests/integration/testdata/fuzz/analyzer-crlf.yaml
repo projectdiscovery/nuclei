@@ -1,0 +1,29 @@
+id: analyzer-crlf
+
+info:
+  name: CRLF Injection via analyzer
+  author: pdteam
+  severity: medium
+  description: |
+    Drives the built-in crlf analyzer through the real fuzzing pipeline. The
+    analyzer injects raw CRLF sequences with canary headers/cookies and confirms
+    when the response is split to include them.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "/home"
+    analyzer:
+      name: crlf
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"
