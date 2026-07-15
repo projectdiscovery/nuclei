@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/burp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/katana"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/swagger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/yaml"
@@ -145,6 +146,7 @@ var providersList = []formats.Format{
 	yaml.New(),
 	openapi.New(),
 	swagger.New(),
+	katana.New(),
 }
 
 // SupportedFormats returns the list of supported formats in comma-separated
