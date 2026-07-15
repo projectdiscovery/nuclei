@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
+	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -313,6 +314,12 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 		// when multiple requests are present preserve the order of requests and protocols
 		// which is already done during unmarshalling
 		requests = template.RequestsQueue
+		// strip code requests from the multiprotocol queue unless code templates
+		// are enabled (-code), mirroring the single-protocol gate so it also
+		// applies to the SDK/direct Parse path.
+		if !options.Options.EnableCodeTemplates {
+			requests = filterOutCodeRequests(requests)
+		}
 		if options.Flow == "" {
 			options.IsMultiProtocol = true
 		}
@@ -351,6 +358,19 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 	var err error
 	template.Executer, err = tmplexec.NewTemplateExecuter(requests, options)
 	return err
+}
+
+// filterOutCodeRequests returns the requests with all code-protocol requests
+// removed. Used to enforce the -code gate on the multiprotocol compile path.
+func filterOutCodeRequests(requests []protocols.Request) []protocols.Request {
+	filtered := make([]protocols.Request, 0, len(requests))
+	for _, req := range requests {
+		if req.Type() == templateTypes.CodeProtocol {
+			continue
+		}
+		filtered = append(filtered, req)
+	}
+	return filtered
 }
 
 // convertRequestToProtocolsRequest is a convenience wrapper to convert
@@ -599,6 +619,8 @@ func applyTemplateVerification(template *Template, data []byte) {
 			template.Verified = cached.Verified
 			template.TemplateVerifier = cached.Verifier
 			options.TemplateVerifier = cached.Verifier
+			// mirror the verification result onto options for the code protocol.
+			options.Verified = cached.Verified
 			//nolint
 			if !(template.Verified && template.TemplateVerifier == "projectdiscovery/nuclei-templates") {
 				template.Options.RawTemplate = data
@@ -619,6 +641,8 @@ func applyTemplateVerification(template *Template, data []byte) {
 		}
 	}
 	options.TemplateVerifier = template.TemplateVerifier
+	// mirror the verification result onto options for the code protocol.
+	options.Verified = template.Verified
 
 	//nolint
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {

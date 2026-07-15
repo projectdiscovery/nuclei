@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -405,6 +406,14 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	pipeOptions := rawhttp.DefaultPipelineOptions
 	pipeOptions.Host = URL.Host
 	pipeOptions.MaxConnections = 1
+	// route pipelined connections through the fastdialer so the network policy
+	// applies; without an explicit Dialer the pipeline client uses a raw dial.
+	if dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
+		fd := dialers.Fastdialer
+		pipeOptions.Dialer = func(addr string) (net.Conn, error) {
+			return fd.Dial(context.Background(), "tcp", addr)
+		}
+	}
 	if request.PipelineConcurrentConnections > 0 {
 		pipeOptions.MaxConnections = request.PipelineConcurrentConnections
 	}
@@ -681,20 +690,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	request.setCustomHeaders(generatedRequest)
-
-	// Try to evaluate any payloads before replacement
-	finalMap := generators.MergeMaps(generatedRequest.dynamicValues, generatedRequest.meta)
-
-	// add known variables from metainput
-	if _, ok := finalMap["ip"]; !ok && input.MetaInput.CustomIP != "" {
-		finalMap["ip"] = input.MetaInput.CustomIP
-	}
-
-	for payloadName, payloadValue := range generatedRequest.meta {
-		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
-			generatedRequest.meta[payloadName] = data
-		}
-	}
 
 	var (
 		resp            *http.Response

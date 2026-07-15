@@ -30,7 +30,8 @@ type Context struct {
 	CookieJar *cookiejar.Jar
 
 	// Args is a workflow shared key-value store
-	args *mapsutil.SyncLockMap[string, interface{}]
+	args              *mapsutil.SyncLockMap[string, interface{}]
+	templateVariables *mapsutil.SyncLockMap[string, struct{}]
 }
 
 // Create a new contextargs instance
@@ -61,6 +62,10 @@ func NewWithInput(ctx context.Context, input string) *Context {
 			Map:      make(map[string]interface{}),
 			ReadOnly: atomic.Bool{},
 		},
+		templateVariables: &mapsutil.SyncLockMap[string, struct{}]{
+			Map:      make(map[string]struct{}),
+			ReadOnly: atomic.Bool{},
+		},
 	}
 }
 
@@ -72,6 +77,7 @@ func (ctx *Context) Context() context.Context {
 // Set the specific key-value pair
 func (ctx *Context) Set(key string, value interface{}) {
 	_ = ctx.args.Set(key, value)
+	ctx.clearTemplateVariable(key)
 }
 
 func (ctx *Context) hasArgs() bool {
@@ -81,6 +87,17 @@ func (ctx *Context) hasArgs() bool {
 // Merge the key-value pairs
 func (ctx *Context) Merge(args map[string]interface{}) {
 	_ = ctx.args.Merge(args)
+	for key := range args {
+		ctx.clearTemplateVariable(key)
+	}
+}
+
+// MergeTemplateVariables merges values produced from template variables.
+func (ctx *Context) MergeTemplateVariables(args map[string]interface{}) {
+	_ = ctx.args.Merge(args)
+	for key := range args {
+		ctx.setTemplateVariable(key)
+	}
 }
 
 // Add the specific key-value pair
@@ -177,6 +194,41 @@ func (ctx *Context) GetAll() map[string]interface{} {
 	return ctx.args.Clone().Map
 }
 
+// GetTemplateVariables returns values currently owned by template variable
+// evaluation.
+func (ctx *Context) GetTemplateVariables() map[string]interface{} {
+	if ctx.templateVariables == nil || ctx.templateVariables.IsEmpty() {
+		return nil
+	}
+
+	values := make(map[string]interface{})
+	for key := range ctx.templateVariables.Clone().Map {
+		value, ok := ctx.Get(key)
+		if ok {
+			values[key] = value
+		}
+	}
+
+	return values
+}
+
+func (ctx *Context) setTemplateVariable(key string) {
+	if ctx.templateVariables == nil {
+		ctx.templateVariables = &mapsutil.SyncLockMap[string, struct{}]{
+			Map:      make(map[string]struct{}),
+			ReadOnly: atomic.Bool{},
+		}
+	}
+	_ = ctx.templateVariables.Set(key, struct{}{})
+}
+
+func (ctx *Context) clearTemplateVariable(key string) {
+	if ctx.templateVariables == nil {
+		return
+	}
+	ctx.templateVariables.Delete(key)
+}
+
 func (ctx *Context) ForEach(f func(string, interface{})) {
 	_ = ctx.args.Iterate(func(k string, v interface{}) error {
 		f(k, v)
@@ -195,10 +247,11 @@ func (ctx *Context) HasArgs() bool {
 
 func (ctx *Context) Clone() *Context {
 	newCtx := &Context{
-		ctx:       ctx.ctx,
-		MetaInput: ctx.MetaInput.Clone(),
-		args:      ctx.args.Clone(),
-		CookieJar: ctx.CookieJar,
+		ctx:               ctx.ctx,
+		MetaInput:         ctx.MetaInput.Clone(),
+		args:              ctx.args.Clone(),
+		templateVariables: ctx.templateVariables.Clone(),
+		CookieJar:         ctx.CookieJar,
 	}
 	return newCtx
 }

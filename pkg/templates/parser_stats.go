@@ -5,9 +5,10 @@ const (
 	TemplateSyntaxErrorStats    = "template-syntax-errors"
 	TemplateSyntaxWarningStats  = "template-syntax-warnings"
 
-	SkippedRequestSignatureTemplateStats = "skipped-request-signature-templates"
-	SkippedUnverifiedCodeTemplateStats   = "skipped-unverified-code-templates"
-	SkippedUnverifiedTemplateStats       = "skipped-unverified-templates"
+	SkippedRequestSignatureTemplateStats     = "skipped-request-signature-templates"
+	SkippedUnverifiedCodeTemplateStats       = "skipped-unverified-code-templates"
+	SkippedUnverifiedJavascriptTemplateStats = "skipped-unverified-javascript-templates"
+	SkippedUnverifiedTemplateStats           = "skipped-unverified-templates"
 
 	ExcludedCodeTemplateStats           = "excluded-code-templates"
 	ExcludedDASTTemplateStats           = "excluded-dast-templates"

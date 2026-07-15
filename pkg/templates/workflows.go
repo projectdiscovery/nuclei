@@ -102,6 +102,13 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			continue
 		}
 
+		if template.IsUnsignedJavascriptTemplate() {
+			// unverified javascript templates are not allowed in workflows
+			stats.Increment(SkippedUnverifiedJavascriptTemplateStats)
+			gologger.Warning().Msgf("Skipping unverified javascript template(s) from workflow: %v\n", path)
+			continue
+		}
+
 		if missingCaps := template.MissingLoadCapabilities(caps); len(missingCaps) > 0 {
 			for _, capability := range missingCaps {
 				stats.Increment(capability.Stat())

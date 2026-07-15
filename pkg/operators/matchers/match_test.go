@@ -8,6 +8,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func withMatcherTestHelperFunction(t *testing.T, name string, fn govaluate.ExpressionFunction) {
+	t.Helper()
+
+	originalFn, hadFn := dsl.HelperFunctions[name]
+	dsl.HelperFunctions[name] = fn
+	t.Cleanup(func() {
+		if hadFn {
+			dsl.HelperFunctions[name] = originalFn
+			return
+		}
+		delete(dsl.HelperFunctions, name)
+	})
+}
+
+func mustCompileDSLMatcher(t *testing.T, expression string) *Matcher {
+	t.Helper()
+
+	matcher := &Matcher{
+		Type: MatcherTypeHolder{MatcherType: DSLMatcher},
+		DSL:  []string{expression},
+	}
+	require.NoError(t, matcher.CompileMatchers())
+	return matcher
+}
+
 func TestWordANDCondition(t *testing.T) {
 	m := &Matcher{condition: ANDCondition, Words: []string{"a", "b"}}
 
@@ -87,6 +112,148 @@ func TestMatcher_MatchDSL(t *testing.T) {
 	for _, value := range values {
 		isMatched := m.MatchDSL(map[string]interface{}{"body": value, "VARIABLE": value})
 		require.True(t, isMatched)
+	}
+}
+
+func TestMatcherMatchDSLDoesNotExecuteHelpersFromResolvedValues(t *testing.T) {
+	var waitForCalls int
+	withMatcherTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
+
+	items := []struct {
+		name       string
+		expression string
+		value      string
+	}{
+		{
+			name:       "single quoted placeholder",
+			expression: "contains(body, '{{server_token}}')",
+			value:      "') && wait_for(5) && contains(body, '",
+		},
+		{
+			name:       "double quoted placeholder",
+			expression: `contains(body, "{{server_token}}")`,
+			value:      `") && wait_for(5) && contains(body, "`,
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			matcher := mustCompileDSLMatcher(t, item.expression)
+
+			require.False(t, matcher.MatchDSL(map[string]interface{}{
+				"template-id":  "test-template",
+				"body":         "safe body",
+				"server_token": item.value,
+			}))
+			require.Zero(t, waitForCalls)
+		})
+	}
+}
+
+func TestMatcherMatchDSLMatchesResolvedValuesLiterally(t *testing.T) {
+	var waitForCalls int
+	withMatcherTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
+
+	items := []struct {
+		name       string
+		expression string
+		value      string
+	}{
+		{
+			name:       "single quoted placeholder",
+			expression: "contains(body, '{{server_token}}')",
+			value:      "') && wait_for(5) && contains(body, '",
+		},
+		{
+			name:       "double quoted placeholder",
+			expression: `contains(body, "{{server_token}}")`,
+			value:      `") && wait_for(5) && contains(body, "`,
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			matcher := mustCompileDSLMatcher(t, item.expression)
+
+			require.True(t, matcher.MatchDSL(map[string]interface{}{
+				"template-id":  "test-template",
+				"body":         "prefix " + item.value + " suffix",
+				"server_token": item.value,
+			}))
+			require.Zero(t, waitForCalls)
+		})
+	}
+}
+
+func TestMatcherMatchDSLResolvedValuesPreserveBytes(t *testing.T) {
+	items := []struct {
+		name  string
+		value string
+	}{
+		{
+			name:  "newline",
+			value: "a\nb",
+		},
+		{
+			name:  "tab",
+			value: "a\tb",
+		},
+		{
+			name:  "carriage return",
+			value: "a\rb",
+		},
+		{
+			name:  "backslash",
+			value: `a\b`,
+		},
+		{
+			name:  "single quote",
+			value: "a'b",
+		},
+		{
+			name:  "double quote",
+			value: `a"b`,
+		},
+		{
+			name:  "mixed quotes and controls",
+			value: "a\nb\tc\rd\\e'f\"g",
+		},
+	}
+
+	expressions := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "single quoted placeholder",
+			expression: "contains(body, '{{server_token}}')",
+		},
+		{
+			name:       "double quoted placeholder",
+			expression: `contains(body, "{{server_token}}")`,
+		},
+	}
+
+	for _, expression := range expressions {
+		t.Run(expression.name, func(t *testing.T) {
+			for _, item := range items {
+				t.Run(item.name, func(t *testing.T) {
+					matcher := mustCompileDSLMatcher(t, expression.expression)
+
+					require.True(t, matcher.MatchDSL(map[string]interface{}{
+						"template-id":  "test-template",
+						"body":         "prefix " + item.value + " suffix",
+						"server_token": item.value,
+					}))
+				})
+			}
+		})
 	}
 }
 
