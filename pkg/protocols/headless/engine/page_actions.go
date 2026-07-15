@@ -187,9 +187,11 @@ func (p *Page) WaitVisible(act *Action, out ActionData) error {
 		return errors.Wrap(err, "Wrong polling time given")
 	}
 
-	element, _ := p.Sleeper(pollTime, timeout).
-		Timeout(timeout).
-		pageElementBy(act.Data)
+	lookupPage := p.Sleeper(pollTime, timeout).Timeout(timeout)
+	element, _, err := p.pageElementBy(lookupPage.Page(), act)
+	if err != nil {
+		return errors.Wrap(err, errElementDidNotAppear)
+	}
 
 	if element != nil {
 		if err := element.WaitVisible(); err != nil {
@@ -461,7 +463,7 @@ func (p *Page) RunScript(act *Action, out ActionData) error {
 
 // ClickElement executes click actions for an element.
 func (p *Page) ClickElement(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -486,7 +488,7 @@ func (p *Page) KeyboardAction(act *Action, out ActionData) error {
 
 // RightClickElement executes right click actions for an element.
 func (p *Page) RightClickElement(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -621,7 +623,7 @@ func (p *Page) InputElement(act *Action, out ActionData) error {
 	if value == "" {
 		return errinvalidArguments
 	}
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -643,7 +645,7 @@ func (p *Page) TimeInputElement(act *Action, out ActionData) error {
 	if value == "" {
 		return errinvalidArguments
 	}
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -669,7 +671,7 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 	if value == "" {
 		return errinvalidArguments
 	}
-	element, err := p.pageElementBy(act.Data)
+	element, selector, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -688,12 +690,15 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 		selectedBool = true
 	}
 
-	selector, err := p.getActionArg(act, "selector")
-	if err != nil {
-		return err
+	if selector == nil {
+		resolved, err := p.getActionArg(act, "selector")
+		if err != nil {
+			return err
+		}
+		selector = &resolved
 	}
 
-	if err := element.Select([]string{value}, selectedBool, selectorBy(selector)); err != nil {
+	if err := element.Select([]string{value}, selectedBool, selectorBy(*selector)); err != nil {
 		return errors.Wrap(err, "could not select input")
 	}
 
@@ -744,7 +749,7 @@ func (p *Page) WaitStable(act *Action, out ActionData) error {
 
 // GetResource gets a resource from an element from page.
 func (p *Page) GetResource(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -760,7 +765,7 @@ func (p *Page) GetResource(act *Action, out ActionData) error {
 
 // FilesInput acts with a file input element on page
 func (p *Page) FilesInput(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -784,7 +789,7 @@ func (p *Page) FilesInput(act *Action, out ActionData) error {
 
 // ExtractElement extracts from an element on the page.
 func (p *Page) ExtractElement(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -910,32 +915,58 @@ func (p *Page) HandleDialog(act *Action, out ActionData) error {
 //
 // Supported values for by: r -> selector & regex, x -> xpath, js -> eval js,
 // search => query, default ("") => selector.
-func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
-	by, ok := data["by"]
-	if !ok {
-		by = ""
+func (p *Page) pageElementBy(page *rod.Page, action *Action) (*rod.Element, *string, error) {
+	by, err := p.getActionArg(action, "by")
+	if err != nil {
+		return nil, nil, err
 	}
-	page := p.page
 
 	switch by {
 	case "r", "regex":
-		return page.ElementR(data["selector"], data["regex"])
-	case "x", "xpath":
-		return page.ElementX(data["xpath"])
-	case "js":
-		return page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
-	case "search":
-		elms, err := page.Search(data["query"])
+		selector, err := p.getActionArg(action, "selector")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-
+		regex, err := p.getActionArg(action, "regex")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.ElementR(selector, regex)
+		return element, &selector, err
+	case "x", "xpath":
+		xpath, err := p.getActionArg(action, "xpath")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.ElementX(xpath)
+		return element, nil, err
+	case "js":
+		js, err := p.getActionArg(action, "js")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.ElementByJS(&rod.EvalOptions{JS: js})
+		return element, nil, err
+	case "search":
+		query, err := p.getActionArg(action, "query")
+		if err != nil {
+			return nil, nil, err
+		}
+		elms, err := page.Search(query)
+		if err != nil {
+			return nil, nil, err
+		}
 		if elms.First != nil {
-			return elms.First, nil
+			return elms.First, nil, nil
 		}
-		return nil, errors.New("no such element")
+		return nil, nil, errors.New("no such element")
 	default:
-		return page.Element(data["selector"])
+		selector, err := p.getActionArg(action, "selector")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.Element(selector)
+		return element, &selector, err
 	}
 }
 
