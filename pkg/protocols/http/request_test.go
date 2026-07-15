@@ -583,6 +583,12 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		// expirable LRU cache creates a background goroutine for TTL expiration that persists
 		// see: https://github.com/hashicorp/golang-lru/blob/770151e9c8cdfae1797826b7b74c33d6f103fbd8/expirable/expirable_lru.go#L79
 		goleak.IgnoreAnyContainingPkg("github.com/hashicorp/golang-lru/v2/expirable"),
+		// net/http keep-alive connections spawn persistConn read/write loops that are
+		// owned by the transport's idle-connection pool, not by the parallel executor.
+		// They are torn down asynchronously on idle timeout, and on slower runners
+		// (e.g. windows) that teardown can outlast goleak's retry window, so ignore them.
+		goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
+		goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
 	)
 
 	options := testutils.DefaultOptions
