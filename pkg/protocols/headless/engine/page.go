@@ -13,6 +13,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
@@ -52,6 +53,9 @@ type Options struct {
 	Timeout       time.Duration
 	DisableCookie bool
 	Options       *types.Options
+	// AuthProvider supplies credentials (headers/cookies) that are injected into
+	// the browser so authenticated headless scans work like HTTP ones. May be nil.
+	AuthProvider authprovider.AuthProvider
 }
 
 // Run runs a list of actions by creating a new page in the browser.
@@ -182,6 +186,13 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
+	// inject authentication (headers/cookies) from the auth provider, if any,
+	// before any navigation occurs so authenticated areas are reachable.
+	createdPage.applyAuthStrategies()
+	// seed any captured browser web storage (e.g. localStorage JWTs from a
+	// headless auto-login) before page scripts run on navigation.
+	createdPage.applyAuthWebStorage()
+
 	data, err := createdPage.ExecuteActions(ctx, actions)
 	if err != nil {
 		return nil, nil, err
@@ -220,6 +231,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
+			// Let any dynamic auth secret inspect the navigation status so an
+			// expired session (reauth-status-codes) is re-authenticated before
+			// the next headless navigation, matching the HTTP protocol.
+			createdPage.notifyAuthResponse(resp.StatusCode)
 			defer func() {
 				_ = resp.Body.Close()
 			}()

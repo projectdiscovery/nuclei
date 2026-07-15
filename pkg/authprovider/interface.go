@@ -35,6 +35,11 @@ type AuthProvider interface {
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	// instead of lazy fetching
 	PreFetchSecrets() error
+	// Close releases any in-memory session material captured during the scan
+	// (e.g. cookies/tokens/web storage obtained by an auto-login dynamic
+	// secret). It must be safe to call once at scan teardown and a no-op for
+	// providers that hold only static secrets. It never contacts the target.
+	Close()
 }
 
 // AuthProviderOptions contains options for the auth provider
@@ -43,13 +48,16 @@ type AuthProviderOptions struct {
 	SecretsFiles []string
 	// LazyFetchSecret is a callback for lazy fetching of dynamic secrets
 	LazyFetchSecret authx.LazyFetchSecret
+	// AutoLoginOptions carries scan-level browser/runtime configuration into
+	// auto-login dynamic secrets (user-agent, headers, proxy, CDP, etc.). May be nil.
+	AutoLoginOptions *authx.AutoLoginRuntimeOptions
 }
 
 // NewAuthProvider creates a new auth provider from the given options
 func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
 	var providers []AuthProvider
 	for _, file := range options.SecretsFiles {
-		provider, err := NewFileAuthProvider(file, options.LazyFetchSecret)
+		provider, err := NewFileAuthProvider(file, options.LazyFetchSecret, options.AutoLoginOptions)
 		if err != nil {
 			return nil, err
 		}

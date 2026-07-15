@@ -22,6 +22,11 @@ const (
 	HeadersAuth     AuthType = "Header"
 	CookiesAuth     AuthType = "Cookie"
 	QueryAuth       AuthType = "Query"
+	// WebStorageAuth carries browser localStorage/sessionStorage to be seeded
+	// into headless scan pages. It has no HTTP representation (its Apply is a
+	// no-op) and is used to replay token-in-web-storage sessions (e.g. captured
+	// via auth-capture) for SPA scans.
+	WebStorageAuth AuthType = "WebStorage"
 )
 
 // SupportedAuthTypes returns the supported auth types
@@ -32,6 +37,7 @@ func SupportedAuthTypes() []string {
 		string(HeadersAuth),
 		string(CookiesAuth),
 		string(QueryAuth),
+		string(WebStorageAuth),
 	}
 }
 
@@ -52,16 +58,20 @@ type AuthFileInfo struct {
 
 // Secret is a struct for secret or credential
 type Secret struct {
-	Type            string   `json:"type" yaml:"type"`
-	Domains         []string `json:"domains" yaml:"domains"`
-	DomainsRegex    []string `json:"domains-regex" yaml:"domains-regex"`
-	Headers         []KV     `json:"headers" yaml:"headers"` // Headers preserve exact casing (useful for case-sensitive APIs)
-	Cookies         []Cookie `json:"cookies" yaml:"cookies"`
-	Params          []KV     `json:"params" yaml:"params"`
-	Username        string   `json:"username" yaml:"username"` // can be either email or username
-	Password        string   `json:"password" yaml:"password"`
-	Token           string   `json:"token" yaml:"token"` // Bearer Auth token
-	skipCookieParse bool     `json:"-" yaml:"-"`         // temporary flag to skip cookie parsing (used in dynamic secrets)
+	Type         string   `json:"type" yaml:"type"`
+	Domains      []string `json:"domains" yaml:"domains"`
+	DomainsRegex []string `json:"domains-regex" yaml:"domains-regex"`
+	Headers      []KV     `json:"headers" yaml:"headers"` // Headers preserve exact casing (useful for case-sensitive APIs)
+	Cookies      []Cookie `json:"cookies" yaml:"cookies"`
+	Params       []KV     `json:"params" yaml:"params"`
+	Username     string   `json:"username" yaml:"username"` // can be either email or username
+	Password     string   `json:"password" yaml:"password"`
+	Token        string   `json:"token" yaml:"token"` // Bearer Auth token
+	// LocalStorage / SessionStorage carry browser web storage for WebStorageAuth
+	// secrets, seeded into headless scan pages before page scripts run.
+	LocalStorage    map[string]string `json:"local-storage" yaml:"local-storage"`
+	SessionStorage  map[string]string `json:"session-storage" yaml:"session-storage"`
+	skipCookieParse bool              `json:"-" yaml:"-"` // temporary flag to skip cookie parsing (used in dynamic secrets)
 }
 
 // GetStrategy returns the auth strategy for the secret
@@ -77,6 +87,8 @@ func (s *Secret) GetStrategy() AuthStrategy {
 		return NewCookiesAuthStrategy(s)
 	case strings.EqualFold(s.Type, string(QueryAuth)):
 		return NewQueryAuthStrategy(s)
+	case strings.EqualFold(s.Type, string(WebStorageAuth)):
+		return NewWebStorageAuthStrategy(s.LocalStorage, s.SessionStorage)
 	}
 	return nil
 }
@@ -131,6 +143,10 @@ func (s *Secret) Validate() error {
 			if err := cookie.Validate(); err != nil {
 				return fmt.Errorf("invalid cookie in cookiesAuth: %s", err)
 			}
+		}
+	case strings.EqualFold(s.Type, string(WebStorageAuth)):
+		if len(s.LocalStorage) == 0 && len(s.SessionStorage) == 0 {
+			return fmt.Errorf("local-storage or session-storage cannot be empty in web storage auth")
 		}
 	case strings.EqualFold(s.Type, string(QueryAuth)):
 		if len(s.Params) == 0 {
@@ -227,6 +243,11 @@ func GetTemplatePathsFromSecretFile(file string) ([]string, error) {
 	}
 	var paths []string
 	for _, dynamic := range auth.Dynamic {
+		// Auto-login dynamics have no template path; skip them so we don't try to
+		// load an empty template.
+		if dynamic.TemplatePath == "" {
+			continue
+		}
 		paths = append(paths, dynamic.TemplatePath)
 	}
 	return paths, nil
