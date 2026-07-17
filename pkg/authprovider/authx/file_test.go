@@ -18,3 +18,16 @@ func TestSecretsUnmarshal(t *testing.T) {
 		require.Nil(t, d.Validate(), "could not validate dynamic")
 	}
 }
+
+func Test_Cookie_Parse_keeps_equals_in_value(t *testing.T) {
+	// Given
+	cookie := &Cookie{Raw: "Set-Cookie: session=YWJjZA==; Path=/; HttpOnly"}
+
+	// When
+	err := cookie.Parse()
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, "session", cookie.Key)
+	require.Equal(t, "YWJjZA==", cookie.Value)
+}

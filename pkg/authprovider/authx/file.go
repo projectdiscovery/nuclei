@@ -189,15 +189,12 @@ func (c *Cookie) Parse() error {
 		return fmt.Errorf("raw cookie cannot be empty")
 	}
 	tmp := strings.TrimPrefix(c.Raw, "Set-Cookie: ")
-	slice := strings.Split(tmp, ";")
-	if len(slice) == 0 {
-		return fmt.Errorf("invalid raw cookie no ; found")
-	}
+	cookiePair, _, _ := strings.Cut(tmp, ";")
 	// first element is the cookie name and value
-	cookie := strings.Split(slice[0], "=")
-	if len(cookie) == 2 {
-		c.Key = cookie[0]
-		c.Value = cookie[1]
+	key, value, found := strings.Cut(cookiePair, "=")
+	if found {
+		c.Key = key
+		c.Value = value
 		return nil
 	}
 	return fmt.Errorf("invalid raw cookie: %s", c.Raw)
