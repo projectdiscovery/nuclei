@@ -896,8 +896,6 @@ github.com/projectdiscovery/rawhttp v0.1.90 h1:LOSZ6PUH08tnKmWsIwvwv1Z/4zkiYKYOS
 github.com/projectdiscovery/rawhttp v0.1.90/go.mod h1:VZYAM25UI/wVB3URZ95ZaftgOnsbphxyAw/XnQRRz4Y=
 github.com/projectdiscovery/rdap v0.9.0 h1:wPhHx5pQ2QI+WGhyNb2PjhTl0NtB39Nk7YFZ9cp8ZGA=
 github.com/projectdiscovery/rdap v0.9.0/go.mod h1:zk4yrJFQ2Hy36Aqk+DvotYQxYAeALaCJ5ORySkff36Q=
-github.com/projectdiscovery/reqx v0.0.0-20260508172251-6205af3493df h1:hQB3kGci6kFK8UtTYhgK70UOR4wrkmkVwl/RSPcmXyw=
-github.com/projectdiscovery/reqx v0.0.0-20260508172251-6205af3493df/go.mod h1:hK9i+LySFhIu8tgt1j8BON9pJr/46avEJ5En7MgTRN0=
 github.com/projectdiscovery/retryabledns v1.0.115 h1:RKV63FNIznFHUoawg/1hs53pVH3wqPtFhwstCuxVSoA=
 github.com/projectdiscovery/retryabledns v1.0.115/go.mod h1:+fEMWoPigw+M0lGNKY7AZ+g8FIgj+4sONjsinMmeL3k=
 github.com/projectdiscovery/retryablehttp-go v1.3.15 h1:qhJzaWWRras9Il66HbWU0DJ35clFJoz/ktQvks1ogGU=
@@ -1656,3 +1654,5 @@ rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
 software.sslmate.com/src/go-pkcs12 v0.7.0 h1:Db8W44cB54TWD7stUFFSWxdfpdn6fZVcDl0w3R4RVM0=
 software.sslmate.com/src/go-pkcs12 v0.7.0/go.mod h1:Qiz0EyvDRJjjxGyUQa2cCNZn/wMyzrRJ/qcDXOQazLI=
+github.com/projectdiscovery/reqx v0.0.0-20260717073230-60a4df85eb4c h1:/1JsMDRIdeRi3lOEjGWJUjTtW2wxCTuVYp6v7M6/4ps=
+github.com/projectdiscovery/reqx v0.0.0-20260717073230-60a4df85eb4c/go.mod h1:hK9i+LySFhIu8tgt1j8BON9pJr/46avEJ5En7MgTRN0=

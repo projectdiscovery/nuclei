@@ -505,13 +505,17 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 			return nil, errors.Wrap(err, "failed to set request body")
 		}
 	}
-	if !r.request.Unsafe {
+	// Under -tls-impersonate, leave User-Agent / Accept* unset so the transport
+	// browser profile can supply matching defaults. Template and -H headers
+	// still win via SetHeader / setCustomHeaders.
+	impersonate := r.options.Options != nil && r.options.Options.TlsImpersonate
+	if !r.request.Unsafe && !impersonate {
 		userAgent := useragent.PickRandom()
 		httputil.SetHeader(req, "User-Agent", userAgent.Raw)
 	}
 
 	// Only set these headers on non-raw requests
-	if len(r.request.Raw) == 0 && !r.request.Unsafe {
+	if len(r.request.Raw) == 0 && !r.request.Unsafe && !impersonate {
 		httputil.SetHeader(req, "Accept", "*/*")
 		httputil.SetHeader(req, "Accept-Language", "en")
 	}

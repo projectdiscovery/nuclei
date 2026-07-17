@@ -93,8 +93,10 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 	if err != nil {
 		return errors.Wrap(err, "fuzz: could not build request from url")
 	}
-	userAgent := useragent.PickRandom()
-	baseRequest.Header.Set("User-Agent", userAgent.Raw)
+	if request.options.Options == nil || !request.options.Options.TlsImpersonate {
+		userAgent := useragent.PickRandom()
+		baseRequest.Header.Set("User-Agent", userAgent.Raw)
+	}
 	request.addHeadersToRequest(baseRequest)
 
 	// execute with one value first to checks its applicability

@@ -112,7 +112,7 @@ require (
 	github.com/projectdiscovery/networkpolicy v0.1.40
 	github.com/projectdiscovery/ratelimit v0.0.88
 	github.com/projectdiscovery/rdap v0.9.0
-	github.com/projectdiscovery/reqx v0.0.0-20260508172251-6205af3493df
+	github.com/projectdiscovery/reqx v0.0.0-20260717073230-60a4df85eb4c
 	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.2.2
 	github.com/projectdiscovery/uncover v1.2.1

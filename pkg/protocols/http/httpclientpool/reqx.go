@@ -2,7 +2,6 @@ package httpclientpool
 
 import (
 	"crypto/tls"
-	"math/rand"
 	"net/url"
 	"time"
 
@@ -24,23 +23,6 @@ type reqxTransportParams struct {
 	responseHeaderTimeout time.Duration
 }
 
-// impersonationProfiles is the set of reqx browser profiles used to satisfy the
-// -tls-impersonate option (a randomized JA3/JA4 + HTTP/2 fingerprint), replacing
-// fastdialer's ja3 impersonate dialer.
-var impersonationProfiles = []reqx.BrowserProfile{
-	reqx.ProfileChrome131,
-	reqx.ProfileChrome132,
-	reqx.ProfileFirefox133,
-	reqx.ProfileFirefoxESR,
-	reqx.ProfileSafari18,
-	reqx.ProfileEdge131,
-	reqx.ProfileBrave,
-}
-
-func randomBrowserProfile() reqx.BrowserProfile {
-	return impersonationProfiles[rand.Intn(len(impersonationProfiles))]
-}
-
 // newReqxTransport builds the reqx.Transport that backs nuclei's safe HTTP path,
 // replacing the net/http.Transport previously constructed inline. fastdialer is
 // preserved as the dialer so DNS caching, dialed-IP tracking and network policy
@@ -50,8 +32,8 @@ func randomBrowserProfile() reqx.BrowserProfile {
 // keep working as before.
 //
 // HTTP/2 is only attempted when the user explicitly opts in (-force-attempt-http2),
-// matching the historical ForceAttemptHTTP2 behavior; impersonation implies a
-// full browser profile (TLS + HTTP/2 + header order) instead.
+// matching the historical ForceAttemptHTTP2 behavior; impersonation applies a
+// pinned browser profile (TLS + HTTP/2 + matching header values) instead.
 func newReqxTransport(dialer *fastdialer.Dialer, options *types.Options, params reqxTransportParams) (*reqx.Transport, error) {
 	opts := []reqx.Option{
 		reqx.WithDialer(reqx.DialerFunc(dialer.Dial)),
@@ -74,7 +56,12 @@ func newReqxTransport(dialer *fastdialer.Dialer, options *types.Options, params 
 
 	switch {
 	case options.TlsImpersonate:
-		opts = append(opts, reqx.WithBrowserProfile(randomBrowserProfile()))
+		// Keep-alive and a pinned profile keep TLS, HTTP/2, and default request
+		// headers aligned with the impersonated client.
+		opts = append(opts,
+			reqx.WithKeepAlive(true),
+			reqx.WithBrowserProfile(reqx.ProfileChrome131),
+		)
 	case options.ForceAttemptHTTP2:
 		// leave reqx in auto mode so HTTP/2 is negotiated via ALPN
 	default:
