@@ -2,12 +2,18 @@ package sdk_test
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/miekg/dns"
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/stretchr/testify/require"
 	"github.com/tarunKoyalwar/goleak"
@@ -27,7 +33,11 @@ var knownLeaks = []goleak.Option{
 
 func TestSimpleNuclei(t *testing.T) {
 	fn := func() {
+		resolver, stopResolver := startSDKTestDNSResolver(t)
+		templatePath := writeSDKTestDNSTemplate(t, resolver)
+
 		defer func() {
+			stopResolver()
 			// resources like leveldb have a delay to commit in-memory resources
 			// to disk, typically 1-2 seconds, so we wait for 2 seconds
 			time.Sleep(2 * time.Second)
@@ -35,14 +45,26 @@ func TestSimpleNuclei(t *testing.T) {
 		}()
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
-			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
+			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{templatePath}}),
 			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
+			nuclei.DisableUpdateCheck(),
 		)
 		require.Nil(t, err)
-		ne.LoadTargets([]string{"scanme.sh"}, false) // probe non http/https target is set to false here
-		// when callback is nil it nuclei will print JSON output to stdout
-		err = ne.ExecuteWithCallback(nil)
+		ne.LoadTargets([]string{"sdk.test"}, false)
+		require.NoError(t, ne.LoadAllTemplates())
+
+		var (
+			resultsMu sync.Mutex
+			results   []*output.ResultEvent
+		)
+		err = ne.ExecuteWithCallback(func(event *output.ResultEvent) {
+			resultsMu.Lock()
+			defer resultsMu.Unlock()
+			results = append(results, event)
+		})
 		require.Nil(t, err)
+		require.Len(t, results, 1)
+		require.Equal(t, "sdk-simple-dns", results[0].TemplateID)
 		defer ne.Close()
 	}
 
@@ -57,6 +79,77 @@ func TestSimpleNuclei(t *testing.T) {
 		}
 	} else {
 		fn()
+	}
+}
+
+func writeSDKTestDNSTemplate(t *testing.T, resolver string) string {
+	t.Helper()
+
+	templatePath := filepath.Join(t.TempDir(), "simple-dns.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(fmt.Sprintf(`id: sdk-simple-dns
+
+info:
+  name: SDK simple DNS test
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}"
+    type: A
+    resolvers:
+      - "%s"
+    matchers:
+      - type: word
+        part: answer
+        words:
+          - "127.0.0.1"
+`, resolver)), 0o600))
+
+	return templatePath
+}
+
+func startSDKTestDNSResolver(t *testing.T) (string, func()) {
+	t.Helper()
+
+	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+	require.NoError(t, err)
+
+	started := make(chan struct{})
+	serverErr := make(chan error, 1)
+	server := &dns.Server{
+		PacketConn: listener,
+		NotifyStartedFunc: func() {
+			close(started)
+		},
+		Handler: dns.HandlerFunc(func(writer dns.ResponseWriter, request *dns.Msg) {
+			response := new(dns.Msg)
+			response.SetReply(request)
+			for _, question := range request.Question {
+				if question.Qtype == dns.TypeA {
+					response.Answer = append(response.Answer, &dns.A{
+						Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+						A:   net.ParseIP("127.0.0.1"),
+					})
+				}
+			}
+			if err := writer.WriteMsg(response); err != nil {
+				t.Errorf("could not write DNS response: %v", err)
+			}
+		}),
+	}
+	go func() {
+		serverErr <- server.ActivateAndServe()
+	}()
+
+	select {
+	case <-started:
+	case err := <-serverErr:
+		require.NoError(t, err)
+	}
+
+	return listener.LocalAddr().String(), func() {
+		require.NoError(t, server.Shutdown())
+		require.NoError(t, <-serverErr)
 	}
 }
 
@@ -100,7 +193,10 @@ func TestSimpleNucleiRemote(t *testing.T) {
 
 func TestThreadSafeNuclei(t *testing.T) {
 	fn := func() {
+		resolver, stopResolver := startSDKTestDNSResolver(t)
+		templatePath := writeSDKTestDNSTemplate(t, resolver)
 		defer func() {
+			stopResolver()
 			// resources like leveldb have a delay to commit in-memory resources
 			// to disk, typically 1-2 seconds, so we wait for 2 seconds
 			time.Sleep(2 * time.Second)
@@ -110,15 +206,13 @@ func TestThreadSafeNuclei(t *testing.T) {
 		ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.TODO())
 		require.Nil(t, err)
 
-		// scan 1 = run dns templates on scanme.sh
-		t.Run("scanme.sh", func(t *testing.T) {
-			err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}))
+		t.Run("sdk.test", func(t *testing.T) {
+			err = ne.ExecuteNucleiWithOpts([]string{"sdk.test"}, nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{templatePath}}), nuclei.DisableUpdateCheck())
 			require.Nil(t, err)
 		})
 
-		// scan 2 = run dns templates on honey.scanme.sh
-		t.Run("honey.scanme.sh", func(t *testing.T) {
-			err = ne.ExecuteNucleiWithOpts([]string{"honey.scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}))
+		t.Run("sdk-two.test", func(t *testing.T) {
+			err = ne.ExecuteNucleiWithOpts([]string{"sdk-two.test"}, nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{templatePath}}), nuclei.DisableUpdateCheck())
 			require.Nil(t, err)
 		})
 
