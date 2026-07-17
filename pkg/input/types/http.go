@@ -279,10 +279,10 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 		// yaml may include trailing newlines
 		// remove them if present
 		bin := buff.Bytes()
-		if bin[len(bin)-1] == '\n' {
+		if len(bin) > 0 && bin[len(bin)-1] == '\n' {
 			bin = bin[:len(bin)-1]
 		}
-		if bin[len(bin)-1] == '\r' || bin[len(bin)-1] == '\n' {
+		if len(bin) > 0 && (bin[len(bin)-1] == '\r' || bin[len(bin)-1] == '\n') {
 			bin = bin[:len(bin)-1]
 		}
 		rr.Request.Body = conversion.String(bin)
