@@ -22,7 +22,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.3.1
 	github.com/projectdiscovery/rawhttp v0.1.90
 	github.com/projectdiscovery/retryabledns v1.0.115
-	github.com/projectdiscovery/retryablehttp-go v1.3.18
+	github.com/projectdiscovery/retryablehttp-go v1.3.19
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -113,7 +113,7 @@ require (
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.108
 	github.com/projectdiscovery/utils v0.11.1
-	github.com/projectdiscovery/wappalyzergo v0.2.89
+	github.com/projectdiscovery/wappalyzergo v0.2.90
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -330,7 +330,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/cdncheck v1.2.44 // indirect
+	github.com/projectdiscovery/cdncheck v1.2.45 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
