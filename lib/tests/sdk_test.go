@@ -38,12 +38,8 @@ func TestSimpleNuclei(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
-		// DisableUpdateCheck: parallel `go test` packages each run UpdateIfOutdated
-		// against the shared templates dir (sync.Once is per-process only), which
-		// races and surfaces as ENOENT during NewNucleiEngineCtx.
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
-			nuclei.DisableUpdateCheck(),
 			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
 			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
 		)
@@ -79,7 +75,6 @@ func TestSimpleNucleiRemote(t *testing.T) {
 		}()
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
-			nuclei.DisableUpdateCheck(),
 			nuclei.WithTemplatesOrWorkflows(
 				nuclei.TemplateSources{
 					RemoteTemplates: []string{"https://cloud.projectdiscovery.io/public/nameserver-fingerprint.yaml"},
@@ -117,7 +112,7 @@ func TestThreadSafeNuclei(t *testing.T) {
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
 		// create nuclei engine with options
-		ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.TODO(), nuclei.DisableUpdateCheck())
+		ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.TODO())
 		require.NoError(t, err)
 		defer ne.Close()
 
@@ -156,7 +151,6 @@ func TestWithVarsNuclei(t *testing.T) {
 		}()
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
-			nuclei.DisableUpdateCheck(),
 			nuclei.EnableSelfContainedTemplates(),
 			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{"http/token-spray/api-1forge.yaml"}}),
 			nuclei.WithVars([]string{"token=foobar"}),
