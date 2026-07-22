@@ -1,7 +1,23 @@
 // Package dcerpc exposes a small subset of the Mzack9999/goimpacket DCE/RPC
 // stack to nuclei javascript templates. It is the entry point for AD attack
 // templates that need to talk EPMAPPER / SAMR / LSARPC / SVCCTL / TSCH / WINREG
-// to a domain controller or member server.
+// / SRVSVC to a domain controller or member server.
+//
+// Capability map overlapping nmap SMB scripts (issue #4707):
+//
+//	smb-enum-users     → Client.SamrEnumerateUsers
+//	smb-enum-services  → Client.EnumServices
+//	smb-enum-sessions  → Client.EnumSessions
+//	smb-psexec         → Client.SmbExec (also nuclei/goexec, nuclei/scmr)
+//	smb-ls / cat       → Client.SmbLs / SmbCat (prefer nuclei/smb for new templates)
+//
+// Not implemented here (by design):
+//
+//	smb-flood          — DoS; out of scope for nuclei
+//	smb-mbenum         — mailslot browser; niche
+//	smb-print-text     — printer write; niche
+//	smb-enum-processes — no clean goimpacket surface yet
+//	smb-protocols / unauth discovery — nuclei/smb
 //
 // All host arguments are validated against the per-execution network policy
 // before any traffic is sent. The actual TCP dial is performed via goimpacket's
