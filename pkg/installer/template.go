@@ -585,11 +585,12 @@ func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, err
 			allChecksums := make(map[string]string)
 			for v := range strings.SplitSeq(string(checksums), ";") {
 				v = strings.TrimSpace(v)
-				name, hash, ok := strings.Cut(v, ",")
-				if !ok {
+				// Strict two-field parse: paths may contain commas (Cut would mis-parse).
+				tmparr := strings.Split(v, ",")
+				if len(tmparr) != 2 {
 					continue
 				}
-				allChecksums[name] = hash
+				allChecksums[tmparr[0]] = tmparr[1]
 			}
 			return allChecksums, nil
 		}
