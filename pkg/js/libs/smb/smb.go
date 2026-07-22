@@ -12,9 +12,12 @@
 // nuclei/smb and nuclei/dcerpc.SmbLs/SmbCat share one stack. Unauthenticated
 // discovery still uses zgrab2 / fingerprintx.
 //
-// RPC-heavy nmap scripts (enum-users/services/sessions, psexec) live under
+// RPC-heavy nmap scripts (enum-users/services/sessions/processes, psexec) live under
 // `nuclei/dcerpc` / `nuclei/goexec` — see that package's docs. Do not duplicate
 // them here; share filesystem and unauthenticated discovery stay in this module.
+//
+// Permanently out of scope for nuclei (also documented on dcerpc):
+// smb-flood (DoS), smb-mbenum (obsolete browser), smb-print-text (printer write).
 //
 // Sandbox rules applied to every share operation:
 //   - protocolstate.IsHostAllowed before dial

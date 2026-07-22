@@ -167,6 +167,35 @@ export class Client {
     public EnumSessions(): SessionEntry[] | null {
         return null;
     }
+
+    /**
+    * EnumProcesses lists running processes via the Terminal Services Legacy API
+    * (nmap smb-enum-processes analogue).
+    * @example
+    * ```javascript
+    * const c = new dcerpc.Client('dc01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
+    * const procs = c.EnumProcesses();
+    * for (const p of procs) {
+    *   log(p.PID + ' ' + p.Name + ' session=' + p.SessionID);
+    * }
+    * ```
+    */
+    public EnumProcesses(): ProcessEntry[] | null {
+        return null;
+    }
+
+    /**
+    * EnumLoggedOnUsers lists users known to the workstation service (WKSSVC).
+    * @example
+    * ```javascript
+    * const c = new dcerpc.Client('ws01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
+    * const users = c.EnumLoggedOnUsers();
+    * for (const u of users) { log(u.LogonDomain + '\\' + u.Username); }
+    * ```
+    */
+    public EnumLoggedOnUsers(): LoggedOnUser[] | null {
+        return null;
+    }
     
 
     /**
@@ -346,6 +375,27 @@ export interface SessionEntry {
     Username?: string,
     Active?: number,
     Idle?: number,
+}
+
+/**
+ * ProcessEntry is a running process (nmap smb-enum-processes analogue via TSTS).
+ */
+export interface ProcessEntry {
+    Name?: string,
+    PID?: number,
+    SessionID?: number,
+    WorkingSetSize?: number,
+    SID?: string,
+}
+
+/**
+ * LoggedOnUser is a WKSSVC workstation user record.
+ */
+export interface LoggedOnUser {
+    Username?: string,
+    LogonDomain?: string,
+    OthDomains?: string,
+    LogonServer?: string,
 }
 
 

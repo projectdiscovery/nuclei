@@ -8,15 +8,16 @@
 //	smb-enum-users     → Client.SamrEnumerateUsers
 //	smb-enum-services  → Client.EnumServices
 //	smb-enum-sessions  → Client.EnumSessions
+//	smb-enum-processes → Client.EnumProcesses (TSTS LegacyAPI)
 //	smb-psexec         → Client.SmbExec (also nuclei/goexec, nuclei/scmr)
 //	smb-ls / cat       → Client.SmbLs / SmbCat (prefer nuclei/smb for new templates)
+//	(logged-on users)  → Client.EnumLoggedOnUsers (WKSSVC; not in nmap list)
 //
-// Not implemented here (by design):
+// Not implemented here (by design — do not add):
 //
-//	smb-flood          — DoS; out of scope for nuclei
-//	smb-mbenum         — mailslot browser; niche
-//	smb-print-text     — printer write; niche
-//	smb-enum-processes — no clean goimpacket surface yet
+//	smb-flood          — DoS; harmful, no scanner value (nmap categories: dos)
+//	smb-mbenum         — Master Browser / mailslots; obsolete NetBIOS surface
+//	smb-print-text     — writes to printer spooler; intrusive niche
 //	smb-protocols / unauth discovery — nuclei/smb
 //
 // All host arguments are validated against the per-execution network policy
