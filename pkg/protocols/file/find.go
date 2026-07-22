@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"io"
 	"io/fs"
 	"os"
@@ -18,6 +19,22 @@ import (
 // glob, file or folders, etc.
 func (request *Request) getInputPaths(target string, callback func(string)) error {
 	processed := make(map[string]struct{})
+
+	// Remote SMB targets (UNC / smb://) — issue #6142 bridge.
+	if IsSMBPath(target) {
+		ctx := context.Background()
+		if request.options != nil {
+			// Prefer scan context when available via Progress options; Background is fine for listing.
+			_ = request.options
+		}
+		return request.enumerateSMBInputs(ctx, target, func(path string) {
+			if _, ok := processed[path]; ok {
+				return
+			}
+			processed[path] = struct{}{}
+			callback(path)
+		})
+	}
 
 	// Template input includes a wildcard
 	if strings.Contains(target, "*") && !request.NoRecursive {
