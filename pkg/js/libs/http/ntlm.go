@@ -108,14 +108,17 @@ func parseNTLMMessage(data []byte) (*NTLMInfo, error) {
 		info.TargetName = decodeUTF16LE(data[targetNameOffset : targetNameOffset+uint32(targetNameLen)])
 	}
 
+	negotiateFlags := binary.LittleEndian.Uint32(data[20:24])
+
 	targetInfoLen := binary.LittleEndian.Uint16(data[40:42])
 	targetInfoOffset := binary.LittleEndian.Uint32(data[44:48])
 	if targetInfoLen > 0 && int(targetInfoOffset)+int(targetInfoLen) <= len(data) {
 		parseAVPairs(data[targetInfoOffset:targetInfoOffset+uint32(targetInfoLen)], info)
 	}
 
-	// VERSION structure starts at offset 48 when present (8 bytes).
-	if len(data) >= 56 && info.ProductVersion == "" {
+	// VERSION is only present when NTLMSSP_NEGOTIATE_VERSION is set (MS-NLMP).
+	const ntlmsspNegotiateVersion = 0x02000000
+	if negotiateFlags&ntlmsspNegotiateVersion != 0 && len(data) >= 56 && info.ProductVersion == "" {
 		major := data[48]
 		minor := data[49]
 		build := binary.LittleEndian.Uint16(data[50:52])
@@ -152,11 +155,12 @@ func parseAVPairs(data []byte, info *NTLMInfo) {
 			info.DNSDomainName = decodeUTF16LE(val)
 		case 5:
 			info.DNSTreeName = decodeUTF16LE(val)
-		case 7:
+		case 7: // MsvAvTimestamp
 			if len(val) >= 8 {
 				info.Timestamp = binary.LittleEndian.Uint64(val)
 			}
-		case 8:
+		case 8: // MsvAvSingleHost — binary structure, not UTF-16 text
+		case 9: // MsvAvTargetName (SPN)
 			if info.TargetName == "" {
 				info.TargetName = decodeUTF16LE(val)
 			}
