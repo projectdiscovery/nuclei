@@ -585,7 +585,7 @@ func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, err
 			allChecksums := make(map[string]string)
 			for v := range strings.SplitSeq(string(checksums), ";") {
 				v = strings.TrimSpace(v)
-				// Strict two-field parse: paths may contain commas (Cut would mis-parse).
+				// Strict two-field parse: paths may contain commas (Cut would parse wrong).
 				tmparr := strings.Split(v, ",")
 				if len(tmparr) != 2 {
 					continue
