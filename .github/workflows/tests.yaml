@@ -40,7 +40,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-    runs-on: "${{ matrix.os }}"
+        # The Ubuntu cell carries the -race unit run (the slowest of the three);
+        # give it a larger runner so `go test ./...` parallelises across cores.
+        include:
+          - { os: ubuntu-latest,  runner: ubuntu-latest-16-cores }
+          - { os: windows-latest, runner: windows-latest }
+          - { os: macOS-latest,   runner: macOS-latest }
+    runs-on: "${{ matrix.runner }}"
     steps:
       - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
@@ -85,7 +91,7 @@ jobs:
 
   sdk:
     name: "Run example SDK"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: "${{ github.token }}"
@@ -106,14 +112,21 @@ jobs:
 
   integration:
     name: "Integration tests"
-    needs: ["tests"]
+    needs: ["lint"]
     env:
       GITHUB_TOKEN: "${{ github.token }}"
+      # The suite semaphore defaults to min(GOMAXPROCS,4); integration cases are
+      # I/O-bound (loopback servers), so oversubscribe to speed the slow cells.
+      PARALLELISM: "8"
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - { os: ubuntu-latest,  runner: ubuntu-latest-16-cores }
+          - { os: windows-latest, runner: windows-latest }
+          - { os: macOS-latest,   runner: macOS-latest }
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/python@v1
@@ -126,7 +139,7 @@ jobs:
 
   functional:
     name: "Functional tests"
-    needs: ["tests"]
+    needs: ["lint"]
     env:
       GITHUB_TOKEN: "${{ github.token }}"
     strategy:
@@ -147,7 +160,7 @@ jobs:
 
   validate:
     name: "Template validate"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: "${{ github.token }}"
@@ -159,7 +172,7 @@ jobs:
 
   codeql:
     name: "CodeQL analysis"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -201,8 +214,8 @@ jobs:
 
   release:
     name: "Release test"
-    needs: ["tests"]
-    runs-on: ubuntu-latest
+    needs: ["lint"]
+    runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
@@ -212,10 +225,10 @@ jobs:
 
   flamegraph:
     name: "Flamegraph"
-    needs: ["tests"]
+    needs: ["lint"]
     uses: ./.github/workflows/flamegraph.yaml
 
   # perf-regression:
   #   name: "Performance regression"
-  #   needs: ["tests"]
+  #   needs: ["lint"]
   #   uses: ./.github/workflows/perf-regression.yaml
