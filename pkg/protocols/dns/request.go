@@ -45,11 +45,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	vars := protocolutils.GenerateDNSVariables(domain)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	// merge with metadata (eg. from workflow context)
+	scope := request.options.NewVariablesScope(vars, metadata, optionVars)
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+	variablesMap := request.options.Variables.EvaluateScope(scope).Values
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	} else {
+		vars = generators.MergeMaps(vars, metadata, optionVars)
 	}
-	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
 	// if request threads matches global payload concurrency we follow it

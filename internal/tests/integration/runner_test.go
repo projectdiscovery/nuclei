@@ -159,9 +159,9 @@ func executeIntegrationCase(testCase integrationCase) error {
 	if testCase.DisableOn != nil && testCase.DisableOn() {
 		return nil
 	}
-	if needsSignedCodeTemplates(testCase.Path) {
-		if err := ensureSignedCodeTemplates(); err != nil {
-			return fmt.Errorf("failed to sign code templates: %w", err)
+	if needsSignedIntegrationTemplates(testCase.Path) {
+		if err := ensureSignedIntegrationTemplates(); err != nil {
+			return fmt.Errorf("failed to sign integration templates: %w", err)
 		}
 	}
 
@@ -191,8 +191,10 @@ func parallelism() int {
 	return parallelism
 }
 
-func needsSignedCodeTemplates(path string) bool {
-	return strings.HasPrefix(path, "protocols/code/") || strings.Contains(path, "workflow/code-")
+func needsSignedIntegrationTemplates(path string) bool {
+	return strings.HasPrefix(path, "protocols/code/") ||
+		strings.Contains(path, "workflow/code-") ||
+		strings.HasPrefix(path, "protocols/javascript/")
 }
 
 func testNameForPath(path string) string {

@@ -3,6 +3,7 @@ package smb
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
@@ -49,7 +50,11 @@ func connectSMBInfoMode(ctx context.Context, executionId string, host string, po
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+	dialSMBInfo := func(ctx context.Context) (net.Conn, error) {
+		return dialer.Fastdialer.Dial(ctx, "tcp", address)
+	}
+	conn, err := dialSMBInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +62,12 @@ func connectSMBInfoMode(ctx context.Context, executionId string, host string, po
 	result, err := getSMBInfo(conn, true, false)
 	_ = conn.Close() // close regardless of error
 	if err == nil {
+		updateSMBv1Support(ctx, result, dialSMBInfo)
 		return result, nil
 	}
 
 	// try to negotiate SMBv1
-	conn, err = dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err = dialSMBInfo(ctx)
 	if err != nil {
 		return nil, err
 	}

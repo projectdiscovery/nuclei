@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -287,8 +288,26 @@ func (p *Page) addInteractshURL(URLs ...string) {
 	p.InteractshURLs = append(p.InteractshURLs, URLs...)
 }
 
+// appendRule records a request/response modification rule. The hijack handler
+// reads p.rules from a separate goroutine, so writes must be synchronized.
+func (p *Page) appendRule(r rule) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.rules = append(p.rules, r)
+}
+
+// rulesSnapshot returns a copy of the current rules for lock-free iteration by
+// the hijack handler (which performs network I/O and must not hold the lock).
+func (p *Page) rulesSnapshot() []rule {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return slices.Clone(p.rules)
+}
+
 func (p *Page) hasModificationRules() bool {
-	for _, rule := range p.rules {
+	for _, rule := range p.rulesSnapshot() {
 		if containsAnyModificationActionType(rule.Action) {
 			return true
 		}

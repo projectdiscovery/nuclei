@@ -7,17 +7,19 @@ import (
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 type Dialers struct {
 	Fastdialer                 *fastdialer.Dialer
 	RawHTTPClient              *rawhttp.Client
 	DefaultHTTPClient          *retryablehttp.Client
-	HTTPClientPool             *mapsutil.SyncLockMap[string, *retryablehttp.Client]
+	HTTPClientPool             *HTTPPool
+	PerHostRateLimitPool       any // *httpclientpool.PerHostRateLimitPool
+	HTTPToHTTPSPortTracker     any // *httpclientpool.HTTPToHTTPSPortTracker
 	NetworkPolicy              *networkpolicy.NetworkPolicy
 	LocalFileAccessAllowed     bool
 	RestrictLocalNetworkAccess bool
+	ExcludeTargets             []string
 
 	sync.Mutex
 }

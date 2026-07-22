@@ -3,8 +3,8 @@ package utils
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestUnmarshalInsertionOrderedMapYAML(t *testing.T) {

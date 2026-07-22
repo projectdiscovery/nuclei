@@ -17,7 +17,10 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 	return func(ctx *rod.Hijack) {
 		// usually browsers don't use chunked transfer encoding, so we set the content-length nevertheless
 		ctx.Request.Req().ContentLength = int64(len(ctx.Request.Body()))
-		for _, rule := range p.rules {
+		// snapshot the rules once: ExecuteActions may still be appending rules
+		// from another goroutine while this hijack handler runs.
+		rules := p.rulesSnapshot()
+		for _, rule := range rules {
 			if rule.Part != "request" {
 				continue
 			}
@@ -61,7 +64,7 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 			}
 		}
 
-		for _, rule := range p.rules {
+		for _, rule := range rules {
 			if rule.Part != "response" {
 				continue
 			}

@@ -9,13 +9,17 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
+func expectPublicDNSResultsCount(results []string, expectedNumbers ...int) error {
+	return expectResultsCount(results, append([]int{0}, expectedNumbers...)...)
+}
+
 func TestDNS(t *testing.T) {
 	t.Run("A", func(t *testing.T) {
 		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/dns/a.yaml", "one.one.one.one", suite.debug)
 		if err != nil {
 			t.Fatalf("dns A request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -25,7 +29,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns AAAA request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -35,7 +39,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns CNAME request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -45,7 +49,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns SRV request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -55,7 +59,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns NS request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -65,7 +69,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns TXT request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -75,7 +79,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns PTR request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -85,7 +89,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns CAA request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -105,7 +109,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns variables request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -115,7 +119,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns payload request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 3); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1, 2, 3); err != nil {
 			t.Fatal(err)
 		}
 
@@ -123,7 +127,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns payload request with CLI override failed: %v", err)
 		}
-		if err := expectResultsCount(results, 4); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1, 2, 3, 4); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -133,7 +137,7 @@ func TestDNS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns DSL matcher variable request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
