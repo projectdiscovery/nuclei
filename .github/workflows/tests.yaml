@@ -241,7 +241,13 @@ jobs:
       - uses: projectdiscovery/actions/setup/go@v1
         with:
           go-version: "stable"
-      - uses: projectdiscovery/actions/goreleaser@v1
+      # PR compile smoke only: `build` (no archives/docker) over one target per OS
+      # via the snapshot config — fast on a standard runner. The full multi-arch
+      # build + docker + PGO runs on tags via release.yaml.
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: build --snapshot --clean --config .goreleaser.snapshot.yml
 
   flamegraph:
     name: "Flamegraph"

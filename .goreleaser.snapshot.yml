@@ -1,0 +1,24 @@
+version: 2
+
+# CI-only config for the PR "Release test". It's a fast goreleaser compile smoke
+# over the main platforms (one per OS) that verifies the goreleaser build path
+# and that nuclei still cross-compiles, without paying for all 8 targets + the
+# multi-arch docker build on a standard runner. The authoritative full build
+# (every goos/goarch + docker + PGO) is .goreleaser.yml and runs on tags via
+# .github/workflows/release.yaml. Keep the build block in sync with that file.
+builds:
+  - main: cmd/nuclei/main.go
+    binary: nuclei
+    id: nuclei-cli
+    env:
+      - CGO_ENABLED=0
+      - GOEXPERIMENT=greenteagc
+    targets:
+      - linux_amd64
+      - windows_amd64
+      - darwin_arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
