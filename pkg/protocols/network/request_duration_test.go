@@ -98,7 +98,9 @@ func requireDurationField(t *testing.T, event output.InternalEvent, key string) 
 
 	value, ok := event[key].(float64)
 	require.Truef(t, ok, "expected %s to be a float64 duration", key)
-	require.Greater(t, value, float64(0))
+	// A sub-millisecond lookup can measure as exactly 0 on low-resolution
+	// clocks (notably Windows), so only require a non-negative duration.
+	require.GreaterOrEqual(t, value, float64(0))
 	require.Less(t, value, float64(60))
 }
 
