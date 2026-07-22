@@ -36,8 +36,8 @@ import (
 
 type (
 	// SMBClient is a client for SMB servers.
-	// Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.
-	// github.com/projectdiscovery/go-smb2 driver
+	// Unauthenticated discovery uses zgrab2 / fingerprintx.
+	// Authenticated share I/O uses goimpacket via pkg/js/libs/smbsession.
 	// @example
 	// ```javascript
 	// const smb = require('nuclei/smb');
