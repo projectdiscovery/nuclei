@@ -39,9 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Ubuntu carries the -race unit run (the slowest cell); a larger runner
-        # lets `go test ./...` parallelise across cores.
-        os: [ubuntu-latest-16-cores, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: "${{ matrix.os }}"
     steps:
       - uses: actions/checkout@v7
@@ -72,16 +70,16 @@ jobs:
       # on ubuntu; windows/macOS run the same suite without instrumentation.
       - name: "Unit tests (race)"
         run: make test
-        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
       - name: "Unit tests"
         run: make test RACE=
-        if: ${{ !startsWith(matrix.os, 'ubuntu') }}
+        if: ${{ matrix.os != 'ubuntu-latest' }}
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
       - run: go run -race . -l ${{ github.workspace }}/internal/tests/functional/testdata/targets.txt -id tech-detect,tls-version
-        if: ${{ !startsWith(matrix.os, 'windows') }} # known issue: https://github.com/golang/go/issues/46099
+        if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
         working-directory: cmd/nuclei/
       # Hermetic HTTP-engine scale regression: stands up many loopback hosts and
       # asserts finding parity across a diverse template set (per-host pool,
@@ -91,10 +89,10 @@ jobs:
       # NUCLEI_SCALE_HOSTS.
       - name: "Scale regression (race)"
         run: go test -tags=regression -race -timeout 15m ./lib/tests -run TestScaleRegression
-        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
       - name: "Scale regression"
         run: make regression
-        if: ${{ !startsWith(matrix.os, 'ubuntu') }}
+        if: ${{ matrix.os != 'ubuntu-latest' }}
 
   sdk:
     name: "Run example SDK"
@@ -128,10 +126,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest-16-cores, windows-latest, macOS-latest]
-        # Split families across two parallel jobs per OS (INTEGRATION_SHARD),
-        # halving the wall time of the slow Windows cell.
-        shard: ["1/2", "2/2"]
+        # Only Windows (the slow cell) is split across two standard runners via
+        # INTEGRATION_SHARD; ubuntu/macOS run the whole suite on one runner.
+        # (shard is unset for those, so the runner keeps every family.)
+        include:
+          - { os: ubuntu-latest }
+          - { os: macOS-latest }
+          - { os: windows-latest, shard: "1/2" }
+          - { os: windows-latest, shard: "2/2" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -163,7 +165,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest-16-cores, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -241,7 +243,7 @@ jobs:
   release:
     name: "Release test"
     needs: ["lint"]
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/go@v1
