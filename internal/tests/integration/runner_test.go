@@ -128,22 +128,12 @@ func runIntegrationPass(t *testing.T, label string, families []integrationFamily
 		debug = previousDebug
 	}()
 
-	// Families run concurrently with each other (previously they were executed
-	// one after another). Each family's cases are still gated by the shared
-	// semaphore, so the total number of in-flight cases stays bounded by
-	// parallelism(). They are launched under a synchronous parent subtest:
-	// a parallel subtest only starts once its parent function returns, so
-	// wrapping them here makes runIntegrationPass block until every family has
-	// finished before it reads the collected failures.
-	t.Run(passFamilyName(label, "families"), func(t *testing.T) {
-		for _, family := range families {
-			family := family
-			t.Run(family.Name, func(t *testing.T) {
-				t.Parallel()
-				runIntegrationFamily(t, semaphore, failures, family)
-			})
-		}
-	})
+	for _, family := range families {
+		family := family
+		t.Run(passFamilyName(label, family.Name), func(t *testing.T) {
+			runIntegrationFamily(t, semaphore, failures, family)
+		})
+	}
 	return failures.Items()
 }
 
