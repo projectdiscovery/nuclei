@@ -990,7 +990,7 @@ path:
 method: GET
 ```
 
-Part Definitions: 
+Part Definitions:
 
 
 - <code>template-id</code> - ID of the template executed
@@ -2606,6 +2606,7 @@ Part Definitions:
 - <code>host</code> - Host is the input to the template
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>request</code> - Request contains the DNS request in text format
+- <code>duration</code> - Protocol operation duration in seconds
 - <code>type</code> - Type is the type of request made
 - <code>rcode</code> - Rcode field returned for the DNS request
 - <code>question</code> - Question contains the DNS question field
@@ -3109,6 +3110,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>request</code> - Network request made from the client
+- <code>duration</code> - Latest measured operation duration in seconds
 - <code>body,all,data</code> - Network response received from server (default)
 - <code>raw</code> - Full Network protocol data
 
@@ -3501,6 +3503,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>req</code> - Headless request made from the client
+- <code>duration</code> - Latest measured operation duration in seconds
 - <code>resp,body,data</code> - Headless response received from client (default)
 
 <hr />
@@ -3881,6 +3884,7 @@ Part Definitions:
 - <code>matched</code> - Matched is the input which was matched upon
 - <code>type</code> - Type is the type of request made
 - <code>timestamp</code> - Timestamp is the time when the request was made
+- <code>duration</code> - Protocol operation duration in seconds
 - <code>response</code> - JSON SSL protocol handshake details
 - <code>cipher</code> - Cipher is the encryption algorithm used
 - <code>domains</code> - Domains are the list of domain names in the certificate
@@ -4080,6 +4084,7 @@ Part Definitions:
 - <code>type</code> - Type is the type of request made
 - <code>success</code> - Success specifies whether websocket connection was successful
 - <code>request</code> - Websocket request made to the server
+- <code>duration</code> - Latest measured operation duration in seconds
 - <code>response</code> - Websocket response received from the server
 - <code>host</code> - Host is the input to the template
 - <code>matched</code> - Matched is the input which was matched upon
@@ -4254,7 +4259,13 @@ Appears in:
 
 
 
+Part Definitions:
 
+
+- <code>type</code> - Type is the type of request made
+- <code>host</code> - Host is the input to the template
+- <code>response</code> - WHOIS response data
+- <code>duration</code> - Protocol operation duration in seconds
 
 <hr />
 
@@ -4589,8 +4600,6 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.variables</code>
-
-
 
 
 

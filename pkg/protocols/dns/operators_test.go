@@ -1,20 +1,23 @@
 package dns
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -45,9 +48,10 @@ func TestResponseToDSLMap(t *testing.T) {
 	resp.Rcode = dns.RcodeSuccess
 	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one.", Rrtype: dns.TypeA}}, &dns.A{A: net.ParseIP("2.2.2.2"), Hdr: dns.RR_Header{Name: "one.one.one.one.", Rrtype: dns.TypeA}}, &dns.A{A: net.ParseIP("3.3.3.3"), Hdr: dns.RR_Header{Name: "one.one.one.one.", Rrtype: dns.TypeA}})
 
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil)
-	require.Len(t, event, 15, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil, time.Second)
+	require.Len(t, event, 16, "could not get correct number of items in dsl map")
 	require.Equal(t, dns.RcodeSuccess, event["rcode"], "could not get correct rcode")
+	require.Equal(t, float64(1), event["duration"], "could not get correct duration")
 	require.ElementsMatch(t, []string{net.ParseIP("1.1.1.1").String(), net.ParseIP("2.2.2.2").String(), net.ParseIP("3.3.3.3").String()}, event["a"], "could not get correct a record")
 }
 
@@ -79,7 +83,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 	resp.Rcode = dns.RcodeSuccess
 	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
 
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil)
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil, time.Second)
 
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
@@ -146,7 +150,7 @@ func TestDNSOperatorMatch(t *testing.T) {
 		resp.Rcode = dns.RcodeSuccess
 		resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "ONE.ONE.ONE.ONE."}})
 
-		event := request.responseToDSLMap(req, resp, "ONE.ONE.ONE.ONE", "ONE.ONE.ONE.ONE", nil)
+		event := request.responseToDSLMap(req, resp, "ONE.ONE.ONE.ONE", "ONE.ONE.ONE.ONE", nil, time.Second)
 
 		matcher := &matchers.Matcher{
 			Part:            "raw",
@@ -191,7 +195,7 @@ func TestDNSOperatorExtract(t *testing.T) {
 	resp.Rcode = dns.RcodeSuccess
 	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
 
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil)
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil, time.Second)
 
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
@@ -219,6 +223,46 @@ func TestDNSOperatorExtract(t *testing.T) {
 		require.Greater(t, len(data), 0, "could not extractor kval valid response")
 		require.Equal(t, map[string]struct{}{strconv.Itoa(dns.RcodeSuccess): {}}, data, "could not extract correct kval data")
 	})
+
+	t.Run("duration dsl", func(t *testing.T) {
+		extractor := &extractors.Extractor{
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+			DSL:  []string{"duration"},
+		}
+		err = extractor.CompileExtractors()
+		require.Nil(t, err, "could not compile duration extractor")
+
+		data := request.Extract(event, extractor)
+		require.Equal(t, map[string]struct{}{"1": {}}, data, "could not extract duration")
+	})
+}
+
+func TestDNSDurationRequestIDExport(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	recursion := false
+	request := &Request{
+		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
+		Class:       "INET",
+		Retries:     5,
+		ID:          "duration-dns",
+		Recursion:   &recursion,
+		Name:        "{{FQDN}}",
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-dns-duration",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOpts.IsMultiProtocol = true
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), "one.one.one.one")
+	event := output.InternalEvent{"duration": float64(1)}
+	executerOpts.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), event)
+
+	values := executerOpts.GetTemplateCtx(input.MetaInput).GetAll()
+	require.Equal(t, float64(1), values["duration-dns_duration"])
 }
 
 func TestDNSMakeResult(t *testing.T) {
@@ -263,7 +307,7 @@ func TestDNSMakeResult(t *testing.T) {
 	resp.Rcode = dns.RcodeSuccess
 	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
 
-	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil)
+	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil, time.Second)
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	if request.CompiledOperators != nil {
 		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
