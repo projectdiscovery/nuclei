@@ -19,10 +19,9 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"gopkg.in/yaml.v2"
-
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
 	logutil "github.com/projectdiscovery/utils/log"

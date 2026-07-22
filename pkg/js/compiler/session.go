@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 )
 
 // sessionState represents the various states a session can be in during its lifecycle.

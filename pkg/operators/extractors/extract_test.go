@@ -1,6 +1,7 @@
 package extractors
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,34 @@ func TestExtractor_ExtractRegex(t *testing.T) {
 
 	got = e.ExtractRegex("regex")
 	require.Equal(t, map[string]struct{}{}, got)
+}
+
+func TestExtractor_CompileRejectsNegativeRegexGroup(t *testing.T) {
+	e := &Extractor{
+		Type:       ExtractorTypeHolder{ExtractorType: RegexExtractor},
+		Regex:      []string{`([A-Z])\w+`},
+		RegexGroup: -1,
+	}
+	err := e.CompileExtractors()
+	require.ErrorContains(t, err, "group must be >= 0")
+}
+
+func TestExtractor_ExtractRegexNegativeGroupDoesNotPanic(t *testing.T) {
+	// Defense in depth: even if an extractor is built programmatically (or
+	// otherwise ends up with compiled regexes) without compilation-time checks,
+	// extraction should not panic.
+	compiled := regexp.MustCompile(`([A-Z])\w+`)
+	e := &Extractor{
+		RegexGroup: -1,
+		regexCompiled: []*regexp.Regexp{
+			compiled,
+		},
+	}
+
+	require.NotPanics(t, func() {
+		got := e.ExtractRegex("RegEx")
+		require.Equal(t, map[string]struct{}{}, got)
+	})
 }
 
 func TestExtractor_ExtractKval(t *testing.T) {

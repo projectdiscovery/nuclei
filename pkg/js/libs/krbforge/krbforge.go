@@ -13,6 +13,12 @@ import (
 	"path/filepath"
 
 	gpkrb "github.com/Mzack9999/goimpacket/pkg/kerberos"
+	"github.com/projectdiscovery/goja"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 )
 
 // TicketRequest mirrors gopacket's TicketConfig with json-friendly tags.
@@ -43,34 +49,52 @@ type Ticket struct {
 // CreateGoldenTicket forges a TGT for the supplied user against the given
 // realm using the krbtgt NT hash (or AES key). It returns the ASN.1-encoded
 // ticket and the session key. If req.OutputFile is empty no file is written;
-// pass an absolute path to also persist a ccache.
+// pass an output path allowed by the nuclei file sandbox to also persist a
+// ccache. Use -allow-local-file-access to allow writing outside the sandbox.
 //
 // @example
 // ```javascript
 // const krb = require('nuclei/krbforge');
-// const t = krb.CreateGoldenTicket({
-//   username: 'Administrator',
-//   domain:   'acme.local',
-//   domain_sid: 'S-1-5-21-1004336348-1177238915-682003330',
-//   nthash:   '31d6cfe0d16ae931b73c59d7e0c089c0',
-// });
+//
+//	const t = krb.CreateGoldenTicket({
+//	  username: 'Administrator',
+//	  domain:   'acme.local',
+//	  domain_sid: 'S-1-5-21-1004336348-1177238915-682003330',
+//	  nthash:   '31d6cfe0d16ae931b73c59d7e0c089c0',
+//	});
+//
 // log(t.ticket_hex);
 // ```
-func CreateGoldenTicket(req TicketRequest) (*Ticket, error) {
-	cfg := buildConfig(req, "")
-	if cfg.OutputFile == "" {
-		cfg.OutputFile = "-"
+func CreateGoldenTicket(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
+	nj := utils.NewNucleiJS(vm)
+	nj.ObjectSig = "CreateGoldenTicket(request)"
+
+	req, err := exportTicketRequest(vm, call.Argument(0))
+	if err != nil {
+		nj.ThrowError(err)
+		return goja.Undefined()
 	}
-	res, err := gpkrb.CreateTicket(cfg)
+
+	ticket, err := createGoldenTicket(nj.ExecutionId(), req)
+	if err != nil {
+		nj.ThrowError(err)
+		return goja.Undefined()
+	}
+
+	return vm.ToValue(ticket)
+}
+
+func createGoldenTicket(executionID string, req TicketRequest) (*Ticket, error) {
+	cfg, err := buildConfig(executionID, req, "")
 	if err != nil {
 		return nil, err
 	}
-	return &Ticket{
-		HexTicket:  hex.EncodeToString(res.Ticket),
-		HexKey:     hex.EncodeToString(res.SessionKey),
-		EncType:    res.EncType,
-		OutputFile: cfg.OutputFile,
-	}, nil
+
+	if cfg.OutputFile == "" {
+		cfg.OutputFile = "-"
+	}
+
+	return createTicket(cfg)
 }
 
 // CreateSilverTicket forges a service ticket (TGS) for the supplied SPN. The
@@ -80,24 +104,65 @@ func CreateGoldenTicket(req TicketRequest) (*Ticket, error) {
 // @example
 // ```javascript
 // const krb = require('nuclei/krbforge');
-// const t = krb.CreateSilverTicket({
-//   username: 'Administrator',
-//   domain:   'acme.local',
-//   domain_sid: 'S-1-5-21-1004336348-1177238915-682003330',
-//   nthash:   '31d6cfe0d16ae931b73c59d7e0c089c0',
-//   spn:      'cifs/server01.acme.local',
-// }, '/tmp/silver.ccache');
+//
+//	const t = krb.CreateSilverTicket({
+//	  username: 'Administrator',
+//	  domain:   'acme.local',
+//	  domain_sid: 'S-1-5-21-1004336348-1177238915-682003330',
+//	  nthash:   '31d6cfe0d16ae931b73c59d7e0c089c0',
+//	  spn:      'cifs/server01.acme.local',
+//	}, '/tmp/silver.ccache');
+//
 // log(t.output_file);
 // ```
-func CreateSilverTicket(req TicketRequest, outputFile string) (*Ticket, error) {
+func CreateSilverTicket(call goja.FunctionCall, vm *goja.Runtime) goja.Value {
+	nj := utils.NewNucleiJS(vm)
+	nj.ObjectSig = "CreateSilverTicket(request, outputFile)"
+
+	req, err := exportTicketRequest(vm, call.Argument(0))
+	if err != nil {
+		nj.ThrowError(err)
+		return goja.Undefined()
+	}
+
+	outputFile, err := exportOutputFile(call.Argument(1))
+	if err != nil {
+		nj.ThrowError(err)
+		return goja.Undefined()
+	}
+
+	ticket, err := createSilverTicket(nj.ExecutionId(), req, outputFile)
+	if err != nil {
+		nj.ThrowError(err)
+		return goja.Undefined()
+	}
+
+	return vm.ToValue(ticket)
+}
+
+func createSilverTicket(executionID string, req TicketRequest, outputFile string) (*Ticket, error) {
 	if req.SPN == "" {
 		return nil, fmt.Errorf("spn is required for silver ticket")
 	}
-	cfg := buildConfig(req, outputFile)
+
+	cfg, err := buildConfig(executionID, req, outputFile)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.OutputFile == "" {
+		cfg.OutputFile = "-"
+	}
+
+	return createTicket(cfg)
+}
+
+func createTicket(cfg *gpkrb.TicketConfig) (*Ticket, error) {
 	res, err := gpkrb.CreateTicket(cfg)
 	if err != nil {
 		return nil, err
 	}
+
 	return &Ticket{
 		HexTicket:  hex.EncodeToString(res.Ticket),
 		HexKey:     hex.EncodeToString(res.SessionKey),
@@ -106,16 +171,16 @@ func CreateSilverTicket(req TicketRequest, outputFile string) (*Ticket, error) {
 	}, nil
 }
 
-func buildConfig(req TicketRequest, outputFile string) *gpkrb.TicketConfig {
+func buildConfig(executionID string, req TicketRequest, outputFile string) (*gpkrb.TicketConfig, error) {
 	if outputFile == "" {
 		outputFile = req.OutputFile
 	}
-	if outputFile != "" && outputFile != "-" {
-		// reject relative paths to keep the ccache out of CWD
-		if !filepath.IsAbs(outputFile) {
-			outputFile = filepath.Join(os.TempDir(), outputFile)
-		}
+
+	normalizedOutputFile, err := normalizeOutputFile(executionID, outputFile)
+	if err != nil {
+		return nil, err
 	}
+
 	return &gpkrb.TicketConfig{
 		Username:       req.Username,
 		Domain:         req.Domain,
@@ -129,6 +194,63 @@ func buildConfig(req TicketRequest, outputFile string) *gpkrb.TicketConfig {
 		ExtraSIDs:      req.ExtraSIDs,
 		Duration:       req.DurationHours,
 		KVNO:           req.KVNO,
-		OutputFile:     outputFile,
+		OutputFile:     normalizedOutputFile,
+	}, nil
+}
+
+func normalizeOutputFile(executionID string, outputFile string) (string, error) {
+	if outputFile == "" || outputFile == "-" {
+		return outputFile, nil
 	}
+
+	if protocolstate.IsLfaAllowed(&types.Options{ExecutionId: executionID}) {
+		// Preserve the existing relative-path behavior when
+		// -allow-local-file-access is enabled: avoid implicit CWD writes by
+		// placing relative ccache paths in temp.
+		if !filepath.IsAbs(outputFile) {
+			outputFile = filepath.Join(os.TempDir(), outputFile)
+		}
+
+		normalized, err := filepath.Abs(outputFile)
+		if err != nil {
+			return "", fmt.Errorf("normalize output file %q: %w", outputFile, err)
+		}
+
+		return normalized, nil
+	}
+
+	normalized := outputFile
+	if !filepath.IsAbs(normalized) {
+		normalized = filepath.Join(config.DefaultConfig.GetTemplateDir(), normalized)
+	}
+
+	normalized, err := filepath.Abs(normalized)
+	if err != nil {
+		return "", fmt.Errorf("normalize output file %q: %w", outputFile, err)
+	}
+
+	if filepathutil.IsPathWithinDirectory(normalized, config.DefaultConfig.GetTemplateDir()) {
+		return normalized, nil
+	}
+
+	return "", fmt.Errorf("path %v is outside nuclei-template directory and -allow-local-file-access is not enabled", outputFile)
+}
+
+func exportTicketRequest(vm *goja.Runtime, value goja.Value) (TicketRequest, error) {
+	var req TicketRequest
+	if err := vm.ExportTo(value, &req); err != nil {
+		return req, fmt.Errorf("invalid TicketRequest: %w", err)
+	}
+	return req, nil
+}
+
+func exportOutputFile(value goja.Value) (string, error) {
+	if goja.IsUndefined(value) || goja.IsNull(value) {
+		return "", nil
+	}
+	outputFile, ok := value.Export().(string)
+	if !ok {
+		return "", fmt.Errorf("outputFile must be a string")
+	}
+	return outputFile, nil
 }

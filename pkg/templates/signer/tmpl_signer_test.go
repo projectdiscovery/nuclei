@@ -2,6 +2,12 @@ package signer
 
 import (
 	"bytes"
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/md5"
+	"encoding/binary"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,6 +36,45 @@ func (m *mockSignableTemplate) HasCodeProtocol() bool {
 
 var signer, _ = NewTemplateSignerFromFiles(testCertFile, testKeyFile)
 
+func TestPublicKeyFragmentTrimsLeadingZeroXCoordinate(t *testing.T) {
+	publicKey, publicKeyBytes := p256PublicKeyWithLeadingZeroX(t)
+	xCoordinate := publicKeyBytes[1:33]
+	require.Zero(t, xCoordinate[0])
+
+	legacyXCoordinate := bytes.TrimLeft(xCoordinate, "\x00")
+	legacyHash := md5.Sum(legacyXCoordinate)
+	untrimmedHash := md5.Sum(xCoordinate)
+	require.NotEqual(t, untrimmedHash, legacyHash)
+
+	fragment, err := publicKeyFragment(publicKey)
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprintf("%x", legacyHash), fragment)
+}
+
+func p256PublicKeyWithLeadingZeroX(t *testing.T) (*ecdsa.PublicKey, []byte) {
+	t.Helper()
+
+	var privateKeyBytes [32]byte
+	for i := uint64(1); i < 10_000; i++ {
+		binary.BigEndian.PutUint64(privateKeyBytes[24:], i)
+		privateKey, err := ecdh.P256().NewPrivateKey(privateKeyBytes[:])
+		require.NoError(t, err)
+
+		publicKeyBytes := privateKey.PublicKey().Bytes()
+		require.Len(t, publicKeyBytes, 65)
+		require.Equal(t, byte(4), publicKeyBytes[0])
+		if publicKeyBytes[1] != 0 {
+			continue
+		}
+
+		publicKey, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), publicKeyBytes)
+		require.NoError(t, err)
+		return publicKey, publicKeyBytes
+	}
+	t.Fatal("failed to find a P-256 public key with a leading-zero x-coordinate")
+	return nil, nil
+}
+
 func TestTemplateSignerSignAndVerify(t *testing.T) {
 	tempDir := t.TempDir()
 
@@ -45,6 +90,12 @@ func TestTemplateSignerSignAndVerify(t *testing.T) {
 		{
 			name:         "Simple template",
 			data:         []byte("id: test-template\ninfo:\n  name: Test Template"),
+			tmpl:         &mockSignableTemplate{},
+			wantVerified: true,
+		},
+		{
+			name:         "Template with CRLF line endings",
+			data:         []byte("id: test-template\r\ninfo:\r\n  name: Test Template"),
 			tmpl:         &mockSignableTemplate{},
 			wantVerified: true,
 		},

@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 

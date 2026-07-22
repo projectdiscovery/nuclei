@@ -228,6 +228,126 @@ func TestLoadTemplate(t *testing.T) {
 		require.NoError(t, laxErr, "lax parser must accept the same template")
 	})
 
+	t.Run("strictYAMLRejectsUnknownFields", func(t *testing.T) {
+		const tmpl = `id: yaml-unknown-field
+info:
+  name: strict yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    bogus_field: ignore me
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		strictPath := filepath.Join(dir, "tmpl-strict.yaml")
+		laxPath := filepath.Join(dir, "tmpl-lax.yaml")
+		require.NoError(t, os.WriteFile(strictPath, []byte(tmpl), 0o600))
+		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
+
+		_, strictErr := NewParser().ParseTemplate(strictPath, disk.NewCatalog(""))
+
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		_, laxErr := laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
+
+		require.Error(t, strictErr, "strict YAML decode must reject unknown fields")
+		require.Contains(t, strictErr.Error(), "bogus_field")
+		require.NoError(t, laxErr, "NoStrictSyntax should allow unknown YAML fields")
+	})
+
+	t.Run("strictYAMLRejectsDuplicateFields", func(t *testing.T) {
+		const tmpl = `id: yaml-duplicate-field
+id: yaml-duplicate-field-overwrite
+info:
+  name: duplicate yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		_, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.Error(t, err, "strict YAML decode must reject duplicate fields")
+		require.Contains(t, err.Error(), "already")
+	})
+
+	t.Run("laxYAMLAllowsDuplicateFields", func(t *testing.T) {
+		const tmpl = `id: yaml-duplicate-field
+id: yaml-duplicate-field-overwrite
+info:
+  name: duplicate yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		parsed, err := laxParser.ParseTemplate(path, disk.NewCatalog(""))
+		require.NoError(t, err, "NoStrictSyntax should preserve yaml.v2 duplicate-field behavior")
+
+		template, ok := parsed.(*Template)
+		require.True(t, ok)
+		require.Equal(t, "yaml-duplicate-field-overwrite", template.ID)
+	})
+
+	t.Run("YAMLPreservesMultiProtocolOrder", func(t *testing.T) {
+		const tmpl = `id: yaml-protocol-order
+info:
+  name: protocol order regression
+  author: anonymous
+  severity: info
+dns:
+  - name: "{{FQDN}}"
+    type: cname
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		parsed, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.NoError(t, err)
+
+		template, ok := parsed.(*Template)
+		require.True(t, ok)
+		require.Len(t, template.RequestsQueue, 2)
+		require.Equal(t, "dns", template.RequestsQueue[0].Type().String())
+		require.Equal(t, "http", template.RequestsQueue[1].Type().String())
+	})
+
 	t.Run("invalidTemplateID", func(t *testing.T) {
 		tt := []struct {
 			id      string
