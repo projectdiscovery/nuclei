@@ -251,12 +251,14 @@ func selectedIntegrationFamilies() []integrationFamily {
 	return shardIntegrationFamilies(selected)
 }
 
-// shardIntegrationFamilies keeps only the families for this shard when
+// shardIntegrationFamilies keeps only the cases for this shard when
 // INTEGRATION_SHARD is set as "<index>/<total>" (1-based), letting CI split the
-// suite across parallel jobs. Families are partitioned by position, so the set
-// is stable and disjoint across shards. Unset or malformed values run every
-// family. This only selects which families a job owns; it does not change the
-// per-family sequential/parallel execution.
+// suite across parallel jobs. Individual cases are distributed round-robin over
+// a stable global order, so heavy families (e.g. http, headless) spread evenly
+// across shards instead of piling onto one; the partition is deterministic,
+// disjoint, and complete. Unset or malformed values run everything. This only
+// selects which cases a job owns; it does not change per-family
+// sequential/parallel execution.
 func shardIntegrationFamilies(families []integrationFamily) []integrationFamily {
 	value := strings.TrimSpace(os.Getenv("INTEGRATION_SHARD"))
 	if value == "" {
@@ -271,9 +273,18 @@ func shardIntegrationFamilies(families []integrationFamily) []integrationFamily 
 	if err1 != nil || err2 != nil || total <= 0 || index < 1 || index > total {
 		return families
 	}
-	sharded := make([]integrationFamily, 0, len(families)/total+1)
-	for i, family := range families {
-		if i%total == index-1 {
+	sharded := make([]integrationFamily, 0, len(families))
+	caseIndex := 0
+	for _, family := range families {
+		kept := make([]integrationCase, 0, len(family.Cases))
+		for _, testCase := range family.Cases {
+			if caseIndex%total == index-1 {
+				kept = append(kept, testCase)
+			}
+			caseIndex++
+		}
+		if len(kept) > 0 {
+			family.Cases = kept
 			sharded = append(sharded, family)
 		}
 	}
