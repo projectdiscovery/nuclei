@@ -126,7 +126,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        # Windows (the slow cell) is split across two standard runners via
+        # INTEGRATION_SHARD; ubuntu/macOS run the whole suite on one runner
+        # (shard unset -> every family).
+        include:
+          - { os: ubuntu-latest }
+          - { os: macOS-latest }
+          - { os: windows-latest, shard: "1/2" }
+          - { os: windows-latest, shard: "2/2" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -144,6 +151,7 @@ jobs:
       - run: make integration
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+          INTEGRATION_SHARD: ${{ matrix.shard }}
         timeout-minutes: 50
 
   functional:
