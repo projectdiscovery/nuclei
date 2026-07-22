@@ -44,7 +44,7 @@ jobs:
         # give it a larger runner so `go test ./...` parallelises across cores.
         include:
           - { os: ubuntu-latest,  runner: ubuntu-latest-16-cores }
-          - { os: windows-latest, runner: windows-latest }
+          - { os: windows-latest, runner: windows-latest-8-cores }
           - { os: macOS-latest,   runner: macOS-latest }
     runs-on: "${{ matrix.runner }}"
     steps:
@@ -60,6 +60,17 @@ jobs:
           misc-packages: 'false'
           docker-images: 'false'
           tools-cache: 'false'
+      # Windows Defender's real-time scan of Go's many small build artifacts is a
+      # heavy tax on the runner; exclude the build/module caches, the workspace,
+      # and the Go toolchain processes so compile/test I/O isn't scanned.
+      - name: "Defender exclusions (Windows Go speedup)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $paths = @("$(go env GOCACHE)", "$(go env GOMODCACHE)", "$env:GITHUB_WORKSPACE", "$env:RUNNER_TEMP")
+          Add-MpPreference -ExclusionPath $paths -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess "go.exe","compile.exe","link.exe","cgo.exe","gcc.exe","git.exe","nuclei.exe","nuclei.test.exe","python.exe" -ErrorAction SilentlyContinue
+          Write-Host "Defender exclusions applied (best-effort)"
       - run: make build
       # The data-race detector is OS-independent, so we only pay its ~2-3x cost
       # on ubuntu; windows/macOS run the same suite without instrumentation.
@@ -124,7 +135,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         include:
           - { os: ubuntu-latest,  runner: ubuntu-latest-16-cores }
-          - { os: windows-latest, runner: windows-latest }
+          - { os: windows-latest, runner: windows-latest-8-cores }
           - { os: macOS-latest,   runner: macOS-latest }
     runs-on: ${{ matrix.runner }}
     steps:
@@ -132,6 +143,14 @@ jobs:
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
+      - name: "Defender exclusions (Windows Go speedup)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $paths = @("$(go env GOCACHE)", "$(go env GOMODCACHE)", "$env:GITHUB_WORKSPACE", "$env:RUNNER_TEMP")
+          Add-MpPreference -ExclusionPath $paths -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess "go.exe","compile.exe","link.exe","cgo.exe","gcc.exe","git.exe","nuclei.exe","nuclei.test.exe","python.exe" -ErrorAction SilentlyContinue
+          Write-Host "Defender exclusions applied (best-effort)"
       - run: make integration
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
@@ -146,12 +165,24 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - { os: ubuntu-latest,  runner: ubuntu-latest }
+          - { os: windows-latest, runner: windows-latest-8-cores }
+          - { os: macOS-latest,   runner: macOS-latest }
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
+      - name: "Defender exclusions (Windows Go speedup)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $paths = @("$(go env GOCACHE)", "$(go env GOMODCACHE)", "$env:GITHUB_WORKSPACE", "$env:RUNNER_TEMP")
+          Add-MpPreference -ExclusionPath $paths -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess "go.exe","compile.exe","link.exe","cgo.exe","gcc.exe","git.exe","nuclei.exe","nuclei.test.exe","python.exe" -ErrorAction SilentlyContinue
+          Write-Host "Defender exclusions applied (best-effort)"
       - uses: projectdiscovery/nuclei-action@v3
         with:
           version: latest
