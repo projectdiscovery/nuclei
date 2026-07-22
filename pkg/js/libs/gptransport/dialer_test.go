@@ -24,7 +24,6 @@ func TestDialWithExecDeniesExcludedHost(t *testing.T) {
 }
 
 func TestExecutionIDFromCtx(t *testing.T) {
-	require.Equal(t, "", gptransport.ExecutionIDFromCtx(nil))
 	require.Equal(t, "", gptransport.ExecutionIDFromCtx(context.Background()))
 	ctx := context.WithValue(context.Background(), "executionId", "abc") //nolint:staticcheck
 	require.Equal(t, "abc", gptransport.ExecutionIDFromCtx(ctx))

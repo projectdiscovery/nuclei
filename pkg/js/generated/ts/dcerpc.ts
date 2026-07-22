@@ -378,7 +378,7 @@ export interface SessionEntry {
 }
 
 /**
- * ProcessEntry is a running process (nmap smb-enum-processes analogue via TSTS).
+ * ProcessEntry is a running process (nmap smb-enum-processes analogue via WinStation).
  */
 export interface ProcessEntry {
     Name?: string,

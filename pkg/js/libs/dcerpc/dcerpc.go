@@ -8,7 +8,7 @@
 //	smb-enum-users     → Client.SamrEnumerateUsers
 //	smb-enum-services  → Client.EnumServices
 //	smb-enum-sessions  → Client.EnumSessions
-//	smb-enum-processes → Client.EnumProcesses (TSTS LegacyAPI)
+//	smb-enum-processes → Client.EnumProcesses (WinStation LegacyAPI)
 //	smb-psexec         → Client.SmbExec (also nuclei/goexec, nuclei/scmr)
 //	smb-ls / cat       → Client.SmbLs / SmbCat (prefer nuclei/smb for new templates)
 //	(logged-on users)  → Client.EnumLoggedOnUsers (WKSSVC; not in nmap list)

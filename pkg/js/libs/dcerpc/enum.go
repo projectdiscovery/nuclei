@@ -5,7 +5,7 @@ import (
 
 	gpsrvsvc "github.com/Mzack9999/goimpacket/pkg/dcerpc/srvsvc"
 	gpsvcctl "github.com/Mzack9999/goimpacket/pkg/dcerpc/svcctl"
-	gptsts "github.com/Mzack9999/goimpacket/pkg/dcerpc/tsts"
+	winstation "github.com/Mzack9999/goimpacket/pkg/dcerpc/tsts"
 	gpwkssvc "github.com/Mzack9999/goimpacket/pkg/dcerpc/wkssvc"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -29,7 +29,7 @@ type SessionEntry struct {
 }
 
 // ProcessEntry is a running process from the Terminal Services Legacy API
-// (nmap smb-enum-processes analogue; nmap uses winreg perf counters, we use TSTS).
+// (nmap smb-enum-processes analogue; nmap uses winreg perf counters, we use WinStation).
 type ProcessEntry struct {
 	Name           string `json:"name"`
 	PID            uint32 `json:"pid"`
@@ -56,9 +56,11 @@ type LoggedOnUser struct {
 // const dcerpc = require('nuclei/dcerpc');
 // const c = new dcerpc.Client('dc01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
 // const services = c.EnumServices();
-// for (const s of services) {
-//   if (s.State === 'RUNNING') { log(s.Name + ' => ' + s.DisplayName); }
-// }
+//
+//	for (const s of services) {
+//	  if (s.State === 'RUNNING') { log(s.Name + ' => ' + s.DisplayName); }
+//	}
+//
 // ```
 func (c *Client) EnumServices() ([]ServiceEntry, error) {
 	if !protocolstate.IsHostAllowed(c.nj.ExecutionId(), c.Host) {
@@ -94,9 +96,11 @@ func (c *Client) EnumServices() ([]ServiceEntry, error) {
 // const dcerpc = require('nuclei/dcerpc');
 // const c = new dcerpc.Client('fs01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
 // const sessions = c.EnumSessions();
-// for (const s of sessions) {
-//   log(s.Username + '@' + s.Client + ' active=' + s.Active + 's');
-// }
+//
+//	for (const s of sessions) {
+//	  log(s.Username + '@' + s.Client + ' active=' + s.Active + 's');
+//	}
+//
 // ```
 func (c *Client) EnumSessions() ([]SessionEntry, error) {
 	if !protocolstate.IsHostAllowed(c.nj.ExecutionId(), c.Host) {
@@ -127,15 +131,17 @@ func (c *Client) EnumSessions() ([]SessionEntry, error) {
 // const dcerpc = require('nuclei/dcerpc');
 // const c = new dcerpc.Client('dc01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
 // const procs = c.EnumProcesses();
-// for (const p of procs) {
-//   log(p.PID + ' ' + p.Name + ' session=' + p.SessionID);
-// }
+//
+//	for (const p of procs) {
+//	  log(p.PID + ' ' + p.Name + ' session=' + p.SessionID);
+//	}
+//
 // ```
 func (c *Client) EnumProcesses() ([]ProcessEntry, error) {
 	if !protocolstate.IsHostAllowed(c.nj.ExecutionId(), c.Host) {
 		return nil, protocolstate.ErrHostDenied.Msgf(c.Host)
 	}
-	rpc, err := c.rpcOverNamedPipe(gptsts.PipeCtxWinStation, gptsts.LegacyAPIUUID, gptsts.MajorVersion, gptsts.MinorVersion)
+	rpc, err := c.rpcOverNamedPipe(winstation.PipeCtxWinStation, winstation.LegacyAPIUUID, winstation.MajorVersion, winstation.MinorVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -143,10 +149,10 @@ func (c *Client) EnumProcesses() ([]ProcessEntry, error) {
 		_ = rpc.Transport.Close()
 	}()
 
-	legacy := gptsts.NewLegacyClient(rpc)
+	legacy := winstation.NewLegacyClient(rpc)
 	handle, err := legacy.OpenServer()
 	if err != nil {
-		return nil, fmt.Errorf("tsts OpenServer: %w", err)
+		return nil, fmt.Errorf("winstation OpenServer: %w", err)
 	}
 	defer func() {
 		_ = legacy.CloseServer(handle)
@@ -216,7 +222,7 @@ func mapSessionEntries(raw []gpsrvsvc.SessionInfo10) []SessionEntry {
 	return out
 }
 
-func mapProcessEntries(raw []gptsts.ProcessInfo) []ProcessEntry {
+func mapProcessEntries(raw []winstation.ProcessInfo) []ProcessEntry {
 	out := make([]ProcessEntry, 0, len(raw))
 	for _, e := range raw {
 		out = append(out, ProcessEntry{

@@ -5,7 +5,7 @@ import (
 
 	gpsrvsvc "github.com/Mzack9999/goimpacket/pkg/dcerpc/srvsvc"
 	gpsvcctl "github.com/Mzack9999/goimpacket/pkg/dcerpc/svcctl"
-	gptsts "github.com/Mzack9999/goimpacket/pkg/dcerpc/tsts"
+	winstation "github.com/Mzack9999/goimpacket/pkg/dcerpc/tsts"
 	gpwkssvc "github.com/Mzack9999/goimpacket/pkg/dcerpc/wkssvc"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +47,7 @@ func TestMapSessionEntries(t *testing.T) {
 }
 
 func TestMapProcessEntries(t *testing.T) {
-	raw := []gptsts.ProcessInfo{
+	raw := []winstation.ProcessInfo{
 		{ImageName: "lsass.exe", UniqueProcessId: 628, SessionId: 0, WorkingSetSize: 1024, SID: "S-1-5-18"},
 		{ImageName: "explorer.exe", UniqueProcessId: 1200, SessionId: 1},
 	}
