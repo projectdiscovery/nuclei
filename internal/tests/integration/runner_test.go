@@ -248,47 +248,7 @@ func selectedIntegrationFamilies() []integrationFamily {
 		family.Cases = filteredCases
 		selected = append(selected, family)
 	}
-	return shardIntegrationFamilies(selected)
-}
-
-// shardIntegrationFamilies keeps only the cases for this shard when
-// INTEGRATION_SHARD is set as "<index>/<total>" (1-based), letting CI split the
-// suite across parallel jobs. Individual cases are distributed round-robin over
-// a stable global order, so heavy families (e.g. http, headless) spread evenly
-// across shards instead of piling onto one; the partition is deterministic,
-// disjoint, and complete. Unset or malformed values run everything. This only
-// selects which cases a job owns; it does not change per-family
-// sequential/parallel execution.
-func shardIntegrationFamilies(families []integrationFamily) []integrationFamily {
-	value := strings.TrimSpace(os.Getenv("INTEGRATION_SHARD"))
-	if value == "" {
-		return families
-	}
-	parts := strings.SplitN(value, "/", 2)
-	if len(parts) != 2 {
-		return families
-	}
-	index, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
-	total, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
-	if err1 != nil || err2 != nil || total <= 0 || index < 1 || index > total {
-		return families
-	}
-	sharded := make([]integrationFamily, 0, len(families))
-	caseIndex := 0
-	for _, family := range families {
-		kept := make([]integrationCase, 0, len(family.Cases))
-		for _, testCase := range family.Cases {
-			if caseIndex%total == index-1 {
-				kept = append(kept, testCase)
-			}
-			caseIndex++
-		}
-		if len(kept) > 0 {
-			family.Cases = kept
-			sharded = append(sharded, family)
-		}
-	}
-	return sharded
+	return selected
 }
 
 func failedCasesByFamily(failed []failedIntegrationCase) []integrationFamily {
