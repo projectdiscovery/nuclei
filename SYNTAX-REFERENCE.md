@@ -2898,6 +2898,16 @@ Enum Values:
   - <code>ANY</code>
 
   - <code>SRV</code>
+
+  - <code>RRSIG</code>
+
+  - <code>NSEC</code>
+
+  - <code>DNSKEY</code>
+
+  - <code>NSEC3</code>
+
+  - <code>NSEC3PARAM</code>
 </div>
 
 <hr />

@@ -1225,6 +1225,11 @@ func init() {
 		"TLSA",
 		"ANY",
 		"SRV",
+		"RRSIG",
+		"NSEC",
+		"DNSKEY",
+		"NSEC3",
+		"NSEC3PARAM",
 	}
 
 	FILERequestDoc.Type = "file.Request"
