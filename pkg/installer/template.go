@@ -583,7 +583,8 @@ func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, err
 		checksums, err := os.ReadFile(checksumFilePath)
 		if err == nil {
 			allChecksums := make(map[string]string)
-			for v := range strings.SplitSeq(string(checksums), ";") {
+			checksumStr := string(checksums)
+			for v := range strings.SplitSeq(checksumStr, ";") {
 				v = strings.TrimSpace(v)
 				// Strict two-field parse: paths may contain commas (Cut would parse wrong).
 				tmparr := strings.Split(v, ",")
