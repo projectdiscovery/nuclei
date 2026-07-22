@@ -44,6 +44,7 @@ import (
 	gpsmbexec "github.com/Mzack9999/goimpacket/pkg/smbexec"
 	"github.com/projectdiscovery/goja"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/smbsession"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -415,11 +416,12 @@ func (c *Client) SmbListShares() ([]string, error) {
 	if err := c.connect(); err != nil {
 		return nil, err
 	}
-	return c.smb.ListShares()
+	return smbsession.FromClient(c.smb).ListShares()
 }
 
 // SmbCat reads the contents of a single file from the given share. The path
 // is interpreted relative to the share root (use forward slashes).
+// Prefer nuclei/smb.ReadFile for new templates; this remains for dcerpc sessions.
 //
 // @example
 // ```javascript
@@ -433,13 +435,11 @@ func (c *Client) SmbCat(share, file string) (string, error) {
 	if err := c.connect(); err != nil {
 		return "", err
 	}
-	if err := c.smb.UseShare(share); err != nil {
-		return "", fmt.Errorf("use share %s: %w", share, err)
-	}
-	return c.smb.Cat(file)
+	return smbsession.FromClient(c.smb).ReadFile(share, file, smbsession.DefaultMaxReadBytes)
 }
 
 // SmbLs lists files under dir on the given share. dir = "" lists the root.
+// Prefer nuclei/smb.ListDir for new templates.
 //
 // @example
 // ```javascript
@@ -447,29 +447,14 @@ func (c *Client) SmbCat(share, file string) (string, error) {
 // const entries = c.SmbLs('backup', '');
 // for (const e of entries) { log(e.Name + (e.IsDir ? '/' : '')); }
 // ```
-type FileEntry struct {
-	Name  string `json:"name"`
-	Size  int64  `json:"size"`
-	IsDir bool   `json:"is_dir"`
-}
+type FileEntry = smbsession.Entry
 
 func (c *Client) SmbLs(share, dir string) ([]FileEntry, error) {
 	c.nj.Require(share != "", "share cannot be empty")
 	if err := c.connect(); err != nil {
 		return nil, err
 	}
-	if err := c.smb.UseShare(share); err != nil {
-		return nil, fmt.Errorf("use share %s: %w", share, err)
-	}
-	infos, err := c.smb.Ls(dir)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]FileEntry, 0, len(infos))
-	for _, fi := range infos {
-		out = append(out, FileEntry{Name: fi.Name(), Size: fi.Size(), IsDir: fi.IsDir()})
-	}
-	return out, nil
+	return smbsession.FromClient(c.smb).ListDir(share, dir)
 }
 
 // LsaLookupSids resolves an array of SIDs to (domain, name, type) triples

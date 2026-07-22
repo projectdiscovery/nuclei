@@ -8,13 +8,17 @@
 //	share enum        → SMBClient.ListShares
 //	SMBGhost check    → SMBClient.DetectSMBGhost
 //
+// Authenticated share I/O is backed by pkg/js/libs/smbsession (goimpacket) so
+// nuclei/smb and nuclei/dcerpc.SmbLs/SmbCat share one stack. Unauthenticated
+// discovery still uses zgrab2 / fingerprintx.
+//
 // RPC-heavy nmap scripts (enum-users/services/sessions, psexec) live under
 // `nuclei/dcerpc` / `nuclei/goexec` — see that package's docs. Do not duplicate
 // them here; share filesystem and unauthenticated discovery stay in this module.
 //
 // Sandbox rules applied to every share operation:
 //   - protocolstate.IsHostAllowed before dial
-//   - fastdialer only (no raw net.Dial)
+//   - fastdialer only (via gptransport)
 //   - share-relative paths; ".." escapes rejected
 //   - ReadFile capped (default 10 MiB); ListTree depth/entry capped
 package smb
@@ -26,7 +30,6 @@ import (
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
-	"github.com/projectdiscovery/go-smb2"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/zmap/zgrab2/lib/smb/smb"
 )
@@ -160,48 +163,6 @@ func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user,
 	return memoizedlistShares(ctx, executionId, host, port, user, password)
 }
 
-// @memo
-func listShares(ctx context.Context, executionId string, host string, port int, user string, password string) ([]string, error) {
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
-	}
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	domain, username := parseNTLMIdentity(user)
-	d := &smb2.Dialer{
-		Initiator: &smb2.NTLMInitiator{
-			User:     username,
-			Password: password,
-			Domain:   domain,
-		},
-	}
-	s, err := d.DialContext(ctx, conn)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = s.Logoff()
-	}()
-
-	names, err := s.ListSharenames()
-	if err != nil {
-		return nil, err
-	}
-	return names, nil
-}
-
 // ListDir lists files and directories under path on the given share
 // (nmap smb-ls). path may be empty or "." for the share root.
 // user may be "DOMAIN\\user" or "user@domain".
@@ -215,24 +176,6 @@ func listShares(ctx context.Context, executionId string, host string, port int, 
 func (c *SMBClient) ListDir(ctx context.Context, host string, port int, user, password, share, dir string) ([]ShareEntry, error) {
 	executionId := ctx.Value("executionId").(string)
 	return memoizedlistDir(ctx, executionId, host, port, user, password, share, dir)
-}
-
-// @memo
-func listDir(ctx context.Context, executionId string, host string, port int, user string, password string, share string, dir string) ([]ShareEntry, error) {
-	var entries []ShareEntry
-	err := withMountedShare(ctx, sessionOptions{
-		executionId: executionId,
-		host:        host,
-		port:        port,
-		user:        user,
-		password:    password,
-		share:       share,
-	}, func(fs shareFS) error {
-		var err error
-		entries, err = listDirOnShare(fs, dir)
-		return err
-	})
-	return entries, err
 }
 
 // ReadFile reads a file from share/path into a string, capped at 10 MiB
@@ -249,24 +192,6 @@ func (c *SMBClient) ReadFile(ctx context.Context, host string, port int, user, p
 	return memoizedreadFile(ctx, executionId, host, port, user, password, share, filePath)
 }
 
-// @memo
-func readFile(ctx context.Context, executionId string, host string, port int, user string, password string, share string, filePath string) (string, error) {
-	var body string
-	err := withMountedShare(ctx, sessionOptions{
-		executionId: executionId,
-		host:        host,
-		port:        port,
-		user:        user,
-		password:    password,
-		share:       share,
-	}, func(fs shareFS) error {
-		var err error
-		body, err = readFileOnShare(fs, filePath, defaultMaxReadBytes)
-		return err
-	})
-	return body, err
-}
-
 // ListTree recursively lists files under path on share up to a fixed depth
 // and entry budget. Entry names are share-relative paths.
 // @example
@@ -279,24 +204,6 @@ func readFile(ctx context.Context, executionId string, host string, port int, us
 func (c *SMBClient) ListTree(ctx context.Context, host string, port int, user, password, share, dir string) ([]ShareEntry, error) {
 	executionId := ctx.Value("executionId").(string)
 	return memoizedlistTree(ctx, executionId, host, port, user, password, share, dir)
-}
-
-// @memo
-func listTree(ctx context.Context, executionId string, host string, port int, user string, password string, share string, dir string) ([]ShareEntry, error) {
-	var entries []ShareEntry
-	err := withMountedShare(ctx, sessionOptions{
-		executionId: executionId,
-		host:        host,
-		port:        port,
-		user:        user,
-		password:    password,
-		share:       share,
-	}, func(fs shareFS) error {
-		var err error
-		entries, err = listTreeOnShare(fs, dir, defaultMaxTreeDepth, defaultMaxTreeEntries)
-		return err
-	})
-	return entries, err
 }
 
 // ListProtocols discovers which SMB dialects/capabilities the server
