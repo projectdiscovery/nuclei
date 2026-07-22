@@ -129,6 +129,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest-16-cores, windows-latest, macOS-latest]
+        # Split families across two parallel jobs per OS (INTEGRATION_SHARD),
+        # halving the wall time of the slow Windows cell.
+        shard: ["1/2", "2/2"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -146,6 +149,7 @@ jobs:
       - run: make integration
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
+          INTEGRATION_SHARD: ${{ matrix.shard }}
         timeout-minutes: 50
 
   functional:

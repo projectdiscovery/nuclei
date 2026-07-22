@@ -248,7 +248,36 @@ func selectedIntegrationFamilies() []integrationFamily {
 		family.Cases = filteredCases
 		selected = append(selected, family)
 	}
-	return selected
+	return shardIntegrationFamilies(selected)
+}
+
+// shardIntegrationFamilies keeps only the families for this shard when
+// INTEGRATION_SHARD is set as "<index>/<total>" (1-based), letting CI split the
+// suite across parallel jobs. Families are partitioned by position, so the set
+// is stable and disjoint across shards. Unset or malformed values run every
+// family. This only selects which families a job owns; it does not change the
+// per-family sequential/parallel execution.
+func shardIntegrationFamilies(families []integrationFamily) []integrationFamily {
+	value := strings.TrimSpace(os.Getenv("INTEGRATION_SHARD"))
+	if value == "" {
+		return families
+	}
+	parts := strings.SplitN(value, "/", 2)
+	if len(parts) != 2 {
+		return families
+	}
+	index, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+	total, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err1 != nil || err2 != nil || total <= 0 || index < 1 || index > total {
+		return families
+	}
+	sharded := make([]integrationFamily, 0, len(families)/total+1)
+	for i, family := range families {
+		if i%total == index-1 {
+			sharded = append(sharded, family)
+		}
+	}
+	return sharded
 }
 
 func failedCasesByFamily(failed []failedIntegrationCase) []integrationFamily {
