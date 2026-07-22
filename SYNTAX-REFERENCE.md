@@ -990,7 +990,7 @@ path:
 method: GET
 ```
 
-Part Definitions:
+Part Definitions: 
 
 
 - <code>template-id</code> - ID of the template executed
@@ -4259,7 +4259,7 @@ Appears in:
 
 
 
-Part Definitions:
+Part Definitions: 
 
 
 - <code>type</code> - Type is the type of request made
@@ -4600,6 +4600,8 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.variables</code>
+
+
 
 
 
