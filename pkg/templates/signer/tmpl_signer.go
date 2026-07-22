@@ -48,8 +48,9 @@ type SignableTemplate interface {
 
 type TemplateSigner struct {
 	sync.Once
-	handler  *KeyHandler
-	fragment string
+	handler     *KeyHandler
+	fragment    string
+	fragmentErr error
 }
 
 // Identifier returns the identifier for the template signer
@@ -58,21 +59,42 @@ func (t *TemplateSigner) Identifier() string {
 }
 
 // fragment is optional part of signature that is used to identify the user
-// who signed the template via md5 hash of public key
+// who signed the template via md5 hash of the public key x-coordinate
 func (t *TemplateSigner) GetUserFragment() string {
+	fragment, _ := t.userFragment()
+	return fragment
+}
+
+func (t *TemplateSigner) userFragment() (string, error) {
 	// wrap with sync.Once to reduce unnecessary md5 hashing
 	t.Do(func() {
-		if t.handler.ecdsaPubKey != nil {
-			hashed := md5.Sum(t.handler.ecdsaPubKey.X.Bytes())
-			t.fragment = fmt.Sprintf("%x", hashed)
-		}
+		t.fragment, t.fragmentErr = publicKeyFragment(t.handler.ecdsaPubKey)
 	})
-	return t.fragment
+	return t.fragment, t.fragmentErr
+}
+
+func publicKeyFragment(publicKey *ecdsa.PublicKey) (string, error) {
+	if publicKey == nil {
+		return "", nil
+	}
+	publicKeyBytes, err := publicKey.Bytes()
+	if err != nil {
+		return "", fmt.Errorf("encode ecdsa public key: %w", err)
+	}
+	if len(publicKeyBytes) < 3 || publicKeyBytes[0] != 4 || (len(publicKeyBytes)-1)%2 != 0 {
+		return "", fmt.Errorf("invalid uncompressed ecdsa public key")
+	}
+	xCoordinateLength := (len(publicKeyBytes) - 1) / 2
+	// Keep the old fragment stable: big.Int.Bytes omitted leading zero bytes.
+	xCoordinateBytes := bytes.TrimLeft(publicKeyBytes[1:1+xCoordinateLength], "\x00")
+	hashed := md5.Sum(xCoordinateBytes)
+	return fmt.Sprintf("%x", hashed), nil
 }
 
 // Sign signs the given template with the template signer and returns the signature
 func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error) {
 	existingSignature, content := ExtractSignatureAndContent(data)
+	content = normalizeTemplateContentForSignature(content)
 
 	// while re-signing template check if it has a code protocol
 	// if it does then verify that it is signed by current signer
@@ -86,7 +108,10 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 			}
 			if len(arr) == 3 {
 				// signature has fragment verify if it is equal to current fragment
-				fragment := t.GetUserFragment()
+				fragment, err := t.userFragment()
+				if err != nil {
+					return "", err
+				}
 				if fragment != arr[2] {
 					return "", errkit.New("re-signing code templates are not allowed for security reasons.")
 				}
@@ -124,7 +149,11 @@ func (t *TemplateSigner) sign(data []byte) (string, error) {
 	if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(SignatureFmt, signatureData.Bytes(), t.GetUserFragment()), nil
+	fragment, err := t.userFragment()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(SignatureFmt, signatureData.Bytes(), fragment), nil
 }
 
 // Verify verifies the given template with the template signer
@@ -139,16 +168,18 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	}
 
 	digestData := bytes.TrimSpace(bytes.TrimPrefix(signature, []byte(SignaturePattern)))
+	fragment, err := t.userFragment()
+	if err != nil {
+		return false, err
+	}
 	// remove fragment from digest as it is used for re-signing purposes only
-	digestString := strings.TrimSuffix(string(digestData), ":"+t.GetUserFragment())
+	digestString := strings.TrimSuffix(string(digestData), ":"+fragment)
 	digest, err := hex.DecodeString(digestString)
 	if err != nil {
 		return false, err
 	}
 
-	// normalize content by removing \r\n everywhere since this only done for verification
-	// it does not affect the actual template
-	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+	content = normalizeTemplateContentForSignature(content)
 
 	buff := bytes.NewBuffer(content)
 	// if file has any imports process them
@@ -162,6 +193,10 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	}
 
 	return t.verify(buff.Bytes(), digest)
+}
+
+func normalizeTemplateContentForSignature(content []byte) []byte {
+	return bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 }
 
 // Verify verifies the given data with the template signer

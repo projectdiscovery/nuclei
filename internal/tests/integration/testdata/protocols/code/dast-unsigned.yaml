@@ -1,0 +1,33 @@
+id: dast-unsigned-code
+
+info:
+  name: dast-unsigned-code
+  author: pdteam
+  severity: info
+  tags: dast,code
+  description: |
+    unsigned code paired with a fuzzable request must not execute under -dast
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?x=1"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys: ["x"]
+        fuzz:
+          - "test"
+
+code:
+  - engine:
+      - py
+      - python3
+    source: |
+      print("unsigned code")
+
+    matchers:
+      - type: word
+        words:
+          - "unsigned code"

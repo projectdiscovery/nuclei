@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	nucleiConfig "github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -83,8 +84,11 @@ func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
 }
 
 func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key string) error {
-	// Create the directories in the path
-	file := filepath.Join(targetDirectory, key)
+	file, err := safeJoinWithinDirectory(targetDirectory, key)
+	if err != nil {
+		return errkit.Wrapf(err, "skipping s3 object %q with unsafe key", key)
+	}
+
 	// If empty dir in s3
 	if stringsutil.HasSuffixI(key, "/") {
 		return os.MkdirAll(file, 0775)
@@ -106,6 +110,21 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	_, err = downloader.Download(context.TODO(), fd, &s3.GetObjectInput{Bucket: &bucket, Key: &key})
 
 	return err
+}
+
+// safeJoinWithinDirectory joins relPath to baseDir and ensures the resulting
+// path stays inside baseDir after canonicalization. It is used to defend
+// custom-template downloaders against path-traversal in attacker-controlled
+// keys/blob names/file paths.
+func safeJoinWithinDirectory(baseDir, relPath string) (string, error) {
+	if baseDir == "" {
+		return "", errkit.New("base directory must not be empty")
+	}
+	cleaned := filepath.Clean(filepath.Join(baseDir, relPath))
+	if !filepathutil.IsPathWithinDirectory(cleaned, baseDir) {
+		return "", errkit.Newf("relative path %q escapes %q", relPath, baseDir)
+	}
+	return cleaned, nil
 }
 
 func getS3Client(ctx context.Context, accessKey string, secretKey string, region string, profile string) (*s3.Client, error) {

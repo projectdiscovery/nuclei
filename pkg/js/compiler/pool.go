@@ -3,14 +3,14 @@ package compiler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
-	"time"
 
-	"github.com/Mzack9999/goja"
-	"github.com/Mzack9999/goja_nodejs/console"
-	"github.com/Mzack9999/goja_nodejs/require"
+	"github.com/projectdiscovery/goja"
+	"github.com/projectdiscovery/goja_nodejs/console"
+	"github.com/projectdiscovery/goja_nodejs/require"
 	"github.com/projectdiscovery/gologger"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -19,6 +19,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcerpc"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcom"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libgrpc"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkerberos"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbforge"
@@ -55,10 +56,16 @@ const (
 	exportAsToken = "ExportAs"
 )
 
-type gojaRunResult struct {
-	result goja.Value
-	err    error
-}
+// errRuntimeTerminationTimeout is returned by session when the
+// goroutine running goja.Runtime.RunProgram fails to terminate within the
+// grace period after an interrupt was raised. When this error is returned
+// the runtime MUST NOT be touched (no cleanup, no reuse, no Put back to
+// the pool) because the orphaned goroutine is still operating on it; any
+// concurrent access would race with goja's per-runtime state and can
+// trigger a fatal "concurrent map read and map write" runtime panic.
+//
+// See https://github.com/projectdiscovery/nuclei/issues/7376.
+var errRuntimeTerminationTimeout = errors.New("nuclei js runtime: program failed to terminate after interrupt")
 
 var (
 	lazyRegistryInit = sync.OnceFunc(func() {
@@ -85,70 +92,12 @@ var gojapool = &sync.Pool{
 	},
 }
 
-func executeWithRuntime(ctx context.Context, runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
-	runtime.ClearInterrupt()
-
-	defer func() {
-		// reset before putting back to pool
-		_ = runtime.GlobalObject().Delete("template") // template ctx
-		// remove all args
-		for k := range args.Args {
-			_ = runtime.GlobalObject().Delete(k)
-		}
-		if opts != nil && opts.Cleanup != nil {
-			opts.Cleanup(runtime)
-		}
-		runtime.RemoveContextValue("executionId")
-		runtime.RemoveContextValue("ctx")
-	}()
-
-	// set template ctx
-	_ = runtime.Set("template", args.TemplateCtx)
-	// set args
-	for k, v := range args.Args {
-		_ = runtime.Set(k, v)
-	}
-
-	runtime.SetContextValue("executionId", opts.ExecutionId)
-	runtime.SetContextValue("ctx", ctx)
-	enableRequire(runtime)
-
-	// register extra callbacks if any
-	if opts != nil && opts.Callback != nil {
-		if err := opts.Callback(runtime); err != nil {
-			return nil, err
-		}
-	}
-
-	resultChan := make(chan gojaRunResult, 2)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				resultChan <- gojaRunResult{err: fmt.Errorf("panic: %s", r)}
-			}
-		}()
-
-		result, err := runtime.RunProgram(p)
-		resultChan <- gojaRunResult{result, err}
-	}()
-
-	select {
-	case <-ctx.Done():
-		runtime.Interrupt(ctx.Err())
-		select {
-		case r := <-resultChan:
-			return r.result, r.err
-		case <-time.After(time.Second):
-			return nil, fmt.Errorf("timeout waiting for js runtime to terminate: %w", ctx.Err())
-		}
-	case r := <-resultChan:
-		return r.result, r.err
-	}
-}
-
 // ExecuteProgram executes a compiled program with the default options.
 // it deligates if a particular program should run in a pooled or non-pooled runtime
 func ExecuteProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
+	if opts == nil {
+		opts = &ExecuteOptions{}
+	}
 	if opts.Source == nil {
 		// not-recommended anymore
 		return executeWithoutPooling(ctx, p, args, opts)
@@ -162,6 +111,9 @@ func ExecuteProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opt
 
 // executes the actual js program
 func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (goja.Value, error) {
+	if opts == nil {
+		opts = &ExecuteOptions{}
+	}
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
@@ -174,20 +126,45 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	}
 
 	runtime := gojapool.Get().(*goja.Runtime)
-	defer func() {
-		gojapool.Put(runtime)
-		pooljsc.Done()
-	}()
 
 	var buff bytes.Buffer
 	opts.exports = make(map[string]interface{})
 
-	defer func() {
-		// remove below functions from runtime
-		_ = runtime.GlobalObject().Delete(exportAsToken)
-		_ = runtime.GlobalObject().Delete(exportToken)
-	}()
+	session := newSession(sessionConfig{
+		ctx:     ctx,
+		runtime: runtime,
+		program: p,
+		args:    args,
+		opts:    opts,
+		prepareRuntime: func(runtime *goja.Runtime) error {
+			registerExportHelpers(runtime, opts, &buff)
+			return nil
+		},
+		cleanupRuntime: func(runtime *goja.Runtime) {
+			_ = runtime.GlobalObject().Delete(exportAsToken)
+			_ = runtime.GlobalObject().Delete(exportToken)
+		},
+		finalizeResult: func(runtime *goja.Runtime, val goja.Value) (goja.Value, error) {
+			if val.Export() != nil {
+				// append last value to output
+				buff.WriteString(stringify(val, runtime))
+			}
+			// and return it as result
+			return runtime.ToValue(buff.String()), nil
+		},
+		returnRuntime: func(runtime *goja.Runtime) {
+			gojapool.Put(runtime)
+		},
+		releaseSlot:          pooljsc.Done,
+		releaseAbandonedSlot: pooljsc.Done,
+		onAbandon: func(err error) {
+			gologger.Warning().Msgf("js runtime did not terminate after interrupt; abandoning it to avoid concurrent use: %s", err)
+		},
+	})
+	return session.run()
+}
 
+func registerExportHelpers(runtime *goja.Runtime, opts *ExecuteOptions, buff *bytes.Buffer) {
 	// register export functions
 	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
 		Name:        "Export", // we use string instead of const for documentation generation
@@ -222,17 +199,6 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 			return goja.Null()
 		},
 	})
-
-	val, err := executeWithRuntime(ctx, runtime, p, args, opts)
-	if err != nil {
-		return nil, err
-	}
-	if val.Export() != nil {
-		// append last value to output
-		buff.WriteString(stringify(val, runtime))
-	}
-	// and return it as result
-	return runtime.ToValue(buff.String()), nil
 }
 
 // Internal purposes i.e generating bindings

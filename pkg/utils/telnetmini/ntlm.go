@@ -40,9 +40,11 @@ func ParseNTLMResponse(data []byte) (*NTLMInfoResponse, error) {
 	// Extract NTLM data (NTLMSSP.*\xff\xf0)
 	ntlmData := data[ntlmStart : ntlmStart+ntlmEnd]
 
-	// Check message type (should be 2 for Challenge)
-	if len(ntlmData) < 12 {
-		return nil, fmt.Errorf("NTLM response too short")
+	// Check message type (should be 2 for Challenge).
+	// The fixed header runs to offset 48 (target-info offset field ends at byte 48),
+	// so reject anything shorter before touching any field offsets.
+	if len(ntlmData) < 48 {
+		return nil, fmt.Errorf("NTLM response too short: need at least 48 bytes, got %d", len(ntlmData))
 	}
 
 	messageType := binary.LittleEndian.Uint32(ntlmData[8:12])

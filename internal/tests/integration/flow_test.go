@@ -20,7 +20,7 @@ func TestFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("conditional flow request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 1); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -77,7 +77,7 @@ func TestFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("dns ns probe flow request failed: %v", err)
 		}
-		if err := expectResultsCount(results, 2); err != nil {
+		if err := expectPublicDNSResultsCount(results, 1, 2); err != nil {
 			t.Fatal(err)
 		}
 	})

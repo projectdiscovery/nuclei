@@ -46,11 +46,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	vars := protocolutils.GenerateDNSVariables(domain)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	// merge with metadata (eg. from workflow context)
+	scope := request.options.NewVariablesScope(vars, metadata, optionVars)
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+	variablesMap := request.options.Variables.EvaluateScope(scope).Values
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	} else {
+		vars = generators.MergeMaps(vars, metadata, optionVars)
 	}
-	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
 	// if request threads matches global payload concurrency we follow it
@@ -163,6 +167,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	// Send the request to the target servers
 	timeStart := time.Now()
 	response, err := dnsClient.Do(compiledRequest)
+	duration := time.Since(timeStart)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -176,7 +181,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, question)
 
-	// perform trace if necessary
+	// perform trace if necessary (excluded from duration — only the query RTT is measured)
 	var traceData *retryabledns.TraceData
 	if request.Trace {
 		traceData, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
@@ -184,7 +189,6 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 		}
 	}
-	duration := time.Since(timeStart)
 
 	// Create the output event
 	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData, duration)

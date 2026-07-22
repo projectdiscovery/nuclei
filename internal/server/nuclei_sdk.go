@@ -190,10 +190,13 @@ func (n *nucleiExecutor) ExecuteScan(target PostRequestsHandlerRequest) error {
 }
 
 func (n *nucleiExecutor) Close() {
+	if n == nil || n.executorOpts == nil {
+		return
+	}
 	if n.executorOpts.FuzzStatsDB != nil {
 		n.executorOpts.FuzzStatsDB.Close()
 	}
-	if n.options.Interactsh != nil {
+	if n.options != nil && n.options.Interactsh != nil {
 		_ = n.options.Interactsh.Close()
 	}
 	if n.executorOpts.InputHelper != nil {
