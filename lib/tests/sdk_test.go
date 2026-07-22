@@ -18,11 +18,16 @@ var knownLeaks = []goleak.Option{
 	// net/http transport maintains idle keep-alive connections whose goroutines
 	// exit on idle timeout or explicit close - not real leaks.
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+	goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
+	goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 	// expirable LRU cache creates a background goroutine for TTL expiration that persists
 	// see: https://github.com/hashicorp/golang-lru/blob/770151e9c8cdfae1797826b7b74c33d6f103fbd8/expirable/expirable_lru.go#L79
 	goleak.IgnoreAnyContainingPkg("github.com/hashicorp/golang-lru/v2/expirable"),
-	goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
-	goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
+	// httpcache leveldb + shared rate limiter + memguardian outlive a single SDK engine.
+	// Sleep alone is not reliable under -race or when NewNucleiEngineCtx fails before Close.
+	goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
+	goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
+	goleak.IgnoreAnyFunction("github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate.StartActiveMemGuardian.func1"),
 }
 
 func TestSimpleNuclei(t *testing.T) {
@@ -33,17 +38,21 @@ func TestSimpleNuclei(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
+		// DisableUpdateCheck: parallel `go test` packages each run UpdateIfOutdated
+		// against the shared templates dir (sync.Once is per-process only), which
+		// races and surfaces as ENOENT during NewNucleiEngineCtx.
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
+			nuclei.DisableUpdateCheck(),
 			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
 			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
+		defer ne.Close()
 		ne.LoadTargets([]string{"scanme.sh"}, false) // probe non http/https target is set to false here
 		// when callback is nil it nuclei will print JSON output to stdout
 		err = ne.ExecuteWithCallback(nil)
-		require.Nil(t, err)
-		defer ne.Close()
+		require.NoError(t, err)
 	}
 
 	// this is shared test so needs to be run as separate process
@@ -70,20 +79,21 @@ func TestSimpleNucleiRemote(t *testing.T) {
 		}()
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
+			nuclei.DisableUpdateCheck(),
 			nuclei.WithTemplatesOrWorkflows(
 				nuclei.TemplateSources{
 					RemoteTemplates: []string{"https://cloud.projectdiscovery.io/public/nameserver-fingerprint.yaml"},
 				},
 			),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
+		defer ne.Close()
 		ne.LoadTargets([]string{"scanme.sh"}, false) // probe non http/https target is set to false here
 		err = ne.LoadAllTemplates()
-		require.Nil(t, err, "could not load templates")
+		require.NoError(t, err, "could not load templates")
 		// when callback is nil it nuclei will print JSON output to stdout
 		err = ne.ExecuteWithCallback(nil)
-		require.Nil(t, err)
-		defer ne.Close()
+		require.NoError(t, err)
 	}
 	// this is shared test so needs to be run as separate process
 	if env.GetEnvOrDefault("TestSimpleNucleiRemote", false) {
@@ -107,23 +117,21 @@ func TestThreadSafeNuclei(t *testing.T) {
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
 		// create nuclei engine with options
-		ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.TODO())
-		require.Nil(t, err)
+		ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.TODO(), nuclei.DisableUpdateCheck())
+		require.NoError(t, err)
+		defer ne.Close()
 
 		// scan 1 = run dns templates on scanme.sh
 		t.Run("scanme.sh", func(t *testing.T) {
 			err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}))
-			require.Nil(t, err)
+			require.NoError(t, err)
 		})
 
 		// scan 2 = run dns templates on honey.scanme.sh
 		t.Run("honey.scanme.sh", func(t *testing.T) {
 			err = ne.ExecuteNucleiWithOpts([]string{"honey.scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}))
-			require.Nil(t, err)
+			require.NoError(t, err)
 		})
-
-		// wait for all scans to finish
-		defer ne.Close()
 	}
 
 	if env.GetEnvOrDefault("TestThreadSafeNuclei", false) {
@@ -148,16 +156,17 @@ func TestWithVarsNuclei(t *testing.T) {
 		}()
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
+			nuclei.DisableUpdateCheck(),
 			nuclei.EnableSelfContainedTemplates(),
 			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{"http/token-spray/api-1forge.yaml"}}),
 			nuclei.WithVars([]string{"token=foobar"}),
 			nuclei.WithVerbosity(nuclei.VerbosityOptions{Debug: true}),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
+		defer ne.Close()
 		ne.LoadTargets([]string{"scanme.sh"}, true) // probe http/https target is set to true here
 		err = ne.ExecuteWithCallback(nil)
-		require.Nil(t, err)
-		defer ne.Close()
+		require.NoError(t, err)
 	}
 	// this is shared test so needs to be run as separate process
 	if env.GetEnvOrDefault("TestWithVarsNuclei", false) {
