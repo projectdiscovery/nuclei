@@ -40,9 +40,19 @@ type Entry struct {
 	ModTime string `json:"mod_time,omitempty"`
 }
 
+// shareBackend is the subset of goimpacket SMB client used for share I/O.
+// Tests substitute a fake implementation.
+type shareBackend interface {
+	UseShare(name string) error
+	Ls(dir string) ([]os.FileInfo, error)
+	Cat(file string) (string, error)
+	ListShares() ([]string, error)
+}
+
 // Session wraps an authenticated goimpacket SMB client.
 type Session struct {
-	client *gpsmb.Client
+	client  *gpsmb.Client
+	backend shareBackend // when set (tests), used instead of client
 }
 
 // Dial connects and authenticates to host:port using the execution's dialer.
@@ -97,19 +107,56 @@ func (s *Session) Native() *gpsmb.Client {
 	return s.client
 }
 
+func (s *Session) ops() shareBackend {
+	if s == nil {
+		return nil
+	}
+	if s.backend != nil {
+		return s.backend
+	}
+	if s.client == nil {
+		return nil
+	}
+	return s.client
+}
+
 // ListShares enumerates share names.
 func (s *Session) ListShares() ([]string, error) {
-	if s == nil || s.client == nil {
+	ops := s.ops()
+	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
-	return s.client.ListShares()
+	return ops.ListShares()
 }
 
 // ListDir lists one directory on share (share-relative path).
 func (s *Session) ListDir(share, dir string) ([]Entry, error) {
-	if s == nil || s.client == nil {
+	ops := s.ops()
+	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
+	return listDir(ops, share, dir)
+}
+
+// ReadFile reads a file from share, capped at maxBytes (default DefaultMaxReadBytes).
+func (s *Session) ReadFile(share, filePath string, maxBytes int64) (string, error) {
+	ops := s.ops()
+	if ops == nil {
+		return "", fmt.Errorf("smb session not connected")
+	}
+	return readFile(ops, share, filePath, maxBytes)
+}
+
+// ListTree walks share directories up to maxDepth / maxEntries.
+func (s *Session) ListTree(share, root string, maxDepth, maxEntries int) ([]Entry, error) {
+	ops := s.ops()
+	if ops == nil {
+		return nil, fmt.Errorf("smb session not connected")
+	}
+	return listTree(ops, share, root, maxDepth, maxEntries)
+}
+
+func listDir(ops shareBackend, share, dir string) ([]Entry, error) {
 	if err := RequireShareName(share); err != nil {
 		return nil, err
 	}
@@ -117,10 +164,10 @@ func (s *Session) ListDir(share, dir string) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.client.UseShare(share); err != nil {
+	if err := ops.UseShare(share); err != nil {
 		return nil, fmt.Errorf("mount share %q: %w", share, err)
 	}
-	infos, err := s.client.Ls(normalized)
+	infos, err := ops.Ls(normalized)
 	if err != nil {
 		return nil, err
 	}
@@ -135,11 +182,7 @@ func (s *Session) ListDir(share, dir string) ([]Entry, error) {
 	return out, nil
 }
 
-// ReadFile reads a file from share, capped at maxBytes (default DefaultMaxReadBytes).
-func (s *Session) ReadFile(share, filePath string, maxBytes int64) (string, error) {
-	if s == nil || s.client == nil {
-		return "", fmt.Errorf("smb session not connected")
-	}
+func readFile(ops shareBackend, share, filePath string, maxBytes int64) (string, error) {
 	if err := RequireShareName(share); err != nil {
 		return "", err
 	}
@@ -153,10 +196,10 @@ func (s *Session) ReadFile(share, filePath string, maxBytes int64) (string, erro
 	if normalized == "." {
 		return "", fmt.Errorf("file path cannot be empty")
 	}
-	if err := s.client.UseShare(share); err != nil {
+	if err := ops.UseShare(share); err != nil {
 		return "", fmt.Errorf("mount share %q: %w", share, err)
 	}
-	body, err := s.client.Cat(normalized)
+	body, err := ops.Cat(normalized)
 	if err != nil {
 		return "", err
 	}
@@ -166,11 +209,7 @@ func (s *Session) ReadFile(share, filePath string, maxBytes int64) (string, erro
 	return body, nil
 }
 
-// ListTree walks share directories up to maxDepth / maxEntries.
-func (s *Session) ListTree(share, root string, maxDepth, maxEntries int) ([]Entry, error) {
-	if s == nil || s.client == nil {
-		return nil, fmt.Errorf("smb session not connected")
-	}
+func listTree(ops shareBackend, share, root string, maxDepth, maxEntries int) ([]Entry, error) {
 	if err := RequireShareName(share); err != nil {
 		return nil, err
 	}
@@ -184,7 +223,7 @@ func (s *Session) ListTree(share, root string, maxDepth, maxEntries int) ([]Entr
 	if err != nil {
 		return nil, err
 	}
-	if err := s.client.UseShare(share); err != nil {
+	if err := ops.UseShare(share); err != nil {
 		return nil, fmt.Errorf("mount share %q: %w", share, err)
 	}
 
@@ -194,7 +233,7 @@ func (s *Session) ListTree(share, root string, maxDepth, maxEntries int) ([]Entr
 		if len(out) >= maxEntries {
 			return fmt.Errorf("tree listing exceeded max entries (%d)", maxEntries)
 		}
-		infos, err := s.client.Ls(rel)
+		infos, err := ops.Ls(rel)
 		if err != nil {
 			return err
 		}
