@@ -268,3 +268,9 @@ func (m *MockProgressClient) IncrementErrorsBy(count int64) {}
 // IncrementFailedRequestsBy increments the number of requests counter by count
 // along with errors.
 func (m *MockProgressClient) IncrementFailedRequestsBy(count int64) {}
+
+// IncrementSkippedUnresolved increments requests skipped for unresolved variables.
+func (m *MockProgressClient) IncrementSkippedUnresolved(count int64) {}
+
+// SkippedUnresolved returns requests skipped for unresolved variables.
+func (m *MockProgressClient) SkippedUnresolved() uint64 { return 0 }

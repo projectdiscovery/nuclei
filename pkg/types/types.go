@@ -227,6 +227,10 @@ type Options struct {
 	VerboseVerbose bool
 	// ShowVarDump displays variable dump
 	ShowVarDump bool
+	// LogUnresolved enables per-request warnings when a request is skipped because
+	// template variables could not be resolved. By default those skips are counted
+	// and summarized once at the end of the scan instead of flooding the log.
+	LogUnresolved bool
 	// VarDumpLimit limits the number of characters displayed in var dump
 	VarDumpLimit int
 	// No-Color disables the colored output.
@@ -586,6 +590,7 @@ func (options *Options) Copy() *Options {
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,
 		ShowVarDump:                    options.ShowVarDump,
+		LogUnresolved:                  options.LogUnresolved,
 		VarDumpLimit:                   options.VarDumpLimit,
 		NoColor:                        options.NoColor,
 		UpdateTemplates:                options.UpdateTemplates,
