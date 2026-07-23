@@ -48,9 +48,10 @@ func TestResponseToDSLMap(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n"
-	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one", 11)
+	require.Len(t, event, 8, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
+	require.Equal(t, int64(11), event["filesize"])
 }
 
 func TestFileOperatorMatch(t *testing.T) {
@@ -74,8 +75,8 @@ func TestFileOperatorMatch(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one", 11)
+	require.Len(t, event, 8, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("valid", func(t *testing.T) {
@@ -123,8 +124,8 @@ func TestFileOperatorMatch(t *testing.T) {
 
 	t.Run("caseInsensitive", func(t *testing.T) {
 		resp := "TEST-DATA\r\n1.1.1.1\r\n"
-		event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-		require.Len(t, event, 7, "could not get correct number of items in dsl map")
+		event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one", 11)
+		require.Len(t, event, 8, "could not get correct number of items in dsl map")
 		require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 		matcher := &matchers.Matcher{
@@ -163,8 +164,8 @@ func TestFileOperatorExtract(t *testing.T) {
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
-	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one")
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(resp, "one.one.one.one", "one.one.one.one", 11)
+	require.Len(t, event, 8, "could not get correct number of items in dsl map")
 	require.Equal(t, resp, event["raw"], "could not get correct resp")
 
 	t.Run("extract", func(t *testing.T) {
@@ -282,8 +283,8 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	matchedFileName := "test.txt"
 	fileContent := "test-data\r\n1.1.1.1\r\n"
 
-	event := request.responseToDSLMap(fileContent, "/tmp", matchedFileName)
-	require.Len(t, event, 7, "could not get correct number of items in dsl map")
+	event := request.responseToDSLMap(fileContent, "/tmp", matchedFileName, 11)
+	require.Len(t, event, 8, "could not get correct number of items in dsl map")
 	require.Equal(t, fileContent, event["raw"], "could not get correct resp")
 
 	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
