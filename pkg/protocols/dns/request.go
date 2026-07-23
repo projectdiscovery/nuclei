@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/retryabledns"
 	iputil "github.com/projectdiscovery/utils/ip"
@@ -175,6 +176,23 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		request.options.Progress.IncrementRequests()
 	}
 	if response == nil {
+		if err != nil && request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers() {
+			outputEvent := output.InternalEvent{
+				"host":          domain,
+				"matched":       question,
+				"request":       requestString,
+				"duration":      duration.Seconds(),
+				"template-id":   request.options.TemplateID,
+				"template-info": request.options.TemplateInfo,
+				"template-path": request.options.TemplatePath,
+				"type":          request.Type().String(),
+			}
+			maps.Copy(outputEvent, previous)
+			maps.Copy(outputEvent, vars)
+			requesterr.Annotate(outputEvent, err, duration)
+			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+			callback(event)
+		}
 		return errors.Wrap(err, "could not send dns request")
 	}
 

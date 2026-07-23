@@ -81,6 +81,56 @@ func (operators *Operators) HasDSL() bool {
 	return false
 }
 
+// HasErrorMatchers reports whether operators include an error matcher or a DSL
+// expression that references request-error fields (timeout / error / error_type).
+// When true, protocols should still run matchers on failed requests and should
+// not skip the template solely because the host is marked unresponsive.
+func (operators *Operators) HasErrorMatchers() bool {
+	if operators == nil {
+		return false
+	}
+	for _, matcher := range operators.Matchers {
+		if matcher.GetType() == matchers.ErrorMatcher {
+			return true
+		}
+		if matcher.GetType() == matchers.DSLMatcher {
+			for _, expr := range matcher.DSL {
+				if dslReferencesRequestError(expr) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func dslReferencesRequestError(expr string) bool {
+	lower := strings.ToLower(expr)
+	// word-ish checks so we don't treat unrelated identifiers as error matchers
+	for _, token := range []string{"timeout", "error_type", "error"} {
+		idx := 0
+		for {
+			i := strings.Index(lower[idx:], token)
+			if i < 0 {
+				break
+			}
+			i += idx
+			beforeOK := i == 0 || !isIdentByte(lower[i-1])
+			after := i + len(token)
+			afterOK := after >= len(lower) || !isIdentByte(lower[after])
+			if beforeOK && afterOK {
+				return true
+			}
+			idx = after
+		}
+	}
+	return false
+}
+
+func isIdentByte(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9') || b == '_'
+}
+
 // GetMatchersCondition returns the condition for the matchers
 func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition

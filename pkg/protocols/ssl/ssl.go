@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -260,6 +261,23 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		if request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers() {
+			data := make(map[string]interface{})
+			maps.Copy(data, payloadValues)
+			data["type"] = request.Type().String()
+			data["host"] = input.MetaInput.Input
+			data["matched"] = addressToDial
+			data["duration"] = duration.Seconds()
+			data["template-path"] = requestOptions.TemplatePath
+			data["template-id"] = requestOptions.TemplateID
+			data["template-info"] = requestOptions.TemplateInfo
+			if input.MetaInput.CustomIP != "" {
+				data["ip"] = hostIp
+			}
+			requesterr.Annotate(data, err, duration)
+			event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
+			callback(event)
+		}
 		return errkit.Wrap(err, "could not connect to server")
 	}
 

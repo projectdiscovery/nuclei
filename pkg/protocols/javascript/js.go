@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
@@ -663,6 +664,9 @@ func (request *Request) executeRequestWithPayloads(
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
 	data := request.generateEventData(input, values, hostPort)
+	if err != nil {
+		requesterr.Annotate(data, err, 0)
+	}
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)

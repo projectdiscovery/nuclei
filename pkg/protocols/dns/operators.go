@@ -21,7 +21,7 @@ import (
 // Match matches a generic data response against a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := request.getMatchPart(matcher.Part, data)
-	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
+	if !ok && matcher.NeedsPart() {
 		return false, []string{}
 	}
 
@@ -44,6 +44,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(types.ToString(item))), []string{}
+	case matchers.ErrorMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
 	}
 	return false, []string{}
 }
