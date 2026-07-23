@@ -427,6 +427,19 @@ func TestMatchRegex_LiteralPrefixShortCircuit(t *testing.T) {
 	require.Equal(t, []string{"12"}, matches)
 }
 
+func TestMatchWords_CaseInsensitive_DynamicValue(t *testing.T) {
+	m := &Matcher{
+		Type:            MatcherTypeHolder{MatcherType: WordsMatcher},
+		CaseInsensitive: true,
+		Words:           []string{"{{host}}"},
+	}
+	require.NoError(t, m.CompileMatchers())
+
+	isMatched, matched := m.MatchWords("visit example.com now", map[string]interface{}{"host": "Example.COM"})
+	require.True(t, isMatched, "Could not match case-insensitive dynamic word against lowercased corpus")
+	require.Equal(t, []string{"example.com"}, matched)
+}
+
 func TestMatcher_MatchDSL_ErrorHandling(t *testing.T) {
 	// First expression errors (division by zero), second is true
 	bad, err := govaluate.NewEvaluableExpression("1 / 0")
