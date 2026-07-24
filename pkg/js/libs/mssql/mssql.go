@@ -7,10 +7,8 @@ import (
 	"net"
 	"net/url"
 	"strings"
-	"time"
 
 	_ "github.com/microsoft/go-mssqldb"
-	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -112,34 +110,12 @@ func (c *MSSQLClient) IsMssql(ctx context.Context, host string, port int) (bool,
 
 // @memo
 func isMssql(ctx context.Context, executionId string, host string, port int) (bool, error) {
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
-
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return false, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	// Reuse the memoized fingerprint probe so IsMssql + FingerprintMssql share one dial.
+	_, err := memoizedfingerprintMssql(ctx, executionId, host, port)
 	if err != nil {
 		return false, err
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	data, check, err := mssql.DetectMSSQL(conn, 5*time.Second)
-	if check && err != nil {
-		return false, nil
-	} else if !check && err != nil {
-		return false, err
-	}
-	if data.Version != "" {
-		return true, nil
-	}
-	return false, nil
+	return true, nil
 }
 
 // ExecuteQuery connects to MS SQL database using given credentials and executes a query.
