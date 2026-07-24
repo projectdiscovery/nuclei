@@ -62,6 +62,14 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 
 // Compile compiles the execution generators preparing any requests possible.
 func (e *TemplateExecuter) Compile() error {
+	var compileErr error
+	dsl.WithFileLoadContext(e.fileLoadContext(), func() {
+		compileErr = e.compile()
+	})
+	return compileErr
+}
+
+func (e *TemplateExecuter) compile() error {
 	cliOptions := e.options.Options
 
 	for _, request := range e.requests {
@@ -99,6 +107,15 @@ func (e *TemplateExecuter) Requests() int {
 
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+	var matched bool
+	var execErr error
+	dsl.WithFileLoadContext(e.fileLoadContext(), func() {
+		matched, execErr = e.execute(ctx)
+	})
+	return matched, execErr
+}
+
+func (e *TemplateExecuter) execute(ctx *scan.ScanContext) (bool, error) {
 
 	// === when nuclei is built with -tags=stats ===
 	// Note: this is no-op (empty functions) when nuclei is built in normal or without -tags=stats
@@ -283,6 +300,15 @@ func getErrorCause(err error) string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	var results []*output.ResultEvent
+	var execErr error
+	dsl.WithFileLoadContext(e.fileLoadContext(), func() {
+		results, execErr = e.executeWithResults(ctx)
+	})
+	return results, execErr
+}
+
+func (e *TemplateExecuter) executeWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
 	defer e.options.RemoveTemplateCtx(ctx.Input.MetaInput)
 
 	var errx error
@@ -304,6 +330,17 @@ func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.
 		ctx.LogError(errx)
 	}
 	return ctx.GenerateResult(), errx
+}
+
+func (e *TemplateExecuter) fileLoadContext() *dsl.FileLoadContext {
+	if e == nil || e.options == nil {
+		return nil
+	}
+	return &dsl.FileLoadContext{
+		Options:      e.options.Options,
+		TemplatePath: e.options.TemplatePath,
+		Catalog:      e.options.Catalog,
+	}
 }
 
 // getTemplateType returns the template type of the template

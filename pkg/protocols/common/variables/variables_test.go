@@ -109,6 +109,17 @@ func TestCheckForLazyEval(t *testing.T) {
 		require.False(t, variables.LazyEval, "LazyEval flag should be false")
 	})
 
+	t.Run("file-helper-requires-runtime-sandbox", func(t *testing.T) {
+		variables := &Variable{
+			InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+		}
+		variables.Set("payload", `{{file("payload.bin")}}`)
+
+		result := variables.checkForLazyEval()
+		require.True(t, result, "file() needs template sandbox context at execution time")
+		require.True(t, variables.LazyEval, "LazyEval flag should be true for file()")
+	})
+
 	t.Run("known-runtime-variables", func(t *testing.T) {
 		// Variables with known runtime variables (Host, BaseURL, etc.) should be lazy
 		variables := &Variable{

@@ -237,6 +237,13 @@ func (variables *Variable) checkForLazyEval() bool {
 			return
 		}
 
+		// file() needs the per-template LoadHelperFile sandbox installed during
+		// execution (TemplatePath / Options), so defer evaluation until then.
+		if strings.Contains(types.ToString(value), "file(") {
+			needsLazy = true
+			return
+		}
+
 		if hasUndefinedParams(types.ToString(value), variables) {
 			needsLazy = true
 			return
