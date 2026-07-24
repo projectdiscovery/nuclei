@@ -676,8 +676,8 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
-	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST {
-		// if input type is not list (implicitly enable fuzzing)
+	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
+		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true
 	}
 	store, err := loader.New(loaderConfig)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -37,8 +38,19 @@ var RawInputMode = false
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// Prefer response bodies carried on multi-format inputs (burp/jsonl/yaml).
+	if rr := input.MetaInput.ReqResp; rr != nil && rr.Response != nil && strings.TrimSpace(rr.Response.Raw) != "" {
+		return request.executeRawInput(rr.Response.Raw, rr.URL.String(), input, callback)
+	}
+
 	if RawInputMode {
 		return request.executeRawInput(input.MetaInput.Input, "", input, callback)
+	}
+
+	// Export inputs attach ReqResp with a URL-shaped MetaInput.Input. Without a
+	// response body there is nothing to match offline; do not treat the URL as a filepath.
+	if input.MetaInput.ReqResp != nil {
+		return nil
 	}
 
 	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
