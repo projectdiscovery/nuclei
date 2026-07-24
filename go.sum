@@ -888,8 +888,8 @@ github.com/projectdiscovery/networkpolicy v0.1.42 h1:/d5vriH8fDMoEaFCSD1nuCWs/ki
 github.com/projectdiscovery/networkpolicy v0.1.42/go.mod h1:9ULLaMbdv9UnT0C5rmuK4nIwYs0o776xMnkPUb8TtaE=
 github.com/projectdiscovery/ratelimit v0.0.88 h1:AcurW9aLRzlEyPe9kSjnOpr3XzLMWTpiWAlW/w73ALU=
 github.com/projectdiscovery/ratelimit v0.0.88/go.mod h1:CU1s+68UUG2mctSl2wi32/DHLJA6TMg+4rxgP59LfVk=
-github.com/projectdiscovery/rawhttp v0.1.90 h1:LOSZ6PUH08tnKmWsIwvwv1Z/4zkiYKYOSZ6n+8RFKtw=
-github.com/projectdiscovery/rawhttp v0.1.90/go.mod h1:VZYAM25UI/wVB3URZ95ZaftgOnsbphxyAw/XnQRRz4Y=
+github.com/projectdiscovery/rawhttp v0.1.91 h1:6EIhZxCkBn27kJAl47FieCFCe4H2ZdbhoBVj0J6ZCVY=
+github.com/projectdiscovery/rawhttp v0.1.91/go.mod h1:VZYAM25UI/wVB3URZ95ZaftgOnsbphxyAw/XnQRRz4Y=
 github.com/projectdiscovery/rdap v0.9.0 h1:wPhHx5pQ2QI+WGhyNb2PjhTl0NtB39Nk7YFZ9cp8ZGA=
 github.com/projectdiscovery/rdap v0.9.0/go.mod h1:zk4yrJFQ2Hy36Aqk+DvotYQxYAeALaCJ5ORySkff36Q=
 github.com/projectdiscovery/retryabledns v1.0.115 h1:RKV63FNIznFHUoawg/1hs53pVH3wqPtFhwstCuxVSoA=
