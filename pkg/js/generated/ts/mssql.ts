@@ -49,6 +49,14 @@ export class MSSQLClient {
     
 
     /**
+    * ConnectWithOptions connects to MS SQL using the supplied connection options.
+    */
+    public ConnectWithOptions(opts: MSSQLOptions): boolean | null {
+        return null;
+    }
+    
+
+    /**
     * IsMssql checks if the given host is running MS SQL database.
     * If the host is running MS SQL database, it returns true.
     * If the host is not running MS SQL database, it returns false.
@@ -79,6 +87,26 @@ export class MSSQLClient {
     }
     
 
+}
+
+
+
+/**
+ * MSSQLOptions defines the connection options for an MS SQL database.
+ */
+export interface MSSQLOptions {
+    
+    Host?: string,
+    
+    Port?: number,
+    
+    Username?: string,
+    
+    Password?: string,
+    
+    DbName?: string,
+    
+    Timeout?: number,
 }
 
 

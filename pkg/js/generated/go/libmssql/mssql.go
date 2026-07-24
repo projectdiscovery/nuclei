@@ -19,7 +19,8 @@ func init() {
 			// Var and consts
 
 			// Objects / Classes
-			"MSSQLClient": gojs.GetClassConstructor[lib_mssql.MSSQLClient](&lib_mssql.MSSQLClient{}),
+			"MSSQLClient":  gojs.GetClassConstructor[lib_mssql.MSSQLClient](&lib_mssql.MSSQLClient{}),
+			"MSSQLOptions": gojs.GetClassConstructor[lib_mssql.MSSQLOptions](&lib_mssql.MSSQLOptions{}),
 		},
 	).Register()
 }

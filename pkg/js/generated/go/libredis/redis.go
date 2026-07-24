@@ -15,16 +15,17 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"Connect":           lib_redis.Connect,
-			"GetServerInfo":     lib_redis.GetServerInfo,
-			"GetServerInfoAuth": lib_redis.GetServerInfoAuth,
-			"IsAuthenticated":   lib_redis.IsAuthenticated,
-			"RunLuaScript":      lib_redis.RunLuaScript,
+			"Connect":            lib_redis.Connect,
+			"ConnectWithOptions": lib_redis.ConnectWithOptions,
+			"GetServerInfo":      lib_redis.GetServerInfo,
+			"GetServerInfoAuth":  lib_redis.GetServerInfoAuth,
+			"IsAuthenticated":    lib_redis.IsAuthenticated,
+			"RunLuaScript":       lib_redis.RunLuaScript,
 
 			// Var and consts
 
 			// Objects / Classes
-
+			"RedisOptions": gojs.GetClassConstructor[lib_redis.RedisOptions](&lib_redis.RedisOptions{}),
 		},
 	).Register()
 }

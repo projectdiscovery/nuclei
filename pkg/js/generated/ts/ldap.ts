@@ -405,6 +405,14 @@ export class Client {
     
 
     /**
+    * AuthenticateWithOptions authenticates using a password or an NTLM hash.
+    */
+    public AuthenticateWithOptions(opts: AuthenticateOptions): boolean {
+        return false;
+    }
+    
+
+    /**
     * AuthenticateWithNTLMHash authenticates with the ldap server using the given username and NTLM hash
     * @example
     * ```javascript
@@ -503,6 +511,21 @@ export interface Config {
     ServerName?: string,
     
     Upgrade?: boolean,
+}
+
+
+
+/**
+ * AuthenticateOptions defines credentials for LDAP authentication. Hash takes
+ * precedence over Password when both are provided.
+ */
+export interface AuthenticateOptions {
+    
+    Username?: string,
+    
+    Password?: string,
+    
+    Hash?: string,
 }
 
 

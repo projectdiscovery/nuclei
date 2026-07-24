@@ -71,6 +71,8 @@ func isMySQL(ctx context.Context, executionId string, host string, port int) (bo
 }
 
 // Connect connects to MySQL database using given credentials.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
 // The connection is closed after the function returns.
@@ -81,22 +83,7 @@ func isMySQL(ctx context.Context, executionId string, host string, port int) (bo
 // const connected = client.Connect('acme.com', 3306, 'username', 'password');
 // ```
 func (c *MySQLClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
-
-	// executing queries implies the remote mysql service
-	ok, err := c.IsMySQL(ctx, host, port)
-	if err != nil {
-		return false, err
-	}
-	if !ok {
-		return false, fmt.Errorf("not a mysql service")
-	}
-
-	dsn, err := BuildDSN(MySQLOptions{
+	return c.ConnectWithOptions(ctx, MySQLOptions{
 		Host:     host,
 		Port:     port,
 		DbName:   "INFORMATION_SCHEMA",
@@ -104,6 +91,29 @@ func (c *MySQLClient) Connect(ctx context.Context, host string, port int, userna
 		Username: username,
 		Password: password,
 	})
+}
+
+// ConnectWithOptions connects to MySQL using the supplied connection options.
+func (c *MySQLClient) ConnectWithOptions(ctx context.Context, opts MySQLOptions) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	if opts.Host == "" || opts.Port <= 0 {
+		return false, fmt.Errorf("invalid host or port")
+	}
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
+	}
+
+	// executing queries implies the remote mysql service
+	ok, err := c.IsMySQL(ctx, opts.Host, opts.Port)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("not a mysql service")
+	}
+
+	dsn, err := BuildDSN(opts)
 	if err != nil {
 		return false, err
 	}

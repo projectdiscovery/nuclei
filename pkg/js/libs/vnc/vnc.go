@@ -36,12 +36,22 @@ type (
 	// log(toJSON(connected));
 	// ```
 	VNCClient struct{}
+
+	// VNCOptions defines the connection options for a VNC server.
+	VNCOptions struct {
+		Host     string
+		Port     int
+		Password string
+		Timeout  int // Timeout is in seconds.
+	}
 )
 
 // Connect connects to VNC server using given password.
 // If connection and authentication is successful, it returns true.
 // If connection or authentication is unsuccessful, it returns false and error.
 // The connection is closed after the function returns.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // @example
 // ```javascript
 // const vnc = require('nuclei/vnc');
@@ -49,18 +59,27 @@ type (
 // const connected = client.Connect('acme.com', 5900, 'password');
 // ```
 func (c *VNCClient) Connect(ctx context.Context, host string, port int, password string) (bool, error) {
+	return c.ConnectWithOptions(ctx, VNCOptions{Host: host, Port: port, Password: password})
+}
+
+// ConnectWithOptions connects to VNC using the supplied connection options.
+func (c *VNCClient) ConnectWithOptions(ctx context.Context, opts VNCOptions) (bool, error) {
 	executionId := ctx.Value("executionId").(string)
-	return connect(ctx, executionId, host, port, password)
+	return connectWithOptions(ctx, executionId, opts)
 }
 
 // connect attempts to authenticate with a VNC server using the given password
 func connect(ctx context.Context, executionId string, host string, port int, password string) (bool, error) {
-	if host == "" || port <= 0 {
+	return connectWithOptions(ctx, executionId, VNCOptions{Host: host, Port: port, Password: password})
+}
+
+func connectWithOptions(ctx context.Context, executionId string, opts VNCOptions) (bool, error) {
+	if opts.Host == "" || opts.Port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
-	if !protocolstate.IsHostAllowed(executionId, host) {
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -68,7 +87,7 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(opts.Host, strconv.Itoa(opts.Port)))
 	if err != nil {
 		return false, err
 	}
@@ -77,10 +96,10 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 	}()
 
 	// Set connection timeout
-	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(vncTimeout(opts.Timeout)))
 
 	// Create VNC client config with password
-	vncConfig := vnclib.NewClientConfig(password)
+	vncConfig := vnclib.NewClientConfig(opts.Password)
 
 	// Attempt to connect and authenticate
 	c, err := vnclib.Connect(ctx, conn, vncConfig)
@@ -96,6 +115,13 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 	}
 
 	return true, nil
+}
+
+func vncTimeout(timeout int) time.Duration {
+	if timeout > 0 {
+		return time.Duration(timeout) * time.Second
+	}
+	return 10 * time.Second
 }
 
 // isAuthError checks if the error is an authentication failure
@@ -128,6 +154,9 @@ func isVNC(ctx context.Context, executionId string, host string, port int) (IsVN
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return resp, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return IsVNCResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)

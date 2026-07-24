@@ -72,6 +72,26 @@ export class SMBClient {
     
 
     /**
+    * ListSharesWithOptions lists SMB share names using SMBOptions.
+    * Supports domain, pass-the-hash, workstation, and SPN overrides.
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.SMBClient();
+    * const opts = new smb.SMBOptions();
+    * opts.Host = 'acme.com';
+    * opts.Port = 445;
+    * opts.User = 'Administrator';
+    * opts.Domain = 'ACME';
+    * const shares = client.ListSharesWithOptions(opts);
+    * ```
+    */
+    public ListSharesWithOptions(opts: SMBOptions): string[] | null {
+        return null;
+    }
+    
+
+    /**
     * DetectSMBGhost tries to detect SMBGhost vulnerability
     * by using SMBv3 compression feature.
     * If the host is vulnerable, it returns true.
@@ -86,6 +106,42 @@ export class SMBClient {
     }
     
 
+}
+
+
+
+/**
+ * SMBOptions represents configuration for authenticated SMB operations.
+ * @example
+ * ```javascript
+ * const smb = require('nuclei/smb');
+ * const opts = new smb.SMBOptions();
+ * opts.Host = 'acme.com';
+ * opts.Port = 445;
+ * opts.User = 'Administrator';
+ * opts.Password = 'password';
+ * opts.Domain = 'ACME';
+ * ```
+ */
+export interface SMBOptions {
+    
+    Host?: string,
+    
+    Port?: number,
+    
+    User?: string,
+    
+    Password?: string,
+    
+    Hash?: string,
+    
+    Domain?: string,
+    
+    Workstation?: string,
+    
+    TargetSPN?: string,
+    
+    Timeout?: number,
 }
 
 

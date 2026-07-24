@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/microsoft/go-mssqldb"
+	mssqldb "github.com/microsoft/go-mssqldb"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -24,9 +24,33 @@ type (
 	// const client = new mssql.MSSQLClient;
 	// ```
 	MSSQLClient struct{}
+
+	// MSSQLOptions defines the connection options for an MS SQL database.
+	// @example
+	// ```javascript
+	// const mssql = require('nuclei/mssql');
+	// const opts = new mssql.MSSQLOptions();
+	// opts.Host = 'acme.com';
+	// opts.Port = 1433;
+	// opts.Username = 'sa';
+	// opts.Password = 'password';
+	// opts.DbName = 'master';
+	// opts.Timeout = 15;
+	// const connected = client.ConnectWithOptions(opts);
+	// ```
+	MSSQLOptions struct {
+		Host     string // Host is the hostname or IP of the MS SQL server.
+		Port     int    // Port is the MS SQL port (usually 1433).
+		Username string // Username is the login name.
+		Password string // Password is the login password.
+		DbName   string // DbName is the database name (default master when using Connect).
+		Timeout  int    // Timeout is the connection timeout in seconds (default 30).
+	}
 )
 
 // Connect connects to MS SQL database using given credentials.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
 // The connection is closed after the function returns.
@@ -42,6 +66,8 @@ func (c *MSSQLClient) Connect(ctx context.Context, host string, port int, userna
 }
 
 // ConnectWithDB connects to MS SQL database using given credentials and database name.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
 // The connection is closed after the function returns.
@@ -56,21 +82,47 @@ func (c *MSSQLClient) ConnectWithDB(ctx context.Context, host string, port int, 
 	return memoizedconnect(ctx, executionId, host, port, username, password, dbName)
 }
 
+// ConnectWithOptions connects to MS SQL using the supplied connection options.
+// Prefer this over Connect/ConnectWithDB when setting timeout or database name together.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const client = new mssql.MSSQLClient;
+// const opts = new mssql.MSSQLOptions();
+// opts.Host = 'acme.com';
+// opts.Port = 1433;
+// opts.Username = 'sa';
+// opts.Password = 'password';
+// opts.DbName = 'master';
+// opts.Timeout = 15;
+// const connected = client.ConnectWithOptions(opts);
+// ```
+func (c *MSSQLClient) ConnectWithOptions(ctx context.Context, opts MSSQLOptions) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	return connectWithOptions(ctx, executionId, opts)
+}
+
 // @memo
 func connect(ctx context.Context, executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
-	if host == "" || port <= 0 {
+	return connectWithOptions(ctx, executionId, MSSQLOptions{
+		Host: host, Port: port, Username: username, Password: password, DbName: dbName,
+	})
+}
+
+func connectWithOptions(ctx context.Context, executionId string, opts MSSQLOptions) (bool, error) {
+	if opts.Host == "" || opts.Port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
-	if !protocolstate.IsHostAllowed(executionId, host) {
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
-	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
 
-	connString := mssqlConnString(target, username, password, dbName)
+	connString := mssqlConnString(target, opts)
 
-	db, err := sql.Open("sqlserver", connString)
+	db, err := openDB(executionId, connString)
 	if err != nil {
 		return false, err
 	}
@@ -170,9 +222,11 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-	connString := mssqlConnString(target, username, password, dbName)
+	connString := mssqlConnString(target, MSSQLOptions{
+		Username: username, Password: password, DbName: dbName,
+	})
 
-	db, err := sql.Open("sqlserver", connString)
+	db, err := openDB(executionId, connString)
 	if err != nil {
 		return nil, err
 	}
@@ -198,10 +252,40 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	return data, nil
 }
 
-func mssqlConnString(target, username, password, dbName string) string {
-	return fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
-		url.PathEscape(username),
-		url.PathEscape(password),
+func mssqlConnString(target string, opts MSSQLOptions) string {
+	timeout := opts.Timeout
+	if timeout <= 0 {
+		timeout = 30
+	}
+	return fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=%d",
+		url.PathEscape(opts.Username),
+		url.PathEscape(opts.Password),
 		target,
-		url.QueryEscape(dbName))
+		url.QueryEscape(opts.DbName),
+		timeout)
+}
+
+// openDB opens an MSSQL database using nuclei's policy-aware fastdialer.
+func openDB(executionId, connString string) (*sql.DB, error) {
+	connector, err := mssqldb.NewConnector(connString)
+	if err != nil {
+		return nil, err
+	}
+	connector.Dialer = mssqlDialer{executionId: executionId}
+	return sql.OpenDB(connector), nil
+}
+
+type mssqlDialer struct {
+	executionId string
+}
+
+func (d mssqlDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	if !protocolstate.IsHostAllowed(d.executionId, address) {
+		return nil, protocolstate.ErrHostDenied.Msgf(address)
+	}
+	dialers := protocolstate.GetDialersWithId(d.executionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", d.executionId)
+	}
+	return dialers.Fastdialer.Dial(ctx, network, address)
 }

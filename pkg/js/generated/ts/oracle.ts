@@ -42,6 +42,13 @@ export class OracleClient {
     }
 
     /**
+     * ConnectWithOptions connects to Oracle using the supplied connection options.
+     */
+    public ConnectWithOptions(opts: OracleOptions): boolean | null {
+        return null;
+    }
+
+    /**
      * ConnectWithDSN connects to an Oracle database using a DSN string
      * @example
      * ```javascript
@@ -94,6 +101,17 @@ export class OracleClient {
     public ExecuteQueryWithDSN(dsn: string, query: string): SQLResult | null {
         return null;
     }
+}
+
+/**
+ * OracleOptions defines the connection options for an Oracle database.
+ */
+export interface OracleOptions {
+    Host?: string,
+    Port?: number,
+    ServiceName?: string,
+    Username?: string,
+    Password?: string,
 }
 
 /**
