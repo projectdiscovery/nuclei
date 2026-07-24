@@ -344,6 +344,10 @@ type RequestData struct {
 
 	Parameter string
 	Request   *retryablehttp.Request
+
+	// Eviction overrides the client-wide Interactsh request cache TTL when > 0.
+	// Used for per-template interactsh-eviction.
+	Eviction time.Duration
 }
 
 // RequestEvent is the event for a network request sent by nuclei.
@@ -367,9 +371,27 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 				}
 			}
 		} else {
-			_ = c.requests.SetWithExpire(id, data, c.eviction)
+			_ = c.requests.SetWithExpire(id, data, c.evictionFor(data))
 		}
 	}
+}
+
+// evictionFor returns the request cache TTL for a RequestEvent.
+// Per-request Eviction overrides the client-wide default when set.
+func (c *Client) evictionFor(data *RequestData) time.Duration {
+	if data != nil && data.Eviction > 0 {
+		return data.Eviction
+	}
+	return c.eviction
+}
+
+// EvictionFromSeconds converts a template/CLI eviction value in seconds to a
+// duration. Non-positive values mean "use the client default".
+func EvictionFromSeconds(seconds int) time.Duration {
+	if seconds <= 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 // HasMatchers returns true if an operator has interactsh part

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"sync/atomic"
+	"time"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
@@ -105,6 +106,10 @@ type ExecutorOptions struct {
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
+	// InteractshEviction is an optional per-template Interactsh request cache
+	// TTL in seconds. When > 0 it overrides the global interactions-eviction
+	// duration for requests from this template only.
+	InteractshEviction int
 	// Variables is a list of variables from template
 	Variables variables.Variable
 	// Constants is a list of constants from template
@@ -313,6 +318,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Interactsh:                   e.Interactsh,
 		HostErrorsCache:              e.HostErrorsCache,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
+		InteractshEviction:           e.InteractshEviction,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
 		ExcludeMatchers:              e.ExcludeMatchers,
@@ -338,6 +344,15 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
 	return copy
+}
+
+// InteractshEvictionDuration returns the per-template Interactsh request
+// cache TTL, or 0 to use the client-wide default.
+func (e *ExecutorOptions) InteractshEvictionDuration() time.Duration {
+	if e == nil {
+		return 0
+	}
+	return interactsh.EvictionFromSeconds(e.InteractshEviction)
 }
 
 // Request is an interface implemented any protocol based request generator.

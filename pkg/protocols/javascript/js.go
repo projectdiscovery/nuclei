@@ -704,6 +704,7 @@ func (request *Request) executeRequestWithPayloads(
 			Operators:      request.CompiledOperators,
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
+			Eviction:       request.options.InteractshEvictionDuration(),
 		})
 	}
 	return nil
