@@ -24,7 +24,7 @@ endif
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs fuzz fuzz-ci fuzz-tools
 .PHONY: devtools-tsgen docs docgen dsl-docs functional go-build lint lint-strict fuzzplayground syntax-docs
 .PHONY: integration integration-debug regression jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
-.PHONY: tidy ts verify download vet template-validate build-fuzz discover-fuzz-packages
+.PHONY: tidy ts verify download vet template-validate build-fuzz discover-fuzz-packages fuzz-ignorelists
 
 all: build
 
@@ -278,6 +278,11 @@ memogen: GOBUILD_PACKAGES = cmd/memogen/memogen.go
 memogen: go-build
 memogen:
 	./$(GOBUILD_OUTPUT) -src pkg/js/libs -tpl cmd/memogen/function.tpl
+
+# Regenerate default fuzz ignore lists from seed_*.txt (existing lists).
+# Pass WAPPALYZER=1 to also merge names from wappalyzergo fingerprints.
+fuzz-ignorelists:
+	$(GOCMD) run ./pkg/fuzz/component/cmd/genignorelists $(if $(WAPPALYZER),-wappalyzer,) -out ./pkg/fuzz/component/ignorelists.gen.go
 
 dsl-docs: GOBUILD_OUTPUT = ./bin/scrapefuncs
 dsl-docs: GOBUILD_PACKAGES = pkg/js/devtools/scrapefuncs/main.go
