@@ -76,6 +76,7 @@ require (
 	github.com/google/go-github/v30 v30.1.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
+	github.com/graphql-go/graphql v0.8.1
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jcmturner/gokrb5/v8 v8.4.4

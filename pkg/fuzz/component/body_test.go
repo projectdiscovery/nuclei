@@ -244,3 +244,109 @@ func TestMultiPartFormConcurrentParse(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestBodyGraphqlVariablesComponent(t *testing.T) {
+	raw := `{
+  "query": "mutation ImportPaste($host: String!, $path: String!) { importPaste(host: $host, path: $path) { result } }",
+  "variables": {
+    "host": "example.com",
+    "path": "/robots.txt"
+  }
+}`
+	req, err := retryablehttp.NewRequest("POST", "https://example.com/graphql", strings.NewReader(raw))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	body := New(RequestBodyComponent)
+	parsed, err := body.Parse(req)
+	require.NoError(t, err)
+	require.True(t, parsed)
+
+	keys := map[string]struct{}{}
+	_ = body.Iterate(func(key string, value interface{}) error {
+		keys[key] = struct{}{}
+		return nil
+	})
+	require.Contains(t, keys, "host")
+	require.Contains(t, keys, "path")
+	require.NotContains(t, keys, "query")
+
+	require.NoError(t, body.SetValue("path", "/robots.txt; id"))
+	rebuilt, err := body.Rebuild()
+	require.NoError(t, err)
+
+	newBody, err := io.ReadAll(rebuilt.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(newBody), `/robots.txt; id`)
+	require.Contains(t, string(newBody), `"host":"example.com"`)
+	require.Contains(t, string(newBody), "mutation ImportPaste")
+}
+
+func TestBodyGraphqlInlineArgsComponent(t *testing.T) {
+	raw := `{"query":"query { jobs(jobType: \"front-end\") { id } }"}`
+	req, err := retryablehttp.NewRequest("POST", "https://example.com/graphql", strings.NewReader(raw))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	body := New(RequestBodyComponent)
+	parsed, err := body.Parse(req)
+	require.NoError(t, err)
+	require.True(t, parsed)
+
+	require.NoError(t, body.SetValue("jobType", "canary"))
+	rebuilt, err := body.Rebuild()
+	require.NoError(t, err)
+
+	newBody, err := io.ReadAll(rebuilt.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(newBody), "canary")
+	require.NotContains(t, string(newBody), "front-end")
+}
+
+func TestBodyGraphqlNestedVariablesComponent(t *testing.T) {
+	raw := `{
+  "query": "mutation ($input: ImportInput!) { importPaste(input: $input) { result } }",
+  "variables": {
+    "input": {
+      "host": "example.com",
+      "path": "/robots.txt"
+    }
+  }
+}`
+	req, err := retryablehttp.NewRequest("POST", "https://example.com/graphql", strings.NewReader(raw))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	body := New(RequestBodyComponent)
+	parsed, err := body.Parse(req)
+	require.NoError(t, err)
+	require.True(t, parsed)
+
+	require.NoError(t, body.SetValue("input~path", "/etc/passwd"))
+	rebuilt, err := body.Rebuild()
+	require.NoError(t, err)
+
+	newBody, err := io.ReadAll(rebuilt.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(newBody), `/etc/passwd`)
+	require.Contains(t, string(newBody), `"host":"example.com"`)
+}
+
+func TestBodyRegularJSONNotForcedToGraphql(t *testing.T) {
+	req, err := retryablehttp.NewRequest("POST", "https://example.com", strings.NewReader(`{"foo":"bar"}`))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	body := New(RequestBodyComponent)
+	parsed, err := body.Parse(req)
+	require.NoError(t, err)
+	require.True(t, parsed)
+
+	require.NoError(t, body.SetValue("foo", "baz"))
+	rebuilt, err := body.Rebuild()
+	require.NoError(t, err)
+	newBody, err := io.ReadAll(rebuilt.Body)
+	require.NoError(t, err)
+	require.Equal(t, `{"foo":"baz"}`, string(newBody))
+}
+
