@@ -6,11 +6,8 @@ import (
 	"io"
 	"log"
 	"net"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
-	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -42,30 +39,10 @@ func (c *MySQLClient) IsMySQL(ctx context.Context, host string, port int) (bool,
 
 // @memo
 func isMySQL(ctx context.Context, executionId string, host string, port int) (bool, error) {
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return false, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	// Reuse the memoized fingerprint probe so IsMySQL + FingerprintMySQL share one dial.
+	_, err := memoizedfingerprintMySQL(ctx, executionId, host, port)
 	if err != nil {
 		return false, err
-	}
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	plugin := &mysqlplugin.MYSQLPlugin{}
-	service, err := plugin.Run(conn, 5*time.Second, plugins.Target{Host: host})
-	if err != nil {
-		return false, err
-	}
-	if service == nil {
-		return false, nil
 	}
 	return true, nil
 }
@@ -114,15 +91,24 @@ type (
 	// MySQLInfo contains information about MySQL server.
 	// this is returned when fingerprint is successful
 	MySQLInfo struct {
-		Host      string               `json:"host,omitempty"`
-		IP        string               `json:"ip"`
-		Port      int                  `json:"port"`
-		Protocol  string               `json:"protocol"`
-		TLS       bool                 `json:"tls"`
-		Transport string               `json:"transport"`
-		Version   string               `json:"version,omitempty"`
-		Debug     plugins.ServiceMySQL `json:"debug,omitempty"`
-		Raw       string               `json:"metadata"`
+		Host            string        `json:"host,omitempty"`
+		IP              string        `json:"ip"`
+		Port            int           `json:"port"`
+		Protocol        string        `json:"protocol"`
+		TLS             bool          `json:"tls"`
+		Transport       string        `json:"transport"`
+		Version         string        `json:"version,omitempty"`
+		ProtocolVersion int           `json:"protocolVersion,omitempty"`
+		ThreadID        uint32        `json:"threadId,omitempty"`
+		CapabilityFlags uint32        `json:"capabilityFlags,omitempty"`
+		Capabilities    []string      `json:"capabilities,omitempty"`
+		CharacterSet    uint8         `json:"characterSet,omitempty"`
+		StatusFlags     uint16        `json:"statusFlags,omitempty"`
+		Status          []string      `json:"status,omitempty"`
+		Salt            string        `json:"salt,omitempty"`
+		AuthPluginName  string        `json:"authPluginName,omitempty"`
+		Debug           HandshakeInfo `json:"debug,omitempty"`
+		Raw             string        `json:"metadata"`
 	}
 )
 
@@ -158,25 +144,33 @@ func fingerprintMySQL(ctx context.Context, executionId string, host string, port
 		_ = conn.Close()
 	}()
 
-	plugin := &mysqlplugin.MYSQLPlugin{}
-	service, err := plugin.Run(conn, 5*time.Second, plugins.Target{Host: host})
+	handshake, err := fingerprintConn(conn, mysqlFingerprintTimeout)
 	if err != nil {
 		return info, err
 	}
-	if service == nil {
-		return info, fmt.Errorf("something went wrong got null output")
+
+	info.Host = host
+	info.Port = port
+	info.Protocol = "mysql"
+	info.Transport = "tcp"
+	info.TLS = false
+	if hostIP := net.ParseIP(host); hostIP != nil {
+		info.IP = hostIP.String()
+	} else if remote, ok := conn.RemoteAddr().(*net.TCPAddr); ok && remote.IP != nil {
+		info.IP = remote.IP.String()
 	}
-	// fill all fields
-	info.Host = service.Host
-	info.IP = service.IP
-	info.Port = service.Port
-	info.Protocol = service.Protocol
-	info.TLS = service.TLS
-	info.Transport = service.Transport
-	info.Version = service.Version
-	info.Debug = service.Metadata().(plugins.ServiceMySQL)
-	bin, _ := service.Raw.MarshalJSON()
-	info.Raw = string(bin)
+	info.Version = handshake.Version
+	info.ProtocolVersion = handshake.ProtocolVersion
+	info.ThreadID = handshake.ThreadID
+	info.CapabilityFlags = handshake.CapabilityFlags
+	info.Capabilities = handshake.Capabilities
+	info.CharacterSet = handshake.CharacterSet
+	info.StatusFlags = handshake.StatusFlags
+	info.Status = handshake.Status
+	info.Salt = handshake.Salt
+	info.AuthPluginName = handshake.AuthPluginName
+	info.Debug = handshake
+	info.Raw = handshakeToJSON(handshake)
 	return info, nil
 }
 
