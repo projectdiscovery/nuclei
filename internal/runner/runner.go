@@ -766,6 +766,12 @@ func (r *Runner) RunEnumeration() error {
 			return errors.Wrap(err, "could not probe http input")
 		}
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
+		executorOpts.InputHelper.StrictProbe = r.options.StrictProbe
+		if r.options.StrictProbe {
+			r.Logger.Info().Msgf("Strict probe enabled: non-url hosts without httpx confirmation will be skipped for HTTP/headless templates")
+		}
+	} else if r.options.StrictProbe && r.options.DisableHTTPProbe {
+		r.Logger.Warning().Msgf("strict-probe has no effect with -no-httpx (httpx probing is disabled)")
 	}
 
 	inputCount := int(r.inputProvider.Count())

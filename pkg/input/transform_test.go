@@ -72,3 +72,30 @@ func TestConvertInputToType(t *testing.T) {
 		require.Equal(t, test.result, result, "could not get correct result %+v", test)
 	}
 }
+
+func TestStrictProbeSkipsUnconfirmedHTTPInput(t *testing.T) {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = hm.Close() })
+
+	_ = hm.Set("ok.example", []byte("https://ok.example"))
+
+	helper := &Helper{InputsHTTP: hm, StrictProbe: true}
+
+	require.Equal(t, "https://ok.example", helper.convertInputToType("ok.example", typeURL, ""))
+	require.Equal(t, "", helper.convertInputToType("127.0.0.1:3306", typeURL, ""))
+	require.Equal(t, "", helper.convertInputToType("zombie.example:6379", typeURL, ""))
+	// Already-URL inputs are not gated by probe results.
+	require.Equal(t, "https://direct.example", helper.convertInputToType("https://direct.example", typeURL, ""))
+	// Non-HTTP protocols still transform normally.
+	require.Equal(t, "127.0.0.1:3306", helper.convertInputToType("127.0.0.1:3306", typeHostWithOptionalPort, ""))
+}
+
+func TestStrictProbeDisabledKeepsRawFallback(t *testing.T) {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = hm.Close() })
+
+	helper := &Helper{InputsHTTP: hm, StrictProbe: false}
+	require.Equal(t, "127.0.0.1:3306", helper.convertInputToType("127.0.0.1:3306", typeURL, ""))
+}

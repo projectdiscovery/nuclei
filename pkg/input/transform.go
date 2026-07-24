@@ -16,6 +16,9 @@ import (
 // Helper is a structure for helping with input transformation
 type Helper struct {
 	InputsHTTP *hybrid.HybridMap
+	// StrictProbe, when InputsHTTP is set, skips HTTP/headless fallback to the
+	// raw input if httpx did not confirm a web service for that host.
+	StrictProbe bool
 }
 
 // NewHelper returns a new input helper instance
@@ -113,6 +116,10 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if h.InputsHTTP != nil {
 			if probed, ok := h.InputsHTTP.Get(input); ok {
 				return string(probed)
+			}
+			// Probe ran but this host was not confirmed as HTTP(S).
+			if h.StrictProbe {
+				return ""
 			}
 		}
 		// try to parse it as absolute url and return

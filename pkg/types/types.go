@@ -205,6 +205,9 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// StrictProbe skips HTTP/headless execution for non-URL inputs that httpx
+	// could not confirm as a web service, instead of falling back to the raw input.
+	StrictProbe bool
 	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
 	// before running templates. Disabled by default.
 	PreflightPortScan bool
@@ -576,6 +579,7 @@ func (options *Options) Copy() *Options {
 		DebugRequests:                  options.DebugRequests,
 		DebugResponse:                  options.DebugResponse,
 		DisableHTTPProbe:               options.DisableHTTPProbe,
+		StrictProbe:                    options.StrictProbe,
 		PreflightPortScan:              options.PreflightPortScan,
 		PerHostRateLimit:               options.PerHostRateLimit,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
