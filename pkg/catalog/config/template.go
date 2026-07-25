@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
@@ -78,7 +79,7 @@ func IsTemplateWithRoot(fpath, rootDir string) bool {
 	fname := filepath.Base(fpath)
 	fext := strings.ToLower(filepath.Ext(fpath))
 
-	if stringsutil.ContainsAny(fname, GetKnownConfigFiles()...) {
+	if slices.Contains(GetKnownConfigFiles(), fname) {
 		return false
 	}
 

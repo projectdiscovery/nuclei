@@ -89,6 +89,12 @@ func TestIsTemplate(t *testing.T) {
 			rootDir: "",
 			want:    false,
 		},
+		{
+			name:    "template name containing config filename",
+			fpath:   "http/cves.json.yaml",
+			rootDir: "",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {

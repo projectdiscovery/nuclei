@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/logrusorgru/aurora/v4"
@@ -26,7 +27,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	erred := make(map[string]error)
 
 	for _, t := range definitions {
-		if stringsutil.ContainsAny(t, knownConfigFiles...) {
+		if isKnownConfigFile(t) {
 			// TODO: this is a temporary fix to avoid treating these files as templates
 			// this should be replaced with more appropriate and robust logic
 			continue
@@ -54,12 +55,16 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	for _, v := range allTemplates {
 		// TODO: this is a temporary fix to avoid treating these files as templates
 		// this should be replaced with more appropriate and robust logic
-		if !stringsutil.ContainsAny(v, knownConfigFiles...) {
+		if !isKnownConfigFile(v) {
 			filteredTemplates = append(filteredTemplates, v)
 		}
 	}
 
 	return filteredTemplates, erred
+}
+
+func isKnownConfigFile(path string) bool {
+	return slices.Contains(knownConfigFiles, filepath.Base(path))
 }
 
 // GetTemplatePath parses the specified input template path and returns a compiled

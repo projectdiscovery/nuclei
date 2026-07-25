@@ -1,9 +1,9 @@
 package disk
 
 import (
-	"testing/fstest"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/require"
 )
@@ -55,4 +55,17 @@ func TestFindGlobPathMatchesResolvesContainedPath(t *testing.T) {
 	matches, err := cat.findGlobPathMatches(filepath.Join(templatesDir, "http", "*.yaml"), map[string]struct{}{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"http/test.yaml"}, matches)
+}
+
+func TestGetTemplatesPathAllowsNamesContainingKnownConfigFiles(t *testing.T) {
+	const templatePath = "http/cves.json.yaml"
+	catalog := NewFSCatalog(fstest.MapFS{
+		templatePath: {Data: []byte("id: test")},
+	}, t.TempDir())
+
+	for _, definitions := range [][]string{{templatePath}, {"http"}} {
+		templates, errs := catalog.GetTemplatesPath(definitions)
+		require.Empty(t, errs)
+		require.Equal(t, []string{templatePath}, templates)
+	}
 }
