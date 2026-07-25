@@ -28,6 +28,7 @@ var (
 
 const (
 	MultiFormatInputProvider = "MultiFormatInputProvider"
+	TargetInputProvider      = "TargetInputProvider"
 	ListInputProvider        = "ListInputProvider"
 	SimpleListInputProvider  = "SimpleInputProvider"
 )
@@ -72,6 +73,12 @@ type InputProvider interface {
 	InputType() string
 	// Close the input provider and cleanup any resources
 	Close()
+}
+
+// PerTargetInputProvider exposes inputs carrying target-specific template
+// filters so the runner can resolve inheritance before templates are loaded.
+type PerTargetInputProvider interface {
+	TargetInputs() []*contextargs.MetaInput
 }
 
 // InputOptions contains options for input provider
@@ -155,8 +162,9 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 	}
 
 	return http.NewHttpInputProvider(&http.HttpMultiFormatOptions{
-		InputFile: opts.Options.TargetsFilePath,
-		InputMode: opts.Options.InputFileMode,
+		InputFile:      opts.Options.TargetsFilePath,
+		InputMode:      opts.Options.InputFileMode,
+		ExcludeTargets: []string(opts.Options.ExcludeTargets),
 		Options: formats.InputFormatOptions{
 			Variables:            generators.MergeMaps(extraVars, opts.Options.Vars.AsMap()),
 			SkipFormatValidation: opts.Options.SkipFormatValidation,

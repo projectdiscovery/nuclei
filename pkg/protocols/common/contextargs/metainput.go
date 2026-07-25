@@ -20,6 +20,8 @@ type MetaInput struct {
 	Input string `json:"input,omitempty"`
 	// CustomIP to use for connection
 	CustomIP string `json:"customIP,omitempty"`
+	// TargetFilter contains optional per-target template selection criteria.
+	TargetFilter *TargetFilter `json:"target-filter,omitempty"`
 	// hash of the input
 	hash string `json:"-"`
 
@@ -108,13 +110,17 @@ func (metaInput *MetaInput) Address() string {
 
 // ID returns a unique id/hash for metainput
 func (metaInput *MetaInput) ID() string {
+	filterIdentity := metaInput.TargetFilter.identity()
 	if metaInput.CustomIP != "" {
-		return fmt.Sprintf("%s-%s", metaInput.Input, metaInput.CustomIP)
+		if filterIdentity == "" {
+			return fmt.Sprintf("%s-%s", metaInput.Input, metaInput.CustomIP)
+		}
+		return fmt.Sprintf("%s-%s-%s", metaInput.Input, metaInput.CustomIP, filterIdentity)
 	}
 	if metaInput.ReqResp != nil {
 		return metaInput.ReqResp.ID()
 	}
-	return metaInput.Input
+	return metaInput.Input + filterIdentity
 }
 
 func (metaInput *MetaInput) MarshalString() (string, error) {
@@ -148,6 +154,7 @@ func (metaInput *MetaInput) Clone() *MetaInput {
 	input := NewMetaInput()
 	input.Input = metaInput.Input
 	input.CustomIP = metaInput.CustomIP
+	input.TargetFilter = metaInput.TargetFilter.clone()
 	input.hash = metaInput.hash
 	if metaInput.ReqResp != nil {
 		input.ReqResp = metaInput.ReqResp.Clone()
@@ -178,7 +185,11 @@ func (metaInput *MetaInput) GetScanHash(templateId string) string {
 		if metaInput.ReqResp != nil {
 			rawRequest = metaInput.ReqResp.ID()
 		}
-		metaInput.hash = getMd5Hash(templateId + ":" + metaInput.Input + ":" + metaInput.CustomIP + rawRequest)
+		filterIdentity := metaInput.TargetFilter.identity()
+		if filterIdentity != "" {
+			filterIdentity = ":" + filterIdentity
+		}
+		metaInput.hash = getMd5Hash(templateId + ":" + metaInput.Input + ":" + metaInput.CustomIP + filterIdentity + rawRequest)
 	}
 	return metaInput.hash
 }

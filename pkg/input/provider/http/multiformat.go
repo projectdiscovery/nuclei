@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/burp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/json"
@@ -16,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/yaml"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // HttpMultiFormatOptions contains options for the http input provider
@@ -29,15 +33,24 @@ type HttpMultiFormatOptions struct {
 
 	// optional input reader
 	InputContents string
+
+	// ExcludeTargets contains URL, host, IP, CIDR, or ASN exclusions to
+	// apply to URL target records. Request/response input formats retain their
+	// existing protocol-level exclusion behavior.
+	ExcludeTargets []string
 }
+
+const targetInputProviderType = "TargetInputProvider"
 
 // HttpInputProvider implements an input provider for nuclei that loads
 // inputs from multiple formats like burp, openapi, postman,proxify, etc.
 type HttpInputProvider struct {
-	format    formats.Format
-	inputData []byte
-	inputFile string
-	count     int64
+	format       formats.Format
+	inputData    []byte
+	inputFile    string
+	count        int64
+	inputType    string
+	targetInputs []*contextargs.MetaInput
 }
 
 // NewHttpInputProvider creates a new input provider for nuclei from a file
@@ -85,14 +98,57 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 		return nil, errors.New("input file is empty")
 	}
 
-	parseErr := format.Parse(bytes.NewReader(data), func(request *types.RequestResponse) bool {
+	var exclusionPolicy *networkpolicy.NetworkPolicy
+	var exclusionPolicyErr error
+	exclusionPolicyPrepared := false
+	targetInputs := make([]*contextargs.MetaInput, 0)
+	hasTargetRecords := false
+	excludedCount := int64(0)
+	parseErr := parseFormat(format, bytes.NewReader(data), opts.InputFile, func(metaInput *contextargs.MetaInput) bool {
+		if metaInput == nil {
+			return true
+		}
+		if metaInput.TargetFilter != nil {
+			hasTargetRecords = true
+			if !exclusionPolicyPrepared {
+				exclusionPolicy, exclusionPolicyErr = newTargetExclusionPolicy(opts.ExcludeTargets)
+				exclusionPolicyPrepared = true
+				if exclusionPolicyErr != nil {
+					return false
+				}
+			}
+			if targetIsExcluded(metaInput.Input, exclusionPolicy) {
+				excludedCount++
+				return true
+			}
+			targetInputs = append(targetInputs, metaInput)
+		}
 		count++
-		return false
-	}, opts.InputFile)
+		return true
+	})
+	if exclusionPolicyErr != nil {
+		return nil, errors.Wrap(exclusionPolicyErr, "could not prepare target exclusions")
+	}
 	if parseErr != nil {
 		return nil, errors.Wrap(parseErr, "could not parse input file")
 	}
-	return &HttpInputProvider{format: format, inputData: data, inputFile: opts.InputFile, count: count}, nil
+	if excludedCount > 0 {
+		gologger.Info().Msgf("Number of JSONL targets excluded from input: %d", excludedCount)
+	}
+	inputType := providerInputType(format, hasTargetRecords)
+	if inputType == targetInputProviderType {
+		// Target records are cached as parsed MetaInputs, so retaining the raw
+		// file would duplicate memory for large JSONL target sets.
+		data = nil
+	}
+	return &HttpInputProvider{
+		format:       format,
+		inputData:    data,
+		inputFile:    opts.InputFile,
+		count:        count,
+		inputType:    inputType,
+		targetInputs: targetInputs,
+	}, nil
 }
 
 // Count returns the number of items for input provider
@@ -102,12 +158,16 @@ func (i *HttpInputProvider) Count() int64 {
 
 // Iterate over all inputs in order
 func (i *HttpInputProvider) Iterate(callback func(value *contextargs.MetaInput) bool) {
-	err := i.format.Parse(bytes.NewReader(i.inputData), func(request *types.RequestResponse) bool {
-		metaInput := contextargs.NewMetaInput()
-		metaInput.ReqResp = request
-		metaInput.Input = request.URL.String()
-		return callback(metaInput)
-	}, i.inputFile)
+	if i.inputType == targetInputProviderType {
+		for _, input := range i.targetInputs {
+			if !callback(input.Clone()) {
+				return
+			}
+		}
+		return
+	}
+
+	err := parseFormat(i.format, bytes.NewReader(i.inputData), i.inputFile, callback)
 	if err != nil {
 		gologger.Warning().Msgf("Could not parse input file while iterating: %s\n", err)
 	}
@@ -131,7 +191,14 @@ func (i *HttpInputProvider) SetWithExclusions(_ string, value string) error {
 
 // InputType returns the type of input provider
 func (i *HttpInputProvider) InputType() string {
-	return "MultiFormatInputProvider"
+	return i.inputType
+}
+
+// TargetInputs returns the cached target records for inheritance preparation.
+// The returned inputs are owned by the provider and must only be mutated before
+// scan execution starts.
+func (i *HttpInputProvider) TargetInputs() []*contextargs.MetaInput {
+	return i.targetInputs
 }
 
 // Close closes the input provider and cleans up any resources
@@ -155,4 +222,72 @@ func SupportedFormats() string {
 		formats = append(formats, provider.Name())
 	}
 	return strings.Join(formats, ", ")
+}
+
+func parseFormat(format formats.Format, input io.Reader, filePath string, callback formats.ParseMetaInputCallback) error {
+	if metaFormat, ok := format.(formats.MetaInputFormat); ok {
+		return metaFormat.ParseMeta(input, callback, filePath)
+	}
+	return format.Parse(input, func(request *types.RequestResponse) bool {
+		metaInput := contextargs.NewMetaInput()
+		metaInput.ReqResp = request
+		metaInput.Input = request.URL.String()
+		return callback(metaInput)
+	}, filePath)
+}
+
+func providerInputType(format formats.Format, hasTargetRecords bool) string {
+	if _, ok := format.(formats.MetaInputFormat); ok && hasTargetRecords {
+		return targetInputProviderType
+	}
+	return "MultiFormatInputProvider"
+}
+
+func newTargetExclusionPolicy(excludeTargets []string) (*networkpolicy.NetworkPolicy, error) {
+	if len(excludeTargets) == 0 {
+		return nil, nil
+	}
+
+	denyList := make([]string, 0, len(excludeTargets))
+	for _, target := range excludeTargets {
+		target = strings.TrimSpace(target)
+		if target == "" {
+			continue
+		}
+		if asn.IsASN(target) {
+			cidrs, err := asn.GetCIDRsForASNNum(target)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not resolve excluded ASN %s", target)
+			}
+			for _, cidr := range cidrs {
+				denyList = append(denyList, cidr.String())
+			}
+			continue
+		}
+		if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+			parsed, err := urlutil.Parse(target)
+			if err == nil && parsed.Host != "" {
+				// URL exclusions apply to the target host, matching the list
+				// provider's behavior without accidentally matching a query
+				// string or path.
+				target = "^" + regexp.QuoteMeta(parsed.Host) + "$"
+			}
+		}
+		denyList = append(denyList, target)
+	}
+	if len(denyList) == 0 {
+		return nil, nil
+	}
+	return networkpolicy.New(networkpolicy.Options{DenyList: denyList})
+}
+
+func targetIsExcluded(target string, policy *networkpolicy.NetworkPolicy) bool {
+	if policy == nil {
+		return false
+	}
+	parsed, err := urlutil.Parse(target)
+	if err != nil || parsed.Host == "" {
+		return !policy.Validate(target)
+	}
+	return !policy.Validate(parsed.Host) || !policy.Validate(parsed.Hostname())
 }

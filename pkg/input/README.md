@@ -27,3 +27,30 @@ func NewInputProvider(opts InputOptions) (InputProvider, error)
 
 This function returns a InputProvider based by appropriately selecting input provider based on the input format (i.e. either list or http) and returns the provider that can handle that input format.
 
+## Per-target JSONL filters
+
+JSONL input can attach template-selection overrides to individual URL targets:
+
+```jsonl
+{"url":"https://target-a.example","tags":["apache","shiro"],"severity":["critical","high"]}
+{"url":"https://target-b.example","exclude-tags":["tomcat"],"templates":["http/cves/2026/"]}
+{"url":"https://target-c.example"}
+```
+
+Run the scan with:
+
+```console
+nuclei -l targets.jsonl -input-mode jsonl
+```
+
+The optional `tags`, `exclude-tags`, `severity`, and `templates` fields mirror
+their global CLI counterparts. An omitted field inherits the global option;
+an explicitly empty array clears that option for the target. Global
+`-include-templates` selections remain forced includes, and `-exclude-hosts`
+is applied before target execution.
+
+Per-target `templates` overrides currently support local selectors only and
+cannot be combined with global remote templates. Any per-target override is
+incompatible with automatic scan, workflows, and global matchers.
+JSONL files in the existing Proxify request/response format remain supported,
+but target and Proxify records cannot be mixed in one file.

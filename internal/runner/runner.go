@@ -676,7 +676,10 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
-	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST {
+	if err := r.prepareTargetFilters(loaderConfig); err != nil {
+		return errors.Wrap(err, "could not prepare per-target JSONL filters")
+	}
+	if r.inputProvider.InputType() == provider.MultiFormatInputProvider || r.options.DAST {
 		// if input type is not list (implicitly enable fuzzing)
 		r.options.DAST = true
 	}

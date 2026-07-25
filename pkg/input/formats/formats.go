@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"gopkg.in/yaml.v3"
@@ -14,6 +15,10 @@ import (
 
 // ParseReqRespCallback is a callback function for discovered raw requests
 type ParseReqRespCallback func(rr *types.RequestResponse) bool
+
+// ParseMetaInputCallback is a callback for formats that can provide complete
+// MetaInput values rather than only raw HTTP request/response pairs.
+type ParseMetaInputCallback func(input *contextargs.MetaInput) bool
 
 // InputFormatOptions contains options for the input
 // this can be variables that can be passed or
@@ -46,6 +51,13 @@ type Format interface {
 	Parse(input io.Reader, resultsCb ParseReqRespCallback, filePath string) error
 	// SetOptions sets the options for the input format
 	SetOptions(options InputFormatOptions)
+}
+
+// MetaInputFormat is implemented by input formats that can attach metadata to
+// individual targets. Existing request/response formats continue to implement
+// Format only.
+type MetaInputFormat interface {
+	ParseMeta(input io.Reader, resultsCb ParseMetaInputCallback, filePath string) error
 }
 
 // SpecDownloader is an interface for downloading API specifications from URLs

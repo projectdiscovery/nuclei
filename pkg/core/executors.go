@@ -125,6 +125,12 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		default:
 		}
 
+		if !templateMatchesTarget(template, scannedValue) {
+			e.noteFilteredTemplate(template)
+			index++
+			return true
+		}
+
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
@@ -199,6 +205,11 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		default:
 		}
 
+		if !templateMatchesTarget(tpl, target) {
+			e.noteFilteredTemplate(tpl)
+			continue
+		}
+
 		// Check whether the target has already been marked as permanently
 		// unresponsive by HostErrorsCache before spawning another goroutine.
 		if e.executerOpts.HostErrorsCache != nil &&
@@ -245,6 +256,10 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error
 func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
+	if !templateMatchesTarget(template, value) {
+		return false, nil
+	}
+
 	ctxArgs := contextargs.New(ctx)
 	ctxArgs.MetaInput = value
 	scanCtx := scan.NewScanContext(ctx, ctxArgs)
@@ -264,5 +279,30 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 			return len(results) > 0, nil
 		}
 		return template.Executer.Execute(scanCtx)
+	}
+}
+
+type targetFilterMatcher interface {
+	MatchesTargetFilter(filter *contextargs.TargetFilter) bool
+}
+
+func templateMatchesTarget(template *templates.Template, input *contextargs.MetaInput) bool {
+	if input == nil || input.TargetFilter == nil {
+		return true
+	}
+	if matcher, ok := template.Executer.(targetFilterMatcher); ok {
+		return matcher.MatchesTargetFilter(input.TargetFilter)
+	}
+	return input.TargetFilter.MatchesTemplate(
+		template.Path,
+		template.Info.Tags.ToSlice(),
+		template.Info.SeverityHolder.Severity,
+		template.Type() == types.WorkflowProtocol,
+	)
+}
+
+func (e *Engine) noteFilteredTemplate(template *templates.Template) {
+	if e.executerOpts.Progress != nil && template.TotalRequests > 0 {
+		e.executerOpts.Progress.AddToTotal(-int64(template.TotalRequests))
 	}
 }
