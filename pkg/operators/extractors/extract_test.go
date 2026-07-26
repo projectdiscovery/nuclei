@@ -117,3 +117,45 @@ func TestExtractor_ExtractDSL(t *testing.T) {
 	got = e.ExtractDSL(map[string]interface{}{"hi": "hello"})
 	require.Equal(t, map[string]struct{}{}, got)
 }
+
+// An extractor with none of the values its type extracts with can never produce
+// a result, so it used to run silently and extract nothing with no diagnostic.
+func TestExtractorRejectsMissingValues(t *testing.T) {
+	cases := []struct {
+		name      string
+		extractor *Extractor
+		field     string
+	}{
+		{"regex", &Extractor{Type: ExtractorTypeHolder{ExtractorType: RegexExtractor}}, "regex"},
+		{"kval", &Extractor{Type: ExtractorTypeHolder{ExtractorType: KValExtractor}}, "kval"},
+		{"xpath", &Extractor{Type: ExtractorTypeHolder{ExtractorType: XPathExtractor}}, "xpath"},
+		{"json", &Extractor{Type: ExtractorTypeHolder{ExtractorType: JSONExtractor}}, "json"},
+		{"dsl", &Extractor{Type: ExtractorTypeHolder{ExtractorType: DSLExtractor}}, "dsl"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.extractor.CompileExtractors()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.field)
+		})
+	}
+}
+
+// Guard rail: an extractor that does carry values still compiles.
+func TestExtractorAcceptsProvidedValues(t *testing.T) {
+	cases := []struct {
+		name      string
+		extractor *Extractor
+	}{
+		{"regex", &Extractor{Type: ExtractorTypeHolder{ExtractorType: RegexExtractor}, Regex: []string{"a"}}},
+		{"kval", &Extractor{Type: ExtractorTypeHolder{ExtractorType: KValExtractor}, KVal: []string{"k"}}},
+		{"xpath", &Extractor{Type: ExtractorTypeHolder{ExtractorType: XPathExtractor}, XPath: []string{"//a"}}},
+		{"json", &Extractor{Type: ExtractorTypeHolder{ExtractorType: JSONExtractor}, JSON: []string{".a"}}},
+		{"dsl", &Extractor{Type: ExtractorTypeHolder{ExtractorType: DSLExtractor}, DSL: []string{"1 == 1"}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, tc.extractor.CompileExtractors())
+		})
+	}
+}

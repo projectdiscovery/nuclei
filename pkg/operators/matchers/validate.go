@@ -54,6 +54,14 @@ func (matcher *Matcher) Validate() error {
 		return err
 	}
 
+	// An operator with no values can never match, so it is always an authoring
+	// mistake — but it used to compile and run silently, producing zero results
+	// with no diagnostic. Reject it here so `-validate` and template authoring
+	// surface it.
+	if err = matcher.checkRequiredValues(); err != nil {
+		return err
+	}
+
 	// validate the XPath query
 	if matcher.matcherType == XPathMatcher {
 		for _, query := range matcher.XPath {
@@ -96,4 +104,34 @@ func getFieldNameFromYamlTag(tagName string, object interface{}) (string, error)
 		}
 	}
 	return "", fmt.Errorf("field %s not found", tagName)
+}
+
+// checkRequiredValues reports an error when the matcher carries none of the
+// values its type matches against. Such a matcher can never match anything, so
+// it is always a template authoring mistake rather than an intentional no-op.
+func (matcher *Matcher) checkRequiredValues() error {
+	var empty bool
+	var field string
+
+	switch matcher.matcherType {
+	case WordsMatcher:
+		empty, field = len(matcher.Words) == 0, "words"
+	case RegexMatcher:
+		empty, field = len(matcher.Regex) == 0, "regex"
+	case BinaryMatcher:
+		empty, field = len(matcher.Binary) == 0, "binary"
+	case StatusMatcher:
+		empty, field = len(matcher.Status) == 0, "status"
+	case SizeMatcher:
+		empty, field = len(matcher.Size) == 0, "size"
+	case DSLMatcher:
+		empty, field = len(matcher.DSL) == 0, "dsl"
+	case XPathMatcher:
+		empty, field = len(matcher.XPath) == 0, "xpath"
+	}
+
+	if empty {
+		return fmt.Errorf("matcher %s has no %s values specified", matcher.matcherType, field)
+	}
+	return nil
 }
