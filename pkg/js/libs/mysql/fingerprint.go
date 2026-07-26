@@ -78,7 +78,7 @@ var mysqlCapabilityNames = []struct {
 	{clientTransactions, "SupportsTransactions"},
 	{clientReserved, "Speaks41ProtocolOld"},
 	{clientSecureConnection, "Support41Auth"},
-	{clientMultiStatements, "SupportsMultipleStatments"},
+	{clientMultiStatements, "SupportsMultipleStatements"},
 	{clientMultiResults, "SupportsMultipleResults"},
 	{clientPSMultiResults, "SupportsPSMultiResults"},
 	{clientPluginAuth, "SupportsAuthPlugins"},
