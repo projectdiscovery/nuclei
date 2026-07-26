@@ -95,6 +95,9 @@ type Store struct {
 
 	// parserCacheOnce is used to cache the parser cache result
 	parserCacheOnce func() *templates.Cache
+	// compiledParserCacheOnce caches the compiled-templates cache result, used by
+	// validation so it observes operator-compilation errors.
+	compiledParserCacheOnce func() *templates.Cache
 
 	// metadataIndex is the template metadata cache
 	metadataIndex *index.Index
@@ -169,6 +172,18 @@ func New(cfg *Config) (*Store, error) {
 
 		if parser, ok := cfg.ExecutorOptions.Parser.(*templates.Parser); ok {
 			return parser.Cache()
+		}
+
+		return nil
+	})
+
+	store.compiledParserCacheOnce = sync.OnceValue(func() *templates.Cache {
+		if cfg.ExecutorOptions == nil || cfg.ExecutorOptions.Parser == nil {
+			return nil
+		}
+
+		if parser, ok := cfg.ExecutorOptions.Parser.(*templates.Parser); ok {
+			return parser.CompiledCache()
 		}
 
 		return nil
@@ -656,7 +671,14 @@ func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{})
 
 func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *templates.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
-	parsedCache := store.parserCacheOnce()
+	// Validation must reuse the *compiled* cache, not the lightweight parsed one.
+	// `Parser.ParseTemplate` stores a syntax-only template in the parsed cache, so
+	// reading from it here made `templates.Parse` below a no-op — and that call is
+	// the only step that compiles protocol requests and operators. Errors raised
+	// during operator compilation (e.g. `group: -1` on a regex extractor) were
+	// therefore invisible to `-validate`, which reported success for templates
+	// that could not run.
+	parsedCache := store.compiledParserCacheOnce()
 
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {

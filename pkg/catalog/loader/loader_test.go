@@ -553,3 +553,90 @@ http:
 	require.Len(t, loaded, 1)
 	require.Equal(t, "global-matchers-template", loaded[0].ID)
 }
+
+// ValidateTemplates used to read the *lightweight* parsed-template cache, which
+// Parser.ParseTemplate populates before protocol requests and operators are
+// compiled. That made the templates.Parse call in areWorkflowOrTemplatesValid a
+// no-op, so an error raised during operator compilation — here a negative regex
+// extractor group, which CompileExtractors explicitly rejects — was invisible to
+// -validate. The template reported "validated successfully" and then failed to
+// compile at scan time.
+func TestValidateTemplatesReportsOperatorCompileErrors(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "bad-extractor.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: bad-extractor-template
+
+info:
+  name: Bad Extractor Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    extractors:
+      - type: regex
+        group: -1
+        regex:
+          - "(a)(b)"
+`), 0o600)
+	require.NoError(t, err)
+
+	require.Error(t, validateSingleTemplateForTest(t, templatePath, "loader-validate-bad-extractor"))
+}
+
+// Guard rail: a template whose operators compile cleanly must still validate, so
+// the check above cannot be satisfied by failing everything.
+func TestValidateTemplatesAcceptsValidOperators(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "good-extractor.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: good-extractor-template
+
+info:
+  name: Good Extractor Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "(a)(b)"
+`), 0o600)
+	require.NoError(t, err)
+
+	require.NoError(t, validateSingleTemplateForTest(t, templatePath, "loader-validate-good-extractor"))
+}
+
+func validateSingleTemplateForTest(t *testing.T, templatePath, executionID string) error {
+	t.Helper()
+
+	options := testutils.DefaultOptions.Copy()
+	options.Logger = &gologger.Logger{}
+	options.ExecutionId = executionID
+	options.DisableUnsignedTemplates = false
+	options.TemplateLoadingConcurrency = 1
+	options.Templates = []string{templatePath}
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	executerOpts.Parser = templates.NewParser()
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	store, err := New(NewConfig(options, catalog, executerOpts))
+	require.NoError(t, err)
+
+	return store.ValidateTemplates()
+}
