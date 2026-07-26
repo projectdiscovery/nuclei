@@ -398,7 +398,10 @@ func setupFileHelperSandbox(t *testing.T) (home, templatesDir, templatePath stri
 	t.Helper()
 
 	home = t.TempDir()
+	// os.UserHomeDir (used by folderutil.HomeDirOrDefault) reads HOME on Unix and
+	// USERPROFILE on Windows; set both so sandbox rule-2 home checks are portable.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	templatesDir = filepath.Join(home, "nuclei-templates")
 	templateDir := filepath.Join(home, "custom-templates")

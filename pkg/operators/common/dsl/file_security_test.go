@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	folderutil "github.com/projectdiscovery/utils/folder"
 	"github.com/stretchr/testify/require"
 )
 
@@ -132,6 +133,10 @@ func TestFileHelperRejectsTemplateAtHomeRootExpandingHome(t *testing.T) {
 	require.NoError(t, os.WriteFile(homeTemplate, []byte("id: home-root\n"), 0o600))
 	homeSecret := filepath.Join(home, "ssh-keys.txt")
 	require.NoError(t, os.WriteFile(homeSecret, []byte("id-rsa-material"), 0o600))
+
+	// Sanity-check the sandbox home override is what GetValidAbsPath will see.
+	require.Equal(t, filepath.Clean(home), filepath.Clean(folderutil.HomeDirOrDefault("")),
+		"sandbox home override must be active for this assertion")
 
 	ctx := &FileLoadContext{
 		Options:      &types.Options{},
