@@ -234,7 +234,8 @@ func (candidate *fuzzTemplateCandidate) yaml() []byte {
 	builder.WriteString("http:\n  - ")
 	if candidate.useRawRequest {
 		builder.WriteString("raw:\n      - |\n")
-		for _, line := range strings.Split(candidate.rawRequest(), "\r\n") {
+		rawReq := candidate.rawRequest()
+		for line := range strings.SplitSeq(rawReq, "\r\n") {
 			if line == "" {
 				builder.WriteString("        \n")
 				continue

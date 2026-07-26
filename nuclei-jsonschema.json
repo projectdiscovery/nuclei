@@ -122,7 +122,12 @@
         "CAA",
         "TLSA",
         "ANY",
-        "SRV"
+        "SRV",
+        "RRSIG",
+        "NSEC",
+        "DNSKEY",
+        "NSEC3",
+        "NSEC3PARAM"
       ],
       "title": "type of DNS request to make",
       "description": "Type is the type of DNS request to make"
