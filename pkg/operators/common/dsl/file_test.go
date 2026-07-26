@@ -261,7 +261,7 @@ func TestFileHelperDeniesDirectory(t *testing.T) {
 	require.Contains(t, got.Error(), "not a regular file")
 }
 
-func TestFileHelperAllowLocalFileAccessBypassesSandbox(t *testing.T) {
+func TestFileHelperAllowLocalFileAccessReadsAbsolutePath(t *testing.T) {
 	_, templatesDir, templatePath := setupFileHelperSandbox(t)
 
 	secretDir := t.TempDir()
