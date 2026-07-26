@@ -119,7 +119,7 @@ func isMssql(ctx context.Context, executionId string, host string, port int) (bo
 // isMssqlResult maps fingerprint probe errors to IsMssql's (ok, err) contract.
 func isMssqlResult(err error) (bool, error) {
 	if err != nil {
-		// Unparseable / non-MSSQL TDS replies are a negative detection, not a probe failure.
+		// Unparsable / non-MSSQL TDS replies are a negative detection, not a probe failure.
 		if errors.Is(err, errNotMssql) {
 			return false, nil
 		}
