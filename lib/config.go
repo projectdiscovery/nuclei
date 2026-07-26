@@ -339,6 +339,21 @@ func WithScanStrategy(strategy string) NucleiSDKOptions {
 // OutputWriter
 type OutputWriter output.Writer
 
+// WithResultCallback sets a result callback invoked for each finding.
+//
+// When used with ThreadSafeNucleiEngine.ExecuteNucleiWithOpts / ExecuteNucleiWithOptsCtx,
+// the callback is scoped to that execution only (combined with any GlobalResultCallback).
+// When used at engine construction time, it behaves like the default result callback list.
+func WithResultCallback(callback func(event *output.ResultEvent)) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if callback == nil {
+			return nil
+		}
+		e.resultCallbacks = append(e.resultCallbacks, callback)
+		return nil
+	}
+}
+
 // UseOutputWriter allows setting custom output writer
 // by default a mock writer is used with user defined callback
 // if outputWriter is used callback will be ignored
