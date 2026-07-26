@@ -51,14 +51,26 @@ func ExtendSchema(metadata []PropertyMetadata, base *jsonschema.Schema) {
 			continue
 		}
 		if len(meta.OneOf) > 0 {
+			// Preserve array item constraints from the original property so
+			// string-array branches (e.g. info.author / info.tags) still reject
+			// non-string elements after we clear the parent Ref/Type.
+			originalItems := prop.Items
 			prop.OneOf = nil
 			for _, oneOf := range meta.OneOf {
-				prop.OneOf = append(prop.OneOf, &jsonschema.Schema{
+				branch := &jsonschema.Schema{
 					Type:        oneOf.PropType,
 					Description: oneOf.Description,
 					Examples:    oneOf.Example,
 					Default:     oneOf.Default,
-				})
+				}
+				if oneOf.PropType == "array" {
+					if originalItems != nil {
+						branch.Items = originalItems
+					} else {
+						branch.Items = &jsonschema.Schema{Type: "string"}
+					}
+				}
+				prop.OneOf = append(prop.OneOf, branch)
 			}
 			prop.Ref = ""
 			prop.Type = ""

@@ -380,7 +380,7 @@ var httpRequestMetadata = []schema.PropertyMetadata{
 	{
 		PropName: "threads",
 		Description: schema.MultiLine(
-			"Threads specifies concurreny with which requests should be sent",
+			"Threads specifies concurrency with which requests should be sent",
 			"It should not be specified unless explicitly behaviour and its value is obtained from -pc (-payload-concurrency) flag",
 			"Example: ",
 			"```yaml",

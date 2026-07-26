@@ -425,5 +425,7 @@ var templateAnyOfRequired = []schema.RequiredCombos{
 		schema.Require("requests"),
 		schema.Require("network"),
 	),
-	schema.Require("workflows"),
+	schema.RequireBase([]string{"id", "info"},
+		schema.Require("workflows"),
+	),
 }

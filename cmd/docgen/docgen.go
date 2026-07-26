@@ -87,7 +87,8 @@ func main() {
 func updateDescriptionKeyName(parent string, m map[string]interface{}) {
 	for k, v := range m {
 		if k == "description" && parent != "properties" {
-			delete(m, k)
+			// Keep standard JSON Schema "description" for non-Monaco consumers
+			// and also emit Monaco/VS Code "markdownDescription".
 			m["markdownDescription"] = v
 		}
 		if vMap, ok := v.(map[string]interface{}); ok {
