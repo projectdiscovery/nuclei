@@ -58,19 +58,9 @@ func TestFileHelperSandboxDeniesUntrustedPaths(t *testing.T) {
 		{name: "dot_path", expr: `file(".")`},
 		{name: "dotdot_path", expr: `file("..")`},
 		{name: "empty_components", expr: `file("////")`},
+		{name: "template_directory", expr: fileExpr(templateDir)},
+		{name: "templates_directory", expr: fileExpr(templatesDir)},
 	}
-
-	// Also deny reading the template directory itself and templates dir as paths.
-	cases = append(cases,
-		struct {
-			name string
-			expr string
-		}{name: "template_directory", expr: fileExpr(templateDir)},
-		struct {
-			name string
-			expr string
-		}{name: "templates_directory", expr: fileExpr(templatesDir)},
-	)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
