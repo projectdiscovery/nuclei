@@ -260,6 +260,9 @@ func readConfig() *goflags.FlagSet {
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
+	// Shared PD flags (e.g. -max-time soft-kill via interrupt).
+	flagSet.AddCommonFlags()
+
 	/* TODO Important: The defined default values, especially for slice/array types are NOT DEFAULT VALUES, but rather implicit values to which the user input is appended.
 	This can be very confusing and should be addressed
 	*/
