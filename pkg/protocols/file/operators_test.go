@@ -21,6 +21,7 @@ func newMockOperator() operators.Operators {
 				Type: matchers.MatcherTypeHolder{
 					MatcherType: matchers.WordsMatcher,
 				},
+				Words: []string{"test"},
 			},
 		},
 	}
