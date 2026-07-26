@@ -3,6 +3,7 @@ package mssql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -112,7 +113,16 @@ func (c *MSSQLClient) IsMssql(ctx context.Context, host string, port int) (bool,
 func isMssql(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	// Reuse the memoized fingerprint probe so IsMssql + FingerprintMssql share one dial.
 	_, err := memoizedfingerprintMssql(ctx, executionId, host, port)
+	return isMssqlResult(err)
+}
+
+// isMssqlResult maps fingerprint probe errors to IsMssql's (ok, err) contract.
+func isMssqlResult(err error) (bool, error) {
 	if err != nil {
+		// Unparseable / non-MSSQL TDS replies are a negative detection, not a probe failure.
+		if errors.Is(err, errNotMssql) {
+			return false, nil
+		}
 		return false, err
 	}
 	return true, nil

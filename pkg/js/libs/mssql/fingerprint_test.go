@@ -2,6 +2,8 @@ package mssql
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"testing"
@@ -47,6 +49,27 @@ func TestParsePreloginResponseRejectsBadType(t *testing.T) {
 	pkt[0] = 0x12
 	_, err := parsePreloginResponse(pkt)
 	require.Error(t, err)
+}
+
+func TestIsMssqlTreatsProtocolMismatchAsNegative(t *testing.T) {
+	ok, err := isMssqlResult(fmt.Errorf("%w: unexpected TDS type", errNotMssql))
+	require.NoError(t, err)
+	require.False(t, ok)
+
+	ok, err = isMssqlResult(errors.New("connection refused"))
+	require.Error(t, err)
+	require.False(t, ok)
+
+	ok, err = isMssqlResult(nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+}
+
+func TestFingerprintMarksInvalidPacketAsNotMssql(t *testing.T) {
+	_, err := parsePreloginResponse([]byte{0x00, 0x01, 0x00, 0x08, 0x00, 0x00, 0x01, 0x00})
+	require.Error(t, err)
+	wrapped := fmt.Errorf("%w: %v", errNotMssql, err)
+	require.True(t, errors.Is(wrapped, errNotMssql))
 }
 
 func TestPreloginRoundTripMockServer(t *testing.T) {

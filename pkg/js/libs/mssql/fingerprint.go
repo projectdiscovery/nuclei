@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -11,6 +12,11 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
+
+// errNotMssql marks a completed probe whose response is not a valid MSSQL
+// pre-login reply. IsMssql maps this to (false, nil); FingerprintMssql still
+// surfaces it as an error.
+var errNotMssql = errors.New("not a mssql service")
 
 const (
 	mssqlFingerprintTimeout = 5 * time.Second
@@ -128,7 +134,7 @@ func fingerprintMssql(ctx context.Context, executionId string, host string, port
 	}
 	packetLen := int(binary.BigEndian.Uint16(header[2:4]))
 	if packetLen < 8 {
-		return info, fmt.Errorf("invalid TDS packet length %d", packetLen)
+		return info, fmt.Errorf("%w: invalid TDS packet length %d", errNotMssql, packetLen)
 	}
 	body := make([]byte, packetLen-8)
 	if packetLen > 8 {
@@ -140,7 +146,7 @@ func fingerprintMssql(ctx context.Context, executionId string, host string, port
 
 	parsed, err := parsePreloginResponse(response)
 	if err != nil {
-		return info, err
+		return info, fmt.Errorf("%w: %v", errNotMssql, err)
 	}
 	info.Version = parsed.Version
 	info.MajorVersion = parsed.MajorVersion
