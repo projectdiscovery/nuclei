@@ -37,7 +37,7 @@ http:
 	}))
 	b.Cleanup(server.Close)
 
-	_, err = index.NewIndex(b.TempDir())
+	metadataIndex, err := index.NewIndex(b.TempDir())
 	if err != nil {
 		b.Fatalf("could not create benchmark metadata index: %s", err)
 	}
@@ -53,9 +53,9 @@ http:
 	b.Cleanup(engine.Close)
 
 	// Keep benchmark metadata isolated from the user's persistent cache.
-	// engine.eng.metadataIndexOnce.Do(func() {
-	// 	engine.eng.metadataIndex = metadataIndex
-	// })
+	engine.eng.metadataIndexOnce.Do(func() {
+		engine.eng.metadataIndex = metadataIndex
+	})
 
 	targets := []string{server.URL}
 	if err := engine.ExecuteNucleiWithOptsCtx(b.Context(), targets); err != nil {
