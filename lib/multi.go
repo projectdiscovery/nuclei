@@ -22,7 +22,6 @@ import (
 // in ThreadSafeNucleiEngine
 type unsafeOptions struct {
 	executerOpts *protocols.ExecutorOptions
-	engine       *core.Engine
 }
 
 // createEphemeralObjects creates ephemeral nuclei objects/instances/types
@@ -52,8 +51,6 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		opts.RateLimitDuration = time.Second
 	}
 	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
-	u.engine = core.New(opts)
-	u.engine.SetExecuterOptions(u.executerOpts)
 	return u, nil
 }
 
@@ -145,7 +142,9 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	}
 	unsafeOpts.executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(tmpEngine.opts, e.eng.catalog, unsafeOpts.executerOpts))
+	loaderConfig := loader.NewConfig(tmpEngine.opts, e.eng.catalog, unsafeOpts.executerOpts)
+	loaderConfig.MetadataIndex = e.eng.getMetadataIndex()
+	store, err := loader.New(loaderConfig)
 	if err != nil {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
