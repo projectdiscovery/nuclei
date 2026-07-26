@@ -210,7 +210,7 @@ func (f *fakeBackend) Cat(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	body, err := io.ReadAll(rc)
 	if err != nil {
 		return "", err

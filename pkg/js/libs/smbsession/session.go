@@ -231,7 +231,7 @@ func readFile(ops shareBackend, share, filePath string, maxBytes int64) (string,
 		if err != nil {
 			return "", err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		limited := io.LimitReader(f, maxBytes+1)
 		body, err := io.ReadAll(limited)
 		if err != nil {
