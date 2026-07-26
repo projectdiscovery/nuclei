@@ -849,8 +849,6 @@ github.com/projectdiscovery/freeport v0.0.7 h1:Q6uXo/j8SaV/GlAHkEYQi8WQoPXyJWxys
 github.com/projectdiscovery/freeport v0.0.7/go.mod h1:cOhWKvNBe9xM6dFJ3RrrLvJ5vXx2NQ36SecuwjenV2k=
 github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c h1:s+lLAlrOrgwlPZQ9DFqNw+kia2nteKnJZ2Ek313yoUc=
 github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c/go.mod h1:rN35/D3lVx2YDeENFFz06uj8j3XIqK1Ym9XcISF5fzg=
-github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb h1:rutG906Drtbpz4DwU5mhGIeOhRcktDH4cGQitGUMAsg=
-github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb/go.mod h1:FLjF1DmZ+POoGEiIQdWuYVwS++C/GwpX8YaCsTSm1RY=
 github.com/projectdiscovery/goflags v0.1.75 h1:njEBnyueQaFa2ptWxbyl9zX0OClNdlN2AzZveNHiBOs=
 github.com/projectdiscovery/goflags v0.1.75/go.mod h1:7nAP1r2Dqgn/rwmOE3EWbZWUCEJKNIhVSBGpuzJAIns=
 github.com/projectdiscovery/goja v0.0.0-20260618133720-acb73e419534 h1:hYd1zQA/dxO2ASyQ6Re73TcJkW1LjLQvt4+86Hxefz8=
