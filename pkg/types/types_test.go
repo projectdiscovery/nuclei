@@ -1,11 +1,13 @@
 package types
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 )
 
@@ -229,4 +231,32 @@ func restoreTemplatesDir(t *testing.T, templatesDir string) {
 	t.Cleanup(func() {
 		config.DefaultConfig.SetTemplatesDir(oldTemplatesDir)
 	})
+}
+
+// The default logger must survive having its level raised. A bare
+// &gologger.Logger{} has a nil formatter and only appears to work because its
+// zero maxLevel (LevelFatal) filters every message out. The SDK raises the
+// level without setting a formatter (lib/sdk_private.go), so the first message
+// that then passes the filter dereferenced nil — aborting the whole lib/tests
+// package through a sync.OnceFunc in the catalog loader.
+func TestDefaultOptionsLoggerSurvivesRaisedLevel(t *testing.T) {
+	for _, level := range []levels.Level{levels.LevelVerbose, levels.LevelDebug, levels.LevelSilent} {
+		t.Run(level.String(), func(t *testing.T) {
+			logger := DefaultOptions().Logger
+			if logger == nil {
+				t.Fatal("DefaultOptions() returned a nil Logger")
+			}
+			logger.SetMaxLevel(level)
+
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("logging at %s panicked: %v", level, r)
+				}
+			}()
+			// The exact call site that crashed: catalog/loader.go, on the
+			// branch where saving the metadata cache returns an error.
+			logger.Warning().Msgf("Could not save metadata cache: %v", errors.New("test"))
+			logger.Verbose().Msgf("Saved %d templates to metadata cache", 0)
+		})
+	}
 }

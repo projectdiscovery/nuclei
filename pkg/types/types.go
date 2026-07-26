@@ -10,6 +10,9 @@ import (
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/formatter"
+	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/gologger/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -823,8 +826,21 @@ func DefaultOptions() *Options {
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
 		ExecutionId:                xid.New().String(),
-		Logger:                     &gologger.Logger{},
+		Logger:                     defaultLogger(),
 	}
+}
+
+// defaultLogger returns a logger that is safe to raise the level on. A bare
+// &gologger.Logger{} has a nil formatter and writer; it survives only because
+// its zero maxLevel (LevelFatal) filters everything out. Any caller that raises
+// the level -- the SDK does, in lib/sdk_private.go -- then dereferences the nil
+// formatter on the first message that passes the filter.
+func defaultLogger() *gologger.Logger {
+	logger := &gologger.Logger{}
+	logger.SetMaxLevel(levels.LevelInfo)
+	logger.SetFormatter(formatter.NewCLI(false))
+	logger.SetWriter(writer.NewCLI())
+	return logger
 }
 
 func (options *Options) ShouldUseHostError() bool {
