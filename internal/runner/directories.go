@@ -12,9 +12,9 @@ import (
 
 // AppendDirectoryInfo writes nuclei config/cache/PDCP directory paths.
 func AppendDirectoryInfo(w io.Writer) {
-	fmt.Fprintf(w, "Nuclei Config Directory: %s\n", config.DefaultConfig.GetConfigDir())
-	fmt.Fprintf(w, "Nuclei Cache Directory: %s\n", config.DefaultConfig.GetCacheDir())
-	fmt.Fprintf(w, "PDCP Directory: %s\n", pdcpauth.PDCPDir)
+	_, _ = fmt.Fprintf(w, "Nuclei Config Directory: %s\n", config.DefaultConfig.GetConfigDir())
+	_, _ = fmt.Fprintf(w, "Nuclei Cache Directory: %s\n", config.DefaultConfig.GetCacheDir())
+	_, _ = fmt.Fprintf(w, "PDCP Directory: %s\n", pdcpauth.PDCPDir)
 }
 
 // DirectoryInfo returns nuclei config/cache/PDCP directory paths as a string.
