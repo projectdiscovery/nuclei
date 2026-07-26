@@ -40,11 +40,19 @@ var RawInputMode = false
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Prefer response bodies carried on multi-format inputs (burp/jsonl/yaml).
 	if rr := input.MetaInput.ReqResp; rr != nil && rr.Response != nil && strings.TrimSpace(rr.Response.Raw) != "" {
-		return request.executeRawInput(rr.Response.Raw, rr.URL.String(), input, callback)
+		err := request.executeRawInput(rr.Response.Raw, rr.URL.String(), input, callback)
+		if err == nil {
+			request.options.Progress.IncrementRequests()
+		}
+		return err
 	}
 
 	if RawInputMode {
-		return request.executeRawInput(input.MetaInput.Input, "", input, callback)
+		err := request.executeRawInput(input.MetaInput.Input, "", input, callback)
+		if err == nil {
+			request.options.Progress.IncrementRequests()
+		}
+		return err
 	}
 
 	// Export inputs attach ReqResp with a URL-shaped MetaInput.Input. Without a

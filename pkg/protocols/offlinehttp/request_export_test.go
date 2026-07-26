@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -25,6 +26,8 @@ func TestExecuteWithResultsUsesReqRespResponse(t *testing.T) {
 		ID:   "offline-export",
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Info}, Name: "test"},
 	})
+	counter := &countingProgress{Progress: executerOpts.Progress}
+	executerOpts.Progress = counter
 	ops := &operators.Operators{
 		Matchers: []*matchers.Matcher{{
 			Part:  "body",
@@ -57,6 +60,19 @@ func TestExecuteWithResultsUsesReqRespResponse(t *testing.T) {
 	require.NotNil(t, gotEvent)
 	require.True(t, gotEvent.HasOperatorResult())
 	require.True(t, gotEvent.OperatorsResult.Matched)
+	require.Equal(t, 1, counter.requests)
+}
+
+type countingProgress struct {
+	progress.Progress
+	requests int
+}
+
+func (c *countingProgress) IncrementRequests() {
+	c.requests++
+	if c.Progress != nil {
+		c.Progress.IncrementRequests()
+	}
 }
 
 func TestExecuteWithResultsSkipsWhenNoResponseOnReqResp(t *testing.T) {
