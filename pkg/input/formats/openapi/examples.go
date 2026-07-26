@@ -3,6 +3,7 @@ package openapi
 import (
 	"fmt"
 	"maps"
+	"math"
 	"slices"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -172,30 +173,9 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 	case schema.Type.Is("boolean"):
 		return true, nil
 	case schema.Type.Is("number"), schema.Type.Is("integer"):
-		value := 0.0
-
-		if schema.Min != nil && *schema.Min > value {
-			value = *schema.Min
-			if schema.ExclusiveMin {
-				if schema.Max != nil {
-					// Make the value half way.
-					value = (*schema.Min + *schema.Max) / 2.0
-				} else {
-					value++
-				}
-			}
-		}
-
-		if schema.Max != nil && *schema.Max < value {
-			value = *schema.Max
-			if schema.ExclusiveMax {
-				if schema.Min != nil {
-					// Make the value half way.
-					value = (*schema.Min + *schema.Max) / 2.0
-				} else {
-					value--
-				}
-			}
+		value, err := numericExample(schema)
+		if err != nil {
+			return nil, err
 		}
 
 		if schema.MultipleOf != nil && int(value)%int(*schema.MultipleOf) != 0 {
@@ -273,6 +253,63 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 		return example, nil
 	}
 	return nil, ErrNoExample
+}
+
+func numericExample(schema *openapi3.Schema) (float64, error) {
+	minimum := schema.Min
+	minimumExclusive := schema.ExclusiveMin.IsTrue()
+	if schema.ExclusiveMin.Value != nil {
+		minimum = schema.ExclusiveMin.Value
+		minimumExclusive = true
+	}
+
+	maximum := schema.Max
+	maximumExclusive := schema.ExclusiveMax.IsTrue()
+	if schema.ExclusiveMax.Value != nil {
+		maximum = schema.ExclusiveMax.Value
+		maximumExclusive = true
+	}
+
+	value := 0.0
+	belowMinimum := minimum != nil && (value < *minimum || (minimumExclusive && value <= *minimum))
+	aboveMaximum := maximum != nil && (value > *maximum || (maximumExclusive && value >= *maximum))
+
+	switch {
+	case belowMinimum && maximum != nil:
+		value = (*minimum + *maximum) / 2.0
+	case belowMinimum:
+		value = *minimum
+		if minimumExclusive {
+			if schema.Type.Is("integer") {
+				value = math.Floor(value) + 1
+			} else {
+				value = math.Nextafter(value, math.Inf(1))
+			}
+		}
+	case aboveMaximum && minimum != nil:
+		value = (*minimum + *maximum) / 2.0
+	case aboveMaximum:
+		value = *maximum
+		if maximumExclusive {
+			if schema.Type.Is("integer") {
+				value = math.Ceil(value) - 1
+			} else {
+				value = math.Nextafter(value, math.Inf(-1))
+			}
+		}
+	}
+
+	if schema.Type.Is("integer") {
+		value = math.Trunc(value)
+	}
+
+	if minimum != nil && (value < *minimum || (minimumExclusive && value <= *minimum)) {
+		return 0, ErrNoExample
+	}
+	if maximum != nil && (value > *maximum || (maximumExclusive && value >= *maximum)) {
+		return 0, ErrNoExample
+	}
+	return value, nil
 }
 
 // generateExampleFromSchema creates an example structure from an OpenAPI 3 schema
