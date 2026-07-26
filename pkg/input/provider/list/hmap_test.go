@@ -89,8 +89,9 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 			close(started)
 		},
 	}
+	serveErr := make(chan error, 1)
 	go func() {
-		_ = srv.ActivateAndServe()
+		serveErr <- srv.ActivateAndServe()
 	}()
 	t.Cleanup(func() {
 		_ = srv.Shutdown()
@@ -98,6 +99,8 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 
 	select {
 	case <-started:
+	case err := <-serveErr:
+		require.NoError(t, err, "dns mock server failed to start")
 	case <-time.After(5 * time.Second):
 		require.Fail(t, "timed out waiting for dns mock server")
 	}
