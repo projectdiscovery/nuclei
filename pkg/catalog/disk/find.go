@@ -64,7 +64,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 }
 
 func isKnownConfigFile(path string) bool {
-	return slices.Contains(knownConfigFiles, filepath.Base(path))
+	return slices.Contains(config.GetKnownConfigFiles(), filepath.Base(path))
 }
 
 // GetTemplatePath parses the specified input template path and returns a compiled
