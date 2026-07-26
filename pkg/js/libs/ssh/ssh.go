@@ -93,7 +93,7 @@ func (c *SSHClient) ConnectWithOptions(ctx context.Context, opts SSHOptions) (bo
 	if c.timeout > 0 && copts.Timeout == 0 {
 		copts.Timeout = c.timeout
 	}
-	conn, err := connect(copts)
+	conn, err := connect(ctx, copts)
 	if err != nil {
 		return false, err
 	}
@@ -175,7 +175,7 @@ func (c *SSHClient) ConnectWithKey(ctx context.Context, host string, port int, u
 // ```
 func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port int) (*ssh.HandshakeLog, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnectSSHInfoMode(&connectOptions{
+	return memoizedconnectSSHInfoMode(ctx, &connectOptions{
 		Host:        host,
 		Port:        port,
 		ExecutionId: executionId,
@@ -262,7 +262,7 @@ func (c *connectOptions) validate() error {
 }
 
 // @memo
-func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
+func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 		return nil
 	}
 	rhost := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
-	client, err := dialSSH(context.Background(), opts.ExecutionId, rhost, sshConfig)
+	client, err := dialSSH(ctx, opts.ExecutionId, rhost, sshConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	return data, nil
 }
 
-func connect(opts *connectOptions) (*ssh.Client, error) {
+func connect(ctx context.Context, opts *connectOptions) (*ssh.Client, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -332,7 +332,7 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
 	}
 
-	client, err := dialSSH(context.Background(), opts.ExecutionId, fmt.Sprintf("%s:%d", opts.Host, opts.Port), conf)
+	client, err := dialSSH(ctx, opts.ExecutionId, fmt.Sprintf("%s:%d", opts.Host, opts.Port), conf)
 	if err != nil {
 		return nil, err
 	}
@@ -360,5 +360,8 @@ func dialSSH(ctx context.Context, executionId, address string, config *ssh.Clien
 		_ = conn.Close()
 		return nil, err
 	}
+	// Clear the dial/handshake deadline so it doesn't leak into later
+	// reads/writes on the established connection.
+	_ = conn.SetDeadline(time.Time{})
 	return ssh.NewClient(clientConn, chans, reqs), nil
 }

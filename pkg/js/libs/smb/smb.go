@@ -202,6 +202,9 @@ func listSharesWithOptions(ctx context.Context, executionId string, opts SMBOpti
 		_ = conn.Close()
 	}()
 
+	// Bound the NTLM handshake and share enumeration, not just the dial.
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+
 	initiator := &smb2.NTLMInitiator{
 		User:        opts.User,
 		Password:    opts.Password,

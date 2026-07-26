@@ -68,11 +68,6 @@ func (c *VNCClient) ConnectWithOptions(ctx context.Context, opts VNCOptions) (bo
 	return connectWithOptions(ctx, executionId, opts)
 }
 
-// connect attempts to authenticate with a VNC server using the given password
-func connect(ctx context.Context, executionId string, host string, port int, password string) (bool, error) {
-	return connectWithOptions(ctx, executionId, VNCOptions{Host: host, Port: port, Password: password})
-}
-
 func connectWithOptions(ctx context.Context, executionId string, opts VNCOptions) (bool, error) {
 	if opts.Host == "" || opts.Port <= 0 {
 		return false, fmt.Errorf("invalid host or port")

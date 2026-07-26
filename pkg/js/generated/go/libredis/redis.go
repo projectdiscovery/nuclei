@@ -15,7 +15,7 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"Connect":            lib_redis.Connect,
+			"Connect":            lib_redis.Connect, //nolint:staticcheck // SA1019: retained for JS API compatibility
 			"ConnectWithOptions": lib_redis.ConnectWithOptions,
 			"GetServerInfo":      lib_redis.GetServerInfo,
 			"GetServerInfoAuth":  lib_redis.GetServerInfoAuth,
