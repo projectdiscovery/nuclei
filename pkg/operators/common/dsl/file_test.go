@@ -116,7 +116,7 @@ func TestFileHelperReadsFromNucleiTemplatesDirectory(t *testing.T) {
 		err error
 	)
 	WithFileLoadContext(ctx, func() {
-		got, err = evalFile(t, `file("`+helperPath+`")`, nil)
+		got, err = evalFile(t, fileExpr(helperPath), nil)
 	})
 	require.NoError(t, err)
 	require.Equal(t, "from-templates-dir", got)
@@ -137,7 +137,7 @@ func TestFileHelperDeniesPathOutsideSandbox(t *testing.T) {
 
 	var got error
 	WithFileLoadContext(ctx, func() {
-		_, got = evalFile(t, `file("`+secretPath+`")`, nil)
+		_, got = evalFile(t, fileExpr(secretPath), nil)
 	})
 	require.Error(t, got)
 	require.True(t, strings.Contains(got.Error(), "denied") || strings.Contains(got.Error(), "could not load"), got.Error())
@@ -178,7 +178,7 @@ func TestFileHelperDeniesSiblingPrefixTemplatesDir(t *testing.T) {
 
 	var got error
 	WithFileLoadContext(ctx, func() {
-		_, got = evalFile(t, `file("`+evilFile+`")`, nil)
+		_, got = evalFile(t, fileExpr(evilFile), nil)
 	})
 	require.Error(t, got)
 }
@@ -206,7 +206,7 @@ func TestFileHelperDeniesSymlinkToOutside(t *testing.T) {
 
 	var got error
 	WithFileLoadContext(ctx, func() {
-		_, got = evalFile(t, `file("`+linkPath+`")`, nil)
+		_, got = evalFile(t, fileExpr(linkPath), nil)
 	})
 	require.Error(t, got)
 }
@@ -235,7 +235,7 @@ func TestFileHelperDeniesHardLink(t *testing.T) {
 
 	var got error
 	WithFileLoadContext(ctx, func() {
-		_, got = evalFile(t, `file("`+linkPath+`")`, nil)
+		_, got = evalFile(t, fileExpr(linkPath), nil)
 	})
 	require.Error(t, got)
 	require.Contains(t, got.Error(), "hard link")
@@ -281,7 +281,7 @@ func TestFileHelperAllowLocalFileAccessBypassesSandbox(t *testing.T) {
 		err error
 	)
 	WithFileLoadContext(ctx, func() {
-		got, err = evalFile(t, `file("`+secretPath+`")`, nil)
+		got, err = evalFile(t, fileExpr(secretPath), nil)
 	})
 	require.NoError(t, err)
 	require.Equal(t, "allowed-with-lfa", got)
@@ -426,4 +426,10 @@ func evalFile(t *testing.T, expression string, values map[string]interface{}) (s
 		return "", err
 	}
 	return types.ToString(result), nil
+}
+
+// fileExpr builds a file() call with a slash-normalized path so Windows
+// backslashes are not treated as string escapes by the expression parser.
+func fileExpr(path string) string {
+	return `file("` + filepath.ToSlash(path) + `")`
 }

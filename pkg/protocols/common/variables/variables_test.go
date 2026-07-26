@@ -120,6 +120,18 @@ func TestCheckForLazyEval(t *testing.T) {
 		require.True(t, variables.LazyEval, "LazyEval flag should be true for file()")
 	})
 
+	t.Run("literal-text-containing-file-substring-is-not-lazy", func(t *testing.T) {
+		variables := &Variable{
+			InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+		}
+		// "profile(" contains the substring "file(" but is not a file() call.
+		variables.Set("label", "user profile(admin)")
+
+		result := variables.checkForLazyEval()
+		require.False(t, result, "literal text containing file( substring must not force lazy eval")
+		require.False(t, variables.LazyEval)
+	})
+
 	t.Run("known-runtime-variables", func(t *testing.T) {
 		// Variables with known runtime variables (Host, BaseURL, etc.) should be lazy
 		variables := &Variable{

@@ -1,6 +1,7 @@
 package variables
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/invopop/jsonschema"
@@ -17,6 +18,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+// fileHelperCall matches a file() DSL helper call, not substrings like "profile(".
+var fileHelperCall = regexp.MustCompile(`\bfile\s*\(`)
 
 // Variable is a key-value pair of strings that can be used
 // throughout template.
@@ -239,7 +243,7 @@ func (variables *Variable) checkForLazyEval() bool {
 
 		// file() needs the per-template LoadHelperFile sandbox installed during
 		// execution (TemplatePath / Options), so defer evaluation until then.
-		if strings.Contains(types.ToString(value), "file(") {
+		if fileHelperCall.MatchString(types.ToString(value)) {
 			needsLazy = true
 			return
 		}

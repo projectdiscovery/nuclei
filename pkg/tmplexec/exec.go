@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -31,6 +32,9 @@ type TemplateExecuter struct {
 	engine   TemplateEngine
 	results  *atomic.Bool
 	program  *goja.Program
+
+	fileLoadCtx     *dsl.FileLoadContext
+	fileLoadCtxOnce sync.Once
 }
 
 // Both executer & Executor are correct spellings (its open to interpretation)
@@ -336,11 +340,14 @@ func (e *TemplateExecuter) fileLoadContext() *dsl.FileLoadContext {
 	if e == nil || e.options == nil {
 		return nil
 	}
-	return &dsl.FileLoadContext{
-		Options:      e.options.Options,
-		TemplatePath: e.options.TemplatePath,
-		Catalog:      e.options.Catalog,
-	}
+	e.fileLoadCtxOnce.Do(func() {
+		e.fileLoadCtx = &dsl.FileLoadContext{
+			Options:      e.options.Options,
+			TemplatePath: e.options.TemplatePath,
+			Catalog:      e.options.Catalog,
+		}
+	})
+	return e.fileLoadCtx
 }
 
 // getTemplateType returns the template type of the template
