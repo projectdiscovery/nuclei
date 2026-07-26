@@ -10,6 +10,18 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 )
 
+// ValidationMode records the syntax policy used to validate cached metadata.
+type ValidationMode uint8
+
+const (
+	// ValidationUnknown indicates that parser validation has not been recorded.
+	ValidationUnknown ValidationMode = iota
+	// ValidationLax indicates successful validation with unknown fields allowed.
+	ValidationLax
+	// ValidationStrict indicates successful strict syntax validation.
+	ValidationStrict
+)
+
 // Metadata contains lightweight metadata extracted from a template.
 type Metadata struct {
 	// ID is the unique identifier of the template.
@@ -42,6 +54,10 @@ type Metadata struct {
 	// TemplateVerifier is the verifier used for the template.
 	TemplateVerifier string `gob:"verifier,omitempty"`
 
+	// Validation records how the built-in parser validated this metadata's
+	// source before it was cached.
+	Validation ValidationMode `gob:"validation,omitempty"`
+
 	// NOTE(dwisiswant0): Consider adding more fields here in the future to
 	// enhance filtering caps w/o loading full templates, such as:
 	// `has_{code,headless,file}` to indicate presence of protocol-based
@@ -52,6 +68,31 @@ type Metadata struct {
 	// calculation, because it affects cache eviction behavior. Also, consider
 	// the impact on existing cached data and whether a [IndexVersion] bump is
 	// needed.
+}
+
+func (m *Metadata) clone() *Metadata {
+	if m == nil {
+		return nil
+	}
+
+	cloned := *m
+	cloned.Authors = slices.Clone(m.Authors)
+	cloned.Tags = slices.Clone(m.Tags)
+
+	return &cloned
+}
+
+// IsValidatedFor reports whether the cached validation satisfies the requested
+// syntax policy.
+func (m *Metadata) IsValidatedFor(strictSyntax bool) bool {
+	switch m.Validation {
+	case ValidationLax:
+		return !strictSyntax
+	case ValidationStrict:
+		return true
+	default:
+		return false
+	}
 }
 
 // NewMetadataFromTemplate creates a new metadata object from a template.
