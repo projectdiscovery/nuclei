@@ -87,5 +87,6 @@ func TestResolveSMBCredsParseIdentity(t *testing.T) {
 func TestIsDirectorySMBTarget(t *testing.T) {
 	require.True(t, isDirectorySMBTarget(`\\fs01\backup`))
 	require.True(t, isDirectorySMBTarget(`smb://fs01/backup/`))
+	require.True(t, isDirectorySMBTarget(`\\fs01\backup\docs\`))
 	require.False(t, isDirectorySMBTarget(`\\fs01\backup\a.txt`))
 }

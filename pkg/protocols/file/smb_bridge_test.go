@@ -25,7 +25,8 @@ func TestGetInputPathsSMBDeniesHost(t *testing.T) {
 			Options: &types.Options{ExecutionId: execID},
 		},
 	}
-	err := req.getInputPaths(`\\203.0.113.52\backup\a.txt`, func(string) {
+	// Directory target dials during enumeration so host policy applies here.
+	err := req.getInputPaths(context.Background(), `\\203.0.113.52\backup\`, func(string) {
 		t.Fatal("callback must not run when host is denied")
 	})
 	require.Error(t, err)
@@ -34,9 +35,19 @@ func TestGetInputPathsSMBDeniesHost(t *testing.T) {
 
 func TestGetInputPathsSMBRequiresExecutionID(t *testing.T) {
 	req := &Request{SMBUser: "u", SMBPassword: "p"}
-	err := req.getInputPaths(`\\fs01\backup\a.txt`, func(string) {})
+	err := req.getInputPaths(context.Background(), `\\fs01\backup\`, func(string) {})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "execution id")
+}
+
+func TestGetInputPathsSMBSingleFileNoDial(t *testing.T) {
+	req := &Request{} // no execution id / options
+	var got []string
+	err := req.getInputPaths(context.Background(), `\\fs01\backup\a.txt`, func(path string) {
+		got = append(got, path)
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{`\\fs01\backup\a.txt`}, got)
 }
 
 func TestReadSMBFileRejectsDirectory(t *testing.T) {
@@ -52,6 +63,13 @@ func TestReadSMBFileRejectsDirectory(t *testing.T) {
 	_, err := req.readSMBFile(context.Background(), `\\fs01\backup`)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "directory")
+}
+
+func TestReadSMBFileRequiresExecutionID(t *testing.T) {
+	req := &Request{}
+	_, err := req.readSMBFile(context.Background(), `\\fs01\backup\a.txt`)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "execution id")
 }
 
 func TestReadSMBFileDeniesHost(t *testing.T) {
@@ -75,12 +93,16 @@ func TestReadSMBFileDeniesHost(t *testing.T) {
 }
 
 func TestEnumerateSMBInputsSingleFileCallback(t *testing.T) {
-	// Denied host still exercises the "single file path" branch before Dial fails
-	// after policy check — ensure Display path would have been used.
 	target, err := ParseSMBTarget(`\\fs01\backup\docs\a.txt`)
 	require.NoError(t, err)
 	require.Equal(t, `\\fs01\backup\docs\a.txt`, target.Display())
 	require.False(t, isDirectorySMBTarget(target.Display()))
+}
+
+func TestIsDirectorySMBTargetSubdirTrailingSlash(t *testing.T) {
+	require.True(t, isDirectorySMBTarget(`\\fs01\backup\docs\`))
+	require.True(t, isDirectorySMBTarget(`smb://fs01/backup/docs/`))
+	require.False(t, isDirectorySMBTarget(`\\fs01\backup\docs\a.txt`))
 }
 
 func TestSMBPortOverride(t *testing.T) {

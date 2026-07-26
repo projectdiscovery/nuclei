@@ -60,13 +60,20 @@ func (request *Request) executionID() string {
 //	  - extensions: [all]
 //	    smb-user: auditor
 //	    smb-password: secret
-//	# nuclei -t tmpl.yaml -target 'smb://fs01/backup/' 
+//	# nuclei -t tmpl.yaml -target 'smb://fs01/backup/'
 //	# or -target '\\fs01\backup\creds.txt'
 func (request *Request) enumerateSMBInputs(ctx context.Context, input string, callback func(string)) error {
 	target, err := ParseSMBTarget(input)
 	if err != nil {
 		return err
 	}
+
+	// Single-file targets: no dial needed for expansion (readSMBFile dials later).
+	if !isDirectorySMBTarget(input) {
+		callback(target.Display())
+		return nil
+	}
+
 	execID := request.executionID()
 	if execID == "" {
 		return fmt.Errorf("smb file target requires an initialized execution id")
@@ -76,11 +83,6 @@ func (request *Request) enumerateSMBInputs(ctx context.Context, input string, ca
 		return err
 	}
 	defer sess.Close()
-
-	if target.Path != "." {
-		callback(target.Display())
-		return nil
-	}
 
 	if request.NoRecursive {
 		entries, err := sess.ListDir(target.Share, target.Path)
@@ -118,10 +120,13 @@ func (request *Request) readSMBFile(ctx context.Context, displayPath string) (st
 	if err != nil {
 		return "", err
 	}
-	if target.Path == "." {
+	if target.Path == "." || isDirectorySMBTarget(displayPath) {
 		return "", fmt.Errorf("smb path is a directory, not a file: %s", displayPath)
 	}
 	execID := request.executionID()
+	if execID == "" {
+		return "", fmt.Errorf("smb file target requires an initialized execution id")
+	}
 	sess, err := smbsession.Dial(ctx, execID, target.Host, request.smbPort(target), request.resolveSMBCreds(target))
 	if err != nil {
 		return "", err

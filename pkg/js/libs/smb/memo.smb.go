@@ -27,7 +27,7 @@ func memoizedconnectSMBInfoMode(ctx context.Context, executionId string, host st
 }
 
 func memoizedlistShares(ctx context.Context, executionId string, host string, port int, user string, password string) ([]string, error) {
-	hash := "listShares" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(user) + ":" + fmt.Sprint(password)
+	hash := smbMemoKey("listShares", executionId, host, fmt.Sprint(port), user, password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return listShares(ctx, executionId, host, port, user, password)
@@ -43,7 +43,7 @@ func memoizedlistShares(ctx context.Context, executionId string, host string, po
 }
 
 func memoizedlistDir(ctx context.Context, executionId string, host string, port int, user string, password string, share string, dir string) ([]ShareEntry, error) {
-	hash := "listDir" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(user) + ":" + fmt.Sprint(password) + ":" + fmt.Sprint(share) + ":" + fmt.Sprint(dir)
+	hash := smbMemoKey("listDir", executionId, host, fmt.Sprint(port), user, password, share, dir)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return listDir(ctx, executionId, host, port, user, password, share, dir)
@@ -59,7 +59,7 @@ func memoizedlistDir(ctx context.Context, executionId string, host string, port 
 }
 
 func memoizedreadFile(ctx context.Context, executionId string, host string, port int, user string, password string, share string, filePath string) (string, error) {
-	hash := "readFile" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(user) + ":" + fmt.Sprint(password) + ":" + fmt.Sprint(share) + ":" + fmt.Sprint(filePath)
+	hash := smbMemoKey("readFile", executionId, host, fmt.Sprint(port), user, password, share, filePath)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return readFile(ctx, executionId, host, port, user, password, share, filePath)
@@ -75,7 +75,7 @@ func memoizedreadFile(ctx context.Context, executionId string, host string, port
 }
 
 func memoizedlistTree(ctx context.Context, executionId string, host string, port int, user string, password string, share string, dir string) ([]ShareEntry, error) {
-	hash := "listTree" + ":" + fmt.Sprint(executionId) + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(user) + ":" + fmt.Sprint(password) + ":" + fmt.Sprint(share) + ":" + fmt.Sprint(dir)
+	hash := smbMemoKey("listTree", executionId, host, fmt.Sprint(port), user, password, share, dir)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return listTree(ctx, executionId, host, port, user, password, share, dir)

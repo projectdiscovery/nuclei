@@ -12,6 +12,3 @@ import (
 func NewExecDialer(execID string) *gptr.Dialer {
 	return gptransport.NewExecDialer(execID)
 }
-
-// Ensure gptransport init() runs whenever dcerpc is imported.
-var _ = gptransport.NewExecDialer

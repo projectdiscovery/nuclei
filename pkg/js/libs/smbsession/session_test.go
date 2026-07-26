@@ -2,6 +2,7 @@ package smbsession
 
 import (
 	"context"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -205,6 +206,19 @@ func (f *fakeBackend) Ls(dirname string) ([]os.FileInfo, error) {
 }
 
 func (f *fakeBackend) Cat(name string) (string, error) {
+	rc, err := f.Open(name)
+	if err != nil {
+		return "", err
+	}
+	defer rc.Close()
+	body, err := io.ReadAll(rc)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+func (f *fakeBackend) Open(name string) (io.ReadCloser, error) {
 	name = path.Clean(strings.Trim(strings.ReplaceAll(name, `\`, `/`), "/"))
 	dir, base := path.Split(name)
 	dir = strings.Trim(dir, "/")
@@ -213,17 +227,17 @@ func (f *fakeBackend) Cat(name string) (string, error) {
 	}
 	nodes, ok := f.dirs[dir]
 	if !ok {
-		return "", &os.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+		return nil, &os.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 	}
 	for _, n := range nodes {
 		if n.name == base {
 			if n.isDir {
-				return "", &os.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
+				return nil, &os.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 			}
-			return n.content, nil
+			return io.NopCloser(strings.NewReader(n.content)), nil
 		}
 	}
-	return "", &os.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	return nil, &os.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
 func (n fakeNode) info() os.FileInfo {

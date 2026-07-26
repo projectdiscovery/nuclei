@@ -3,6 +3,7 @@ package smbsession
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -49,6 +50,11 @@ type shareBackend interface {
 	ListShares() ([]string, error)
 }
 
+// shareOpener is an optional extension for streaming reads with a byte cap.
+type shareOpener interface {
+	Open(file string) (io.ReadCloser, error)
+}
+
 // Session wraps an authenticated goimpacket SMB client.
 type Session struct {
 	client  *gpsmb.Client
@@ -57,7 +63,12 @@ type Session struct {
 
 // Dial connects and authenticates to host:port using the execution's dialer.
 func Dial(ctx context.Context, executionID, host string, port int, creds Creds) (*Session, error) {
-	_ = ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if !protocolstate.IsHostAllowed(executionID, host) {
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
@@ -80,10 +91,24 @@ func Dial(ctx context.Context, executionID, host string, port int, creds Creds) 
 	}
 	target := gpsession.Target{Host: host, Port: port}
 	client := gpsmb.NewClientWithDialer(target, gpCreds, gptransport.NewExecDialer(executionID))
-	if err := client.Connect(); err != nil {
-		return nil, err
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- client.Connect()
+	}()
+	select {
+	case <-ctx.Done():
+		client.Close()
+		// Drain connect result so the goroutine can exit; ignore the outcome
+		// because cancellation already won the race.
+		<-errCh
+		return nil, ctx.Err()
+	case err := <-errCh:
+		if err != nil {
+			return nil, err
+		}
+		return &Session{client: client}, nil
 	}
-	return &Session{client: client}, nil
 }
 
 // FromClient wraps an already-connected goimpacket SMB client (e.g. dcerpc's).
@@ -198,6 +223,24 @@ func readFile(ops shareBackend, share, filePath string, maxBytes int64) (string,
 	}
 	if err := ops.UseShare(share); err != nil {
 		return "", fmt.Errorf("mount share %q: %w", share, err)
+	}
+	// Prefer streaming Open+LimitReader when the backend supports it (tests /
+	// future goimpacket Open). Fall back to Cat for the stock client.
+	if opener, ok := ops.(shareOpener); ok {
+		f, err := opener.Open(normalized)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
+		limited := io.LimitReader(f, maxBytes+1)
+		body, err := io.ReadAll(limited)
+		if err != nil {
+			return "", err
+		}
+		if int64(len(body)) > maxBytes {
+			return "", fmt.Errorf("file %q exceeds max read size of %d bytes", normalized, maxBytes)
+		}
+		return string(body), nil
 	}
 	body, err := ops.Cat(normalized)
 	if err != nil {
