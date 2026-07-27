@@ -3,6 +3,7 @@ export * as dcom from './dcom';
 export * as dcerpc from './dcerpc';
 export * as fs from './fs';
 export * as goconsole from './goconsole';
+export * as grpc from './grpc';
 export * as ikev2 from './ikev2';
 export * as kerberos from './kerberos';
 export * as krbforge from './krbforge';

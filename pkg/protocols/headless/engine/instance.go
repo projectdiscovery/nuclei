@@ -8,6 +8,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 )
 
 // Instance is an isolated browser instance opened for doing operations with it.
@@ -16,7 +17,7 @@ type Instance struct {
 	engine  *rod.Browser
 
 	// redundant due to dependency cycle
-	interactsh *interactsh.Client
+	interactsh render.URLSource
 	requestLog map[string]string // contains actual request that was sent
 }
 

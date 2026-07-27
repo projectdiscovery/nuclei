@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -22,14 +23,17 @@ import (
 // in ThreadSafeNucleiEngine
 type unsafeOptions struct {
 	executerOpts *protocols.ExecutorOptions
-	engine       *core.Engine
 }
 
-// createEphemeralObjects creates ephemeral nuclei objects/instances/types
-func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
+// createEphemeralObjects creates ephemeral nuclei objects/instances/types.
+// outputWriter overrides the base engine writer when non-nil (used for per-call callbacks).
+func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options, outputWriter output.Writer) (*unsafeOptions, error) {
+	if outputWriter == nil {
+		outputWriter = base.customWriter
+	}
 	u := &unsafeOptions{}
 	u.executerOpts = &protocols.ExecutorOptions{
-		Output:       base.customWriter,
+		Output:       outputWriter,
 		Options:      opts,
 		Progress:     base.customProgress,
 		Catalog:      base.catalog,
@@ -40,6 +44,11 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		ResumeCfg:    types.NewResumeCfg(),
 		Parser:       base.parser,
 		Browser:      base.browserInstance,
+		// Thread-safe executes can run concurrently with different Output writers.
+		// The compiled-template cache shallow-copies requests and mutates shared
+		// ExecutorOptions.Output via UpdateOptions/ApplyNewEngineOptions, which
+		// would otherwise route all findings to whichever call last won the race.
+		DoNotCache: true,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
@@ -52,9 +61,31 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		opts.RateLimitDuration = time.Second
 	}
 	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
-	u.engine = core.New(opts)
-	u.engine.SetExecuterOptions(u.executerOpts)
 	return u, nil
+}
+
+// resolveEphemeralOutput combines the base/global writer with any per-call result callbacks.
+// Global callbacks keep working; per-call callbacks are isolated to this execution.
+func resolveEphemeralOutput(base, call *NucleiEngine) output.Writer {
+	out := base.customWriter
+	if call == nil || len(call.resultCallbacks) == 0 {
+		return out
+	}
+
+	callbacks := append([]func(event *output.ResultEvent){}, call.resultCallbacks...)
+	callWriter := testutils.NewMockOutputWriter(call.opts.OmitTemplate)
+	callWriter.WriteCallback = func(event *output.ResultEvent) {
+		for _, cb := range callbacks {
+			if cb != nil {
+				cb(event)
+			}
+		}
+	}
+
+	if out == nil {
+		return callWriter
+	}
+	return output.NewMultiWriter(out, callWriter)
 }
 
 // closeEphemeralObjects closes all resources used by ephemeral nuclei objects/instances/types
@@ -113,14 +144,15 @@ func (e *ThreadSafeNucleiEngine) GlobalLoadAllTemplates() error {
 }
 
 // GlobalResultCallback sets a callback function which will be called for each result
+// across all ExecuteNucleiWithOpts invocations. For a callback scoped to a single
+// execution, pass WithResultCallback in that call's opts instead.
 func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *output.ResultEvent)) {
 	e.eng.resultCallbacks = []func(*output.ResultEvent){callback}
 }
 
-// ExecuteNucleiWithOptsCtx executes templates on targets and calls callback on each result(only if results are found)
-// This method can be called concurrently and it will use some global resources but can be run parallelly
-// by invoking this method with different options and targets
-// Note: Not all options are thread-safe. this method will throw error if you try to use non-thread-safe options
+// ExecuteNucleiWithOptsCtx executes templates on targets and can be called concurrently.
+// Pass WithResultCallback in opts for a per-execution result callback (combined with any
+// GlobalResultCallback). Not all options are thread-safe.
 func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, targets []string, opts ...NucleiSDKOptions) error {
 	baseOpts := e.eng.opts.Copy()
 	tmpEngine := &NucleiEngine{opts: baseOpts, mode: threadSafe}
@@ -131,7 +163,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	}
 
 	// create ephemeral nuclei objects/instances/types using base nuclei engine
-	unsafeOpts, err := createEphemeralObjects(ctx, e.eng, tmpEngine.opts)
+	unsafeOpts, err := createEphemeralObjects(ctx, e.eng, tmpEngine.opts, resolveEphemeralOutput(e.eng, tmpEngine))
 	if err != nil {
 		return err
 	}
@@ -145,7 +177,9 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	}
 	unsafeOpts.executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(tmpEngine.opts, e.eng.catalog, unsafeOpts.executerOpts))
+	loaderConfig := loader.NewConfig(tmpEngine.opts, e.eng.catalog, unsafeOpts.executerOpts)
+	loaderConfig.MetadataIndex = e.eng.getMetadataIndex()
+	store, err := loader.New(loaderConfig)
 	if err != nil {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}

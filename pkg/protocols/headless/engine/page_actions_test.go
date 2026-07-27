@@ -22,12 +22,20 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testheadless"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	envutil "github.com/projectdiscovery/utils/env"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+type testInteractshURLSource struct {
+	calls int
+}
+
+func (s *testInteractshURLSource) NewURLWithData(string) (string, error) {
+	s.calls++
+	return fmt.Sprintf("test-%d.oast.invalid", s.calls), nil
+}
 
 func TestGetActionArgTreatsResolvedValuesAsData(t *testing.T) {
 	page := &Page{
@@ -47,19 +55,10 @@ func TestGetActionArgTreatsResolvedValuesAsData(t *testing.T) {
 }
 
 func TestGetActionArgRendersTemplateInteractshBeforeValidation(t *testing.T) {
-	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           "oast.fun",
-		CacheSize:           100,
-		Eviction:            60 * time.Second,
-		CooldownPeriod:      0,
-		PollDuration:        5 * time.Second,
-		DisableHttpFallback: true,
-	})
-	require.NoError(t, err)
-	defer client.Close()
+	source := &testInteractshURLSource{}
 
 	page := &Page{
-		instance:  &Instance{interactsh: client},
+		instance:  &Instance{interactsh: source},
 		mutex:     &sync.RWMutex{},
 		variables: map[string]interface{}{},
 	}
@@ -69,9 +68,89 @@ func TestGetActionArgRendersTemplateInteractshBeforeValidation(t *testing.T) {
 	}}, "value")
 
 	require.NoError(t, err)
+	require.Equal(t, 1, source.calls)
 	require.Len(t, page.InteractshURLs, 1)
 	require.NotContains(t, got, "{{interactsh-url}}")
 	require.NotContains(t, got, "%7B%7Binteractsh-url%7D%7D")
+}
+
+func TestPageElementByRendersLocatorArguments(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+	response := `<html><body><button id="first" data-marker="{{runtime}}">target</button><button id="second">second</button></body></html>`
+	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, pageErr error, out ActionData) {
+		require.NoError(t, pageErr)
+		for key, value := range map[string]interface{}{
+			"selector": "button", "text": "target", "xpath": "//button[@id='first']",
+			"js": "() => document.querySelector('#first')", "query": "target", "mode": "x",
+		} {
+			page.variables[key] = value
+		}
+		for name, data := range map[string]map[string]string{
+			"default":       {"selector": "{{selector}}", "xpath": "{{unused}}"},
+			"regex":         {"by": "r", "selector": "{{selector}}", "regex": "{{text}}"},
+			"xpath":         {"by": "xpath", "xpath": "{{xpath}}"},
+			"javascript":    {"by": "js", "js": "{{js}}"},
+			"search":        {"by": "search", "query": "{{query}}"},
+			"rendered mode": {"by": "{{mode}}", "xpath": "{{xpath}}"},
+			"static":        {"selector": "#first"},
+		} {
+			t.Run(name, func(t *testing.T) {
+				element, _, err := page.pageElementBy(page.page, &Action{Data: data})
+				require.NoError(t, err)
+				require.Equal(t, "target", element.MustText())
+			})
+		}
+
+		page.variables["marker"] = "{{runtime}}"
+		element, _, err := page.pageElementBy(page.page, &Action{Data: map[string]string{
+			"by": "xpath", "xpath": "//*[@data-marker='{{marker}}']",
+		}})
+		require.NoError(t, err)
+		require.Equal(t, "target", element.MustText())
+
+		action := &Action{Data: map[string]string{"selector": "#{{target}}"}}
+		page.variables["target"] = "first"
+		first, _, err := page.pageElementBy(page.page, action)
+		require.NoError(t, err)
+		require.Equal(t, "target", first.MustText())
+		page.variables["target"] = "second"
+		second, _, err := page.pageElementBy(page.page, action)
+		require.NoError(t, err)
+		require.Equal(t, "second", second.MustText())
+		require.Equal(t, "#{{target}}", action.Data["selector"])
+
+		_, _, err = page.pageElementBy(page.page, &Action{Data: map[string]string{"selector": "{{missing}}"}})
+		require.ErrorContains(t, err, "missing")
+	})
+}
+
+func TestLocatorInteractshTracking(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+	source := &testInteractshURLSource{}
+	testHeadlessSimpleResponse(t, "<html><body><select><option value='test'>Test</option></select></body></html>", actions, 20*time.Second, func(page *Page, pageErr error, out ActionData) {
+		require.NoError(t, pageErr)
+		page.instance.interactsh = source
+
+		err := page.WaitVisible(&Action{Data: map[string]string{
+			"selector": "[data-oast='{{interactsh-url}}']", "timeout": "50ms", "pollTime": "10ms",
+		}}, nil)
+		require.Error(t, err)
+		require.Equal(t, 1, source.calls)
+		require.Len(t, page.InteractshURLs, 1)
+
+		err = page.SelectInputElement(&Action{Data: map[string]string{
+			"selector": "select:not([data-oast='{{interactsh-url}}'])", "value": "Test", "selected": "true",
+		}}, nil)
+		require.NoError(t, err)
+		require.Equal(t, 2, source.calls)
+		require.Len(t, page.InteractshURLs, 2)
+	})
 }
 
 func TestActionNavigate(t *testing.T) {
@@ -150,7 +229,7 @@ func TestActionClick(t *testing.T) {
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-		{ActionType: ActionTypeHolder{ActionType: ActionClick}, Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
+		{ActionType: ActionTypeHolder{ActionType: ActionClick}, Data: map[string]string{"selector": "{{to_lower('BUTTON')}}"}}, // Use css selector for clicking
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
@@ -730,28 +809,56 @@ func TestActionSleep(t *testing.T) {
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
 		require.Nil(t, err, "could not run page actions")
 		require.True(t, page.Page().MustElement("button").MustVisible(), "could not get button")
+		require.Len(t, page.ActionDurations, 2)
+		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.GreaterOrEqual(t, page.ActionDurations[1], 2*time.Second)
+	})
+}
+
+func TestActionWaitEventDuration(t *testing.T) {
+	response := `<html><body>loaded</body></html>`
+
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitEvent}, Data: map[string]string{"event": "Page.loadEventFired", "max-duration": "5s"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+		require.Len(t, page.ActionDurations, 2)
+		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.Greater(t, page.ActionDurations[1], time.Duration(0))
 	})
 }
 
 func TestActionWaitVisible(t *testing.T) {
-	response := `
+	// responseWithDelay renders a button that becomes visible after appearDelayMs.
+	// Each subtest uses its own delay so the page timing and the action timeout
+	// never race at the same boundary, which previously caused flaky failures on
+	// slower runners (e.g. windows CI) where navigation/startup overhead shifted
+	// the moment the wait actually began.
+	responseWithDelay := func(appearDelayMs int) string {
+		return fmt.Sprintf(`
 		<html>
 			<head>
 				<title>Nuclei Test Page</title>
 			</head>
 			<button style="display:none" id="test">Wait for me!</button>
 			<script>
-				setTimeout(() => document.querySelector('#test').style.display = '', 1000);
+				setTimeout(() => document.querySelector('#test').style.display = '', %d);
 			</script>
-		</html>`
+		</html>`, appearDelayMs)
+	}
 
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionWaitVisible}, Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitVisible}, Data: map[string]string{"by": "x", "xpath": "//button[@id='{{to_lower('TEST')}}']"}},
 	}
 
 	t.Run("wait for an element being visible", func(t *testing.T) {
-		testHeadlessSimpleResponse(t, response, actions, 2*time.Second, func(page *Page, err error, out ActionData) {
+		// element appears quickly (500ms) and the wait has a generous timeout (5s),
+		// so it reliably becomes visible before the action times out.
+		testHeadlessSimpleResponse(t, responseWithDelay(500), actions, 5*time.Second, func(page *Page, err error, out ActionData) {
 			require.Nil(t, err, "could not run page actions")
 
 			page.Page().MustElement("button").MustVisible()
@@ -759,8 +866,9 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 
 	t.Run("timeout because of element not visible", func(t *testing.T) {
-		// increased timeout from time.Second/2 to time.Second due to random fails (probably due to overhead and system)
-		testHeadlessSimpleResponse(t, response, actions, time.Second, func(page *Page, err error, out ActionData) {
+		// element only appears after 10s while the wait times out at 1s, leaving a
+		// wide margin so the timeout reliably fires before the element is shown.
+		testHeadlessSimpleResponse(t, responseWithDelay(10000), actions, time.Second, func(page *Page, err error, out ActionData) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
 		})

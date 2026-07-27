@@ -23,6 +23,17 @@ func TestSSL(t *testing.T) {
 		}
 	})
 
+	t.Run("Duration", func(t *testing.T) {
+		server := newTLSServer(t, &tls.Config{})
+		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/ssl/duration.yaml", server.URL, suite.debug)
+		if err != nil {
+			t.Fatalf("duration ssl request failed: %v", err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("BasicZTLS", func(t *testing.T) {
 		server := newTLSServer(t, &tls.Config{})
 		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/ssl/basic-ztls.yaml", server.URL, suite.debug, "-ztls")

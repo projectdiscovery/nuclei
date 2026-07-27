@@ -59,6 +59,14 @@ func (rr *RequestResponse) Clone() *RequestResponse {
 // BuildRequest builds a retryablehttp request from the request response
 func (rr *RequestResponse) BuildRequest() (*retryablehttp.Request, error) {
 	rr.once.Do(func() {
+		// Request is optional: UnmarshalJSON only populates it when a "request"
+		// key is present, so an entry carrying just a "url" leaves it nil.
+		// Dereferencing it below would panic with a nil pointer instead of
+		// surfacing a usable error, taking the whole scan down.
+		if rr.Request == nil {
+			rr.reqErr = fmt.Errorf("could not create request: no request in request response")
+			return
+		}
 		urlx := rr.URL.Clone()
 		var body io.Reader = nil
 		if rr.Request.Body != "" {
@@ -279,10 +287,10 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 		// yaml may include trailing newlines
 		// remove them if present
 		bin := buff.Bytes()
-		if bin[len(bin)-1] == '\n' {
+		if len(bin) > 0 && bin[len(bin)-1] == '\n' {
 			bin = bin[:len(bin)-1]
 		}
-		if bin[len(bin)-1] == '\r' || bin[len(bin)-1] == '\n' {
+		if len(bin) > 0 && (bin[len(bin)-1] == '\r' || bin[len(bin)-1] == '\n') {
 			bin = bin[:len(bin)-1]
 		}
 		rr.Request.Body = conversion.String(bin)
