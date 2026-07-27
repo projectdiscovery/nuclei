@@ -143,6 +143,60 @@ func TestLoadTemplatesOnlyMetadataLogsCachedTemplateParseErrors(t *testing.T) {
 	require.Contains(t, output.String(), "Could not load template")
 }
 
+func TestValidateTemplatesRejectsRuntimeCompilationError(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "invalid-regex-group.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: invalid-regex-group
+
+info:
+  name: Invalid Regex Group
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    extractors:
+      - type: regex
+        group: -1
+        regex:
+          - "(a)(b)"
+`), 0o600))
+
+	options := testutils.DefaultOptions.Copy()
+	var output bytes.Buffer
+	logger := &gologger.Logger{}
+	logger.SetFormatter(formatter.NewCLI(false))
+	logger.SetWriter(&utils.CaptureWriter{Buffer: &output})
+	logger.SetMaxLevel(levels.LevelDebug)
+	options.Logger = logger
+	options.ExecutionId = "loader-invalid-regex-group"
+	options.Templates = []string{templatePath}
+	options.Validate = true
+	options.TemplateLoadingConcurrency = 1
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	parser := templates.NewParser()
+	parser.ShouldValidate = true
+	executerOpts.Parser = parser
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	store, err := New(NewConfig(options, catalog, executerOpts))
+	require.NoError(t, err)
+	require.Error(t, store.ValidateTemplates())
+	require.Contains(t, output.String(), "regex extractor group must be >= 0")
+}
+
 func TestRemoteTemplates(t *testing.T) {
 	catalog := disk.NewCatalog("")
 
