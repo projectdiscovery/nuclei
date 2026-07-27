@@ -41,6 +41,7 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/mysql-connect.yaml", TestCase: &javascriptMySQLConnect{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/mysql-fingerprint.yaml", TestCase: &javascriptMySQLFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/mssql-fingerprint.yaml", TestCase: &javascriptMSSQLFingerprint{}},
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
@@ -175,6 +176,57 @@ func (j *javascriptMySQLConnect) Execute(filePath string) error {
 			"MYSQL_ROOT_PASSWORD=secret",
 		},
 	}, javascriptDatabaseReadyTimeout, 0, mysqlReadyCheck("root", "secret")))
+}
+
+type javascriptMySQLFingerprint struct{}
+
+// Execute fingerprints multiple MySQL/MariaDB server versions and asserts the
+// extended handshake fields (protocol, version, salt, capabilities, auth plugin).
+func (j *javascriptMySQLFingerprint) Execute(filePath string) error {
+	cases := []struct {
+		name       string
+		repository string
+		tag        string
+		env        []string
+	}{
+		{
+			name:       "mysql-5.7",
+			repository: "mysql",
+			tag:        "5.7",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mysql-8.0",
+			repository: "mysql",
+			tag:        "8.0",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mysql-8.4",
+			repository: "mysql",
+			tag:        "8.4",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mariadb-11.4",
+			repository: "mariadb",
+			tag:        "11.4",
+			env:        []string{"MARIADB_ROOT_PASSWORD=secret"},
+		},
+	}
+
+	var errs []error
+	for _, tc := range cases {
+		err := runJavascriptDockerCase(filePath, newJavascriptDockerSpec("3306/tcp", &dockertest.RunOptions{
+			Repository: tc.repository,
+			Tag:        tc.tag,
+			Env:        tc.env,
+		}, javascriptDatabaseReadyTimeout, 0, mysqlReadyCheck("root", "secret")))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", tc.name, err))
+		}
+	}
+	return multierr.Combine(errs...)
 }
 
 type javascriptMultiPortsSSH struct{}

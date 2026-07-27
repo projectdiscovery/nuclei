@@ -8,6 +8,7 @@ import (
 	gpwmiexec "github.com/Mzack9999/goimpacket/pkg/wmiexec"
 	"github.com/oiweiwei/go-msrpc/dcerpc"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/gptransport"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -78,7 +79,7 @@ func (c *Client) WmiExec(command, share string) (*WmiExecResult, error) {
 type execDialerAdapter struct{ execID string }
 
 func (e *execDialerAdapter) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	return dialWithExec(ctx, e.execID, network, address)
+	return gptransport.DialWithExec(ctx, e.execID, network, address)
 }
 
 // Compile-time guard that execDialerAdapter satisfies dcerpc.Dialer.
