@@ -42,6 +42,7 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/mysql-connect.yaml", TestCase: &javascriptMySQLConnect{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/mysql-fingerprint.yaml", TestCase: &javascriptMySQLFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/mssql-fingerprint.yaml", TestCase: &javascriptMSSQLFingerprint{}},
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
 	{Path: "protocols/javascript/telnet-auth-test.yaml", TestCase: &javascriptTelnetAuthTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
