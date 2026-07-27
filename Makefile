@@ -22,7 +22,7 @@ ifeq ($(shell go env GOOS),windows)
 endif
 
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs fuzz fuzz-ci fuzz-tools
-.PHONY: devtools-tsgen docs docgen dsl-docs functional go-build lint lint-strict fuzzplayground syntax-docs
+.PHONY: devtools-tsgen docs docgen dsl-docs functional go-build lint lint-strict fuzzplayground syntax-docs genschema
 .PHONY: integration integration-debug regression jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
 .PHONY: tidy ts verify download vet template-validate build-fuzz discover-fuzz-packages
 
@@ -81,6 +81,12 @@ docs:
 syntax-docs: docgen
 syntax-docs:
 	./bin/docgen SYNTAX-REFERENCE.md nuclei-jsonschema.json
+
+# Regenerate nuclei-jsonschema.json only (skips markdown docs output).
+genschema:
+	rm -f ./bin/docgen
+	$(GOBUILD) -o ./bin/docgen cmd/docgen/docgen.go
+	./bin/docgen /dev/null nuclei-jsonschema.json
 
 # RACE controls the data-race detector (on by default for local runs). CI builds
 # the race variant on a single OS and passes RACE= elsewhere, since data races are

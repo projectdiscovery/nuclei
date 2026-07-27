@@ -1,9 +1,7 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://templates.-template",
-  "$ref": "#/$defs/templates.Template",
   "$defs": {
     "analyzers.AnalyzerTemplate": {
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string"
@@ -12,103 +10,145 @@
           "$ref": "#/$defs/map[string]interface {}"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "name",
         "parameters"
-      ]
+      ],
+      "type": "object"
     },
     "code.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "engine",
+            "source"
+          ]
+        }
+      ],
       "properties": {
-        "matchers": {
+        "args": {
+          "description": "Arguments passed to the code engine",
+          "examples": [
+            [
+              "-c"
+            ]
+          ],
           "items": {
-            "$ref": "#/$defs/matchers.Matcher"
+            "type": "string"
           },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+          "markdownDescription": "Arguments passed to the code engine",
+          "title": "args",
+          "type": "array"
+        },
+        "engine": {
+          "description": "Runtime engine(s) used to execute the source\nExample:\n```yaml\nengine:\n  - py\n  - python3\n```",
+          "examples": [
+            [
+              "py",
+              "python3"
+            ],
+            [
+              "sh"
+            ],
+            [
+              "powershell"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Runtime engine(s) used to execute the source\nExample:\n```yaml\nengine:\n  - py\n  - python3\n```",
+          "title": "engine",
+          "type": "array"
         },
         "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "items": {
             "$ref": "#/$defs/extractors.Extractor"
           },
-          "type": "array",
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+          "type": "array"
+        },
+        "id": {
+          "description": "Optional ID of this code request block",
+          "examples": [
+            "code-py"
+          ],
+          "markdownDescription": "Optional ID of this code request block",
+          "title": "id of the request",
+          "type": "string"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
         },
         "matchers-condition": {
-          "type": "string",
+          "description": "Conditions between the matchers",
           "enum": [
             "and",
             "or"
           ],
+          "markdownDescription": "Conditions between the matchers",
           "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
+          "type": "string"
         },
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID is the optional ID of the Request"
+        "pattern": {
+          "description": "Optional pattern used by some engines for file selection",
+          "markdownDescription": "Optional pattern used by some engines for file selection",
+          "title": "pattern",
+          "type": "string"
         },
-        "engine": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "engine",
-          "description": "Engine"
+        "pre-condition": {
+          "description": "JavaScript condition evaluated before executing the code request",
+          "examples": [
+            "len(Host) \u003e 0"
+          ],
+          "markdownDescription": "JavaScript condition evaluated before executing the code request",
+          "title": "pre-condition for the request",
+          "type": "string"
         },
         "sandbox": {
           "$ref": "#/$defs/code.Sandbox",
-          "title": "sandbox",
-          "description": "Sandbox"
-        },
-        "pre-condition": {
-          "type": "string",
-          "title": "pre-condition for the request",
-          "description": "PreCondition is a condition which is evaluated before sending the request"
-        },
-        "args": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "args",
-          "description": "Args"
-        },
-        "pattern": {
-          "type": "string",
-          "title": "pattern",
-          "description": "Pattern"
+          "description": "Optional sandbox configuration (working directory / image) for isolated execution",
+          "markdownDescription": "Optional sandbox configuration (working directory / image) for isolated execution",
+          "title": "sandbox"
         },
         "source": {
-          "type": "string",
+          "description": "Inline source snippet or file path to execute\nExample:\n```yaml\nsource: |\n  print(\"hello\")\n```",
+          "markdownDescription": "Inline source snippet or file path to execute\nExample:\n```yaml\nsource: |\n  print(\"hello\")\n```",
           "title": "source file/snippet",
-          "description": "Source snippet"
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "code.Sandbox": {
+      "additionalProperties": false,
       "properties": {
-        "working-dir": {
-          "type": "string",
-          "title": "working-dir",
-          "description": "Working directory"
-        },
         "image": {
-          "type": "string",
+          "description": "Image",
+          "markdownDescription": "Image",
           "title": "image",
-          "description": "Image"
+          "type": "string"
+        },
+        "working-dir": {
+          "description": "Working directory",
+          "markdownDescription": "Working directory",
+          "title": "working-dir",
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "dns.DNSRequestTypeHolder": {
-      "type": "string",
+      "description": "Type is the type of DNS request to make",
       "enum": [
         "A",
         "NS",
@@ -129,53 +169,34 @@
         "NSEC3",
         "NSEC3PARAM"
       ],
+      "markdownDescription": "Type is the type of DNS request to make",
       "title": "type of DNS request to make",
-      "description": "Type is the type of DNS request to make"
+      "type": "string"
     },
     "dns.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "name"
+          ]
+        }
+      ],
       "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
-        },
-        "extractors": {
-          "items": {
-            "$ref": "#/$defs/extractors.Extractor"
-          },
-          "type": "array",
-          "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
-        },
-        "matchers-condition": {
-          "type": "string",
-          "enum": [
-            "and",
-            "or"
+        "attack": {
+          "$ref": "#/$defs/generators.AttackTypeHolder",
+          "description": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "examples": [
+            "batteringram",
+            "pitchfork",
+            "clusterbomb"
           ],
-          "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "id": {
-          "type": "string",
-          "title": "id of the dns request",
-          "description": "ID is the optional ID of the DNS Request"
-        },
-        "name": {
-          "type": "string",
-          "title": "hostname to make dns request for",
-          "description": "Name is the Hostname to make DNS request for"
-        },
-        "type": {
-          "$ref": "#/$defs/dns.DNSRequestTypeHolder",
-          "title": "type of dns request to make",
-          "description": "Type is the type of DNS request to make"
+          "markdownDescription": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "title": "attack is the payload combination"
         },
         "class": {
-          "type": "string",
+          "default": "inet",
+          "description": "DNS request class\nSupported values: inet, csnet, chaos, hesiod, none, any",
           "enum": [
             "inet",
             "csnet",
@@ -184,59 +205,148 @@
             "none",
             "any"
           ],
+          "examples": [
+            "inet"
+          ],
+          "markdownDescription": "DNS request class\nSupported values: inet, csnet, chaos, hesiod, none, any",
           "title": "class of DNS request",
-          "description": "Class is the class of the DNS request"
+          "type": "string"
         },
-        "retries": {
-          "type": "integer",
-          "title": "retries for dns request",
-          "description": "Retries is the number of retries for the DNS request"
+        "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "items": {
+            "$ref": "#/$defs/extractors.Extractor"
+          },
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "title": "extractors to run on response",
+          "type": "array"
         },
-        "trace": {
-          "type": "boolean",
-          "title": "trace operation",
-          "description": "Trace performs a trace operation for the target."
+        "id": {
+          "description": "Optional ID of this DNS request block\nUseful when calling / executing this request block from flow",
+          "examples": [
+            "dns-a-lookup"
+          ],
+          "markdownDescription": "Optional ID of this DNS request block\nUseful when calling / executing this request block from flow",
+          "title": "id of the dns request",
+          "type": "string"
         },
-        "trace-max-recursion": {
-          "type": "integer",
-          "title": "trace-max-recursion level for dns request",
-          "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
         },
-        "attack": {
-          "$ref": "#/$defs/generators.AttackTypeHolder",
-          "title": "attack is the payload combination",
-          "description": "Attack is the type of payload combinations to perform"
+        "matchers-condition": {
+          "description": "Conditions between the matchers",
+          "enum": [
+            "and",
+            "or"
+          ],
+          "markdownDescription": "Conditions between the matchers",
+          "title": "condition between the matchers",
+          "type": "string"
+        },
+        "name": {
+          "description": "Hostname to make the DNS request for\nExample:\n```yaml\n- name: \"{{FQDN}}\"\n```",
+          "examples": [
+            "{{FQDN}}",
+            "{{Hostname}}"
+          ],
+          "markdownDescription": "Hostname to make the DNS request for\nExample:\n```yaml\n- name: \"{{FQDN}}\"\n```",
+          "title": "hostname to make dns request for",
+          "type": "string"
         },
         "payloads": {
           "$ref": "#/$defs/map[string]interface {}",
-          "title": "payloads for the network request",
-          "description": "Payloads contains any payloads for the current request"
-        },
-        "threads": {
-          "type": "integer",
-          "title": "threads for sending requests",
-          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
+          "description": "Payloads for the DNS request\nReferenced payload keys are iterated and replaced in the request",
+          "markdownDescription": "Payloads for the DNS request\nReferenced payload keys are iterated and replaced in the request",
+          "title": "payloads for the network request"
         },
         "recursion": {
-          "type": "boolean",
+          "description": "Whether the resolver should recurse records",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Whether the resolver should recurse records",
           "title": "recurse all servers",
-          "description": "Recursion determines if resolver should recurse all records to get fresh results"
+          "type": "boolean"
         },
         "resolvers": {
+          "description": "Custom resolvers to use for this request\nExample:\n```yaml\nresolvers:\n  - 1.1.1.1\n  - 8.8.8.8\n```",
+          "examples": [
+            [
+              "1.1.1.1",
+              "8.8.8.8"
+            ]
+          ],
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "Custom resolvers to use for this request\nExample:\n```yaml\nresolvers:\n  - 1.1.1.1\n  - 8.8.8.8\n```",
           "title": "Resolvers",
-          "description": "Define resolvers to use within the template"
+          "type": "array"
+        },
+        "retries": {
+          "description": "Number of retries for the DNS request",
+          "examples": [
+            3
+          ],
+          "markdownDescription": "Number of retries for the DNS request",
+          "title": "retries for dns request",
+          "type": "integer"
+        },
+        "threads": {
+          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling",
+          "markdownDescription": "Threads specifies number of threads to use sending requests. This enables Connection Pooling",
+          "title": "threads for sending requests",
+          "type": "integer"
+        },
+        "trace": {
+          "description": "Perform a DNS trace operation for the target",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Perform a DNS trace operation for the target",
+          "title": "trace operation",
+          "type": "boolean"
+        },
+        "trace-max-recursion": {
+          "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations",
+          "markdownDescription": "TraceMaxRecursion is the number of max recursion allowed for trace operations",
+          "title": "trace-max-recursion level for dns request",
+          "type": "integer"
+        },
+        "type": {
+          "$ref": "#/$defs/dns.DNSRequestTypeHolder",
+          "description": "DNS request type\nSupported values: A, NS, DS, CNAME, SOA, PTR, MX, TXT, AAAA, CAA, TLSA, ANY, SRV",
+          "examples": [
+            "A",
+            "AAAA",
+            "CNAME",
+            "MX",
+            "TXT"
+          ],
+          "markdownDescription": "DNS request type\nSupported values: A, NS, DS, CNAME, SOA, PTR, MX, TXT, AAAA, CAA, TLSA, ANY, SRV",
+          "title": "type of dns request to make"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "engine.Action": {
+      "additionalProperties": false,
       "properties": {
+        "action": {
+          "$ref": "#/$defs/engine.ActionTypeHolder",
+          "description": "Type of actions to perform",
+          "markdownDescription": "Type of actions to perform",
+          "title": "action to perform"
+        },
         "args": {
+          "description": "Args contain arguments for the headless action",
+          "markdownDescription": "Args contain arguments for the headless action",
           "patternProperties": {
             ".*": {
               "oneOf": [
@@ -252,33 +362,28 @@
               ]
             }
           },
-          "title": "arguments for headless action",
-          "description": "Args contain arguments for the headless action"
-        },
-        "name": {
-          "type": "string",
-          "title": "name for headless action",
-          "description": "Name is the name assigned to the headless action"
+          "title": "arguments for headless action"
         },
         "description": {
-          "type": "string",
+          "description": "Description of the headless action",
+          "markdownDescription": "Description of the headless action",
           "title": "description for headless action",
-          "description": "Description of the headless action"
+          "type": "string"
         },
-        "action": {
-          "$ref": "#/$defs/engine.ActionTypeHolder",
-          "title": "action to perform",
-          "description": "Type of actions to perform"
+        "name": {
+          "description": "Name is the name assigned to the headless action",
+          "markdownDescription": "Name is the name assigned to the headless action",
+          "title": "name for headless action",
+          "type": "string"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "action"
-      ]
+      ],
+      "type": "object"
     },
     "engine.ActionTypeHolder": {
-      "type": "string",
+      "description": "Type of actions to perform",
       "enum": [
         "navigate",
         "script",
@@ -309,93 +414,194 @@
         "sleep",
         "waitvisible"
       ],
+      "markdownDescription": "Type of actions to perform",
       "title": "action to perform",
-      "description": "Type of actions to perform"
+      "type": "string"
     },
     "extractors.Extractor": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "type",
+            "regex"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "kval"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "json"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "xpath"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "dsl"
+          ]
+        }
+      ],
       "properties": {
-        "name": {
-          "type": "string",
-          "title": "name of the extractor",
-          "description": "Name of the extractor"
-        },
-        "type": {
-          "$ref": "#/$defs/extractors.ExtractorTypeHolder"
-        },
-        "regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "regex to extract from part",
-          "description": "Regex to extract from part"
-        },
-        "group": {
-          "type": "integer",
-          "title": "group to extract from regex",
-          "description": "Group to extract from regex"
-        },
-        "kval": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "kval pairs to extract from response",
-          "description": "Kval pairs to extract from response"
-        },
-        "json": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "json jq expressions to extract data",
-          "description": "JSON JQ expressions to evaluate from response part"
-        },
-        "xpath": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "html xpath expressions to extract data",
-          "description": "XPath allows using xpath expressions to extract items from html response"
-        },
         "attribute": {
-          "type": "string",
+          "description": "Optional HTML attribute to extract from XPath matches",
+          "examples": [
+            "href"
+          ],
+          "markdownDescription": "Optional HTML attribute to extract from XPath matches",
           "title": "optional attribute to extract from xpath",
-          "description": "Optional attribute to extract from response XPath"
-        },
-        "dsl": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "dsl expressions to extract",
-          "description": "Optional attribute to extract from response dsl"
-        },
-        "part": {
-          "type": "string",
-          "title": "part of response to extract data from",
-          "description": "Part of the request response to extract data from"
-        },
-        "internal": {
-          "type": "boolean",
-          "title": "mark extracted value for internal variable use",
-          "description": "Internal when set to true will allow using the value extracted in the next request for some protocols"
+          "type": "string"
         },
         "case-insensitive": {
-          "type": "boolean",
+          "description": "Perform case-insensitive extraction when supported",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Perform case-insensitive extraction when supported",
           "title": "use case insensitive extract",
-          "description": "use case insensitive extract"
+          "type": "boolean"
+        },
+        "dsl": {
+          "description": "DSL expressions used to extract values",
+          "examples": [
+            [
+              "body"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "DSL expressions used to extract values",
+          "title": "dsl expressions to extract",
+          "type": "array"
+        },
+        "group": {
+          "description": "Numbered capture group to extract from the regex",
+          "examples": [
+            1
+          ],
+          "markdownDescription": "Numbered capture group to extract from the regex",
+          "title": "group to extract from regex",
+          "type": "integer"
+        },
+        "internal": {
+          "description": "Mark extracted value for internal use in subsequent requests",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Mark extracted value for internal use in subsequent requests",
+          "title": "mark extracted value for internal variable use",
+          "type": "boolean"
+        },
+        "json": {
+          "description": "jq-style expressions used to extract from JSON responses",
+          "examples": [
+            [
+              ".[] | .id"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "jq-style expressions used to extract from JSON responses",
+          "title": "json jq expressions to extract data",
+          "type": "array"
+        },
+        "kval": {
+          "description": "Key names to extract from headers/cookies (case-insensitive)\nDashes in header names must be replaced with underscores",
+          "examples": [
+            [
+              "server"
+            ],
+            [
+              "content_type"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Key names to extract from headers/cookies (case-insensitive)\nDashes in header names must be replaced with underscores",
+          "title": "kval pairs to extract from response",
+          "type": "array"
+        },
+        "name": {
+          "description": "Optional extractor name used as a variable key\nPrefer lowercase without spaces or underscores",
+          "examples": [
+            "cookie-extractor"
+          ],
+          "markdownDescription": "Optional extractor name used as a variable key\nPrefer lowercase without spaces or underscores",
+          "title": "name of the extractor",
+          "type": "string"
+        },
+        "part": {
+          "description": "Part of the protocol response to extract from\nCommon values: body, header, all, raw",
+          "examples": [
+            "body",
+            "header",
+            "all"
+          ],
+          "markdownDescription": "Part of the protocol response to extract from\nCommon values: body, header, all, raw",
+          "title": "part of response to extract data from",
+          "type": "string"
+        },
+        "regex": {
+          "description": "Regular expression patterns used to extract values",
+          "examples": [
+            [
+              "token=([a-z0-9]+)"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Regular expression patterns used to extract values",
+          "title": "regex to extract from part",
+          "type": "array"
+        },
+        "type": {
+          "$ref": "#/$defs/extractors.ExtractorTypeHolder",
+          "description": "Type of the extractor\nSupported values: regex, kval, json, xpath, dsl",
+          "examples": [
+            "regex",
+            "kval",
+            "json",
+            "xpath",
+            "dsl"
+          ],
+          "markdownDescription": "Type of the extractor\nSupported values: regex, kval, json, xpath, dsl"
+        },
+        "xpath": {
+          "description": "XPath expressions used to extract from HTML responses",
+          "examples": [
+            [
+              "/html/body/div/p[2]/a"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "XPath expressions used to extract from HTML responses",
+          "title": "html xpath expressions to extract data",
+          "type": "array"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "type"
-      ]
+      ],
+      "type": "object"
     },
     "extractors.ExtractorTypeHolder": {
-      "type": "string",
+      "description": "Type of the extractor",
       "enum": [
         "regex",
         "kval",
@@ -403,97 +609,162 @@
         "json",
         "dsl"
       ],
+      "markdownDescription": "Type of the extractor",
       "title": "type of the extractor",
-      "description": "Type of the extractor"
+      "type": "string"
     },
     "file.Request": {
+      "additionalProperties": false,
       "properties": {
-        "matchers": {
+        "archive": {
+          "description": "Process compressed archives without unpacking",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Process compressed archives without unpacking",
+          "title": "enable archives",
+          "type": "boolean"
+        },
+        "denylist": {
+          "description": "Files, directories, and extensions to deny during matching",
+          "examples": [
+            [
+              ".git",
+              "node_modules"
+            ]
+          ],
           "items": {
-            "$ref": "#/$defs/matchers.Matcher"
+            "type": "string"
           },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+          "markdownDescription": "Files, directories, and extensions to deny during matching",
+          "title": "denylist",
+          "type": "array"
+        },
+        "extensions": {
+          "description": "List of extensions to perform matching on\nUse `all` to match every file\nExample:\n```yaml\nextensions:\n  - .txt\n  - .conf\n```",
+          "examples": [
+            [
+              ".txt",
+              ".conf"
+            ],
+            [
+              "all"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "List of extensions to perform matching on\nUse `all` to match every file\nExample:\n```yaml\nextensions:\n  - .txt\n  - .conf\n```",
+          "title": "extensions to match",
+          "type": "array"
         },
         "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "items": {
             "$ref": "#/$defs/extractors.Extractor"
           },
-          "type": "array",
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+          "type": "array"
+        },
+        "id": {
+          "description": "Optional ID of this file request block",
+          "examples": [
+            "file-secret"
+          ],
+          "markdownDescription": "Optional ID of this file request block",
+          "title": "id of the request",
+          "type": "string"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
         },
         "matchers-condition": {
-          "type": "string",
+          "description": "Conditions between the matchers",
           "enum": [
             "and",
             "or"
           ],
+          "markdownDescription": "Conditions between the matchers",
           "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "extensions": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "extensions to match",
-          "description": "List of extensions to perform matching on"
-        },
-        "denylist": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "denylist",
-          "description": "List of files"
-        },
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID is the optional ID for the request"
+          "type": "string"
         },
         "max-size": {
-          "type": "string",
+          "description": "Maximum size of the file to run the request on",
+          "examples": [
+            "5Mb",
+            "1Kb"
+          ],
+          "markdownDescription": "Maximum size of the file to run the request on",
           "title": "max size data to run request on",
-          "description": "Maximum size of the file to run request on"
-        },
-        "archive": {
-          "type": "boolean",
-          "title": "enable archives",
-          "description": "Process compressed archives without unpacking"
+          "type": "string"
         },
         "mime-type": {
-          "type": "boolean",
+          "description": "Filter files by mime-type",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Filter files by mime-type",
           "title": "enable filtering by mime-type",
-          "description": "Filter files by mime-type"
+          "type": "boolean"
         },
         "no-recursive": {
-          "type": "boolean",
+          "description": "Do not recurse into folders when directories are provided",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Do not recurse into folders when directories are provided",
           "title": "do not perform recursion",
-          "description": "Specifies whether to not do recursive checks if folders are provided"
+          "type": "boolean"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "fuzz.Rule": {
+      "additionalProperties": false,
       "properties": {
-        "type": {
-          "type": "string",
+        "fuzz": {
+          "$ref": "#/$defs/fuzz.SliceOrMapSlice",
+          "description": "Payloads to perform fuzzing substitutions with",
+          "markdownDescription": "Payloads to perform fuzzing substitutions with",
+          "title": "payloads of fuzz rule"
+        },
+        "keys": {
+          "description": "Keys of parameters to fuzz",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Keys of parameters to fuzz",
+          "title": "keys of parameters to fuzz",
+          "type": "array"
+        },
+        "keys-regex": {
+          "description": "Regex of parameter keys to fuzz",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Regex of parameter keys to fuzz",
+          "title": "keys regex to fuzz",
+          "type": "array"
+        },
+        "mode": {
+          "description": "Mode of request rule to fuzz",
           "enum": [
-            "replace",
-            "prefix",
-            "postfix",
-            "infix",
-            "replace-regex"
+            "single",
+            "multiple"
           ],
-          "title": "type of rule",
-          "description": "Type of fuzzing rule to perform"
+          "markdownDescription": "Mode of request rule to fuzz",
+          "title": "mode of rule",
+          "type": "string"
         },
         "part": {
-          "type": "string",
+          "description": "Part of request rule to fuzz",
           "enum": [
             "query",
             "header",
@@ -502,12 +773,13 @@
             "cookie",
             "request"
           ],
+          "markdownDescription": "Part of request rule to fuzz",
           "title": "part of rule",
-          "description": "Part of request rule to fuzz"
+          "type": "string"
         },
         "parts": {
+          "description": "Part of request rule to fuzz",
           "items": {
-            "type": "string",
             "enum": [
               "query",
               "header",
@@ -515,60 +787,46 @@
               "body",
               "cookie",
               "request"
-            ]
+            ],
+            "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "Part of request rule to fuzz",
           "title": "parts of rule",
-          "description": "Part of request rule to fuzz"
-        },
-        "mode": {
-          "type": "string",
-          "enum": [
-            "single",
-            "multiple"
-          ],
-          "title": "mode of rule",
-          "description": "Mode of request rule to fuzz"
-        },
-        "keys": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys of parameters to fuzz",
-          "description": "Keys of parameters to fuzz"
-        },
-        "keys-regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys regex to fuzz",
-          "description": "Regex of parameter keys to fuzz"
-        },
-        "values": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "values regex to fuzz",
-          "description": "Regex of parameter values to fuzz"
-        },
-        "fuzz": {
-          "$ref": "#/$defs/fuzz.SliceOrMapSlice",
-          "title": "payloads of fuzz rule",
-          "description": "Payloads to perform fuzzing substitutions with"
+          "type": "array"
         },
         "replace-regex": {
-          "type": "string",
+          "description": "Regex for regex-replace rule type",
+          "markdownDescription": "Regex for regex-replace rule type",
           "title": "replace regex of rule",
-          "description": "Regex for regex-replace rule type"
+          "type": "string"
+        },
+        "type": {
+          "description": "Type of fuzzing rule to perform",
+          "enum": [
+            "replace",
+            "prefix",
+            "postfix",
+            "infix",
+            "replace-regex"
+          ],
+          "markdownDescription": "Type of fuzzing rule to perform",
+          "title": "type of rule",
+          "type": "string"
+        },
+        "values": {
+          "description": "Regex of parameter values to fuzz",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Regex of parameter values to fuzz",
+          "title": "values regex to fuzz",
+          "type": "array"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "fuzz.SliceOrMapSlice": {
+      "description": "Payloads to perform fuzzing substitutions with.",
       "items": {
         "oneOf": [
           {
@@ -579,109 +837,148 @@
           }
         ]
       },
-      "type": "array",
+      "markdownDescription": "Payloads to perform fuzzing substitutions with.",
       "title": "Payloads of Fuzz Rule",
-      "description": "Payloads to perform fuzzing substitutions with."
+      "type": "array"
     },
     "generators.AttackTypeHolder": {
-      "type": "string",
+      "description": "Type of the attack",
       "enum": [
         "batteringram",
         "pitchfork",
         "clusterbomb"
       ],
+      "markdownDescription": "Type of the attack",
       "title": "type of the attack",
-      "description": "Type of the attack"
+      "type": "string"
     },
     "headless.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "steps"
+          ]
+        }
+      ],
       "properties": {
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "Optional ID of the headless request"
-        },
         "attack": {
           "$ref": "#/$defs/generators.AttackTypeHolder",
-          "title": "attack is the payload combination",
-          "description": "Attack is the type of payload combinations to perform"
+          "description": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "examples": [
+            "batteringram",
+            "pitchfork",
+            "clusterbomb"
+          ],
+          "markdownDescription": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "title": "attack is the payload combination"
         },
-        "payloads": {
-          "$ref": "#/$defs/map[string]interface {}",
-          "title": "payloads for the headless request",
-          "description": "Payloads contains any payloads for the current request"
-        },
-        "steps": {
-          "items": {
-            "$ref": "#/$defs/engine.Action"
-          },
-          "type": "array",
-          "title": "list of actions for headless request",
-          "description": "List of actions to run for headless request"
-        },
-        "user_agent": {
-          "$ref": "#/$defs/userAgent.UserAgentHolder",
-          "title": "user agent for the headless request",
-          "description": "User agent for the headless request"
+        "cookie-reuse": {
+          "deprecated": true,
+          "description": "Deprecated: cookie reuse is the default behaviour; use disable-cookie to disable it",
+          "markdownDescription": "Deprecated: cookie reuse is the default behaviour; use disable-cookie to disable it",
+          "title": "optional cookie reuse enable",
+          "type": "boolean"
         },
         "custom_user_agent": {
-          "type": "string",
+          "description": "Custom user agent string for the headless request",
+          "examples": [
+            "Mozilla/5.0 (compatible; Nuclei)"
+          ],
+          "markdownDescription": "Custom user agent string for the headless request",
           "title": "custom user agent for the headless request",
-          "description": "Custom user agent for the headless request"
+          "type": "string"
         },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "Stop the execution after a match is found"
-        },
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        "disable-cookie": {
+          "description": "Disable cookie reuse for this headless request",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Disable cookie reuse for this headless request",
+          "title": "optional disable cookie reuse",
+          "type": "boolean"
         },
         "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "items": {
             "$ref": "#/$defs/extractors.Extractor"
           },
-          "type": "array",
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+          "type": "array"
+        },
+        "fuzzing": {
+          "description": "Fuzzing/DAST rules that mutate headless requests",
+          "items": {
+            "$ref": "#/$defs/fuzz.Rule"
+          },
+          "markdownDescription": "Fuzzing/DAST rules that mutate headless requests",
+          "title": "fuzzin rules for http fuzzing",
+          "type": "array"
+        },
+        "id": {
+          "description": "Optional ID of this headless request block",
+          "examples": [
+            "headless-login"
+          ],
+          "markdownDescription": "Optional ID of this headless request block",
+          "title": "id of the request",
+          "type": "string"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
         },
         "matchers-condition": {
-          "type": "string",
+          "description": "Conditions between the matchers",
           "enum": [
             "and",
             "or"
           ],
+          "markdownDescription": "Conditions between the matchers",
           "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
+          "type": "string"
         },
-        "fuzzing": {
+        "payloads": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "description": "Payloads for the headless request",
+          "markdownDescription": "Payloads for the headless request",
+          "title": "payloads for the headless request"
+        },
+        "steps": {
+          "description": "List of browser actions to run for the headless request\nExample:\n```yaml\nsteps:\n  - action: navigate\n    args:\n      url: \"{{BaseURL}}\"\n  - action: waitload\n```",
           "items": {
-            "$ref": "#/$defs/fuzz.Rule"
+            "$ref": "#/$defs/engine.Action"
           },
-          "type": "array",
-          "title": "fuzzin rules for http fuzzing",
-          "description": "Fuzzing describes rule schema to fuzz headless requests"
+          "markdownDescription": "List of browser actions to run for the headless request\nExample:\n```yaml\nsteps:\n  - action: navigate\n    args:\n      url: \"{{BaseURL}}\"\n  - action: waitload\n```",
+          "title": "list of actions for headless request",
+          "type": "array"
         },
-        "cookie-reuse": {
-          "type": "boolean",
-          "title": "optional cookie reuse enable",
-          "description": "Optional setting that enables cookie reuse"
+        "stop-at-first-match": {
+          "description": "Stop execution after the first match is found",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Stop execution after the first match is found",
+          "title": "stop at first match",
+          "type": "boolean"
         },
-        "disable-cookie": {
-          "type": "boolean",
-          "title": "optional disable cookie reuse",
-          "description": "Optional setting that disables cookie reuse"
+        "user_agent": {
+          "$ref": "#/$defs/userAgent.UserAgentHolder",
+          "description": "Built-in user agent selection for the headless request\nSupported values depend on UserAgentHolder enums",
+          "markdownDescription": "Built-in user agent selection for the headless request\nSupported values depend on UserAgentHolder enums",
+          "title": "user agent for the headless request"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "http.HTTPMethodTypeHolder": {
-      "type": "string",
+      "description": "Method is the HTTP Request Method",
       "enum": [
         "GET",
         "HEAD",
@@ -695,82 +992,147 @@
         "PURGE",
         "DEBUG"
       ],
+      "markdownDescription": "Method is the HTTP Request Method",
       "title": "method is the HTTP request method",
-      "description": "Method is the HTTP Request Method"
+      "type": "string"
     },
     "http.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "path"
+          ]
+        },
+        {
+          "required": [
+            "raw"
+          ]
+        },
+        {
+          "required": [
+            "pre-condition",
+            "payloads",
+            "fuzzing"
+          ]
+        },
+        {
+          "required": [
+            "payloads",
+            "path"
+          ]
+        },
+        {
+          "required": [
+            "payloads",
+            "raw"
+          ]
+        }
+      ],
       "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
-        },
-        "extractors": {
-          "items": {
-            "$ref": "#/$defs/extractors.Extractor"
-          },
-          "type": "array",
-          "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
-        },
-        "matchers-condition": {
-          "type": "string",
-          "enum": [
-            "and",
-            "or"
-          ],
-          "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "path": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "path(s) for the http request",
-          "description": "Path(s) to send http requests to"
-        },
-        "raw": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "description": "HTTP Requests in Raw Format"
-        },
-        "id": {
-          "type": "string",
-          "title": "id for the http request",
-          "description": "ID for the HTTP Request"
-        },
-        "name": {
-          "type": "string",
-          "title": "name for the http request",
-          "description": "Optional name for the HTTP Request"
+        "analyzer": {
+          "$ref": "#/$defs/analyzers.AnalyzerTemplate",
+          "description": "Analyzer for HTTP Request",
+          "markdownDescription": "Analyzer for HTTP Request",
+          "title": "analyzer for http request"
         },
         "attack": {
           "$ref": "#/$defs/generators.AttackTypeHolder",
-          "title": "attack is the payload combination",
-          "description": "Attack is the type of payload combinations to perform"
-        },
-        "method": {
-          "$ref": "#/$defs/http.HTTPMethodTypeHolder",
-          "title": "method is the http request method",
-          "description": "Method is the HTTP Request Method"
+          "description": "Attack is the type of payload combinations to perform\nbatteringram the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates permutations and combinations for all payloads\nExample: \n```yaml\n- attack: clusterbomb\n```\nNote: this is only applicable when 'payloads' are defined",
+          "examples": [
+            "batteringram",
+            "pitchfork",
+            "clusterbomb"
+          ],
+          "markdownDescription": "Attack is the type of payload combinations to perform\nbatteringram the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates permutations and combinations for all payloads\nExample: \n```yaml\n- attack: clusterbomb\n```\nNote: this is only applicable when 'payloads' are defined",
+          "title": "attack is the payload combination"
         },
         "body": {
-          "type": "string",
+          "description": "Body contains the HTTP body to be sent with the request\nExample: \n```yaml\n- body: \"key=value\u0026key2=value2\"\n```",
+          "examples": [
+            "key=value\u0026key2=value2"
+          ],
+          "markdownDescription": "Body contains the HTTP body to be sent with the request\nExample: \n```yaml\n- body: \"key=value\u0026key2=value2\"\n```",
           "title": "body is the http request body",
-          "description": "Body is an optional parameter which contains HTTP Request body"
+          "type": "string"
         },
-        "payloads": {
-          "$ref": "#/$defs/map[string]interface {}",
-          "title": "payloads for the http request",
-          "description": "Payloads contains any payloads for the current request"
+        "cookie-reuse": {
+          "deprecated": true,
+          "description": "Deprecated: cookie reuse is the default behaviour; use disable-cookie to explicitly disable it",
+          "markdownDescription": "Deprecated: cookie reuse is the default behaviour; use disable-cookie to explicitly disable it",
+          "title": "optional cookie reuse enable",
+          "type": "boolean"
+        },
+        "digest-password": {
+          "description": "DigestPassword specifies the password for digest authentication\nExample: \n```yaml\n- digest-password: admin\n```",
+          "examples": [
+            "admin"
+          ],
+          "markdownDescription": "DigestPassword specifies the password for digest authentication\nExample: \n```yaml\n- digest-password: admin\n```",
+          "title": "specifies the password for digest authentication",
+          "type": "string"
+        },
+        "digest-username": {
+          "description": "DigestUsername specifies the username for digest authentication\nExample: \n```yaml\n- digest-username: admin\n```",
+          "examples": [
+            "admin"
+          ],
+          "markdownDescription": "DigestUsername specifies the username for digest authentication\nExample: \n```yaml\n- digest-username: admin\n```",
+          "title": "specifies the username for digest authentication",
+          "type": "string"
+        },
+        "disable-cookie": {
+          "description": "Disable Cookie is an optional setting to disable cookie reuse for this request\nExample: \n```yaml\n- disable-cookie: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Disable Cookie is an optional setting to disable cookie reuse for this request\nExample: \n```yaml\n- disable-cookie: true\n```",
+          "title": "optional disable cookie reuse",
+          "type": "boolean"
+        },
+        "disable-path-automerge": {
+          "description": "DisablePathAutomerge disables the automatic merging of path/query-params from input/target to path defined in template\nExample: \n```yaml\n- disable-path-automerge: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "DisablePathAutomerge disables the automatic merging of path/query-params from input/target to path defined in template\nExample: \n```yaml\n- disable-path-automerge: true\n```",
+          "title": "disable auto merging of path",
+          "type": "boolean"
+        },
+        "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "items": {
+            "$ref": "#/$defs/extractors.Extractor"
+          },
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "title": "extractors to run on response",
+          "type": "array"
+        },
+        "fuzzing": {
+          "description": "Fuzzing or DAST specifies rules for fuzzing requests\nthese rules mutate the input request to generate multiple requests\nFor example, replacing all query param values with sqli payloads",
+          "items": {
+            "$ref": "#/$defs/fuzz.Rule"
+          },
+          "markdownDescription": "Fuzzing or DAST specifies rules for fuzzing requests\nthese rules mutate the input request to generate multiple requests\nFor example, replacing all query param values with sqli payloads",
+          "title": "fuzzin rules for http fuzzing",
+          "type": "array"
+        },
+        "global-matchers": {
+          "description": "marks matchers as static and applies globally to all result events from other templates",
+          "markdownDescription": "marks matchers as static and applies globally to all result events from other templates",
+          "title": "global matchers",
+          "type": "boolean"
         },
         "headers": {
+          "description": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
+          "examples": [
+            "User-Agent: Mozilla/5.0",
+            "Authorization: Bearer {{token}}",
+            "X-Forwarded-For: {{Hostname}}",
+            "Origin: {{BaseURL}}",
+            "Referer: {{BaseURL}}/admin"
+          ],
+          "markdownDescription": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
           "patternProperties": {
             ".*": {
               "oneOf": [
@@ -786,251 +1148,415 @@
               ]
             }
           },
-          "title": "headers to send with the http request",
-          "description": "Headers contains HTTP Headers to send with the request"
+          "title": "headers to send with the http request"
         },
-        "race_count": {
-          "type": "integer",
-          "title": "number of times to repeat request in race condition",
-          "description": "Number of times to send a request in Race Condition Attack"
+        "host-redirects": {
+          "description": "HostRedirects specifies whether only redirects to the same host should be followed by the HTTP Client\nWhen set to true, only redirects to the same host are followed\nExample: \n```yaml\n- host-redirects: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "HostRedirects specifies whether only redirects to the same host should be followed by the HTTP Client\nWhen set to true, only redirects to the same host are followed\nExample: \n```yaml\n- host-redirects: true\n```",
+          "title": "follow same host http redirects",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "Optional ID of this HTTP Request Block\nThis is useful when calling /executing this request block in flow\nBy default, current index in the http array is used as ID\nExample: \n```yaml\n- id: wp-login\n```",
+          "examples": [
+            "example-http-id"
+          ],
+          "markdownDescription": "Optional ID of this HTTP Request Block\nThis is useful when calling /executing this request block in flow\nBy default, current index in the http array is used as ID\nExample: \n```yaml\n- id: wp-login\n```",
+          "title": "id for the http request",
+          "type": "string"
+        },
+        "iterate-all": {
+          "deprecated": true,
+          "description": "Deprecated: use flow to properly specify iteration logic",
+          "markdownDescription": "Deprecated: use flow to properly specify iteration logic",
+          "title": "iterate all the values",
+          "type": "boolean"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
+        },
+        "matchers-condition": {
+          "description": "Conditions between the matchers",
+          "enum": [
+            "and",
+            "or"
+          ],
+          "markdownDescription": "Conditions between the matchers",
+          "title": "condition between the matchers",
+          "type": "string"
         },
         "max-redirects": {
-          "type": "integer",
+          "description": "MaxRedirects is the maximum number of redirects to follow\nExample: \n```yaml\n- max-redirects: 10\n```",
+          "examples": [
+            10
+          ],
+          "markdownDescription": "MaxRedirects is the maximum number of redirects to follow\nExample: \n```yaml\n- max-redirects: 10\n```",
           "title": "maximum number of redirects to follow",
-          "description": "Maximum number of redirects that should be followed"
-        },
-        "pipeline-concurrent-connections": {
-          "type": "integer",
-          "title": "number of pipelining connections",
-          "description": "Number of connections to create during pipelining"
-        },
-        "pipeline-requests-per-connection": {
-          "type": "integer",
-          "title": "number of requests to send per pipelining connections",
-          "description": "Number of requests to send per connection when pipelining"
-        },
-        "threads": {
-          "type": "integer",
-          "title": "threads for sending requests",
-          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
+          "type": "integer"
         },
         "max-size": {
-          "type": "integer",
+          "description": "MaxSize is the maximum size of the response body to be read\nExample: \n```yaml\n- max-size: 1024\n```",
+          "examples": [
+            1024
+          ],
+          "markdownDescription": "MaxSize is the maximum size of the response body to be read\nExample: \n```yaml\n- max-size: 1024\n```",
           "title": "maximum http response body size",
-          "description": "Maximum size of http response body to read in bytes"
+          "type": "integer"
         },
-        "fuzzing": {
+        "method": {
+          "$ref": "#/$defs/http.HTTPMethodTypeHolder",
+          "default": "GET",
+          "description": "Method is the HTTP method to be used for the request\nExample: \n```yaml\n- method: GET\n```",
+          "examples": [
+            "GET",
+            "HEAD",
+            "POST",
+            "PUT",
+            "DELETE",
+            "CONNECT",
+            "OPTIONS",
+            "TRACE",
+            "PATCH",
+            "PURGE",
+            "DEBUG"
+          ],
+          "markdownDescription": "Method is the HTTP method to be used for the request\nExample: \n```yaml\n- method: GET\n```",
+          "title": "method is the http request method"
+        },
+        "name": {
+          "description": "Name is the optional name of the request\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multi-request based matchers.",
+          "examples": [
+            "example-http-name"
+          ],
+          "markdownDescription": "Name is the optional name of the request\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multi-request based matchers.",
+          "title": "name for the http request",
+          "type": "string"
+        },
+        "path": {
+          "description": "Path contains HTTP URL[s] to be sent. Here only Path portion is generally specified and host is templatetized\nExample: \n```yaml\n- path:\n\t{{BaseURL}}/admin\n```",
+          "examples": [
+            "\n\t- '{{BaseURL}}'",
+            "\n\t- '{{RootURL}}'",
+            "\n\t- '{{Hostname}}:8080/ca-cert'"
+          ],
           "items": {
-            "$ref": "#/$defs/fuzz.Rule"
+            "type": "string"
           },
-          "type": "array",
-          "title": "fuzzin rules for http fuzzing",
-          "description": "Fuzzing describes rule schema to fuzz http requests"
+          "markdownDescription": "Path contains HTTP URL[s] to be sent. Here only Path portion is generally specified and host is templatetized\nExample: \n```yaml\n- path:\n\t{{BaseURL}}/admin\n```",
+          "title": "path(s) for the http request",
+          "type": "array"
         },
-        "analyzer": {
-          "$ref": "#/$defs/analyzers.AnalyzerTemplate",
-          "title": "analyzer for http request",
-          "description": "Analyzer for HTTP Request"
+        "payloads": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "description": "Payloads contains key-value pairs of payloads to be used\nThese payloads when referenced in http request will be iterated appropriately and replaced\nOptionally payload also support loading values from file instead of defining them inline\nExample: \n```yaml\n- payloads:\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n```",
+          "examples": [
+            "  # inline payloads\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n\n",
+            "  # file payloads\n\tusername: /path/to/usernames.txt\n\tpassword: /path/to/passwords.txt\n\n"
+          ],
+          "markdownDescription": "Payloads contains key-value pairs of payloads to be used\nThese payloads when referenced in http request will be iterated appropriately and replaced\nOptionally payload also support loading values from file instead of defining them inline\nExample: \n```yaml\n- payloads:\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n```",
+          "title": "payloads for the http request"
+        },
+        "pipeline": {
+          "description": "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.\nExample: \n```yaml\n- pipeline: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.\nExample: \n```yaml\n- pipeline: true\n```",
+          "title": "perform HTTP 1.1 pipelining",
+          "type": "boolean"
+        },
+        "pipeline-concurrent-connections": {
+          "description": "PipelineConcurrentConnections specifies the number of concurrent connections to be used for pipelining\nExample: \n```yaml\n- pipeline-concurrent-connections: 10\n  pipeline: true\n```",
+          "examples": [
+            10
+          ],
+          "markdownDescription": "PipelineConcurrentConnections specifies the number of concurrent connections to be used for pipelining\nExample: \n```yaml\n- pipeline-concurrent-connections: 10\n  pipeline: true\n```",
+          "title": "number of pipelining connections",
+          "type": "integer"
+        },
+        "pipeline-requests-per-connection": {
+          "description": "PipelineRequestsPerConnection specifies the number of requests to be sent per connection\nExample: \n```yaml\n- pipeline: true\n  pipeline-requests-per-connection: 10\n```",
+          "examples": [
+            10
+          ],
+          "markdownDescription": "PipelineRequestsPerConnection specifies the number of requests to be sent per connection\nExample: \n```yaml\n- pipeline: true\n  pipeline-requests-per-connection: 10\n```",
+          "title": "number of requests to send per pipelining connections",
+          "type": "integer"
+        },
+        "pre-condition": {
+          "description": "Pre-condition is only applicable for fuzzing/DAST requests and specifies whether fuzzing should run on this input\nIt is a twin of matchers and can express pre-conditions that must be met before fuzzing\nExample: \n```yaml\n- pre-condition:\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'len(query) \u003e 0'\n```\nWith this pre-condition only inputs that have query params will be fuzzed by this template",
+          "examples": [
+            " # has query params\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'len(query) \u003e 0'\n\n",
+            " # has request body\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'len(body) \u003e 0'\n\n",
+            " # has post method\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'method == \"POST\"'\n\n",
+            " # has post method and body\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'method == \"POST\"'\n\t\t\t- 'len(body) \u003e 0'\n\t\tcondition: and\n\n"
+          ],
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Pre-condition is only applicable for fuzzing/DAST requests and specifies whether fuzzing should run on this input\nIt is a twin of matchers and can express pre-conditions that must be met before fuzzing\nExample: \n```yaml\n- pre-condition:\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'len(query) \u003e 0'\n```\nWith this pre-condition only inputs that have query params will be fuzzed by this template",
+          "title": "pre-condition for fuzzing/dast",
+          "type": "array"
+        },
+        "pre-condition-operator": {
+          "default": "or",
+          "description": "Pre-condition-operator specifies the condition used for combining multiple pre-conditions\nBy default, it is OR\nExample: \n```yaml\n- pre-condition-operator: and\n```",
+          "enum": [
+            "and",
+            "or"
+          ],
+          "examples": [
+            "and"
+          ],
+          "markdownDescription": "Pre-condition-operator specifies the condition used for combining multiple pre-conditions\nBy default, it is OR\nExample: \n```yaml\n- pre-condition-operator: and\n```",
+          "title": "condition between the filters",
+          "type": "string"
+        },
+        "protocol-redirects": {
+          "description": "Specifies whether only same-protocol redirects should be followed by the HTTP Client",
+          "markdownDescription": "Specifies whether only same-protocol redirects should be followed by the HTTP Client",
+          "title": "follow same protocol http redirects",
+          "type": "boolean"
+        },
+        "race": {
+          "description": "Race determines if all the request have to be attempted at the same time (Race Condition)\nThe actual number of requests that will be sent is determined by the `race_count`  field.\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Race determines if all the request have to be attempted at the same time (Race Condition)\nThe actual number of requests that will be sent is determined by the `race_count`  field.\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
+          "title": "perform race-http request coordination attack",
+          "type": "boolean"
+        },
+        "race_count": {
+          "description": "RaceCount specifies the number of requests to be sent when attempting race condition attacks\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
+          "examples": [
+            100
+          ],
+          "markdownDescription": "RaceCount specifies the number of requests to be sent when attempting race condition attacks\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
+          "title": "number of times to repeat request in race condition",
+          "type": "integer"
+        },
+        "raw": {
+          "description": "Raw contains HTTP Request[s] in raw or request dump format\nExample: \n- raw:\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n\n\nNote: If input contains any path/query-params they are automerged unless explicitly disabled using 'disable-path-automerge'",
+          "examples": [
+            "\n# raw-get-request\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n",
+            "\n# raw-post-request\n\t- |\n\t\tPOST / HTTP/1.1\n\t\tHost: {{Hostname}}\n\t\tContent-Type: application/json\n\t\tContent-Length: 13\n\n\n\t\t{\"key\": \"value\"}\n\n"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Raw contains HTTP Request[s] in raw or request dump format\nExample: \n- raw:\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n\n\nNote: If input contains any path/query-params they are automerged unless explicitly disabled using 'disable-path-automerge'",
+          "type": "array"
+        },
+        "read-all": {
+          "description": "Enables force reading of the entire raw unsafe request body ignoring  any specified content length headers\nExample: \n```yaml\n- read-all: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Enables force reading of the entire raw unsafe request body ignoring  any specified content length headers\nExample: \n```yaml\n- read-all: true\n```",
+          "title": "force read all body",
+          "type": "boolean"
+        },
+        "redirects": {
+          "description": "Redirects specifies whether to follow redirects or not\nThis can be use in conjunction with max-redirects to effectively control the redirects\nExample: \n```yaml\n- redirects: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Redirects specifies whether to follow redirects or not\nThis can be use in conjunction with max-redirects to effectively control the redirects\nExample: \n```yaml\n- redirects: true\n```",
+          "title": "follow http redirects",
+          "type": "boolean"
+        },
+        "req-condition": {
+          "deprecated": true,
+          "description": "Deprecated: this is automatically identified and used (https://github.com/projectdiscovery/nuclei/issues/2393)",
+          "markdownDescription": "Deprecated: this is automatically identified and used (https://github.com/projectdiscovery/nuclei/issues/2393)",
+          "title": "preserve request history",
+          "type": "boolean"
         },
         "self-contained": {
+          "description": "SelfContained specifies whether the request is self-contained or not\nThis means if the request is dependent on input or is self-contained\nExample: \n```yaml\n- self-contained: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "SelfContained specifies whether the request is self-contained or not\nThis means if the request is dependent on input or is self-contained\nExample: \n```yaml\n- self-contained: true\n```",
           "type": "boolean"
         },
         "signature": {
           "$ref": "#/$defs/http.SignatureTypeHolder",
-          "title": "signature is the http request signature method",
-          "description": "Signature is the HTTP Request signature Method"
+          "deprecated": true,
+          "description": "Signature is the HTTP Request signature Method",
+          "markdownDescription": "Signature is the HTTP Request signature Method",
+          "title": "signature is the http request signature method"
         },
         "skip-secret-file": {
-          "type": "boolean",
+          "description": "Skips the authentication or authorization configured in the secret file",
+          "markdownDescription": "Skips the authentication or authorization configured in the secret file",
           "title": "bypass secret file",
-          "description": "Skips the authentication or authorization configured in the secret file"
-        },
-        "cookie-reuse": {
-          "type": "boolean",
-          "title": "optional cookie reuse enable",
-          "description": "Optional setting that enables cookie reuse"
-        },
-        "disable-cookie": {
-          "type": "boolean",
-          "title": "optional disable cookie reuse",
-          "description": "Optional setting that disables cookie reuse"
-        },
-        "read-all": {
-          "type": "boolean",
-          "title": "force read all body",
-          "description": "Enables force reading of entire unsafe http request body"
-        },
-        "redirects": {
-          "type": "boolean",
-          "title": "follow http redirects",
-          "description": "Specifies whether redirects should be followed by the HTTP Client"
-        },
-        "host-redirects": {
-          "type": "boolean",
-          "title": "follow same host http redirects",
-          "description": "Specifies whether redirects to the same host should be followed by the HTTP Client"
-        },
-        "protocol-redirects": {
-          "type": "boolean",
-          "title": "follow same protocol http redirects",
-          "description": "Specifies whether only same-protocol redirects should be followed by the HTTP Client"
-        },
-        "pipeline": {
-          "type": "boolean",
-          "title": "perform HTTP 1.1 pipelining",
-          "description": "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
-        },
-        "unsafe": {
-          "type": "boolean",
-          "title": "use rawhttp non-strict-rfc client",
-          "description": "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests"
-        },
-        "race": {
-          "type": "boolean",
-          "title": "perform race-http request coordination attack",
-          "description": "Race determines if all the request have to be attempted at the same time (Race Condition)"
-        },
-        "req-condition": {
-          "type": "boolean",
-          "title": "preserve request history",
-          "description": "Automatically assigns numbers to requests and preserves their history"
-        },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "Stop the execution after a match is found"
+          "type": "boolean"
         },
         "skip-variables-check": {
-          "type": "boolean",
-          "title": "skip variable checks",
-          "description": "Skips the check for unresolved variables in request"
-        },
-        "iterate-all": {
-          "type": "boolean",
-          "title": "iterate all the values",
-          "description": "Iterates all the values extracted from internal extractors"
-        },
-        "digest-username": {
-          "type": "string",
-          "title": "specifies the username for digest authentication",
-          "description": "Optional parameter which specifies the username for digest auth"
-        },
-        "digest-password": {
-          "type": "string",
-          "title": "specifies the password for digest authentication",
-          "description": "Optional parameter which specifies the password for digest auth"
-        },
-        "disable-path-automerge": {
-          "type": "boolean",
-          "title": "disable auto merging of path",
-          "description": "Disable merging target url path with raw request path"
-        },
-        "pre-condition": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "pre-condition for fuzzing/dast",
-          "description": "PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
-        },
-        "pre-condition-operator": {
-          "type": "string",
-          "enum": [
-            "and",
-            "or"
+          "description": "SkipVariablesCheck skips the check for unresolved variables in request\nThis is also useful in case where body contains payload in format of {{xyz}}\nExample: \n```yaml\n- skip-variables-check: true\n```",
+          "examples": [
+            true
           ],
-          "title": "condition between the filters",
-          "description": "Operator to use between multiple per-conditions"
+          "markdownDescription": "SkipVariablesCheck skips the check for unresolved variables in request\nThis is also useful in case where body contains payload in format of {{xyz}}\nExample: \n```yaml\n- skip-variables-check: true\n```",
+          "title": "skip variable checks",
+          "type": "boolean"
         },
-        "global-matchers": {
-          "type": "boolean",
-          "title": "global matchers",
-          "description": "marks matchers as static and applies globally to all result events from other templates"
+        "stop-at-first-match": {
+          "description": "StopAtFirstMatch specifies whether to stop at first match or not\nThis is useful for cases like brute-forcing where we want to stop once we find the first correct login credential\nExample: \n```yaml\n- stop-at-first-match: true\n```",
+          "markdownDescription": "StopAtFirstMatch specifies whether to stop at first match or not\nThis is useful for cases like brute-forcing where we want to stop once we find the first correct login credential\nExample: \n```yaml\n- stop-at-first-match: true\n```",
+          "title": "stop at first match",
+          "type": "boolean"
+        },
+        "threads": {
+          "description": "Threads specifies concurrency with which requests should be sent\nIt should not be specified unless explicitly behaviour and its value is obtained from -pc (-payload-concurrency) flag\nExample: \n```yaml\n- threads: 10\n```",
+          "examples": [
+            10
+          ],
+          "markdownDescription": "Threads specifies concurrency with which requests should be sent\nIt should not be specified unless explicitly behaviour and its value is obtained from -pc (-payload-concurrency) flag\nExample: \n```yaml\n- threads: 10\n```",
+          "title": "threads for sending requests",
+          "type": "integer"
+        },
+        "unsafe": {
+          "description": "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client.\nExample: \n```yaml\n- unsafe: true\n```",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client.\nExample: \n```yaml\n- unsafe: true\n```",
+          "title": "use rawhttp non-strict-rfc client",
+          "type": "boolean"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "http.SignatureTypeHolder": {
-      "type": "string",
+      "description": "Type of the signature",
       "enum": [
         "AWS"
       ],
+      "markdownDescription": "Type of the signature",
       "title": "type of the signature",
-      "description": "Type of the signature"
+      "type": "string"
     },
     "javascript.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "code"
+          ]
+        }
+      ],
       "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        "args": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "description": "Arguments exposed to the JavaScript runtime\nExample:\n```yaml\nargs:\n  Host: \"{{Host}}\"\n  Port: \"443\"\n```",
+          "markdownDescription": "Arguments exposed to the JavaScript runtime\nExample:\n```yaml\nargs:\n  Host: \"{{Host}}\"\n  Port: \"443\"\n```"
+        },
+        "attack": {
+          "$ref": "#/$defs/generators.AttackTypeHolder",
+          "description": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "examples": [
+            "batteringram",
+            "pitchfork",
+            "clusterbomb"
+          ],
+          "markdownDescription": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "title": "attack is the payload combination"
+        },
+        "code": {
+          "description": "Inline JavaScript code executed for the request\nExample:\n```yaml\ncode: |\n  let m = require('nuclei/net');\n  Export(m.OpenTCP(Host, Port));\n```",
+          "markdownDescription": "Inline JavaScript code executed for the request\nExample:\n```yaml\ncode: |\n  let m = require('nuclei/net');\n  Export(m.OpenTCP(Host, Port));\n```",
+          "title": "code to execute in javascript",
+          "type": "string"
         },
         "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "items": {
             "$ref": "#/$defs/extractors.Extractor"
           },
-          "type": "array",
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+          "type": "array"
+        },
+        "id": {
+          "description": "Optional ID of this javascript request block",
+          "examples": [
+            "js-probe"
+          ],
+          "markdownDescription": "Optional ID of this javascript request block",
+          "title": "id of the request",
+          "type": "string"
+        },
+        "init": {
+          "description": "JavaScript code executed after compiling the template (before request execution)",
+          "markdownDescription": "JavaScript code executed after compiling the template (before request execution)",
+          "title": "init javascript code",
+          "type": "string"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
         },
         "matchers-condition": {
-          "type": "string",
+          "description": "Conditions between the matchers",
           "enum": [
             "and",
             "or"
           ],
+          "markdownDescription": "Conditions between the matchers",
           "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID is the optional ID of the Request"
-        },
-        "init": {
-          "type": "string",
-          "title": "init javascript code",
-          "description": "Init is the javascript code to execute after compiling template"
-        },
-        "pre-condition": {
-          "type": "string",
-          "title": "pre-condition for the request",
-          "description": "PreCondition is a condition which is evaluated before sending the request"
-        },
-        "args": {
-          "$ref": "#/$defs/map[string]interface {}"
-        },
-        "code": {
-          "type": "string",
-          "title": "code to execute in javascript",
-          "description": "Executes inline javascript code for the request"
-        },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "Stop the execution after a match is found"
-        },
-        "attack": {
-          "$ref": "#/$defs/generators.AttackTypeHolder",
-          "title": "attack is the payload combination",
-          "description": "Attack is the type of payload combinations to perform"
-        },
-        "threads": {
-          "type": "integer",
-          "title": "threads for sending requests",
-          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
+          "type": "string"
         },
         "payloads": {
           "$ref": "#/$defs/map[string]interface {}",
-          "title": "payloads for the webosocket request",
-          "description": "Payloads contains any payloads for the current request"
+          "description": "Payloads for the javascript request",
+          "markdownDescription": "Payloads for the javascript request",
+          "title": "payloads for the webosocket request"
+        },
+        "pre-condition": {
+          "description": "JavaScript condition evaluated before executing the request",
+          "examples": [
+            "Port == 443"
+          ],
+          "markdownDescription": "JavaScript condition evaluated before executing the request",
+          "title": "pre-condition for the request",
+          "type": "string"
+        },
+        "stop-at-first-match": {
+          "description": "Stop execution after the first match is found",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Stop execution after the first match is found",
+          "title": "stop at first match",
+          "type": "boolean"
+        },
+        "threads": {
+          "description": "Concurrency for sending javascript requests with payloads",
+          "examples": [
+            10
+          ],
+          "markdownDescription": "Concurrency for sending javascript requests with payloads",
+          "title": "threads for sending requests",
+          "type": "integer"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "map[string]interface {}": {
@@ -1043,124 +1569,249 @@
       "type": "object"
     },
     "matchers.Matcher": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "type",
+            "status"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "size"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "words"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "regex"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "binary"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "dsl"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "xpath"
+          ]
+        }
+      ],
       "properties": {
-        "type": {
-          "$ref": "#/$defs/matchers.MatcherTypeHolder",
-          "title": "type of matcher",
-          "description": "Type of the matcher"
+        "binary": {
+          "description": "Hex binary patterns that must be present (binary matcher)",
+          "examples": [
+            [
+              "1f8b080000000000"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Hex binary patterns that must be present (binary matcher)",
+          "title": "binary patterns to match in response",
+          "type": "array"
+        },
+        "case-insensitive": {
+          "description": "Perform case-insensitive matching when supported",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Perform case-insensitive matching when supported",
+          "title": "use case insensitive match",
+          "type": "boolean"
         },
         "condition": {
-          "type": "string",
+          "default": "or",
+          "description": "Condition between matcher values (default: or)\nSupported values: and, or",
           "enum": [
             "and",
             "or"
           ],
+          "examples": [
+            "and",
+            "or"
+          ],
+          "markdownDescription": "Condition between matcher values (default: or)\nSupported values: and, or",
           "title": "condition between matcher variables",
-          "description": "Condition between the matcher variables"
-        },
-        "part": {
-          "type": "string",
-          "title": "part of response to match",
-          "description": "Part of response to match data from"
-        },
-        "negative": {
-          "type": "boolean",
-          "title": "negative specifies if match reversed",
-          "description": "Negative specifies if the match should be reversed. It will only match if the condition is not true"
-        },
-        "name": {
-          "type": "string",
-          "title": "name of the matcher",
-          "description": "Name of the matcher"
-        },
-        "status": {
-          "items": {
-            "type": "integer"
-          },
-          "type": "array",
-          "title": "status to match",
-          "description": "Status to match for the response"
-        },
-        "size": {
-          "items": {
-            "type": "integer"
-          },
-          "type": "array",
-          "title": "acceptable size for response",
-          "description": "Size is the acceptable size for the response"
-        },
-        "words": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "words to match in response",
-          "description": " Words contains word patterns required to be present in the response part"
-        },
-        "regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "regex to match in response",
-          "description": "Regex contains regex patterns required to be present in the response part"
-        },
-        "binary": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "binary patterns to match in response",
-          "description": "Binary are the binary patterns required to be present in the response part"
+          "type": "string"
         },
         "dsl": {
+          "description": "DSL expressions that must evaluate to true (dsl matcher)",
+          "examples": [
+            [
+              "status_code == 200",
+              "contains(body, 'ok')"
+            ]
+          ],
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "DSL expressions that must evaluate to true (dsl matcher)",
           "title": "dsl expressions to match in response",
-          "description": "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules"
-        },
-        "xpath": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "xpath queries to match in response",
-          "description": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"
+          "type": "array"
         },
         "encoding": {
-          "type": "string",
+          "description": "Optional encoding for the word fields",
           "enum": [
             "hex"
           ],
+          "markdownDescription": "Optional encoding for the word fields",
           "title": "encoding for word field",
-          "description": "Optional encoding for the word fields"
-        },
-        "case-insensitive": {
-          "type": "boolean",
-          "title": "use case insensitive match",
-          "description": "use case insensitive match"
-        },
-        "match-all": {
-          "type": "boolean",
-          "title": "match all values",
-          "description": "match all matcher values ignoring condition"
+          "type": "string"
         },
         "internal": {
-          "type": "boolean",
+          "description": "Mark matcher as internal (used for flow / internal logic)",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Mark matcher as internal (used for flow / internal logic)",
           "title": "hide matcher from output",
-          "description": "hide matcher from output"
+          "type": "boolean"
+        },
+        "match-all": {
+          "description": "Require all values to match instead of any",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Require all values to match instead of any",
+          "title": "match all values",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "Optional matcher name used for named matching / workflows\nPrefer lowercase without spaces or underscores",
+          "examples": [
+            "cookie-matcher"
+          ],
+          "markdownDescription": "Optional matcher name used for named matching / workflows\nPrefer lowercase without spaces or underscores",
+          "title": "name of the matcher",
+          "type": "string"
+        },
+        "negative": {
+          "description": "Reverse the match; only matches when the condition is not true",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Reverse the match; only matches when the condition is not true",
+          "title": "negative specifies if match reversed",
+          "type": "boolean"
+        },
+        "part": {
+          "description": "Part of the protocol response to match against\nCommon values: body, header, all, raw (protocol-specific parts also exist)",
+          "examples": [
+            "body",
+            "header",
+            "all",
+            "raw"
+          ],
+          "markdownDescription": "Part of the protocol response to match against\nCommon values: body, header, all, raw (protocol-specific parts also exist)",
+          "title": "part of response to match",
+          "type": "string"
+        },
+        "regex": {
+          "description": "Regular expressions that must match (regex matcher)",
+          "examples": [
+            [
+              "(?i)admin"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Regular expressions that must match (regex matcher)",
+          "title": "regex to match in response",
+          "type": "array"
+        },
+        "size": {
+          "description": "Acceptable response sizes (size matcher)",
+          "examples": [
+            [
+              1024,
+              2048
+            ]
+          ],
+          "items": {
+            "type": "integer"
+          },
+          "markdownDescription": "Acceptable response sizes (size matcher)",
+          "title": "acceptable size for response",
+          "type": "array"
+        },
+        "status": {
+          "description": "Acceptable HTTP status codes (status matcher)",
+          "examples": [
+            [
+              200,
+              302
+            ]
+          ],
+          "items": {
+            "type": "integer"
+          },
+          "markdownDescription": "Acceptable HTTP status codes (status matcher)",
+          "title": "status to match",
+          "type": "array"
+        },
+        "type": {
+          "$ref": "#/$defs/matchers.MatcherTypeHolder",
+          "description": "Type of the matcher\nSupported values: status, size, word, regex, binary, dsl, xpath",
+          "examples": [
+            "status",
+            "word",
+            "regex",
+            "dsl"
+          ],
+          "markdownDescription": "Type of the matcher\nSupported values: status, size, word, regex, binary, dsl, xpath",
+          "title": "type of matcher"
+        },
+        "words": {
+          "description": "Word patterns that must be present (word matcher)",
+          "examples": [
+            [
+              "application/json"
+            ]
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Word patterns that must be present (word matcher)",
+          "title": "words to match in response",
+          "type": "array"
+        },
+        "xpath": {
+          "description": "XPath expressions that must match (xpath matcher)",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "XPath expressions that must match (xpath matcher)",
+          "title": "xpath queries to match in response",
+          "type": "array"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "type"
-      ]
+      ],
+      "type": "object"
     },
     "matchers.MatcherTypeHolder": {
-      "type": "string",
+      "description": "Type of the matcher",
       "enum": [
         "word",
         "regex",
@@ -1170,154 +1821,228 @@
         "dsl",
         "xpath"
       ],
+      "markdownDescription": "Type of the matcher",
       "title": "type of the matcher",
-      "description": "Type of the matcher"
+      "type": "string"
     },
     "model.Classification": {
+      "additionalProperties": false,
       "properties": {
-        "cve-id": {
-          "$ref": "#/$defs/stringslice.StringOrSlice",
-          "title": "cve ids for the template",
-          "description": "CVE IDs for the template"
-        },
-        "cwe-id": {
-          "$ref": "#/$defs/stringslice.StringOrSlice",
-          "title": "cwe ids for the template",
-          "description": "CWE IDs for the template"
-        },
-        "cvss-metrics": {
-          "type": "string",
-          "title": "cvss metrics for the template",
-          "description": "CVSS Metrics for the template",
-          "examples": [
-            "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
-          ]
-        },
-        "cvss-score": {
-          "type": "number",
-          "title": "cvss score for the template",
-          "description": "CVSS Score for the template",
-          "examples": [
-            9.8
-          ]
-        },
-        "epss-score": {
-          "type": "number",
-          "title": "epss score for the template",
-          "description": "EPSS Score for the template",
-          "examples": [
-            0.42509
-          ]
-        },
-        "epss-percentile": {
-          "type": "number",
-          "title": "epss percentile for the template",
-          "description": "EPSS Percentile for the template",
-          "examples": [
-            0.42509
-          ]
-        },
         "cpe": {
-          "type": "string",
-          "title": "cpe for the template",
           "description": "CPE for the template",
           "examples": [
             "cpe:/a:vendor:product:version"
-          ]
+          ],
+          "markdownDescription": "CPE for the template",
+          "title": "cpe for the template",
+          "type": "string"
+        },
+        "cve-id": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "description": "CVE IDs for the template",
+          "markdownDescription": "CVE IDs for the template",
+          "title": "cve ids for the template"
+        },
+        "cvss-metrics": {
+          "description": "CVSS Metrics for the template",
+          "examples": [
+            "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          ],
+          "markdownDescription": "CVSS Metrics for the template",
+          "title": "cvss metrics for the template",
+          "type": "string"
+        },
+        "cvss-score": {
+          "description": "CVSS Score for the template",
+          "examples": [
+            9.8
+          ],
+          "markdownDescription": "CVSS Score for the template",
+          "title": "cvss score for the template",
+          "type": "number"
+        },
+        "cwe-id": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "description": "CWE IDs for the template",
+          "markdownDescription": "CWE IDs for the template",
+          "title": "cwe ids for the template"
+        },
+        "epss-percentile": {
+          "description": "EPSS Percentile for the template",
+          "examples": [
+            0.42509
+          ],
+          "markdownDescription": "EPSS Percentile for the template",
+          "title": "epss percentile for the template",
+          "type": "number"
+        },
+        "epss-score": {
+          "description": "EPSS Score for the template",
+          "examples": [
+            0.42509
+          ],
+          "markdownDescription": "EPSS Score for the template",
+          "title": "epss score for the template",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "model.Info": {
+      "additionalProperties": false,
+      "examples": [
+        "\n\tname: Example Template\n\tauthor: pdteam\n\tseverity: info\n\tdescription: This is an example template",
+        "\n\tname: example-template\n\tauthor: pdteam\n\tseverity: unknown\n\tdescription: Example description of the template\n\timpact: Impact of the template\n\treference: \n\t  - https://example.com\n\tmetadata: \n\t  max-request: 1\n\ttags: http"
+      ],
       "properties": {
-        "name": {
-          "type": "string",
-          "title": "name of the template",
-          "description": "Name is a short summary of what the template does",
-          "examples": [
-            "Nagios Default Credentials Check"
-          ]
-        },
         "author": {
-          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "description": "Author is the author of the template",
+          "markdownDescription": "Author is the author of the template",
           "oneOf": [
             {
-              "type": "string",
+              "description": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
               "examples": [
                 "pdteam"
-              ]
+              ],
+              "markdownDescription": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
+              "type": "string"
             },
             {
-              "type": "array",
+              "description": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
               "examples": [
                 "pdteam,mr.robot"
-              ]
+              ],
+              "items": {
+                "type": "string"
+              },
+              "markdownDescription": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
+              "type": "array"
             }
           ],
-          "title": "author of the template",
-          "description": "Author is the author of the template"
-        },
-        "tags": {
-          "$ref": "#/$defs/stringslice.StringOrSlice",
-          "title": "tags of the template",
-          "description": "Any tags for the template"
-        },
-        "description": {
-          "type": "string",
-          "title": "description of the template",
-          "description": "In-depth explanation on what the template does",
-          "examples": [
-            "Bower is a package manager which stores package information in the bower.json file"
-          ]
-        },
-        "impact": {
-          "type": "string",
-          "title": "impact of the template",
-          "description": "In-depth explanation on the impact of the issue found by the template",
-          "examples": [
-            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries"
-          ]
-        },
-        "reference": {
-          "$ref": "#/$defs/stringslice.StringOrSlice",
-          "title": "references for the template",
-          "description": "Links relevant to the template"
-        },
-        "severity": {
-          "$ref": "#/$defs/severity.Holder"
-        },
-        "metadata": {
-          "$ref": "#/$defs/map[string]interface {}",
-          "type": "object",
-          "title": "additional metadata for the template",
-          "description": "Additional metadata fields for the template"
+          "title": "author of the template"
         },
         "classification": {
           "$ref": "#/$defs/model.Classification",
-          "type": "object",
+          "description": "Classification contains classification information about the template.\nThis could be any classification information like CWE, CVE, EPSS etc.\nNote - This is autogenerated and updated regularly for CVE templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\ncvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\ncvss-score: 10\ncve-id: CVE-2021-44228\ncwe-id: CWE-20,CWE-917\nepss-score: 0.97453\nepss-percentile: 0.99942\ncpe: cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*\n```",
+          "examples": [
+            "\n\tcvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\n\tcvss-score: 10\n\tcve-id: CVE-2021-44228",
+            "\n\tcwe-id: CWE-20,CWE-917"
+          ],
+          "markdownDescription": "Classification contains classification information about the template.\nThis could be any classification information like CWE, CVE, EPSS etc.\nNote - This is autogenerated and updated regularly for CVE templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\ncvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\ncvss-score: 10\ncve-id: CVE-2021-44228\ncwe-id: CWE-20,CWE-917\nepss-score: 0.97453\nepss-percentile: 0.99942\ncpe: cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*\n```",
           "title": "classification info for the template",
-          "description": "Classification information for the template"
+          "type": "object"
+        },
+        "description": {
+          "description": "Description of the template.\nYou can go in-depth here on what the template actually does.\nExample:\nApache Log4j2 \u003c=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.",
+          "examples": [
+            "Bower is a package manager which stores package information in the bower.json file",
+            "Example description of the template"
+          ],
+          "markdownDescription": "Description of the template.\nYou can go in-depth here on what the template actually does.\nExample:\nApache Log4j2 \u003c=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.",
+          "title": "description of the template",
+          "type": "string"
+        },
+        "impact": {
+          "description": "Impact of the template.\nYou can go in-depth here on impact of the template.\nExample:\nSuccessful exploitation of this vulnerability can lead to remote code execution, potentially compromising the affected system.",
+          "examples": [
+            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries",
+            "Impact of the template"
+          ],
+          "markdownDescription": "Impact of the template.\nYou can go in-depth here on impact of the template.\nExample:\nSuccessful exploitation of this vulnerability can lead to remote code execution, potentially compromising the affected system.",
+          "title": "impact of the template",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "description": "Optional metadata for the template.\nthis could be any useful metadata like Vendor, Product, Version, etc.\nNote - This is autogenerated and updated regularly for templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\nVendor: Apache\nProduct: Log4j2\nVersion: \u003c=2.14.1\n```",
+          "examples": [
+            "\n\tmax-request: 1",
+            "\n\tmax-request: 2\n\tvendor: apache\n\tproduct: log4j2"
+          ],
+          "markdownDescription": "Optional metadata for the template.\nthis could be any useful metadata like Vendor, Product, Version, etc.\nNote - This is autogenerated and updated regularly for templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\nVendor: Apache\nProduct: Log4j2\nVersion: \u003c=2.14.1\n```",
+          "title": "additional metadata for the template",
+          "type": "object"
+        },
+        "name": {
+          "description": "Name should be good short summary that identifies what the template does",
+          "examples": [
+            "Nagios Default Credentials Check",
+            "example-template",
+            "TeamCity - Authentication Bypass"
+          ],
+          "markdownDescription": "Name should be good short summary that identifies what the template does",
+          "title": "name of the template",
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "description": "References for the template.\nThis should contain links relevant to the template.\nExample:\nhttps://logging.apache.org/log4j/2.x/security.html\nhttps://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+          "examples": [
+            "\n\t- https://example.com"
+          ],
+          "markdownDescription": "References for the template.\nThis should contain links relevant to the template.\nExample:\nhttps://logging.apache.org/log4j/2.x/security.html\nhttps://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+          "title": "references for the template",
+          "type": "array"
         },
         "remediation": {
-          "type": "string",
-          "title": "remediation steps for the template",
-          "description": "In-depth explanation on how to fix the issues found by the template",
+          "description": "Remediation steps for the template.\nYou can go in-depth here on how to mitigate the problem found by this template.\nExample:\nUpgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).",
           "examples": [
-            "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties"
-          ]
+            "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties",
+            "Remediation steps for the template"
+          ],
+          "markdownDescription": "Remediation steps for the template.\nYou can go in-depth here on how to mitigate the problem found by this template.\nExample:\nUpgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).",
+          "title": "remediation steps for the template",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/severity.Holder",
+          "description": "Severity of the template.\nsupported values: info, low, medium, high, critical, unknown",
+          "examples": [
+            "info"
+          ],
+          "markdownDescription": "Severity of the template.\nsupported values: info, low, medium, high, critical, unknown"
+        },
+        "tags": {
+          "description": "Any tags for the template",
+          "markdownDescription": "Any tags for the template",
+          "oneOf": [
+            {
+              "description": "Tags for the template separated by commas (No spaces)",
+              "examples": [
+                "cve"
+              ],
+              "markdownDescription": "Tags for the template separated by commas (No spaces)",
+              "type": "string"
+            },
+            {
+              "description": "Multiple tags for the template separated by commas (No spaces)",
+              "examples": [
+                "cve,http",
+                "http,oast",
+                "cve2024,cve"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "markdownDescription": "Multiple tags for the template separated by commas (No spaces)",
+              "type": "array"
+            }
+          ],
+          "title": "tags of the template"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "name",
         "author"
-      ]
+      ],
+      "type": "object"
     },
     "network.Input": {
+      "additionalProperties": false,
       "properties": {
         "data": {
+          "description": "Data is the data to send as the input",
+          "markdownDescription": "Data is the data to send as the input",
           "oneOf": [
             {
               "type": "string"
@@ -1326,76 +2051,147 @@
               "type": "integer"
             }
           ],
-          "title": "data to send as input",
-          "description": "Data is the data to send as the input"
+          "title": "data to send as input"
+        },
+        "name": {
+          "description": "Optional name of the data read to provide matching on",
+          "markdownDescription": "Optional name of the data read to provide matching on",
+          "title": "optional name for data read",
+          "type": "string"
+        },
+        "read": {
+          "description": "Number of bytes to read from socket",
+          "markdownDescription": "Number of bytes to read from socket",
+          "title": "bytes to read from socket",
+          "type": "integer"
         },
         "type": {
           "$ref": "#/$defs/network.NetworkInputTypeHolder",
-          "title": "type is the type of input data",
-          "description": "Type of input specified in data field"
-        },
-        "read": {
-          "type": "integer",
-          "title": "bytes to read from socket",
-          "description": "Number of bytes to read from socket"
-        },
-        "name": {
-          "type": "string",
-          "title": "optional name for data read",
-          "description": "Optional name of the data read to provide matching on"
+          "description": "Type of input specified in data field",
+          "markdownDescription": "Type of input specified in data field",
+          "title": "type is the type of input data"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "network.NetworkInputTypeHolder": {
-      "type": "string",
+      "description": "description=Type of input specified in data field",
       "enum": [
         "hex",
         "text"
       ],
+      "markdownDescription": "description=Type of input specified in data field",
       "title": "type is the type of input data",
-      "description": "description=Type of input specified in data field"
+      "type": "string"
     },
     "network.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "host"
+          ]
+        },
+        {
+          "required": [
+            "inputs"
+          ]
+        }
+      ],
       "properties": {
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID of the network request"
+        "attack": {
+          "$ref": "#/$defs/generators.AttackTypeHolder",
+          "description": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "examples": [
+            "batteringram",
+            "pitchfork",
+            "clusterbomb"
+          ],
+          "markdownDescription": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "title": "attack is the payload combination"
+        },
+        "exclude-ports": {
+          "description": "Ports to exclude from being scanned",
+          "examples": [
+            "22,25"
+          ],
+          "markdownDescription": "Ports to exclude from being scanned",
+          "title": "exclude ports from being scanned",
+          "type": "string"
+        },
+        "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "items": {
+            "$ref": "#/$defs/extractors.Extractor"
+          },
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "title": "extractors to run on response",
+          "type": "array"
         },
         "host": {
+          "description": "Host(s) to send network requests to\nSupports network helpers like `tls://` and port suffixes\nExample:\n```yaml\nhost:\n  - \"{{Hostname}}\"\n  - \"tls://{{Hostname}}\"\n```",
+          "examples": [
+            "{{Hostname}}",
+            "tls://{{Hostname}}"
+          ],
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "Host(s) to send network requests to\nSupports network helpers like `tls://` and port suffixes\nExample:\n```yaml\nhost:\n  - \"{{Hostname}}\"\n  - \"tls://{{Hostname}}\"\n```",
           "title": "host to send requests to",
-          "description": "Host to send network requests to"
+          "type": "array"
         },
-        "attack": {
-          "$ref": "#/$defs/generators.AttackTypeHolder",
-          "title": "attack is the payload combination",
-          "description": "Attack is the type of payload combinations to perform"
-        },
-        "payloads": {
-          "$ref": "#/$defs/map[string]interface {}",
-          "title": "payloads for the network request",
-          "description": "Payloads contains any payloads for the current request"
-        },
-        "threads": {
-          "type": "integer",
-          "title": "threads for sending requests",
-          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
+        "id": {
+          "description": "Optional ID of this TCP/network request block\nUseful when calling / executing this request block from flow",
+          "examples": [
+            "tcp-banner"
+          ],
+          "markdownDescription": "Optional ID of this TCP/network request block\nUseful when calling / executing this request block from flow",
+          "title": "id of the request",
+          "type": "string"
         },
         "inputs": {
+          "description": "Input/output steps for the network request\nExample:\n```yaml\ninputs:\n  - data: \"HELP\\r\\n\"\n    read: 1024\n```",
           "items": {
             "$ref": "#/$defs/network.Input"
           },
-          "type": "array",
+          "markdownDescription": "Input/output steps for the network request\nExample:\n```yaml\ninputs:\n  - data: \"HELP\\r\\n\"\n    read: 1024\n```",
           "title": "inputs for the network request",
-          "description": "Inputs contains any input/output for the current request"
+          "type": "array"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
+        },
+        "matchers-condition": {
+          "description": "Conditions between the matchers",
+          "enum": [
+            "and",
+            "or"
+          ],
+          "markdownDescription": "Conditions between the matchers",
+          "title": "condition between the matchers",
+          "type": "string"
+        },
+        "payloads": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "description": "Payloads for the network request",
+          "markdownDescription": "Payloads for the network request",
+          "title": "payloads for the network request"
         },
         "port": {
+          "description": "Port to send network requests to\nSupports numeric ports and service names (ftp, ssh, smtp)",
+          "examples": [
+            "80",
+            "443",
+            "ssh"
+          ],
+          "markdownDescription": "Port to send network requests to\nSupports numeric ports and service names (ftp, ssh, smtp)",
           "oneOf": [
             {
               "type": "string"
@@ -1404,60 +2200,50 @@
               "type": "integer"
             }
           ],
-          "title": "port to send requests to",
-          "description": "Port to send network requests to. Supports numeric ports and service names (e.g. ftp, ssh, smtp)"
-        },
-        "exclude-ports": {
-          "type": "string",
-          "title": "exclude ports from being scanned",
-          "description": "Exclude ports from being scanned"
-        },
-        "read-size": {
-          "type": "integer",
-          "title": "size of network response to read",
-          "description": "Size of response to read at the end. Default is 1024 bytes"
+          "title": "port to send requests to"
         },
         "read-all": {
-          "type": "boolean",
+          "description": "Read the entire response stream until the server stops sending",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Read the entire response stream until the server stops sending",
           "title": "read all response stream",
-          "description": "Read all response stream till the server stops sending"
+          "type": "boolean"
+        },
+        "read-size": {
+          "default": 1024,
+          "description": "Size of response to read at the end. Default is 1024 bytes",
+          "examples": [
+            1024
+          ],
+          "markdownDescription": "Size of response to read at the end. Default is 1024 bytes",
+          "title": "size of network response to read",
+          "type": "integer"
         },
         "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "Stop the execution after a match is found"
-        },
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
-        },
-        "extractors": {
-          "items": {
-            "$ref": "#/$defs/extractors.Extractor"
-          },
-          "type": "array",
-          "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
-        },
-        "matchers-condition": {
-          "type": "string",
-          "enum": [
-            "and",
-            "or"
+          "description": "Stop execution after the first match is found",
+          "examples": [
+            true
           ],
-          "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
+          "markdownDescription": "Stop execution after the first match is found",
+          "title": "stop at first match",
+          "type": "boolean"
+        },
+        "threads": {
+          "description": "Concurrency for sending network requests with payloads",
+          "examples": [
+            10
+          ],
+          "markdownDescription": "Concurrency for sending network requests with payloads",
+          "title": "threads for sending requests",
+          "type": "integer"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "severity.Holder": {
-      "type": "string",
+      "description": "Seriousness of the implications of the template",
       "enum": [
         "info",
         "low",
@@ -1466,60 +2252,77 @@
         "critical",
         "unknown"
       ],
+      "markdownDescription": "Seriousness of the implications of the template",
       "title": "severity of the template",
-      "description": "Seriousness of the implications of the template"
+      "type": "string"
     },
     "ssl.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "address"
+          ]
+        }
+      ],
       "properties": {
-        "matchers": {
+        "address": {
+          "description": "Address for the SSL request\nExample:\n```yaml\naddress: \"{{Host}}:{{Port}}\"\n```",
+          "examples": [
+            "{{Host}}:{{Port}}",
+            "{{Hostname}}"
+          ],
+          "markdownDescription": "Address for the SSL request\nExample:\n```yaml\naddress: \"{{Host}}:{{Port}}\"\n```",
+          "title": "address for the ssl request",
+          "type": "string"
+        },
+        "cipher_suites": {
+          "description": "Explicit cipher suites to negotiate",
           "items": {
-            "$ref": "#/$defs/matchers.Matcher"
+            "type": "string"
           },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+          "markdownDescription": "Explicit cipher suites to negotiate",
+          "type": "array"
         },
         "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "items": {
             "$ref": "#/$defs/extractors.Extractor"
           },
-          "type": "array",
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+          "type": "array"
+        },
+        "id": {
+          "description": "Optional ID of this SSL request block",
+          "examples": [
+            "ssl-cert"
+          ],
+          "markdownDescription": "Optional ID of this SSL request block",
+          "title": "id of the request",
+          "type": "string"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
         },
         "matchers-condition": {
-          "type": "string",
+          "description": "Conditions between the matchers",
           "enum": [
             "and",
             "or"
           ],
+          "markdownDescription": "Conditions between the matchers",
           "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID of the request"
-        },
-        "address": {
-          "type": "string",
-          "title": "address for the ssl request",
-          "description": "Address contains address for the request"
-        },
-        "min_version": {
-          "type": "string",
-          "enum": [
-            "sslv3",
-            "tls10",
-            "tls11",
-            "tls12",
-            "tls13"
-          ],
-          "title": "Min. TLS version",
-          "description": "Minimum tls version - automatic if not specified."
+          "type": "string"
         },
         "max_version": {
-          "type": "string",
+          "description": "Maximum TLS version\nSupported values: sslv3, tls10, tls11, tls12, tls13",
           "enum": [
             "sslv3",
             "tls10",
@@ -1527,51 +2330,87 @@
             "tls12",
             "tls13"
           ],
+          "examples": [
+            "tls12",
+            "tls13"
+          ],
+          "markdownDescription": "Maximum TLS version\nSupported values: sslv3, tls10, tls11, tls12, tls13",
           "title": "Max. TLS version",
-          "description": "Max tls version - automatic if not specified."
+          "type": "string"
         },
-        "cipher_suites": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+        "min_version": {
+          "description": "Minimum TLS version\nSupported values: sslv3, tls10, tls11, tls12, tls13",
+          "enum": [
+            "sslv3",
+            "tls10",
+            "tls11",
+            "tls12",
+            "tls13"
+          ],
+          "examples": [
+            "tls12",
+            "tls13"
+          ],
+          "markdownDescription": "Minimum TLS version\nSupported values: sslv3, tls10, tls11, tls12, tls13",
+          "title": "Min. TLS version",
+          "type": "string"
         },
         "scan_mode": {
-          "type": "string",
+          "default": "auto",
+          "description": "Scan mode for SSL enumeration\nSupported values: ctls, ztls, auto",
           "enum": [
             "ctls",
             "ztls",
             "auto"
           ],
+          "examples": [
+            "auto",
+            "ctls",
+            "ztls"
+          ],
+          "markdownDescription": "Scan mode for SSL enumeration\nSupported values: ctls, ztls, auto",
           "title": "Scan Mode",
-          "description": "Scan Mode - auto if not specified."
-        },
-        "tls_version_enum": {
-          "type": "boolean",
-          "title": "Enumerate Versions",
-          "description": "Enumerate Version - false if not specified"
+          "type": "string"
         },
         "tls_cipher_enum": {
-          "type": "boolean",
+          "description": "Enumerate supported TLS ciphers",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Enumerate supported TLS ciphers",
           "title": "Enumerate Ciphers",
-          "description": "Enumerate Ciphers - false if not specified"
+          "type": "boolean"
         },
         "tls_cipher_types": {
+          "description": "TLS cipher types to enumerate\nSupported values: weak, secure, insecure, all",
+          "examples": [
+            "weak",
+            "secure",
+            "all"
+          ],
           "items": {
-            "type": "string",
             "enum": [
               "weak",
               "secure",
               "insecure",
               "all"
-            ]
+            ],
+            "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "TLS cipher types to enumerate\nSupported values: weak, secure, insecure, all",
           "title": "TLS Cipher Types",
-          "description": "TLS Cipher Types to enumerate"
+          "type": "array"
+        },
+        "tls_version_enum": {
+          "description": "Enumerate supported TLS versions",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Enumerate supported TLS versions",
+          "title": "Enumerate Versions",
+          "type": "boolean"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "stringslice.StringOrSlice": {
@@ -1585,370 +2424,626 @@
       ]
     },
     "templates.Template": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "id",
+            "info",
+            "http"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "dns"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "file"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "tcp"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "headless"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "ssl"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "websocket"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "whois"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "code"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "javascript"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "requests"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "network"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "workflows"
+          ]
+        }
+      ],
       "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
-          "title": "id of the template",
-          "description": "The Unique ID for the template",
-          "examples": [
-            "cve-2021-19520"
-          ]
-        },
-        "info": {
-          "$ref": "#/$defs/model.Info",
-          "type": "object",
-          "title": "info for the template",
-          "description": "Info contains metadata for the template"
-        },
-        "flow": {
-          "type": "string",
-          "title": "template execution flow in js",
-          "description": "Flow contains js code which defines how the template should be executed",
-          "examples": [
-            "'flow: http(0) \u0026\u0026 http(1)'"
-          ]
-        },
-        "requests": {
-          "items": {
-            "$ref": "#/$defs/http.Request"
-          },
-          "type": "array",
-          "title": "http requests to make",
-          "description": "HTTP requests to make for the template"
-        },
-        "http": {
-          "items": {
-            "$ref": "#/$defs/http.Request"
-          },
-          "type": "array",
-          "title": "http requests to make",
-          "description": "HTTP requests to make for the template"
-        },
-        "dns": {
-          "items": {
-            "$ref": "#/$defs/dns.Request"
-          },
-          "type": "array",
-          "title": "dns requests to make",
-          "description": "DNS requests to make for the template"
-        },
-        "file": {
-          "items": {
-            "$ref": "#/$defs/file.Request"
-          },
-          "type": "array",
-          "title": "file requests to make",
-          "description": "File requests to make for the template"
-        },
-        "network": {
-          "items": {
-            "$ref": "#/$defs/network.Request"
-          },
-          "type": "array",
-          "title": "network requests to make",
-          "description": "Network requests to make for the template"
-        },
-        "tcp": {
-          "items": {
-            "$ref": "#/$defs/network.Request"
-          },
-          "type": "array",
-          "title": "network(tcp) requests to make",
-          "description": "Network requests to make for the template"
-        },
-        "headless": {
-          "items": {
-            "$ref": "#/$defs/headless.Request"
-          },
-          "type": "array",
-          "title": "headless requests to make",
-          "description": "Headless requests to make for the template"
-        },
-        "ssl": {
-          "items": {
-            "$ref": "#/$defs/ssl.Request"
-          },
-          "type": "array",
-          "title": "ssl requests to make",
-          "description": "SSL requests to make for the template"
-        },
-        "websocket": {
-          "items": {
-            "$ref": "#/$defs/websocket.Request"
-          },
-          "type": "array",
-          "title": "websocket requests to make",
-          "description": "Websocket requests to make for the template"
-        },
-        "whois": {
-          "items": {
-            "$ref": "#/$defs/whois.Request"
-          },
-          "type": "array",
-          "title": "whois requests to make",
-          "description": "WHOIS requests to make for the template"
-        },
         "code": {
+          "description": "Code protocol block for executing external engines (python, sh, etc.)\nExample:\n```yaml\ncode:\n  - engine:\n      - py\n    source: |\n      print(\"hello\")\n```",
           "items": {
             "$ref": "#/$defs/code.Request"
           },
-          "type": "array",
+          "markdownDescription": "Code protocol block for executing external engines (python, sh, etc.)\nExample:\n```yaml\ncode:\n  - engine:\n      - py\n    source: |\n      print(\"hello\")\n```",
           "title": "code snippets to make",
-          "description": "Code snippets"
+          "type": "array"
+        },
+        "constants": {
+          "description": "Constants are the global constants that once defined here can be used anywhere in the template\nIt can be used in same way as variables but only difference is that constants cannot be overridden by -V flag at runtime\nExample: \n```yaml\nconstants:\n  exploit: 'x0x0x0x0x0x0x'\n```",
+          "examples": [
+            "\n\texploit: 'x0x0x0x0x0x0x'"
+          ],
+          "markdownDescription": "Constants are the global constants that once defined here can be used anywhere in the template\nIt can be used in same way as variables but only difference is that constants cannot be overridden by -V flag at runtime\nExample: \n```yaml\nconstants:\n  exploit: 'x0x0x0x0x0x0x'\n```",
+          "title": "constant for the template",
+          "type": "object"
+        },
+        "dns": {
+          "description": "DNS protocol block for sending DNS queries\nExample:\n```yaml\ndns:\n  - name: \"{{FQDN}}\"\n    type: A\n    matchers:\n      - type: word\n        words:\n          - \"IN\\tA\"\n```",
+          "items": {
+            "$ref": "#/$defs/dns.Request"
+          },
+          "markdownDescription": "DNS protocol block for sending DNS queries\nExample:\n```yaml\ndns:\n  - name: \"{{FQDN}}\"\n    type: A\n    matchers:\n      - type: word\n        words:\n          - \"IN\\tA\"\n```",
+          "title": "dns requests to make",
+          "type": "array"
+        },
+        "file": {
+          "description": "File protocol block for matching against local files\nExample:\n```yaml\nfile:\n  - extensions:\n      - all\n```",
+          "items": {
+            "$ref": "#/$defs/file.Request"
+          },
+          "markdownDescription": "File protocol block for matching against local files\nExample:\n```yaml\nfile:\n  - extensions:\n      - all\n```",
+          "title": "file requests to make",
+          "type": "array"
+        },
+        "flow": {
+          "description": "Flow describes how multiple request-blocks/protocols should be combined together and executed\nIt is a javascript code where each protocol is a function and all request-blocks are indexed by their corresponding index in request array\nExample: \n flow: http(1) \u0026\u0026 http(2)\n means that second http request will be executed only if first http request is successful (aka matched)",
+          "examples": [
+            "'flow: http(0) \u0026\u0026 http(1)'",
+            "http(1) \u0026\u0026 http(2)",
+            " | # example-vhost-enum\n\tssl(); // -\u003e  execute all ssl protocol requests\n\tdns(); // -\u003e  execute all dns protocol requests\n\tfor (let got of template.domains) { // -\u003e  iterate over 'domains' array variable\n\t\tset('vhost', got); // -\u003e  set 'vhost' variable to current domain\n\t\thttp(); // -\u003e  execute all http protocol requests\n\t}\n"
+          ],
+          "markdownDescription": "Flow describes how multiple request-blocks/protocols should be combined together and executed\nIt is a javascript code where each protocol is a function and all request-blocks are indexed by their corresponding index in request array\nExample: \n flow: http(1) \u0026\u0026 http(2)\n means that second http request will be executed only if first http request is successful (aka matched)",
+          "title": "template execution flow in js",
+          "type": "string"
+        },
+        "headless": {
+          "description": "Headless protocol block for browser automation\nExample:\n```yaml\nheadless:\n  - steps:\n      - action: navigate\n        args:\n          url: \"{{BaseURL}}\"\n```",
+          "items": {
+            "$ref": "#/$defs/headless.Request"
+          },
+          "markdownDescription": "Headless protocol block for browser automation\nExample:\n```yaml\nheadless:\n  - steps:\n      - action: navigate\n        args:\n          url: \"{{BaseURL}}\"\n```",
+          "title": "headless requests to make",
+          "type": "array"
+        },
+        "http": {
+          "description": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nhttp: \n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\tstatus:\n\t\t\t\t- 200\n```",
+          "examples": [
+            " # http get\n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # raw get\n\t- raw:\n\t\t\t- |\n\t\t\t\t\tGET HTTP/1.1\n\t\t\t\t\tHost: {{Hostname}}\n\t\t\t\t\n\t\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # http self contained\n\t- method: GET\n\t\tpath:\n\t\t  - \"https://api.stripe.com/v1/charges\"\n\t\t\n\t\tself-contained: true\n\t\theaders:\n\t\t\tAuthorization: 'Basic {{base64(token)}}'\n\t\t\n\t\tmatchers:\n\t\t  - type: word\n\t\t    part: body\n\t\t    words:\n\t\t      - '\"object\":'\n\t\t      - '\"url\":'\n\t\t      - '\"data\":'\n\t\t    condition: and"
+          ],
+          "items": {
+            "$ref": "#/$defs/http.Request"
+          },
+          "markdownDescription": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nhttp: \n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\tstatus:\n\t\t\t\t- 200\n```",
+          "title": "http requests to make",
+          "type": "array"
+        },
+        "id": {
+          "description": "ID is the unique id for the template.\n ### Good IDs \nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`",
+          "examples": [
+            "cve-2021-19520",
+            "example-id",
+            "git-config-exposure",
+            "azure-apps-nxdomain-takeover"
+          ],
+          "markdownDescription": "ID is the unique id for the template.\n ### Good IDs \nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`",
+          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
+          "title": "id of the template",
+          "type": "string"
+        },
+        "info": {
+          "$ref": "#/$defs/model.Info",
+          "description": "Info contains the required metadata information about the template\nIt is meant to provide basic but necessary info like name, author , severity\nalong with many other optional fields like metadata, classification etc\nExample: \n```yaml\ninfo: \n\tname: Example Template\n\tauthor: pdteam\n\tseverity: info\n\tdescription: This is an example template\n```\n\nNote: - \nFor a template to be valid name,author,severity of `info` section must be set",
+          "markdownDescription": "Info contains the required metadata information about the template\nIt is meant to provide basic but necessary info like name, author , severity\nalong with many other optional fields like metadata, classification etc\nExample: \n```yaml\ninfo: \n\tname: Example Template\n\tauthor: pdteam\n\tseverity: info\n\tdescription: This is an example template\n```\n\nNote: - \nFor a template to be valid name,author,severity of `info` section must be set",
+          "title": "info for the template",
+          "type": "object"
         },
         "javascript": {
+          "description": "JavaScript protocol block for nuclei JS runtime requests\nExample:\n```yaml\njavascript:\n  - code: |\n      Export(Host)\n```",
           "items": {
             "$ref": "#/$defs/javascript.Request"
           },
-          "type": "array",
+          "markdownDescription": "JavaScript protocol block for nuclei JS runtime requests\nExample:\n```yaml\njavascript:\n  - code: |\n      Export(Host)\n```",
           "title": "javascript requests to make",
-          "description": "Javascript requests to make for the template"
+          "type": "array"
+        },
+        "network": {
+          "deprecated": true,
+          "description": "Deprecated: use `tcp` instead of `network`",
+          "items": {
+            "$ref": "#/$defs/network.Request"
+          },
+          "markdownDescription": "Deprecated: use `tcp` instead of `network`",
+          "title": "network requests to make",
+          "type": "array"
+        },
+        "requests": {
+          "deprecated": true,
+          "description": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nrequests: \n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\tstatus:\n\t\t\t\t- 200\n```",
+          "examples": [
+            " # http get\n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # raw get\n\t- raw:\n\t\t\t- |\n\t\t\t\t\tGET HTTP/1.1\n\t\t\t\t\tHost: {{Hostname}}\n\t\t\t\t\n\t\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # http self contained\n\t- method: GET\n\t\tpath:\n\t\t  - \"https://api.stripe.com/v1/charges\"\n\t\t\n\t\tself-contained: true\n\t\theaders:\n\t\t\tAuthorization: 'Basic {{base64(token)}}'\n\t\t\n\t\tmatchers:\n\t\t  - type: word\n\t\t    part: body\n\t\t    words:\n\t\t      - '\"object\":'\n\t\t      - '\"url\":'\n\t\t      - '\"data\":'\n\t\t    condition: and"
+          ],
+          "items": {
+            "$ref": "#/$defs/http.Request"
+          },
+          "markdownDescription": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nrequests: \n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\tstatus:\n\t\t\t\t- 200\n```",
+          "title": "http requests to make",
+          "type": "array"
+        },
+        "self-contained": {
+          "default": false,
+          "description": "Self-contained marks all requests in this template as independent of input which means input/target is not required for execution of template\nbut other variables defined in template need to be explicitly set using -V flag\nDefault value is false\nNote: self-contained templates only run once regardless of how many targets where provided to nuclei\nExample: \n```yaml\nself-contained: true\n```\nFull example template of self-contained is available at https://cloud.projectdiscovery.io/public/aws-app-enum",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Self-contained marks all requests in this template as independent of input which means input/target is not required for execution of template\nbut other variables defined in template need to be explicitly set using -V flag\nDefault value is false\nNote: self-contained templates only run once regardless of how many targets where provided to nuclei\nExample: \n```yaml\nself-contained: true\n```\nFull example template of self-contained is available at https://cloud.projectdiscovery.io/public/aws-app-enum",
+          "title": "mark requests as self-contained",
+          "type": "boolean"
+        },
+        "signature": {
+          "deprecated": true,
+          "description": "Signature is the HTTP Request signature Method",
+          "examples": [
+            "aws"
+          ],
+          "markdownDescription": "Signature is the HTTP Request signature Method",
+          "title": "signature is the http request signature method",
+          "type": "string"
+        },
+        "ssl": {
+          "description": "SSL protocol block for TLS certificate / cipher checks\nExample:\n```yaml\nssl:\n  - address: \"{{Host}}:{{Port}}\"\n```",
+          "items": {
+            "$ref": "#/$defs/ssl.Request"
+          },
+          "markdownDescription": "SSL protocol block for TLS certificate / cipher checks\nExample:\n```yaml\nssl:\n  - address: \"{{Host}}:{{Port}}\"\n```",
+          "title": "ssl requests to make",
+          "type": "array"
+        },
+        "stop-at-first-match": {
+          "default": false,
+          "description": "stop-at-first-match stops the execution of template as soon as first match/result was found in a template given that template was sending multiple requests\nthis is required in case of default-login , brute-force and even detection templates where multiple requests are sent from template but we want to exit as soon as first match/result was found\nExample: \n```yaml\nstop-at-first-match: true\n```\nFull example template of stop-at-first-match is available at https://cloud.projectdiscovery.io/public/bitbucket-public-repository",
+          "examples": [
+            true
+          ],
+          "markdownDescription": "stop-at-first-match stops the execution of template as soon as first match/result was found in a template given that template was sending multiple requests\nthis is required in case of default-login , brute-force and even detection templates where multiple requests are sent from template but we want to exit as soon as first match/result was found\nExample: \n```yaml\nstop-at-first-match: true\n```\nFull example template of stop-at-first-match is available at https://cloud.projectdiscovery.io/public/bitbucket-public-repository",
+          "title": "stop at first match",
+          "type": "boolean"
+        },
+        "tcp": {
+          "description": "TCP/network protocol block for raw socket requests\nExample:\n```yaml\ntcp:\n  - host:\n      - \"{{Hostname}}\"\n    inputs:\n      - data: \"\\n\"\n```",
+          "items": {
+            "$ref": "#/$defs/network.Request"
+          },
+          "markdownDescription": "TCP/network protocol block for raw socket requests\nExample:\n```yaml\ntcp:\n  - host:\n      - \"{{Hostname}}\"\n    inputs:\n      - data: \"\\n\"\n```",
+          "title": "network(tcp) requests to make",
+          "type": "array"
+        },
+        "variables": {
+          "description": "Variables are the global variables that once defined here can be used anywhere in the template\nVariables are evaluated in the order they are defined so one variable can be referenced in another variable\nVariables are evaluated before sending every requests so one can reference any variables that are available at runtime and they will be evaluate and used when referenced\nExample: \n```yaml\nvariables:\n  oast: {{interact-sh}}\n  payload: \"{{base64(oast)}}\"\n```\nFull example template of variables is available at https://cloud.projectdiscovery.io/public/screenshot\nNote: -\nThese variables can be overridden by -V flag at runtime if needed",
+          "examples": [
+            "\n\tdomain: \"{{FQDN}}\"\n\temail: pdteam@{{domain}}",
+            "\n\toast: \"{{interact-sh}}\"\n\tpayload: \"{{base64(oast)}}\""
+          ],
+          "markdownDescription": "Variables are the global variables that once defined here can be used anywhere in the template\nVariables are evaluated in the order they are defined so one variable can be referenced in another variable\nVariables are evaluated before sending every requests so one can reference any variables that are available at runtime and they will be evaluate and used when referenced\nExample: \n```yaml\nvariables:\n  oast: {{interact-sh}}\n  payload: \"{{base64(oast)}}\"\n```\nFull example template of variables is available at https://cloud.projectdiscovery.io/public/screenshot\nNote: -\nThese variables can be overridden by -V flag at runtime if needed",
+          "title": "variables for the http request",
+          "type": "object"
+        },
+        "websocket": {
+          "description": "Websocket protocol block for websocket requests",
+          "items": {
+            "$ref": "#/$defs/websocket.Request"
+          },
+          "markdownDescription": "Websocket protocol block for websocket requests",
+          "title": "websocket requests to make",
+          "type": "array"
+        },
+        "whois": {
+          "description": "WHOIS protocol block for domain/IP WHOIS lookups\nExample:\n```yaml\nwhois:\n  - query: \"{{FQDN}}\"\n```",
+          "items": {
+            "$ref": "#/$defs/whois.Request"
+          },
+          "markdownDescription": "WHOIS protocol block for domain/IP WHOIS lookups\nExample:\n```yaml\nwhois:\n  - query: \"{{FQDN}}\"\n```",
+          "title": "whois requests to make",
+          "type": "array"
         },
         "workflows": {
+          "description": "Workflows define multi-template execution graphs\nA workflow template usually only needs `id`, `info`, and `workflows`\nExample:\n```yaml\nworkflows:\n  - template: http/technologies/\n  - tags: xss\n```",
           "items": {
             "$ref": "#/$defs/workflows.WorkflowTemplate"
           },
-          "type": "array",
+          "markdownDescription": "Workflows define multi-template execution graphs\nA workflow template usually only needs `id`, `info`, and `workflows`\nExample:\n```yaml\nworkflows:\n  - template: http/technologies/\n  - tags: xss\n```",
           "title": "list of workflows to execute",
-          "description": "List of workflows to execute for template"
-        },
-        "self-contained": {
-          "type": "boolean",
-          "title": "mark requests as self-contained",
-          "description": "Mark Requests for the template as self-contained"
-        },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "Stop at first match for the template"
-        },
-        "signature": {
-          "$ref": "#/$defs/http.SignatureTypeHolder",
-          "title": "signature is the http request signature method",
-          "description": "Signature is the HTTP Request signature Method"
-        },
-        "variables": {
-          "$ref": "#/$defs/variables.Variable",
-          "type": "object",
-          "title": "variables for the http request",
-          "description": "Variables contains any variables for the current request"
-        },
-        "constants": {
-          "$ref": "#/$defs/map[string]interface {}",
-          "type": "object",
-          "title": "constant for the template",
-          "description": "constants contains any constant for the template"
+          "type": "array"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "id",
         "info"
-      ]
+      ],
+      "type": "object"
     },
     "userAgent.UserAgentHolder": {
-      "type": "string",
+      "description": "userAgent for the headless http request",
       "enum": [
         "off",
         "default",
         "custom"
       ],
+      "markdownDescription": "userAgent for the headless http request",
       "title": "userAgent for the headless",
-      "description": "userAgent for the headless http request"
+      "type": "string"
     },
     "variables.Variable": {
       "additionalProperties": true,
-      "type": "object",
+      "description": "Additional variables for the request",
+      "markdownDescription": "Additional variables for the request",
       "title": "variables for the request",
-      "description": "Additional variables for the request"
+      "type": "object"
     },
     "websocket.Input": {
+      "additionalProperties": false,
       "properties": {
         "data": {
-          "type": "string",
+          "description": "Data is the data to send as the input",
+          "markdownDescription": "Data is the data to send as the input",
           "title": "data to send as input",
-          "description": "Data is the data to send as the input"
+          "type": "string"
         },
         "name": {
-          "type": "string",
+          "description": "Optional name of the data read to provide matching on",
+          "markdownDescription": "Optional name of the data read to provide matching on",
           "title": "optional name for data read",
-          "description": "Optional name of the data read to provide matching on"
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "websocket.Request": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "address"
+          ]
+        }
+      ],
       "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
-        },
-        "extractors": {
-          "items": {
-            "$ref": "#/$defs/extractors.Extractor"
-          },
-          "type": "array",
-          "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
-        },
-        "matchers-condition": {
-          "type": "string",
-          "enum": [
-            "and",
-            "or"
-          ],
-          "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID of the network request"
-        },
         "address": {
-          "type": "string",
+          "description": "Websocket address for the request\nExample:\n```yaml\naddress: \"{{Hostname}}\"\n```",
+          "examples": [
+            "{{Hostname}}"
+          ],
+          "markdownDescription": "Websocket address for the request\nExample:\n```yaml\naddress: \"{{Hostname}}\"\n```",
           "title": "address for the websocket request",
-          "description": "Address contains address for the request"
-        },
-        "inputs": {
-          "items": {
-            "$ref": "#/$defs/websocket.Input"
-          },
-          "type": "array",
-          "title": "inputs for the websocket request",
-          "description": "Inputs contains any input/output for the current request"
-        },
-        "headers": {
-          "$ref": "#/$defs/map[string]string",
-          "title": "headers contains the request headers",
-          "description": "Headers contains headers for the request"
+          "type": "string"
         },
         "attack": {
           "$ref": "#/$defs/generators.AttackTypeHolder",
-          "title": "attack is the payload combination",
-          "description": "Attack is the type of payload combinations to perform"
-        },
-        "payloads": {
-          "$ref": "#/$defs/map[string]interface {}",
-          "title": "payloads for the websocket request",
-          "description": "Payloads contains any payloads for the current request"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "whois.Request": {
-      "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+          "description": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "examples": [
+            "batteringram",
+            "pitchfork",
+            "clusterbomb"
+          ],
+          "markdownDescription": "Payload combination strategy when payloads are defined\nSupported values: batteringram, pitchfork, clusterbomb",
+          "title": "attack is the payload combination"
         },
         "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "items": {
             "$ref": "#/$defs/extractors.Extractor"
           },
-          "type": "array",
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+          "type": "array"
+        },
+        "headers": {
+          "$ref": "#/$defs/map[string]string",
+          "description": "Headers for the websocket handshake request",
+          "examples": [
+            {
+              "Origin": "https://example.com"
+            }
+          ],
+          "markdownDescription": "Headers for the websocket handshake request",
+          "title": "headers contains the request headers"
+        },
+        "id": {
+          "description": "Optional ID of this websocket request block",
+          "examples": [
+            "ws-echo"
+          ],
+          "markdownDescription": "Optional ID of this websocket request block",
+          "title": "id of the request",
+          "type": "string"
+        },
+        "inputs": {
+          "description": "Input messages to send over the websocket\nExample:\n```yaml\ninputs:\n  - data: \"ping\"\n    name: ping\n```",
+          "items": {
+            "$ref": "#/$defs/websocket.Input"
+          },
+          "markdownDescription": "Input messages to send over the websocket\nExample:\n```yaml\ninputs:\n  - data: \"ping\"\n    name: ping\n```",
+          "title": "inputs for the websocket request",
+          "type": "array"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
         },
         "matchers-condition": {
-          "type": "string",
+          "description": "Conditions between the matchers",
           "enum": [
             "and",
             "or"
           ],
+          "markdownDescription": "Conditions between the matchers",
           "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
+          "type": "string"
         },
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID of the network request"
-        },
-        "query": {
-          "type": "string",
-          "title": "query for the WHOIS request",
-          "description": "Query contains query for the request"
-        },
-        "server": {
-          "type": "string",
-          "title": "server url to execute the WHOIS request on",
-          "description": "Server contains the server url to execute the WHOIS request on"
+        "payloads": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "description": "Payloads for the websocket request",
+          "markdownDescription": "Payloads for the websocket request",
+          "title": "payloads for the websocket request"
         }
       },
+      "type": "object"
+    },
+    "whois.Request": {
       "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "query"
+          ]
+        }
+      ],
+      "properties": {
+        "extractors": {
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "items": {
+            "$ref": "#/$defs/extractors.Extractor"
+          },
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
+          "title": "extractors to run on response",
+          "type": "array"
+        },
+        "id": {
+          "description": "Optional ID of this WHOIS request block",
+          "examples": [
+            "whois-lookup"
+          ],
+          "markdownDescription": "Optional ID of this WHOIS request block",
+          "title": "id of the request",
+          "type": "string"
+        },
+        "matchers": {
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
+        },
+        "matchers-condition": {
+          "description": "Conditions between the matchers",
+          "enum": [
+            "and",
+            "or"
+          ],
+          "markdownDescription": "Conditions between the matchers",
+          "title": "condition between the matchers",
+          "type": "string"
+        },
+        "query": {
+          "description": "Query for the WHOIS request\nExample:\n```yaml\nquery: \"{{FQDN}}\"\n```",
+          "examples": [
+            "{{FQDN}}",
+            "example.com"
+          ],
+          "markdownDescription": "Query for the WHOIS request\nExample:\n```yaml\nquery: \"{{FQDN}}\"\n```",
+          "title": "query for the WHOIS request",
+          "type": "string"
+        },
+        "server": {
+          "description": "Optional WHOIS server URL to execute the request on\nExample:\n```yaml\nserver: \"whois.verisign-grs.com:43\"\n```",
+          "examples": [
+            "whois.verisign-grs.com:43"
+          ],
+          "markdownDescription": "Optional WHOIS server URL to execute the request on\nExample:\n```yaml\nserver: \"whois.verisign-grs.com:43\"\n```",
+          "title": "server url to execute the WHOIS request on",
+          "type": "string"
+        }
+      },
       "type": "object"
     },
     "workflows.Matcher": {
+      "additionalProperties": false,
       "properties": {
-        "name": {
-          "$ref": "#/$defs/stringslice.StringOrSlice",
-          "title": "name of items to match",
-          "description": "Name of items to match"
-        },
         "condition": {
-          "type": "string",
+          "description": "Condition between the names",
           "enum": [
             "and",
             "or"
           ],
+          "markdownDescription": "Condition between the names",
           "title": "condition between names",
-          "description": "Condition between the names"
+          "type": "string"
+        },
+        "name": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "description": "Name of items to match",
+          "markdownDescription": "Name of items to match",
+          "title": "name of items to match"
         },
         "subtemplates": {
+          "description": "Templates to run after match",
           "items": {
             "$ref": "#/$defs/workflows.WorkflowTemplate"
           },
-          "type": "array",
+          "markdownDescription": "Templates to run after match",
           "title": "templates to run after match",
-          "description": "Templates to run after match"
+          "type": "array"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "workflows.WorkflowTemplate": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "template"
+          ]
+        },
+        {
+          "required": [
+            "tags"
+          ]
+        }
+      ],
       "properties": {
-        "template": {
-          "type": "string",
-          "title": "template/directory to execute",
-          "description": "Template or directory to execute as part of workflow"
-        },
-        "tags": {
-          "$ref": "#/$defs/stringslice.StringOrSlice",
-          "title": "tags to execute",
-          "description": "Tags to run template based on"
-        },
         "matchers": {
+          "description": "Name-based matchers that decide which subtemplates to run",
           "items": {
             "$ref": "#/$defs/workflows.Matcher"
           },
-          "type": "array",
+          "markdownDescription": "Name-based matchers that decide which subtemplates to run",
           "title": "name based template result matchers",
-          "description": "Matchers perform name based matching to run subtemplates for a workflow"
+          "type": "array"
         },
         "subtemplates": {
+          "description": "Nested workflow entries ran when the parent template/tag matches",
           "items": {
             "$ref": "#/$defs/workflows.WorkflowTemplate"
           },
-          "type": "array",
+          "markdownDescription": "Nested workflow entries ran when the parent template/tag matches",
           "title": "subtemplate based result matchers",
-          "description": "Subtemplates are ran if the template field Template matches"
+          "type": "array"
+        },
+        "tags": {
+          "description": "Tags to run template based on",
+          "markdownDescription": "Tags to run template based on",
+          "oneOf": [
+            {
+              "description": "Comma-separated tags used to select templates",
+              "examples": [
+                "cve,xss"
+              ],
+              "markdownDescription": "Comma-separated tags used to select templates",
+              "type": "string"
+            },
+            {
+              "description": "List of tags used to select templates",
+              "examples": [
+                [
+                  "cve",
+                  "xss"
+                ]
+              ],
+              "items": {
+                "type": "string"
+              },
+              "markdownDescription": "List of tags used to select templates",
+              "type": "array"
+            }
+          ],
+          "title": "tags to execute"
+        },
+        "template": {
+          "description": "Template file or directory to execute as part of the workflow",
+          "examples": [
+            "http/cves/",
+            "network/detection/"
+          ],
+          "markdownDescription": "Template file or directory to execute as part of the workflow",
+          "title": "template/directory to execute",
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     }
-  }
+  },
+  "$id": "https://nuclei.projectdiscovery.io/template-schema.json",
+  "$ref": "#/$defs/templates.Template",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
 }

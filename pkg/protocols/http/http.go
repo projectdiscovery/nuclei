@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/schema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -245,23 +246,21 @@ type Request struct {
 	GlobalMatchers bool `yaml:"global-matchers,omitempty" json:"global-matchers,omitempty" jsonschema:"title=global matchers,description=marks matchers as static and applies globally to all result events from other templates"`
 }
 
-func (e Request) JSONSchemaExtend(schema *jsonschema.Schema) {
-	headersSchema, ok := schema.Properties.Get("headers")
+func (e Request) JSONSchemaExtend(base *jsonschema.Schema) {
+	schema.ExtendSchema(httpRequestMetadata, base)
+	schema.ApplyAnyOfRequired(httpRequestAnyOfRequired, base)
+
+	// Headers accept string/int/bool values in templates.
+	headersSchema, ok := base.Properties.Get("headers")
 	if !ok {
 		return
 	}
 	headersSchema.PatternProperties = map[string]*jsonschema.Schema{
 		".*": {
 			OneOf: []*jsonschema.Schema{
-				{
-					Type: "string",
-				},
-				{
-					Type: "integer",
-				},
-				{
-					Type: "boolean",
-				},
+				{Type: "string"},
+				{Type: "integer"},
+				{Type: "boolean"},
 			},
 		},
 	}
