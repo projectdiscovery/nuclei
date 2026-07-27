@@ -1,0 +1,16 @@
+id: leaktest-basic-http
+
+info:
+  name: CLI Leak Test Basic HTTP
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+
+    matchers:
+      - type: status
+        status:
+          - 204

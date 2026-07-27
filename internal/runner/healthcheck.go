@@ -20,6 +20,7 @@ func DoHealthCheck(options *types.Options) string {
 	fmt.Fprintf(&test, "Architecture: %s\n", runtime.GOARCH)
 	fmt.Fprintf(&test, "Go Version: %s\n", runtime.Version())
 	fmt.Fprintf(&test, "Compiler: %s\n", runtime.Compiler)
+	AppendDirectoryInfo(&test)
 
 	var testResult string
 	cfg := config.DefaultConfig

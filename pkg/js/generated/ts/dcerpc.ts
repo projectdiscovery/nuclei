@@ -135,6 +135,67 @@ export class Client {
     public SamrEnumerateUsers(): DomainUser[] | null {
         return null;
     }
+
+    /**
+    * EnumServices lists Win32 services on the target via SVCCTL
+    * (nmap: smb-enum-services).
+    * @example
+    * ```javascript
+    * const c = new dcerpc.Client('dc01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
+    * const services = c.EnumServices();
+    * for (const s of services) {
+    *   if (s.State === 'RUNNING') { log(s.Name + ' => ' + s.DisplayName); }
+    * }
+    * ```
+    */
+    public EnumServices(): ServiceEntry[] | null {
+        return null;
+    }
+
+    /**
+    * EnumSessions lists SMB sessions known to the server via SRVSVC
+    * (nmap: smb-enum-sessions).
+    * @example
+    * ```javascript
+    * const c = new dcerpc.Client('fs01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
+    * const sessions = c.EnumSessions();
+    * for (const s of sessions) {
+    *   log(s.Username + '@' + s.Client + ' active=' + s.Active + 's');
+    * }
+    * ```
+    */
+    public EnumSessions(): SessionEntry[] | null {
+        return null;
+    }
+
+    /**
+    * EnumProcesses lists running processes via the Terminal Services Legacy API
+    * (nmap smb-enum-processes analogue).
+    * @example
+    * ```javascript
+    * const c = new dcerpc.Client('dc01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
+    * const procs = c.EnumProcesses();
+    * for (const p of procs) {
+    *   log(p.PID + ' ' + p.Name + ' session=' + p.SessionID);
+    * }
+    * ```
+    */
+    public EnumProcesses(): ProcessEntry[] | null {
+        return null;
+    }
+
+    /**
+    * EnumLoggedOnUsers lists users known to the workstation service (WKSSVC).
+    * @example
+    * ```javascript
+    * const c = new dcerpc.Client('ws01.acme.local', 'acme.local', 'admin', 'P@ssw0rd');
+    * const users = c.EnumLoggedOnUsers();
+    * for (const u of users) { log(u.LogonDomain + '\\' + u.Username); }
+    * ```
+    */
+    public EnumLoggedOnUsers(): LoggedOnUser[] | null {
+        return null;
+    }
     
 
     /**
@@ -293,6 +354,48 @@ export interface FileEntry {
     Size?: number,
     
     IsDir?: boolean,
+}
+
+/**
+ * ServiceEntry is a flat SVCCTL service record (nmap smb-enum-services).
+ */
+export interface ServiceEntry {
+    Name?: string,
+    DisplayName?: string,
+    State?: string,
+    StateCode?: number,
+    Controls?: number,
+}
+
+/**
+ * SessionEntry is a flat SRVSVC session record (nmap smb-enum-sessions).
+ */
+export interface SessionEntry {
+    Client?: string,
+    Username?: string,
+    Active?: number,
+    Idle?: number,
+}
+
+/**
+ * ProcessEntry is a running process (nmap smb-enum-processes analogue via WinStation).
+ */
+export interface ProcessEntry {
+    Name?: string,
+    PID?: number,
+    SessionID?: number,
+    WorkingSetSize?: number,
+    SID?: string,
+}
+
+/**
+ * LoggedOnUser is a WKSSVC workstation user record.
+ */
+export interface LoggedOnUser {
+    Username?: string,
+    LogonDomain?: string,
+    OthDomains?: string,
+    LogonServer?: string,
 }
 
 

@@ -143,3 +143,34 @@ func TestUnmarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+// BuildRequest used to dereference rr.Request unconditionally. Request is
+// optional — UnmarshalJSON only sets it when a "request" key is present — so an
+// entry carrying just a "url" (see TestUnmarshalJSON above, which relies on
+// exactly that shape) panicked with a nil pointer dereference instead of
+// returning an error, taking down the caller in pkg/protocols/http/request_fuzz.go.
+func TestBuildRequestWithoutRequest(t *testing.T) {
+	var rr RequestResponse
+	err := rr.UnmarshalJSON([]byte(`{"url": "https://example.com/path"}`))
+	require.NoError(t, err)
+	require.Nil(t, rr.Request)
+
+	require.NotPanics(t, func() {
+		req, err := rr.BuildRequest()
+		require.Error(t, err)
+		require.Nil(t, req)
+	})
+}
+
+// Guard rail: a request response that does carry a request must still build
+// normally, so the nil check above can't be satisfied by refusing everything.
+func TestBuildRequestWithRequestStillWorks(t *testing.T) {
+	rr, err := ParseRawRequest("GET /path HTTP/1.1\r\nHost: example.com\r\n\r\n")
+	require.NoError(t, err)
+	require.NotNil(t, rr.Request)
+
+	req, err := rr.BuildRequest()
+	require.NoError(t, err)
+	require.NotNil(t, req)
+	require.Equal(t, "GET", req.Method)
+}
