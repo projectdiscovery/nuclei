@@ -176,7 +176,7 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 
 		if schema.Min != nil && *schema.Min > value {
 			value = *schema.Min
-			if schema.ExclusiveMin {
+			if schema.ExclusiveMin.IsTrue() {
 				if schema.Max != nil {
 					// Make the value half way.
 					value = (*schema.Min + *schema.Max) / 2.0
@@ -188,7 +188,7 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 
 		if schema.Max != nil && *schema.Max < value {
 			value = *schema.Max
-			if schema.ExclusiveMax {
+			if schema.ExclusiveMax.IsTrue() {
 				if schema.Min != nil {
 					// Make the value half way.
 					value = (*schema.Min + *schema.Max) / 2.0

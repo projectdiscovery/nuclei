@@ -1009,6 +1009,26 @@ Part Definitions:
 - <code>all</code> - HTTP response body + headers
 - <code>cookies_from_response</code> - HTTP response cookies in name:value format
 - <code>headers_from_response</code> - HTTP response headers in name:value format
+- <code>tls_version</code> - TLS version negotiated for the HTTP connection
+- <code>cipher</code> - TLS cipher suite negotiated for the HTTP connection
+- <code>sni</code> - SNI value used in the TLS handshake
+- <code>subject_cn</code> - Leaf certificate subject common name
+- <code>subject_dn</code> - Leaf certificate subject distinguished name
+- <code>subject_an</code> - Leaf certificate subject alternative names
+- <code>subject_org</code> - Leaf certificate subject organization
+- <code>issuer_cn</code> - Leaf certificate issuer common name
+- <code>issuer_dn</code> - Leaf certificate issuer distinguished name
+- <code>issuer_org</code> - Leaf certificate issuer organization
+- <code>serial</code> - Leaf certificate serial number
+- <code>fingerprint_hash</code> - Leaf certificate fingerprint hashes (md5/sha1/sha256)
+- <code>not_before</code> - Leaf certificate not-before timestamp
+- <code>not_after</code> - Leaf certificate not-after timestamp
+- <code>expired</code> - Whether the leaf certificate has expired
+- <code>self_signed</code> - Whether the leaf certificate is self-signed
+- <code>mismatched</code> - Whether the leaf certificate does not match the SNI hostname
+- <code>domains</code> - Deduplicated domains from subject CN and SANs
+- <code>wildcard_certificate</code> - Whether the leaf certificate is a wildcard certificate
+- <code>emails</code> - Email addresses embedded in the leaf certificate
 
 <hr />
 
@@ -2899,6 +2919,16 @@ Enum Values:
   - <code>ANY</code>
 
   - <code>SRV</code>
+
+  - <code>RRSIG</code>
+
+  - <code>NSEC</code>
+
+  - <code>DNSKEY</code>
+
+  - <code>NSEC3</code>
+
+  - <code>NSEC3PARAM</code>
 </div>
 
 <hr />
@@ -3067,6 +3097,82 @@ enables mime types check
 <div class="dt">
 
 NoRecursive specifies whether to not do recursive checks if folders are provided.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-user</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBUser authenticates to remote SMB shares when the file input is a UNC
+or smb:// path (issue #6142). Guest/anon: empty password.
+
+
+
+Examples:
+
+
+```yaml
+smb-user: auditor
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-password</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBPassword is the password for SMB file targets.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-domain</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBDomain is the optional NTLM domain / workgroup.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-hash</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBHash enables pass-the-hash (overrides smb-password when set).
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-port</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+SMBPort overrides the default SMB port (445) for UNC targets.
 
 </div>
 
