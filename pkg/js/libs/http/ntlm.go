@@ -112,8 +112,10 @@ func parseNTLMMessage(data []byte) (*NTLMInfo, error) {
 
 	targetInfoLen := binary.LittleEndian.Uint16(data[40:42])
 	targetInfoOffset := binary.LittleEndian.Uint32(data[44:48])
-	if targetInfoLen > 0 && int(targetInfoOffset)+int(targetInfoLen) <= len(data) {
-		parseAVPairs(data[targetInfoOffset:targetInfoOffset+uint32(targetInfoLen)], info)
+	start := uint64(targetInfoOffset)
+	end := start + uint64(targetInfoLen)
+	if targetInfoLen > 0 && end <= uint64(len(data)) {
+		parseAVPairs(data[int(start):int(end)], info)
 	}
 
 	// VERSION is only present when NTLMSSP_NEGOTIATE_VERSION is set (MS-NLMP).

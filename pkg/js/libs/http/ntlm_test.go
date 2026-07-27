@@ -232,6 +232,22 @@ func TestDecodeNTLMInvalid(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestDecodeNTLMIgnoresOversizedTargetInfo(t *testing.T) {
+	// Challenge header claims a huge TargetInfo offset that must not panic or
+	// be accepted via int truncation on narrower architectures.
+	msg := make([]byte, 56)
+	copy(msg[0:], "NTLMSSP\x00")
+	binary.LittleEndian.PutUint32(msg[8:12], 2)
+	binary.LittleEndian.PutUint16(msg[40:42], 4)
+	binary.LittleEndian.PutUint32(msg[44:48], 0xffffffff)
+
+	info, err := DecodeNTLM("NTLM " + base64.StdEncoding.EncodeToString(msg))
+	require.NoError(t, err)
+	require.Equal(t, 2, info.MessageType)
+	require.Empty(t, info.NetBIOSDomainName)
+	require.Empty(t, info.TargetName)
+}
+
 func TestDecodeUTF16LEOddLength(t *testing.T) {
 	require.Equal(t, "", decodeUTF16LE(nil))
 	// odd length should not panic
