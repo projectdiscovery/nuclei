@@ -193,11 +193,17 @@ func TestProtosetOutsideTemplatesDirDenied(t *testing.T) {
 	setTemplateDir(t)
 	executionID := initExec(t, &types.Options{AllowLocalFileAccess: false})
 
-	// write the protoset outside the templates directory
-	outside := filepath.Join(t.TempDir(), "health.protoset")
+	// t.TempDir() lives under os.TempDir(), which is always in the filesystem
+	// allowlist — place the file under $HOME so it is outside templates/config/temp.
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	outsideDir := filepath.Join(home, ".nuclei-grpc-outside-"+t.Name())
+	require.NoError(t, os.MkdirAll(outsideDir, 0o700))
+	t.Cleanup(func() { _ = os.RemoveAll(outsideDir) })
+	outside := filepath.Join(outsideDir, "health.protoset")
 	require.NoError(t, os.WriteFile(outside, healthProtoset(t), 0o600))
 
-	_, _, err := descriptorSource(context.Background(), executionID, nil, outside)
+	_, _, err = descriptorSource(context.Background(), executionID, nil, outside)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "protoset path denied")
 }
