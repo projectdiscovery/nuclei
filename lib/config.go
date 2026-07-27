@@ -739,3 +739,11 @@ func WithTemporaryDirectory(parentDir string) NucleiSDKOptions {
 		return nil
 	}
 }
+
+// WithPerHostRateLimit applies the rate limit per host instead of globally.
+func WithPerHostRateLimit(enabled bool) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.PerHostRateLimit = enabled
+		return nil
+	}
+}
