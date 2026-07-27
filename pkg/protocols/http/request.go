@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
@@ -1298,6 +1299,7 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 // setCustomHeaders sets the custom headers for generated request
 func (request *Request) setCustomHeaders(req *generatedRequest) {
 	for k, v := range request.customHeaders {
+		v = request.evaluateCustomHeaderValue(req, v)
 		if req.rawRequest != nil {
 			req.rawRequest.Headers[k] = v
 		} else {
@@ -1313,6 +1315,24 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 			req.request.Header[kk] = []string{vv}
 		}
 	}
+}
+
+// evaluateCustomHeaderValue resolves helper expressions inside a global custom
+// header value. It runs once per generated request, so helpers such as
+// rand_user_agent() yield a fresh value per request instead of being frozen at
+// compile time. A bad expression degrades the header instead of failing the
+// scan.
+func (request *Request) evaluateCustomHeaderValue(req *generatedRequest, value string) string {
+	if !strings.Contains(value, marker.ParenthesisOpen) {
+		return value
+	}
+	values := generators.MergeMaps(req.dynamicValues, req.meta)
+	evaluated, err := expressions.Evaluate(value, values)
+	if err != nil {
+		gologger.Debug().Msgf("[%s] could not evaluate custom header value %q: %s", request.options.TemplateID, value, err)
+		return value
+	}
+	return evaluated
 }
 
 const CRLF = "\r\n"
