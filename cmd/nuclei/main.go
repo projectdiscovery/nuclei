@@ -776,9 +776,7 @@ func disableUpdatesCallback() {
 // printVersion prints the nuclei version and exits.
 func printVersion() {
 	options.Logger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
-	options.Logger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
-	options.Logger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
-	options.Logger.Info().Msgf("PDCP Directory: %s", pdcp.PDCPDir)
+	runner.LogDirectoryInfo(options.Logger)
 	os.Exit(0)
 }
 
