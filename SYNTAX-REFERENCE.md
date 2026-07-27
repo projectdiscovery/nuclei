@@ -3102,6 +3102,82 @@ NoRecursive specifies whether to not do recursive checks if folders are provided
 
 <hr />
 
+<div class="dd">
+
+<code>smb-user</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBUser authenticates to remote SMB shares when the file input is a UNC
+or smb:// path (issue #6142). Guest/anon: empty password.
+
+
+
+Examples:
+
+
+```yaml
+smb-user: auditor
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-password</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBPassword is the password for SMB file targets.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-domain</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBDomain is the optional NTLM domain / workgroup.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-hash</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBHash enables pass-the-hash (overrides smb-password when set).
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-port</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+SMBPort overrides the default SMB port (445) for UNC targets.
+
+</div>
+
+<hr />
+
 
 
 
