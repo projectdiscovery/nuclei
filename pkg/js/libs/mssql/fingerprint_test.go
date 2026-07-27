@@ -1,14 +1,18 @@
 package mssql
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,10 +70,47 @@ func TestIsMssqlTreatsProtocolMismatchAsNegative(t *testing.T) {
 }
 
 func TestFingerprintMarksInvalidPacketAsNotMssql(t *testing.T) {
-	_, err := parsePreloginResponse([]byte{0x00, 0x01, 0x00, 0x08, 0x00, 0x00, 0x01, 0x00})
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer func() { _ = ln.Close() }()
+
+	errCh := make(chan error, 1)
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			errCh <- err
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+		buf := make([]byte, len(preLoginRequest))
+		if _, err := io.ReadFull(conn, buf); err != nil {
+			errCh <- err
+			return
+		}
+		// Invalid TDS type so parsePreloginResponse fails and fingerprintMssql
+		// must wrap with errNotMssql.
+		_, err = conn.Write([]byte{0x00, 0x01, 0x00, 0x08, 0x00, 0x00, 0x01, 0x00})
+		errCh <- err
+	}()
+
+	execID := "mssql-fingerprint-invalid-packet"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+
+	host, portStr, err := net.SplitHostPort(ln.Addr().String())
+	require.NoError(t, err)
+	port, err := strconv.Atoi(portStr)
+	require.NoError(t, err)
+
+	_, err = fingerprintMssql(context.Background(), execID, host, port)
 	require.Error(t, err)
-	wrapped := fmt.Errorf("%w: %v", errNotMssql, err)
-	require.True(t, errors.Is(wrapped, errNotMssql))
+	require.True(t, errors.Is(err, errNotMssql))
+
+	ok, resultErr := isMssqlResult(err)
+	require.NoError(t, resultErr)
+	require.False(t, ok)
+	require.NoError(t, <-errCh)
 }
 
 func TestPreloginRoundTripMockServer(t *testing.T) {
