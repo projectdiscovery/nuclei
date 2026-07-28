@@ -140,6 +140,7 @@ Flags:
 TARGET:
    -u, -target string[]          target URLs/hosts to scan
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
+   -targets-inline string        inline multiline target list (for use in template profiles)
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
    -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
@@ -149,6 +150,8 @@ TARGET-FORMAT:
    -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger) (default "list")
    -ro, -required-only            use only required fields in input format when generating requests
    -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
+   -vtt, -vars-text-templating    enable text templating for vars in input file (only for yaml input mode)
+   -vfp, -var-file-paths string[] list of yaml file contained vars to inject into yaml input
 
 TEMPLATES:
    -nt, -new-templates                    run only new templates added in latest nuclei-templates release
@@ -205,6 +208,7 @@ OUTPUT:
    -se, -sarif-export string     file to export results in SARIF format
    -je, -json-export string      file to export results in JSON format
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
+   -pe, -pdf-export string       file to export results in PDF format
    -rd, -redact string[]         redact given list of keys from query parameter, request header and body
 
 CONFIGURATIONS:
@@ -277,6 +281,7 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
    -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
+   -per-host-rate-limit               enable per-host rate limiting (global rate limit becomes unlimited when enabled)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
    -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
@@ -301,6 +306,7 @@ OPTIMIZATIONS:
    -ss, -scan-strategy value        strategy to use while scanning(auto/host-spray/template-spray) (default auto)
    -irt, -input-read-timeout value  timeout on input read (default 3m0s)
    -nh, -no-httpx                   disable httpx probing for non-url input
+   -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing
 
 HEADLESS:

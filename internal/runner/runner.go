@@ -122,6 +122,10 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
+	if options.Verbose || options.VerboseVerbose {
+		LogDirectoryInfo(runner.Logger)
+	}
+
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
 		if err := installer.NucleiVersionCheck(); err != nil {
