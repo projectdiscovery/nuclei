@@ -76,10 +76,9 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 			}
 		}
 		options.Logger.Debug().Msgf("\n%s", template)
-		// FIXME:
-		// we should not be exiting the program here
-		// but we need to find a better way to handle this
-		os.Exit(0)
+		// Return empty slice to let caller decide how to handle display-only mode
+		// instead of forcing os.Exit(0) which breaks SDK embeddability
+		return []string{}, nil
 	}
 
 	return []string{templateFile}, nil
