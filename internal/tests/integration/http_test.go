@@ -75,6 +75,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/variable-dsl-function.yaml", TestCase: &httpVariableDSLFunction{}},
 	{Path: "protocols/http/get-override-sni.yaml", TestCase: &httpSniAnnotation{}},
 	{Path: "protocols/http/get-sni.yaml", TestCase: &customCLISNI{}},
+	{Path: "protocols/http/tls-metadata.yaml", TestCase: &httpTLSMetadata{}},
 	{Path: "protocols/http/redirect-match-url.yaml", TestCase: &httpRedirectMatchURL{}},
 	{Path: "protocols/http/get-sni-unsafe.yaml", TestCase: &customCLISNIUnsafe{}},
 	{Path: "protocols/http/annotation-timeout.yaml", TestCase: &annotationTimeout{}},
@@ -1420,6 +1421,28 @@ func (h *customCLISNI) Execute(filePath string) error {
 		} else {
 			_, _ = w.Write([]byte("test-ko"))
 		}
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-sni", "test")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type httpTLSMetadata struct{}
+
+// Execute verifies TLS handshake metadata from the same HTTP connection is matchable.
+func (h *httpTLSMetadata) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if r.TLS != nil && r.TLS.ServerName == "test" {
+			_, _ = w.Write([]byte("test-ok"))
+			return
+		}
+		_, _ = w.Write([]byte("test-ko"))
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
