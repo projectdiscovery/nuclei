@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -65,6 +67,24 @@ func TestCustomHeaderWithoutExpressionIsUnchanged(t *testing.T) {
 
 	require.Equal(t, "myprop/value", generateCustomHeader(t, request, "User-Agent"))
 	require.Equal(t, "abc", generateCustomHeader(t, request, "X-Scan-Id"))
+}
+
+// TestUnsafeRawCustomHeaderIsEvaluated covers the unsafe raw path, which
+// splices the -H line into the request bytes via TryFillCustomHeaders and so
+// never reaches setCustomHeaders. Without this the literal {{...}} marker would
+// go out on the wire.
+func TestUnsafeRawCustomHeaderIsEvaluated(t *testing.T) {
+	seen := make(map[string]struct{})
+	for i := 0; i < 20; i++ {
+		value := evaluateCustomHeaderExpressions("testing-unsafe-raw",
+			"User-Agent: {{rand_user_agent()}} myprop/value", map[string]interface{}{})
+		require.True(t, strings.HasPrefix(value, "User-Agent: "), "header name was mangled")
+		require.NotContains(t, value, marker.ParenthesisOpen, "expression was left unevaluated")
+		require.Contains(t, value, "myprop/value", "tag was dropped")
+		seen[value] = struct{}{}
+	}
+
+	require.Greater(t, len(seen), 1, "user agent was frozen instead of evaluated per request")
 }
 
 // TestCustomHeaderWithBrokenExpressionKeepsOriginal keeps a typo in -H from

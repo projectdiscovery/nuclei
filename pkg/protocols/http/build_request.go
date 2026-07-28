@@ -453,7 +453,11 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		}
 
 		if len(r.options.Options.CustomHeaders) > 0 {
-			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
+			customHeaders := make([]string, 0, len(r.options.Options.CustomHeaders))
+			for _, header := range r.options.Options.CustomHeaders {
+				customHeaders = append(customHeaders, evaluateCustomHeaderExpressions(r.options.TemplateID, header, finalVars))
+			}
+			_ = rawRequestData.TryFillCustomHeaders(customHeaders)
 		}
 
 		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {

@@ -1323,13 +1323,20 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 // compile time. A bad expression degrades the header instead of failing the
 // scan.
 func (request *Request) evaluateCustomHeaderValue(req *generatedRequest, value string) string {
+	values := generators.MergeMaps(req.dynamicValues, req.meta)
+	return evaluateCustomHeaderExpressions(request.options.TemplateID, value, values)
+}
+
+// evaluateCustomHeaderExpressions resolves helper expressions in a global custom
+// header string. Unsafe raw requests splice the -H line straight into the
+// request bytes, so they resolve it here instead of in setCustomHeaders.
+func evaluateCustomHeaderExpressions(templateID, value string, values map[string]interface{}) string {
 	if !strings.Contains(value, marker.ParenthesisOpen) {
 		return value
 	}
-	values := generators.MergeMaps(req.dynamicValues, req.meta)
 	evaluated, err := expressions.Evaluate(value, values)
 	if err != nil {
-		gologger.Debug().Msgf("[%s] could not evaluate custom header value %q: %s", request.options.TemplateID, value, err)
+		gologger.Debug().Msgf("[%s] could not evaluate custom header value %q: %s", templateID, value, err)
 		return value
 	}
 	return evaluated
