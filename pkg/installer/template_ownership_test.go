@@ -668,6 +668,36 @@ func TestRestoreQuarantinedTemplatePreservesEqualContentReplacement(t *testing.T
 	require.Equal(t, contents, quarantinedContents)
 }
 
+func TestRestoreQuarantinedTemplateWithoutHardLinksOrRename(t *testing.T) {
+	previousRename := renameTemplateRestoreNoReplaceFn
+	renameTemplateRestoreNoReplaceFn = func(*os.Root, string, string) error {
+		return errors.ErrUnsupported
+	}
+	t.Cleanup(func() { renameTemplateRestoreNoReplaceFn = previousRename })
+
+	root, err := os.OpenRoot(t.TempDir())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, root.Close()) })
+
+	quarantinePath := templateOwnershipRetiredPrefix + "no-hard-links-or-rename"
+	contents := []byte("locally modified contents")
+	require.NoError(t, root.WriteFile(quarantinePath, contents, 0o640))
+
+	err = restoreQuarantinedTemplateWithLink(root, "retired.yaml", quarantinePath, func(string, string) error {
+		return errors.ErrUnsupported
+	})
+	require.NoError(t, err)
+
+	restored, err := root.ReadFile("retired.yaml")
+	require.NoError(t, err)
+	require.Equal(t, contents, restored)
+	info, err := root.Stat("retired.yaml")
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o640), info.Mode().Perm())
+	_, err = root.Lstat(quarantinePath)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
 func TestRecoverTemplateOwnershipRestoresInterruptedQuarantine(t *testing.T) {
 	templatesDir := t.TempDir()
 	retiredPath := filepath.Join(templatesDir, "retired.yaml")

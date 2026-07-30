@@ -3,6 +3,8 @@
 package installer
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -22,5 +24,19 @@ func renameTemplateRestoreNoReplace(root *os.Root, temporaryPath, retiredPath st
 	}
 	defer func() { _ = destinationDirectory.Close() }()
 
-	return unix.RenameatxNp(int(sourceDirectory.Fd()), filepath.Base(temporaryPath), int(destinationDirectory.Fd()), filepath.Base(retiredPath), unix.RENAME_EXCL)
+	err = unix.RenameatxNp(int(sourceDirectory.Fd()), filepath.Base(temporaryPath), int(destinationDirectory.Fd()), filepath.Base(retiredPath), unix.RENAME_EXCL)
+	return mapRenameNoReplaceError(err)
+}
+
+func mapRenameNoReplaceError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	switch {
+	case errors.Is(err, unix.ENOTSUP), errors.Is(err, unix.ENOSYS), errors.Is(err, unix.EINVAL):
+		return fmt.Errorf("%w: %w", errors.ErrUnsupported, err)
+	default:
+		return err
+	}
 }

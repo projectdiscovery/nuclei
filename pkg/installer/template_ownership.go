@@ -315,7 +315,7 @@ func resumeTemplateRestoreState(root *os.Root, state templateRestoreState, quara
 		return false, fmt.Errorf("copy restore state %q lost temporary file %q before publication", state.statePath, state.temporaryPath)
 	}
 
-	if err := renameTemplateRestoreNoReplace(root, quarantinePath, state.retiredPath); err != nil {
+	if err := relocateTemplateRestoreNoReplace(root, quarantinePath, state.retiredPath); err != nil {
 		return false, err
 	}
 
@@ -738,7 +738,7 @@ func moveQuarantinedTemplate(root *os.Root, retiredPath, quarantinePath string) 
 		return err
 	}
 
-	if err := renameTemplateRestoreNoReplace(root, quarantinePath, retiredPath); err != nil {
+	if err := relocateTemplateRestoreNoReplace(root, quarantinePath, retiredPath); err != nil {
 		return errors.Join(err, cleanupTemplateRestoreState(root, state))
 	}
 
@@ -989,7 +989,73 @@ func publishTemplateRestore(root *os.Root, temporaryPath, retiredPath string, li
 		return err
 	}
 
-	return renameTemplateRestoreNoReplace(root, temporaryPath, retiredPath)
+	return relocateTemplateRestoreNoReplace(root, temporaryPath, retiredPath)
+}
+
+// relocateTemplateRestoreNoReplace moves source to destination without
+// overwriting. When the platform rename flag is unsupported, it falls back to
+// an O_CREATE|O_EXCL create-and-copy so restores still succeed on filesystems
+// that reject RENAME_NOREPLACE / RENAME_EXCL.
+func relocateTemplateRestoreNoReplace(root *os.Root, sourcePath, destinationPath string) error {
+	err := renameTemplateRestoreNoReplaceFn(root, sourcePath, destinationPath)
+	if err == nil || os.IsExist(err) || !errors.Is(err, errors.ErrUnsupported) {
+		return err
+	}
+
+	return exclusivePublishTemplateRestore(root, sourcePath, destinationPath)
+}
+
+// renameTemplateRestoreNoReplaceFn is the platform exclusive-rename implementation.
+// Tests may override it to exercise the unsupported-flag fallback.
+var renameTemplateRestoreNoReplaceFn = renameTemplateRestoreNoReplace
+
+func exclusivePublishTemplateRestore(root *os.Root, sourcePath, destinationPath string) error {
+	source, err := root.Open(sourcePath)
+	if err != nil {
+		return fmt.Errorf("open restore source %q: %w", sourcePath, err)
+	}
+	defer func() { _ = source.Close() }()
+
+	info, err := source.Stat()
+	if err != nil {
+		return fmt.Errorf("inspect restore source %q: %w", sourcePath, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("restore source %q is not a regular file", sourcePath)
+	}
+
+	destination, err := root.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return fmt.Errorf("create exclusive restore destination %q: %w", destinationPath, err)
+	}
+
+	published := false
+	defer func() {
+		_ = destination.Close()
+		if !published {
+			_ = root.Remove(destinationPath)
+		}
+	}()
+
+	if _, err := io.Copy(destination, source); err != nil {
+		return fmt.Errorf("copy restore source %q to %q: %w", sourcePath, destinationPath, err)
+	}
+	if err := destination.Chmod(info.Mode().Perm()); err != nil {
+		return fmt.Errorf("restore permissions on %q: %w", destinationPath, err)
+	}
+	if err := destination.Sync(); err != nil {
+		return fmt.Errorf("sync exclusive restore destination %q: %w", destinationPath, err)
+	}
+	if err := destination.Close(); err != nil {
+		return fmt.Errorf("close exclusive restore destination %q: %w", destinationPath, err)
+	}
+
+	if err := root.Remove(sourcePath); err != nil {
+		return fmt.Errorf("remove restore source %q after exclusive publish: %w", sourcePath, err)
+	}
+
+	published = true
+	return nil
 }
 
 func templateRestoreTemporaryPath(retiredPath string) string {
