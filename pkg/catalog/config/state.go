@@ -134,7 +134,7 @@ func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 
 	temp = nil
 
-	if err := os.Rename(tempPath, path); err != nil {
+	if err := replaceTemplatesConfigFile(tempPath, path); err != nil {
 		return fmt.Errorf("replace %q: %w", path, err)
 	}
 
