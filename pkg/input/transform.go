@@ -16,6 +16,10 @@ import (
 // Helper is a structure for helping with input transformation
 type Helper struct {
 	InputsHTTP *hybrid.HybridMap
+	// StrictProbe, when set, makes web-template input resolution skip inputs that
+	// were probed and found NOT to be HTTP services (instead of falling back to
+	// a raw URL). Lossless: a non-HTTP port has no HTTP application to find.
+	StrictProbe bool
 }
 
 // NewHelper returns a new input helper instance
@@ -113,6 +117,12 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if h.InputsHTTP != nil {
 			if probed, ok := h.InputsHTTP.Get(input); ok {
 				return string(probed)
+			}
+			// Strict reachability: this input was probed and is not an HTTP
+			// service, so skip it for web templates rather than falling back to
+			// a raw URL. Lossless — a non-HTTP port has no HTTP app to match.
+			if h.StrictProbe {
+				return ""
 			}
 		}
 		// try to parse it as absolute url and return

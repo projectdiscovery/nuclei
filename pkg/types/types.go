@@ -216,6 +216,10 @@ type Options struct {
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
 	AutomaticScan bool
+	// StrictProbe losslessly skips templates that cannot reach their
+	// target service (web templates on non-HTTP ports, network templates on
+	// closed ports).
+	StrictProbe bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Validate validates the templates passed to nuclei.
@@ -580,6 +584,7 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
+		StrictProbe:              options.StrictProbe,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
 		NoStrictSyntax:                 options.NoStrictSyntax,

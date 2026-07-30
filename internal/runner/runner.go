@@ -64,6 +64,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
@@ -678,6 +679,15 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executorOpts.WorkflowLoader = workflowLoader
 
+	// Lossless reachability prune: if no web port is reachable on any target,
+	// exclude web-protocol templates at load time — they cannot connect, so
+	// cannot produce a finding. Reuses the standard protocol-type exclusion.
+	if r.strictProbeEnabled() && r.noHTTPServiceReachable() {
+		r.options.ExcludeProtocols = append(r.options.ExcludeProtocols,
+			templateTypes.HTTPProtocol, templateTypes.HeadlessProtocol, templateTypes.WebsocketProtocol)
+		gologger.Info().Msgf("reachability prune: no HTTP service on any target; excluding web-protocol templates (lossless)")
+	}
+
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
 	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST {
@@ -770,6 +780,14 @@ func (r *Runner) RunEnumeration() error {
 			return errors.Wrap(err, "could not probe http input")
 		}
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
+		// Under strict-probe, skip web templates per-input for targets that
+		// probed as non-HTTP (lossless), instead of falling back to raw URL.
+		executorOpts.InputHelper.StrictProbe = r.strictProbeEnabled()
+		if r.strictProbeEnabled() {
+			r.Logger.Info().Msgf("Strict probe enabled: hosts without httpx confirmation are skipped for HTTP/headless templates")
+		}
+	} else if r.options.StrictProbe && r.options.DisableHTTPProbe {
+		r.Logger.Warning().Msgf("strict-probe has no effect with -no-httpx (httpx probing is disabled)")
 	}
 
 	inputCount := int(r.inputProvider.Count())
@@ -924,6 +942,12 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 
 	if len(finalTemplates) == 0 {
 		return nil, errors.New("no templates provided for scan")
+	}
+
+	// Lossless reachability prune (network layer): drop network(tcp) templates
+	// whose declared ports are definitively closed on every target.
+	if r.strictProbeEnabled() {
+		finalTemplates = r.pruneClosedTCPNetworkTemplates(finalTemplates)
 	}
 
 	// pass input provider to engine
