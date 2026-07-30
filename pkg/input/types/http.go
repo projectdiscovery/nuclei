@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/useragent"
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -239,24 +240,18 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	method := parts[0]
 	rr.Request.Method = method
 
-	// parse relative url
-	urlx, err := urlutil.ParseRawRelativePath(parts[1], true)
+	// the request target is normally an origin-form path, but proxy captures and
+	// .http files use the absolute form, which already carries the authority
+	var urlx *urlutil.URL
+	if stringsutil.HasPrefixAny(parts[1], urlutil.HTTP+"://", urlutil.HTTPS+"://") {
+		urlx, err = urlutil.ParseAbsoluteURL(parts[1], true)
+	} else {
+		urlx, err = urlutil.ParseRawRelativePath(parts[1], true)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url: %s", err)
 	}
 	rr.URL = *urlx
-
-	// parse host line
-	hostLine, err := protoReader.ReadLine()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read host line: %s", err)
-	}
-	sep := strings.Index(hostLine, ":")
-	if sep <= 0 || sep >= len(hostLine)-1 {
-		return nil, fmt.Errorf("invalid host line: %s", hostLine)
-	}
-	hostLine = hostLine[sep+2:]
-	rr.URL.Host = hostLine
 
 	// parse headers
 	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()
@@ -269,11 +264,23 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 			// end of headers next is body
 			break
 		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
+		key, value, found := strings.Cut(line, ":")
+		if !found || key == "" {
 			return nil, fmt.Errorf("invalid header line: %s", line)
 		}
-		rr.Request.Headers.Set(parts[0], parts[1][1:])
+		value = strings.TrimSpace(value)
+		// Host carries the authority rather than request metadata, and callers
+		// read it off the URL: retryablehttp derives the wire Host from there,
+		// and keeping it in the header map would expose it to header fuzzing as
+		// if it were an ordinary header.
+		if strings.EqualFold(key, "Host") {
+			// an absolute request target takes precedence over the Host header
+			if rr.URL.Host == "" {
+				rr.URL.Host = value
+			}
+			continue
+		}
+		rr.Request.Headers.Set(key, value)
 	}
 
 	// parse body

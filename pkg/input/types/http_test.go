@@ -121,6 +121,117 @@ func TestParseRawRequestBodyTrailingNewlines(t *testing.T) {
 	}
 }
 
+// Headers used to be parsed positionally: the second line was always taken as
+// the Host line and dropped from the header map, and values were read by
+// skipping a single byte after the colon. Any request-shaped input (burp, jsonl,
+// yaml, openapi) hitting one of these shapes either lost a header silently,
+// truncated a value, or crashed the whole scan.
+func TestParseRawRequestHeaderParsing(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		host    string
+		headers map[string]string
+	}{
+		{
+			name:    "host first",
+			raw:     "POST /login HTTP/1.1\r\nHost: example.com\r\nContent-Type: application/json\r\n\r\n{}",
+			host:    "example.com",
+			headers: map[string]string{"Content-Type": "application/json"},
+		},
+		{
+			name:    "host after other headers",
+			raw:     "POST /login HTTP/1.1\r\nContent-Type: application/json\r\nHost: example.com\r\n\r\n{}",
+			host:    "example.com",
+			headers: map[string]string{"Content-Type": "application/json"},
+		},
+		{
+			name:    "host absent",
+			raw:     "POST /login HTTP/1.1\r\nContent-Type: application/json\r\n\r\n{}",
+			host:    "",
+			headers: map[string]string{"Content-Type": "application/json"},
+		},
+		{
+			name:    "no space after colon",
+			raw:     "GET / HTTP/1.1\r\nHost:example.com\r\nX-Token:abc\r\n\r\n",
+			host:    "example.com",
+			headers: map[string]string{"X-Token": "abc"},
+		},
+		{
+			name:    "valueless header",
+			raw:     "GET / HTTP/1.1\r\nHost: example.com\r\nX-Empty:\r\n\r\n",
+			host:    "example.com",
+			headers: map[string]string{"X-Empty": ""},
+		},
+		{
+			name:    "lowercase host key",
+			raw:     "GET / HTTP/1.1\r\ncontent-type: text/plain\r\nhost: example.com\r\n\r\n",
+			host:    "example.com",
+			headers: map[string]string{"content-type": "text/plain"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var rr *RequestResponse
+			var err error
+			require.NotPanics(t, func() {
+				rr, err = ParseRawRequest(tt.raw)
+			})
+			require.NoError(t, err)
+			require.Equal(t, tt.host, rr.URL.Host)
+
+			got := map[string]string{}
+			rr.Request.Headers.Iterate(func(k, v string) bool {
+				got[k] = v
+				return true
+			})
+			require.Equal(t, tt.headers, got)
+		})
+	}
+}
+
+// Requests captured through a proxy carry an absolute request target, which the
+// parser used to append to the authority as if it were a path.
+func TestParseRawRequestAbsoluteTarget(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		url  string
+	}{
+		{
+			name: "absolute target",
+			raw:  "GET http://example.com/p?q=1 HTTP/1.1\r\nHost: example.com\r\n\r\n",
+			url:  "http://example.com/p?q=1",
+		},
+		{
+			name: "absolute target wins over host header",
+			raw:  "GET https://example.com/p HTTP/1.1\r\nHost: proxy.internal\r\n\r\n",
+			url:  "https://example.com/p",
+		},
+		{
+			name: "origin form keeps host header",
+			raw:  "GET /p HTTP/1.1\r\nHost: example.com\r\n\r\n",
+			url:  "example.com/p",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr, err := ParseRawRequest(tt.raw)
+			require.NoError(t, err)
+			require.Equal(t, tt.url, rr.URL.String())
+		})
+	}
+}
+
+// A header line without a colon is not a header, and must not be mistaken for
+// the start of the body.
+func TestParseRawRequestRejectsMalformedHeader(t *testing.T) {
+	_, err := ParseRawRequest("GET / HTTP/1.1\r\nHost: example.com\r\nnot-a-header\r\n\r\n")
+	require.Error(t, err)
+}
+
 func TestUnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name           string
