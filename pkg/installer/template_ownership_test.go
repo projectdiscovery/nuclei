@@ -682,6 +682,8 @@ func TestRestoreQuarantinedTemplateWithoutHardLinksOrRename(t *testing.T) {
 	quarantinePath := templateOwnershipRetiredPrefix + "no-hard-links-or-rename"
 	contents := []byte("locally modified contents")
 	require.NoError(t, root.WriteFile(quarantinePath, contents, 0o640))
+	quarantinedInfo, err := root.Stat(quarantinePath)
+	require.NoError(t, err)
 
 	err = restoreQuarantinedTemplateWithLink(root, "retired.yaml", quarantinePath, func(string, string) error {
 		return errors.ErrUnsupported
@@ -693,7 +695,7 @@ func TestRestoreQuarantinedTemplateWithoutHardLinksOrRename(t *testing.T) {
 	require.Equal(t, contents, restored)
 	info, err := root.Stat("retired.yaml")
 	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o640), info.Mode().Perm())
+	require.Equal(t, quarantinedInfo.Mode().Perm(), info.Mode().Perm())
 	_, err = root.Lstat(quarantinePath)
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
