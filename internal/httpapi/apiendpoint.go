@@ -80,13 +80,24 @@ func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate duration if provided
 	if newSettings.RateLimitDuration != "" {
 		if duration, err := time.ParseDuration(newSettings.RateLimitDuration); err == nil {
+			if duration < 0 {
+				http.Error(w, "Invalid duration: must be non-negative", http.StatusBadRequest)
+				return
+			}
 			s.config.RateLimitDuration = duration
 		} else {
 			http.Error(w, "Invalid duration format", http.StatusBadRequest)
 			return
 		}
+	}
+	// Validate non-negative values and apply updates. Zero is allowed to reset to defaults handled elsewhere.
+	if newSettings.BulkSize < 0 || newSettings.Threads < 0 || newSettings.RateLimit < 0 ||
+		newSettings.PayloadConcurrency < 0 || newSettings.ProbeConcurrency < 0 || newSettings.JavascriptConcurrency < 0 {
+		http.Error(w, "Invalid settings: values must be non-negative", http.StatusBadRequest)
+		return
 	}
 	if newSettings.BulkSize > 0 {
 		s.config.BulkSize = newSettings.BulkSize
