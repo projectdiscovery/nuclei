@@ -591,7 +591,7 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		// return custom error as overwriting files is not supported
 		return errkit.Newf("failed to write screenshot, file %v already exists", filePath)
 	}
-	err = os.WriteFile(filePath, data, 0540)
+	err = os.WriteFile(filePath, data, 0600)
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
 	}

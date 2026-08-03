@@ -16,9 +16,9 @@ func newFileOutputWriter(file string, resume bool) (*fileWriter, error) {
 	var output *os.File
 	var err error
 	if resume {
-		output, err = os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		output, err = os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	} else {
-		output, err = os.Create(file)
+		output, err = os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	}
 	if err != nil {
 		return nil, err

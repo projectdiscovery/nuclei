@@ -101,7 +101,7 @@ func ReadOpenAPIVarDumpFile() (*OpenAPIParamsCfgFile, error) {
 
 // WriteOpenAPIVarDumpFile writes the required vars dump file
 func WriteOpenAPIVarDumpFile(vars *OpenAPIParamsCfgFile) error {
-	f, err := os.OpenFile(DefaultVarDumpFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(DefaultVarDumpFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}

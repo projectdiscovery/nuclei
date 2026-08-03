@@ -188,7 +188,7 @@ func (exporter *Exporter) Close() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to generate sarif report")
 	}
-	if err := os.WriteFile(exporter.options.File, bin, 0644); err != nil {
+	if err := os.WriteFile(exporter.options.File, bin, 0600); err != nil {
 		return errors.Wrap(err, "failed to create sarif file")
 	}
 

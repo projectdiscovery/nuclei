@@ -43,12 +43,12 @@ func New(options *Options) (*Exporter, error) {
 		}
 		directory = dir
 	}
-	_ = os.MkdirAll(directory, 0755)
+	_ = os.MkdirAll(directory, 0750)
 
 	// index generation header
 	dataHeader := util.CreateTableHeader("Hostname/IP", "Finding", "Severity")
 
-	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0644)
+	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func New(options *Options) (*Exporter, error) {
 // Export exports a passed result event to markdown
 func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	// index file generation
-	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(format.CreateReportDescription(event, util.MarkdownFormatter{}, exporter.options.OmitRaw))
 	data := dataBuilder.Bytes()
 
-	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0644)
+	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0600)
 }
 
 func createFileName(event *output.ResultEvent) string {

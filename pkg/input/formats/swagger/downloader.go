@@ -117,7 +117,7 @@ func (d *SwaggerDownloader) Download(urlStr, tmpDir string, httpClient *retryabl
 
 	// Create output directory
 	swaggerDir := filepath.Join(tmpDir, "swagger")
-	if err := os.MkdirAll(swaggerDir, 0755); err != nil {
+	if err := os.MkdirAll(swaggerDir, 0750); err != nil {
 		return "", errors.Wrap(err, "failed to create swagger directory")
 	}
 
