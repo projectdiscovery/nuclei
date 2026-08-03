@@ -198,6 +198,8 @@ func TestParseRawRequestAbsoluteTarget(t *testing.T) {
 		name string
 		raw  string
 		url  string
+		host string
+		path string
 	}{
 		{
 			name: "absolute target",
@@ -208,6 +210,20 @@ func TestParseRawRequestAbsoluteTarget(t *testing.T) {
 			name: "absolute target wins over host header",
 			raw:  "GET https://example.com/p HTTP/1.1\r\nHost: proxy.internal\r\n\r\n",
 			url:  "https://example.com/p",
+		},
+		{
+			name: "uppercase scheme absolute target",
+			raw:  "GET HTTP://example.com/p?q=1 HTTP/1.1\r\nHost: example.com\r\n\r\n",
+			url:  "http://example.com/p?q=1",
+			host: "example.com",
+			path: "/p",
+		},
+		{
+			name: "mixed-case https absolute target wins over host",
+			raw:  "GET Https://Example.COM/p HTTP/1.1\r\nHost: proxy.internal\r\n\r\n",
+			url:  "https://Example.COM/p",
+			host: "Example.COM",
+			path: "/p",
 		},
 		{
 			name: "origin form keeps host header",
@@ -221,6 +237,12 @@ func TestParseRawRequestAbsoluteTarget(t *testing.T) {
 			rr, err := ParseRawRequest(tt.raw)
 			require.NoError(t, err)
 			require.Equal(t, tt.url, rr.URL.String())
+			if tt.host != "" {
+				require.Equal(t, tt.host, rr.URL.Host)
+			}
+			if tt.path != "" {
+				require.Equal(t, tt.path, rr.URL.Path)
+			}
 		})
 	}
 }

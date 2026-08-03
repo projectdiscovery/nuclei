@@ -243,10 +243,16 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	// the request target is normally an origin-form path, but proxy captures and
 	// .http files use the absolute form, which already carries the authority
 	var urlx *urlutil.URL
-	if stringsutil.HasPrefixAny(parts[1], urlutil.HTTP+"://", urlutil.HTTPS+"://") {
-		urlx, err = urlutil.ParseAbsoluteURL(parts[1], true)
+	target := parts[1]
+	if stringsutil.HasPrefixAnyI(target, urlutil.HTTP+urlutil.SchemeSeparator, urlutil.HTTPS+urlutil.SchemeSeparator) {
+		// urlutil.ParseAbsoluteURL only accepts lowercase schemes; preserve the
+		// remainder of the request target unchanged.
+		if scheme, rest, ok := strings.Cut(target, urlutil.SchemeSeparator); ok {
+			target = strings.ToLower(scheme) + urlutil.SchemeSeparator + rest
+		}
+		urlx, err = urlutil.ParseAbsoluteURL(target, true)
 	} else {
-		urlx, err = urlutil.ParseRawRelativePath(parts[1], true)
+		urlx, err = urlutil.ParseRawRelativePath(target, true)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url: %s", err)
