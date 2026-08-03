@@ -174,3 +174,86 @@ func TestBuildRequestWithRequestStillWorks(t *testing.T) {
 	require.NotNil(t, req)
 	require.Equal(t, "GET", req.Method)
 }
+
+// ParseRawRequest used to read the request line and headers positionally:
+// the second line was always taken as the Host line (regardless of whether
+// it actually was one), and header values were read by skipping exactly one
+// byte past the colon. A valueless header panicked, a Host header anywhere
+// but the second line was silently lost from the header map, and an
+// absolute-form request target (as used by proxy captures) got appended to
+// rather than replacing the host.
+func TestParseRawRequestHostAndHeaderEdgeCases(t *testing.T) {
+	t.Run("valueless header does not panic", func(t *testing.T) {
+		raw := "POST /api/login HTTP/1.1\r\n" +
+			"Host: target\r\n" +
+			"Content-Type: application/json\r\n" +
+			"X-Empty:\r\n" +
+			"\r\n" +
+			`{"user":"admin"}`
+
+		var rr *RequestResponse
+		var err error
+		require.NotPanics(t, func() {
+			rr, err = ParseRawRequest(raw)
+		})
+		require.NoError(t, err)
+		require.Equal(t, "target", rr.URL.Host)
+
+		val, ok := rr.Request.Headers.Get("X-Empty")
+		require.True(t, ok)
+		require.Equal(t, "", val)
+
+		val, ok = rr.Request.Headers.Get("Content-Type")
+		require.True(t, ok)
+		require.Equal(t, "application/json", val)
+	})
+
+	t.Run("host header not on second line is still picked up by name", func(t *testing.T) {
+		raw := "POST /api/login HTTP/1.1\r\n" +
+			"Content-Type: application/json\r\n" +
+			"Host: target\r\n" +
+			"\r\n"
+
+		rr, err := ParseRawRequest(raw)
+		require.NoError(t, err)
+		require.Equal(t, "target", rr.URL.Host)
+
+		val, ok := rr.Request.Headers.Get("Content-Type")
+		require.True(t, ok)
+		require.Equal(t, "application/json", val)
+	})
+
+	t.Run("missing host header leaves other headers intact", func(t *testing.T) {
+		raw := "POST /api/login HTTP/1.1\r\n" +
+			"Content-Type: application/json\r\n" +
+			"\r\n"
+
+		rr, err := ParseRawRequest(raw)
+		require.NoError(t, err)
+		require.Equal(t, "", rr.URL.Host)
+
+		val, ok := rr.Request.Headers.Get("Content-Type")
+		require.True(t, ok)
+		require.Equal(t, "application/json", val)
+	})
+
+	t.Run("host header without space after colon", func(t *testing.T) {
+		raw := "POST /api/login HTTP/1.1\r\n" +
+			"Host:target\r\n" +
+			"\r\n"
+
+		rr, err := ParseRawRequest(raw)
+		require.NoError(t, err)
+		require.Equal(t, "target", rr.URL.Host)
+	})
+
+	t.Run("absolute request target replaces authority instead of appending", func(t *testing.T) {
+		raw := "GET http://target/p HTTP/1.1\r\n" +
+			"Host: target\r\n" +
+			"\r\n"
+
+		rr, err := ParseRawRequest(raw)
+		require.NoError(t, err)
+		require.Equal(t, "http://target/p", rr.URL.String())
+	})
+}

@@ -238,27 +238,12 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	}
 	method := parts[0]
 	rr.Request.Method = method
+	requestTarget := parts[1]
 
-	// parse relative url
-	urlx, err := urlutil.ParseRawRelativePath(parts[1], true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse url: %s", err)
-	}
-	rr.URL = *urlx
-
-	// parse host line
-	hostLine, err := protoReader.ReadLine()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read host line: %s", err)
-	}
-	sep := strings.Index(hostLine, ":")
-	if sep <= 0 || sep >= len(hostLine)-1 {
-		return nil, fmt.Errorf("invalid host line: %s", hostLine)
-	}
-	hostLine = hostLine[sep+2:]
-	rr.URL.Host = hostLine
-
-	// parse headers
+	// parse headers uniformly. The Host header (wherever it appears among
+	// the header lines, rather than being assumed to be the second line of
+	// the request) is looked up by name below, and values are trimmed
+	// rather than assuming exactly one space follows the colon.
 	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()
 	for {
 		line, err := protoReader.ReadLine()
@@ -269,11 +254,31 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 			// end of headers next is body
 			break
 		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
+		headerParts := strings.SplitN(line, ":", 2)
+		if len(headerParts) != 2 {
 			return nil, fmt.Errorf("invalid header line: %s", line)
 		}
-		rr.Request.Headers.Set(parts[0], parts[1][1:])
+		rr.Request.Headers.Set(strings.TrimSpace(headerParts[0]), strings.TrimSpace(headerParts[1]))
+	}
+
+	if strings.HasPrefix(requestTarget, "http://") || strings.HasPrefix(requestTarget, "https://") {
+		// absolute-form request target, as used by proxy captures
+		// (e.g. `GET http://target/path HTTP/1.1`), replaces the authority
+		// outright instead of being merged with the Host header.
+		urlx, err := urlutil.ParseAbsoluteURL(requestTarget, true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse url: %s", err)
+		}
+		rr.URL = *urlx
+	} else {
+		urlx, err := urlutil.ParseRawRelativePath(requestTarget, true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse url: %s", err)
+		}
+		rr.URL = *urlx
+		if host, ok := rr.Request.Headers.Get("Host"); ok {
+			rr.URL.Host = strings.TrimSpace(host)
+		}
 	}
 
 	// parse body
