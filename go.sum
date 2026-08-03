@@ -369,8 +369,8 @@ github.com/fullstorydev/grpcurl v1.9.3 h1:PC1Xi3w+JAvEE2Tg2Gf2RfVgPbf9+tbuQr1Zky
 github.com/fullstorydev/grpcurl v1.9.3/go.mod h1:/b4Wxe8bG6ndAjlfSUjwseQReUDUvBJiFEB7UllOlUE=
 github.com/gabriel-vasile/mimetype v1.4.8 h1:FfZ3gj38NjllZIeJAmMhr+qKL8Wu+nOoI3GqacKw1NM=
 github.com/gabriel-vasile/mimetype v1.4.8/go.mod h1:ByKUIKGjh1ODkGM1asKUbQZOLGrPjydw3hYPU2YU9t8=
-github.com/gaissmai/bart v0.28.1 h1:1YhWqAcQaFklvhRd8x0FHA9qUCmArfqEwaORVkV2s6k=
-github.com/gaissmai/bart v0.28.1/go.mod h1:GREWQfTLRWz/c5FTOsIw+KkscuFkIV5t8Rp7Nd1Td5c=
+github.com/gaissmai/bart v0.29.0 h1:wO6HGE8g9YE0Wm0bCpYxwRzfQ4+fbJKOhL64e5ACGCI=
+github.com/gaissmai/bart v0.29.0/go.mod h1:GREWQfTLRWz/c5FTOsIw+KkscuFkIV5t8Rp7Nd1Td5c=
 github.com/geoffgarside/ber v1.2.0 h1:/loowoRcs/MWLYmGX9QtIAbA+V/FrnVLsMMPhwiRm64=
 github.com/geoffgarside/ber v1.2.0/go.mod h1:jVPKeCbj6MvQZhwLYsGwaGI52oUorHoHKNecGT85ZCc=
 github.com/getkin/kin-openapi v0.144.0 h1:hIRcTH+KjLfkLpYU6bSSfdFpi0fZi1fp+hSPi4aQu9Y=
@@ -843,8 +843,8 @@ github.com/projectdiscovery/clistats v0.1.4 h1:kDnXoNxIdOvQElOF7k2Mt6XosGa5GbMKP
 github.com/projectdiscovery/clistats v0.1.4/go.mod h1:hjJYNcUubk9T3cuFvA+JkLhZGjzYW50fkC48dqUAtbU=
 github.com/projectdiscovery/dsl v0.8.20 h1:CxWcKuoHFpOSS1kzqnbJuK5No/6qoRG8IzNDMnZ6c/M=
 github.com/projectdiscovery/dsl v0.8.20/go.mod h1:e1oHi7mxAxF+UhBhD5gOk90Ga6LQqvFea2voMO1E5D0=
-github.com/projectdiscovery/fastdialer v0.5.13 h1:Tocdk3yy7WKLmRV1YmWctPI2yU1QfJIlUbMarIzdgGg=
-github.com/projectdiscovery/fastdialer v0.5.13/go.mod h1:iSf7DMOttk4LH/YSNAaztliqVCo1cVlmyudR+YXJWW8=
+github.com/projectdiscovery/fastdialer v0.5.14 h1:83hkWNnbWq8IxDM65h1CCmHf/GoVj1fpwbR+wACiBhA=
+github.com/projectdiscovery/fastdialer v0.5.14/go.mod h1:+QaDuVAsvPk4VPSk9aVQCdZzHVbtI9+2BeeFhQUyebo=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.7 h1:Q6uXo/j8SaV/GlAHkEYQi8WQoPXyJWxyspx+aFmz9Qk=
@@ -879,8 +879,8 @@ github.com/projectdiscovery/mapcidr v1.1.97 h1:7FkxNNVXp+m1rIu5Nv/2SrF9k4+LwP8Qu
 github.com/projectdiscovery/mapcidr v1.1.97/go.mod h1:9dgTJh1SP02gYZdpzMjm6vtYFkEHQHoTyaVNvaeJ7lA=
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5 h1:L/e8z8yw1pfT6bg35NiN7yd1XKtJap5Nk6lMwQ0RNi8=
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5/go.mod h1:pGW2ncnTxTxHtP9wzcIJAB+3/NMp6IiuQWd2NK7K+oc=
-github.com/projectdiscovery/networkpolicy v0.1.43 h1:USAkEEYilhsN7v917wtFBUf+k8i0LOwJMcdds4HYKMU=
-github.com/projectdiscovery/networkpolicy v0.1.43/go.mod h1:X2qj1V2rrahnWG8SntJBao3FG01eEpdNrIKnQfpzE70=
+github.com/projectdiscovery/networkpolicy v0.1.44 h1:+fnpYNQVH9mYZY7VrsTqdL4YJGVZSA8XLAlRHBMl5QE=
+github.com/projectdiscovery/networkpolicy v0.1.44/go.mod h1:q1KeQiHchXdElScEMWc5mShWNRNoJXI5koRnVaX6Qh8=
 github.com/projectdiscovery/ratelimit v0.0.88 h1:AcurW9aLRzlEyPe9kSjnOpr3XzLMWTpiWAlW/w73ALU=
 github.com/projectdiscovery/ratelimit v0.0.88/go.mod h1:CU1s+68UUG2mctSl2wi32/DHLJA6TMg+4rxgP59LfVk=
 github.com/projectdiscovery/rawhttp v0.1.91 h1:6EIhZxCkBn27kJAl47FieCFCe4H2ZdbhoBVj0J6ZCVY=
@@ -889,8 +889,8 @@ github.com/projectdiscovery/rdap v0.9.0 h1:wPhHx5pQ2QI+WGhyNb2PjhTl0NtB39Nk7YFZ9
 github.com/projectdiscovery/rdap v0.9.0/go.mod h1:zk4yrJFQ2Hy36Aqk+DvotYQxYAeALaCJ5ORySkff36Q=
 github.com/projectdiscovery/retryabledns v1.0.115 h1:RKV63FNIznFHUoawg/1hs53pVH3wqPtFhwstCuxVSoA=
 github.com/projectdiscovery/retryabledns v1.0.115/go.mod h1:+fEMWoPigw+M0lGNKY7AZ+g8FIgj+4sONjsinMmeL3k=
-github.com/projectdiscovery/retryablehttp-go v1.3.20 h1:5kj09jtEag2wvn/0fYCT60hz2RydHcysFTFT4Si5cX4=
-github.com/projectdiscovery/retryablehttp-go v1.3.20/go.mod h1:Cdd/nTPQe5PiCyFjrJaxWZJmLnKomAnLvR+WOC8J6Xw=
+github.com/projectdiscovery/retryablehttp-go v1.3.21 h1:HytR9e8AfhIF/4xUo6szqg213a7pOq5tE3kpNZCyYwI=
+github.com/projectdiscovery/retryablehttp-go v1.3.21/go.mod h1:0SCELxSKpkqHTy9pcZDZ2ry+5djp4geKpEURJ1uSB24=
 github.com/projectdiscovery/sarif v0.1.0 h1:O541T+a448nSJsmIMnXXSOeDQEzpnCAYvRfe0eG5h74=
 github.com/projectdiscovery/sarif v0.1.0/go.mod h1:LBC+reM3bkI3qIIhE0rZaINaYX6VG+En6u2hHa5mA7E=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
