@@ -50,7 +50,7 @@ func NewIndex(cacheDir string) (*Index, error) {
 		cacheDir = folderutil.AppCacheDirOrDefault(".nuclei-cache", config.BinaryName)
 	}
 
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0750); err != nil {
 		return nil, err
 	}
 

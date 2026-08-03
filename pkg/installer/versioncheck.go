@@ -76,7 +76,7 @@ func UpdateIgnoreFile() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0644); err != nil {
+	if err := os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0600); err != nil {
 		return err
 	}
 	return config.DefaultConfig.UpdateNucleiIgnoreHash()

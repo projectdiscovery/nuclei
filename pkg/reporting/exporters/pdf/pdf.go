@@ -85,7 +85,7 @@ func (e *Exporter) Close() error {
 		return nil
 	}
 	if dir := filepath.Dir(opts.File); dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			return errors.Wrap(err, "could not create directory for PDF report")
 		}
 	}

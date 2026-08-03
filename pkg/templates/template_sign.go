@@ -82,7 +82,7 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 		}
 		buff := bytes.NewBuffer(content)
 		buff.WriteString("\n" + signatureData)
-		return os.WriteFile(templatePath, buff.Bytes(), 0644)
+		return os.WriteFile(templatePath, buff.Bytes(), 0600)
 	}
 	return nil
 }
