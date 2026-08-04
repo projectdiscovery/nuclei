@@ -272,8 +272,10 @@ func getTemplateVerification(metadataIndex *index.Index, templatePath string) *p
 	}
 
 	return &protocols.TemplateVerification{
-		Verified: metadata.Verified,
-		Verifier: metadata.TemplateVerifier,
+		Verified:            metadata.Verified,
+		Verifier:            metadata.TemplateVerifier,
+		VerifierFingerprint: metadata.VerifierFingerprint,
+		ContentDigest:       metadata.ContentDigest,
 	}
 }
 
@@ -891,7 +893,12 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 			if loaded {
 				parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 
-				if parsed != nil && !metadataReusable {
+				verificationChanged := parsed != nil && (metadata == nil ||
+					metadata.Verified != parsed.Verified ||
+					metadata.TemplateVerifier != parsed.TemplateVerifier ||
+					metadata.VerifierFingerprint != parsed.VerifierFingerprint() ||
+					metadata.ContentDigest != parsed.ContentDigest())
+				if parsed != nil && (!metadataReusable || verificationChanged) {
 					if store.metadataIndex != nil {
 						metadata = store.cacheValidatedMetadata(templatePath, parsed)
 					} else {
