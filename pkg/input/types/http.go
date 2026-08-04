@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/textproto"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -232,34 +233,46 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 		Request: &HttpRequest{},
 	}
 	/// must contain at least 3 parts
-	parts := strings.Split(methodLine, " ")
+	parts := strings.Fields(methodLine)
 	if len(parts) < 3 {
 		return nil, fmt.Errorf("invalid method line: %s", methodLine)
 	}
 	method := parts[0]
 	rr.Request.Method = method
 
-	// parse relative url
-	urlx, err := urlutil.ParseRawRelativePath(parts[1], true)
+	requestTarget := parts[1]
+	normalizedRequestTarget := strings.ToLower(requestTarget)
+	isAbsoluteTarget := strings.HasPrefix(normalizedRequestTarget, "http://") || strings.HasPrefix(normalizedRequestTarget, "https://")
+	var urlx *urlutil.URL
+	if isAbsoluteTarget {
+		// net/url recognizes URI schemes case-insensitively. Parse the original
+		// target so its path and query are not modified for detection.
+		parsed, parseErr := url.Parse(requestTarget)
+		if parseErr != nil {
+			return nil, fmt.Errorf("failed to parse url: %s", parseErr)
+		}
+		if parsed.Host == "" {
+			return nil, fmt.Errorf("failed to parse url: absolute request target has no host")
+		}
+		urlx, err = urlutil.ParseRawRelativePath(parsed.RequestURI(), true)
+		if err == nil {
+			urlx.Scheme = parsed.Scheme
+			urlx.Host = parsed.Host
+			urlx.User = parsed.User
+			urlx.IsRelative = false
+			urlx.Original = requestTarget
+		}
+	} else {
+		urlx, err = urlutil.ParseRawRelativePath(requestTarget, true)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url: %s", err)
 	}
 	rr.URL = *urlx
 
-	// parse host line
-	hostLine, err := protoReader.ReadLine()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read host line: %s", err)
-	}
-	sep := strings.Index(hostLine, ":")
-	if sep <= 0 || sep >= len(hostLine)-1 {
-		return nil, fmt.Errorf("invalid host line: %s", hostLine)
-	}
-	hostLine = hostLine[sep+2:]
-	rr.URL.Host = hostLine
-
 	// parse headers
 	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()
+	var host string
 	for {
 		line, err := protoReader.ReadLine()
 		if err != nil {
@@ -269,11 +282,22 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 			// end of headers next is body
 			break
 		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
+		headerParts := strings.SplitN(line, ":", 2)
+		if len(headerParts) != 2 {
 			return nil, fmt.Errorf("invalid header line: %s", line)
 		}
-		rr.Request.Headers.Set(parts[0], parts[1][1:])
+		headerName := strings.TrimSpace(headerParts[0])
+		headerValue := strings.TrimSpace(headerParts[1])
+		rr.Request.Headers.Set(headerName, headerValue)
+		if strings.EqualFold(headerName, "Host") {
+			host = headerValue
+		}
+	}
+	if !isAbsoluteTarget {
+		if host == "" {
+			return nil, fmt.Errorf("missing host header")
+		}
+		rr.URL.Host = host
 	}
 
 	// parse body

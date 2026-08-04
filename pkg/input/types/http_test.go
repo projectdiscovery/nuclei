@@ -121,6 +121,24 @@ func TestParseRawRequestBodyTrailingNewlines(t *testing.T) {
 	}
 }
 
+func TestParseRawRequestHostHeaderIsCaseInsensitive(t *testing.T) {
+	rr, err := ParseRawRequest("GET /path HTTP/1.1\r\nhost: example.com\r\nX-Test: value\r\n\r\n")
+	require.NoError(t, err)
+	require.Equal(t, "example.com", rr.URL.Host)
+	host, ok := rr.Request.Headers.Get("host")
+	require.True(t, ok)
+	require.Equal(t, "example.com", host)
+}
+
+func TestParseRawRequestUppercaseAbsoluteTarget(t *testing.T) {
+	rr, err := ParseRawRequest("GET HTTP://absolute.example/path?q=1 HTTP/1.1\r\nHost: ignored.example\r\n\r\n")
+	require.NoError(t, err)
+	require.Equal(t, "http", rr.URL.Scheme)
+	require.Equal(t, "absolute.example", rr.URL.Host)
+	require.Equal(t, "/path", rr.URL.Path)
+	require.Equal(t, "q=1", rr.URL.RawQuery)
+}
+
 func TestUnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name           string
