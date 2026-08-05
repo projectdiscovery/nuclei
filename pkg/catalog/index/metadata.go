@@ -54,6 +54,13 @@ type Metadata struct {
 	// TemplateVerifier is the verifier used for the template.
 	TemplateVerifier string `gob:"verifier,omitempty"`
 
+	// VerifierFingerprint identifies the public key that verified the template.
+	VerifierFingerprint [32]byte `gob:"verifier_fingerprint,omitempty"`
+
+	// ContentDigest binds the cached verification result to the content that
+	// was verified.
+	ContentDigest [32]byte `gob:"content_digest,omitempty"`
+
 	// Validation records how the built-in parser validated this metadata's
 	// source before it was cached.
 	Validation ValidationMode `gob:"validation,omitempty"`
@@ -108,8 +115,10 @@ func NewMetadataFromTemplate(path string, tpl *templates.Template) *Metadata {
 
 		ProtocolType: tpl.Type().String(),
 
-		Verified:         tpl.Verified,
-		TemplateVerifier: tpl.TemplateVerifier,
+		Verified:            tpl.Verified,
+		TemplateVerifier:    tpl.TemplateVerifier,
+		VerifierFingerprint: tpl.VerifierFingerprint(),
+		ContentDigest:       tpl.ContentDigest(),
 	}
 }
 

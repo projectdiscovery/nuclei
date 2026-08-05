@@ -157,11 +157,18 @@ type Template struct {
 	Verified bool `yaml:"-" json:"-"`
 	// TemplateVerifier is identifier verifier used to verify the template (default nuclei-templates have projectdiscovery/nuclei-templates)
 	TemplateVerifier string `yaml:"-" json:"-"`
+	// verificationDigest binds cached verification to the verified template and imported-file contents.
+	verificationDigest [32]byte
+	// verifierFingerprint binds cached verification to the verifier's public key.
+	verifierFingerprint [32]byte
 	// RequestsQueue contains all template requests in order (both protocol & request order)
 	RequestsQueue []protocols.Request `yaml:"-" json:"-"`
 
 	// ImportedFiles contains list of files whose contents are imported after template was compiled
 	ImportedFiles []string `yaml:"-" json:"-"`
+	// importedFileContents contains the immutable contents loaded for ImportedFiles.
+	importedFileContents         [][]byte
+	importedFileContentsCaptured bool
 }
 
 // HasCodeProtocol returns true if the template has a code protocol section
@@ -412,6 +419,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 // instead of actual javascript / engine code if so it loads the file contents and replaces the reference
 func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) error {
 	var errs []error
+	template.importedFileContentsCaptured = true
 
 	loadFile := func(source string) (string, bool) {
 		// load file respecting sandbox
@@ -423,6 +431,8 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 
 			bin, err := io.ReadAll(data)
 			if err == nil {
+				template.ImportedFiles = append(template.ImportedFiles, source)
+				template.importedFileContents = append(template.importedFileContents, bytes.Clone(bin))
 				return string(bin), true
 			} else {
 				errs = append(errs, err)
@@ -439,7 +449,6 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		// simple test to check if source is a file or a snippet
 		if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 			if val, ok := loadFile(request.Source); ok {
-				template.ImportedFiles = append(template.ImportedFiles, request.Source)
 				request.Source = val
 			}
 		}
@@ -450,7 +459,6 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		// simple test to check if source is a file or a snippet
 		if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 			if val, ok := loadFile(request.Code); ok {
-				template.ImportedFiles = append(template.ImportedFiles, request.Code)
 				request.Code = val
 			}
 		}
@@ -460,7 +468,6 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	if template.IsFlowTemplate() {
 		if filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
 			if val, ok := loadFile(template.Flow); ok {
-				template.ImportedFiles = append(template.ImportedFiles, template.Flow)
 				template.Flow = val
 			}
 		}
@@ -478,7 +485,6 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 				// simple test to check if source is a file or a snippet
 				if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 					if val, ok := loadFile(request.Source); ok {
-						template.ImportedFiles = append(template.ImportedFiles, request.Source)
 						request.Source = val
 					}
 				}
@@ -492,7 +498,6 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 				// simple test to check if source is a file or a snippet
 				if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 					if val, ok := loadFile(request.Code); ok {
-						template.ImportedFiles = append(template.ImportedFiles, request.Code)
 						request.Code = val
 					}
 				}
@@ -506,6 +511,20 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 // GetFileImports returns a list of files that are imported by the template
 func (template *Template) GetFileImports() []string {
 	return template.ImportedFiles
+}
+
+// GetFileImportContents returns a copy of the imported-file content snapshot.
+// The second result reports whether ImportFileRefs captured a snapshot.
+func (template *Template) GetFileImportContents() ([][]byte, bool) {
+	if !template.importedFileContentsCaptured {
+		return nil, false
+	}
+
+	contents := make([][]byte, len(template.importedFileContents))
+	for i, content := range template.importedFileContents {
+		contents[i] = bytes.Clone(content)
+	}
+	return contents, true
 }
 
 // addRequestsToQueue adds protocol requests to the queue and preserves order of the protocols and requests

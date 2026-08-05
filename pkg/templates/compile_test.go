@@ -2,17 +2,21 @@ package templates_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"log"
 	netHttp "net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
@@ -28,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	templatesigner "github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/ratelimit"
@@ -331,6 +336,265 @@ workflows:
 	require.Empty(t, got.CompiledWorkflow.Workflows[0].Executers)
 	require.Equal(t, initialUnverifiedJavascript+1, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
 	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
+}
+
+func TestParseTemplateExecutesJavascriptInitAfterVerification(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = "parse-verified-javascript-init"
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "verified-javascript-init.yaml"
+	templateSource := `id: verified-javascript-init
+
+info:
+  name: Verified Javascript Init
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "executed")
+    code: |
+      Export("verified-javascript-init")
+`
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.True(t, template.Verified)
+	require.True(t, template.Options.Verified)
+	require.Equal(t, "executed", template.RequestsJavascript[0].Args["init-status"])
+}
+
+func TestParseTemplateExecutesPreprocessedJavascriptInitAfterVerification(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = "parse-verified-preprocessed-javascript-init"
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "verified-preprocessed-javascript-init.yaml"
+	templateSource := `id: verified-preprocessed-javascript-init
+
+info:
+  name: Verified Preprocessed Javascript Init {{randstr}}
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "{{randstr}}")
+    code: |
+      Export("verified-preprocessed-javascript-init")
+`
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.True(t, template.Verified)
+	require.True(t, template.Options.Verified)
+	require.NotEmpty(t, template.RequestsJavascript[0].Args["init-status"])
+	require.NotEqual(t, "{{randstr}}", template.RequestsJavascript[0].Args["init-status"])
+}
+
+func verificationDigestForTest(data string, importedContents ...string) [sha256.Size]byte {
+	dataDigest := sha256.Sum256([]byte(data))
+	componentDigests := append([]byte(nil), dataDigest[:]...)
+	for _, contents := range importedContents {
+		importDigest := sha256.Sum256([]byte(contents))
+		componentDigests = append(componentDigests, importDigest[:]...)
+	}
+	return sha256.Sum256(componentDigests)
+}
+
+func trustedVerificationForTest(data string, importedContents ...string) *protocols.TemplateVerification {
+	verifier := templatesigner.DefaultTemplateVerifiers[0]
+	return &protocols.TemplateVerification{
+		Verified:            true,
+		Verifier:            verifier.Identifier(),
+		VerifierFingerprint: verifier.Fingerprint(),
+		ContentDigest:       verificationDigestForTest(data, importedContents...),
+	}
+}
+
+func TestParseTemplateVerificationUsesLoadedImportContents(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	loadedCode := `Export("loaded-import")`
+	diskCode := `Export("disk-import")`
+	importPath := filepath.Join(t.TempDir(), "import.js")
+	require.NoError(t, os.WriteFile(importPath, []byte(diskCode), 0o600))
+	options.LoadHelperFileFunction = func(helperFile, _ string, _ catalog.Catalog) (io.ReadCloser, error) {
+		require.Equal(t, importPath, helperFile)
+		return io.NopCloser(strings.NewReader(loadedCode)), nil
+	}
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "loaded-import.yaml"
+	templateSource := fmt.Sprintf(`id: loaded-import
+
+info:
+  name: Loaded Import
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: %q
+`, importPath)
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(templateSource, loadedCode)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.True(t, template.Verified)
+	require.Equal(t, loadedCode, template.RequestsJavascript[0].Code)
+}
+
+func TestParseTemplateRejectsCachedVerificationWithMismatchedVerifierFingerprint(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "revoked-verifier.yaml"
+	templateSource := `id: revoked-verifier
+
+info:
+  name: Revoked Verifier
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "executed")
+    code: |
+      Export("revoked-verifier")
+`
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		verifier := templatesigner.DefaultTemplateVerifiers[0]
+		rotatedFingerprint := verifier.Fingerprint()
+		rotatedFingerprint[0] ^= 0xff
+		return &protocols.TemplateVerification{
+			Verified:            true,
+			Verifier:            verifier.Identifier(),
+			VerifierFingerprint: rotatedFingerprint,
+			ContentDigest:       verificationDigestForTest(templateSource),
+		}
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.NotContains(t, template.RequestsJavascript[0].Args, "init-status")
+}
+
+func TestParseTemplateCompilesUnsignedJavascriptInit(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(`id: unsigned-malformed-javascript-init
+
+info:
+  name: Unsigned Malformed Javascript Init
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      {
+    code: |
+      Export("unsigned-malformed-javascript-init")
+`), nil, executerOptions)
+	require.Nil(t, template)
+	require.ErrorContains(t, err, "could not compile init code")
+}
+
+func TestParseTemplateDoesNotExecuteUnsignedJavascriptInit(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(`id: unsigned-javascript-init
+
+info:
+  name: Unsigned Javascript Init
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "executed")
+    code: |
+      Export("unsigned-javascript-init")
+`), nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.NotContains(t, template.RequestsJavascript[0].Args, "init-status")
+}
+
+func TestParseCachedTemplatePreservesVerification(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	templateSource := `id: cached-verified-javascript
+
+info:
+  name: Cached Verified Javascript
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      Export("cached-verified-javascript")
+`
+	templatePath := filepath.Join(t.TempDir(), "cached-verified-javascript.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(templateSource), 0o600))
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.Parser = templates.NewParser()
+	executerOptions.TemplateVerificationCallback = func(path string) *protocols.TemplateVerification {
+		require.Equal(t, templatePath, path)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	first, err := templates.Parse(templatePath, nil, executerOptions)
+	require.NoError(t, err)
+	require.True(t, first.Options.Verified)
+
+	cached, err := templates.Parse(templatePath, nil, executerOptions)
+	require.NoError(t, err)
+	require.True(t, cached.Verified)
+	require.True(t, cached.Options.Verified)
 }
 
 func Test_WrongTemplate(t *testing.T) {
