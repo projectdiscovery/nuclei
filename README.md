@@ -116,6 +116,8 @@ Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 ```
 
+Windows: `go install` installs into `%USERPROFILE%\go\bin` (or `$env:GOBIN`). Put that directory on `PATH` and open a **new** terminal before running `nuclei`.
+
 To learn more about installing nuclei, see `https://docs.projectdiscovery.io/tools/nuclei/install`.
 
 ### Command Line Flags
