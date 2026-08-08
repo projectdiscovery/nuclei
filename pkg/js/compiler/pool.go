@@ -19,6 +19,8 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcerpc"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcom"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libgrpc"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libhttp"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkerberos"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbforge"

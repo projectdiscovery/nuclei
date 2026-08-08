@@ -122,7 +122,12 @@
         "CAA",
         "TLSA",
         "ANY",
-        "SRV"
+        "SRV",
+        "RRSIG",
+        "NSEC",
+        "DNSKEY",
+        "NSEC3",
+        "NSEC3PARAM"
       ],
       "title": "type of DNS request to make",
       "description": "Type is the type of DNS request to make"
@@ -468,6 +473,31 @@
           "type": "boolean",
           "title": "do not perform recursion",
           "description": "Specifies whether to not do recursive checks if folders are provided"
+        },
+        "smb-user": {
+          "type": "string",
+          "title": "SMB username",
+          "description": "Username for SMB file targets"
+        },
+        "smb-password": {
+          "type": "string",
+          "title": "SMB password",
+          "description": "Password for SMB file targets"
+        },
+        "smb-domain": {
+          "type": "string",
+          "title": "SMB domain",
+          "description": "Domain for SMB authentication"
+        },
+        "smb-hash": {
+          "type": "string",
+          "title": "SMB NT hash",
+          "description": "NT hash for SMB pass-the-hash"
+        },
+        "smb-port": {
+          "type": "integer",
+          "title": "SMB port",
+          "description": "TCP port for SMB (default 445)"
         }
       },
       "additionalProperties": false,

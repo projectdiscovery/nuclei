@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"reflect"
@@ -177,6 +178,7 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			newBase.TemplatePath = tplCopy.Options.TemplatePath
 			newBase.TemplateInfo = tplCopy.Options.TemplateInfo
 			newBase.TemplateVerifier = tplCopy.Options.TemplateVerifier
+			newBase.Verified = tplCopy.Options.Verified
 			newBase.RawTemplate = tplCopy.Options.RawTemplate
 
 			if tplCopy.Options.Variables.Len() > 0 {
@@ -482,7 +484,9 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	// add generated constants to constants map and executer options
 	template.Constants = generators.MergeMaps(template.Constants, generatedConstants)
 	template.Options.Constants = template.Constants
-	applyTemplateVerification(template, data)
+	if err := verifyAndCompileTemplate(template, data); err != nil {
+		return nil, err
+	}
 
 	if !template.Verified && len(template.Workflows) == 0 {
 		// workflows are not signed by default
@@ -500,18 +504,30 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	if err != nil {
 		return nil, err
 	}
-	applyTemplateVerification(template, data)
+
+	if err := verifyAndCompileTemplate(template, data); err != nil {
+		return nil, err
+	}
 
 	return template, nil
+}
+
+// verifyAndCompileTemplate keeps signature verification before protocol
+// compilation because JavaScript init blocks execute during compilation.
+func verifyAndCompileTemplate(template *Template, data []byte) error {
+	applyTemplateVerification(template, data)
+
+	return compileTemplate(template)
 }
 
 // parseTemplateNoVerify parses the template without applying any verification.
 func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
 	// Create a copy of the options specifically for this template
 	options := srcOptions.Copy()
-
 	template := &Template{}
+
 	var err error
+
 	switch config.GetTemplateFormatFromExt(template.Path) {
 	case config.JSON:
 		err = json.Unmarshal(data, template)
@@ -523,6 +539,7 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 			return nil, err
 		}
 	}
+
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to parse %s", template.Path)
 	}
@@ -530,6 +547,7 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 	if utils.IsBlank(template.Info.Name) {
 		return nil, errors.New("no template name field provided")
 	}
+
 	if template.Info.Authors.IsEmpty() {
 		return nil, errors.New("no template author field provided")
 	}
@@ -569,13 +587,13 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 	options.CreateTemplateCtxStore()
 	options.ProtocolType = template.Type()
 	options.Constants = template.Constants
-
 	// initialize the js compiler if missing
 	if options.JsCompiler == nil {
 		options.JsCompiler = GetJsCompiler() // this is a singleton
 	}
 
 	template.Options = options
+
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
@@ -587,22 +605,31 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 		return nil, errkit.Wrapf(err, "failed to load file refs for %s", template.ID)
 	}
 
+	return template, nil
+}
+
+// compileTemplate prepares a parsed template for execution after its signature
+// verification result is available to protocol compilers.
+func compileTemplate(template *Template) error {
 	if err := template.compileProtocolRequests(template.Options); err != nil {
-		return nil, err
+		return err
 	}
 
 	if template.Executer != nil {
 		if err := template.Executer.Compile(); err != nil {
-			return nil, errors.Wrap(err, "could not compile request")
+			return errors.Wrap(err, "could not compile request")
 		}
+
 		template.TotalRequests = template.Executer.Requests()
 	}
+
 	if template.Executer == nil && template.CompiledWorkflow == nil {
-		return nil, ErrCreateTemplateExecutor
+		return ErrCreateTemplateExecutor
 	}
+
 	template.parseSelfContainedRequests()
 
-	return template, nil
+	return nil
 }
 
 // applyTemplateVerification verifies a parsed template against the provided data.
@@ -612,42 +639,97 @@ func applyTemplateVerification(template *Template, data []byte) {
 	}
 
 	options := template.Options
+	verificationDigest, digestErr := templateVerificationDigest(data, template)
+	template.verificationDigest = verificationDigest
+
 	// check if the template is verified
 	// only valid templates can be verified or signed
-	if options.TemplateVerificationCallback != nil && options.TemplatePath != "" {
+	if digestErr == nil && options.TemplateVerificationCallback != nil && options.TemplatePath != "" {
 		if cached := options.TemplateVerificationCallback(options.TemplatePath); cached != nil {
-			template.Verified = cached.Verified
-			template.TemplateVerifier = cached.Verifier
-			options.TemplateVerifier = cached.Verifier
-			// mirror the verification result onto options for the code protocol.
-			options.Verified = cached.Verified
-			//nolint
-			if !(template.Verified && template.TemplateVerifier == "projectdiscovery/nuclei-templates") {
-				template.Options.RawTemplate = data
+			if cached.ContentDigest == verificationDigest && cached.ContentDigest != ([sha256.Size]byte{}) && cachedTemplateVerificationIsTrusted(cached) {
+				template.Verified = cached.Verified
+				template.TemplateVerifier = cached.Verifier
+				template.verifierFingerprint = cached.VerifierFingerprint
+				options.TemplateVerifier = cached.Verifier
+				// Mirror verification onto options for execution-time checks.
+				options.Verified = cached.Verified
+				//nolint
+				if !(template.Verified && template.TemplateVerifier == "projectdiscovery/nuclei-templates") {
+					template.Options.RawTemplate = data
+				}
+
+				return
 			}
-			return
 		}
 	}
 
 	var verifier *signer.TemplateSigner
+
 	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
 		if config.DefaultConfig.LogAllEvents {
 			gologger.Verbose().Msgf("template %v verified by %s : %v", template.ID, verifier.Identifier(), template.Verified)
 		}
+
 		if template.Verified {
 			template.TemplateVerifier = verifier.Identifier()
+			template.verifierFingerprint = verifier.Fingerprint()
 			break
 		}
 	}
+
 	options.TemplateVerifier = template.TemplateVerifier
-	// mirror the verification result onto options for the code protocol.
+	// Mirror verification onto options for code and JavaScript execution.
 	options.Verified = template.Verified
 
 	//nolint
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
 		template.Options.RawTemplate = data
 	}
+}
+
+// ContentDigest returns the digest used to bind cached signature
+// verification to template and imported-file contents.
+func (template *Template) ContentDigest() [sha256.Size]byte {
+	return template.verificationDigest
+}
+
+// VerifierFingerprint returns the public-key fingerprint for the verifier that
+// authenticated this template.
+func (template *Template) VerifierFingerprint() [sha256.Size]byte {
+	return template.verifierFingerprint
+}
+
+func cachedTemplateVerificationIsTrusted(cached *protocols.TemplateVerification) bool {
+	if !cached.Verified || cached.VerifierFingerprint == ([sha256.Size]byte{}) {
+		return false
+	}
+
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		if verifier.Identifier() == cached.Verifier && verifier.Fingerprint() == cached.VerifierFingerprint {
+			return true
+		}
+	}
+
+	return false
+}
+
+func templateVerificationDigest(data []byte, template *Template) ([sha256.Size]byte, error) {
+	componentDigests := make([]byte, 0, sha256.Size*(len(template.GetFileImports())+1))
+	dataDigest := sha256.Sum256(data)
+	componentDigests = append(componentDigests, dataDigest[:]...)
+
+	importedContents, complete := template.GetFileImportContents()
+	if !complete {
+		return [sha256.Size]byte{}, errors.New("imported-file content snapshot is incomplete")
+	}
+
+	for _, contents := range importedContents {
+		fileDigest := sha256.Sum256(contents)
+		componentDigests = append(componentDigests, fileDigest[:]...)
+	}
+
+	return sha256.Sum256(componentDigests), nil
 }
 
 // isCachedTemplateValid validates that a cached template is still usable after

@@ -92,6 +92,10 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 
 // UpdateIfOutdated updates templates if they are outdated
 func (t *TemplateManager) UpdateIfOutdated() error {
+	return withTemplatesUpdateLock(t.updateIfOutdatedLocked)
+}
+
+func (t *TemplateManager) updateIfOutdatedLocked() error {
 	// if the templates folder does not exist, it's a fresh installation and do not update
 	if !fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
 		return t.FreshInstallIfNotExists()
@@ -583,8 +587,10 @@ func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, err
 		checksums, err := os.ReadFile(checksumFilePath)
 		if err == nil {
 			allChecksums := make(map[string]string)
-			for _, v := range strings.Split(string(checksums), ";") {
+			checksumStr := string(checksums)
+			for v := range strings.SplitSeq(checksumStr, ";") {
 				v = strings.TrimSpace(v)
+				// Strict two-field parse: paths may contain commas (Cut would parse wrong).
 				tmparr := strings.Split(v, ",")
 				if len(tmparr) != 2 {
 					continue

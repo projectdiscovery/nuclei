@@ -36,7 +36,7 @@ type Request struct {
 	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
 	//   RequestType is the type of DNS request to make.
-	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA,enum=CAA,enum=TLSA,enum=ANY,enum=SRV,enum=RRSIG,enum=NSEC,enum=DNSKEY,enum=NSEC3,enum=NSEC3PARAM"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -111,6 +111,7 @@ var RequestPartDefinitions = map[string]string{
 	"host":          "Host is the input to the template",
 	"matched":       "Matched is the input which was matched upon",
 	"request":       "Request contains the DNS request in text format",
+	"duration":      "Protocol operation duration in seconds",
 	"type":          "Type is the type of request made",
 	"rcode":         "Rcode field returned for the DNS request",
 	"question":      "Question contains the DNS question field",
@@ -309,6 +310,16 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeANY
 	case "SRV":
 		question = dns.TypeSRV
+	case "RRSIG":
+		question = dns.TypeRRSIG
+	case "NSEC":
+		question = dns.TypeNSEC
+	case "DNSKEY":
+		question = dns.TypeDNSKEY
+	case "NSEC3":
+		question = dns.TypeNSEC3
+	case "NSEC3PARAM":
+		question = dns.TypeNSEC3PARAM
 	}
 	return question
 }

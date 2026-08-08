@@ -136,6 +136,8 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
 		data["stop-at-first-match"] = true
 	}
+
+	enrichEventWithTLSMetadata(data, resp)
 	return data
 }
 

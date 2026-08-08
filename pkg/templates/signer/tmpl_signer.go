@@ -46,10 +46,19 @@ type SignableTemplate interface {
 	HasCodeProtocol() bool
 }
 
+type fileImportContentProvider interface {
+	GetFileImportContents() ([][]byte, bool)
+}
+
+type javascriptSignableTemplate interface {
+	HasJavascriptRequest(...int) bool
+}
+
 type TemplateSigner struct {
 	sync.Once
-	handler  *KeyHandler
-	fragment string
+	handler     *KeyHandler
+	fragment    string
+	fragmentErr error
 }
 
 // Identifier returns the identifier for the template signer
@@ -58,16 +67,36 @@ func (t *TemplateSigner) Identifier() string {
 }
 
 // fragment is optional part of signature that is used to identify the user
-// who signed the template via md5 hash of public key
+// who signed the template via md5 hash of the public key x-coordinate
 func (t *TemplateSigner) GetUserFragment() string {
+	fragment, _ := t.userFragment()
+	return fragment
+}
+
+func (t *TemplateSigner) userFragment() (string, error) {
 	// wrap with sync.Once to reduce unnecessary md5 hashing
 	t.Do(func() {
-		if t.handler.ecdsaPubKey != nil {
-			hashed := md5.Sum(t.handler.ecdsaPubKey.X.Bytes())
-			t.fragment = fmt.Sprintf("%x", hashed)
-		}
+		t.fragment, t.fragmentErr = publicKeyFragment(t.handler.ecdsaPubKey)
 	})
-	return t.fragment
+	return t.fragment, t.fragmentErr
+}
+
+func publicKeyFragment(publicKey *ecdsa.PublicKey) (string, error) {
+	if publicKey == nil {
+		return "", nil
+	}
+	publicKeyBytes, err := publicKey.Bytes()
+	if err != nil {
+		return "", fmt.Errorf("encode ecdsa public key: %w", err)
+	}
+	if len(publicKeyBytes) < 3 || publicKeyBytes[0] != 4 || (len(publicKeyBytes)-1)%2 != 0 {
+		return "", fmt.Errorf("invalid uncompressed ecdsa public key")
+	}
+	xCoordinateLength := (len(publicKeyBytes) - 1) / 2
+	// Keep the old fragment stable: big.Int.Bytes omitted leading zero bytes.
+	xCoordinateBytes := bytes.TrimLeft(publicKeyBytes[1:1+xCoordinateLength], "\x00")
+	hashed := md5.Sum(xCoordinateBytes)
+	return fmt.Sprintf("%x", hashed), nil
 }
 
 // Sign signs the given template with the template signer and returns the signature
@@ -75,40 +104,44 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 	existingSignature, content := ExtractSignatureAndContent(data)
 	content = normalizeTemplateContentForSignature(content)
 
-	// while re-signing template check if it has a code protocol
-	// if it does then verify that it is signed by current signer
-	// if not then return error
-	if tmpl.HasCodeProtocol() {
+	// Executable templates can only be re-signed by the current signer.
+	hasJavascript := false
+	if javascriptTemplate, ok := tmpl.(javascriptSignableTemplate); ok {
+		hasJavascript = javascriptTemplate.HasJavascriptRequest()
+	}
+
+	if tmpl.HasCodeProtocol() || hasJavascript {
 		if len(existingSignature) > 0 {
 			arr := strings.SplitN(string(existingSignature), ":", 3)
 			if len(arr) == 2 {
 				// signature has no fragment
-				return "", errkit.New("re-signing code templates are not allowed for security reasons.")
+				return "", errkit.New("re-signing executable templates are not allowed for security reasons.")
 			}
+
 			if len(arr) == 3 {
 				// signature has fragment verify if it is equal to current fragment
-				fragment := t.GetUserFragment()
+				fragment, err := t.userFragment()
+				if err != nil {
+					return "", err
+				}
+
 				if fragment != arr[2] {
-					return "", errkit.New("re-signing code templates are not allowed for security reasons.")
+					return "", errkit.New("re-signing executable templates are not allowed for security reasons.")
 				}
 			}
 		}
 	}
 
-	buff := bytes.NewBuffer(content)
-	// if file has any imports process them
-	for _, file := range tmpl.GetFileImports() {
-		bin, err := os.ReadFile(file)
-		if err != nil {
-			return "", err
-		}
-		buff.WriteRune('\n')
-		buff.Write(bin)
+	buff, err := templateContentWithImports(content, tmpl)
+	if err != nil {
+		return "", err
 	}
+
 	signatureData, err := t.sign(buff.Bytes())
 	if err != nil {
 		return "", err
 	}
+
 	return signatureData, nil
 }
 
@@ -117,15 +150,23 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 // in templates are not processed use template.SignTemplate() instead
 func (t *TemplateSigner) sign(data []byte) (string, error) {
 	dataHash := sha256.Sum256(data)
+
 	ecdsaSignature, err := ecdsa.SignASN1(rand.Reader, t.handler.ecdsaKey, dataHash[:])
 	if err != nil {
 		return "", err
 	}
+
 	var signatureData bytes.Buffer
 	if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(SignatureFmt, signatureData.Bytes(), t.GetUserFragment()), nil
+
+	fragment, err := t.userFragment()
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(SignatureFmt, signatureData.Bytes(), fragment), nil
 }
 
 // Verify verifies the given template with the template signer
@@ -140,8 +181,15 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	}
 
 	digestData := bytes.TrimSpace(bytes.TrimPrefix(signature, []byte(SignaturePattern)))
+
+	fragment, err := t.userFragment()
+	if err != nil {
+		return false, err
+	}
+
 	// remove fragment from digest as it is used for re-signing purposes only
-	digestString := strings.TrimSuffix(string(digestData), ":"+t.GetUserFragment())
+	digestString := strings.TrimSuffix(string(digestData), ":"+fragment)
+
 	digest, err := hex.DecodeString(digestString)
 	if err != nil {
 		return false, err
@@ -149,18 +197,53 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 
 	content = normalizeTemplateContentForSignature(content)
 
+	buff, err := templateContentWithImports(content, tmpl)
+	if err != nil {
+		return false, err
+	}
+
+	return t.verify(buff.Bytes(), digest)
+}
+
+func templateContentWithImports(content []byte, tmpl SignableTemplate) (*bytes.Buffer, error) {
 	buff := bytes.NewBuffer(content)
-	// if file has any imports process them
-	for _, file := range tmpl.GetFileImports() {
+	imports := tmpl.GetFileImports()
+
+	if provider, ok := tmpl.(fileImportContentProvider); ok {
+		if importedContents, captured := provider.GetFileImportContents(); captured {
+			if len(importedContents) != len(imports) {
+				return nil, fmt.Errorf("imported-file content count does not match imported-file path count")
+			}
+
+			for _, importedContent := range importedContents {
+				buff.WriteRune('\n')
+				buff.Write(importedContent)
+			}
+
+			return buff, nil
+		}
+	}
+
+	for _, file := range imports {
 		bin, err := os.ReadFile(file)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
+
 		buff.WriteRune('\n')
 		buff.Write(bin)
 	}
 
-	return t.verify(buff.Bytes(), digest)
+	return buff, nil
+}
+
+// Fingerprint returns the SHA-256 fingerprint of the signer's public key.
+func (t *TemplateSigner) Fingerprint() [sha256.Size]byte {
+	if t == nil || t.handler == nil || t.handler.cert == nil {
+		return [sha256.Size]byte{}
+	}
+
+	return sha256.Sum256(t.handler.cert.RawSubjectPublicKeyInfo)
 }
 
 func normalizeTemplateContentForSignature(content []byte) []byte {
@@ -177,13 +260,16 @@ func (t *TemplateSigner) verify(data, signatureData []byte) (bool, error) {
 	if err := gob.NewDecoder(bytes.NewReader(signatureData)).Decode(&signature); err != nil {
 		return false, err
 	}
+
 	return ecdsa.VerifyASN1(t.handler.ecdsaPubKey, dataHash[:], signature), nil
 }
 
 // NewTemplateSigner creates a new signer for signing templates
 func NewTemplateSigner(cert, privateKey []byte) (*TemplateSigner, error) {
 	handler := &KeyHandler{}
+
 	var err error
+
 	if cert != nil || privateKey != nil {
 		handler.UserCert = cert
 		handler.PrivateKey = privateKey
@@ -193,15 +279,18 @@ func NewTemplateSigner(cert, privateKey []byte) (*TemplateSigner, error) {
 			err = handler.ReadPrivateKey(PrivateKeyEnvName, config.DefaultConfig.GetKeysDir())
 		}
 	}
+
 	if err != nil && !SkipGeneratingKeys {
 		if err != ErrNoCertificate && err != ErrNoPrivateKey {
 			gologger.Info().Msgf("Invalid user cert found : %s\n", err)
 		}
+
 		// generating new keys
 		handler.GenerateKeyPair()
 		if err := handler.SaveToDisk(config.DefaultConfig.GetKeysDir()); err != nil {
 			gologger.Fatal().Msgf("could not save generated keys to disk: %s\n", err)
 		}
+
 		// do not continue further let user re-run the command
 		os.Exit(0)
 	} else if err != nil && SkipGeneratingKeys {
@@ -211,9 +300,11 @@ func NewTemplateSigner(cert, privateKey []byte) (*TemplateSigner, error) {
 	if err := handler.ParseUserCert(); err != nil {
 		return nil, err
 	}
+
 	if err := handler.ParsePrivateKey(); err != nil {
 		return nil, err
 	}
+
 	return &TemplateSigner{
 		handler: handler,
 	}, nil
@@ -225,10 +316,12 @@ func NewTemplateSignerFromFiles(cert, privKey string) (*TemplateSigner, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	privKeyData, err := os.ReadFile(privKey)
 	if err != nil {
 		return nil, err
 	}
+
 	return NewTemplateSigner(certData, privKeyData)
 }
 
@@ -242,9 +335,11 @@ func NewTemplateSigVerifier(cert []byte) (*TemplateSigner, error) {
 			return nil, err
 		}
 	}
+
 	if err := handler.ParseUserCert(); err != nil {
 		return nil, err
 	}
+
 	return &TemplateSigner{
 		handler: handler,
 	}, nil
