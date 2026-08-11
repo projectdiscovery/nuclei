@@ -95,21 +95,31 @@ func TestTargetFilterMatchesTemplate(t *testing.T) {
 func TestTargetFilterPrepareNormalizesTemplatePaths(t *testing.T) {
 	filter := &TargetFilter{}
 	filter.Prepare(
-		nil,
-		nil,
-		nil,
+		[]string{"apache"},
+		[]string{"deprecated"},
+		severity.Severities{severity.High},
 		[]string{"/templates/zzz.yaml", "/templates/aaa.yaml", "/templates/dir/../mmm.yaml"},
 		[]string{"/forced/b.yaml", "/forced/a.yaml"},
 		true,
 	)
 
-	for _, path := range []string{"/templates/zzz.yaml", "/templates/aaa.yaml", "/templates/mmm.yaml"} {
-		require.True(t, filter.MatchesTemplate(path, nil, severity.High, false), path)
-	}
+	// Prepare must store a sorted, filepath.Cleaned copy of both slices so the
+	// binary search in MatchesTemplate stays correct regardless of caller input.
+	require.Equal(t, []string{"/templates/aaa.yaml", "/templates/mmm.yaml", "/templates/zzz.yaml"}, filter.prepared.effectiveTemplates)
+	require.Equal(t, []string{"/forced/a.yaml", "/forced/b.yaml"}, filter.prepared.effectiveIncludes)
+
+	// A template restricted-in only through normalization still matches once the
+	// tag and severity criteria are satisfied.
+	require.True(t, filter.MatchesTemplate("/templates/mmm.yaml", []string{"apache"}, severity.High, false))
+
+	// Forced includes bypass the restrictive tag, exclude-tag, and severity
+	// criteria that would otherwise reject these templates.
 	for _, path := range []string{"/forced/a.yaml", "/forced/b.yaml"} {
-		require.True(t, filter.MatchesTemplate(path, []string{"any"}, severity.Low, false), path)
+		require.True(t, filter.MatchesTemplate(path, []string{"deprecated", "nginx"}, severity.Low, false), path)
 	}
-	require.False(t, filter.MatchesTemplate("/templates/other.yaml", nil, severity.High, false))
+
+	// A template outside both sets is still rejected under restrictTemplates.
+	require.False(t, filter.MatchesTemplate("/templates/other.yaml", []string{"apache"}, severity.High, false))
 }
 
 func TestTargetFilterIdentityIsCanonicalAndPresenceAware(t *testing.T) {
