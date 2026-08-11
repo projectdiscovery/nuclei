@@ -220,7 +220,7 @@ func (r *Runner) buildHostReachability(tpls []*templates.Template, httpHelper *i
 		if strings.HasPrefix(mi.Input, "http://") || strings.HasPrefix(mi.Input, "https://") {
 			continue
 		}
-		if httpHelper != nil && httpHelper.InputsHTTP != nil {
+		if httpHelper != nil && httpHelper.InputsHTTPProbed {
 			continue // already probed (hit or miss) during initializeTemplatesHTTPInput
 		}
 		needLiveHTTPProbe = true
@@ -273,10 +273,13 @@ func (r *Runner) buildHostReachability(tpls []*templates.Template, httpHelper *i
 		if !probePorts {
 			continue
 		}
+		// Always probe the operator-specified port (may differ from template
+		// defaults). Do not spray unrelated template ports onto host:port inputs.
+		if explicitPort != "" && isNumericPort(explicitPort) {
+			jobs = append(jobs, probeJob{hostIdx: i, host: host, port: explicitPort})
+			continue
+		}
 		for _, p := range portsToProbe {
-			if explicitPort != "" && p != explicitPort {
-				continue
-			}
 			jobs = append(jobs, probeJob{hostIdx: i, host: host, port: p})
 		}
 	}
@@ -291,8 +294,11 @@ func (r *Runner) buildHostReachability(tpls []*templates.Template, httpHelper *i
 	openByHost := make([]map[string]struct{}, len(targets))
 	for i := range openByHost {
 		openByHost[i] = map[string]struct{}{}
-		if ep := hostMeta[i].explicitPort; ep != "" && isNumericPort(ep) {
-			openByHost[i][ep] = struct{}{}
+		// Only assume explicit ports are open when we are not probing them.
+		if !probePorts {
+			if ep := hostMeta[i].explicitPort; ep != "" && isNumericPort(ep) {
+				openByHost[i][ep] = struct{}{}
+			}
 		}
 	}
 
@@ -389,8 +395,13 @@ func resolveHTTPReachability(mi *contextargs.MetaInput, open map[string]struct{}
 		if probed, ok := helper.InputsHTTP.Get(mi.Input); ok && len(probed) > 0 {
 			return true
 		}
-		// Map was built for all inputs: absence means not HTTP.
-		return false
+		// Empty/skipped probe map (e.g. MultiFormat) must not force non-HTTP.
+		if !helper.InputsHTTPProbed {
+			// fall through to live probe / open ports
+		} else {
+			// Map was built for all inputs: absence means not HTTP.
+			return false
+		}
 	}
 	if client != nil {
 		return utils.ProbeURL(mi.Input, client) != ""

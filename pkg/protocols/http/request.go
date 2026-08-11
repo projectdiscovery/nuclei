@@ -28,13 +28,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
@@ -844,6 +844,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
 		// over a network round-trip for identical safe GET/HEAD requests.
 		if resp == nil && request.options.HTTPResponseCache != nil &&
+			input.CookieJar == nil &&
 			httprespcache.CacheableRequest(generatedRequest.request.Request) {
 			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
 				if cached := request.options.HTTPResponseCache.Get(key, generatedRequest.request.Request); cached != nil {
@@ -1028,6 +1029,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 		if request.options.HTTPResponseCache != nil && !fromCache &&
+			input.CookieJar == nil &&
 			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
 			httprespcache.CacheableRequest(generatedRequest.request.Request) {
 			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {

@@ -16,6 +16,10 @@ import (
 // Helper is a structure for helping with input transformation
 type Helper struct {
 	InputsHTTP *hybrid.HybridMap
+	// InputsHTTPProbed is true when InputsHTTP was filled by httpx probing.
+	// False means probing was skipped (e.g. MultiFormat) and map absence must
+	// not be treated as "not HTTP".
+	InputsHTTPProbed bool
 	// StrictProbe, when set, makes web-template input resolution skip inputs that
 	// were probed and found NOT to be HTTP services (instead of falling back to
 	// a raw URL). Lossless: a non-HTTP port has no HTTP application to find.

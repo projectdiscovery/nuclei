@@ -3,6 +3,7 @@ package runner
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network"
@@ -108,9 +109,9 @@ func TestHostReachabilityAllow(t *testing.T) {
 	ftp := &templates.Template{ID: "ftp", RequestsNetwork: []*network.Request{{Port: "21"}}}
 	redis := &templates.Template{ID: "redis", RequestsNetwork: []*network.Request{{Port: "6379"}}}
 	idx := &hostReachabilityIndex{byInput: map[string]hostReachability{
-		"h1":                 {httpOK: true, openPorts: map[string]struct{}{"80": {}}},
-		"h2":                 {httpOK: false, openPorts: map[string]struct{}{"21": {}}},
-		"127.0.0.1:19637":    {httpOK: false, openPorts: map[string]struct{}{"19637": {}}, explicitPort: "19637"},
+		"h1":              {httpOK: true, openPorts: map[string]struct{}{"80": {}}},
+		"h2":              {httpOK: false, openPorts: map[string]struct{}{"21": {}}},
+		"127.0.0.1:19637": {httpOK: false, openPorts: map[string]struct{}{"19637": {}}, explicitPort: "19637"},
 	}}
 	require.True(t, idx.Allow(web, &contextargs.MetaInput{Input: "h1"}))
 	require.False(t, idx.Allow(web, &contextargs.MetaInput{Input: "h2"}))
@@ -140,6 +141,8 @@ func TestTemplateAllowedOnHostExplicitPort(t *testing.T) {
 	require.True(t, templateAllowedOnHost(redis, false, open, "19637"))
 	require.False(t, templateAllowedOnHost(redis, false, open, "")) // bare host: need 6379
 	require.False(t, templateAllowedOnHost(web, false, open, "19637"))
+	// Closed explicit port: openPorts empty => network templates denied.
+	require.False(t, templateAllowedOnHost(redis, false, map[string]struct{}{}, "19637"))
 }
 
 func TestTemplatesForHostGroupExplicitPort(t *testing.T) {
@@ -173,6 +176,13 @@ func TestResolveHTTPReachability(t *testing.T) {
 	require.False(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "redis1"}, map[string]struct{}{}, nil, nil))
 	require.True(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "host"}, map[string]struct{}{"80": {}}, nil, nil))
 	require.True(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "host"}, map[string]struct{}{"443": {}}, nil, nil))
+}
+
+func TestResolveHTTPReachabilitySkippedProbeFailOpen(t *testing.T) {
+	// MultiFormat leaves an empty InputsHTTP map without probing — must not
+	// force non-HTTP when open ports still suggest HTTP.
+	helper := &input.Helper{InputsHTTPProbed: false}
+	require.True(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "host"}, map[string]struct{}{"80": {}}, helper, nil))
 }
 
 func TestTemplatesForHostGroupSkipsUniversal(t *testing.T) {

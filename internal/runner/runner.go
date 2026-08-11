@@ -791,6 +791,7 @@ func (r *Runner) RunEnumeration() error {
 			return errors.Wrap(err, "could not probe http input")
 		}
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
+		executorOpts.InputHelper.InputsHTTPProbed = r.inputProvider.InputType() != provider.MultiFormatInputProvider
 		// Under strict-probe, skip web templates per-input for targets that
 		// probed as non-HTTP (lossless), instead of falling back to raw URL.
 		executorOpts.InputHelper.StrictProbe = r.strictProbeEnabled()
@@ -981,7 +982,7 @@ func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplate
 		PortsToProbe:             portsToProbe,
 		ConcreteNetworkTemplates: concreteNet,
 		TechFilter:               r.options.TechFilter,
-		TechBoundTemplates:      techBound,
+		TechBoundTemplates:       techBound,
 	}
 	p := scanplan.Decide(planIn)
 
@@ -1003,24 +1004,25 @@ func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplate
 	if p.BuildReachability {
 		idx, groups, err := r.buildHostReachability(finalTemplates, httpHelper, p.ProbePorts)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not build host reachability index")
-		}
-		baseline, filtered := estimateGroupedExecutions(finalTemplates, groups, hostCount)
-		filteredReqs = filtered
-		saved := baseline - filtered
-		pct := 0.0
-		if baseline > 0 {
-			pct = 100 * float64(saved) / float64(baseline)
-		}
-		for _, g := range groups {
-			r.Logger.Info().Msgf("host-group %s: hosts=%d templates=%d", g.key, len(g.hosts), len(templatesForHostGroup(finalTemplates, g)))
-		}
-		r.Logger.Info().Msgf(
-			"host-groups: groups=%d baseline_exec=%d filtered_exec=%d saved=%d (%.1f%%) mode=single-pass",
-			len(groups), baseline, filtered, saved, pct,
-		)
-		if p.UseReachabilityFilter {
-			reachFilter = idx.Allow
+			r.Logger.Warning().Msgf("could not build host reachability index, continuing unfiltered: %s", err)
+		} else {
+			baseline, filtered := estimateGroupedExecutions(finalTemplates, groups, hostCount)
+			filteredReqs = filtered
+			saved := baseline - filtered
+			pct := 0.0
+			if baseline > 0 {
+				pct = 100 * float64(saved) / float64(baseline)
+			}
+			for _, g := range groups {
+				r.Logger.Info().Msgf("host-group %s: hosts=%d templates=%d", g.key, len(g.hosts), len(templatesForHostGroup(finalTemplates, g)))
+			}
+			r.Logger.Info().Msgf(
+				"host-groups: groups=%d baseline_exec=%d filtered_exec=%d saved=%d (%.1f%%) mode=single-pass",
+				len(groups), baseline, filtered, saved, pct,
+			)
+			if p.UseReachabilityFilter {
+				reachFilter = idx.Allow
+			}
 		}
 	}
 
@@ -1033,26 +1035,31 @@ func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplate
 			}
 			cache = opts.HTTPResponseCache
 		}
-		techIdx, err = r.buildTechReachability(finalTemplates, cache)
+		techIdx, err = r.buildTechReachability(finalTemplates, httpHelper, cache)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not build tech filter index")
+			r.Logger.Warning().Msgf("could not build tech filter index, continuing without tech-filter: %s", err)
+			if cache != nil {
+				cache.Disable()
+			}
+			techIdx = nil
+		} else {
+			base, techFiltered := estimateTechFilteredExecutions(finalTemplates, techIdx, hostCount)
+			// When stacked with reachability, take the more aggressive (lower) estimate
+			// as a lower bound for progress; actual AND filter may skip more.
+			if techFiltered < filteredReqs {
+				filteredReqs = techFiltered
+			}
+			saved := base - techFiltered
+			pct := 0.0
+			if base > 0 {
+				pct = 100 * float64(saved) / float64(base)
+			}
+			r.Logger.Info().Msgf(
+				"tech-filter: baseline_exec=%d filtered_exec=%d saved=%d (%.1f%%) bound_templates=%d",
+				base, techFiltered, saved, pct, techBound,
+			)
+			techFilterFn = techIdx.Allow
 		}
-		base, techFiltered := estimateTechFilteredExecutions(finalTemplates, techIdx, hostCount)
-		// When stacked with reachability, take the more aggressive (lower) estimate
-		// as a lower bound for progress; actual AND filter may skip more.
-		if techFiltered < filteredReqs {
-			filteredReqs = techFiltered
-		}
-		saved := base - techFiltered
-		pct := 0.0
-		if base > 0 {
-			pct = 100 * float64(saved) / float64(base)
-		}
-		r.Logger.Info().Msgf(
-			"tech-filter: baseline_exec=%d filtered_exec=%d saved=%d (%.1f%%) bound_templates=%d",
-			base, techFiltered, saved, pct, techBound,
-		)
-		techFilterFn = techIdx.Allow
 	} else if opts := engine.ExecuterOptions(); opts != nil && opts.HTTPResponseCache != nil {
 		// -tf set but planner skipped (e.g. no tech-bound templates): do not
 		// alter request paths via an idle response cache.

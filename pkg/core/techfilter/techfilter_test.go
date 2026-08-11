@@ -71,11 +71,42 @@ func TestAllowFailOpenAndMatch(t *testing.T) {
 	}
 }
 
+func TestMetaTagsAreNotTechBound(t *testing.T) {
+	cases := [][]string{
+		{"cve", "cve2021", "oast", "rce"},
+		{"takeover", "dns"},
+		{"hackerone", "packetstorm", "seclists"},
+		{"wp-plugin", "wordpress-plugin"},
+	}
+	for _, tags := range cases {
+		tpl := tagged(tags...)
+		if IsTechBound(tpl) {
+			t.Fatalf("tags %v must not be tech-bound, got %v", tags, TemplateProductTags(tpl))
+		}
+		cdnOnly := ProfileFromFingerprint(map[string][]string{"Cloudflare": {"CDN"}})
+		if !Allow(cdnOnly, tpl) {
+			t.Fatalf("unbound meta tags %v must run on any host", tags)
+		}
+	}
+}
+
+func TestCDNOnlyFingerprintFailOpen(t *testing.T) {
+	cdnOnly := ProfileFromFingerprint(map[string][]string{"Cloudflare": {"CDN"}})
+	if cdnOnly.HasSubstantiveTags() {
+		t.Fatalf("cdn-only profile should not be substantive: %#v", cdnOnly.Tags)
+	}
+	wp := tagged("wordpress")
+	if !Allow(cdnOnly, wp) {
+		t.Fatal("CDN-only fingerprint must fail-open for product templates")
+	}
+}
+
 func TestCountTechBound(t *testing.T) {
 	n := CountTechBound([]*templates.Template{
 		tagged("misconfig"),
 		tagged("wordpress"),
 		tagged("nginx", "http"),
+		tagged("cve2023", "oast"),
 	})
 	if n != 2 {
 		t.Fatalf("CountTechBound = %d", n)

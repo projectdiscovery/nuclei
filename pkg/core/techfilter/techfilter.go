@@ -4,6 +4,7 @@
 // Fail-open rules (coverage over aggressiveness):
 //   - templates with no product/macro tags always run
 //   - hosts with no fingerprints always allow every template
+//   - CDN/WAF-only fingerprints do not suppress product templates
 //   - non-HTTP templates are not filtered here (reachability owns that)
 package techfilter
 
@@ -26,6 +27,18 @@ var genericTags = map[string]struct{}{
 	"xss": {}, "ssrf": {}, "xxe": {}, "ssti": {}, "idor": {},
 	"critical": {}, "high": {}, "medium": {}, "low": {}, "info": {},
 	"unknown": {}, "generic": {}, "misc": {}, "bench": {},
+	// Meta / source / taxonomy tags that are not products.
+	"oast": {}, "takeover": {}, "deserialization": {}, "packetstorm": {},
+	"seclists": {}, "hackerone": {}, "huntr": {}, "wp-plugin": {}, "wp-theme": {},
+	"wordpress-plugin": {}, "wordpress-theme": {}, "authenticated": {},
+	"unauthenticated": {}, "bypass": {}, "injection": {}, "traversal": {},
+	"redirect": {}, "crlf": {}, "csrf": {}, "cors": {},
+}
+
+// weakFingerprintTags alone must not suppress product-bound templates
+// (e.g. cloudflare/cdn-only fingerprints).
+var weakFingerprintTags = map[string]struct{}{
+	"cdn": {}, "waf": {}, "misc": {}, "security": {}, "caching": {},
 }
 
 // productAliases normalize common nuclei / wappalyzer spellings to one token.
@@ -68,6 +81,29 @@ func (h HostProfile) HasTags() bool {
 	return len(h.Tags) > 0
 }
 
+// HasSubstantiveTags reports whether the profile has a strong category macro
+// (cms, webserver, …). CDN/WAF-only fingerprints are not substantive.
+func (h HostProfile) HasSubstantiveTags() bool {
+	for tag := range h.Tags {
+		if isStrongMacro(tag) {
+			return true
+		}
+	}
+	return false
+}
+
+func isStrongMacro(tag string) bool {
+	if _, weak := weakFingerprintTags[tag]; weak {
+		return false
+	}
+	for _, m := range categoryMacros {
+		if tag == m {
+			return true
+		}
+	}
+	return false
+}
+
 // NormalizeProduct turns a Wappalyzer / nuclei product name into a tag token.
 func NormalizeProduct(name string) string {
 	name = strings.TrimSpace(strings.ToLower(name))
@@ -103,8 +139,30 @@ func IsGenericTag(tag string) bool {
 	if tag == "" {
 		return true
 	}
-	_, ok := genericTags[tag]
-	return ok
+	if _, ok := genericTags[tag]; ok {
+		return true
+	}
+	// cve2021 / cve-2021 style year tags bind no product.
+	if strings.HasPrefix(tag, "cve") {
+		rest := strings.TrimPrefix(tag, "cve")
+		rest = strings.TrimPrefix(rest, "-")
+		if rest != "" && isAllDigits(rest) {
+			return true
+		}
+	}
+	return false
+}
+
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // ProfileFromFingerprint builds a host profile from products and their categories.
@@ -155,14 +213,15 @@ func IsTechBound(t *templates.Template) bool {
 // Allow reports whether template may run on a host with the given profile.
 // Fail-open when the host was not fingerprinted or the template is unbound.
 func Allow(profile HostProfile, t *templates.Template) bool {
-	if t == nil {
-		return true
-	}
-	bound := TemplateProductTags(t)
+	return AllowTags(profile, TemplateProductTags(t))
+}
+
+// AllowTags is Allow with precomputed product tags (avoids per-pair allocation).
+func AllowTags(profile HostProfile, bound []string) bool {
 	if len(bound) == 0 {
 		return true
 	}
-	if !profile.HasTags() {
+	if !profile.HasTags() || !profile.HasSubstantiveTags() {
 		return true
 	}
 	for _, tag := range bound {

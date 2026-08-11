@@ -9,6 +9,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core/techfilter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -29,7 +30,8 @@ const (
 
 // techReachabilityIndex filters template×target pairs by product/macro tags.
 type techReachabilityIndex struct {
-	byInput map[string]techfilter.HostProfile // keyed by normalizeInputKey
+	byInput   map[string]techfilter.HostProfile // keyed by normalizeInputKey
+	boundTags map[string][]string               // template ID -> product tags
 }
 
 func normalizeInputKey(raw string) string {
@@ -45,7 +47,22 @@ func (idx *techReachabilityIndex) Allow(t *templates.Template, mi *contextargs.M
 	if !ok {
 		return true
 	}
-	return techfilter.Allow(profile, t)
+	return techfilter.AllowTags(profile, idx.tagsFor(t))
+}
+
+func (idx *techReachabilityIndex) tagsFor(t *templates.Template) []string {
+	if t == nil {
+		return nil
+	}
+	if idx.boundTags == nil {
+		idx.boundTags = make(map[string][]string)
+	}
+	if tags, ok := idx.boundTags[t.ID]; ok {
+		return tags
+	}
+	tags := techfilter.TemplateProductTags(t)
+	idx.boundTags[t.ID] = tags
+	return tags
 }
 
 func (idx *techReachabilityIndex) lookup(raw string) (techfilter.HostProfile, bool) {
@@ -70,7 +87,7 @@ func (idx *techReachabilityIndex) AllowClusterMember(templateID string, info mod
 // buildTechReachability fingerprints HTTP(S) targets and builds a tag index.
 // When cache is non-nil, fingerprint GET responses seed it so matching template
 // GETs pay no extra RTT.
-func (r *Runner) buildTechReachability(tpls []*templates.Template, cache *httprespcache.Cache) (*techReachabilityIndex, error) {
+func (r *Runner) buildTechReachability(tpls []*templates.Template, httpHelper *input.Helper, cache *httprespcache.Cache) (*techReachabilityIndex, error) {
 	_ = tpls
 	wapp, err := wappalyzer.New()
 	if err != nil {
@@ -84,7 +101,10 @@ func (r *Runner) buildTechReachability(tpls []*templates.Template, cache *httpre
 		return nil, err
 	}
 
-	idx := &techReachabilityIndex{byInput: make(map[string]techfilter.HostProfile)}
+	idx := &techReachabilityIndex{
+		byInput:   make(map[string]techfilter.HostProfile),
+		boundTags: make(map[string][]string),
+	}
 	var mu sync.Mutex
 	sg, err := syncutil.New(syncutil.WithSize(techFilterWorkers))
 	if err != nil {
@@ -92,31 +112,48 @@ func (r *Runner) buildTechReachability(tpls []*templates.Template, cache *httpre
 	}
 
 	fingerprinted := 0
+	eligible := 0
 	r.inputProvider.Iterate(func(mi *contextargs.MetaInput) bool {
 		if mi == nil || mi.Input == "" {
 			return true
 		}
-		if !looksLikeHTTPTarget(mi.Input) {
+		fpURL := fingerprintURLForInput(mi.Input, httpHelper)
+		if fpURL == "" {
 			return true
 		}
+		eligible++
 		sg.Add()
-		go func(input *contextargs.MetaInput) {
+		go func(inputKey, url string) {
 			defer sg.Done()
-			profile := fingerprintTarget(wapp, httpclient, input.Input, cache)
-			key := normalizeInputKey(input.Input)
+			profile := fingerprintTarget(wapp, httpclient, url, cache)
+			key := normalizeInputKey(inputKey)
 			mu.Lock()
 			idx.byInput[key] = profile
 			if profile.HasTags() {
 				fingerprinted++
 			}
 			mu.Unlock()
-		}(mi)
+		}(mi.Input, fpURL)
 		return true
 	})
 	sg.Wait()
 
-	gologger.Info().Msgf("tech-filter: fingerprinted=%d/%d hosts with tags", fingerprinted, len(idx.byInput))
+	gologger.Info().Msgf("tech-filter: fingerprinted=%d/%d hosts with tags (eligible=%d)", fingerprinted, len(idx.byInput), eligible)
 	return idx, nil
+}
+
+// fingerprintURLForInput returns an absolute http(s) URL to fingerprint, or "".
+// Bare hosts reuse InputsHTTP probed URLs when available.
+func fingerprintURLForInput(raw string, helper *input.Helper) string {
+	if looksLikeHTTPTarget(raw) {
+		return raw
+	}
+	if helper != nil && helper.InputsHTTP != nil {
+		if probed, ok := helper.InputsHTTP.Get(raw); ok && len(probed) > 0 {
+			return string(probed)
+		}
+	}
+	return ""
 }
 
 func looksLikeHTTPTarget(raw string) bool {
@@ -174,8 +211,9 @@ func estimateTechFilteredExecutions(tpls []*templates.Template, idx *techReachab
 		if len(t.Workflows) > 0 {
 			continue
 		}
+		tags := idx.tagsFor(t)
 		for _, profile := range idx.byInput {
-			if techfilter.Allow(profile, t) {
+			if techfilter.AllowTags(profile, tags) {
 				filtered += reqs
 			}
 		}

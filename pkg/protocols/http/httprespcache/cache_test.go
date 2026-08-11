@@ -50,6 +50,21 @@ func TestCacheableRequest(t *testing.T) {
 	if CacheableRequest(post) {
 		t.Fatal("POST should not be cacheable")
 	}
+	auth := httptest.NewRequest(http.MethodGet, "http://x/", nil)
+	auth.Header.Set("Authorization", "Bearer t")
+	if CacheableRequest(auth) {
+		t.Fatal("Authorization must not be cacheable")
+	}
+	cookie := httptest.NewRequest(http.MethodGet, "http://x/", nil)
+	cookie.Header.Set("Cookie", "a=b")
+	if CacheableRequest(cookie) {
+		t.Fatal("Cookie must not be cacheable")
+	}
+	hostOverride := httptest.NewRequest(http.MethodGet, "http://x/", nil)
+	hostOverride.Host = "other.example"
+	if CacheableRequest(hostOverride) {
+		t.Fatal("Host override must not be cacheable")
+	}
 }
 
 func TestCacheDisabled(t *testing.T) {
@@ -66,5 +81,37 @@ func TestCacheDisabled(t *testing.T) {
 	c.Set(KeyFromRequest(req), &http.Response{StatusCode: 200, Header: http.Header{}}, []byte("y"))
 	if c.Enabled() {
 		t.Fatal("expected disabled")
+	}
+}
+
+func TestCacheEntryBudget(t *testing.T) {
+	c := New()
+	c.maxEntries = 2
+	c.maxBytes = 100
+	mk := func(path, body string) {
+		req := httptest.NewRequest(http.MethodGet, "http://example.com"+path, nil)
+		c.Set(KeyFromRequest(req), &http.Response{StatusCode: 200, Header: http.Header{}}, []byte(body))
+	}
+	mk("/a", "aa")
+	mk("/b", "bb")
+	mk("/c", "cc") // over entry budget
+	if c.Len() != 2 {
+		t.Fatalf("len=%d want 2", c.Len())
+	}
+	if c.skipped.Load() == 0 {
+		t.Fatal("expected skipped store")
+	}
+
+	c2 := New()
+	c2.maxEntries = 10
+	c2.maxBytes = 5
+	mk2 := func(path, body string) {
+		req := httptest.NewRequest(http.MethodGet, "http://example.com"+path, nil)
+		c2.Set(KeyFromRequest(req), &http.Response{StatusCode: 200, Header: http.Header{}}, []byte(body))
+	}
+	mk2("/a", "12345")
+	mk2("/b", "x") // over byte budget
+	if c2.Len() != 1 {
+		t.Fatalf("byte budget len=%d want 1", c2.Len())
 	}
 }
