@@ -47,7 +47,10 @@ The optional `tags`, `exclude-tags`, `severity`, and `templates` fields mirror
 their global CLI counterparts. An omitted field inherits the global option;
 an explicitly empty array clears that option for the target. Global
 `-include-templates` selections remain forced includes, and `-exclude-hosts`
-is applied before target execution.
+is applied before target execution. Two global exclusions always stay in
+effect: built-in ignore-file tags are not re-enabled by a target-level
+`exclude-tags`, and `-exclude-severity` cannot be bypassed by a target-level
+`severity`, even when those target fields are explicitly empty.
 
 Per-target `templates` overrides currently support local selectors only and
 cannot be combined with global remote templates. Any per-target override is

@@ -92,6 +92,26 @@ func TestTargetFilterMatchesTemplate(t *testing.T) {
 	}
 }
 
+func TestTargetFilterPrepareNormalizesTemplatePaths(t *testing.T) {
+	filter := &TargetFilter{}
+	filter.Prepare(
+		nil,
+		nil,
+		nil,
+		[]string{"/templates/zzz.yaml", "/templates/aaa.yaml", "/templates/dir/../mmm.yaml"},
+		[]string{"/forced/b.yaml", "/forced/a.yaml"},
+		true,
+	)
+
+	for _, path := range []string{"/templates/zzz.yaml", "/templates/aaa.yaml", "/templates/mmm.yaml"} {
+		require.True(t, filter.MatchesTemplate(path, nil, severity.High, false), path)
+	}
+	for _, path := range []string{"/forced/a.yaml", "/forced/b.yaml"} {
+		require.True(t, filter.MatchesTemplate(path, []string{"any"}, severity.Low, false), path)
+	}
+	require.False(t, filter.MatchesTemplate("/templates/other.yaml", nil, severity.High, false))
+}
+
 func TestTargetFilterIdentityIsCanonicalAndPresenceAware(t *testing.T) {
 	omitted := &TargetFilter{}
 	explicitEmpty := &TargetFilter{HasTags: true, Tags: []string{}}

@@ -51,8 +51,8 @@ func (f *TargetFilter) Prepare(tags, excludeTags []string, severities severity.S
 		effectiveTags:        stringSet(tags),
 		effectiveExcludeTags: stringSet(excludeTags),
 		effectiveSeverities:  make(map[severity.Severity]struct{}, len(severities)),
-		effectiveTemplates:   templatePaths,
-		effectiveIncludes:    includeTemplatePaths,
+		effectiveTemplates:   sortedCleanPaths(templatePaths),
+		effectiveIncludes:    sortedCleanPaths(includeTemplatePaths),
 		restrictTemplates:    restrictTemplates,
 	}
 	for _, value := range severities {
@@ -179,6 +179,20 @@ func sortedSeverities(values severity.Severities) []string {
 	result := make([]string, 0, len(values))
 	for _, value := range values {
 		result = append(result, value.String())
+	}
+	sort.Strings(result)
+	return result
+}
+
+// sortedCleanPaths normalizes a defensive copy so containsSortedPath can
+// binary-search regardless of caller ordering or path form.
+func sortedCleanPaths(paths []string) []string {
+	if len(paths) == 0 {
+		return nil
+	}
+	result := make([]string, 0, len(paths))
+	for _, path := range paths {
+		result = append(result, filepath.Clean(path))
 	}
 	sort.Strings(result)
 	return result
