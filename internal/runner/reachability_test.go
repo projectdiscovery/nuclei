@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	httpproto "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	jsproto "github.com/projectdiscovery/nuclei/v3/pkg/protocols/javascript"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 )
 
 func TestHostAndExplicitPort(t *testing.T) {
@@ -97,7 +97,7 @@ func TestClassifyDial(t *testing.T) {
 	if err != nil {
 		t.Skip("cannot listen:", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	d := &net.Dialer{}
 	if got := classifyDial(d.DialContext, ln.Addr().String(), reachabilityProbeTimeout); got != portOpen {
 		t.Errorf("classifyDial(open) = %v, want portOpen", got)

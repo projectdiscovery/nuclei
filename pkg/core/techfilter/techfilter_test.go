@@ -59,9 +59,6 @@ func TestAllowFailOpenAndMatch(t *testing.T) {
 	if !Allow(nginx, ngx) {
 		t.Fatal("nginx template must run on nginx host")
 	}
-	if !Allow(nginx, cms) && false {
-		// cms macro is on nginx? No — nginx profile has webserver, not cms.
-	}
 	if Allow(nginx, cms) {
 		t.Fatal("cms-bound template must not run on nginx-only host")
 	}

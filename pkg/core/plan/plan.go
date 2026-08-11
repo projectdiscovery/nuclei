@@ -50,7 +50,6 @@ func Decide(in Input) Plan {
 		ExpectedRequests: int64(max(in.Requests, 0)),
 	}
 
-	stratReason := strategyReason(in, p.Strategy)
 	reachReason := "reachability=off"
 	if in.StrictProbe {
 		reach := decideReachability(in)
@@ -62,7 +61,7 @@ func Decide(in Input) Plan {
 
 	tech := decideTechFilter(in)
 	p.UseTechFilter = tech.use
-	p.Reason = stratReason + "; " + reachReason + "; " + tech.reason
+	p.Reason = strategyReason(in, p.Strategy) + "; " + reachReason + "; " + tech.reason
 
 	if in.FilteredRequests > 0 {
 		p.ExpectedRequests = int64(in.FilteredRequests)

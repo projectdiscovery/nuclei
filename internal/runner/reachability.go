@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -23,8 +22,8 @@ type probeResult int
 
 const (
 	portClosed  probeResult = iota // connection refused / host unreachable
-	portOpen                        // connect succeeded
-	portUnknown                     // timeout / filtered — treat as possibly open
+	portOpen                       // connect succeeded
+	portUnknown                    // timeout / filtered — treat as possibly open
 )
 
 const reachabilityProbeTimeout = 750 * time.Millisecond
@@ -52,8 +51,9 @@ func (r *Runner) strictProbeEnabled() bool {
 // policy (the probe dials only through the policy-configured httpx client).
 // Conservative: an explicit http/https target, any scheme that responds, or the
 // inability to probe safely all keep web templates in place.
+// Skipped when -no-httpx is set so we do not probe or prune against user intent.
 func (r *Runner) noHTTPServiceReachable() bool {
-	if r.inputProvider == nil {
+	if r.inputProvider == nil || r.options.DisableHTTPProbe {
 		return false
 	}
 	dialers := protocolstate.GetDialersWithId(r.options.ExecutionId)
@@ -89,95 +89,6 @@ func (r *Runner) noHTTPServiceReachable() bool {
 		return true
 	})
 	return !anyHTTP
-}
-
-// pruneClosedTCPNetworkTemplates removes network(TCP) templates whose declared
-// port(s) are definitively closed on every target. Provably lossless: such a
-// template cannot connect anywhere, so it cannot produce a finding.
-//
-// Strictly gated to stay lossless:
-//   - only applies when EVERY target is a bare host (no explicit port); an
-//     explicit input port overrides the template port, so we skip those.
-//   - only single-protocol, network-only templates (a mixed template could have
-//     a reachable request in another protocol).
-//   - only TCP: any udp:// address disqualifies the template (a TCP probe says
-//     nothing about a UDP service — e.g. SNMP/mDNS).
-//   - only concrete numeric ports; empty/dynamic/service-name ports are kept.
-//   - prunes only when a port is CLOSED (refused); open or indeterminate keeps it.
-func (r *Runner) pruneClosedTCPNetworkTemplates(in []*templates.Template) []*templates.Template {
-	if r.inputProvider == nil || len(in) == 0 {
-		return in
-	}
-	// Collect hosts; bail out (keep everything) if any input carries a port.
-	var hosts []string
-	bareOnly := true
-	r.inputProvider.Iterate(func(mi *contextargs.MetaInput) bool {
-		host, port := hostAndExplicitPort(mi.Input)
-		if port != "" {
-			bareOnly = false
-			return false
-		}
-		if host != "" {
-			hosts = append(hosts, host)
-		}
-		return true
-	})
-	if !bareOnly || len(hosts) == 0 {
-		return in
-	}
-	hosts = sliceutil.Dedupe(hosts)
-
-	// Identify prunable candidates and the ports to probe.
-	candidatePorts := map[int][]string{}
-	toProbe := map[string]struct{}{}
-	for i, t := range in {
-		ports, ok := tcpNetworkOnlyPorts(t)
-		if !ok {
-			continue
-		}
-		candidatePorts[i] = ports
-		for _, p := range ports {
-			toProbe[p] = struct{}{}
-		}
-	}
-	if len(candidatePorts) == 0 {
-		return in
-	}
-
-	// A port is "reachable" if open or indeterminate on ANY host.
-	reachable := map[string]bool{}
-	for p := range toProbe {
-		for _, h := range hosts {
-			res := r.probe(h, p)
-			if res == portOpen || res == portUnknown {
-				reachable[p] = true
-				break
-			}
-		}
-	}
-
-	out := in[:0]
-	pruned := 0
-	for i, t := range in {
-		if ports, ok := candidatePorts[i]; ok {
-			anyReachable := false
-			for _, p := range ports {
-				if reachable[p] {
-					anyReachable = true
-					break
-				}
-			}
-			if !anyReachable {
-				pruned++
-				continue
-			}
-		}
-		out = append(out, t)
-	}
-	if pruned > 0 {
-		gologger.Info().Msgf("reachability prune: excluded %d network(tcp) template[s] targeting only closed ports (lossless)", pruned)
-	}
-	return out
 }
 
 // tcpNetworkOnlyPorts returns the concrete numeric TCP ports of a single-protocol
@@ -286,4 +197,3 @@ func classifyDial(dial dialFunc, addr string, timeout time.Duration) probeResult
 	}
 	return portUnknown
 }
-
