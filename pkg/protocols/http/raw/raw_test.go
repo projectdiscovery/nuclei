@@ -297,6 +297,13 @@ Connection: close`, parseURL(t, "http://httpbin.org/bar"), true, true)
 	require.Contains(t, string(request.UnsafeRawBytes), "GET http://127.0.0.1/foo HTTP/1.1", "unsafe request line must preserve the full URL")
 }
 
+func TestUnsafeWithFullURLWithoutPath(t *testing.T) {
+	const requestLine = "GET http://127.0.0.1:22 HTTP/1.1"
+	request, err := Parse(requestLine+"\nHost: {{Hostname}}", parseURL(t, "http://httpbin.org"), true, false)
+	require.NoError(t, err, "could not parse unsafe request with a pathless full URL")
+	require.Contains(t, string(request.UnsafeRawBytes), requestLine, "unsafe request line must preserve the pathless full URL")
+}
+
 func TestUnsafeWithFullURLIgnoresInputPath(t *testing.T) {
 	// The absolute request target supplies the path in unsafe mode.
 	request, err := Parse(`GET http://127.0.0.1/foo HTTP/1.1
