@@ -59,8 +59,13 @@ type Executer interface {
 
 // TemplateVerification holds cached verification information for a template.
 type TemplateVerification struct {
-	Verified bool
-	Verifier string
+	Verified            bool
+	Verifier            string
+	VerifierFingerprint [32]byte
+
+	// ContentDigest binds the cached result to the verified template and
+	// imported-file contents.
+	ContentDigest [32]byte
 }
 
 // ExecutorOptions contains the configuration options for executer clients
@@ -73,9 +78,8 @@ type ExecutorOptions struct {
 	TemplateInfo model.Info
 	// TemplateVerifier is the verifier for the template
 	TemplateVerifier string
-	// Verified reports whether the template's signature was successfully
-	// verified by a trusted verifier. It is checked by the code protocol at
-	// execution time.
+	// Verified reports whether a trusted verifier verified the template's
+	// signature. Code and JavaScript protocols check it at execution time.
 	Verified bool
 	// TemplateVerificationCallback returns cached verification info for a template path.
 	// If it returns nil, verification should be computed normally.
