@@ -20,7 +20,7 @@ const (
 
 	// IndexVersion is the schema version for cache invalidation on breaking
 	// changes.
-	IndexVersion = 1
+	IndexVersion = 2
 
 	// DefaultMaxSize is the default maximum number of templates to cache.
 	DefaultMaxSize = 50000
@@ -72,6 +72,8 @@ func NewIndex(cacheDir string) (*Index, error) {
 			weight += len(value.Severity)
 			weight += len(value.ProtocolType)
 			weight += len(value.TemplateVerifier)
+			weight += len(value.VerifierFingerprint)
+			weight += len(value.ContentDigest)
 
 			for _, author := range value.Authors {
 				weight += len(author)
