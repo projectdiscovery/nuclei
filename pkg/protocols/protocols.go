@@ -153,6 +153,10 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
+	// ExpectedRequestsOverride, when > 0, is used by Progress.Init instead of the
+	// full templates×hosts product. Set by the scan planner when a reachability
+	// filter will skip impossible pairs so ETA matches filtered work.
+	ExpectedRequestsOverride int64
 }
 
 // todo: centralizing components is not feasible with current clogged architecture

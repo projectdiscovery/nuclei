@@ -67,12 +67,17 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 		// workflow requests are not counted as they can be conditional
 		// templateList count is user requested templates count (before clustering)
 		// totalReqAfterClustering is total requests count after clustering
-		e.executerOpts.Progress.Init(target.Count(), len(templatesList), int64(totalReqAfterClustering))
+		// ExpectedRequestsOverride (scan planner) replaces the total when a
+		// reachability filter will skip impossible template×target pairs.
+		reqTotal := int64(totalReqAfterClustering)
+		if e.executerOpts.ExpectedRequestsOverride > 0 {
+			reqTotal = e.executerOpts.ExpectedRequestsOverride
+		}
+		e.executerOpts.Progress.Init(target.Count(), len(templatesList), reqTotal)
 	}
 
 	if stringsutil.EqualFoldAny(e.options.ScanStrategy, scanstrategy.Auto.String(), "") {
-		// TODO: this is only a placeholder, auto scan strategy should choose scan strategy
-		// based on no of hosts , templates , stream and other optimization parameters
+		// Last-resort fallback: runner scan planner normally resolves auto.
 		e.options.ScanStrategy = scanstrategy.TemplateSpray.String()
 	}
 

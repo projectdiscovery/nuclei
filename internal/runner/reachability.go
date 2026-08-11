@@ -27,7 +27,7 @@ const (
 	portUnknown                     // timeout / filtered — treat as possibly open
 )
 
-const reachabilityProbeTimeout = 2 * time.Second
+const reachabilityProbeTimeout = 300 * time.Millisecond
 
 // strictProbeEnabled reports whether the lossless reachability prune
 // applies to this run. It is limited to standard target inputs; request-shaped

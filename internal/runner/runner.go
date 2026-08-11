@@ -41,6 +41,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	scanplan "github.com/projectdiscovery/nuclei/v3/pkg/core/plan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
@@ -66,11 +67,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	ptrutil "github.com/projectdiscovery/utils/ptr"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -944,17 +947,76 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		return nil, errors.New("no templates provided for scan")
 	}
 
-	// Lossless reachability prune (network layer): drop network(tcp) templates
-	// whose declared ports are definitively closed on every target.
-	if r.strictProbeEnabled() {
-		finalTemplates = r.pruneClosedTCPNetworkTemplates(finalTemplates)
-	}
-
-	// pass input provider to engine
-	// TODO: this should be not necessary after r.hmapInputProvider is removed + refactored
 	if r.inputProvider == nil {
 		return nil, errors.New("no input provider found")
 	}
+
+	return r.executeTemplatesWithScanPlan(engine, finalTemplates)
+}
+
+// executeTemplatesWithScanPlan chooses spray strategy and optionally attaches a
+// reachability filter, then runs a single Execute pass. Wall clock must match or
+// beat baseline spray; probing is skipped when its cost would dominate.
+func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplates []*templates.Template) (*atomic.Bool, error) {
+	hostCount := int(r.inputProvider.Count())
+	baselineReqs := estimateTemplateRequests(finalTemplates) * hostCount
+	concreteNet, portsToProbe := countReachabilityStats(finalTemplates)
+
+	planIn := scanplan.Input{
+		Hosts:                    hostCount,
+		Templates:                len(finalTemplates),
+		Requests:                 baselineReqs,
+		BulkSize:                 r.options.BulkSize,
+		Stream:                   r.options.Stream,
+		StrictProbe:              r.strictProbeEnabled(),
+		PortsToProbe:             portsToProbe,
+		ConcreteNetworkTemplates: concreteNet,
+	}
+	p := scanplan.Decide(planIn)
+
+	// Resolve -ss auto before Execute so the engine placeholder is unused.
+	if stringsutil.EqualFoldAny(r.options.ScanStrategy, scanstrategy.Auto.String(), "") {
+		r.options.ScanStrategy = p.Strategy
+	}
+
+	var httpHelper *input.Helper
+	if opts := engine.ExecuterOptions(); opts != nil {
+		httpHelper = opts.InputHelper
+	}
+
+	if p.BuildReachability {
+		idx, groups, err := r.buildHostReachability(finalTemplates, httpHelper, p.ProbePorts)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not build host reachability index")
+		}
+		baseline, filtered := estimateGroupedExecutions(finalTemplates, groups, hostCount)
+		p.ApplyFiltered(filtered)
+		saved := baseline - filtered
+		pct := 0.0
+		if baseline > 0 {
+			pct = 100 * float64(saved) / float64(baseline)
+		}
+		for _, g := range groups {
+			r.Logger.Info().Msgf("host-group %s: hosts=%d templates=%d", g.key, len(g.hosts), len(templatesForHostGroup(finalTemplates, g)))
+		}
+		r.Logger.Info().Msgf(
+			"host-groups: groups=%d baseline_exec=%d filtered_exec=%d saved=%d (%.1f%%) mode=single-pass",
+			len(groups), baseline, filtered, saved, pct,
+		)
+		if p.UseReachabilityFilter {
+			engine.TemplateTargetFilter = idx.Allow
+			defer func() { engine.TemplateTargetFilter = nil }()
+		}
+	}
+
+	if opts := engine.ExecuterOptions(); opts != nil && p.ExpectedRequests > 0 && p.UseReachabilityFilter {
+		opts.ExpectedRequestsOverride = p.ExpectedRequests
+		defer func() { opts.ExpectedRequestsOverride = 0 }()
+	}
+
+	r.Logger.Info().Msgf("scan-plan: strategy=%s filter=%v expected_req=%d reason=%s",
+		r.options.ScanStrategy, p.UseReachabilityFilter, p.ExpectedRequests, p.Reason)
+
 	results := engine.ExecuteScanWithOpts(context.Background(), finalTemplates, r.inputProvider, r.options.DisableClustering)
 	return results, nil
 }
