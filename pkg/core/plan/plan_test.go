@@ -106,15 +106,84 @@ func TestDecideReachabilityFull(t *testing.T) {
 	require.Contains(t, p.Reason, "reachability=full")
 }
 
-func TestDecideApplyFiltered(t *testing.T) {
+func TestDecideReachabilityEmptyInput(t *testing.T) {
+	p := Decide(Input{StrictProbe: true, Hosts: 0, Templates: 10})
+	require.False(t, p.BuildReachability)
+	require.Contains(t, p.Reason, "reachability=skipped-empty")
+}
+
+func TestDecideReachabilityConcreteZeroUsesHTTPOnly(t *testing.T) {
 	p := Decide(Input{
-		Hosts:                    5,
-		Templates:                60,
-		Requests:                 300,
+		Hosts:                    20,
+		Templates:                100,
+		Requests:                 2000,
 		StrictProbe:              true,
-		FilteredRequests:         105,
-		PortsToProbe:             3,
-		ConcreteNetworkTemplates: 30,
+		PortsToProbe:             5,
+		ConcreteNetworkTemplates: 0, // web-only set
 	})
-	require.Equal(t, int64(105), p.ExpectedRequests)
+	require.True(t, p.BuildReachability)
+	require.False(t, p.ProbePorts)
+	require.True(t, p.UseReachabilityFilter)
+}
+
+func TestDecideHostSprayRequiresLargeRequestBudget(t *testing.T) {
+	// hosts small + many templates but requests below threshold → template-spray
+	p := Decide(Input{
+		Hosts:     5,
+		Templates: 200,
+		Requests:  4999,
+		BulkSize:  25,
+	})
+	require.Equal(t, scanstrategy.TemplateSpray.String(), p.Strategy)
+}
+
+func TestDecideApplyFilteredIgnoredWhenZero(t *testing.T) {
+	p := Decide(Input{
+		Hosts:            5,
+		Templates:        10,
+		Requests:         50,
+		StrictProbe:      false,
+		FilteredRequests: 0,
+	})
+	require.Equal(t, int64(50), p.ExpectedRequests)
+	p.ApplyFiltered(0)
+	require.Equal(t, int64(50), p.ExpectedRequests)
+	p.ApplyFiltered(12)
+	require.Equal(t, int64(12), p.ExpectedRequests)
+}
+
+func TestDecideTechFilterOffByDefault(t *testing.T) {
+	p := Decide(Input{
+		Hosts:               5,
+		Templates:           100,
+		Requests:            500,
+		TechFilter:          false,
+		TechBoundTemplates: 40,
+	})
+	require.False(t, p.UseTechFilter)
+	require.Contains(t, p.Reason, "tech-filter=off")
+}
+
+func TestDecideTechFilterSkippedWhenNoBound(t *testing.T) {
+	p := Decide(Input{
+		Hosts:               5,
+		Templates:           100,
+		Requests:            500,
+		TechFilter:          true,
+		TechBoundTemplates: 0,
+	})
+	require.False(t, p.UseTechFilter)
+	require.Contains(t, p.Reason, "tech-filter=skipped-no-bound-templates")
+}
+
+func TestDecideTechFilterOn(t *testing.T) {
+	p := Decide(Input{
+		Hosts:               5,
+		Templates:           100,
+		Requests:            500,
+		TechFilter:          true,
+		TechBoundTemplates: 40,
+	})
+	require.True(t, p.UseTechFilter)
+	require.Contains(t, p.Reason, "tech-filter=on")
 }

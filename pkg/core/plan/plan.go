@@ -22,6 +22,11 @@ type Input struct {
 	FilteredRequests int
 	// GroupCount is distinct host signatures after probing (0 = unknown).
 	GroupCount int
+
+	// TechFilter enables product/macro tag filtering after cheap HTTP fingerprinting.
+	TechFilter bool
+	// TechBoundTemplates is how many templates carry product/macro tags.
+	TechBoundTemplates int
 }
 
 // Plan is the execution plan for a single scan pass.
@@ -30,6 +35,7 @@ type Plan struct {
 	BuildReachability     bool
 	ProbePorts            bool
 	UseReachabilityFilter bool
+	UseTechFilter         bool
 	ExpectedRequests      int64
 	Reason                string
 }
@@ -45,16 +51,18 @@ func Decide(in Input) Plan {
 	}
 
 	stratReason := strategyReason(in, p.Strategy)
-	if !in.StrictProbe {
-		p.Reason = stratReason + "; reachability=off"
-		return p
+	reachReason := "reachability=off"
+	if in.StrictProbe {
+		reach := decideReachability(in)
+		p.BuildReachability = reach.build
+		p.ProbePorts = reach.probePorts
+		p.UseReachabilityFilter = reach.useFilter
+		reachReason = reach.reason
 	}
 
-	reach := decideReachability(in)
-	p.BuildReachability = reach.build
-	p.ProbePorts = reach.probePorts
-	p.UseReachabilityFilter = reach.useFilter
-	p.Reason = stratReason + "; " + reach.reason
+	tech := decideTechFilter(in)
+	p.UseTechFilter = tech.use
+	p.Reason = stratReason + "; " + reachReason + "; " + tech.reason
 
 	if in.FilteredRequests > 0 {
 		p.ExpectedRequests = int64(in.FilteredRequests)
@@ -130,6 +138,24 @@ func decideReachability(in Input) reachabilityDecision {
 		useFilter:  true,
 		reason:     fmt.Sprintf("reachability=full probe_cost=%d", probeCost),
 	}
+}
+
+type techFilterDecision struct {
+	use    bool
+	reason string
+}
+
+func decideTechFilter(in Input) techFilterDecision {
+	// Opt-in only: never enable from strategy/reachability alone.
+	if !in.TechFilter {
+		return techFilterDecision{reason: "tech-filter=off"}
+	}
+	// Skip fingerprinting when nothing is tech-bound — otherwise we add
+	// probe latency with zero savings (wall-clock regression).
+	if in.TechBoundTemplates <= 0 {
+		return techFilterDecision{reason: "tech-filter=skipped-no-bound-templates"}
+	}
+	return techFilterDecision{use: true, reason: fmt.Sprintf("tech-filter=on bound=%d", in.TechBoundTemplates)}
 }
 
 // ApplyFiltered updates ExpectedRequests once post-probe estimates are known.

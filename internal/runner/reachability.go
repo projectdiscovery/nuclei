@@ -27,7 +27,7 @@ const (
 	portUnknown                     // timeout / filtered — treat as possibly open
 )
 
-const reachabilityProbeTimeout = 300 * time.Millisecond
+const reachabilityProbeTimeout = 750 * time.Millisecond
 
 // strictProbeEnabled reports whether the lossless reachability prune
 // applies to this run. It is limited to standard target inputs; request-shaped
@@ -277,6 +277,13 @@ func classifyDial(dial dialFunc, addr string, timeout time.Duration) probeResult
 	if ne, ok := err.(net.Error); ok && ne.Timeout() {
 		return portUnknown
 	}
-	return portClosed
+	msg := strings.ToLower(err.Error())
+	// Only definitive negatives prune. DNS blips / temporary dialer errors must
+	// stay unknown so mixed-fleet probing under load remains lossless.
+	if strings.Contains(msg, "refused") || strings.Contains(msg, "unreachable") ||
+		strings.Contains(msg, "no route to host") || strings.Contains(msg, "network is unreachable") {
+		return portClosed
+	}
+	return portUnknown
 }
 

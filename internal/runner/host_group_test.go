@@ -106,15 +106,94 @@ func TestEstimateGroupedVsBaseline(t *testing.T) {
 func TestHostReachabilityAllow(t *testing.T) {
 	web := &templates.Template{ID: "web", RequestsHTTP: []*http.Request{{}}}
 	ftp := &templates.Template{ID: "ftp", RequestsNetwork: []*network.Request{{Port: "21"}}}
+	redis := &templates.Template{ID: "redis", RequestsNetwork: []*network.Request{{Port: "6379"}}}
 	idx := &hostReachabilityIndex{byInput: map[string]hostReachability{
-		"h1": {httpOK: true, openPorts: map[string]struct{}{"80": {}}},
-		"h2": {httpOK: false, openPorts: map[string]struct{}{"21": {}}},
+		"h1":                 {httpOK: true, openPorts: map[string]struct{}{"80": {}}},
+		"h2":                 {httpOK: false, openPorts: map[string]struct{}{"21": {}}},
+		"127.0.0.1:19637":    {httpOK: false, openPorts: map[string]struct{}{"19637": {}}, explicitPort: "19637"},
 	}}
 	require.True(t, idx.Allow(web, &contextargs.MetaInput{Input: "h1"}))
 	require.False(t, idx.Allow(web, &contextargs.MetaInput{Input: "h2"}))
 	require.False(t, idx.Allow(ftp, &contextargs.MetaInput{Input: "h1"}))
 	require.True(t, idx.Allow(ftp, &contextargs.MetaInput{Input: "h2"}))
 	require.True(t, idx.Allow(web, &contextargs.MetaInput{Input: "unknown"})) // lossless
+	// Explicit host:port must allow network templates even when template default
+	// port (6379) differs from the operator-specified port (19637).
+	require.True(t, idx.Allow(redis, &contextargs.MetaInput{Input: "127.0.0.1:19637"}))
+	require.False(t, idx.Allow(web, &contextargs.MetaInput{Input: "127.0.0.1:19637"}))
+}
+
+func TestTemplateAllowedOnHostUniversal(t *testing.T) {
+	dnsish := &templates.Template{ID: "dns", RequestsDNS: nil} // no concrete network ports
+	// force universal via empty network dynamic port
+	dyn := &templates.Template{ID: "dyn", RequestsNetwork: []*network.Request{{Port: ""}}}
+	require.True(t, templateAllowedOnHost(dyn, false, map[string]struct{}{}, ""))
+	_ = dnsish
+	self := &templates.Template{ID: "self", SelfContained: true}
+	require.True(t, templateAllowedOnHost(self, false, nil, ""))
+}
+
+func TestTemplateAllowedOnHostExplicitPort(t *testing.T) {
+	redis := &templates.Template{ID: "redis", RequestsNetwork: []*network.Request{{Port: "6379"}}}
+	web := &templates.Template{ID: "web", RequestsHTTP: []*http.Request{{}}}
+	open := map[string]struct{}{"19637": {}}
+	require.True(t, templateAllowedOnHost(redis, false, open, "19637"))
+	require.False(t, templateAllowedOnHost(redis, false, open, "")) // bare host: need 6379
+	require.False(t, templateAllowedOnHost(web, false, open, "19637"))
+}
+
+func TestTemplatesForHostGroupExplicitPort(t *testing.T) {
+	redis := &templates.Template{ID: "redis", RequestsNetwork: []*network.Request{{Port: "6379"}}}
+	ftp := &templates.Template{ID: "ftp", RequestsNetwork: []*network.Request{{Port: "21"}}}
+	web := &templates.Template{ID: "web", RequestsHTTP: []*http.Request{{}}}
+	g := hostGroup{
+		httpOK:       false,
+		openPorts:    map[string]struct{}{"19637": {}},
+		explicitPort: "19637",
+	}
+	got := templatesForHostGroup([]*templates.Template{redis, ftp, web}, g)
+	require.Len(t, got, 2)
+	ids := map[string]bool{got[0].ID: true, got[1].ID: true}
+	require.True(t, ids["redis"] && ids["ftp"])
+}
+
+func TestCountReachabilityStats(t *testing.T) {
+	web := &templates.Template{ID: "web", RequestsHTTP: []*http.Request{{}}}
+	redis := &templates.Template{ID: "redis", RequestsNetwork: []*network.Request{{Port: "6379"}}}
+	pg := &templates.Template{ID: "pg", RequestsNetwork: []*network.Request{{Port: "5432,5432"}}}
+	dyn := &templates.Template{ID: "dyn", RequestsNetwork: []*network.Request{{Port: ""}}}
+	concrete, ports := countReachabilityStats([]*templates.Template{web, redis, pg, dyn})
+	require.Equal(t, 2, concrete)
+	require.Equal(t, 2, ports) // 6379 + 5432
+}
+
+func TestResolveHTTPReachability(t *testing.T) {
+	require.True(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "http://web"}, nil, nil, nil))
+	require.True(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "https://web"}, nil, nil, nil))
+	require.False(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "redis1"}, map[string]struct{}{}, nil, nil))
+	require.True(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "host"}, map[string]struct{}{"80": {}}, nil, nil))
+	require.True(t, resolveHTTPReachability(&contextargs.MetaInput{Input: "host"}, map[string]struct{}{"443": {}}, nil, nil))
+}
+
+func TestTemplatesForHostGroupSkipsUniversal(t *testing.T) {
+	web := &templates.Template{ID: "web", RequestsHTTP: []*http.Request{{}}}
+	univ := &templates.Template{ID: "univ", RequestsNetwork: []*network.Request{{Port: ""}}}
+	g := hostGroup{httpOK: true, openPorts: map[string]struct{}{"80": {}}}
+	got := templatesForHostGroup([]*templates.Template{web, univ}, g)
+	require.Len(t, got, 1)
+	require.Equal(t, "web", got[0].ID)
+}
+
+func TestEstimateGroupedIncludesUniversalsOnce(t *testing.T) {
+	web := &templates.Template{ID: "web", RequestsHTTP: []*http.Request{{}}, TotalRequests: 1}
+	univ := &templates.Template{ID: "univ", RequestsNetwork: []*network.Request{{Port: ""}}, TotalRequests: 1}
+	groups := []hostGroup{
+		{httpOK: true, openPorts: map[string]struct{}{"80": {}}, hosts: metaInputs("h1")},
+	}
+	baseline, filtered := estimateGroupedExecutions([]*templates.Template{web, univ}, groups, 1)
+	require.Equal(t, 2, baseline)
+	// universal counted once for all hosts + web for http group
+	require.Equal(t, 2, filtered)
 }
 
 func metaInputs(hosts ...string) []*contextargs.MetaInput {

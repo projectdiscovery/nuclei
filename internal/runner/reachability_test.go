@@ -3,6 +3,7 @@ package runner
 import (
 	"net"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -104,5 +105,23 @@ func TestClassifyDial(t *testing.T) {
 	// an unused low port on loopback should refuse quickly
 	if got := classifyDial(d.DialContext, "127.0.0.1:1", reachabilityProbeTimeout); got != portClosed {
 		t.Errorf("classifyDial(closed) = %v, want portClosed", got)
+	}
+}
+
+func TestClassifyDialDNSFailureIsUnknown(t *testing.T) {
+	d := &net.Dialer{}
+	// NXDOMAIN / resolution failure must not prune (lossless under load).
+	got := classifyDial(d.DialContext, "no-such-host.invalid:6379", reachabilityProbeTimeout)
+	if got != portUnknown {
+		t.Fatalf("classifyDial(dns-fail) = %v, want portUnknown", got)
+	}
+}
+
+func TestClassifyDialTimeoutIsUnknown(t *testing.T) {
+	d := &net.Dialer{}
+	// Blackhole-ish: TEST-NET-1 drop. Short timeout should classify unknown.
+	got := classifyDial(d.DialContext, "192.0.2.1:65535", 50*time.Millisecond)
+	if got != portUnknown {
+		t.Fatalf("classifyDial(timeout) = %v, want portUnknown", got)
 	}
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
-	sliceutil "github.com/projectdiscovery/utils/slice"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
@@ -23,16 +22,18 @@ const hostGroupProbeWorkers = 100
 // Used for savings estimates / logging; execution itself is a single spray pass
 // with a per-(template,target) filter derived from the same probe data.
 type hostGroup struct {
-	key       string
-	hosts     []*contextargs.MetaInput
-	openPorts map[string]struct{}
-	httpOK    bool
+	key          string
+	hosts        []*contextargs.MetaInput
+	openPorts    map[string]struct{}
+	httpOK       bool
+	explicitPort string // operator host:port; network dials this, not template defaults
 }
 
 type hostProbeResult struct {
-	input     *contextargs.MetaInput
-	openPorts []string
-	httpOK    bool
+	input        *contextargs.MetaInput
+	openPorts    []string
+	httpOK       bool
+	explicitPort string
 }
 
 // hostReachabilityIndex maps each input to its probed reachability so the
@@ -44,6 +45,10 @@ type hostReachabilityIndex struct {
 type hostReachability struct {
 	openPorts map[string]struct{}
 	httpOK    bool
+	// explicitPort is the operator-specified port from host:port input (if any).
+	// Network execution keeps this port (UseNetworkPort does not replace bare
+	// host:port), so reachability must not require the template's default port.
+	explicitPort string
 }
 
 // Allow reports whether template may produce a finding on input (lossless).
@@ -55,10 +60,10 @@ func (idx *hostReachabilityIndex) Allow(t *templates.Template, mi *contextargs.M
 	if !ok {
 		return true
 	}
-	return templateAllowedOnHost(t, h.httpOK, h.openPorts)
+	return templateAllowedOnHost(t, h.httpOK, h.openPorts, h.explicitPort)
 }
 
-func templateAllowedOnHost(t *templates.Template, httpOK bool, openPorts map[string]struct{}) bool {
+func templateAllowedOnHost(t *templates.Template, httpOK bool, openPorts map[string]struct{}, explicitPort string) bool {
 	if t.SelfContained || len(t.Workflows) > 0 || isUniversalTemplate(t) {
 		return true
 	}
@@ -68,6 +73,15 @@ func templateAllowedOnHost(t *templates.Template, httpOK bool, openPorts map[str
 	ports, ok := tcpNetworkOnlyPorts(t)
 	if !ok {
 		return true
+	}
+	// host:port inputs: dial the operator-chosen port at execution time, not the
+	// template default (see contextargs.UseNetworkPort). If that port is
+	// reachable, network templates may run against it.
+	if explicitPort != "" {
+		if _, open := openPorts[explicitPort]; open {
+			return true
+		}
+		return false
 	}
 	for _, p := range ports {
 		if _, open := openPorts[p]; open {
@@ -132,7 +146,7 @@ func templatesForHostGroup(all []*templates.Template, g hostGroup) []*templates.
 		if t.SelfContained || len(t.Workflows) > 0 || isUniversalTemplate(t) {
 			continue
 		}
-		if templateAllowedOnHost(t, g.httpOK, g.openPorts) {
+		if templateAllowedOnHost(t, g.httpOK, g.openPorts, g.explicitPort) {
 			out = append(out, t)
 		}
 	}
@@ -170,14 +184,24 @@ func (r *Runner) buildHostReachability(tpls []*templates.Template, httpHelper *i
 
 	var portsToProbe []string
 	if probePorts {
-		portsMap := portsPopularityFromTemplates(tpls)
-		portsToProbe = make([]string, 0, len(portsMap))
-		for p := range portsMap {
-			if isNumericPort(p) {
+		// Only concrete network-template ports. Do not pull 80/443 from HTTP
+		// templates via portsPopularityFromTemplates — httpOK already comes from
+		// scheme / InputsHTTP, and spraying web ports across every host inflates
+		// probe cost and flakes under parallel dial load.
+		seen := map[string]struct{}{}
+		for _, t := range tpls {
+			ps, ok := tcpNetworkOnlyPorts(t)
+			if !ok {
+				continue
+			}
+			for _, p := range ps {
+				if _, dup := seen[p]; dup {
+					continue
+				}
+				seen[p] = struct{}{}
 				portsToProbe = append(portsToProbe, p)
 			}
 		}
-		portsToProbe = sliceutil.Dedupe(portsToProbe)
 		sort.Strings(portsToProbe)
 	}
 
@@ -302,9 +326,10 @@ func (r *Runner) buildHostReachability(tpls []*templates.Template, httpHelper *i
 		}
 		sort.Strings(ports)
 		results[i] = hostProbeResult{
-			input:     meta.mi,
-			openPorts: ports,
-			httpOK:    resolveHTTPReachability(meta.mi, open, httpHelper, httpClient),
+			input:        meta.mi,
+			openPorts:    ports,
+			httpOK:       resolveHTTPReachability(meta.mi, open, httpHelper, httpClient),
+			explicitPort: meta.explicitPort,
 		}
 	}
 
@@ -320,17 +345,24 @@ func (r *Runner) buildHostReachability(tpls []*templates.Template, httpHelper *i
 			portsSet[p] = struct{}{}
 		}
 		idx.byInput[res.input.Input] = hostReachability{
-			openPorts: portsSet,
-			httpOK:    res.httpOK,
+			openPorts:    portsSet,
+			httpOK:       res.httpOK,
+			explicitPort: res.explicitPort,
 		}
 
 		key := hostGroupKey(res.openPorts, res.httpOK)
+		if res.explicitPort != "" {
+			// Keep explicit host:port inputs in their own estimate bucket so
+			// network-template fan-out is not attributed to bare hosts.
+			key = key + "|ep:" + res.explicitPort
+		}
 		g, ok := grouped[key]
 		if !ok {
 			g = &hostGroup{
-				key:       key,
-				openPorts: portsSet,
-				httpOK:    res.httpOK,
+				key:          key,
+				openPorts:    portsSet,
+				httpOK:       res.httpOK,
+				explicitPort: res.explicitPort,
 			}
 			grouped[key] = g
 			order = append(order, key)

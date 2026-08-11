@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
@@ -840,6 +841,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				fromCache = false
 			}
 		}
+		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
+		// over a network round-trip for identical safe GET/HEAD requests.
+		if resp == nil && request.options.HTTPResponseCache != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) {
+			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+				if cached := request.options.HTTPResponseCache.Get(key, generatedRequest.request.Request); cached != nil {
+					resp = cached
+					fromCache = true
+					err = nil
+				}
+			}
+		}
 		if resp == nil {
 			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
 				return errSignature
@@ -1012,6 +1025,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil && !fromCache {
 			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
+			}
+		}
+		if request.options.HTTPResponseCache != nil && !fromCache &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) {
+			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+				request.options.HTTPResponseCache.Set(key, resp, respChain.BodyBytes())
 			}
 		}
 	})
