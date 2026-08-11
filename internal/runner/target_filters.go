@@ -79,7 +79,7 @@ func (r *Runner) prepareTargetFilters(loaderConfig *loader.Config) error {
 
 	var globalTemplatePaths []string
 	if hasTemplateOverrides && len(r.options.Templates) > 0 {
-		resolved, err := resolveTargetTemplatePaths(r.catalog, r.options.Templates, 0)
+		resolved, err := resolveTargetTemplatePaths(r.catalog, r.options.Templates, 0, false)
 		if err != nil {
 			return fmt.Errorf("could not resolve global templates for JSONL target inheritance: %w", err)
 		}
@@ -91,7 +91,7 @@ func (r *Runner) prepareTargetFilters(loaderConfig *loader.Config) error {
 
 	var globalIncludeTemplatePaths []string
 	if len(r.options.IncludeTemplates) > 0 {
-		resolved, err := resolveTargetTemplatePaths(r.catalog, r.options.IncludeTemplates, 0)
+		resolved, err := resolveTargetTemplatePaths(r.catalog, r.options.IncludeTemplates, 0, false)
 		if err != nil {
 			return fmt.Errorf("could not resolve globally included templates for JSONL target inheritance: %w", err)
 		}
@@ -109,7 +109,7 @@ func (r *Runner) prepareTargetFilters(loaderConfig *loader.Config) error {
 			}
 		}
 		if loadDefaultTemplates {
-			resolved, err := resolveTargetTemplatePaths(r.catalog, []string{config.DefaultConfig.TemplatesDirectory}, 0)
+			resolved, err := resolveTargetTemplatePaths(r.catalog, []string{config.DefaultConfig.TemplatesDirectory}, 0, false)
 			if err != nil {
 				return fmt.Errorf("could not resolve default templates for JSONL target inheritance: %w", err)
 			}
@@ -153,7 +153,7 @@ func (r *Runner) prepareTargetFilters(loaderConfig *loader.Config) error {
 				resolved, ok := resolvedTemplateOverrides[cacheKey]
 				if !ok {
 					var err error
-					resolved, err = resolveTargetTemplatePaths(r.catalog, filter.Templates, filter.SourceLine)
+					resolved, err = resolveTargetTemplatePaths(r.catalog, filter.Templates, filter.SourceLine, true)
 					if err != nil {
 						return err
 					}
@@ -193,7 +193,12 @@ func (r *Runner) prepareTargetFilters(loaderConfig *loader.Config) error {
 	return nil
 }
 
-func resolveTargetTemplatePaths(templateCatalog catalog.Catalog, selectors []string, sourceLine int) ([]string, error) {
+// resolveTargetTemplatePaths resolves template selectors to on-disk paths.
+// When enforceLocalContainment is set (per-target JSONL selectors), a selector
+// may not escape the templates tree via an absolute path or parent-directory
+// traversal. Global -t/-it selectors are trusted CLI input and are resolved
+// without that restriction so their documented arbitrary-path behavior is kept.
+func resolveTargetTemplatePaths(templateCatalog catalog.Catalog, selectors []string, sourceLine int, enforceLocalContainment bool) ([]string, error) {
 	for _, selector := range selectors {
 		parsed, err := url.Parse(selector)
 		if err == nil && parsed.IsAbs() && (parsed.Scheme == "http" || parsed.Scheme == "https") {
@@ -202,6 +207,13 @@ func resolveTargetTemplatePaths(templateCatalog catalog.Catalog, selectors []str
 				location = fmt.Sprintf("jsonl line %d", sourceLine)
 			}
 			return nil, fmt.Errorf("%s: remote template selector %q is not supported with per-target template overrides", location, selector)
+		}
+		if enforceLocalContainment && selectorEscapesTemplatesTree(selector) {
+			location := "template selector"
+			if sourceLine > 0 {
+				location = fmt.Sprintf("jsonl line %d template selector", sourceLine)
+			}
+			return nil, fmt.Errorf("%s %q must stay within the templates directory; absolute paths and parent-directory traversal are not allowed", location, selector)
 		}
 	}
 
@@ -235,6 +247,19 @@ func resolveTargetTemplatePaths(templateCatalog catalog.Catalog, selectors []str
 		unique[filepath.Clean(path)] = struct{}{}
 	}
 	return sortedKeys(unique), nil
+}
+
+// selectorEscapesTemplatesTree reports whether a per-target template selector
+// would resolve outside the templates directory. Both vectors are rejected at
+// the input boundary, before any filesystem resolution touches the path: an
+// absolute path (returned as-is by DiskCatalog.ResolvePath) and a relative path
+// whose cleaned form climbs out of the tree via "..".
+func selectorEscapesTemplatesTree(selector string) bool {
+	if filepath.IsAbs(selector) {
+		return true
+	}
+	cleaned := filepath.ToSlash(filepath.Clean(selector))
+	return cleaned == ".." || strings.HasPrefix(cleaned, "../")
 }
 
 func canonicalTargetSelectors(selectors []string) string {

@@ -53,7 +53,10 @@ effect: built-in ignore-file tags are not re-enabled by a target-level
 `severity`, even when those target fields are explicitly empty.
 
 Per-target `templates` overrides currently support local selectors only and
-cannot be combined with global remote templates. Any per-target override is
+cannot be combined with global remote templates. Each selector must stay within
+the templates directory: absolute paths and `../` parent-directory traversal are
+rejected, so a targets file cannot point the loader at arbitrary files on disk.
+Use the global `-t` flag for templates outside the templates tree. Any per-target override is
 incompatible with automatic scan, workflows, and global matchers.
 JSONL files in the existing Proxify request/response format remain supported,
 but target and Proxify records cannot be mixed in one file.

@@ -186,8 +186,30 @@ func TestPrepareTargetFiltersPreservesInheritanceAndForcedIncludes(t *testing.T)
 }
 
 func TestResolveTargetTemplatePathsRejectsRemoteSelectorsClearly(t *testing.T) {
-	_, err := resolveTargetTemplatePaths(targetFilterTestCatalog{}, []string{"https://example.com/template.yaml"}, 7)
+	_, err := resolveTargetTemplatePaths(targetFilterTestCatalog{}, []string{"https://example.com/template.yaml"}, 7, true)
 	require.ErrorContains(t, err, `jsonl line 7: remote template selector "https://example.com/template.yaml" is not supported`)
+}
+
+func TestResolveTargetTemplatePathsRejectsEscapingLocalSelectors(t *testing.T) {
+	for _, selector := range []string{"/opt/restricted/rce.yaml", "../../outside-templates/rce.yaml", ".."} {
+		_, err := resolveTargetTemplatePaths(targetFilterTestCatalog{}, []string{selector}, 4, true)
+		require.ErrorContains(t, err, "jsonl line 4 template selector")
+		require.ErrorContains(t, err, "must stay within the templates directory")
+	}
+}
+
+func TestResolveTargetTemplatePathsAllowsContainedLocalSelectors(t *testing.T) {
+	paths, err := resolveTargetTemplatePaths(targetFilterTestCatalog{}, []string{"http/cves/2026/", "sub/dir/../ok.yaml"}, 4, true)
+	require.NoError(t, err)
+	require.NotEmpty(t, paths)
+}
+
+func TestResolveTargetTemplatePathsAllowsAbsoluteGlobalSelectors(t *testing.T) {
+	// Global -t/-it selectors are trusted CLI input; absolute paths must still
+	// resolve when containment is not enforced.
+	paths, err := resolveTargetTemplatePaths(targetFilterTestCatalog{}, []string{"/opt/custom/global.yaml"}, 0, false)
+	require.NoError(t, err)
+	require.NotEmpty(t, paths)
 }
 
 func TestPrepareTargetFiltersRejectsGlobalRemoteURLsWithTemplateOverrides(t *testing.T) {
