@@ -486,7 +486,7 @@ nuclei -target https://example.com -dashboard
     <a href="/static/nuclei-templates-teamcity.png"  target="_blank"><img src="/static/nuclei-templates-teamcity.png" width="1200px" alt="نمونه قالب Nuclei برای شناسایی پیکربندی نادرست TeamCity" /></a>
 </p>
 
-#### مثال‌ها
+### مثال‌ها
 
 برای مشاهده موارد استفاده و ایده‌ها، به [**مستندات ما**](https://docs.projectdiscovery.io/templates/introduction) مراجعه کنید.
 
