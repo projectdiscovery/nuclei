@@ -15,11 +15,12 @@
 
 <p align="center">
 
-<a href="https://docs.projectdiscovery.io/tools/nuclei/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white"></a>
+<a href="https://docs.projectdiscovery.io/tools/nuclei/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white" alt="Documentation Badge"></a>
 &nbsp;&nbsp;
-<a href="https://github.com/projectdiscovery/nuclei-templates"><img src="https://img.shields.io/badge/Templates Library-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNoaWVsZCI+PHBhdGggZD0iTTIwIDEzYzAgNS0zLjUgNy41LTcuNjYgOC45NWExIDEgMCAwIDEtLjY3LS4wMUM3LjUgMjAuNSA0IDE4IDQgMTNWNmExIDEgMCAwIDEgMS0xYzIgMCA0LjUtMS4yIDYuMjQtMi43MmExLjE3IDEuMTcgMCAwIDEgMS41MiAwQzE0LjUxIDMuODEgMTcgNSAxOSA1YTEgMSAwIDAgMSAxIDF6Ii8+PC9zdmc+&logoColor=white"></a>
+<a href="https://github.com/projectdiscovery/nuclei-templates"><img src="https://img.shields.io/badge/Templates Library-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNoaWVsZCI+PHBhdGggZD0iTTIwIDEzYzAgNS0zLjUgNy41LTcuNjYgOC45NWExIDEgMCAwIDEtLjY3LS4wMUM3LjUgMjAuNSA0IDEarrayNCIgMTNWNmExIDEgMCAwIDEgMS0xYzIgMCA0LjUtMS4yIDYuMjQtMi43MmExLjE3IDEuMTcgMCAwIDEgMS41MiAwQzE0LjUxIDMuODEgMTcgNSAxOSA1YTEgMSAwIDAgMSAxIDF6Ii8+PC9zdmc+&logoColor=white" alt="Templates Library Badge"></a>
 &nbsp;&nbsp;
-<a href="https://discord.gg/projectdiscovery?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white"></a>
+<a href="https://discord.gg/projectdiscovery?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Badge"></a>
+
 
 <hr>
 </p>
@@ -45,28 +46,27 @@
 
 ## فهرست مطالب
 
-- [**`شروع کار`**](#get-started)
-  - [_`۱. ابزار خط فرمان Nuclei`_](#1-nuclei-cli)
-  - [_`۲. نسخه‌های حرفه‌ای و سازمانی`_](#2-pro-and-enterprise-editions)
-- [**`مستندات`**](#documentation)
-  - [_`دستورات خط فرمان`_](#command-line-flags)
-  - [_`اسکن یک هدف واحد`_](#single-target-scan)
-  - [_`اسکن اهداف متعدد`_](#scanning-multiple-targets)
-  - [_`اسکن شبکه`_](#network-scan)
-  - [_`اسکن با قالب سفارشی شما`_](#scanning-with-your-custom-template)
-  - [_`اتصال Nuclei به ProjectDiscovery`_](#connect-nuclei-to-projectdiscovery)
-- [**`قالب‌های Nuclei، جامعه کاربری و پاداش‌ها`**](#nuclei-templates-community-and-rewards-) 💎
-- [**`ماموریت ما`**](#our-mission)
-- [**`مشارکت‌کنندگان`**](#contributors-heart) ❤
+- [**`شروع کار`**](#شروع-کار)
+  - [_`۱. ابزار خط فرمان Nuclei`_](#۱-ابزار-خط-فرمان-nuclei)
+  - [_`۲. نسخه‌های حرفه‌ای و سازمانی`_](#۲-نسخه‌های-حرفه‌ای-و-سازمانی)
+- [**`مستندات`**](#مستندات)
+  - [_`دستورات خط فرمان`_](#دستورات-خط-فرمان)
+  - [_`اسکن یک هدف واحد`_](#اسکن-یک-هدف)
+  - [_`اسکن اهداف متعدد`_](#اسکن-چندین-هدف)
+  - [_`اسکن شبکه`_](#اسکن-شبکه)
+  - [_`اسکن با قالب سفارشی شما`_](#اسکن-با-استفاده-از-قالب-سفارشی-خودتان)
+  - [_`اتصال Nuclei به ProjectDiscovery`_](#اتصال-nuclei-به-projectdiscovery)
+- [**`قالب‌های Nuclei، جامعه کاربری و پاداش‌ها`**](#قالب‌های-nuclei-جامعه-و-پاداش‌ها-) 💎
+- [**`ماموریت ما`**](#ماموریت-ما)
+- [**`مشارکت‌کنندگان`**](#مشارکت‌کنندگان-) ❤
 - [**`مجوز استفاده`**](#license)
-
 
 <br>
 <br>
 
 ## شروع کار
 
-### **۱. ابزار خط فرمان Nuclei**
+### ۱. ابزار خط فرمان Nuclei
 
 _ابزار Nuclei را روی سیستم خود نصب کنید. کار خود را با دنبال کردن راهنمای نصب در [**`اینجا`**](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) آغاز کنید. علاوه بر این، ما [**`یک سطح ابری رایگان`**](https://cloud.projectdiscovery.io/sign-up) ارائه می‌دهیم که همراه با محدودیت‌های رایگان ماهانه سخاوتمندانه‌ای عرضه می‌شود:_
 
@@ -82,7 +82,7 @@ _ابزار Nuclei را روی سیستم خود نصب کنید. کار خود 
 
 <br>
 
-### **۲. نسخه‌های حرفه‌ای و سازمانی**
+### ۲. نسخه‌های حرفه‌ای و سازمانی
 
 _برای تیم‌های امنیتی و سازمان‌ها، ما یک سرویس میزبانی‌شده در ابر بر پایه نسخه متن‌باز (OSS) ابزار Nuclei ارائه می‌دهیم؛ این سرویس به‌طور دقیق بهینه‌سازی شده است تا به شما کمک کند اسکن‌های آسیب‌پذیری را به‌صورت مداوم، در مقیاس بزرگ و همراه با تیم و گردش‌های کاری فعلی خود اجرا کنید:_
 
@@ -106,7 +106,8 @@ _برای تیم‌های امنیتی و سازمان‌ها، ما یک سرو
 
 <div align="center">
 
-<a href="https://www.youtube.com/watch?v=b5qMyQvL1ZA&list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-getting-started.png" width="350px"></a> <a href="https://www.youtube.com/watch?v=nFXygQdtjyw&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-write-your-first-template.png" width="350px"></a>
+<a href="https://www.youtube.com/watch?v=b5qMyQvL1ZA&list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-getting-started.png" width="350px" alt="Nuclei Getting Started Video Tutorial"></a> <a href="https://www.youtube.com/watch?v=nFXygQdtjyw&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-write-your-first-template.png" width="350px" alt="Writing Your First Nuclei Template Video Tutorial"></a>
+
 
 </div>
 
@@ -509,7 +510,7 @@ nuclei -target https://example.com -dashboard
 <br>
 <br>
 
-## مأموریت ما
+## ماموریت ما
 
 اسکنرهای سنتی آسیب‌پذیری دهه‌ها پیش ساخته شده‌اند. آن‌ها متن‌بسته، فوق‌العاده کند و وابسته به فروشندگان هستند. مهاجمان امروزی، برخلاف گذشته که بهره‌برداری از آسیب‌پذیری‌ها سال‌ها طول می‌کشید، ظرف چند روز پس از انتشار CVEهای جدید، آن‌ها را در سراسر اینترنت به‌صورت گسترده مورد سوءاستفاده قرار می‌دهند. این تغییر، نیازمند رویکردی کاملاً متفاوت برای مقابله با اکسپلویت‌های پرطرفدار در اینترنت است.
 
