@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	updateutils "github.com/projectdiscovery/utils/update"
 )
@@ -72,14 +74,38 @@ func UpdateIgnoreFile() error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unexpected status code %d while downloading nuclei-ignore file", resp.StatusCode)
+	}
 	bin, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0644); err != nil {
+	if err := writeNucleiIgnoreFile(config.DefaultConfig.GetIgnoreFilePath(), bin); err != nil {
 		return err
 	}
 	return config.DefaultConfig.UpdateNucleiIgnoreHash()
+}
+
+func writeNucleiIgnoreFile(path string, data []byte) error {
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("invalid nuclei-ignore file: %w", err)
+	}
+	_, hasTags := raw["tags"]
+	_, hasFiles := raw["files"]
+	if !hasTags && !hasFiles {
+		return fmt.Errorf("invalid nuclei-ignore file: missing tags or files")
+	}
+
+	var ignore config.IgnoreFile
+	if err := yaml.Unmarshal(data, &ignore); err != nil {
+		return fmt.Errorf("invalid nuclei-ignore file: %w", err)
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 func doVersionCheck(isSDK bool) error {
