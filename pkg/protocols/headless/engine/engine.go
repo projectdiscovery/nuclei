@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/chromeshell"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 )
@@ -74,6 +75,12 @@ func New(options *types.Options) (*Browser, error) {
 				chromeLauncher.Bin(chromePath)
 			} else {
 				return nil, errors.New("the chrome browser is not installed")
+			}
+		} else if !options.ShowBrowser && chromeshell.Supported() {
+			// Prefer chrome-headless-shell on linux/amd64 for headless templates;
+			// skip when headed since the shell binary cannot show a UI.
+			if shellPath, err := chromeshell.Ensure(); err == nil {
+				chromeLauncher.Bin(shellPath)
 			}
 		}
 

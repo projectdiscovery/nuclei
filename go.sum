@@ -849,8 +849,6 @@ github.com/projectdiscovery/freeport v0.0.7 h1:Q6uXo/j8SaV/GlAHkEYQi8WQoPXyJWxys
 github.com/projectdiscovery/freeport v0.0.7/go.mod h1:cOhWKvNBe9xM6dFJ3RrrLvJ5vXx2NQ36SecuwjenV2k=
 github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c h1:s+lLAlrOrgwlPZQ9DFqNw+kia2nteKnJZ2Ek313yoUc=
 github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c/go.mod h1:rN35/D3lVx2YDeENFFz06uj8j3XIqK1Ym9XcISF5fzg=
-github.com/projectdiscovery/goflags v0.1.75 h1:njEBnyueQaFa2ptWxbyl9zX0OClNdlN2AzZveNHiBOs=
-github.com/projectdiscovery/goflags v0.1.75/go.mod h1:7nAP1r2Dqgn/rwmOE3EWbZWUCEJKNIhVSBGpuzJAIns=
 github.com/projectdiscovery/goflags v0.1.76 h1:4OnNU4hvzVdOc+7wcIYBnPOHzo0BcTJ5lC6hS/TeUkA=
 github.com/projectdiscovery/goflags v0.1.76/go.mod h1:7nAP1r2Dqgn/rwmOE3EWbZWUCEJKNIhVSBGpuzJAIns=
 github.com/projectdiscovery/goja v0.0.0-20260618133720-acb73e419534 h1:hYd1zQA/dxO2ASyQ6Re73TcJkW1LjLQvt4+86Hxefz8=
@@ -901,8 +899,8 @@ github.com/projectdiscovery/uncover v1.2.1 h1:8U46T/96CLT7BPoXBgkTvWqB06lOyeTSLv
 github.com/projectdiscovery/uncover v1.2.1/go.mod h1:0p8onrWxfpXQEYs90ZDzTSpu1107gWmodX1NWqu/+z4=
 github.com/projectdiscovery/useragent v0.0.108 h1:fb+uLuFJvC+MHZjCtxQJxtvp1X6A8n98CUGPyFcg3NE=
 github.com/projectdiscovery/useragent v0.0.108/go.mod h1:XdNRrlvtDmYfVL1Oybat4uMe+W6cLwsK9S18ond17CI=
-github.com/projectdiscovery/utils v0.11.1 h1:PWj1KjIASxt8icxommH72C0TQqNOvGkcSODRkiq0SQw=
-github.com/projectdiscovery/utils v0.11.1/go.mod h1:yktGrHGk2CTjNiccXovnvGrLHX9sV2bqz9nSnbA3V8M=
+github.com/projectdiscovery/utils v0.11.2-0.20260815171005-eb8925425716 h1:zoDnj6xAqCvIQuP/bV5COuje2kjZV7THKTuDRdvyXgI=
+github.com/projectdiscovery/utils v0.11.2-0.20260815171005-eb8925425716/go.mod h1:RtBO9urHlfN3aAEzhZz5m1/ZeJDq6U1Ka34lGWleuS8=
 github.com/projectdiscovery/wappalyzergo v0.2.92 h1:u9SMlh2t3ZM89hNa0TBCpANh1SFyfUA2Qaqz5NXYG3U=
 github.com/projectdiscovery/wappalyzergo v0.2.92/go.mod h1:gMH0o5lBp65sKMwHx/tuUdOtW2RjodC6Ti+9QDsYMkY=
 github.com/projectdiscovery/yamldoc-go v1.0.6 h1:GCEdIRlQjDux28xTXKszM7n3jlMf152d5nqVpVoetas=
