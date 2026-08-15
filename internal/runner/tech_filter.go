@@ -182,10 +182,15 @@ func fingerprintTarget(wapp *wappalyzer.Wappalyze, client *retryablehttp.Client,
 		return techfilter.HostProfile{}
 	}
 	if cache != nil {
-		// Seed both the requested URL and the absolute URL the client ended on.
-		cache.SeedHTTP(http.MethodGet, seedURL, resp, body)
-		if resp.Request != nil && resp.Request.URL != nil {
-			cache.SeedHTTP(http.MethodGet, resp.Request.URL.String(), resp, body)
+		// Seed under the fingerprint request's full key so matching template
+		// GETs (same UA / Accept*) reuse this RTT.
+		cache.SeedHTTP(req.Request, resp, body)
+		if resp.Request != nil && resp.Request.URL != nil &&
+			resp.Request.URL.String() != seedURL {
+			finalReq := req.Request.Clone(req.Context())
+			finalReq.URL = resp.Request.URL
+			finalReq.Host = ""
+			cache.SeedHTTP(finalReq, resp, body)
 		}
 	}
 	info := wapp.FingerprintWithInfo(resp.Header, body)

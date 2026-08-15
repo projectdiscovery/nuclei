@@ -65,6 +65,39 @@ func TestCacheableRequest(t *testing.T) {
 	if CacheableRequest(hostOverride) {
 		t.Fatal("Host override must not be cacheable")
 	}
+	cc := httptest.NewRequest(http.MethodGet, "http://x/", nil)
+	cc.Header.Set("Cache-Control", "no-cache")
+	if CacheableRequest(cc) {
+		t.Fatal("Cache-Control must not be cacheable")
+	}
+	pragma := httptest.NewRequest(http.MethodGet, "http://x/", nil)
+	pragma.Header.Set("Pragma", "no-cache")
+	if CacheableRequest(pragma) {
+		t.Fatal("Pragma must not be cacheable")
+	}
+}
+
+func TestKeyFromRequestIncludesRepresentationHeaders(t *testing.T) {
+	a := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	a.Header.Set("User-Agent", "ua-a")
+	a.Header.Set("Accept-Language", "en")
+
+	b := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	b.Header.Set("User-Agent", "ua-a")
+	b.Header.Set("Accept-Language", "fr")
+
+	if KeyFromRequest(a) == KeyFromRequest(b) {
+		t.Fatal("distinct Accept-Language must produce distinct keys")
+	}
+
+	c := New()
+	c.Set(KeyFromRequest(a), &http.Response{StatusCode: 200, Header: http.Header{}}, []byte("en-body"))
+	if c.Get(KeyFromRequest(b), b) != nil {
+		t.Fatal("must not reuse response across Accept-Language")
+	}
+	if got := c.Get(KeyFromRequest(a), a); got == nil {
+		t.Fatal("expected hit for matching headers")
+	}
 }
 
 func TestCacheDisabled(t *testing.T) {

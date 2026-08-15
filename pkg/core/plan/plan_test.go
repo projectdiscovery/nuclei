@@ -154,10 +154,10 @@ func TestDecideApplyFilteredIgnoredWhenZero(t *testing.T) {
 
 func TestDecideTechFilterOffByDefault(t *testing.T) {
 	p := Decide(Input{
-		Hosts:               5,
-		Templates:           100,
-		Requests:            500,
-		TechFilter:          false,
+		Hosts:              5,
+		Templates:          100,
+		Requests:           500,
+		TechFilter:         false,
 		TechBoundTemplates: 40,
 	})
 	require.False(t, p.UseTechFilter)
@@ -166,10 +166,10 @@ func TestDecideTechFilterOffByDefault(t *testing.T) {
 
 func TestDecideTechFilterSkippedWhenNoBound(t *testing.T) {
 	p := Decide(Input{
-		Hosts:               5,
-		Templates:           100,
-		Requests:            500,
-		TechFilter:          true,
+		Hosts:              5,
+		Templates:          100,
+		Requests:           500,
+		TechFilter:         true,
 		TechBoundTemplates: 0,
 	})
 	require.False(t, p.UseTechFilter)
@@ -178,10 +178,10 @@ func TestDecideTechFilterSkippedWhenNoBound(t *testing.T) {
 
 func TestDecideTechFilterOn(t *testing.T) {
 	p := Decide(Input{
-		Hosts:               5,
-		Templates:           100,
-		Requests:            500,
-		TechFilter:          true,
+		Hosts:              5,
+		Templates:          100,
+		Requests:           500,
+		TechFilter:         true,
 		TechBoundTemplates: 40,
 	})
 	require.True(t, p.UseTechFilter)

@@ -6,17 +6,27 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 )
+
+// representationHeaderNames are folded into the cache key so two requests
+// that differ only in content-negotiation / UA identity cannot share a body.
+var representationHeaderNames = []string{
+	"accept",
+	"accept-encoding",
+	"accept-language",
+	"user-agent",
+}
 
 const (
 	defaultMaxEntries = 4096
 	defaultMaxBytes   = 64 << 20 // 64 MiB of retained response bodies
 )
 
-// Cache stores response snapshots keyed by METHOD + URL.
+// Cache stores response snapshots keyed by METHOD + URL + representation headers.
 type Cache struct {
 	mu         sync.RWMutex
 	entries    map[string]*Entry
@@ -64,24 +74,38 @@ func (c *Cache) Enabled() bool {
 	return c != nil && !c.disabled.Load()
 }
 
-// Key builds a cache key for a method and absolute URL.
+// Key builds a cache key for a method and absolute URL (no header identity).
 func Key(method, rawURL string) string {
 	method = strings.ToUpper(strings.TrimSpace(method))
 	rawURL = strings.TrimSpace(rawURL)
 	return method + " " + rawURL
 }
 
-// KeyFromRequest builds a key from an http.Request.
+// KeyFromRequest builds a key from an http.Request, including representation
+// headers (UA / Accept*) so distinct content-negotiation contexts do not collide.
 func KeyFromRequest(req *http.Request) string {
 	if req == nil || req.URL == nil {
 		return ""
 	}
-	return Key(req.Method, req.URL.String())
+	base := Key(req.Method, req.URL.String())
+	parts := make([]string, 0, len(representationHeaderNames))
+	for _, name := range representationHeaderNames {
+		vals := req.Header.Values(name)
+		if len(vals) == 0 {
+			continue
+		}
+		parts = append(parts, name+":"+strings.Join(vals, ","))
+	}
+	if len(parts) == 0 {
+		return base
+	}
+	sort.Strings(parts)
+	return base + " |" + strings.Join(parts, "|")
 }
 
 // CacheableRequest reports whether the request is safe to cache/serve.
-// Requests with representation-changing headers (auth, cookies, Host override,
-// custom headers) are excluded so they cannot reuse another context's response.
+// Requests with auth, cookies, Host override, Cache-Control/Pragma, or any
+// non-allowlisted header are excluded so they cannot reuse another context.
 func CacheableRequest(req *http.Request) bool {
 	if req == nil || req.URL == nil {
 		return false
@@ -99,8 +123,11 @@ func CacheableRequest(req *http.Request) bool {
 	for k := range req.Header {
 		switch strings.ToLower(k) {
 		case "user-agent", "accept", "accept-language", "accept-encoding",
-			"connection", "upgrade-insecure-requests", "cache-control", "pragma":
+			"connection", "upgrade-insecure-requests":
 			continue
+		case "cache-control", "pragma":
+			// Explicit cache directives: never serve from the scan cache.
+			return false
 		default:
 			return false
 		}
@@ -162,9 +189,13 @@ func (c *Cache) Set(key string, resp *http.Response, body []byte) {
 	c.stores.Add(1)
 }
 
-// SeedHTTP stores a response from an already-buffered fingerprint/probe.
-func (c *Cache) SeedHTTP(method, rawURL string, resp *http.Response, body []byte) {
-	c.Set(Key(method, rawURL), resp, body)
+// SeedHTTP stores a fingerprint/probe response under the request's full key
+// (method + URL + representation headers).
+func (c *Cache) SeedHTTP(req *http.Request, resp *http.Response, body []byte) {
+	if !CacheableRequest(req) {
+		return
+	}
+	c.Set(KeyFromRequest(req), resp, body)
 }
 
 // Stats returns hit/miss/store counters.
