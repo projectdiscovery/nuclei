@@ -7,8 +7,10 @@ import (
 )
 
 type cloneVisit struct {
-	typeOf  reflect.Type
-	pointer uintptr
+	typeOf   reflect.Type
+	pointer  uintptr
+	length   int
+	capacity int
 }
 
 // cloneTemplate copies a clean parsed template before protocol compilation
@@ -16,11 +18,12 @@ type cloneVisit struct {
 // point and are copied by value; exported maps, slices, pointers, and
 // interfaces are copied recursively.
 func cloneTemplate(template *Template) *Template {
-	cloned := cloneTemplateValue(reflect.ValueOf(template), make(map[cloneVisit]reflect.Value))
+	visited := make(map[cloneVisit]reflect.Value)
+	cloned := cloneTemplateValue(reflect.ValueOf(template), visited)
 	clonedTemplate := cloned.Interface().(*Template)
 	clonedTemplate.Variables.InsertionOrderedStringMap = *utils.NewEmptyInsertionOrderedStringMap(template.Variables.Len())
 	template.Variables.ForEach(func(key string, value interface{}) {
-		clonedValue := cloneTemplateValue(reflect.ValueOf(value), make(map[cloneVisit]reflect.Value))
+		clonedValue := cloneTemplateValue(reflect.ValueOf(value), visited)
 		if clonedValue.IsValid() {
 			clonedTemplate.Variables.Set(key, clonedValue.Interface())
 		} else {
@@ -69,7 +72,17 @@ func cloneTemplateValue(value reflect.Value, visited map[cloneVisit]reflect.Valu
 		if value.IsNil() {
 			return reflect.Zero(value.Type())
 		}
+		visit := cloneVisit{
+			typeOf:   value.Type(),
+			pointer:  value.Pointer(),
+			length:   value.Len(),
+			capacity: value.Cap(),
+		}
+		if cloned, ok := visited[visit]; ok {
+			return cloned
+		}
 		cloned := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		visited[visit] = cloned
 		for i := 0; i < value.Len(); i++ {
 			cloned.Index(i).Set(cloneTemplateValue(value.Index(i), visited))
 		}
@@ -78,7 +91,12 @@ func cloneTemplateValue(value reflect.Value, visited map[cloneVisit]reflect.Valu
 		if value.IsNil() {
 			return reflect.Zero(value.Type())
 		}
+		visit := cloneVisit{typeOf: value.Type(), pointer: value.Pointer()}
+		if cloned, ok := visited[visit]; ok {
+			return cloned
+		}
 		cloned := reflect.MakeMapWithSize(value.Type(), value.Len())
+		visited[visit] = cloned
 		iterator := value.MapRange()
 		for iterator.Next() {
 			key := cloneTemplateValue(iterator.Key(), visited)

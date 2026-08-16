@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,4 +51,54 @@ http:
 	cloned.Variables.Set("shared", "changed")
 	require.Equal(t, "original", original.RequestsHTTP[0].Matchers[0].Words[0])
 	require.Equal(t, map[string]interface{}{"shared": "original"}, original.Variables.GetAll())
+}
+
+func TestCloneTemplatePreservesMutableAliases(t *testing.T) {
+	sharedMap := map[string]interface{}{"value": "original"}
+	sharedSlice := []interface{}{"original"}
+	original := &Template{
+		Constants: map[string]interface{}{
+			"map":         sharedMap,
+			"first-slice": sharedSlice,
+			"next-slice":  sharedSlice,
+		},
+	}
+	original.Variables.InsertionOrderedStringMap = *utils.NewEmptyInsertionOrderedStringMap(1)
+	original.Variables.Set("map", sharedMap)
+
+	cloned := cloneTemplate(original)
+	clonedMap := cloned.Constants["map"].(map[string]interface{})
+	clonedVariableMap := cloned.Variables.GetAll()["map"].(map[string]interface{})
+	clonedFirstSlice := cloned.Constants["first-slice"].([]interface{})
+	clonedNextSlice := cloned.Constants["next-slice"].([]interface{})
+
+	clonedMap["value"] = "changed"
+	clonedFirstSlice[0] = "changed"
+
+	require.Equal(t, "changed", clonedVariableMap["value"])
+	require.Equal(t, "changed", clonedNextSlice[0])
+	require.Equal(t, "original", sharedMap["value"])
+	require.Equal(t, "original", sharedSlice[0])
+}
+
+func TestCloneTemplateHandlesMutableCycles(t *testing.T) {
+	cyclicMap := make(map[string]interface{})
+	cyclicMap["self"] = cyclicMap
+	cyclicSlice := make([]interface{}, 1)
+	cyclicSlice[0] = cyclicSlice
+	original := &Template{Constants: map[string]interface{}{
+		"map":   cyclicMap,
+		"slice": cyclicSlice,
+	}}
+
+	cloned := cloneTemplate(original)
+	clonedMap := cloned.Constants["map"].(map[string]interface{})
+	clonedMap["self"].(map[string]interface{})["changed"] = true
+	clonedSlice := cloned.Constants["slice"].([]interface{})
+	clonedSlice[0].([]interface{})[0] = "changed"
+
+	require.True(t, clonedMap["changed"].(bool))
+	require.Equal(t, "changed", clonedSlice[0])
+	require.NotContains(t, cyclicMap, "changed")
+	require.IsType(t, []interface{}{}, cyclicSlice[0])
 }
