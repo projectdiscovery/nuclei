@@ -49,11 +49,9 @@ func TestConnectOptionsValidate(t *testing.T) {
 		require.Contains(t, err.Error(), "port is required")
 	})
 	t.Run("default timeout", func(t *testing.T) {
-		executionID := t.Name()
-		require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID}))
-		t.Cleanup(func() { protocolstate.Close(executionID) })
-
-		opts := &connectOptions{Host: "example.com", Port: 22, Timeout: 0, ExecutionId: executionID}
+		// Unknown execution id → IsHostAllowed returns true (no dialers),
+		// so validate reaches the timeout default without network-policy noise.
+		opts := &connectOptions{Host: "scan.example", Port: 22, Timeout: 0, ExecutionId: "ssh-options-timeout-test"}
 		require.NoError(t, opts.validate())
 		require.Equal(t, 10*time.Second, opts.Timeout)
 	})
