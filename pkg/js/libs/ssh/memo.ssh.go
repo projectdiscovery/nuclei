@@ -15,7 +15,9 @@ func memoizedconnectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh
 	hash := "connectSSHInfoMode" + ":" + fmt.Sprint(opts)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connectSSHInfoMode(ctx, opts)
+		// Shared flight must not use a caller-scoped ctx: concurrent callers
+		// dedupe on hash, and one cancel would abort everyone's handshake.
+		return connectSSHInfoMode(context.WithoutCancel(ctx), opts)
 	})
 	if err != nil {
 		return nil, err

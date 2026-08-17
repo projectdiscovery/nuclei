@@ -115,7 +115,7 @@ func (c *PGClient) ConnectWithOptions(ctx context.Context, opts PostgresOptions)
 	if opts.Host == "" || opts.Port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
-	if _, err := postgresTLSConfig(opts.SSLMode); err != nil {
+	if _, err := postgresTLSConfig(opts.SSLMode, opts.Host); err != nil {
 		return false, err
 	}
 	ok, err := c.IsPostgres(ctx, opts.Host, opts.Port)
@@ -249,7 +249,7 @@ func connectWithOptions(ctx context.Context, executionId string, opts PostgresOp
 	}
 
 	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
-	tlsConfig, err := postgresTLSConfig(opts.SSLMode)
+	tlsConfig, err := postgresTLSConfig(opts.SSLMode, opts.Host)
 	if err != nil {
 		return false, err
 	}
@@ -307,14 +307,23 @@ func postgresTimeout(timeout int) time.Duration {
 	return 10 * time.Second
 }
 
-func postgresTLSConfig(sslMode string) (*tls.Config, error) {
+func postgresTLSConfig(sslMode, host string) (*tls.Config, error) {
 	switch sslMode {
 	case "", "disable":
 		return nil, nil
 	case "allow", "prefer", "require":
-		return &tls.Config{InsecureSkipVerify: true}, nil //nolint:gosec // sslmode explicitly disables verification.
+		// libpq semantics: encrypt the session without verifying the server cert.
+		return &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // intentional sslmode=require/prefer/allow
+			MinVersion:         tls.VersionTLS12,
+		}, nil
 	case "verify-ca", "verify-full":
-		return &tls.Config{}, nil
+		// go-pg does not set ServerName from Addr; set it explicitly so
+		// hostname verification works for verify-full (and is harmless for verify-ca).
+		return &tls.Config{
+			ServerName: host,
+			MinVersion: tls.VersionTLS12,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported postgres sslmode %q", sslMode)
 	}

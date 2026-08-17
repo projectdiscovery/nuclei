@@ -49,15 +49,13 @@ func TestConnectOptionsValidate(t *testing.T) {
 		require.Contains(t, err.Error(), "port is required")
 	})
 	t.Run("default timeout", func(t *testing.T) {
-		opts := &connectOptions{Host: "127.0.0.1", Port: 22, ExecutionId: "nonexistent-exec-id-for-test"}
-		// HostAllowed for unknown execution id may fail; just check timeout default when host check passes
-		// Use empty execution with host that might be denied - we only care about timeout when validation gets that far
-		_ = opts
-		opts2 := &connectOptions{Host: "example.com", Port: 22, Timeout: 0, ExecutionId: ""}
-		// Empty executionId: IsHostAllowed behavior - still sets timeout if host allowed
-		if err := opts2.validate(); err == nil {
-			require.Equal(t, 10*time.Second, opts2.Timeout)
-		}
+		executionID := t.Name()
+		require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID}))
+		t.Cleanup(func() { protocolstate.Close(executionID) })
+
+		opts := &connectOptions{Host: "example.com", Port: 22, Timeout: 0, ExecutionId: executionID}
+		require.NoError(t, opts.validate())
+		require.Equal(t, 10*time.Second, opts.Timeout)
 	})
 }
 
