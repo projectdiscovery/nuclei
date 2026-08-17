@@ -1,5 +1,3 @@
-
-
 /**
  * Client is a client for MS SQL database.
  * Internally client uses microsoft/go-mssqldb driver.
@@ -72,6 +70,20 @@ export class MSSQLClient {
     
 
     /**
+    * FingerprintMssql gathers MSSQL pre-login fingerprint data from the target.
+    * @example
+    * ```javascript
+    * const mssql = require('nuclei/mssql');
+    * const info = mssql.FingerprintMssql('acme.com', 1433);
+    * log(to_json(info));
+    * ```
+    */
+    public FingerprintMssql(host: string, port: number): MSSQLInfo | null {
+        return null;
+    }
+    
+
+    /**
     * ExecuteQuery connects to MS SQL database using given credentials and executes a query.
     * It returns the results of the query or an error if something goes wrong.
     * @example
@@ -121,3 +133,24 @@ export interface SQLResult {
     Columns?: string[],
 }
 
+
+/**
+ * MSSQLInfo contains TDS pre-login fingerprint data.
+ */
+export interface MSSQLInfo {
+    host?: string,
+    ip?: string,
+    port?: number,
+    protocol?: string,
+    tls?: boolean,
+    transport?: string,
+    version?: string,
+    majorVersion?: number,
+    minorVersion?: number,
+    buildNumber?: number,
+    encryption?: number,
+    encryptionMode?: string,
+    mars?: boolean,
+    instanceMatches?: boolean,
+    raw?: string,
+}
