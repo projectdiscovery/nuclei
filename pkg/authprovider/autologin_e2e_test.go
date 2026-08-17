@@ -146,7 +146,7 @@ dynamic:
 	reauthTriggered := false
 	for _, s := range strategies {
 		if insp, ok := s.(authx.ResponseInspector); ok {
-			if insp.OnResponse(http.StatusUnauthorized) {
+			if insp.OnResponse(http.StatusUnauthorized, 0) {
 				reauthTriggered = true
 			}
 		}

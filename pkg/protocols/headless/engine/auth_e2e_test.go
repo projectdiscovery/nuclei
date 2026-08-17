@@ -52,7 +52,7 @@ func TestHeadlessAuthFusion_RealProvider_E2E(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("matching domain materializes header and cookie", func(t *testing.T) {
-		headers, cookies := resolveAuthMaterial(provider, mustParseURL(t, "https://app.example.com/dashboard"))
+		headers, cookies, _ := resolveAuthMaterial(provider, mustParseURL(t, "https://app.example.com/dashboard"))
 
 		headerMap := pairsToMap(t, headers)
 		require.Equal(t, "s3cr3t-key", headerMap["X-Api-Key"])
@@ -65,13 +65,13 @@ func TestHeadlessAuthFusion_RealProvider_E2E(t *testing.T) {
 	})
 
 	t.Run("regex domain matches", func(t *testing.T) {
-		headers, _ := resolveAuthMaterial(provider, mustParseURL(t, "https://api.example.com/v1"))
+		headers, _, _ := resolveAuthMaterial(provider, mustParseURL(t, "https://api.example.com/v1"))
 		headerMap := pairsToMap(t, headers)
 		require.Equal(t, "s3cr3t-key", headerMap["X-Api-Key"], "regex-scoped secret must apply to api.example.com")
 	})
 
 	t.Run("non-matching domain yields nothing", func(t *testing.T) {
-		headers, cookies := resolveAuthMaterial(provider, mustParseURL(t, "https://evil.example.org/"))
+		headers, cookies, _ := resolveAuthMaterial(provider, mustParseURL(t, "https://evil.example.org/"))
 		require.Empty(t, headers, "no credentials should be sent to an out-of-scope domain")
 		require.Empty(t, cookies, "no cookies should be sent to an out-of-scope domain")
 	})

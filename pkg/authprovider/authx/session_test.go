@@ -119,10 +119,10 @@ func TestSessionNotifyResponseReauth(t *testing.T) {
 
 		require.Equal(t, "Bearer token-1", applyHeader(t, d))
 
-		require.False(t, d.NotifyResponse(200), "2xx must not trigger re-auth")
+		require.False(t, d.NotifyResponse(200, 0), "2xx must not trigger re-auth")
 		require.False(t, d.IsExpired())
 
-		require.True(t, d.NotifyResponse(401), "401 must trigger re-auth for established session")
+		require.True(t, d.NotifyResponse(401, 0), "401 must trigger re-auth for established session")
 		require.True(t, d.IsExpired())
 
 		require.Equal(t, "Bearer token-2", applyHeader(t, d))
@@ -134,7 +134,7 @@ func TestSessionNotifyResponseReauth(t *testing.T) {
 		d := newDynamicWithToken(t, &calls)
 		d.ReauthStatusCodes = []int{401}
 
-		require.False(t, d.NotifyResponse(401), "should not mark stale before a session exists")
+		require.False(t, d.NotifyResponse(401, 0), "should not mark stale before a session exists")
 		require.Equal(t, int32(0), calls.Load())
 	})
 
@@ -143,8 +143,32 @@ func TestSessionNotifyResponseReauth(t *testing.T) {
 		d := newDynamicWithToken(t, &calls)
 		// ReauthStatusCodes left empty => response-triggered reauth disabled
 		require.Equal(t, "Bearer token-1", applyHeader(t, d))
-		require.False(t, d.NotifyResponse(401))
+		require.False(t, d.NotifyResponse(401, 0))
 		require.False(t, d.IsExpired())
+	})
+
+	t.Run("stale generation is ignored", func(t *testing.T) {
+		var calls atomic.Int32
+		d := newDynamicWithToken(t, &calls)
+		d.ReauthStatusCodes = []int{401}
+
+		req, _ := http.NewRequest("GET", "https://example.com", nil)
+		(&DynamicAuthStrategy{Dynamic: *d}).Apply(req)
+		gen1 := SessionGenerationFromRequest(req)
+		require.NotZero(t, gen1)
+
+		require.True(t, d.NotifyResponse(401, gen1))
+		require.True(t, d.IsExpired())
+
+		req2, _ := http.NewRequest("GET", "https://example.com", nil)
+		(&DynamicAuthStrategy{Dynamic: *d}).Apply(req2)
+		gen2 := SessionGenerationFromRequest(req2)
+		require.NotEqual(t, gen1, gen2)
+
+		// A late 401 from the previous generation must not invalidate the new session.
+		require.False(t, d.NotifyResponse(401, gen1))
+		require.False(t, d.IsExpired())
+		require.Equal(t, "Bearer token-2", req2.Header.Get("Authorization"))
 	})
 }
 
@@ -162,7 +186,7 @@ func TestSessionResponseInspectorInterface(t *testing.T) {
 	strategy.Apply(req)
 	require.Equal(t, "Bearer token-1", req.Header.Get("Authorization"))
 
-	require.True(t, inspector.OnResponse(401))
+	require.True(t, inspector.OnResponse(401, 0))
 	req2, _ := http.NewRequest("GET", "https://example.com", nil)
 	strategy.Apply(req2)
 	require.Equal(t, "Bearer token-2", req2.Header.Get("Authorization"))

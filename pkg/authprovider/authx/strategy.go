@@ -1,6 +1,7 @@
 package authx
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -21,8 +22,10 @@ type AuthStrategy interface {
 // re-authentication for subsequent requests.
 type ResponseInspector interface {
 	// OnResponse is called with the status code of a response to a request the
-	// strategy authenticated. It returns true if re-authentication was triggered.
-	OnResponse(statusCode int) bool
+	// strategy authenticated. sessionGeneration identifies the session that was
+	// applied to that request (0 when unknown). It returns true if
+	// re-authentication was triggered.
+	OnResponse(statusCode int, sessionGeneration uint64) bool
 }
 
 var (
@@ -30,6 +33,28 @@ var (
 	_ ResponseInspector      = &DynamicAuthStrategy{}
 	_ BrowserStorageProvider = &DynamicAuthStrategy{}
 )
+
+type authSessionGenerationKey struct{}
+
+// WithSessionGeneration stores the dynamic-session generation on the request
+// context so a later response can be correlated with the session that
+// authenticated it.
+func WithSessionGeneration(req *http.Request, generation uint64) *http.Request {
+	if req == nil || generation == 0 {
+		return req
+	}
+	return req.WithContext(context.WithValue(req.Context(), authSessionGenerationKey{}, generation))
+}
+
+// SessionGenerationFromRequest returns the session generation stamped onto req,
+// or 0 when absent.
+func SessionGenerationFromRequest(req *http.Request) uint64 {
+	if req == nil {
+		return 0
+	}
+	gen, _ := req.Context().Value(authSessionGenerationKey{}).(uint64)
+	return gen
+}
 
 // DynamicAuthStrategy is an auth strategy for dynamic secrets
 // it implements the AuthStrategy interface
@@ -40,22 +65,32 @@ type DynamicAuthStrategy struct {
 
 // Apply applies the strategy to the request
 func (d *DynamicAuthStrategy) Apply(req *http.Request) {
-	d.Dynamic.ApplyStrategies(func(s AuthStrategy) {
+	gen := d.Dynamic.ApplyStrategies(func(s AuthStrategy) {
 		s.Apply(req)
 	})
+	if req != nil && gen != 0 {
+		*req = *WithSessionGeneration(req, gen)
+	}
 }
 
 // ApplyOnRR applies the strategy to the retryable request
 func (d *DynamicAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	d.Dynamic.ApplyStrategies(func(s AuthStrategy) {
+	if req == nil {
+		return
+	}
+	gen := d.Dynamic.ApplyStrategies(func(s AuthStrategy) {
 		s.ApplyOnRR(req)
 	})
+	if gen != 0 && req.Request != nil {
+		req.Request = WithSessionGeneration(req.Request, gen)
+	}
 }
 
 // OnResponse inspects a response status code and marks the dynamic session for
-// re-authentication when the code signals an expired session.
-func (d *DynamicAuthStrategy) OnResponse(statusCode int) bool {
-	return d.Dynamic.NotifyResponse(statusCode)
+// re-authentication when the code signals an expired session for the given
+// generation.
+func (d *DynamicAuthStrategy) OnResponse(statusCode int, sessionGeneration uint64) bool {
+	return d.Dynamic.NotifyResponse(statusCode, sessionGeneration)
 }
 
 // WebStorage exposes the browser web storage captured by a headless auto-login

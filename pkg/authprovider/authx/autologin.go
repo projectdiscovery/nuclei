@@ -248,7 +248,19 @@ func (d *Dynamic) applyAutoLoginSession(session *autologin.Session) error {
 	case hasCookies:
 		d.Type = string(CookiesAuth)
 		for _, c := range session.Cookies {
-			d.Cookies = append(d.Cookies, Cookie{Key: c.Name, Value: c.Value})
+			d.Cookies = append(d.Cookies, Cookie{
+				Key:    c.Name,
+				Value:  c.Value,
+				Domain: c.Domain,
+				Path:   c.Path,
+				Secure: c.Secure,
+			})
+			// Expand secret domain scope from captured cookie domains so SSO
+			// cookies are not silently dropped when LookupURL uses Domains, while
+			// Apply still filters by each cookie's Domain/Path/Secure.
+			if host := cookieDomainHost(c.Domain); host != "" && !domainListContains(d.Domains, host) {
+				d.Domains = append(d.Domains, host)
+			}
 		}
 		if hasToken && d.fetchState != nil {
 			// Apply the token as an additional bearer header secret on the shared
@@ -274,6 +286,24 @@ func firstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+// cookieDomainHost normalizes a Set-Cookie Domain attribute to a hostname
+// suitable for Secret.Domains lookup (strips a leading dot).
+func cookieDomainHost(domain string) string {
+	domain = strings.TrimSpace(domain)
+	domain = strings.TrimPrefix(domain, ".")
+	return domain
+}
+
+func domainListContains(domains []string, host string) bool {
+	host = strings.ToLower(host)
+	for _, d := range domains {
+		if strings.EqualFold(d, host) {
+			return true
+		}
+	}
+	return false
 }
 
 // kvSliceToMap converts a slice of KV pairs to a map for the autologin engine.

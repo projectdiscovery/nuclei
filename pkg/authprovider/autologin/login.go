@@ -312,7 +312,10 @@ func proxyTransport(rawProxy string) (*http.Transport, error) {
 	}
 }
 
-// collectCookies gathers unique cookies the jar holds for any of the given URLs.
+// collectCookies gathers cookies the jar holds for the login/action/final URLs.
+// Cookies with Domain/Path are de-duplicated by name+domain+path. Jar cookies
+// that lack scope metadata are de-duplicated by name, with later URLs winning so
+// a post-login session cookie replaces a same-name pre-login CSRF cookie.
 func collectCookies(jar http.CookieJar, loginURL *url.URL, action, final string) []*http.Cookie {
 	urls := []*url.URL{loginURL}
 	if u, err := url.Parse(action); err == nil {
@@ -321,21 +324,30 @@ func collectCookies(jar http.CookieJar, loginURL *url.URL, action, final string)
 	if u, err := url.Parse(final); err == nil {
 		urls = append(urls, u)
 	}
-	seen := map[string]bool{}
+	seen := map[string]int{}
 	var out []*http.Cookie
 	for _, u := range urls {
 		if u == nil {
 			continue
 		}
 		for _, c := range jar.Cookies(u) {
-			if seen[c.Name] {
+			key := cookieDedupeKey(c)
+			if idx, ok := seen[key]; ok {
+				out[idx] = c
 				continue
 			}
-			seen[c.Name] = true
+			seen[key] = len(out)
 			out = append(out, c)
 		}
 	}
 	return out
+}
+
+func cookieDedupeKey(c *http.Cookie) string {
+	if c.Domain == "" && c.Path == "" {
+		return c.Name
+	}
+	return c.Name + "\x00" + c.Domain + "\x00" + c.Path
 }
 
 // renderCookieHeader renders cookies as a single Cookie header value.

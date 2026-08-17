@@ -182,6 +182,13 @@ type Cookie struct {
 	Key   string `json:"key" yaml:"key"`
 	Value string `json:"value" yaml:"value"`
 	Raw   string `json:"raw" yaml:"raw"`
+	// Domain / Path / Secure preserve the cookie's protocol scope when captured
+	// (e.g. from a headless login). Empty Domain/Path means "unscoped": the
+	// cookie is attached to every request the secret's domains match, matching
+	// historical nuclei behaviour for manually authored secrets.
+	Domain string `json:"domain,omitempty" yaml:"domain,omitempty"`
+	Path   string `json:"path,omitempty" yaml:"path,omitempty"`
+	Secure bool   `json:"secure,omitempty" yaml:"secure,omitempty"`
 }
 
 func (c *Cookie) Validate() error {

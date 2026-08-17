@@ -166,7 +166,13 @@ func (g *generatedRequest) NotifyResponse(provider authprovider.AuthProvider, re
 	}
 	for _, strategy := range provider.LookupURLX(target) {
 		if inspector, ok := strategy.(authx.ResponseInspector); ok {
-			if inspector.OnResponse(resp.StatusCode) {
+			var gen uint64
+			if g.request != nil && g.request.Request != nil {
+				gen = authx.SessionGenerationFromRequest(g.request.Request)
+			} else if resp.Request != nil {
+				gen = authx.SessionGenerationFromRequest(resp.Request)
+			}
+			if inspector.OnResponse(resp.StatusCode, gen) {
 				gologger.Verbose().Msgf("[authprovider] Session expired (status %d) for %s, will re-authenticate\n", resp.StatusCode, target.Host)
 			}
 		}

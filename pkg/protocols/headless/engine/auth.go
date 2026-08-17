@@ -31,7 +31,8 @@ func (p *Page) applyAuthStrategies() {
 		return
 	}
 
-	headers, cookies := resolveAuthMaterial(p.options.AuthProvider, p.inputURL)
+	headers, cookies, gen := resolveAuthMaterial(p.options.AuthProvider, p.inputURL)
+	p.authSessionGeneration = gen
 	if len(headers) == 0 && len(cookies) == 0 {
 		return
 	}
@@ -47,11 +48,19 @@ func (p *Page) applyAuthStrategies() {
 	}
 	params := make([]*proto.NetworkCookieParam, 0, len(cookies))
 	for _, cookie := range cookies {
-		params = append(params, &proto.NetworkCookieParam{
-			Name:  cookie.Name,
-			Value: cookie.Value,
-			URL:   p.inputURL.String(),
-		})
+		param := &proto.NetworkCookieParam{
+			Name:   cookie.Name,
+			Value:  cookie.Value,
+			URL:    p.inputURL.String(),
+			Secure: cookie.Secure,
+		}
+		if cookie.Domain != "" {
+			param.Domain = cookie.Domain
+		}
+		if cookie.Path != "" {
+			param.Path = cookie.Path
+		}
+		params = append(params, param)
 	}
 	if err := p.page.SetCookies(params); err != nil {
 		gologger.Warning().Msgf("headless: could not set auth cookies for %s: %s", p.inputURL.String(), err)
@@ -74,7 +83,7 @@ func (p *Page) notifyAuthResponse(statusCode int) {
 	}
 	for _, strategy := range p.options.AuthProvider.LookupURLX(p.inputURL) {
 		if inspector, ok := strategy.(authx.ResponseInspector); ok {
-			if inspector.OnResponse(statusCode) {
+			if inspector.OnResponse(statusCode, p.authSessionGeneration) {
 				gologger.Verbose().Msgf("[authprovider] Session expired (status %d) for %s, will re-authenticate", statusCode, p.inputURL.Host)
 			}
 		}
@@ -172,25 +181,26 @@ func buildStorageInjectorJS(origin string, local, session map[string]string) str
 // It is kept free of any browser dependency so it can be unit-tested in
 // isolation. The header/cookie values are produced by applying the strategies to
 // a synthetic request, guaranteeing parity with the HTTP protocol's behaviour.
-func resolveAuthMaterial(provider authprovider.AuthProvider, target *urlutil.URL) (headers []string, cookies []*http.Cookie) {
+func resolveAuthMaterial(provider authprovider.AuthProvider, target *urlutil.URL) (headers []string, cookies []*http.Cookie, generation uint64) {
 	if provider == nil || target == nil {
-		return nil, nil
+		return nil, nil, 0
 	}
 	strategies := provider.LookupURLX(target)
 	if len(strategies) == 0 {
-		return nil, nil
+		return nil, nil, 0
 	}
 
 	synthetic, err := http.NewRequest(http.MethodGet, target.String(), nil)
 	if err != nil {
 		gologger.Warning().Msgf("headless: could not build auth request for %s: %s", target.String(), err)
-		return nil, nil
+		return nil, nil, 0
 	}
 	for _, strategy := range strategies {
 		if strategy != nil {
 			strategy.Apply(synthetic)
 		}
 	}
+	generation = authx.SessionGenerationFromRequest(synthetic)
 
 	for key, values := range synthetic.Header {
 		if strings.EqualFold(key, "Cookie") {
@@ -200,5 +210,5 @@ func resolveAuthMaterial(provider authprovider.AuthProvider, target *urlutil.URL
 			headers = append(headers, key, value)
 		}
 	}
-	return headers, synthetic.Cookies()
+	return headers, synthetic.Cookies(), generation
 }

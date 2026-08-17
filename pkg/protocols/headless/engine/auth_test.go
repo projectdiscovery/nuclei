@@ -37,7 +37,7 @@ func TestResolveAuthMaterial(t *testing.T) {
 			authx.NewCookiesAuthStrategy(&authx.Secret{Cookies: []authx.Cookie{{Key: "session", Value: "abc"}}}),
 		}}
 
-		headers, cookies := resolveAuthMaterial(provider, mustParseURL(t, "https://example.com/app"))
+		headers, cookies, _ := resolveAuthMaterial(provider, mustParseURL(t, "https://example.com/app"))
 
 		headerMap := pairsToMap(t, headers)
 		require.Equal(t, "secret", headerMap["X-Api-Key"])
@@ -52,19 +52,19 @@ func TestResolveAuthMaterial(t *testing.T) {
 	})
 
 	t.Run("no strategies returns nothing", func(t *testing.T) {
-		headers, cookies := resolveAuthMaterial(&mockAuthProvider{}, mustParseURL(t, "https://example.com/"))
+		headers, cookies, _ := resolveAuthMaterial(&mockAuthProvider{}, mustParseURL(t, "https://example.com/"))
 		require.Empty(t, headers)
 		require.Empty(t, cookies)
 	})
 
 	t.Run("nil provider is safe", func(t *testing.T) {
-		headers, cookies := resolveAuthMaterial(nil, mustParseURL(t, "https://example.com/"))
+		headers, cookies, _ := resolveAuthMaterial(nil, mustParseURL(t, "https://example.com/"))
 		require.Nil(t, headers)
 		require.Nil(t, cookies)
 	})
 
 	t.Run("nil url is safe", func(t *testing.T) {
-		headers, cookies := resolveAuthMaterial(&mockAuthProvider{}, nil)
+		headers, cookies, _ := resolveAuthMaterial(&mockAuthProvider{}, nil)
 		require.Nil(t, headers)
 		require.Nil(t, cookies)
 	})
@@ -73,7 +73,7 @@ func TestResolveAuthMaterial(t *testing.T) {
 		provider := &mockAuthProvider{strategies: []authx.AuthStrategy{
 			authx.NewCookiesAuthStrategy(&authx.Secret{Cookies: []authx.Cookie{{Key: "sid", Value: "xyz"}}}),
 		}}
-		headers, cookies := resolveAuthMaterial(provider, mustParseURL(t, "https://example.com/"))
+		headers, cookies, _ := resolveAuthMaterial(provider, mustParseURL(t, "https://example.com/"))
 		require.Empty(t, headers)
 		require.Len(t, cookies, 1)
 		require.Equal(t, "sid", cookies[0].Name)

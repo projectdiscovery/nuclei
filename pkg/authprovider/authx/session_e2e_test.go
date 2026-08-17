@@ -116,7 +116,7 @@ func TestSessionLifecycle_E2E(t *testing.T) {
 		require.NoError(t, err)
 		_ = resp.Body.Close()
 		// surface the response to the auth strategy, like the http protocol does
-		inspector.OnResponse(resp.StatusCode)
+		inspector.OnResponse(resp.StatusCode, 0)
 		return resp.StatusCode
 	}
 

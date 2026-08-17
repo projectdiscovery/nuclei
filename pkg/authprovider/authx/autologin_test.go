@@ -175,7 +175,7 @@ func TestDynamic_WebStorage_ConcurrentReauth(t *testing.T) {
 				case 2:
 					strategy.Dynamic.ApplyStrategies(func(AuthStrategy) {})
 				default:
-					_ = strategy.Dynamic.NotifyResponse(401)
+					_ = strategy.Dynamic.NotifyResponse(401, 0)
 				}
 			}
 		}(w)

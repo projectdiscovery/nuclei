@@ -128,12 +128,31 @@ func captureSessionToStore(session *autologin.Session, host string) (*authx.Auth
 	var secrets []authx.Secret
 	if len(session.Cookies) > 0 {
 		cookies := make([]authx.Cookie, 0, len(session.Cookies))
+		domains := []string{host}
 		for _, c := range session.Cookies {
-			cookies = append(cookies, authx.Cookie{Key: c.Name, Value: c.Value})
+			cookies = append(cookies, authx.Cookie{
+				Key:    c.Name,
+				Value:  c.Value,
+				Domain: c.Domain,
+				Path:   c.Path,
+				Secure: c.Secure,
+			})
+			if d := strings.TrimPrefix(strings.TrimSpace(c.Domain), "."); d != "" && !strings.EqualFold(d, host) {
+				found := false
+				for _, existing := range domains {
+					if strings.EqualFold(existing, d) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					domains = append(domains, d)
+				}
+			}
 		}
 		secrets = append(secrets, authx.Secret{
 			Type:    string(authx.CookiesAuth),
-			Domains: []string{host},
+			Domains: domains,
 			Cookies: cookies,
 		})
 	}

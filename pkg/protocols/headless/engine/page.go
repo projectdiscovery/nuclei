@@ -41,6 +41,9 @@ type Page struct {
 	payloads           map[string]interface{}
 	variables          map[string]interface{}
 	lastActionNavigate *Action
+	// authSessionGeneration is the dynamic-session generation applied to this
+	// page, used to ignore late expiry signals from an older session.
+	authSessionGeneration uint64
 }
 
 // HistoryData contains the page request/response pairs

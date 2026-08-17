@@ -34,6 +34,9 @@ type fetchState struct {
 	stale     bool      // whether the session must be re-authenticated on next fetch
 	fetchedAt time.Time // time of the last successful/attempted fetch
 	err       error     // error from the most recent fetch attempt
+	// generation increments on every successful login so a late 401 from an
+	// older session can be ignored after a concurrent re-authentication.
+	generation uint64
 	// webStorageLocal/webStorageSession hold browser web storage captured by a
 	// headless auto-login, to be replayed into headless scan pages. Stored here
 	// (on the shared fetchState pointer) so all Dynamic value-copies and a
@@ -378,16 +381,17 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // applies each resolved auth strategy via the provided apply func while holding
 // the read lock. This guarantees the rendered secret is never read at request
 // time while a concurrent re-authentication is rewriting it.
-func (d *Dynamic) ApplyStrategies(apply func(AuthStrategy)) {
+// The returned generation identifies the session that was applied (0 if none).
+func (d *Dynamic) ApplyStrategies(apply func(AuthStrategy)) uint64 {
 	// Fetch (re)authenticates under the write lock if the session is missing or stale.
 	_ = d.Fetch(false)
 	if d.fetchState == nil {
-		return
+		return 0
 	}
 	d.fetchState.mu.RLock()
 	defer d.fetchState.mu.RUnlock()
 	if d.fetchState.err != nil {
-		return
+		return 0
 	}
 	if d.Secret != nil {
 		if s := d.GetStrategy(); s != nil {
@@ -404,6 +408,20 @@ func (d *Dynamic) ApplyStrategies(apply func(AuthStrategy)) {
 			apply(s)
 		}
 	}
+	return d.fetchState.generation
+}
+
+// SessionGeneration returns the current successful-login generation, or 0.
+func (d *Dynamic) SessionGeneration() uint64 {
+	if d.fetchState == nil {
+		return 0
+	}
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
+	if !d.fetchState.fetched {
+		return 0
+	}
+	return d.fetchState.generation
 }
 
 // Fetch fetches the dynamic secret, (re)running the login flow when the session
@@ -469,18 +487,24 @@ func (d *Dynamic) MarkStale() {
 // NotifyResponse inspects a response and, if its status code is configured as a
 // session-expiry signal, marks the session stale so it is re-authenticated
 // before the next request. It returns true if re-authentication was triggered.
-func (d *Dynamic) NotifyResponse(statusCode int) bool {
+//
+// generation identifies the session that authenticated the request. When
+// non-zero and different from the current session generation, the signal is
+// ignored (a late 401 from an older session must not invalidate a fresher one).
+// Pass 0 when the generation is unknown (legacy callers).
+func (d *Dynamic) NotifyResponse(statusCode int, generation uint64) bool {
 	if d.fetchState == nil || !d.shouldReauthOnStatus(statusCode) {
 		return false
 	}
-	// Only mark stale if we actually have an established session to refresh.
-	d.fetchState.mu.RLock()
-	fetched := d.fetchState.fetched
-	d.fetchState.mu.RUnlock()
-	if !fetched {
+	d.fetchState.mu.Lock()
+	defer d.fetchState.mu.Unlock()
+	if !d.fetchState.fetched {
 		return false
 	}
-	d.MarkStale()
+	if generation != 0 && generation != d.fetchState.generation {
+		return false
+	}
+	d.fetchState.stale = true
 	return true
 }
 
@@ -526,6 +550,7 @@ func (d *Dynamic) runFetchLocked() {
 	d.fetchState.fetched = true
 	d.fetchState.stale = false
 	d.fetchState.fetchedAt = time.Now()
+	d.fetchState.generation++
 }
 
 // isExpiredLocked reports whether the session needs re-authentication. The
