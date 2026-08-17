@@ -53,18 +53,10 @@ func logSession(t *testing.T, s *Session) {
 	t.Logf("final url: %s", s.FinalURL)
 	t.Logf("cookies (%d):", len(s.Cookies))
 	for _, c := range s.Cookies {
-		v := c.Value
-		if len(v) > 24 {
-			v = v[:24] + "...(truncated)"
-		}
-		t.Logf("  %s = %s", c.Name, v)
+		t.Logf("  %s", c.Name)
 	}
 	if s.Token != "" {
-		tok := s.Token
-		if len(tok) > 32 {
-			tok = tok[:32] + "...(truncated)"
-		}
-		t.Logf("token: %s", tok)
+		t.Logf("token: present (len=%d)", len(s.Token))
 	}
 	t.Logf("localStorage keys: %d, sessionStorage keys: %d", len(s.LocalStorage), len(s.SessionStorage))
 	for k := range s.LocalStorage {
@@ -89,7 +81,7 @@ func TestRealApp_HeadlessLogin(t *testing.T) {
 	require.NoError(t, err, "headless login against real app failed")
 	logSession(t, session)
 
-	require.True(t, len(session.Cookies) > 0 || session.Token != "" || len(session.LocalStorage) > 0,
+	require.True(t, len(session.Cookies) > 0 || session.Token != "" || len(session.LocalStorage) > 0 || len(session.SessionStorage) > 0,
 		"expected to capture a session (cookie, token or web storage)")
 
 	if key := os.Getenv("NUCLEI_REALAPP_EXPECT_STORAGE_KEY"); key != "" {
@@ -128,7 +120,7 @@ func TestRealApp_RecordingReplay(t *testing.T) {
 	require.NoError(t, err, "failed to compile recording")
 	t.Logf("compiled %d steps from recording", len(steps))
 	for _, s := range steps {
-		t.Logf("  %s selector=%q value=%q", s.Action, s.Selector, s.Value)
+		t.Logf("  %s selector=%q", s.Action, s.Selector)
 	}
 	cfg.Steps = steps
 	if cfg.LoginURL == "" {
@@ -141,6 +133,6 @@ func TestRealApp_RecordingReplay(t *testing.T) {
 	session, err := LoginHeadless(ctx, cfg)
 	require.NoError(t, err, "recorded login replay against real app failed")
 	logSession(t, session)
-	require.True(t, len(session.Cookies) > 0 || session.Token != "" || len(session.LocalStorage) > 0,
+	require.True(t, len(session.Cookies) > 0 || session.Token != "" || len(session.LocalStorage) > 0 || len(session.SessionStorage) > 0,
 		"expected recorded login to capture a session")
 }

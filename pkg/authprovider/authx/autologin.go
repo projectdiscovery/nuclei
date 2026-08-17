@@ -62,6 +62,9 @@ func (a *AutoLoginConfig) Validate() error {
 	// so a missing/invalid recording fails fast and so it can supply the login
 	// URL when one isn't given explicitly.
 	if a.Recording != "" {
+		if len(a.Steps) > 0 {
+			return errkit.New("recording and steps are mutually exclusive for auto-login")
+		}
 		steps, err := autologin.StepsFromRecordingFile(a.Recording, a.Username, a.Password)
 		if err != nil {
 			return err

@@ -54,6 +54,16 @@ func TestStepsFromRecording_PasswordSelectorMaskedWithoutCredMatch(t *testing.T)
 	require.NoError(t, err)
 	require.Len(t, steps, 1)
 	require.Equal(t, "{{password}}", steps[0].Value, "value typed into a password field must be masked")
+
+	// CSS can win over an aria/Password alternative; still mask via any selector.
+	rec = `{"steps": [
+		{"type": "change", "value": "literal-secret", "selectors": [["#input-2"], ["aria/Password"]]}
+	]}`
+	steps, err = StepsFromRecording([]byte(rec), "", "")
+	require.NoError(t, err)
+	require.Len(t, steps, 1)
+	require.Equal(t, "#input-2", steps[0].Selector)
+	require.Equal(t, "{{password}}", steps[0].Value, "password-looking alternate selectors must still mask")
 }
 
 func TestStepsFromRecording_SelectorPriority(t *testing.T) {
@@ -80,6 +90,13 @@ func TestStepsFromRecording_Errors(t *testing.T) {
 
 	_, err = StepsFromRecording([]byte(`{"steps": [{"type":"setViewport"}]}`), "", "")
 	require.Error(t, err, "recording with no replayable steps must error")
+
+	_, err = StepsFromRecording([]byte(`{"steps": [{"type":"doubleClick","selectors":[["#x"]]}]}`), "", "")
+	require.Error(t, err, "unsupported actions must fail the import")
+	require.Contains(t, err.Error(), "unsupported recording action")
+
+	_, err = StepsFromRecording([]byte(`{"steps": [{"type":"waitForExpression","expression":"1==1"}]}`), "", "")
+	require.Error(t, err, "expression waits must fail rather than become fixed waits")
 }
 
 func TestFirstNavigateURL(t *testing.T) {

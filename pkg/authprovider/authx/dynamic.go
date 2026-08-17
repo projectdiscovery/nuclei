@@ -134,6 +134,7 @@ func (d *Dynamic) Validate() error {
 	// NOTE: Validate() must not be called concurrently with Fetch()/GetStrategies().
 	// Re-validating resets fetch state and allows re-fetching.
 	d.fetchState = &fetchState{}
+	d.refreshInterval = 0
 
 	// Auto-login is a template-free alternative to TemplatePath. When set, it is
 	// validated on its own and the template/variables requirements do not apply;
@@ -517,6 +518,11 @@ func (d *Dynamic) runFetchLocked() {
 		return
 	}
 	d.fetchState.err = d.fetchCallback(d)
+	if d.fetchState.err != nil {
+		// Leave fetched=false so a later Fetch(false) can retry instead of
+		// treating the failed attempt as an established session.
+		return
+	}
 	d.fetchState.fetched = true
 	d.fetchState.stale = false
 	d.fetchState.fetchedAt = time.Now()

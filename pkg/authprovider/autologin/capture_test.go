@@ -53,7 +53,7 @@ func TestCaptureOnce_E2E(t *testing.T) {
 	session, err := CaptureOnce(ctx, Config{
 		LoginURL:   srv.URL + "/login",
 		TokenRegex: `(eyJ[A-Za-z0-9._-]+)`,
-	}, func() error {
+	}, func(context.Context) error {
 		readyCalled = true // stands in for the user pressing Enter after logging in
 		return nil
 	})
@@ -82,7 +82,7 @@ func TestCaptureOnce_ReadyErrorAborts(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	_, err := CaptureOnce(ctx, Config{LoginURL: srv.URL + "/login"}, func() error {
+	_, err := CaptureOnce(ctx, Config{LoginURL: srv.URL + "/login"}, func(context.Context) error {
 		return errors.New("user cancelled")
 	})
 	require.Error(t, err, "a ready() error must abort the capture")
@@ -92,6 +92,6 @@ func TestCaptureOnce_Validation(t *testing.T) {
 	_, err := CaptureOnce(context.Background(), Config{LoginURL: "https://x"}, nil)
 	require.Error(t, err, "nil ready must error")
 
-	_, err = CaptureOnce(context.Background(), Config{}, func() error { return nil })
+	_, err = CaptureOnce(context.Background(), Config{}, func(context.Context) error { return nil })
 	require.Error(t, err, "missing login-url must error")
 }

@@ -11,7 +11,7 @@ import (
 )
 
 // CaptureOnce launches a visible browser at cfg.LoginURL and lets the user log
-// in manually, then — once ready() returns — captures the resulting session
+// in manually, then — once ready(ctx) returns — captures the resulting session
 // (cookies, web storage and an optional token). It performs no automated form
 // filling.
 //
@@ -20,8 +20,8 @@ import (
 // (hardware-key MFA, CAPTCHA, interactive SSO). Because the captured session is
 // a point-in-time snapshot there is no automated re-authentication; ready
 // blocks until the caller signals login completion (e.g. the user pressing
-// Enter in the terminal).
-func CaptureOnce(ctx context.Context, cfg Config, ready func() error) (*Session, error) {
+// Enter in the terminal) and should honor ctx cancellation.
+func CaptureOnce(ctx context.Context, cfg Config, ready func(context.Context) error) (*Session, error) {
 	if ready == nil {
 		return nil, errkit.New("auto-login(capture): a ready signal is required")
 	}
@@ -77,7 +77,7 @@ func CaptureOnce(ctx context.Context, cfg Config, ready func() error) (*Session,
 	_ = page.WaitLoad()
 
 	// Block until the user signals that the manual login is complete.
-	if err := ready(); err != nil {
+	if err := ready(ctx); err != nil {
 		return nil, errkit.Wrap(err, "auto-login(capture): aborted before capture")
 	}
 	if err := ctx.Err(); err != nil {

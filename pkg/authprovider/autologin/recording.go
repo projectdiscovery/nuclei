@@ -62,7 +62,7 @@ func StepsFromRecording(data []byte, username, password string) ([]LoginStep, er
 			if rs.URL != "" {
 				steps = append(steps, LoginStep{Action: "navigate", Value: rs.URL})
 			}
-		case "click", "doubleclick":
+		case "click":
 			sel := pickSelector(rs.Selectors)
 			if sel == "" {
 				continue
@@ -76,7 +76,7 @@ func StepsFromRecording(data []byte, username, password string) ([]LoginStep, er
 			steps = append(steps, LoginStep{
 				Action:   "fill",
 				Selector: sel,
-				Value:    parameterizeValue(rs.Value, sel, username, password),
+				Value:    parameterizeValue(rs.Value, rs.Selectors, username, password),
 			})
 		case "keydown":
 			// Only emit actionable keys; character keys are captured by `change`,
@@ -90,16 +90,11 @@ func StepsFromRecording(data []byte, username, password string) ([]LoginStep, er
 				continue
 			}
 			steps = append(steps, LoginStep{Action: "waitvisible", Selector: sel})
-		case "waitforexpression":
-			// We can't evaluate arbitrary expressions in the step engine; fall back
-			// to a settle wait so the page can reach the expected state.
-			steps = append(steps, LoginStep{Action: "wait"})
 		case "setviewport", "keyup", "scroll", "close", "emulatenetworkconditions", "hover", "":
 			// Not relevant to (or not supported for) headless login replay.
 			continue
 		default:
-			// Unknown step types are skipped rather than failing the whole import.
-			continue
+			return nil, errkit.Newf("auto-login: unsupported recording action %q", rs.Type)
 		}
 	}
 
@@ -141,16 +136,20 @@ func normalizeKey(key string) string {
 // parameterizeValue replaces a recorded credential literal with a placeholder so
 // secrets never live in the recording file. It masks by exact match against the
 // configured credentials and, defensively, masks any value typed into a field
-// whose selector looks like a password input.
-func parameterizeValue(value, selector, username, password string) string {
+// whose selector (any alternative) looks like a password input.
+func parameterizeValue(value string, selectors [][]string, username, password string) string {
 	if password != "" && value == password {
 		return "{{password}}"
 	}
 	if username != "" && value == username {
 		return "{{username}}"
 	}
-	if looksLikePasswordSelector(selector) {
-		return "{{password}}"
+	for _, group := range selectors {
+		for _, selector := range group {
+			if looksLikePasswordSelector(selector) {
+				return "{{password}}"
+			}
+		}
 	}
 	return value
 }

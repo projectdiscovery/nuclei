@@ -93,11 +93,20 @@ func captureOnceStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 		CustomHeaders:      rt.CustomHeaders,
 	}
 
-	ready := func() error {
+	ready := func(ctx context.Context) error {
 		fmt.Fprintf(os.Stderr, "[auth-capture] Log in to %s in the opened browser window, then press Enter here to capture the session...", opts.AuthLoginURL)
 		reader := bufio.NewReader(os.Stdin)
-		_, rerr := reader.ReadString('\n')
-		return rerr
+		done := make(chan error, 1)
+		go func() {
+			_, rerr := reader.ReadString('\n')
+			done <- rerr
+		}()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case rerr := <-done:
+			return rerr
+		}
 	}
 
 	session, err := autologin.CaptureOnce(context.Background(), cfg, ready)
@@ -200,12 +209,13 @@ func buildAutoLoginRuntimeOptions(opts *types.Options) *authx.AutoLoginRuntimeOp
 // single auto-login dynamic secret built from the -auth-login-url flag set. The
 // captured session is scoped to the login URL's host.
 func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
+	username, password := authCredentialsFromOptions(opts)
 	// The login URL may be supplied directly (-auth-login-url) or derived from a
 	// recording's first navigate step; resolve the host scope from whichever is
 	// available.
 	loginURL := opts.AuthLoginURL
 	if loginURL == "" && opts.AuthRecording != "" {
-		steps, err := autologin.StepsFromRecordingFile(opts.AuthRecording, opts.AuthUsername, opts.AuthPassword)
+		steps, err := autologin.StepsFromRecordingFile(opts.AuthRecording, username, password)
 		if err != nil {
 			return nil, err
 		}
@@ -234,8 +244,8 @@ func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 				ReauthStatusCodes: reauthCodes,
 				AutoLogin: &authx.AutoLoginConfig{
 					LoginURL:      loginURL,
-					Username:      opts.AuthUsername,
-					Password:      opts.AuthPassword,
+					Username:      username,
+					Password:      password,
 					UsernameField: opts.AuthUsernameField,
 					PasswordField: opts.AuthPasswordField,
 					Headless:      opts.AuthHeadless,
@@ -244,6 +254,18 @@ func autoLoginStoreFromOptions(opts *types.Options) (*authx.Authx, error) {
 			},
 		},
 	}, nil
+}
+
+// authCredentialsFromOptions resolves CLI credentials, preferring flag values
+// and falling back to NUCLEI_AUTH_PASSWORD so the password need not appear on
+// the process argv / shell history.
+func authCredentialsFromOptions(opts *types.Options) (username, password string) {
+	username = opts.AuthUsername
+	password = opts.AuthPassword
+	if password == "" {
+		password = os.Getenv("NUCLEI_AUTH_PASSWORD")
+	}
+	return username, password
 }
 
 // parseStatusCodes parses a comma-separated list of HTTP status codes (e.g.

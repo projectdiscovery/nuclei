@@ -247,6 +247,12 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 
 	// 6. Decide success.
 	//
+	// Auth failure statuses with a pre-login CSRF cookie must not count as a
+	// successful session — reject 401/403 before treating cookies as material.
+	if finalStatus == http.StatusUnauthorized || finalStatus == http.StatusForbidden {
+		return nil, errkit.Wrapf(ErrLoginFailed, "final status %d at %s", finalStatus, finalURLStr)
+	}
+
 	// "Captured a cookie" is NOT a sufficient signal: servers commonly set a
 	// pre-login CSRF cookie on the GET that survives a failed POST. The strongest
 	// generic failure signal is being re-prompted — i.e. the page we land on

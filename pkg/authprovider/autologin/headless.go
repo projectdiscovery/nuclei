@@ -214,16 +214,16 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 			}
 		}
 	}
-	if len(session.Cookies) == 0 && session.Token == "" {
-		return nil, errkit.Wrapf(ErrLoginFailed, "no cookies or token captured at %s", session.FinalURL)
+	if len(session.Cookies) == 0 && session.Token == "" && len(session.LocalStorage) == 0 && len(session.SessionStorage) == 0 {
+		return nil, errkit.Wrapf(ErrLoginFailed, "no cookies, token or web storage captured at %s", session.FinalURL)
 	}
 	return session, nil
 }
 
-// sameLoginOrigin reports whether respURL is served by the same host as the
-// login page. It is used to ignore third-party (CDN/analytics) responses when
-// passively scavenging a session token from response headers. An unparsable
-// respURL is treated as not matching (fail closed).
+// sameLoginOrigin reports whether respURL shares the login page's origin
+// (scheme + host[:port]). It is used to ignore third-party (CDN/analytics)
+// responses when passively scavenging a session token from response headers.
+// An unparsable respURL is treated as not matching (fail closed).
 func sameLoginOrigin(loginURL *url.URL, respURL string) bool {
 	if loginURL == nil || respURL == "" {
 		return false
@@ -232,7 +232,7 @@ func sameLoginOrigin(loginURL *url.URL, respURL string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.EqualFold(u.Hostname(), loginURL.Hostname())
+	return strings.EqualFold(u.Scheme, loginURL.Scheme) && strings.EqualFold(u.Host, loginURL.Host)
 }
 
 // jwtValueRe matches a JWT-shaped value (header.payload.signature in base64url).
@@ -603,7 +603,7 @@ func typeInto(el *rod.Element, text string) error {
 }
 
 // capturePageCookies pulls cookies the browser holds for the given URLs and
-// converts them to net/http cookies, de-duplicated by name.
+// converts them to net/http cookies, de-duplicated by name+domain+path.
 func capturePageCookies(page *rod.Page, urls ...string) []*http.Cookie {
 	filtered := urls[:0]
 	for _, u := range urls {
@@ -618,10 +618,14 @@ func capturePageCookies(page *rod.Page, urls ...string) []*http.Cookie {
 	seen := map[string]bool{}
 	var out []*http.Cookie
 	for _, c := range cookies {
-		if c == nil || seen[c.Name] {
+		if c == nil {
 			continue
 		}
-		seen[c.Name] = true
+		key := c.Name + "\x00" + c.Domain + "\x00" + c.Path
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		out = append(out, &http.Cookie{Name: c.Name, Value: c.Value, Domain: c.Domain, Path: c.Path, HttpOnly: c.HTTPOnly, Secure: c.Secure})
 	}
 	return out

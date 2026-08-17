@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -219,7 +220,9 @@ func TestSessionConcurrentApplyDuringReauth(t *testing.T) {
 				default:
 					req, _ := http.NewRequest("GET", "https://example.com", nil)
 					strategy.Apply(req)
-					require.Equal(t, "Bearer tok", req.Header.Get("Authorization"))
+					// assert (not require): a failed check in a worker must not
+					// call FailNow from a non-test goroutine.
+					assert.Equal(t, "Bearer tok", req.Header.Get("Authorization"))
 				}
 			}
 		}()

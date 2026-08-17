@@ -42,6 +42,17 @@ func TestAutoLoginConfig_Validate_RecordingMissingFile(t *testing.T) {
 	require.Error(t, cfg.Validate(), "a missing recording file must fail validation")
 }
 
+func TestAutoLoginConfig_Validate_RecordingAndStepsExclusive(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "login.flow.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"steps":[{"type":"navigate","url":"https://example.com/login"}]}`), 0o600))
+	cfg := &AutoLoginConfig{
+		Recording: path,
+		Password:  "x",
+		Steps:     []autologin.LoginStep{{Action: "click", Selector: "#x"}},
+	}
+	require.Error(t, cfg.Validate(), "recording and steps must be mutually exclusive")
+}
+
 func newAutoLoginDynamic() *Dynamic {
 	return &Dynamic{
 		Secret:    &Secret{Domains: []string{"app.example.com"}},

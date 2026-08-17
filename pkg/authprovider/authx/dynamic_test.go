@@ -135,6 +135,7 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		wantErr := errors.New("auth fetch failed")
 		fetchStarted := make(chan struct{})
 		fetchUnblock := make(chan struct{})
+		var startedOnce sync.Once
 
 		d := &Dynamic{
 			TemplatePath: "test-template.yaml",
@@ -142,7 +143,9 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		}
 		require.NoError(t, d.Validate())
 		d.SetLazyFetchCallback(func(_ *Dynamic) error {
-			close(fetchStarted)
+			// Failed fetches leave fetched=false so a later Fetch can retry;
+			// concurrent waiters may therefore re-enter the callback.
+			startedOnce.Do(func() { close(fetchStarted) })
 			<-fetchUnblock
 			return wantErr
 		})

@@ -665,7 +665,9 @@ func (r *Runner) RunEnumeration() error {
 
 		// Turnkey auto-login from CLI flags (-auth-login-url): build an in-memory
 		// auto-login secret scoped to the login host, no secrets file needed.
-		if r.options.AuthLoginURL != "" || r.options.AuthRecording != "" {
+		// Capture-once also requires -auth-login-url, so skip the automated
+		// provider there to avoid overlapping sessions/logins.
+		if !r.options.AuthCapture && (r.options.AuthLoginURL != "" || r.options.AuthRecording != "") {
 			engine := "http"
 			if r.options.AuthHeadless || r.options.AuthRecording != "" {
 				engine = "headless"
