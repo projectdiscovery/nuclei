@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
@@ -302,6 +303,26 @@ var RequestPartDefinitions = map[string]string{
 	"all":                   "HTTP response body + headers",
 	"cookies_from_response": "HTTP response cookies in name:value format",
 	"headers_from_response": "HTTP response headers in name:value format",
+	"tls_version":           "TLS version negotiated for the HTTP connection",
+	"cipher":                "TLS cipher suite negotiated for the HTTP connection",
+	"sni":                   "SNI value used in the TLS handshake",
+	"subject_cn":            "Leaf certificate subject common name",
+	"subject_dn":            "Leaf certificate subject distinguished name",
+	"subject_an":            "Leaf certificate subject alternative names",
+	"subject_org":           "Leaf certificate subject organization",
+	"issuer_cn":             "Leaf certificate issuer common name",
+	"issuer_dn":             "Leaf certificate issuer distinguished name",
+	"issuer_org":            "Leaf certificate issuer organization",
+	"serial":                "Leaf certificate serial number",
+	"fingerprint_hash":      "Leaf certificate fingerprint hashes (md5/sha1/sha256)",
+	"not_before":            "Leaf certificate not-before timestamp",
+	"not_after":             "Leaf certificate not-after timestamp",
+	"expired":               "Whether the leaf certificate has expired",
+	"self_signed":           "Whether the leaf certificate is self-signed",
+	"mismatched":            "Whether the leaf certificate does not match the SNI hostname",
+	"domains":               "Deduplicated domains from subject CN and SANs",
+	"wildcard_certificate":  "Whether the leaf certificate is a wildcard certificate",
+	"emails":                "Email addresses embedded in the leaf certificate",
 }
 
 // GetID returns the unique ID of the request if any.
@@ -547,6 +568,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
 	}
+
+	// Avoid reusing client-side HTTP proxy connections for the legacy non-threaded spray path.
+	if shouldDisableKeepAliveForHTTPProxy(request, options) {
+		request.connConfiguration.Connection.DisableKeepAlive = true
+	}
 	return nil
 }
 
@@ -594,6 +620,15 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 // HasFuzzing indicates whether the request has fuzzing rules defined.
 func (request *Request) HasFuzzing() bool {
 	return len(request.Fuzzing) > 0
+}
+
+// shouldDisableKeepAliveForHTTPProxy preserves the pre-pooling behavior only for
+// standard HTTP proxies in non-threaded template/auto spray scans.
+func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.ExecutorOptions) bool {
+	if request == nil || options == nil || options.Options == nil || options.Options.AliveHttpProxy == "" {
+		return false
+	}
+	return request.Threads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
 }
 
 // AnalyzeConnectionReuse determines if a request can safely reuse connections.

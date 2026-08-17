@@ -142,7 +142,18 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 
+	var initCompiled *goja.Program
+
 	if request.Init != "" {
+		// Validate init syntax for every template, but do not execute unsigned
+		// template code during compilation.
+		initCompiled, err = compiler.SourceAutoMode(request.Init, false)
+		if err != nil {
+			return errkit.Newf("could not compile init code: %s", err)
+		}
+	}
+
+	if initCompiled != nil && request.options.Verified {
 		// execute init code if any
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Debug().Msgf("[%s] Executing Template Init\n", request.TemplateID)
@@ -220,10 +231,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		// proceed with whatever args we have
 		args.Args, _, _ = request.evaluateArgs(allVars, options, true)
 
-		initCompiled, err := compiler.SourceAutoMode(request.Init, false)
-		if err != nil {
-			return errkit.Newf("could not compile init code: %s", err)
-		}
 		result, err := request.options.JsCompiler.ExecuteWithOptions(context.Background(), initCompiled, args, opts)
 		if err != nil {
 			return errkit.Newf("could not execute pre-condition: %s", err)
@@ -285,6 +292,10 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	if request.options == nil || !request.options.Verified {
+		return errkit.New("refusing to execute unverified javascript template; sign it (-sign) or run a verified template")
+	}
+
 	// Get default port(s) if specified in template
 	ports := request.getPorts()
 	if len(ports) == 0 {
@@ -874,7 +885,7 @@ func (request *Request) getPorts() []string {
 		if strings.EqualFold(k, "Port") {
 			portStr := types.ToString(v)
 			ports := []string{}
-			for _, p := range strings.Split(portStr, ",") {
+			for p := range strings.SplitSeq(portStr, ",") {
 				trimmed := strings.TrimSpace(p)
 				if trimmed != "" {
 					ports = append(ports, trimmed)

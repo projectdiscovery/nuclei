@@ -2,6 +2,7 @@ package index
 
 import (
 	"encoding/gob"
+	"errors"
 	"maps"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ const (
 
 	// IndexVersion is the schema version for cache invalidation on breaking
 	// changes.
-	IndexVersion = 1
+	IndexVersion = 2
 
 	// DefaultMaxSize is the default maximum number of templates to cache.
 	DefaultMaxSize = 50000
@@ -34,6 +35,7 @@ type Index struct {
 	cacheFile string
 	mu        sync.RWMutex
 	version   int
+	dirty     bool
 }
 
 // cacheSnapshot represents the serialized cache structure.
@@ -70,6 +72,8 @@ func NewIndex(cacheDir string) (*Index, error) {
 			weight += len(value.Severity)
 			weight += len(value.ProtocolType)
 			weight += len(value.TemplateVerifier)
+			weight += len(value.VerifierFingerprint)
+			weight += len(value.ContentDigest)
 
 			for _, author := range value.Authors {
 				weight += len(author)
@@ -105,20 +109,26 @@ func NewDefaultIndex() (*Index, error) {
 // Get retrieves metadata for a template path, validating freshness via mtime.
 func (i *Index) Get(path string) (*Metadata, bool) {
 	i.mu.RLock()
-	defer i.mu.RUnlock()
-
 	metadata, found := i.cache.GetIfPresent(path)
+	i.mu.RUnlock()
+
 	if !found {
 		return nil, false
 	}
 
-	if !metadata.IsValid() {
-		go i.Delete(path)
-
-		return nil, false
+	if metadata.IsValid() {
+		return metadata.clone(), true
 	}
 
-	return metadata, true
+	i.mu.Lock()
+	current, found := i.cache.GetIfPresent(path)
+	if found && current == metadata {
+		i.cache.Invalidate(path)
+		i.dirty = true
+	}
+	i.mu.Unlock()
+
+	return nil, false
 }
 
 // Set stores metadata for a template path.
@@ -132,7 +142,10 @@ func (i *Index) Set(path string, metadata *Metadata) (*Metadata, bool) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
-	return i.cache.Set(path, metadata)
+	cached, ok := i.cache.Set(path, metadata.clone())
+	i.dirty = true
+
+	return cached.clone(), ok
 }
 
 // SetFromTemplate extracts metadata from a parsed template and stores it.
@@ -171,7 +184,12 @@ func (i *Index) Delete(path string) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
+	if _, found := i.cache.GetIfPresent(path); !found {
+		return
+	}
+
 	i.cache.Invalidate(path)
+	i.dirty = true
 }
 
 // Size returns the number of cached entries.
@@ -188,18 +206,22 @@ func (i *Index) Clear() {
 	defer i.mu.Unlock()
 
 	i.cache.InvalidateAll()
+	i.dirty = true
 }
 
 // Save persists the cache to disk using gob encoding.
 func (i *Index) Save() error {
-	i.mu.RLock()
-	defer i.mu.RUnlock()
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	if !i.dirty {
+		return nil
+	}
 
 	snapshot := &cacheSnapshot{
 		Version: i.version,
-		Data:    make(map[string]*Metadata),
+		Data:    make(map[string]*Metadata, i.cache.EstimatedSize()),
 	}
-
 	maps.Insert(snapshot.Data, i.cache.All())
 
 	// NOTE(dwisiswant0): write to temp for atomic op.
@@ -229,11 +251,20 @@ func (i *Index) Save() error {
 		return err
 	}
 
+	i.dirty = false
+
 	return nil
 }
 
 // Load loads the cache from disk using gob decoding.
 func (i *Index) Load() error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	if i.dirty {
+		return errors.New("cannot load metadata cache into a modified index")
+	}
+
 	file, err := os.Open(i.cacheFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -260,9 +291,6 @@ func (i *Index) Load() error {
 
 		return nil
 	}
-
-	i.mu.Lock()
-	defer i.mu.Unlock()
 
 	for key, value := range snapshot.Data {
 		i.cache.Set(key, value)
@@ -296,11 +324,8 @@ func (i *Index) FilterFunc(fn FilterFunc) []string {
 		return i.All()
 	}
 
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-
 	var matched []string
-	for path, metadata := range i.cache.All() {
+	for path, metadata := range i.GetAll() {
 		if fn(metadata) {
 			matched = append(matched, path)
 		}
@@ -327,7 +352,10 @@ func (i *Index) GetAll() map[string]*Metadata {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 
-	result := maps.Collect(i.cache.All())
+	result := make(map[string]*Metadata, i.cache.EstimatedSize())
+	for path, metadata := range i.cache.All() {
+		result[path] = metadata.clone()
+	}
 
 	return result
 }

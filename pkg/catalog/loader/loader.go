@@ -72,6 +72,10 @@ type Config struct {
 	Catalog         catalog.Catalog
 	ExecutorOptions *protocols.ExecutorOptions
 	Logger          *gologger.Logger
+
+	// MetadataIndex is an optional shared index borrowed by the store. The
+	// caller remains responsible for persisting it.
+	MetadataIndex *index.Index
 }
 
 // Store is a storage for loaded nuclei templates
@@ -170,14 +174,21 @@ func New(cfg *Config) (*Store, error) {
 		return nil
 	})
 
-	// Initialize metadata index and filter (load from disk & cache for reuse)
-	store.metadataIndex = store.loadTemplatesIndex()
+	// Initialize metadata index and filter (load from disk & cache for reuse).
+	ownsMetadataIndex := cfg.MetadataIndex == nil
+	store.metadataIndex = cfg.MetadataIndex
+	if store.metadataIndex == nil {
+		store.metadataIndex = store.loadTemplatesIndex()
+	}
 	store.indexFilter = store.buildIndexFilter()
 	if cfg.ExecutorOptions != nil {
-		cfg.ExecutorOptions.TemplateVerificationCallback = store.getTemplateVerification
+		metadataIndex := store.metadataIndex
+		cfg.ExecutorOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+			return getTemplateVerification(metadataIndex, templatePath)
+		}
 	}
 	store.saveMetadataIndexOnce = sync.OnceFunc(func() {
-		if store.metadataIndex == nil {
+		if store.metadataIndex == nil || !ownsMetadataIndex {
 			return
 		}
 
@@ -250,19 +261,21 @@ func New(cfg *Config) (*Store, error) {
 	return store, nil
 }
 
-func (store *Store) getTemplateVerification(templatePath string) *protocols.TemplateVerification {
-	if store.metadataIndex == nil {
+func getTemplateVerification(metadataIndex *index.Index, templatePath string) *protocols.TemplateVerification {
+	if metadataIndex == nil {
 		return nil
 	}
 
-	metadata, found := store.metadataIndex.Get(templatePath)
+	metadata, found := metadataIndex.Get(templatePath)
 	if !found {
 		return nil
 	}
 
 	return &protocols.TemplateVerification{
-		Verified: metadata.Verified,
-		Verifier: metadata.TemplateVerifier,
+		Verified:            metadata.Verified,
+		Verifier:            metadata.TemplateVerifier,
+		VerifierFingerprint: metadata.VerifierFingerprint,
+		ContentDigest:       metadata.ContentDigest,
 	}
 }
 
@@ -390,6 +403,31 @@ func (store *Store) loadTemplatesIndex() *index.Index {
 	return metadataIdx
 }
 
+func (store *Store) cacheValidatedMetadata(templatePath string, template *templates.Template) *index.Metadata {
+	metadata := index.NewMetadataFromTemplate(templatePath, template)
+	if parser, ok := store.config.ExecutorOptions.Parser.(*templates.Parser); ok {
+		metadata.Validation = index.ValidationStrict
+		if parser.NoStrictSyntax {
+			metadata.Validation = index.ValidationLax
+		}
+	}
+
+	info, err := os.Stat(templatePath)
+	if err != nil {
+		return metadata
+	}
+	metadata.ModTime = info.ModTime()
+
+	store.metadataIndex.Set(templatePath, metadata)
+	return metadata
+}
+
+func (store *Store) metadataValidForParser(metadata *index.Metadata) bool {
+	parser, ok := store.config.ExecutorOptions.Parser.(*templates.Parser)
+
+	return ok && metadata.IsValidatedFor(!parser.NoStrictSyntax)
+}
+
 // LoadTemplateTags loads template tags count using metadata index when possible.
 //
 // This method is optimized for tag listing (`-tgl`) and avoids loading all
@@ -419,7 +457,7 @@ func (store *Store) LoadTemplateTags() (map[string]int, error) {
 					continue
 				}
 
-				if !requiresTemplateParse {
+				if !requiresTemplateParse && store.metadataValidForParser(metadata) {
 					for _, tag := range metadata.Tags {
 						tagsMap[tag]++
 					}
@@ -453,7 +491,7 @@ func (store *Store) LoadTemplateTags() (map[string]int, error) {
 
 		var metadata *index.Metadata
 		if store.metadataIndex != nil {
-			metadata, _ = store.metadataIndex.SetFromTemplate(templatePath, template)
+			metadata = store.cacheValidatedMetadata(templatePath, template)
 		} else {
 			metadata = index.NewMetadataFromTemplate(templatePath, template)
 		}
@@ -481,39 +519,46 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	validPaths := make(map[string]struct{})
 
 	for _, templatePath := range templatePaths {
+		var cachedMetadata *index.Metadata
+
 		if store.metadataIndex != nil {
 			if metadata, found := store.metadataIndex.Get(templatePath); found {
 				if !indexFilter.Matches(metadata) {
 					continue
 				}
 
-				if store.tagFilter != nil {
-					loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
-					if !loaded {
-						if err != nil && strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
-							stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
-							if config.DefaultConfig.LogAllEvents {
-								store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
-							}
-						}
-						continue
-					}
-				}
-
-				validPaths[templatePath] = struct{}{}
-				continue
+				cachedMetadata = metadata
 			}
 		}
 
+		// Metadata-only loading still applies the configured tag filter.
 		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
-		if loaded {
+		if err != nil {
+			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
+				stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
+
+				if config.DefaultConfig.LogAllEvents {
+					store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+				}
+
+				continue
+			}
+
+			store.logger.Warning().Msg(err.Error())
+		}
+
+		if !loaded {
+			continue
+		}
+
+		if cachedMetadata == nil {
 			templatesCache := store.parserCacheOnce()
 			if templatesCache != nil {
 				if template, _, _ := templatesCache.Has(templatePath); template != nil {
 					var metadata *index.Metadata
 
 					if store.metadataIndex != nil {
-						metadata, _ = store.metadataIndex.SetFromTemplate(templatePath, template)
+						metadata = store.cacheValidatedMetadata(templatePath, template)
 					} else {
 						metadata = index.NewMetadataFromTemplate(templatePath, template)
 					}
@@ -521,26 +566,11 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 					if !indexFilter.Matches(metadata) {
 						continue
 					}
-
-					validPaths[templatePath] = struct{}{}
-					continue
 				}
 			}
-
-			validPaths[templatePath] = struct{}{}
 		}
 
-		if err != nil {
-			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
-				stats.Increment(templates.ExcludedWeakMatcherTemplateStats)
-				if config.DefaultConfig.LogAllEvents {
-					store.logger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
-				}
-				continue
-			}
-
-			store.logger.Warning().Msg(err.Error())
-		}
+		validPaths[templatePath] = struct{}{}
 	}
 
 	templatesCache := store.parserCacheOnce()
@@ -628,7 +658,6 @@ func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{})
 
 func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *templates.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
-	parsedCache := store.parserCacheOnce()
 
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
@@ -638,22 +667,14 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 			}
 		}
 
-		var template *templates.Template
-		var err error
-
-		if parsedCache != nil {
-			if cachedTemplate, _, cacheErr := parsedCache.Has(templatePath); cacheErr == nil && cachedTemplate != nil {
-				template = cachedTemplate
-			}
-		}
-
-		if template == nil {
-			template, err = templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
-			if err != nil {
-				if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
-					areTemplatesValid = false
-					continue
-				}
+		// The load step validates the parsed definition and filters templates.
+		// FYI parse must still run because protocol compilation can surface
+		// additional validation errors.
+		template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+		if err != nil {
+			if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
+				areTemplatesValid = false
+				continue
 			}
 		}
 
@@ -765,6 +786,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	defer store.saveMetadataIndexOnce()
 
 	indexFilter := store.indexFilter
+	requiresTemplateParse := len(store.config.IncludeConditions) > 0
 
 	includedTemplates, errs := store.config.Catalog.GetTemplatesPath(templatesList)
 	store.logErroredTemplates(errs)
@@ -841,8 +863,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 			defer wgLoadTemplates.Done()
 
 			var (
-				metadata       *index.Metadata
-				metadataCached bool
+				metadata         *index.Metadata
+				metadataReusable bool
 			)
 
 			if store.metadataIndex != nil {
@@ -852,21 +874,33 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 						noteExcludedByTag(templatePath, metadata)
 						return
 					}
-					// NOTE(dwisiswant0): else, tagFilter probably exists (for
-					// IncludeConditions), which still need to check via
-					// LoadTemplate.
 
-					metadataCached = true
+					if len(tags) > 0 && !slices.ContainsFunc(tags, metadata.HasTag) {
+						return
+					}
+
+					metadataReusable = store.metadataValidForParser(metadata)
 				}
 			}
 
-			loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
+			var err error
+
+			loaded := metadataReusable && !requiresTemplateParse
+			if !loaded {
+				loaded, err = store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
+			}
+
 			if loaded {
 				parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 
-				if parsed != nil && !metadataCached {
+				verificationChanged := parsed != nil && (metadata == nil ||
+					metadata.Verified != parsed.Verified ||
+					metadata.TemplateVerifier != parsed.TemplateVerifier ||
+					metadata.VerifierFingerprint != parsed.VerifierFingerprint() ||
+					metadata.ContentDigest != parsed.ContentDigest())
+				if parsed != nil && (!metadataReusable || verificationChanged) {
 					if store.metadataIndex != nil {
-						metadata, _ = store.metadataIndex.SetFromTemplate(templatePath, parsed)
+						metadata = store.cacheValidatedMetadata(templatePath, parsed)
 					} else {
 						metadata = index.NewMetadataFromTemplate(templatePath, parsed)
 					}

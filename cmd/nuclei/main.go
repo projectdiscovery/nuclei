@@ -260,6 +260,9 @@ func readConfig() *goflags.FlagSet {
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
+	// Shared PD flags (e.g. -max-time soft-kill via interrupt).
+	flagSet.AddCommonFlags()
+
 	/* TODO Important: The defined default values, especially for slice/array types are NOT DEFAULT VALUES, but rather implicit values to which the user input is appended.
 	This can be very confusing and should be addressed
 	*/
@@ -783,9 +786,7 @@ func disableUpdatesCallback() {
 // printVersion prints the nuclei version and exits.
 func printVersion() {
 	options.Logger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
-	options.Logger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
-	options.Logger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
-	options.Logger.Info().Msgf("PDCP Directory: %s", pdcp.PDCPDir)
+	runner.LogDirectoryInfo(options.Logger)
 	os.Exit(0)
 }
 

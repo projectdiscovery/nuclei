@@ -172,6 +172,14 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.parser = templates.NewParser()
 		e.ownsParser = true
 	}
+	e.compiledParser = e.parser
+	if !e.ownsParser {
+		// Compiled templates retain engine-local ExecutorOptions. Keep their
+		// cache private while the caller-owned parser provides the parsed cache.
+		e.compiledParser = templates.NewParserWithParsedCache(e.parser.Cache())
+		e.compiledParser.ShouldValidate = e.parser.ShouldValidate
+		e.compiledParser.NoStrictSyntax = e.parser.NoStrictSyntax
+	}
 
 	if protocolstate.ShouldInit(e.opts.ExecutionId) {
 		_ = protocolinit.Init(e.opts)
@@ -250,7 +258,8 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		Colorizer:          aurora.New(aurora.WithColors(true)),
 		ResumeCfg:          types.NewResumeCfg(),
 		Browser:            e.browserInstance,
-		Parser:             e.parser,
+		Parser:             e.compiledParser,
+		DoNotCache:         e.opts.DoNotCacheTemplates,
 		InputHelper:        input.NewHelper(),
 		TemporaryDirectory: e.tmpDir,
 		Logger:             e.opts.Logger,
@@ -306,8 +315,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		if cachedParser, ok := e.opts.Parser.(*templates.Parser); ok {
 			e.parser = cachedParser
 			e.opts.Parser = cachedParser
-			e.executerOpts.Parser = cachedParser
-			e.executerOpts.Options.Parser = cachedParser
 		}
 	}
 

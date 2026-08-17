@@ -73,6 +73,9 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 			}
 		} else {
 			word = result.Text
+			if matcher.CaseInsensitive {
+				word = strings.ToLower(word)
+			}
 		}
 		// Continue if the word doesn't match
 		if !strings.Contains(corpus, word) {
