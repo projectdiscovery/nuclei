@@ -469,6 +469,8 @@ type Options struct {
 	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
+	// HttpApiToken is the token required to authenticate against HttpApiEndpoint (optional)
+	HttpApiToken string
 	// InlineTargetsList holds inline multiline target list from a template profile
 	InlineTargetsList string `yaml:"targets-inline,omitempty"`
 	// ListTemplateProfiles lists all available template profiles
@@ -703,6 +705,7 @@ func (options *Options) Copy() *Options {
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
+		HttpApiToken:                   options.HttpApiToken,
 		InlineTargetsList:              options.InlineTargetsList,
 		ListTemplateProfiles:           options.ListTemplateProfiles,
 		LoadHelperFileFunction:         options.LoadHelperFileFunction,

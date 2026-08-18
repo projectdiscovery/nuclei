@@ -91,9 +91,9 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 
 	// If empty dir in s3
 	if stringsutil.HasSuffixI(key, "/") {
-		return os.MkdirAll(file, 0775)
+		return os.MkdirAll(file, 0750)
 	}
-	if err := os.MkdirAll(filepath.Dir(file), 0775); err != nil {
+	if err := os.MkdirAll(filepath.Dir(file), 0750); err != nil {
 		return err
 	}
 

@@ -541,7 +541,7 @@ func (t *TemplateManager) regenerateTemplateMetadata(dir string) error {
 
 	// Ensure templates directory exists (it may have been purged if empty)
 	if !fileutil.FolderExists(dir) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			return errkit.Wrapf(err, "failed to recreate templates directory %s after purge", dir)
 		}
 	}

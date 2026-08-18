@@ -46,12 +46,12 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 	}
 
 	pdcpTemplateDir := filepath.Join(config.DefaultConfig.GetTemplateDir(), "pdcp")
-	if err := os.MkdirAll(pdcpTemplateDir, 0755); err != nil {
+	if err := os.MkdirAll(pdcpTemplateDir, 0750); err != nil {
 		return nil, errkit.Newf("Failed to create pdcp template directory: %v", err)
 	}
 
 	templateFile := filepath.Join(pdcpTemplateDir, templateID+".yaml")
-	err = os.WriteFile(templateFile, []byte(template), 0644)
+	err = os.WriteFile(templateFile, []byte(template), 0600)
 	if err != nil {
 		return nil, errkit.Newf("Failed to generate template: %v", err)
 	}

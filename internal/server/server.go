@@ -179,7 +179,13 @@ func (s *DASTServer) setupHandlers(onlyStats bool) {
 	}
 	handler = recoverMiddleware(handler)
 
-	s.httpServer = &http.Server{Handler: handler}
+	s.httpServer = &http.Server{
+		Handler: handler,
+		// ReadHeaderTimeout guards against Slowloris-style attacks. Only the
+		// header read is bounded (not ReadTimeout/WriteTimeout) since /fuzz
+		// requests can legitimately take a while to process.
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 }
 
 func (s *DASTServer) Start() error {
