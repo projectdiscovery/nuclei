@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/useragent"
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -238,12 +239,27 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	}
 	method := parts[0]
 	rr.Request.Method = method
-	requestTarget := parts[1]
 
-	// parse headers uniformly. The Host header (wherever it appears among
-	// the header lines, rather than being assumed to be the second line of
-	// the request) is looked up by name below, and values are trimmed
-	// rather than assuming exactly one space follows the colon.
+	// the request target is normally an origin-form path, but proxy captures and
+	// .http files use the absolute form, which already carries the authority
+	var urlx *urlutil.URL
+	target := parts[1]
+	if stringsutil.HasPrefixAnyI(target, urlutil.HTTP+urlutil.SchemeSeparator, urlutil.HTTPS+urlutil.SchemeSeparator) {
+		// urlutil.ParseAbsoluteURL only accepts lowercase schemes; preserve the
+		// remainder of the request target unchanged.
+		if scheme, rest, ok := strings.Cut(target, urlutil.SchemeSeparator); ok {
+			target = strings.ToLower(scheme) + urlutil.SchemeSeparator + rest
+		}
+		urlx, err = urlutil.ParseAbsoluteURL(target, true)
+	} else {
+		urlx, err = urlutil.ParseRawRelativePath(target, true)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse url: %s", err)
+	}
+	rr.URL = *urlx
+
+	// parse headers
 	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()
 	for {
 		line, err := protoReader.ReadLine()
@@ -254,31 +270,23 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 			// end of headers next is body
 			break
 		}
-		headerParts := strings.SplitN(line, ":", 2)
-		if len(headerParts) != 2 {
+		key, value, found := strings.Cut(line, ":")
+		if !found || key == "" {
 			return nil, fmt.Errorf("invalid header line: %s", line)
 		}
-		rr.Request.Headers.Set(strings.TrimSpace(headerParts[0]), strings.TrimSpace(headerParts[1]))
-	}
-
-	if strings.HasPrefix(requestTarget, "http://") || strings.HasPrefix(requestTarget, "https://") {
-		// absolute-form request target, as used by proxy captures
-		// (e.g. `GET http://target/path HTTP/1.1`), replaces the authority
-		// outright instead of being merged with the Host header.
-		urlx, err := urlutil.ParseAbsoluteURL(requestTarget, true)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse url: %s", err)
+		value = strings.TrimSpace(value)
+		// Host carries the authority rather than request metadata, and callers
+		// read it off the URL: retryablehttp derives the wire Host from there,
+		// and keeping it in the header map would expose it to header fuzzing as
+		// if it were an ordinary header.
+		if strings.EqualFold(key, "Host") {
+			// an absolute request target takes precedence over the Host header
+			if rr.URL.Host == "" {
+				rr.URL.Host = value
+			}
+			continue
 		}
-		rr.URL = *urlx
-	} else {
-		urlx, err := urlutil.ParseRawRelativePath(requestTarget, true)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse url: %s", err)
-		}
-		rr.URL = *urlx
-		if host, ok := rr.Request.Headers.Get("Host"); ok {
-			rr.URL.Host = strings.TrimSpace(host)
-		}
+		rr.Request.Headers.Set(key, value)
 	}
 
 	// parse body
