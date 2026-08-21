@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"strconv"
 	"strings"
 	"sync"
@@ -887,7 +888,31 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			// Watch the response timing: a server that answers a request and then
+			// sends a second, unsolicited response leaves it on the connection, and
+			// net/http hands it to whoever reuses that connection next. It is a
+			// well-formed response, so nothing else notices.
+			probe := httpclientpool.NewDesyncProbe(hostname)
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil {
+				generatedRequest.request.Request = generatedRequest.request.Request.WithContext(
+					httptrace.WithClientTrace(generatedRequest.request.Request.Context(), probe.Trace()),
+				)
+			}
+
 			resp, err = httpclient.Do(generatedRequest.request)
+
+			// The response we just read belonged to an earlier request on that
+			// connection. Stop reusing connections to the host and ask again, rather
+			// than matching this template against somebody else's response.
+			if err == nil && probe.Suspect() {
+				httpclientpool.MarkHostDesynced(hostname)
+				if reissued, clientErr := httpclientpool.Get(
+					request.options.Options, connConfig, hostname); clientErr == nil {
+					httpclient = reissued
+					executingClient = reissued
+				}
+				resp, err = httpclient.Do(generatedRequest.request)
+			}
 
 			// If we forced http->https from a previous detection and the corrected
 			// request failed (e.g. a false positive where the port actually speaks

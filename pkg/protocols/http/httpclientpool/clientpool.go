@@ -303,6 +303,13 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		clientKey += ":" + host
 	}
 
+	// A host caught sending unsolicited responses gets its own cache entry, so the
+	// keep-alive client already cached for it is not handed out again.
+	noReuse := IsHostDesynced(host)
+	if noReuse {
+		clientKey += ":noreuse"
+	}
+
 	// Fast path: lock-free cache hit.
 	if !hasExplicitJar {
 		if client, ok := pool.GetClient(clientKey); ok {
@@ -330,7 +337,8 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		maxIdleConns = configuration.Threads
 	}
 
-	disableKeepAlives := configuration.Connection != nil && configuration.Connection.DisableKeepAlive
+	disableKeepAlives := noReuse ||
+		(configuration.Connection != nil && configuration.Connection.DisableKeepAlive)
 
 	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
 	if configuration.ResponseHeaderTimeout != 0 {
