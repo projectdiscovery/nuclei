@@ -524,6 +524,7 @@ func TestDesyncRecoveryPropagatesNoReuseClientFailure(t *testing.T) {
 	require.Same(t, first, used)
 	require.True(t, recovered)
 	require.ErrorContains(t, err, "pool failed")
+	require.ErrorIs(t, err, ErrDesyncedResponse)
 	require.Equal(t, int64(1), firstRT.calls.Load())
 }
 

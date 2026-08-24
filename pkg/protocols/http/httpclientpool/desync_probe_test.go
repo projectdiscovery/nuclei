@@ -116,7 +116,7 @@ func TestDesyncProbeConcurrentCallbacksAreRaceSafe(t *testing.T) {
 
 func BenchmarkDesyncProbeHealthyRequest(b *testing.B) {
 	baselines := protocolstate.NewExpiringDurationMap(time.Minute)
-	baselines.StoreMin("example.com", time.Millisecond, time.Minute)
+	baselines.StoreMin("example.com", 100*time.Millisecond, time.Minute)
 	b.ReportAllocs()
 	for range b.N {
 		probe := NewDesyncProbe("example.com", baselines)
@@ -124,7 +124,7 @@ func BenchmarkDesyncProbeHealthyRequest(b *testing.B) {
 		probe.reused = true
 		probe.gotConn = now
 		probe.wroteHeaders = now
-		probe.firstByte = now.Add(time.Millisecond)
+		probe.firstByte = now.Add(60 * time.Millisecond)
 		if probe.Suspect() {
 			b.Fatal("healthy ordering reported as desynchronized")
 		}

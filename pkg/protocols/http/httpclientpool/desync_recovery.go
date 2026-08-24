@@ -53,7 +53,7 @@ func doWithDesyncRecovery(
 	}
 
 	if hosts == nil {
-		return nil, client, true, err
+		return nil, client, true, fmt.Errorf("%w: %w", ErrDesyncedResponse, err)
 	}
 	detectedHost := hostKey
 	if responseHost := desyncedHostKey(desyncErr.Host); responseHost != "" {
@@ -73,10 +73,10 @@ func doWithDesyncRecovery(
 	}
 	reissued, err := reissue(detectedHost)
 	if err != nil {
-		return nil, client, true, fmt.Errorf("could not create no-reuse client after HTTP desync: %w", err)
+		return nil, client, true, fmt.Errorf("%w: could not create no-reuse client after HTTP desync: %w", ErrDesyncedResponse, err)
 	}
 	if reissued == nil {
-		return nil, client, true, fmt.Errorf("no-reuse client is nil after HTTP desync")
+		return nil, client, true, fmt.Errorf("%w: no-reuse client is nil after HTTP desync", ErrDesyncedResponse)
 	}
 
 	resp, err = reissued.Do(req)
