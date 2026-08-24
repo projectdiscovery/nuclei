@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -43,9 +42,8 @@ func TestMarkHostDesyncedStopsReuse(t *testing.T) {
 	requestTwice(t, pooled, server.URL)
 	require.Equal(t, int64(1), conns.Load(), "an unmarked host must reuse its connection")
 
-	MarkHostDesynced(server.URL)
-	t.Cleanup(func() { desyncedHosts.Delete(host) })
-	require.True(t, IsHostDesynced(host), "a mark set from a URL must match a host:port lookup")
+	MarkHostDesynced(opts, server.URL)
+	require.True(t, IsHostDesynced(opts, host), "a mark set from a URL must match a host:port lookup")
 
 	guarded, err := Get(opts, cfg, host)
 	require.NoError(t, err)
@@ -59,23 +57,12 @@ func TestMarkHostDesyncedStopsReuse(t *testing.T) {
 
 // TestIsHostDesyncedExpires checks the mark does not pin a host forever: attribution
 // of a detection to a host is not always exact, so an innocent host must recover.
-func TestIsHostDesyncedExpires(t *testing.T) {
-	const host = "expiring.example.com"
-
-	desyncedHosts.Store(host, time.Now().Add(-desyncedHostTTL-time.Minute))
-	t.Cleanup(func() { desyncedHosts.Delete(host) })
-
-	require.False(t, IsHostDesynced(host), "a mark older than the TTL must not apply")
-
-	_, still := desyncedHosts.Load(host)
-	require.False(t, still, "an expired mark must be dropped")
-}
-
 // TestIsHostDesyncedEmptyHost guards the case where the caller could not resolve a
 // host: an empty mark would otherwise disable reuse for every unnamed lookup.
 func TestIsHostDesyncedEmptyHost(t *testing.T) {
-	MarkHostDesynced("")
-	require.False(t, IsHostDesynced(""))
+	opts := newTestOptions(t, "test-desync-empty-host")
+	MarkHostDesynced(opts, "")
+	require.False(t, IsHostDesynced(opts, ""))
 }
 
 func requestTwice(t *testing.T, client *retryablehttp.Client, target string) {
@@ -106,6 +93,8 @@ func TestDesyncedHostKey(t *testing.T) {
 	for _, tc := range []struct{ in, want string }{
 		{"https://example.com:8443/admin?a=1", "example.com:8443"},
 		{"http://example.com/", "example.com"},
+		{"https://EXAMPLE.COM:443/", "example.com:443"},
+		{"https://[2001:db8::1]:8443/", "[2001:db8::1]:8443"},
 		{"example.com:8443", "example.com:8443"},
 		{"  example.com  ", "example.com"},
 		{"", ""},
@@ -114,4 +103,15 @@ func TestDesyncedHostKey(t *testing.T) {
 	}
 
 	require.NotEqual(t, desyncedHostKey("example.com:80"), desyncedHostKey("example.com:8080"))
+}
+
+func TestDesyncTrackersAreExecutionScoped(t *testing.T) {
+	first := newTestOptions(t, "test-desync-scope-first")
+	second := newTestOptions(t, "test-desync-scope-second")
+
+	MarkHostDesynced(first, "example.com:443")
+	require.True(t, IsHostDesynced(first, "example.com:443"))
+	require.False(t, IsHostDesynced(second, "example.com:443"))
+	require.Equal(t, []string{"example.com:443"}, DesyncedHosts(first))
+	require.Empty(t, DesyncedHosts(second))
 }

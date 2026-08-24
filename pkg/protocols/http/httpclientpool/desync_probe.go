@@ -5,29 +5,16 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
-
-// A response that belonged to an earlier request on the connection is already in
-// net/http's read buffer when the next request goes out, so readResponse's Peek(1)
-// returns with no round trip -- often before the request has finished being written.
-// A genuine response cannot cross the network faster than one round trip, so that gap
-// identifies the wrong response exactly, for the request that received it.
-//
-// The baseline is the TCP handshake rather than previous response latencies: how long
-// a server takes to answer swings by orders of magnitude between a cold and a cached
-// response, so a latency baseline would flag the fast ones. The network floor does
-// not move.
-const suspectRTTFraction = 2
-
-// host -> time.Duration of the fastest handshake seen for it.
-var hostRTT sync.Map
 
 // Counts responses found to belong to an earlier request on their connection.
 var desyncedResponses atomic.Int64
 
 // DesyncedResponses reports how many responses turned out to belong to an earlier
-// request on their connection since the process started. Each one was retried, so it
-// measures a condition that was handled, not results lost.
+// request on their connection since the process started. Recovery is attempted for
+// every detection, but may still fail if the body cannot be replayed or dialing fails.
 func DesyncedResponses() int64 {
 	return desyncedResponses.Load()
 }
@@ -37,21 +24,29 @@ func countDesyncedResponse() {
 	desyncedResponses.Add(1)
 }
 
-// DesyncProbe collects one request's timing and reports whether the response it
-// received had been left on the connection by an earlier one.
+// DesyncProbe compares response timing on a reused HTTP/1.x connection with the
+// fastest recent connection setup observed for the same host.
 type DesyncProbe struct {
-	host string
+	host      string
+	baselines *protocolstate.ExpiringDurationMap
 
 	mu           sync.Mutex
 	connectStart time.Time
-	connectRTT   time.Duration
+	gotConn      time.Time
 	wroteHeaders time.Time
 	firstByte    time.Time
 	reused       bool
 }
 
-func NewDesyncProbe(host string) *DesyncProbe {
-	return &DesyncProbe{host: host}
+const (
+	desyncBaselineTTL = 15 * time.Minute
+	// Sub-millisecond scheduling noise dominates very short loopback/LAN RTTs.
+	// Skipping those baselines favors a miss over quarantining a healthy host.
+	minDesyncBaseline = 2 * time.Millisecond
+)
+
+func NewDesyncProbe(host string, baselines *protocolstate.ExpiringDurationMap) *DesyncProbe {
+	return &DesyncProbe{host: desyncedHostKey(host), baselines: baselines}
 }
 
 // Trace returns hooks to attach to the request context. httptrace composes with any
@@ -60,112 +55,65 @@ func (p *DesyncProbe) Trace() *httptrace.ClientTrace {
 	return &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
 			p.mu.Lock()
-			defer p.mu.Unlock()
 			p.reused = info.Reused
+			p.gotConn = time.Now()
+			p.mu.Unlock()
 		},
 		ConnectStart: func(_, _ string) {
 			p.mu.Lock()
-			defer p.mu.Unlock()
 			p.connectStart = time.Now()
+			p.mu.Unlock()
 		},
 		ConnectDone: func(_, _ string, err error) {
 			p.mu.Lock()
-			defer p.mu.Unlock()
-			if err == nil && !p.connectStart.IsZero() {
-				p.connectRTT = time.Since(p.connectStart)
+			start := p.connectStart
+			p.mu.Unlock()
+			if err == nil && !start.IsZero() {
+				p.baselines.StoreMin(p.host, time.Since(start), desyncBaselineTTL)
 			}
 		},
 		WroteHeaders: func() {
 			p.mu.Lock()
-			defer p.mu.Unlock()
 			p.wroteHeaders = time.Now()
+			p.mu.Unlock()
 		},
 		GotFirstResponseByte: func() {
 			p.mu.Lock()
-			defer p.mu.Unlock()
-			p.firstByte = time.Now()
+			if p.firstByte.IsZero() {
+				p.firstByte = time.Now()
+			}
+			p.mu.Unlock()
 		},
 	}
 }
 
-// Suspect reports whether the response belonged to an earlier request, and records
-// what this request learned about the host's round trip time. A response on a fresh
-// connection cannot be someone else's, so those only ever contribute a measurement.
-//
-// A verdict of true also counts towards DesyncedResponses, so call it once per
-// request.
+// Suspect reports whether a reused connection returned a response in less than
+// half the fastest observed connection setup time for the host. This is a
+// conservative symptom check: without transport changes, HTTP/1.x cannot prove
+// that a well-formed response belongs to the current request.
 func (p *DesyncProbe) Suspect() bool {
 	p.mu.Lock()
-	reused, rtt := p.reused, p.connectRTT
-	wroteHeaders, firstByte := p.wroteHeaders, p.firstByte
+	reused := p.reused
+	gotConn := p.gotConn
+	wroteHeaders := p.wroteHeaders
+	firstByte := p.firstByte
 	p.mu.Unlock()
-
-	if rtt > 0 {
-		recordHostRTT(p.host, rtt)
-	}
 
 	if !reused || firstByte.IsZero() {
 		return false
 	}
-
-	baseline, ok := hostRTTFor(p.host)
-	if !ok {
-		// Never measured a handshake for this host, so there is no floor to judge
-		// against. Guessing one would risk disabling reuse for a healthy host.
+	baseline, ok := p.baselines.Load(p.host)
+	if !ok || baseline < minDesyncBaseline {
 		return false
 	}
 
-	if wroteHeaders.IsZero() {
-		countDesyncedResponse()
-
-		// The response arrived before this request's headers were even recorded as
-		// written, which no genuine response can do.
-		return true
+	anchor := wroteHeaders
+	if anchor.IsZero() || firstByte.Before(anchor) {
+		anchor = gotConn
 	}
-
-	if firstByte.Sub(wroteHeaders) >= baseline/suspectRTTFraction {
+	if anchor.IsZero() {
 		return false
 	}
-
-	countDesyncedResponse()
-
-	return true
-}
-
-func recordHostRTT(host string, rtt time.Duration) {
-	key := desyncedHostKey(host)
-	if key == "" {
-		return
-	}
-
-	for {
-		previous, loaded := hostRTT.LoadOrStore(key, rtt)
-		if !loaded {
-			return
-		}
-
-		fastest, ok := previous.(time.Duration)
-		if !ok || rtt >= fastest {
-			return
-		}
-		if hostRTT.CompareAndSwap(key, previous, rtt) {
-			return
-		}
-	}
-}
-
-func hostRTTFor(host string) (time.Duration, bool) {
-	key := desyncedHostKey(host)
-	if key == "" {
-		return 0, false
-	}
-
-	value, ok := hostRTT.Load(key)
-	if !ok {
-		return 0, false
-	}
-
-	rtt, ok := value.(time.Duration)
-
-	return rtt, ok && rtt > 0
+	elapsed := firstByte.Sub(anchor)
+	return elapsed >= 0 && elapsed < baseline/2
 }

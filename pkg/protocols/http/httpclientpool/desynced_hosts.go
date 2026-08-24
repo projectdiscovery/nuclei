@@ -2,10 +2,11 @@ package httpclientpool
 
 import (
 	"net/url"
-	"slices"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // Some servers answer a request and then send a second, unsolicited response on the
@@ -25,65 +26,47 @@ import (
 // is caught and retried rather than lost, and re-marks the host.
 const desyncedHostTTL = 15 * time.Minute
 
-// host:port -> time.Time the mark was set.
-var desyncedHosts sync.Map
+func desyncHostsFor(options *types.Options) *protocolstate.ExpiringSet {
+	if options == nil {
+		return nil
+	}
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil
+	}
+	return dialers.HTTPDesyncHosts
+}
 
 // MarkHostDesynced disables connection reuse for a target until the mark expires.
 // The target may be a bare host, host:port, or a full URL; callers do not have to
 // match the exact string the pool was keyed with.
-func MarkHostDesynced(target string) {
+func MarkHostDesynced(options *types.Options, target string) {
+	hosts := desyncHostsFor(options)
+	if hosts == nil {
+		return
+	}
 	key := desyncedHostKey(target)
 	if key == "" {
 		return
 	}
-
-	desyncedHosts.Store(key, time.Now())
+	hosts.Store(key, desyncedHostTTL)
 }
 
 // IsHostDesynced reports whether connection reuse for a target is disabled.
-func IsHostDesynced(target string) bool {
+func IsHostDesynced(options *types.Options, target string) bool {
+	hosts := desyncHostsFor(options)
 	key := desyncedHostKey(target)
-	if key == "" {
-		return false
-	}
-
-	value, ok := desyncedHosts.Load(key)
-	if !ok {
-		return false
-	}
-
-	markedAt, ok := value.(time.Time)
-	if !ok || time.Since(markedAt) > desyncedHostTTL {
-		desyncedHosts.Delete(key)
-
-		return false
-	}
-
-	return true
+	return hosts != nil && key != "" && hosts.Contains(key)
 }
 
 // DesyncedHosts returns the hosts connection reuse is currently disabled for, as
 // host:port and sorted, for callers reporting which targets misbehaved.
-func DesyncedHosts() []string {
-	var hosts []string
-
-	desyncedHosts.Range(func(key, value any) bool {
-		host, ok := key.(string)
-		if !ok {
-			return true
-		}
-
-		markedAt, ok := value.(time.Time)
-		if ok && time.Since(markedAt) <= desyncedHostTTL {
-			hosts = append(hosts, host)
-		}
-
-		return true
-	})
-
-	slices.Sort(hosts)
-
-	return hosts
+func DesyncedHosts(options *types.Options) []string {
+	hosts := desyncHostsFor(options)
+	if hosts == nil {
+		return nil
+	}
+	return hosts.Keys()
 }
 
 // desyncedHostKey reduces a target to host:port so that a mark set from a URL still
@@ -96,8 +79,8 @@ func desyncedHostKey(target string) string {
 	}
 
 	if parsed, err := url.Parse(target); err == nil && parsed.Host != "" {
-		return parsed.Host
+		return strings.ToLower(parsed.Host)
 	}
 
-	return strings.TrimSuffix(target, "/")
+	return strings.ToLower(strings.TrimSuffix(target, "/"))
 }

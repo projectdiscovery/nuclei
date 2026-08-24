@@ -9,7 +9,6 @@ import (
 	"maps"
 	"net"
 	"net/http"
-	"net/http/httptrace"
 	"strconv"
 	"strings"
 	"sync"
@@ -862,7 +861,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if clientErr != nil {
 				return errors.Wrap(clientErr, "could not get http client")
 			}
-			executingClient = httpclient
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a
@@ -888,30 +886,23 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			// Watch the response timing: a server that answers a request and then
-			// sends a second, unsolicited response leaves it on the connection, and
-			// net/http hands it to whoever reuses that connection next. It is a
-			// well-formed response, so nothing else notices.
-			probe := httpclientpool.NewDesyncProbe(hostname)
-			if generatedRequest.request != nil && generatedRequest.request.Request != nil {
-				generatedRequest.request.Request = generatedRequest.request.Request.WithContext(
-					httptrace.WithClientTrace(generatedRequest.request.Request.Context(), probe.Trace()),
-				)
-			}
-
-			resp, err = httpclient.Do(generatedRequest.request)
-
-			// The response we just read belonged to an earlier request on that
-			// connection. Stop reusing connections to the host and ask again, rather
-			// than matching this template against somebody else's response.
-			if err == nil && probe.Suspect() {
-				httpclientpool.MarkHostDesynced(hostname)
-				if reissued, clientErr := httpclientpool.Get(
-					request.options.Options, connConfig, hostname); clientErr == nil {
-					httpclient = reissued
-					executingClient = reissued
+			var desyncDetected bool
+			resp, executingClient, desyncDetected, err = httpclientpool.DoWithDesyncRecovery(
+				httpclient, generatedRequest.request, request.options.Options, connConfig, hostname,
+			)
+			if desyncDetected {
+				httpclient = executingClient
+				if err != nil {
+					gologger.Debug().Msgf(
+						"[%s] Detected an implausibly early response for %s, but recovery failed: %v",
+						request.options.TemplateID, hostname, err,
+					)
+				} else {
+					gologger.Debug().Msgf(
+						"[%s] Recovered an implausibly early response for %s with connection reuse disabled",
+						request.options.TemplateID, hostname,
+					)
 				}
-				resp, err = httpclient.Do(generatedRequest.request)
 			}
 
 			// If we forced http->https from a previous detection and the corrected
@@ -920,7 +911,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			// other templates hitting the same host:port are not affected, and retry
 			// once. This keeps the optimization while preventing a single
 			// wrong detection from silently dropping findings at scale.
-			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
+			if err != nil &&
+				!errors.Is(err, httpclientpool.ErrDesyncedResponse) &&
+				httpsCorrectionTracker != nil &&
+				generatedRequest.request != nil &&
+				generatedRequest.request.Scheme == "https" {
 				generatedRequest.request.Scheme = "http"
 				httpsCorrectionTracker.Evict(httpsCorrectionURL)
 				resp, err = httpclient.Do(generatedRequest.request)

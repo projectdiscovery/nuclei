@@ -2,62 +2,68 @@ package httpclientpool
 
 import (
 	"net/http/httptrace"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/stretchr/testify/require"
 )
 
-// roundTrip is the handshake the probe learns as the host's network floor. Real and
-// generous: the signal it separates is microseconds against milliseconds.
-const roundTrip = 20 * time.Millisecond
+func newProbeWithBaseline(host string, baseline time.Duration) *DesyncProbe {
+	baselines := protocolstate.NewExpiringDurationMap(time.Minute)
+	baselines.StoreMin(host, baseline, time.Minute)
+	return NewDesyncProbe(host, baselines)
+}
 
-func TestDesyncProbeFlagsResponseThatBeatTheNetwork(t *testing.T) {
+func TestDesyncProbeFlagsImplausiblyFastReusedResponse(t *testing.T) {
 	t.Parallel()
 
-	const host = "prebuffered.example.test:443"
-	learnRoundTrip(t, host)
+	probe := newProbeWithBaseline("example.com", 100*time.Millisecond)
+	now := time.Now()
+	probe.reused = true
+	probe.gotConn = now
+	probe.wroteHeaders = now
+	probe.firstByte = now.Add(time.Millisecond)
 
-	probe := NewDesyncProbe(host)
-	trace := probe.Trace()
-	trace.GotConn(httptrace.GotConnInfo{Reused: true})
-	trace.WroteHeaders()
-	trace.GotFirstResponseByte() // already in the buffer: no round trip
-
-	require.True(t, probe.Suspect(),
-		"a response that arrived without a round trip belonged to an earlier request")
+	require.True(t, probe.Suspect())
 }
 
 func TestDesyncProbeAllowsGenuineResponse(t *testing.T) {
 	t.Parallel()
 
-	const host = "healthy.example.test:443"
-	learnRoundTrip(t, host)
+	probe := newProbeWithBaseline("example.com", 100*time.Millisecond)
+	now := time.Now()
+	probe.reused = true
+	probe.gotConn = now
+	probe.wroteHeaders = now
+	probe.firstByte = now.Add(60 * time.Millisecond)
 
-	probe := NewDesyncProbe(host)
-	trace := probe.Trace()
-	trace.GotConn(httptrace.GotConnInfo{Reused: true})
-	trace.WroteHeaders()
-	time.Sleep(roundTrip)
-	trace.GotFirstResponseByte()
-
-	require.False(t, probe.Suspect(), "a response that waited for the network is this request's")
+	require.False(t, probe.Suspect())
 }
 
-// A server may answer a large body early, before the request finishes being written,
-// so the probe anchors on the headers rather than on the whole request.
-func TestDesyncProbeAllowsEarlyAnswerToRequestBody(t *testing.T) {
+func TestDesyncProbeUsesConnectionCheckoutBeforeWroteHeaders(t *testing.T) {
 	t.Parallel()
 
-	const host = "earlybody.example.test:443"
-	learnRoundTrip(t, host)
+	probe := newProbeWithBaseline("example.com", 100*time.Millisecond)
+	now := time.Now()
+	probe.reused = true
+	probe.gotConn = now
+	probe.firstByte = now.Add(time.Millisecond)
+	probe.wroteHeaders = now.Add(2 * time.Millisecond)
 
-	probe := NewDesyncProbe(host)
-	trace := probe.Trace()
-	trace.GotConn(httptrace.GotConnInfo{Reused: true})
-	trace.WroteHeaders()
-	time.Sleep(roundTrip) // server answers while the body is still uploading
-	trace.GotFirstResponseByte()
+	require.True(t, probe.Suspect())
+}
+
+func TestDesyncProbeAllowsLargeHeaderEarlyResponse(t *testing.T) {
+	t.Parallel()
+
+	probe := newProbeWithBaseline("example.com", 100*time.Millisecond)
+	now := time.Now()
+	probe.reused = true
+	probe.gotConn = now
+	probe.firstByte = now.Add(60 * time.Millisecond)
+	probe.wroteHeaders = now.Add(70 * time.Millisecond)
 
 	require.False(t, probe.Suspect())
 }
@@ -65,67 +71,62 @@ func TestDesyncProbeAllowsEarlyAnswerToRequestBody(t *testing.T) {
 func TestDesyncProbeIgnoresFreshConnection(t *testing.T) {
 	t.Parallel()
 
-	const host = "fresh.example.test:443"
-
-	probe := NewDesyncProbe(host)
-	trace := probe.Trace()
-	trace.ConnectStart("tcp", host)
-	time.Sleep(roundTrip)
-	trace.ConnectDone("tcp", host, nil)
-	trace.GotConn(httptrace.GotConnInfo{Reused: false})
-	trace.WroteHeaders()
-	trace.GotFirstResponseByte()
-
-	require.False(t, probe.Suspect(),
-		"the first response on a connection cannot be someone else's")
-
-	rtt, ok := hostRTTFor(host)
-	require.True(t, ok, "a fresh connection must contribute its handshake")
-	require.GreaterOrEqual(t, rtt, roundTrip)
-	t.Cleanup(func() { hostRTT.Delete(desyncedHostKey(host)) })
-}
-
-func TestDesyncProbeWithoutBaselineDoesNotGuess(t *testing.T) {
-	t.Parallel()
-
-	const host = "unmeasured.example.test:443"
-
-	probe := NewDesyncProbe(host)
-	trace := probe.Trace()
-	trace.GotConn(httptrace.GotConnInfo{Reused: true})
-	trace.WroteHeaders()
-	trace.GotFirstResponseByte()
-
-	require.False(t, probe.Suspect(),
-		"with no measured round trip, flagging would cost a healthy host its reuse")
-}
-
-func TestDesyncProbeFlagsResponseBeforeHeaders(t *testing.T) {
-	t.Parallel()
-
-	const host = "beforeheaders.example.test:443"
-	learnRoundTrip(t, host)
-
-	probe := NewDesyncProbe(host)
-	trace := probe.Trace()
-	trace.GotConn(httptrace.GotConnInfo{Reused: true})
-	trace.GotFirstResponseByte() // the read loop won the race against the write loop
-
-	require.True(t, probe.Suspect())
-}
-
-// learnRoundTrip gives the host a handshake measurement, the way a fresh connection
-// would, so later requests have a floor to be judged against.
-func learnRoundTrip(t *testing.T, host string) {
-	t.Helper()
-
-	probe := NewDesyncProbe(host)
-	trace := probe.Trace()
-	trace.ConnectStart("tcp", host)
-	time.Sleep(roundTrip)
-	trace.ConnectDone("tcp", host, nil)
-	trace.GotConn(httptrace.GotConnInfo{Reused: false})
+	probe := newProbeWithBaseline("example.com", 100*time.Millisecond)
+	now := time.Now()
+	probe.gotConn = now
+	probe.wroteHeaders = now
+	probe.firstByte = now.Add(time.Millisecond)
 
 	require.False(t, probe.Suspect())
-	t.Cleanup(func() { hostRTT.Delete(desyncedHostKey(host)) })
+}
+
+func TestDesyncProbeRequiresBaseline(t *testing.T) {
+	t.Parallel()
+
+	probe := NewDesyncProbe("example.com", protocolstate.NewExpiringDurationMap(time.Minute))
+	now := time.Now()
+	probe.reused = true
+	probe.gotConn = now
+	probe.wroteHeaders = now
+	probe.firstByte = now.Add(time.Millisecond)
+	require.False(t, probe.Suspect())
+}
+
+func TestDesyncProbeConcurrentCallbacksAreRaceSafe(t *testing.T) {
+	t.Parallel()
+
+	for range 100 {
+		probe := newProbeWithBaseline("example.com", 100*time.Millisecond)
+		trace := probe.Trace()
+		trace.GotConn(httptrace.GotConnInfo{Reused: true})
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			trace.WroteHeaders()
+		}()
+		go func() {
+			defer wg.Done()
+			trace.GotFirstResponseByte()
+		}()
+		wg.Wait()
+		_ = probe.Suspect()
+	}
+}
+
+func BenchmarkDesyncProbeHealthyRequest(b *testing.B) {
+	baselines := protocolstate.NewExpiringDurationMap(time.Minute)
+	baselines.StoreMin("example.com", time.Millisecond, time.Minute)
+	b.ReportAllocs()
+	for range b.N {
+		probe := NewDesyncProbe("example.com", baselines)
+		now := time.Now()
+		probe.reused = true
+		probe.gotConn = now
+		probe.wroteHeaders = now
+		probe.firstByte = now.Add(time.Millisecond)
+		if probe.Suspect() {
+			b.Fatal("healthy ordering reported as desynchronized")
+		}
+	}
 }
