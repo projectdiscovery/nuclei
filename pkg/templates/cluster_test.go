@@ -3,11 +3,14 @@ package templates
 import (
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,4 +52,45 @@ func TestClusterTemplates(t *testing.T) {
 		got := Cluster(tpls)[0]
 		require.ElementsMatch(t, got, expected)
 	})
+}
+
+func TestClusterExecuterMatchesPerTargetFilters(t *testing.T) {
+	cluster := &ClusterExecuter{
+		operators: []*clusteredOperator{
+			{
+				templateID:   "apache-template",
+				templatePath: "/templates/apache.yaml",
+				templateInfo: model.Info{
+					Tags:           stringslice.New([]string{"apache"}),
+					SeverityHolder: severity.Holder{Severity: severity.High},
+				},
+				operator: &operators.Operators{},
+			},
+			{
+				templateID:   "nginx-template",
+				templatePath: "/templates/nginx.yaml",
+				templateInfo: model.Info{
+					Tags:           stringslice.New([]string{"nginx"}),
+					SeverityHolder: severity.Holder{Severity: severity.Medium},
+				},
+				operator: &operators.Operators{},
+			},
+		},
+	}
+
+	apache := &contextargs.TargetFilter{}
+	apache.Prepare([]string{"apache"}, nil, nil, nil, nil, false)
+	require.True(t, cluster.MatchesTargetFilter(apache))
+	require.True(t, operatorMatchesTargetFilter(cluster.operators[0], apache))
+	require.False(t, operatorMatchesTargetFilter(cluster.operators[1], apache))
+
+	none := &contextargs.TargetFilter{}
+	none.Prepare([]string{"tomcat"}, nil, nil, nil, nil, false)
+	require.False(t, cluster.MatchesTargetFilter(none))
+
+	all := &contextargs.TargetFilter{}
+	all.Prepare(nil, nil, nil, nil, nil, false)
+	require.True(t, cluster.MatchesTargetFilter(all))
+	require.True(t, operatorMatchesTargetFilter(cluster.operators[0], all))
+	require.True(t, operatorMatchesTargetFilter(cluster.operators[1], all))
 }

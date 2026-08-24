@@ -54,7 +54,7 @@ func (f *filteringInputProvider) SetWithExclusions(executionId string, value str
 }
 func (f *filteringInputProvider) Iterate(callback func(value *contextargs.MetaInput) bool) {
 	f.base.Iterate(func(mi *contextargs.MetaInput) bool {
-		key, err := mi.MarshalString()
+		key, err := preflightInputKey(mi)
 		if err != nil {
 			return callback(mi)
 		}
@@ -63,6 +63,29 @@ func (f *filteringInputProvider) Iterate(callback func(value *contextargs.MetaIn
 		}
 		return callback(mi)
 	})
+}
+
+func preflightInputKey(metaInput *contextargs.MetaInput) (string, error) {
+	if metaInput.TargetFilter == nil {
+		// Preserve the exact historical key for all non-JSONL/legacy inputs.
+		return metaInput.MarshalString()
+	}
+
+	// Marshal the legacy fields without TargetFilter so filter list ordering
+	// cannot affect the key. MetaInput.ID() contributes TargetFilter's
+	// canonical, presence-aware identity when used on a filter-only input.
+	legacyInput := contextargs.NewMetaInput()
+	legacyInput.Input = metaInput.Input
+	legacyInput.CustomIP = metaInput.CustomIP
+	legacyInput.ReqResp = metaInput.ReqResp
+	legacyKey, err := legacyInput.MarshalString()
+	if err != nil {
+		return "", err
+	}
+
+	filterInput := contextargs.NewMetaInput()
+	filterInput.TargetFilter = metaInput.TargetFilter
+	return legacyKey + "\x00target-filter:" + filterInput.ID(), nil
 }
 
 // preflightResolveAndPortScan resolves hostname targets and performs a TCP connect scan for ports
@@ -97,7 +120,7 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 	var totalTargets atomic.Int64
 	r.inputProvider.Iterate(func(mi *contextargs.MetaInput) bool {
 		totalTargets.Add(1)
-		key, err := mi.MarshalString()
+		key, err := preflightInputKey(mi)
 		if err != nil {
 			return true
 		}
@@ -282,20 +305,20 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 	close(stopProgress)
 
 	// Apply filtering wrapper
-	allowedAll := allowed.GetAll()
+	allowedInputCount := countAllowedPreflightInputs(inputs, allowed)
 	r.inputProvider = &filteringInputProvider{
 		base:     r.inputProvider,
 		allowed:  allowed,
-		allowCnt: int64(len(allowedAll)),
+		allowCnt: allowedInputCount,
 		execID:   r.options.ExecutionId,
 	}
 
 	// Summary
 	if !r.options.Silent {
-		dropped := totalTargets.Load() - kept.Load()
+		dropped := totalTargets.Load() - allowedInputCount
 		r.Logger.Info().Msgf("Preflight summary: total=%d kept=%d filtered_dns=%d filtered_ports=%d",
-			totalTargets.Load(), kept.Load(), dnsFail.Load(), portFail.Load())
-		r.Logger.Info().Msgf("Preflight targets: dropped=%d left=%d", dropped, kept.Load())
+			totalTargets.Load(), allowedInputCount, dnsFail.Load(), portFail.Load())
+		r.Logger.Info().Msgf("Preflight targets: dropped=%d left=%d", dropped, allowedInputCount)
 		perPortOpenAll := perPortOpen.GetAll()
 		if len(perPortOpenAll) > 0 {
 			type kv struct {
@@ -325,6 +348,16 @@ func (r *Runner) preflightResolveAndPortScan(store *loader.Store) error {
 
 	_ = gologger.DefaultLogger // ensure logger imported even when silent builds vary
 	return nil
+}
+
+func countAllowedPreflightInputs(inputs []preflightTarget, allowed *mapsutil.SyncLockMap[string, struct{}]) int64 {
+	var count int64
+	for _, input := range inputs {
+		if _, ok := allowed.Get(input.key); ok {
+			count++
+		}
+	}
+	return count
 }
 
 type preflightTarget struct {

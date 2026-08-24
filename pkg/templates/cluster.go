@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -246,9 +247,29 @@ func (e *ClusterExecuter) Requests() int {
 	return count
 }
 
+// MatchesTargetFilter reports whether at least one original template in this
+// cluster is enabled for the target. The shared request is skipped entirely
+// when every clustered operator is filtered out.
+func (e *ClusterExecuter) MatchesTargetFilter(filter *contextargs.TargetFilter) bool {
+	if filter == nil {
+		return true
+	}
+	for _, operator := range e.operators {
+		if operatorMatchesTargetFilter(operator, filter) {
+			return true
+		}
+	}
+	return false
+}
+
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	var results bool
+
+	filter := ctx.Input.MetaInput.TargetFilter
+	if !e.MatchesTargetFilter(filter) {
+		return false, nil
+	}
 
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
@@ -271,6 +292,9 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			event.InternalEvent = make(map[string]interface{})
 		}
 		for _, operator := range e.operators {
+			if !operatorMatchesTargetFilter(operator, filter) {
+				continue
+			}
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
@@ -298,6 +322,9 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		// Parse URL fields from the input
 		fields := protocolUtils.GetJsonFieldsFromURL(ctx.Input.MetaInput.Input)
 		for _, operator := range e.operators {
+			if !operatorMatchesTargetFilter(operator, filter) {
+				continue
+			}
 			errMsg := ""
 			if err != nil {
 				errMsg = err.Error()
@@ -339,6 +366,11 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 	scanCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
 	dynamicValues := make(map[string]interface{})
 
+	filter := ctx.Input.MetaInput.TargetFilter
+	if !e.MatchesTargetFilter(filter) {
+		return nil, nil
+	}
+
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
 		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(ctx.Input.MetaInput.Input, e.templateType); ctx.Input.MetaInput.Input == "" {
@@ -347,6 +379,9 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 	}
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range e.operators {
+			if !operatorMatchesTargetFilter(operator, filter) {
+				continue
+			}
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
@@ -368,4 +403,16 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 		e.options.HostErrorsCache.MarkFailedOrRemove(e.options.ProtocolType.String(), ctx.Input, err)
 	}
 	return scanCtx.GenerateResult(), err
+}
+
+func operatorMatchesTargetFilter(operator *clusteredOperator, filter *contextargs.TargetFilter) bool {
+	if filter == nil {
+		return true
+	}
+	return filter.MatchesTemplate(
+		operator.templatePath,
+		operator.templateInfo.Tags.ToSlice(),
+		operator.templateInfo.SeverityHolder.Severity,
+		false,
+	)
 }

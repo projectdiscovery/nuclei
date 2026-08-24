@@ -81,7 +81,12 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	// Filter Self Contained templates since they are not bound to target
 	for _, v := range finalTemplates {
 		if v.SelfContained {
-			selfContained = append(selfContained, v)
+			if templateMatchesAnyTarget(v, target) {
+				selfContained = append(selfContained, v)
+				e.adjustSelfContainedProgress(v, target, true)
+			} else {
+				e.adjustSelfContainedProgress(v, target, false)
+			}
 		} else {
 			filtered = append(filtered, v)
 		}
@@ -102,6 +107,31 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 
 	selfcontainedWg.Wait()
 	return results
+}
+
+func (e *Engine) adjustSelfContainedProgress(template *templates.Template, target provider.InputProvider, selected bool) {
+	if target.InputType() != provider.TargetInputProvider || e.executerOpts.Progress == nil || template.TotalRequests == 0 {
+		return
+	}
+	skippedExecutions := target.Count()
+	if selected && skippedExecutions > 0 {
+		skippedExecutions--
+	}
+	if skippedExecutions > 0 {
+		e.executerOpts.Progress.AddToTotal(-int64(template.TotalRequests) * skippedExecutions)
+	}
+}
+
+func templateMatchesAnyTarget(template *templates.Template, target provider.InputProvider) bool {
+	if target.InputType() != provider.TargetInputProvider {
+		return true
+	}
+	matched := false
+	target.Iterate(func(input *contextargs.MetaInput) bool {
+		matched = templateMatchesTarget(template, input)
+		return !matched
+	})
+	return matched
 }
 
 // executeTemplateSpray executes scan using template spray strategy where targets are iterated over each template
