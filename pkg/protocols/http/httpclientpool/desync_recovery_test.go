@@ -8,8 +8,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/http/httptrace"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -504,6 +506,46 @@ func TestRequestReplaySafePolicy(t *testing.T) {
 		}), method)
 	}
 	require.False(t, requestReplaySafe(nil))
+}
+
+func TestDesyncRecoveryPreservesCookieJar(t *testing.T) {
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	origin, err := url.Parse("http://example.test/")
+	require.NoError(t, err)
+	jar.SetCookies(origin, []*http.Cookie{{Name: "sess", Value: "valid-token"}})
+
+	firstRT := &scriptedRoundTripper{steps: []func(*http.Request) (*http.Response, error){
+		func(req *http.Request) (*http.Response, error) {
+			return tracedResponse(req, true, true, 1, io.NopCloser(strings.NewReader("wrong"))), nil
+		},
+	}}
+	secondRT := &scriptedRoundTripper{steps: []func(*http.Request) (*http.Response, error){
+		func(req *http.Request) (*http.Response, error) {
+			cookie, cookieErr := req.Cookie("sess")
+			require.NoError(t, cookieErr)
+			require.Equal(t, "valid-token", cookie.Value)
+			return tracedResponse(req, false, false, 1, io.NopCloser(strings.NewReader("welcome-admin"))), nil
+		},
+	}}
+	first := newDetectingClient(firstRT, 0)
+	first.HTTPClient.Jar = jar
+	second := newScriptedClient(secondRT, 0)
+	req, err := retryablehttp.NewRequest(http.MethodGet, "http://example.test/profile", nil)
+	require.NoError(t, err)
+
+	resp, used, recovered, err := doWithDesyncRecovery(
+		first, req, "example.test", protocolstate.NewExpiringSet(time.Minute),
+		func(string) (*retryablehttp.Client, error) { return second, nil },
+	)
+	require.NoError(t, err)
+	require.True(t, recovered)
+	require.Same(t, second, used)
+	require.Same(t, jar, used.HTTPClient.Jar)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, "welcome-admin", string(body))
+	require.NoError(t, resp.Body.Close())
 }
 
 func TestDesyncRecoveryPropagatesNoReuseClientFailure(t *testing.T) {

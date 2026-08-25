@@ -78,9 +78,19 @@ func doWithDesyncRecovery(
 	if reissued == nil {
 		return nil, client, true, fmt.Errorf("%w: no-reuse client is nil after HTTP desync", ErrDesyncedResponse)
 	}
+	copyCookieJar(client, reissued)
 
 	resp, err = reissued.Do(req)
 	return resp, reissued, true, err
+}
+
+func copyCookieJar(from, to *retryablehttp.Client) {
+	if from == nil || to == nil || from.HTTPClient == nil || to.HTTPClient == nil {
+		return
+	}
+	if from.HTTPClient.Jar != nil {
+		to.HTTPClient.Jar = from.HTTPClient.Jar
+	}
 }
 
 func requestReplaySafe(req *http.Request) bool {
