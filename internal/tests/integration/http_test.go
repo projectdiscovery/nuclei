@@ -905,7 +905,6 @@ type httpRawCookieReuse struct{}
 
 type httpDisableCookieReuse struct{}
 
-// Execute executes a test case and returns an error if occurred
 func (h *httpDisableCookieReuse) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/login", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
