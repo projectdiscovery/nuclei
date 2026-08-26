@@ -40,7 +40,6 @@ func Cleanup(options *types.Options) {
 
 // DefaultOptions is the default options structure for nuclei during mocking.
 var DefaultOptions = &types.Options{
-	Metrics:                    false,
 	Debug:                      false,
 	DebugRequests:              false,
 	DebugResponse:              false,
