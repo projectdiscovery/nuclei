@@ -311,15 +311,13 @@ func postgresTLSConfig(sslMode, host string) (*tls.Config, error) {
 	switch sslMode {
 	case "", "disable":
 		return nil, nil
-	case "allow", "prefer", "require":
-		// libpq semantics: encrypt the session without verifying the server cert.
-		return &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // intentional sslmode=require/prefer/allow
-			MinVersion:         tls.VersionTLS12,
-		}, nil
-	case "verify-ca", "verify-full":
-		// go-pg does not set ServerName from Addr; set it explicitly so
-		// hostname verification works for verify-full (and is harmless for verify-ca).
+	case "allow", "prefer":
+		// go-pg cannot implement libpq's ordered plaintext/TLS fallback.
+		return nil, fmt.Errorf("postgres sslmode %q is unsupported: TLS fallback is unavailable", sslMode)
+	case "require", "verify-ca", "verify-full":
+		// Always verify both the certificate chain and hostname. This intentionally
+		// hardens require and verify-ca because the options API has no safe way to
+		// configure a custom CA-only verifier without disabling the standard check.
 		return &tls.Config{
 			ServerName: host,
 			MinVersion: tls.VersionTLS12,

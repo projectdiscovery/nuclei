@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -48,4 +49,19 @@ func TestSMBOptionsFields(t *testing.T) {
 	require.Equal(t, "ACME", opts.Domain)
 	require.Equal(t, 15, opts.Timeout)
 	require.Equal(t, "31d6cfe0d16ae931b73c59d7e0c089c0", opts.Hash)
+}
+
+func TestSMBDialContextUsesShorterConfiguredTimeout(t *testing.T) {
+	parent, cancelParent := context.WithTimeout(t.Context(), time.Minute)
+	defer cancelParent()
+
+	dialCtx, cancelDial := smbDialContext(parent, 20*time.Millisecond)
+	defer cancelDial()
+
+	parentDeadline, ok := parent.Deadline()
+	require.True(t, ok)
+	dialDeadline, ok := dialCtx.Deadline()
+	require.True(t, ok)
+	require.True(t, dialDeadline.Before(parentDeadline))
+	require.WithinDuration(t, time.Now().Add(20*time.Millisecond), dialDeadline, 10*time.Millisecond)
 }

@@ -31,12 +31,8 @@ func listSharesWithOptions(ctx context.Context, executionId string, opts SMBOpti
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Second
 	}
-	dialCtx := ctx
-	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
-		var cancel context.CancelFunc
-		dialCtx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
-	}
+	dialCtx, cancel := smbDialContext(ctx, timeout)
+	defer cancel()
 
 	hash := opts.Hash
 	if i := strings.LastIndex(hash, ":"); i >= 0 {
@@ -54,6 +50,10 @@ func listSharesWithOptions(ctx context.Context, executionId string, opts SMBOpti
 	}
 	defer sess.Close()
 	return sess.ListShares()
+}
+
+func smbDialContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, timeout)
 }
 
 // @memo

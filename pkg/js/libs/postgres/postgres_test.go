@@ -107,8 +107,8 @@ func TestPostgresTLSConfigMapsSSLMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("map require SSL mode: %v", err)
 	}
-	if tlsConfig == nil || !tlsConfig.InsecureSkipVerify {
-		t.Fatal("require SSL mode should enable TLS without certificate verification")
+	if tlsConfig == nil || tlsConfig.ServerName != "db.example.com" || tlsConfig.InsecureSkipVerify {
+		t.Fatalf("require SSL mode should enable verified TLS, got %+v", tlsConfig)
 	}
 
 	tlsConfig, err = postgresTLSConfig("disable", "db.example.com")
@@ -120,6 +120,11 @@ func TestPostgresTLSConfigMapsSSLMode(t *testing.T) {
 	}
 	if _, err := postgresTLSConfig("invalid", "db.example.com"); err == nil {
 		t.Fatal("expected unsupported SSL mode error")
+	}
+	for _, mode := range []string{"allow", "prefer"} {
+		if _, err := postgresTLSConfig(mode, "db.example.com"); err == nil {
+			t.Fatalf("expected unsupported %s SSL mode error", mode)
+		}
 	}
 
 	tlsConfig, err = postgresTLSConfig("verify-full", "db.example.com")
