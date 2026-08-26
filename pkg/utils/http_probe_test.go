@@ -30,7 +30,7 @@ func TestDetermineSchemeOrder(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			actual := determineSchemeOrder(tc.input)
+			actual := DetermineSchemeOrder(tc.input)
 			require.Equal(t, tc.expected, actual)
 		})
 	}
@@ -52,7 +52,7 @@ func TestDetermineSchemeOrderWithHighPorts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			actual := determineSchemeOrder(tc.input)
+			actual := DetermineSchemeOrder(tc.input)
 			require.Equal(t, tc.expected, actual)
 		})
 	}
@@ -69,7 +69,7 @@ func TestDetermineSchemeOrderAmbiguousIPv6Literal(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
-			actual := determineSchemeOrder(normalizeProbeInput(tc.input))
+			actual := DetermineSchemeOrder(normalizeProbeInput(tc.input))
 			require.Equal(t, tc.expected, actual)
 		})
 	}

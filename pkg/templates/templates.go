@@ -351,7 +351,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	*template = Template(*alias)
 
 	if !ReTemplateID.MatchString(template.ID) {
-		return errkit.New("template id must match expression %v", ReTemplateID, "tag", "invalid_template")
+		return errkit.New("template id must match expression "+ReTemplateID.String(), "tag", "invalid_template")
 	}
 
 	info := template.Info

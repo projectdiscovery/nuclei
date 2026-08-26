@@ -3,6 +3,7 @@ package yaml
 import (
 	"bytes"
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -26,12 +27,19 @@ var _ formats.Format = &YamlMultiDocFormat{}
 
 // proxifyRequest is a request for proxify
 type proxifyRequest struct {
-	URL     string `json:"url"`
+	URL     string `json:"url" yaml:"url"`
 	Request struct {
-		Header map[string]string `json:"header"`
-		Body   string            `json:"body"`
-		Raw    string            `json:"raw"`
-	} `json:"request"`
+		Header map[string]string `json:"header" yaml:"header"`
+		Body   string            `json:"body" yaml:"body"`
+		Raw    string            `json:"raw" yaml:"raw"`
+	} `json:"request" yaml:"request"`
+	Response *proxifyResponse `json:"response,omitempty" yaml:"response,omitempty"`
+}
+
+type proxifyResponse struct {
+	Header map[string]string `json:"header" yaml:"header"`
+	Body   string            `json:"body" yaml:"body"`
+	Raw    string            `json:"raw" yaml:"raw"`
 }
 
 // Name returns the name of the format
@@ -83,7 +91,27 @@ func (j *YamlMultiDocFormat) Parse(input io.Reader, resultsCb formats.ParseReqRe
 			gologger.Warning().Msgf("multidoc-yaml: Could not parse raw request %s: %s", request.URL, err)
 			continue
 		}
+		if resp := buildProxifyResponse(request.Response); resp != nil {
+			rawRequest.Response = resp
+		}
 		resultsCb(rawRequest)
 	}
 	return nil
+}
+
+func buildProxifyResponse(resp *proxifyResponse) *types.HttpResponse {
+	if resp == nil {
+		return nil
+	}
+	raw := resp.Raw
+	if raw == "" {
+		return nil
+	}
+	if resp.Body != "" && (strings.HasSuffix(raw, "\r\n\r\n") || strings.HasSuffix(raw, "\n\n")) {
+		raw += resp.Body
+	}
+	return &types.HttpResponse{
+		Raw:  raw,
+		Body: resp.Body,
+	}
 }
