@@ -111,7 +111,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.3.2
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.108
-	github.com/projectdiscovery/utils v0.11.1
+	github.com/projectdiscovery/utils v0.11.2-0.20260815171005-eb8925425716
 	github.com/projectdiscovery/wappalyzergo v0.2.94
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
