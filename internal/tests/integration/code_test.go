@@ -39,8 +39,8 @@ var codeTestCases = []integrationCase{
 	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() || isCodeDisabled() }},
 	{Path: "protocols/code/pre-condition.yaml", TestCase: &codePreCondition{}, DisableOn: isCodeDisabled},
-	{Path: "protocols/code/sh-virtual.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsLinux() || isCodeDisabled() || !hasAnyExecutable("docker", "podman") }, Serial: true},
-	{Path: "protocols/code/py-virtual.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsLinux() || isCodeDisabled() || !hasAnyExecutable("docker", "podman") }, Serial: true},
+	{Path: "protocols/code/sh-virtual.yaml", TestCase: &codeVirtualSnippet{}, DisableOn: func() bool { return !osutils.IsLinux() || isCodeDisabled() || !hasAnyExecutable("docker", "podman") }, Serial: true},
+	{Path: "protocols/code/py-virtual.yaml", TestCase: &codeVirtualSnippet{}, DisableOn: func() bool { return !osutils.IsLinux() || isCodeDisabled() || !hasAnyExecutable("docker", "podman") }, Serial: true},
 	{Path: "protocols/code/pwsh-echo.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return isCodeDisabled() || !hasAnyExecutable("pwsh", "powershell", "powershell.exe") }},
 }
 
@@ -108,6 +108,12 @@ func ensureSignedIntegrationTemplates() error {
 			}
 			templatesToSign = append(templatesToSign, v.Path)
 		}
+		for _, v := range securityHardeningTestcases {
+			if v.DisableOn != nil && v.DisableOn() {
+				continue
+			}
+			templatesToSign = append(templatesToSign, v.Path)
+		}
 		for _, templatePath := range templatesToSign {
 			if err := templates.SignTemplate(tsigner, fixturePath(templatePath)); err != nil {
 				signedIntegrationTemplatesErr = err
@@ -137,6 +143,16 @@ type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeSnippet) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code", "-no-sandbox")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type codeVirtualSnippet struct{}
+
+func (h *codeVirtualSnippet) Execute(filePath string) error {
 	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
 	if err != nil {
 		return err
@@ -148,7 +164,7 @@ type codePreCondition struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codePreCondition) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code", "-esc")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code", "-no-sandbox", "-esc")
 	if err != nil {
 		return err
 	}
@@ -164,7 +180,7 @@ type codeFile struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeFile) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code", "-no-sandbox")
 	if err != nil {
 		return err
 	}
@@ -175,7 +191,7 @@ type codeEnvVar struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeEnvVar) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-V", "baz=baz", "-code")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-V", "baz=baz", "-code", "-no-sandbox")
 	if err != nil {
 		return err
 	}

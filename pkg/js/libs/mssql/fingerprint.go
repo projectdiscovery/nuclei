@@ -109,12 +109,8 @@ func fingerprintMssql(ctx context.Context, executionId string, host string, port
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		return info, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return info, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return info, err
 	}

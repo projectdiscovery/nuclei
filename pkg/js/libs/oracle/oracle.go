@@ -5,15 +5,14 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
-	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/oracledb"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	goora "github.com/sijms/go-ora/v2"
 )
 
@@ -56,14 +55,9 @@ func (c *OracleClient) IsOracle(ctx context.Context, host string, port int) (IsO
 // @memo
 func isOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
-
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return IsOracleResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
@@ -86,7 +80,8 @@ func isOracle(ctx context.Context, executionId string, host string, port int) (I
 }
 
 func (c *OracleClient) oracleDbInstance(ctx context.Context, connStr string, executionId string) (*goora.OracleConnector, error) {
-	connStr, err := sandboxDSN(executionId, connStr)
+	opts := &types.Options{ExecutionId: executionId}
+	connStr, err := protocolstate.SanitizeOracleDSN(executionId, connStr, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -105,48 +100,6 @@ func (c *OracleClient) oracleDbInstance(ctx context.Context, connStr string, exe
 	c.connector.Dialer(&oracleCustomDialer{executionId: executionId, ctx: ctx})
 
 	return c.connector, nil
-}
-
-func sandboxDSN(executionId string, dsn string) (string, error) {
-	parsed, err := url.Parse(dsn)
-	if err != nil {
-		return "", err
-	}
-
-	query := parsed.Query()
-	changed := false
-	for key, values := range query {
-		if !isOracleTracePathOption(key) {
-			continue
-		}
-		for i, value := range values {
-			if value == "" {
-				continue
-			}
-			normalized, err := protocolstate.NormalizePathWithExecutionId(executionId, value)
-			if err != nil {
-				return "", fmt.Errorf("oracle %s %q: %w", key, value, err)
-			}
-			values[i] = normalized
-		}
-		query[key] = values
-		changed = true
-	}
-	if !changed {
-		return dsn, nil
-	}
-
-	parsed.RawQuery = query.Encode()
-	return parsed.String(), nil
-}
-
-func isOracleTracePathOption(key string) bool {
-	switch strings.ToUpper(strings.TrimSpace(key)) {
-	case "TRACE FILE", "TRACE DIR", "TRACE FOLDER", "TRACE DIRECTORY":
-		return true
-	default:
-		return false
-	}
 }
 
 // Connect connects to an Oracle database

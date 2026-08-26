@@ -267,11 +267,6 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	dialers := protocolstate.GetDialersWithId(executionID)
-	if dialers == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", executionID)
-	}
-
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS10,
@@ -284,10 +279,10 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return dialers.Fastdialer.Dial(ctx, network, addr)
+			return protocolstate.DialAllowedWithExecutionID(ctx, executionID, network, addr)
 		},
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+			return protocolstate.DialTLSAllowedWithExecutionID(ctx, executionID, network, addr, tlsConfig)
 		},
 		TLSClientConfig:       tlsConfig,
 		ForceAttemptHTTP2:     true,

@@ -189,5 +189,5 @@ func mssqlConnString(target, username, password, dbName string) string {
 		url.PathEscape(username),
 		url.PathEscape(password),
 		target,
-		url.QueryEscape(dbName))
+		protocolstate.SanitizeMSSQLDatabaseName(dbName))
 }

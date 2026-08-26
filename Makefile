@@ -23,7 +23,7 @@ endif
 
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs fuzz fuzz-ci fuzz-tools
 .PHONY: devtools-tsgen docs docgen dsl-docs functional go-build lint lint-strict fuzzplayground syntax-docs
-.PHONY: integration integration-debug regression jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
+.PHONY: integration integration-debug regression jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint test-sandbox-linux
 .PHONY: tidy ts verify download vet template-validate build-fuzz discover-fuzz-packages
 
 all: build
@@ -95,6 +95,11 @@ integration:
 
 integration-debug:
 	$(GOTEST) -tags=integration ./internal/tests/integration -v $(GO_TEST_ARGS) -args $(INTEGRATION_ARGS)
+
+# Runs Landlock and bubblewrap sandbox tests inside Linux Docker (macOS/Windows hosts).
+test-sandbox-linux:
+	docker run --rm -e GOTOOLCHAIN=auto -v "$(PWD):/src" -w /src golang:bookworm \
+		bash -c 'apt-get update -qq && apt-get install -y -qq bubblewrap >/dev/null && go test ./pkg/protocols/common/sandbox/... ./pkg/protocols/code/... -count=1 -run "Landlock|Apply|Supported|Bubblewrap|DisableSandbox"'
 
 # Opt-in HTTP engine scale regression harness (not part of CI). Stands up many
 # loopback hosts and asserts finding parity across a diverse template set.

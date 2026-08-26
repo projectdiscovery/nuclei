@@ -371,7 +371,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default"), //nolint:all
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
 		flagSet.DurationVarP(&options.DialerKeepAlive, "dialer-keep-alive", "dka", 0, "keep-alive duration for network requests."),
-		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows file (payload) access anywhere on the system"),
+		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows local file access from additional allowed directories (cwd and --allowed-paths)"),
+		flagSet.StringSliceVarP(&options.AllowedPaths, "allowed-paths", "ap", nil, "additional filesystem roots allowed with -lfa (repeatable)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.BoolVar(&options.DisableSandbox, "no-sandbox", false, "disable OS-level filesystem sandbox enforcement"),
 		flagSet.BoolVarP(&options.RestrictLocalNetworkAccess, "restrict-local-network-access", "lna", false, "blocks connections to the local / private network"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
