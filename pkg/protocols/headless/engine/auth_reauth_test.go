@@ -131,7 +131,6 @@ func TestNotifyAuthResponse_E2E(t *testing.T) {
 // rotatingCookieProvider applies a cookie whose value rotates after each 401,
 // modelling a dynamic secret that re-authenticates between navigations.
 type rotatingCookieProvider struct {
-	mu       sync.Mutex
 	token    atomic.Int32
 	reauthed atomic.Bool
 }
