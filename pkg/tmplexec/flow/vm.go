@@ -29,8 +29,13 @@ var gojapool = &sync.Pool{
 
 var sizedgojapool *sizedpool.SizedPool[*goja.Runtime]
 
-// GetJSRuntime returns a new JS runtime from pool
-func GetJSRuntime(opts *types.Options) *goja.Runtime {
+// GetJSRuntime returns a new JS runtime from pool.
+//
+// The pool is shared by every scan in the process and a runtime stays checked out for as long
+// as the flow runs, including any wait on the rate limiter, so this can block for a long time
+// once the pool is saturated. It takes a context so a scan that has already been cancelled
+// stops waiting for a runtime it only needs in order to unwind.
+func GetJSRuntime(ctx context.Context, opts *types.Options) (*goja.Runtime, error) {
 	jsOnce.Do(func() {
 		if opts.JsConcurrency < 100 {
 			opts.JsConcurrency = 100
@@ -40,8 +45,7 @@ func GetJSRuntime(opts *types.Options) *goja.Runtime {
 			sizedpool.WithSize[*goja.Runtime](int64(opts.JsConcurrency)),
 		)
 	})
-	runtime, _ := sizedgojapool.Get(context.TODO())
-	return runtime
+	return sizedgojapool.Get(ctx)
 }
 
 // PutJSRuntime returns a JS runtime to pool

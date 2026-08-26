@@ -230,7 +230,10 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		} else {
 			sg = wp.Default
 		}
-		sg.Add()
+		if err := sg.AddWithContext(ctx); err != nil {
+			return
+		}
+
 		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
 			defer wg.Done()
 

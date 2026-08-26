@@ -228,7 +228,10 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}
 
 	// get a new runtime from pool
-	runtime := GetJSRuntime(f.options.Options)
+	runtime, err := GetJSRuntime(ctx.Context(), f.options.Options)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		// whether to reuse or not depends on the whether script modifies
 		// global scope or not,
@@ -285,7 +288,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	runtime.SetContextValue("executionId", f.options.Options.ExecutionId)
 
 	// pass flow and execute the js vm and handle errors
-	_, err := runtime.RunProgram(f.program)
+	_, err = runtime.RunProgram(f.program)
 	f.reconcileProgress()
 	if err != nil {
 		ctx.LogError(err)
