@@ -1,6 +1,8 @@
 package protocolstate
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -9,6 +11,9 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
+
+// ErrPathDenied is returned when a path is outside the filesystem allowlist.
+var ErrPathDenied = errors.New("path denied by filesystem allowlist")
 
 var (
 	// LfaAllowed means local file access is allowed
@@ -107,12 +112,12 @@ func NormalizePath(options *types.Options, filePath string) (string, error) {
 	}
 	if isPathAllowed(options, cleaned) {
 		if filepathutil.IsHardLinkedRegularFile(cleaned) {
-			return "", errkit.Newf("path %v denied (hard link)", filePath)
+			return "", fmt.Errorf("%w: path %v denied (hard link)", ErrPathDenied, filePath)
 		}
 		return cleaned, nil
 	}
 	if options != nil && IsLfaAllowed(options) {
-		return "", errkit.Newf("path %v is outside allowed directories (use --allowed-paths to grant access)", filePath)
+		return "", fmt.Errorf("%w: path %v is outside allowed directories (use --allowed-paths to grant access)", ErrPathDenied, filePath)
 	}
-	return "", errkit.Newf("path %v is outside nuclei-template directory and -lfa is not enabled", filePath)
+	return "", fmt.Errorf("%w: path %v is outside nuclei-template directory and -lfa is not enabled", ErrPathDenied, filePath)
 }

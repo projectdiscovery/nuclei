@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -96,7 +97,10 @@ func descriptorSource(ctx context.Context, executionID string, cc *grpc.ClientCo
 		// permitted.
 		data, err := protocolstate.ReadFileAllowed(&types.Options{ExecutionId: executionID}, protosetFile)
 		if err != nil {
-			return nil, noop, fmt.Errorf("protoset path denied: %w", err)
+			if errors.Is(err, protocolstate.ErrPathDenied) {
+				return nil, noop, fmt.Errorf("protoset path denied: %w", err)
+			}
+			return nil, noop, fmt.Errorf("failed to read protoset file: %w", err)
 		}
 		fds := &descriptorpb.FileDescriptorSet{}
 		if err := proto.Unmarshal(data, fds); err != nil {

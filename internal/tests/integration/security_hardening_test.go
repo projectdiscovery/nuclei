@@ -6,8 +6,6 @@ package integration_test
 import (
 	"os"
 	"path/filepath"
-
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 var securityHardeningTestcases = []integrationCase{
@@ -17,18 +15,10 @@ var securityHardeningTestcases = []integrationCase{
 	{Path: "protocols/javascript/fs-read-allowed-paths.yaml", TestCase: &javascriptFSReadAllowedPaths{}},
 }
 
-func securityHardeningRunner(allowLFA bool) *testutils.Runner {
-	return suite.runner.Clone(testutils.WithAllowLocalFileAccess(allowLFA))
-}
-
-func runSecurityTemplate(filePath string, allowLFA bool, debug bool, extra ...string) ([]string, error) {
-	return securityHardeningRunner(allowLFA).TemplateResults(filePath, "127.0.0.1", debug, extra...)
-}
-
 type javascriptFSReadDeny struct{}
 
 func (j *javascriptFSReadDeny) Execute(filePath string) error {
-	results, err := runSecurityTemplate(filePath, false, debug)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug)
 	if err != nil {
 		return err
 	}
@@ -38,7 +28,7 @@ func (j *javascriptFSReadDeny) Execute(filePath string) error {
 type javascriptFSReadDenyWithLFA struct{}
 
 func (j *javascriptFSReadDenyWithLFA) Execute(filePath string) error {
-	results, err := runSecurityTemplate(filePath, true, debug, "-allow-local-file-access")
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-allow-local-file-access")
 	if err != nil {
 		return err
 	}
@@ -48,7 +38,7 @@ func (j *javascriptFSReadDenyWithLFA) Execute(filePath string) error {
 type javascriptNetDenyExcluded struct{}
 
 func (j *javascriptNetDenyExcluded) Execute(filePath string) error {
-	results, err := runSecurityTemplate(filePath, false, debug, "-eh", "203.0.113.10")
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-eh", "203.0.113.10")
 	if err != nil {
 		return err
 	}
@@ -69,9 +59,9 @@ func (j *javascriptFSReadAllowedPaths) Execute(filePath string) error {
 		return err
 	}
 
-	results, err := runSecurityTemplate(
+	results, err := runSignedNucleiTemplateAndGetResults(
 		filePath,
-		true,
+		"127.0.0.1",
 		debug,
 		"-allow-local-file-access",
 		"-ap", grantedDir,

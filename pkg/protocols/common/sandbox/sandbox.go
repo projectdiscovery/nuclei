@@ -42,11 +42,11 @@ func Apply(cfg Config) error {
 		return nil
 	}
 	if len(cfg.AllowedRoots) == 0 {
-		gologger.Warning().Msgf("filesystem sandbox skipped: %v", ErrNoAllowedRoots)
+		gologger.Verbose().Msgf("filesystem sandbox skipped: %v", ErrNoAllowedRoots)
 		return ErrNoAllowedRoots
 	}
 	if !Supported() {
-		gologger.Warning().Msg("filesystem sandbox is not supported on this platform; relying on Go-level path broker only")
+		gologger.Verbose().Msg("filesystem sandbox is not supported on this platform; relying on Go-level path broker only")
 		applied = true
 		return nil
 	}

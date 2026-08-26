@@ -194,11 +194,19 @@ func TestProtosetOutsideTemplatesDirDenied(t *testing.T) {
 	executionID := initExec(t, &types.Options{AllowLocalFileAccess: false})
 
 	// t.TempDir() lives under os.TempDir(), which is always in the filesystem
-	// allowlist — place the file under $HOME so it is outside templates/config/temp.
+	// allowlist. Create a unique directory under $HOME and skip if HOME itself
+	// is inside that allowlist.
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
-	outsideDir := filepath.Join(home, ".nuclei-grpc-outside-"+t.Name())
-	require.NoError(t, os.MkdirAll(outsideDir, 0o700))
+	absHome, err := filepath.Abs(home)
+	require.NoError(t, err)
+	absTemp, err := filepath.Abs(os.TempDir())
+	require.NoError(t, err)
+	if strings.HasPrefix(absHome+string(os.PathSeparator), absTemp+string(os.PathSeparator)) || absHome == absTemp {
+		t.Skip("$HOME is under the temp root, so it is already allowlisted")
+	}
+	outsideDir, err := os.MkdirTemp(home, "nuclei-grpc-outside-*")
+	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(outsideDir) })
 	outside := filepath.Join(outsideDir, "health.protoset")
 	require.NoError(t, os.WriteFile(outside, healthProtoset(t), 0o600))
