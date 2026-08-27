@@ -27,12 +27,18 @@ func (e *Extractor) CompileExtractors() error {
 	// Compile the regexes
 	for _, regex := range e.Regex {
 		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
+			if err := validateRegexGroup(e, cached, regex); err != nil {
+				return err
+			}
 			e.regexCompiled = append(e.regexCompiled, cached)
 			continue
 		}
 		compiled, err := regexp.Compile(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
+		}
+		if err := validateRegexGroup(e, compiled, regex); err != nil {
+			return err
 		}
 		_ = cache.Regex().Set(regex, compiled)
 		e.regexCompiled = append(e.regexCompiled, compiled)
@@ -75,5 +81,26 @@ func (e *Extractor) CompileExtractors() error {
 		}
 	}
 
+	return nil
+}
+
+// validateRegexGroup rejects a group index the pattern cannot produce.
+//
+// ExtractRegex skips any submatch where `len(match) < RegexGroup+1`, and
+// FindAllStringSubmatch returns exactly NumSubexp()+1 entries, so a group
+// beyond that count can never match anything. Without this the template
+// compiles, runs, and silently extracts nothing — the failure mode is an
+// empty result rather than an error, which is indistinguishable from "the
+// pattern didn't match the target".
+func validateRegexGroup(e *Extractor, compiled *regexp.Regexp, pattern string) error {
+	if e.extractorType != RegexExtractor || e.RegexGroup == 0 {
+		return nil
+	}
+	if groups := compiled.NumSubexp(); e.RegexGroup > groups {
+		return fmt.Errorf(
+			"regex extractor group %d is out of range for pattern %q, which has %d capture group(s)",
+			e.RegexGroup, pattern, groups,
+		)
+	}
 	return nil
 }
