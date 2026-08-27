@@ -147,7 +147,7 @@ TARGET:
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
 
 TARGET-FORMAT:
-   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger) (default "list")
+   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
    -ro, -required-only            use only required fields in input format when generating requests
    -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
    -vtt, -vars-text-templating    enable text templating for vars in input file (only for yaml input mode)

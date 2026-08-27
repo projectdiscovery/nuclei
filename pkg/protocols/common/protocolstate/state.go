@@ -165,7 +165,6 @@ func initDialers(options *types.Options) error {
 			forward = &net.Dialer{
 				Timeout:   opts.DialerTimeout,
 				KeepAlive: opts.DialerKeepAlive,
-				DualStack: true,
 			}
 		}
 		dialer, err := proxy.FromURL(proxyURL, forward)
