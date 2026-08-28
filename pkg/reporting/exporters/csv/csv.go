@@ -105,13 +105,54 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	return nil
 }
 
+// formulaTriggers are the leading characters that Excel, LibreOffice Calc and
+// Google Sheets treat as the start of a formula. A cell beginning with one of
+// them is evaluated when the file is opened, so a response-derived value such
+// as `=cmd|'/C calc'!A0` captured by an extractor would execute on the machine
+// of whoever opens the export (CWE-1236).
+const formulaTriggers = "=+-@\t\r"
+
+// neutralizeFormula prefixes a single apostrophe to any value a spreadsheet
+// would evaluate as a formula, which forces the cell to be read as text.
+//
+// The transformation is reversible: the original value is the cell with at most
+// one leading apostrophe removed. Values that parse as a plain number are left
+// untouched so numeric columns (cvss-score, port) stay sortable and a negative
+// number is not needlessly quoted.
+func neutralizeFormula(value string) string {
+	if value == "" || !strings.ContainsRune(formulaTriggers, rune(value[0])) {
+		return value
+	}
+	if _, err := strconv.ParseFloat(value, 64); err == nil {
+		return value
+	}
+	return "'" + value
+}
+
+// neutralizeAndJoin newline-joins a multi-value column, neutralizing each
+// element rather than only the resulting cell. Consumers routinely split these
+// cells back into their individual values, so every element has to be safe on
+// its own and not just the first one.
+func neutralizeAndJoin(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	neutralized := make([]string, 0, len(values))
+	for _, value := range values {
+		neutralized = append(neutralized, neutralizeFormula(value))
+	}
+	return strings.Join(neutralized, "\n")
+}
+
 // formatRow flattens a ResultEvent into the ordered set of CSV columns defined
 // by header. Empty values are emitted for fields that are not present on the
 // event (for example, templates without CVE/CVSS classification metadata).
 //
-// Every value is handed to encoding/csv unmodified, so values carrying commas,
-// double quotes or newlines are quoted per RFC 4180 instead of breaking the
-// column layout.
+// Two separate escaping concerns are handled here. Structural injection is
+// handled by encoding/csv, which RFC 4180-quotes any value carrying a comma,
+// double quote or newline so it cannot forge extra columns or rows. Spreadsheet
+// formula evaluation is handled by neutralizeFormula, because the target of
+// this exporter is explicitly a file someone opens in a spreadsheet.
 func formatRow(event *output.ResultEvent) []string {
 	var cve, cwe, cvssMetrics, cvssScore string
 	if event.Info.Classification != nil {
@@ -128,32 +169,32 @@ func formatRow(event *output.ResultEvent) []string {
 	// newline separated inside the (quoted) cell rather than comma separated.
 	var reference string
 	if event.Info.Reference != nil {
-		reference = strings.Join(event.Info.Reference.ToSlice(), "\n")
+		reference = neutralizeAndJoin(event.Info.Reference.ToSlice())
 	}
 
 	return []string{
-		event.TemplateID,
-		event.Info.Name,
-		event.Type,
+		neutralizeFormula(event.TemplateID),
+		neutralizeFormula(event.Info.Name),
+		neutralizeFormula(event.Type),
 		event.Info.SeverityHolder.Severity.String(),
-		event.Host,
-		event.IP,
-		event.Port,
-		event.Matched,
-		event.MatcherName,
-		event.ExtractorName,
+		neutralizeFormula(event.Host),
+		neutralizeFormula(event.IP),
+		neutralizeFormula(event.Port),
+		neutralizeFormula(event.Matched),
+		neutralizeFormula(event.MatcherName),
+		neutralizeFormula(event.ExtractorName),
 		// Extracted results are arbitrary response-derived data and can contain
 		// commas, so they are newline separated inside the (quoted) cell rather
 		// than comma separated. CVE/CWE identifiers cannot contain a comma, so
 		// those keep the ", " form used everywhere else in nuclei.
-		strings.Join(event.ExtractedResults, "\n"),
+		neutralizeAndJoin(event.ExtractedResults),
 		cve,
 		cwe,
-		cvssMetrics,
+		neutralizeFormula(cvssMetrics),
 		cvssScore,
-		event.Info.Description,
+		neutralizeFormula(event.Info.Description),
 		reference,
-		event.CURLCommand,
+		neutralizeFormula(event.CURLCommand),
 		event.Timestamp.UTC().Format(time.RFC3339),
 	}
 }

