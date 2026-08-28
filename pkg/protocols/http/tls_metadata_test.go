@@ -15,9 +15,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func TestEnrichEventWithTLSMetadata(t *testing.T) {
@@ -28,6 +28,7 @@ func TestEnrichEventWithTLSMetadata(t *testing.T) {
 		TLS: &tls.ConnectionState{
 			Version:          tls.VersionTLS13,
 			CipherSuite:      tls.TLS_AES_128_GCM_SHA256,
+			CurveID:          tls.X25519,
 			ServerName:       "foo.com",
 			PeerCertificates: []*x509.Certificate{cert},
 		},
@@ -38,6 +39,7 @@ func TestEnrichEventWithTLSMetadata(t *testing.T) {
 
 	require.Equal(t, "tls13", event["tls_version"])
 	require.Equal(t, "TLS_AES_128_GCM_SHA256", event["cipher"])
+	require.Equal(t, "X25519", event["key_exchange"])
 	require.Equal(t, "foo.com", event["sni"])
 	require.Equal(t, "example.com", event["subject_cn"])
 	require.Contains(t, event["subject_dn"], "CN=example.com")
@@ -92,6 +94,7 @@ func TestResponseToDSLMapIncludesTLSMetadata(t *testing.T) {
 	resp.TLS = &tls.ConnectionState{
 		Version:          tls.VersionTLS12,
 		CipherSuite:      tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		CurveID:          tls.X25519,
 		ServerName:       "docs.example",
 		PeerCertificates: []*x509.Certificate{cert},
 	}
@@ -101,6 +104,7 @@ func TestResponseToDSLMapIncludesTLSMetadata(t *testing.T) {
 		time.Millisecond, nil)
 
 	require.Equal(t, "tls12", event["tls_version"])
+	require.Equal(t, "X25519", event["key_exchange"])
 	require.Equal(t, "docs.example", event["subject_cn"])
 	require.Equal(t, "docs.example", event["sni"])
 	require.Equal(t, false, event["mismatched"])
@@ -132,4 +136,43 @@ func selfSignedTestCertificate(t *testing.T, cn string, dnsNames []string) (*x50
 		return nil, err
 	}
 	return cert, nil
+}
+
+func TestEnrichEventWithTLSMetadataHybridKeyExchange(t *testing.T) {
+	cert, err := selfSignedTestCertificate(t, "example.com", []string{"example.com"})
+	require.NoError(t, err)
+
+	resp := &http.Response{
+		TLS: &tls.ConnectionState{
+			Version:          tls.VersionTLS13,
+			CipherSuite:      tls.TLS_AES_128_GCM_SHA256,
+			CurveID:          tls.X25519MLKEM768,
+			PeerCertificates: []*x509.Certificate{cert},
+		},
+	}
+
+	event := make(map[string]interface{})
+	enrichEventWithTLSMetadata(event, resp)
+
+	require.Equal(t, "X25519MLKEM768", event["key_exchange"])
+}
+
+func TestEnrichEventWithTLSMetadataWithoutKeyExchange(t *testing.T) {
+	cert, err := selfSignedTestCertificate(t, "example.com", []string{"example.com"})
+	require.NoError(t, err)
+
+	resp := &http.Response{
+		TLS: &tls.ConnectionState{
+			Version:          tls.VersionTLS13,
+			CipherSuite:      tls.TLS_AES_128_GCM_SHA256,
+			CurveID:          0,
+			PeerCertificates: []*x509.Certificate{cert},
+		},
+	}
+
+	event := make(map[string]interface{})
+	enrichEventWithTLSMetadata(event, resp)
+
+	_, ok := event["key_exchange"]
+	require.False(t, ok)
 }

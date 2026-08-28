@@ -36,6 +36,9 @@ func enrichEventWithTLSMetadata(data output.InternalEvent, resp *http.Response) 
 	if state.ServerName != "" {
 		data["sni"] = state.ServerName
 	}
+	if state.CurveID != 0 {
+		data["key_exchange"] = state.CurveID.String()
+	}
 	if len(state.PeerCertificates) == 0 {
 		return
 	}
