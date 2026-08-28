@@ -47,10 +47,13 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 	builder := &bytes.Buffer{}
 	fmt.Fprintf(builder, "%s: %s matched at %s\n\n", formatter.MakeBold("Details"), formatter.MakeBold(template), event.Host)
 
-	attributes := utils.NewEmptyInsertionOrderedStringMap(3)
+	attributes := utils.NewEmptyInsertionOrderedStringMap(4)
 	attributes.Set("Protocol", strings.ToUpper(event.Type))
 	attributes.Set("Full URL", event.Matched)
 	attributes.Set("Timestamp", event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+	if event.Confidence != "" {
+		attributes.Set("Confidence", formatConfidence(event))
+	}
 	attributes.ForEach(func(key string, data interface{}) {
 		fmt.Fprintf(builder, "%s: %s\n\n", formatter.MakeBold(key), types.ToString(data))
 	})
@@ -249,4 +252,17 @@ func generateCVECWEIDLinksFromClassification(classification *model.Classificatio
 
 func lineBreakToHTML(text string) string {
 	return strings.ReplaceAll(text, "\n", "<br>")
+}
+
+// formatConfidence renders the detection-confidence tier and 0-100 score, e.g.
+// "High (85)". The score is omitted when not set.
+func formatConfidence(event *output.ResultEvent) string {
+	tier := event.Confidence
+	if tier != "" {
+		tier = strings.ToUpper(tier[:1]) + tier[1:]
+	}
+	if event.ConfidenceScore > 0 {
+		return fmt.Sprintf("%s (%d)", tier, event.ConfidenceScore)
+	}
+	return tier
 }

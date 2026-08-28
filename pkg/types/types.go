@@ -291,6 +291,9 @@ type Options struct {
 	EnvironmentVariables bool
 	// MatcherStatus displays optional status for the failed matches as well
 	MatcherStatus bool
+	// ConfidenceBaseline sends a per-host control request to detect catch-all
+	// responses and lower the confidence of likely false-positive matches.
+	ConfidenceBaseline bool
 	// ClientCertFile client certificate file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCertFile string
 	// ClientKeyFile client key file (PEM-encoded) used for authenticating against scanned hosts
