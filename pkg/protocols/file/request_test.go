@@ -212,3 +212,55 @@ func TestFileProtocolConcurrentExecution(t *testing.T) {
 	timesMutex.Lock()
 	defer timesMutex.Unlock()
 }
+
+func TestFileFilesizeAndOffset(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "nuclei-filesize-*")
+	require.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	content := []byte("MZPAYLOADDATA")
+	filePath := filepath.Join(tempDir, "sample.bin")
+	require.NoError(t, os.WriteFile(filePath, content, permissionutil.TempFilePermission))
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	templateID := "testing-file-filesize-offset"
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	offset0 := 0
+	request := &Request{
+		ID:         templateID,
+		MaxSize:    "1Gb",
+		Extensions: []string{"all"},
+		Operators: operators.Operators{
+			MatchersCondition: "and",
+			Matchers: []*matchers.Matcher{
+				{
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Part:  "raw",
+					Words: []string{"MZ"},
+					Offset: &offset0,
+				},
+				{
+					Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+					DSL:  []string{"filesize == 13"},
+				},
+			},
+		},
+	}
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	ctxArgs := contextargs.NewWithInput(context.Background(), tempDir)
+	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			matched = true
+			require.Equal(t, int64(len(content)), event.InternalEvent["filesize"])
+		}
+	})
+	require.NoError(t, err)
+	require.True(t, matched)
+}
