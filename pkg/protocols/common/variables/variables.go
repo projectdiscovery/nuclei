@@ -1,6 +1,7 @@
 package variables
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/invopop/jsonschema"
@@ -17,6 +18,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+// fileHelperCall matches a file() DSL helper call, not substrings like "profile(".
+var fileHelperCall = regexp.MustCompile(`\bfile\s*\(`)
 
 // Variable is a key-value pair of strings that can be used
 // throughout template.
@@ -233,6 +237,13 @@ func (variables *Variable) checkForLazyEval() bool {
 		// this is a hotfix and not the best way to do it
 		// will be refactored once we move scan state to scanContext (see: https://github.com/projectdiscovery/nuclei/issues/4631)
 		if strings.Contains(types.ToString(value), "interactsh-url") {
+			needsLazy = true
+			return
+		}
+
+		// file() needs the per-template LoadHelperFile sandbox installed during
+		// execution (TemplatePath / Options), so defer evaluation until then.
+		if fileHelperCall.MatchString(types.ToString(value)) {
 			needsLazy = true
 			return
 		}

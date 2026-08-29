@@ -114,6 +114,11 @@ func init() {
 		return port, nil
 	}))
 
+	// file() reads helper-file contents through Options.LoadHelperFile so the
+	// same sandbox as payloads:/includes applies (templates dir, same-dir under
+	// home, -lfa, hard-link rejection). Requires WithFileLoadContext.
+	registerFileHelper()
+
 	dsl.PrintDebugCallback = func(args ...interface{}) error {
 		gologger.Debug().Msgf("print_debug value: %s", fmt.Sprint(args...))
 		return nil
