@@ -15,13 +15,13 @@ var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Ne
 // Validate perform initial validation on the matcher structure
 func (matcher *Matcher) Validate() error {
 	// Build a map of YAML‐tag names that are actually set (non-zero) in the matcher.
-	matcherMap := make(map[string]interface{})
+	matcherMap := make(map[string]struct{})
 	val := reflect.ValueOf(*matcher)
-	typ := reflect.TypeOf(*matcher)
+	typ := reflect.TypeFor[Matcher]()
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
 		// skip internal / unexported or opt-out fields
-		yamlTag := strings.Split(field.Tag.Get("yaml"), ",")[0]
+		yamlTag, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
 		if yamlTag == "" || yamlTag == "-" {
 			continue
 		}
@@ -65,7 +65,7 @@ func (matcher *Matcher) Validate() error {
 	return nil
 }
 
-func checkFields(m *Matcher, matcherMap map[string]interface{}, expectedFields ...string) error {
+func checkFields(m *Matcher, matcherMap map[string]struct{}, expectedFields ...string) error {
 	var foundUnexpectedFields []string
 	for marshaledFieldName := range matcherMap {
 		// revert back the marshaled name to the original field
@@ -90,8 +90,8 @@ func getFieldNameFromYamlTag(tagName string, object interface{}) (string, error)
 	}
 	for idx := 0; idx < reflectType.NumField(); idx++ {
 		field := reflectType.Field(idx)
-		tagParts := strings.Split(field.Tag.Get("yaml"), ",")
-		if len(tagParts) > 0 && tagParts[0] == tagName {
+		yamlTag, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
+		if yamlTag == tagName {
 			return field.Name, nil
 		}
 	}
