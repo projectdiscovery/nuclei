@@ -618,6 +618,7 @@ func prepareTemplate(template *Template, srcOptions *protocols.ExecutorOptions) 
 	options.TemplateID = template.ID
 	options.TemplateInfo = template.Info
 	options.StopAtFirstMatch = template.StopAtFirstMatch
+	options.InteractshEviction = template.InteractshEviction
 
 	if template.Variables.Len() > 0 {
 		options.Variables = template.Variables
