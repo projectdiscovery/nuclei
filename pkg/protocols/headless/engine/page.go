@@ -219,8 +219,11 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 
 	if hasHistory {
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
-			data["header"] = utils.HeadersToString(resp.Header)
+			headers := utils.HeadersToString(resp.Header)
+			data["header"] = headers
+			data["all_headers"] = headers
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
+			addResponseVariables(data, resp)
 			defer func() {
 				_ = resp.Body.Close()
 			}()
