@@ -24,6 +24,12 @@ func (e *Extractor) CompileExtractors() error {
 		return fmt.Errorf("regex extractor group must be >= 0, got %d", e.RegexGroup)
 	}
 
+	// An extractor with no values can never extract anything, so it is always a
+	// template authoring mistake. It used to compile and run silently.
+	if err := e.checkRequiredValues(); err != nil {
+		return err
+	}
+
 	// Compile the regexes
 	for _, regex := range e.Regex {
 		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
@@ -75,5 +81,31 @@ func (e *Extractor) CompileExtractors() error {
 		}
 	}
 
+	return nil
+}
+
+// checkRequiredValues reports an error when the extractor carries none of the
+// values its type extracts with. Such an extractor can never produce a result,
+// so it is always a template authoring mistake rather than an intentional no-op.
+func (e *Extractor) checkRequiredValues() error {
+	var empty bool
+	var field string
+
+	switch e.extractorType {
+	case RegexExtractor:
+		empty, field = len(e.Regex) == 0, "regex"
+	case KValExtractor:
+		empty, field = len(e.KVal) == 0, "kval"
+	case XPathExtractor:
+		empty, field = len(e.XPath) == 0, "xpath"
+	case JSONExtractor:
+		empty, field = len(e.JSON) == 0, "json"
+	case DSLExtractor:
+		empty, field = len(e.DSL) == 0, "dsl"
+	}
+
+	if empty {
+		return fmt.Errorf("extractor %s has no %s values specified", e.extractorType, field)
+	}
 	return nil
 }
