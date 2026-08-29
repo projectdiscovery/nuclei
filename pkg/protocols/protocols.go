@@ -449,7 +449,7 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 	}
 
 	partItem, ok := data[part]
-	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
+	if !ok && matcher.NeedsPart() {
 		return false, nil
 	}
 	item := types.ToString(partItem)
@@ -468,6 +468,8 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		return matcher.Result(matcher.MatchDSL(data)), nil
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
+	case matchers.ErrorMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
 	}
 	return false, nil
 }

@@ -27,6 +27,8 @@ const (
 	DSLMatcher
 	// name:xpath
 	XPathMatcher
+	// name:error
+	ErrorMatcher
 	limit
 )
 
@@ -39,6 +41,7 @@ var MatcherTypes = map[MatcherType]string{
 	BinaryMatcher: "binary",
 	DSLMatcher:    "dsl",
 	XPathMatcher:  "xpath",
+	ErrorMatcher:  "error",
 }
 
 // GetType returns the type of the matcher

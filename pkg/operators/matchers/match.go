@@ -250,6 +250,93 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 	return false
 }
 
+// MatchError matches request execution errors exposed on the event map.
+//
+// Errors values may be:
+//   - kinds: timeout, connection, connect, any, * (classify via error_type / timeout)
+//   - any other string: substring match against the error message
+//
+// An empty Errors list matches any request error. Condition (and/or), MatchAll,
+// and CaseInsensitive apply the same way as word matchers.
+func (matcher *Matcher) MatchError(data map[string]interface{}) (bool, []string) {
+	errVal, ok := data["error"]
+	if !ok || errVal == nil {
+		return false, []string{}
+	}
+	errStr, _ := errVal.(string)
+	if errStr == "" {
+		return false, []string{}
+	}
+
+	if len(matcher.Errors) == 0 {
+		return true, []string{errStr}
+	}
+
+	corpus := errStr
+	if matcher.CaseInsensitive {
+		corpus = strings.ToLower(corpus)
+	}
+
+	errType, _ := data["error_type"].(string)
+	isTimeout, _ := data["timeout"].(bool)
+
+	var matched []string
+	for i, item := range matcher.Errors {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			if matcher.condition == ANDCondition {
+				return false, []string{}
+			}
+			continue
+		}
+
+		okMatch, snippet := matcher.matchErrorItem(item, errStr, corpus, errType, isTimeout)
+		if !okMatch {
+			if matcher.condition == ANDCondition {
+				return false, []string{}
+			}
+			continue
+		}
+
+		if matcher.condition == ORCondition && !matcher.MatchAll {
+			return true, []string{snippet}
+		}
+		matched = append(matched, snippet)
+
+		if len(matcher.Errors)-1 == i && !matcher.MatchAll {
+			return true, matched
+		}
+	}
+	if len(matched) > 0 && matcher.MatchAll {
+		return true, matched
+	}
+	return false, []string{}
+}
+
+func (matcher *Matcher) matchErrorItem(item, errStr, corpus, errType string, isTimeout bool) (bool, string) {
+	switch strings.ToLower(item) {
+	case "timeout":
+		if isTimeout || errType == "timeout" {
+			return true, item
+		}
+	case "connection", "connect":
+		if errType == "connection" {
+			return true, item
+		}
+	case "any", "*":
+		return true, errStr
+	default:
+		needle := item
+		if matcher.CaseInsensitive {
+			needle = strings.ToLower(item)
+		}
+		if strings.Contains(corpus, needle) {
+			return true, item
+		}
+	}
+	return false, ""
+}
+
 // MatchXPath matches on a generic map result
 func (matcher *Matcher) MatchXPath(corpus string) bool {
 	if strings.HasPrefix(corpus, "<?xml") {
