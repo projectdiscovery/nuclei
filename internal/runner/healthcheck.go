@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -74,5 +75,42 @@ func DoHealthCheck(options *types.Options) string {
 	}
 	fmt.Fprintf(&test, "IPv4 UDP connectivity to scanme.sh:53 => %s\n", testResult)
 
+	appendPDCPHealthCheck(&test, (&pdcpauth.PDCPCredHandler{}).GetCreds, func(key, server, tool string) (*pdcpauth.PDCPCredentials, error) {
+		return (&pdcpauth.PDCPCredHandler{}).ValidateAPIKey(key, server, tool)
+	})
+
 	return test.String()
+}
+
+// appendPDCPHealthCheck validates PDCP API connectivity when credentials are configured.
+func appendPDCPHealthCheck(
+	test *strings.Builder,
+	getCreds func() (*pdcpauth.PDCPCredentials, error),
+	validate func(key, server, tool string) (*pdcpauth.PDCPCredentials, error),
+) {
+	creds, err := getCreds()
+	if err != nil {
+		// Only check when an API key is configured.
+		return
+	}
+	if creds == nil || creds.APIKey == "" {
+		return
+	}
+
+	server := creds.Server
+	if server == "" {
+		server = pdcpauth.DefaultApiServer
+	}
+
+	validated, err := validate(creds.APIKey, server, config.BinaryName)
+	if err != nil {
+		fmt.Fprintf(test, "PDCP API (%s) => Ko (%s)\n", server, err)
+		return
+	}
+
+	identity := validated.Email
+	if validated.Username != "" {
+		identity = "@" + validated.Username
+	}
+	fmt.Fprintf(test, "PDCP API (%s) => Ok (%s)\n", server, identity)
 }
