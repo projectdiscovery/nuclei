@@ -278,6 +278,13 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	return dialers.RawHTTPClient
 }
 
+// defaultMaxIdleConnsPerHost is the per-host idle connection pool size. Clients
+// are scoped to a single host, so this has to cover the requests that can be in
+// flight against that host at once -- which is TemplateThreads multiplied by a
+// template's own payload parallelism, not TemplateThreads alone. 500 is the
+// value this used before the per-host client pool was introduced.
+const defaultMaxIdleConnsPerHost = 500
+
 // Get creates or gets a client for the protocol based on custom configuration.
 // The host parameter scopes the client to a specific target, enabling per-host
 // connection reuse with keep-alive. Pass an empty string for non-scanning uses.
@@ -322,10 +329,20 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
 	}
 
-	maxIdleConns := 4
-	maxIdleConnsPerHost := 4
+	// The idle pool has to be at least as large as the number of requests that
+	// can be in flight against this host at once. http.Transport closes a
+	// returned connection when the per-host idle pool is already full, so an
+	// idle pool smaller than the effective concurrency silently defeats
+	// keep-alive: every request past the pool size pays a fresh TCP (and TLS)
+	// handshake instead of reusing a pooled connection.
+	//
+	// A template's own thread count only ever raises this floor; it must not
+	// lower it, because concurrency against the host is TemplateThreads times
+	// the per-template payload parallelism, not a single template's threads.
+	maxIdleConns := defaultMaxIdleConnsPerHost
+	maxIdleConnsPerHost := defaultMaxIdleConnsPerHost
 	maxConnsPerHost := 0 // unlimited by default; the SPM handler controls concurrency
-	if configuration.Threads > 0 {
+	if configuration.Threads > maxIdleConnsPerHost {
 		maxIdleConnsPerHost = configuration.Threads
 		maxIdleConns = configuration.Threads
 	}
