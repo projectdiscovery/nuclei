@@ -64,11 +64,11 @@
 
 ### **1. Nuclei CLI**
 
-_Install Nuclei on your machine. Get started by following the installation guide [**`here`**](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide [**`a free cloud tier`**](https://cloud.projectdiscovery.io/sign-up) and comes with a generous monthly free limits:_
+_Install Nuclei on your machine. Get started by following the installation guide [**`here`**](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, we provide [**`a free cloud tier`**](https://cloud.projectdiscovery.io/sign-up) that comes with generous monthly free limits:_
 
 - Store and visualize your vulnerability findings
-- Write and manage your nuclei templates
-- Access latest nuclei templates
+- Write and manage your Nuclei templates
+- Access the latest Nuclei templates
 - Discover and store your targets
 
 > [!Important]
@@ -91,7 +91,7 @@ _For security teams and enterprises, we provide a cloud-hosted service built on 
 - We're constantly [**`adding new features`**](https://feedback.projectdiscovery.io/changelog)!
 - **Ideal for:** Pentesters, security teams, and enterprises
 
-[**`Sign up to Pro`**](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) or [**`Talk to our team`**](https://projectdiscovery.io/request-demo?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) if you have large organization and complex requirements.
+[**`Sign up to Pro`**](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) or [**`Talk to our team`**](https://projectdiscovery.io/request-demo?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) if you have a large organization and complex requirements.
 
 <br>
 <br>
