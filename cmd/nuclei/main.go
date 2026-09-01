@@ -119,7 +119,7 @@ func main() {
 		createProfileFile := func(ext, profileType string) *os.File {
 			f, err := os.Create(memProfile + ext)
 			if err != nil {
-				fatalf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+				fatalf("profile: could not create %s profile %q file: %v", profileType, memProfile+ext, err)
 			}
 			return f
 		}
