@@ -9,11 +9,11 @@ import (
 )
 
 func TestVersionCheck(t *testing.T) {
-	err := NucleiVersionCheck()
+	ignoreHash, err := NucleiVersionCheck()
 	require.Nil(t, err)
 	cfg := config.DefaultConfig
-	if generic.EqualsAny("", cfg.LatestNucleiIgnoreHash, cfg.LatestNucleiVersion, cfg.LatestNucleiTemplatesVersion) {
+	if generic.EqualsAny("", ignoreHash, cfg.LatestNucleiVersion, cfg.LatestNucleiTemplatesVersion) {
 		// all above values cannot be empty
-		t.Errorf("something went wrong got empty response nuclei-version=%v templates-version=%v ignore-hash=%v", cfg.LatestNucleiVersion, cfg.LatestNucleiTemplatesVersion, cfg.LatestNucleiIgnoreHash)
+		t.Errorf("something went wrong got empty response nuclei-version=%v templates-version=%v ignore-hash=%v", cfg.LatestNucleiVersion, cfg.LatestNucleiTemplatesVersion, ignoreHash)
 	}
 }

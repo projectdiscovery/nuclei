@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -11,11 +12,11 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projectdiscovery/gologger"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
@@ -25,6 +26,7 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
+	"github.com/projectdiscovery/nuclei/v3/internal/configuration"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -47,27 +49,22 @@ import (
 )
 
 var (
-	cfgFile                string
-	templateProfile        string
-	memProfile             string // optional profile file path
-	options                = &types.Options{}
-	inlineSecretsTempFiles []string
+	memProfile           string // optional profile file path
+	options              = &types.Options{}
+	inlineSecretsTempDir string
+	inlineSecretsTempMu  sync.Mutex
 )
 
 func main() {
 	options.Logger = gologger.DefaultLogger
 
-	defer func() {
-		for _, f := range inlineSecretsTempFiles {
-			_ = os.Remove(f)
-		}
-	}()
+	defer cleanupInlineSecretsDirs()
 
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
 
 	if err := runner.ConfigureOptions(); err != nil {
-		options.Logger.Fatal().Msgf("Could not initialize options: %s\n", err)
+		fatalf("Could not initialize options: %s\n", err)
 	}
 	_ = readConfig()
 
@@ -83,7 +80,7 @@ func main() {
 		templates.UseOptionsForSigner(options)
 		tsigner, err := signer.NewTemplateSigner(nil, nil) // will read from env , config or generate new keys
 		if err != nil {
-			options.Logger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
+			fatalf("Could not initialize signer crypto engine: %s\n", err)
 		}
 
 		successCounter := 0
@@ -122,7 +119,7 @@ func main() {
 		createProfileFile := func(ext, profileType string) *os.File {
 			f, err := os.Create(memProfile + ext)
 			if err != nil {
-				options.Logger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+				fatalf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
 			}
 			return f
 		}
@@ -136,18 +133,18 @@ func main() {
 
 		// Start tracing
 		if err := trace.Start(traceFile); err != nil {
-			options.Logger.Fatal().Msgf("profile: could not start trace: %v", err)
+			fatalf("profile: could not start trace: %v", err)
 		}
 
 		// Start CPU profiling
 		if err := pprof.StartCPUProfile(cpuProfileFile); err != nil {
-			options.Logger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+			fatalf("profile: could not start CPU profile: %v", err)
 		}
 
 		defer func() {
 			// Start heap memory snapshot
 			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
-				options.Logger.Fatal().Msgf("profile: could not write memory profile: %v", err)
+				fatalf("profile: could not write memory profile: %v", err)
 			}
 
 			pprof.StopCPUProfile()
@@ -169,14 +166,14 @@ func main() {
 
 	if options.ScanUploadFile != "" {
 		if err := runner.UploadResultsToCloud(options); err != nil {
-			options.Logger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
+			fatalf("Could not upload scan results to cloud dashboard: %s\n", err)
 		}
 		return
 	}
 
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
-		options.Logger.Fatal().Msgf("Could not create runner: %s\n", err)
+		fatalf("Could not create runner: %s\n", err)
 	}
 	if nucleiRunner == nil {
 		return
@@ -187,7 +184,7 @@ func main() {
 		cancel := stackMonitor.Start(10 * time.Second)
 		defer cancel()
 		stackMonitor.RegisterCallback(func(dumpID string) error {
-			resumeFileName := fmt.Sprintf("crash-resume-file-%s.dump", dumpID)
+			resumeFileName := types.DefaultCrashResumeFilePath(dumpID)
 			if options.EnableCloudUpload {
 				options.Logger.Info().Msgf("Uploading scan results to cloud...")
 			}
@@ -213,6 +210,7 @@ func main() {
 		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
 		if options.DASTServer {
 			nucleiRunner.Close()
+			cleanupInlineSecretsDirs()
 			os.Exit(1)
 		}
 
@@ -228,17 +226,15 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
-		for _, f := range inlineSecretsTempFiles {
-			_ = os.Remove(f)
-		}
+		cleanupInlineSecretsDirs()
 		os.Exit(1)
 	}()
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
 		if options.Validate {
-			options.Logger.Fatal().Msgf("Could not validate templates: %s\n", err)
+			fatalf("Could not validate templates: %s\n", err)
 		} else {
-			options.Logger.Fatal().Msgf("Could not run nuclei: %s\n", err)
+			fatalf("Could not run nuclei: %s\n", err)
 		}
 	}
 	nucleiRunner.Close()
@@ -249,10 +245,12 @@ func main() {
 }
 
 func readConfig() *goflags.FlagSet {
-
+	var selectedFiles configuration.Selection
 	// when true updates nuclei binary to latest version
 	var updateNucleiBinary bool
-	var pdcpauth string
+	var disableUpdateCheck bool
+	var resetRequested bool
+	var pdcpAuth string
 	var fuzzFlag bool
 
 	flagSet := goflags.NewFlagSet()
@@ -348,8 +346,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("configs", "Configurations",
-		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
-		flagSet.StringVarP(&templateProfile, "profile", "tp", "", "template profile config file to run"),
+		flagSet.StringVar(&selectedFiles.Config, "config", "", "path to the nuclei configuration file"),
+		flagSet.StringVarP(&selectedFiles.Profile, "profile", "tp", "", "template profile config file to run"),
 		flagSet.BoolVarP(&options.ListTemplateProfiles, "profile-list", "tpl", false, "list community template profiles"),
 		flagSet.BoolVarP(&options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
 		flagSet.BoolVarP(&options.FollowHostRedirects, "follow-host-redirects", "fhr", false, "follow redirects on the same host"),
@@ -378,7 +376,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 0, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", unitutils.Mega, "max response size to read in bytes"),
-		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
+		flagSet.CallbackVar(func() { resetRequested = true }, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),
 	)
@@ -489,7 +487,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&updateNucleiBinary, "update", "up", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
-		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
+		flagSet.BoolVarP(&disableUpdateCheck, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
 
 	flagSet.CreateGroup("Honeypot", "Honeypot",
@@ -507,7 +505,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("cloud", "Cloud",
-		flagSet.DynamicVar(&pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
+		flagSet.DynamicVar(&pdcpAuth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
 		flagSet.StringVarP(&options.TeamID, "team-id", "tid", _pdcp.TeamIDEnv, "upload scan results to given team id (optional)"),
 		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard [DEPRECATED use -dashboard]"),
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to existing scan id (optional)"),
@@ -540,12 +538,32 @@ Run nuclei with sorted Markdown outputs (with environment variables):
 Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 	`)
 
-	// nuclei has multiple migrations
-	// ex: resume.cfg moved to platform standard cache dir from config dir
-	// ex: config.yaml moved to platform standard config dir from linux specific config dir
-	// and hence it will be attempted in config package during init
+	// Nuclei handles config-path compatibility before parsing its layered files.
 	goflags.DisableAutoConfigMigration = true
-	_ = flagSet.Parse()
+	warnings, err := configuration.Load(config.DefaultConfig, flagSet, &selectedFiles, func(path string) (string, error) {
+		return configuration.ResolveProfilePath(path, configuration.TemplatesDirectory(options, config.DefaultConfig))
+	})
+
+	for _, warning := range warnings {
+		options.Logger.Warning().Msgf("Could not load configuration: %s\n", warning)
+	}
+
+	if err != nil {
+		fatalf("Could not load configuration: %s\n", err)
+	}
+	pdcpAuth = cliOnlyDynamicValue(flagSet, "auth", pdcpAuth)
+
+	if disableUpdateCheck {
+		config.DefaultConfig.DisableUpdateCheck()
+	}
+
+	if templatesDir, overridden := configuration.TemplatesDirectoryOverride(options); overridden {
+		config.DefaultConfig.SetTemplatesDir(templatesDir)
+	}
+
+	if resetRequested {
+		resetCallback()
+	}
 
 	// when fuzz flag is enabled, set the dast flag to true
 	if fuzzFlag {
@@ -559,13 +577,13 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	}
 
 	// api key hierarchy: cli flag > env var > .pdcp/credential file
-	if pdcpauth == "true" {
+	if pdcpAuth == "true" {
 		runner.AuthWithPDCP()
-	} else if len(pdcpauth) == 36 {
+	} else if len(pdcpAuth) == 36 {
 		ph := pdcp.PDCPCredHandler{}
 		if _, err := ph.GetCreds(); err == pdcp.ErrNoCreds {
 			apiServer := env.GetEnvOrDefault("PDCP_API_SERVER", pdcp.DefaultApiServer)
-			if validatedCreds, err := ph.ValidateAPIKey(pdcpauth, apiServer, config.BinaryName); err == nil {
+			if validatedCreds, err := ph.ValidateAPIKey(pdcpAuth, apiServer, config.BinaryName); err == nil {
 				_ = ph.SaveCreds(validatedCreds)
 			}
 		}
@@ -576,7 +594,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		h := &pdcp.PDCPCredHandler{}
 		_, err := h.GetCreds()
 		if err != nil {
-			options.Logger.Fatal().Msg("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
+			fatalf("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
 		}
 	}
 
@@ -595,182 +613,39 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		runner.NucleiToolUpdateCallback()
 	}
 
+	tempSecretsDir, err := configuration.ApplyProfile(selectedFiles.Profile, options)
+	if err != nil {
+		fatalf("Could not process template profile: %s\n", err)
+	}
+	if tempSecretsDir != "" {
+		setInlineSecretsTempDir(tempSecretsDir)
+	}
+
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
-	}
-	if customConfigDir := os.Getenv(config.NucleiConfigDirEnv); customConfigDir != "" {
-		config.DefaultConfig.SetConfigDir(customConfigDir)
-		readFlagsConfig(flagSet)
-	}
-
-	if cfgFile != "" {
-		if !fileutil.FileExists(cfgFile) {
-			options.Logger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
-		}
-		// merge config file with flags
-		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
-			options.Logger.Fatal().Msgf("Could not read config: %s\n", err)
-		}
-
-		if !options.Vars.IsEmpty() {
-			// Maybe we should add vars to the config file as well even if they are set via flags?
-			file, err := os.Open(cfgFile)
-			if err != nil {
-				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
-			}
-			defer func() {
-				_ = file.Close()
-			}()
-			data := make(map[string]interface{})
-			err = yaml.NewDecoder(file).Decode(&data)
-			if err != nil {
-				gologger.Fatal().Msgf("Could not decode config file: %s\n", err)
-			}
-
-			variables := data["var"]
-			if variables != nil {
-				if varSlice, ok := variables.([]interface{}); ok {
-					for _, value := range varSlice {
-						if strVal, ok := value.(string); ok {
-							err = options.Vars.Set(strVal)
-							if err != nil {
-								gologger.Warning().Msgf("Could not set variable from config file: %s\n", err)
-							}
-						} else {
-							gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
-						}
-					}
-				} else {
-					gologger.Warning().Msgf("No 'var' section found in config file: %s", cfgFile)
-				}
-			}
-
-		}
-	}
-
-	templatesDir := options.NewTemplatesDirectory
-	if templatesDir == "" {
-		templatesDir = os.Getenv(config.NucleiTemplatesDirEnv)
-	}
-	if templatesDir != "" {
-		config.DefaultConfig.SetTemplatesDir(templatesDir)
-	}
-
-	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
-	if templateProfile != "" {
-		if filepath.Ext(templateProfile) == "" {
-			if tp := findProfilePathById(templateProfile, defaultProfilesPath); tp != "" {
-				templateProfile = tp
-			} else {
-				options.Logger.Fatal().Msgf("'%s' is not a profile-id or profile path", templateProfile)
-			}
-		}
-		if !filepath.IsAbs(templateProfile) {
-			if filepath.Dir(templateProfile) == "profiles" {
-				defaultProfilesPath = filepath.Join(config.DefaultConfig.GetTemplateDir())
-			}
-			currentDir, err := os.Getwd()
-			if err == nil && fileutil.FileExists(filepath.Join(currentDir, templateProfile)) {
-				templateProfile = filepath.Join(currentDir, templateProfile)
-			} else {
-				templateProfile = filepath.Join(defaultProfilesPath, templateProfile)
-			}
-		}
-		if !fileutil.FileExists(templateProfile) {
-			options.Logger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
-		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
-			options.Logger.Fatal().Msgf("Could not read template profile: %s\n", err)
-		}
-
-		// Process inline target list from profile.
-		// Supports both the dedicated targets-inline key and multiline
-		// content in the list key (which normally holds a file path).
-		if options.InlineTargetsList != "" {
-			inlineTargets := strings.Split(strings.TrimSpace(options.InlineTargetsList), "\n")
-			for _, target := range inlineTargets {
-				target = strings.TrimSpace(target)
-				if target != "" && !strings.HasPrefix(target, "#") {
-					options.Targets = append(options.Targets, target)
-				}
-			}
-		}
-		if strings.Contains(options.TargetsFilePath, "\n") {
-			// list key has multiline content, treat as inline targets
-			inlineTargets := strings.Split(strings.TrimSpace(options.TargetsFilePath), "\n")
-			for _, target := range inlineTargets {
-				target = strings.TrimSpace(target)
-				if target != "" && !strings.HasPrefix(target, "#") {
-					options.Targets = append(options.Targets, target)
-				}
-			}
-			options.TargetsFilePath = ""
-		}
-
-		// Process inline secrets from profile YAML
-		tempSecretsFile, err := processInlineSecretsFromProfile(templateProfile, options)
-		if err != nil {
-			options.Logger.Fatal().Msgf("Could not process inline secrets: %s\n", err)
-		}
-		if tempSecretsFile != "" {
-			inlineSecretsTempFiles = append(inlineSecretsTempFiles, tempSecretsFile)
-		}
 	}
 
 	if len(options.SecretsFile) > 0 {
 		for _, secretFile := range options.SecretsFile {
 			if !fileutil.FileExists(secretFile) {
-				options.Logger.Fatal().Msgf("given secrets file '%s' does not exist", secretFile)
+				fatalf("Secrets file '%s' does not exist", secretFile)
 			}
 		}
 	}
 
 	cleanupOldResumeFiles()
+
 	return flagSet
 }
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.
 func cleanupOldResumeFiles() {
-	root := config.DefaultConfig.GetCacheDir()
+	root := config.DefaultConfig.GetStateDir()
 	filter := fileutil.FileFilters{
 		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
 	}
 	_ = fileutil.DeleteFilesOlderThan(root, filter)
-}
-
-// readFlagsConfig reads the config file from the default config dir and copies it to the current config dir.
-func readFlagsConfig(flagset *goflags.FlagSet) {
-	// check if config.yaml file exists
-	defaultCfgFile, err := flagset.GetConfigFilePath()
-	if err != nil {
-		// something went wrong either dir is not readable or something else went wrong upstream in `goflags`
-		// warn and exit in this case
-		options.Logger.Warning().Msgf("Could not read config file: %s\n", err)
-		return
-	}
-	cfgFile := config.DefaultConfig.GetFlagsConfigFilePath()
-	if !fileutil.FileExists(cfgFile) {
-		if !fileutil.FileExists(defaultCfgFile) {
-			// if default config does not exist, warn and exit
-			options.Logger.Warning().Msgf("missing default config file : %s", defaultCfgFile)
-			return
-		}
-		// if does not exist copy it from the default config
-		if err = fileutil.CopyFile(defaultCfgFile, cfgFile); err != nil {
-			options.Logger.Warning().Msgf("Could not copy config file: %s\n", err)
-		}
-		return
-	}
-	// if config file exists, merge it with the default config
-	if err = flagset.MergeConfigFile(cfgFile); err != nil {
-		options.Logger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
-	}
-}
-
-// disableUpdatesCallback disables the update check.
-func disableUpdatesCallback() {
-	config.DefaultConfig.DisableUpdateCheck()
 }
 
 // printVersion prints the nuclei version and exits.
@@ -800,119 +675,155 @@ func printTemplateVersion() {
 	os.Exit(0)
 }
 
+type resetPath struct {
+	name string
+	path string
+}
+
 func resetCallback() {
+	cfg := config.DefaultConfig
+	templateRoot := cfg.TemplatesDirectory
+	templateAction := fmt.Sprintf("4. Active nuclei-templates at %v", templateRoot)
 	warning := fmt.Sprintf(`
-Using '-reset' will delete all nuclei configurations files and all nuclei-templates
+Using '-reset' will delete Nuclei configuration, state, cache, and template files
 
 Following files will be deleted:
 1. All config files at %v
-2. All cache files (including resume state) at %v
-3. All nuclei-templates at %v
+2. All state files (including generated resume state) at %v
+3. All cache files at %v
+%s
 
 Note: Make sure you have backup of your custom nuclei-templates before proceeding
 
-`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.GetCacheDir(), config.DefaultConfig.TemplatesDirectory)
+`, cfg.GetConfigDir(), cfg.GetStateDir(), cfg.GetCacheDir(), templateAction)
 	options.Logger.Print().Msg(warning)
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("Are you sure you want to continue? [y/n]: ")
+
 		resp, err := reader.ReadString('\n')
 		if err != nil {
-			options.Logger.Fatal().Msgf("could not read response: %s", err)
+			fatalf("Could not read response: %s", err)
 		}
+
 		resp = strings.TrimSpace(resp)
 		if stringsutil.EqualFoldAny(resp, "y", "yes") {
 			break
 		}
+
 		if stringsutil.EqualFoldAny(resp, "n", "no", "") {
 			fmt.Println("Exiting...")
 			os.Exit(0)
 		}
 	}
-	err := os.RemoveAll(config.DefaultConfig.GetConfigDir())
-	if err != nil {
-		options.Logger.Fatal().Msgf("could not delete config dir: %s", err)
+
+	resetPaths := []resetPath{
+		{name: "config", path: cfg.GetConfigDir()},
+		{name: "state", path: cfg.GetStateDir()},
+		{name: "cache", path: cfg.GetCacheDir()},
+		{name: "templates", path: templateRoot},
 	}
-	err = os.RemoveAll(config.DefaultConfig.GetCacheDir())
-	if err != nil {
-		options.Logger.Fatal().Msgf("could not delete cache dir: %s", err)
+
+	if err := removeResetPaths(resetPaths); err != nil {
+		fatalf("Could not reset paths: %s", err)
 	}
-	err = os.RemoveAll(config.DefaultConfig.TemplatesDirectory)
-	if err != nil {
-		options.Logger.Fatal().Msgf("could not delete templates dir: %s", err)
-	}
-	options.Logger.Info().Msgf("Successfully deleted all nuclei configurations files and nuclei-templates")
+
+	options.Logger.Info().Msgf("Successfully reset Nuclei files")
 	os.Exit(0)
 }
 
-func findProfilePathById(profileId, templatesDir string) string {
-	var profilePath string
-	err := filepath.WalkDir(templatesDir, func(iterItem string, d fs.DirEntry, err error) error {
-		ext := filepath.Ext(iterItem)
-		isYaml := ext == extensions.YAML || ext == extensions.YML
-		if err != nil || d.IsDir() || !isYaml {
-			// skip non yaml files
-			return nil
+func removeResetPaths(paths []resetPath) error {
+	for _, path := range paths {
+		if err := validateResetPath(path.path); err != nil {
+			return fmt.Errorf("error validating %s path: %w", path.name, err)
 		}
-		if strings.TrimSuffix(filepath.Base(iterItem), ext) == profileId {
-			profilePath = iterItem
-			return fmt.Errorf("FOUND")
+	}
+
+	for _, path := range paths {
+		if err := os.RemoveAll(path.path); err != nil {
+			return fmt.Errorf("error deleting %s path: %w", path.name, err)
 		}
-		return nil
+	}
+
+	return nil
+}
+
+func validateResetPath(path string) error {
+	if path == "" {
+		return fmt.Errorf("path is empty")
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("resolve %q: %w", path, err)
+	}
+
+	absPath = filepath.Clean(absPath)
+	volume := filepath.VolumeName(absPath)
+	if absPath == filepath.Clean(volume+string(filepath.Separator)) {
+		return fmt.Errorf("path %q is a filesystem root", absPath)
+	}
+
+	relativePath := strings.Trim(filepath.ToSlash(strings.TrimPrefix(absPath, volume)), "/")
+	if relativePath == "" || len(strings.Split(relativePath, "/")) < 2 {
+		return fmt.Errorf("path %q is too broad", absPath)
+	}
+
+	if homeDir, err := os.UserHomeDir(); err == nil && absPath == filepath.Clean(homeDir) {
+		return fmt.Errorf("path %q is the user home directory", absPath)
+	}
+
+	if absPath == filepath.Clean(os.TempDir()) {
+		return fmt.Errorf("path %q is the system temporary directory", absPath)
+	}
+
+	if cwd, err := os.Getwd(); err == nil && absPath == filepath.Clean(cwd) {
+		return fmt.Errorf("path %q is the current working directory", absPath)
+	}
+
+	if resolvedPath, err := filepath.EvalSymlinks(absPath); err == nil && resolvedPath != absPath {
+		if err := validateResetPath(resolvedPath); err != nil {
+			return fmt.Errorf("resolved path %q is unsafe: %w", resolvedPath, err)
+		}
+	}
+
+	return nil
+}
+
+func cleanupInlineSecretsDirs() {
+	inlineSecretsTempMu.Lock()
+	dir := inlineSecretsTempDir
+	inlineSecretsTempDir = ""
+	inlineSecretsTempMu.Unlock()
+
+	if dir != "" {
+		_ = os.RemoveAll(dir)
+	}
+}
+
+func setInlineSecretsTempDir(dir string) {
+	inlineSecretsTempMu.Lock()
+	inlineSecretsTempDir = dir
+	inlineSecretsTempMu.Unlock()
+}
+
+func cliOnlyDynamicValue(flagSet *goflags.FlagSet, name, value string) string {
+	found := false
+
+	flagSet.CommandLine.Visit(func(current *flag.Flag) {
+		if current.Name == name {
+			found = true
+		}
 	})
-	if err != nil && err.Error() != "FOUND" {
-		options.Logger.Error().Msgf("%s\n", err)
+
+	if !found {
+		return ""
 	}
-	return profilePath
+
+	return value
 }
 
-// profileSecrets is a helper struct to extract secrets section from a template profile YAML
-type profileSecrets struct {
-	Secrets interface{} `yaml:"secrets"`
-}
-
-// processInlineSecretsFromProfile parses the profile YAML file for inline secrets
-// and creates a temporary secrets file compatible with nuclei's auth provider.
-// Returns the path to the temp file or empty string if no secrets found.
-func processInlineSecretsFromProfile(profilePath string, options *types.Options) (string, error) {
-	data, err := os.ReadFile(profilePath)
-	if err != nil {
-		return "", fmt.Errorf("could not read profile file: %w", err)
-	}
-
-	var profile profileSecrets
-	if err := yaml.Unmarshal(data, &profile); err != nil {
-		return "", fmt.Errorf("could not parse profile YAML: %w", err)
-	}
-
-	if profile.Secrets == nil {
-		return "", nil
-	}
-
-	secretsData, err := yaml.Marshal(profile.Secrets)
-	if err != nil {
-		return "", fmt.Errorf("could not marshal inline secrets: %w", err)
-	}
-
-	tempDir := filepath.Join(os.TempDir(), "nuclei-secrets")
-	if err := os.MkdirAll(tempDir, 0700); err != nil {
-		return "", fmt.Errorf("could not create temp directory: %w", err)
-	}
-
-	tempFile, err := os.CreateTemp(tempDir, "inline-secrets-*.yaml")
-	if err != nil {
-		return "", fmt.Errorf("could not create temp secrets file: %w", err)
-	}
-	defer func() {
-		_ = tempFile.Close()
-	}()
-
-	if _, err := tempFile.Write(secretsData); err != nil {
-		_ = tempFile.Close()
-		_ = os.Remove(tempFile.Name())
-		return "", fmt.Errorf("could not write to temp secrets file: %w", err)
-	}
-
-	options.SecretsFile = append(options.SecretsFile, tempFile.Name())
-	return tempFile.Name(), nil
+func fatalf(format string, args ...any) {
+	cleanupInlineSecretsDirs()
+	options.Logger.Fatal().Msgf(format, args...)
 }

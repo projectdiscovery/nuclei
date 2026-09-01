@@ -106,7 +106,7 @@ func integrationFamilies() []integrationFamily {
 		{Name: "headless", Cases: headlessTestcases},
 		{Name: "whois", Cases: whoisTestCases},
 		{Name: "library", Cases: libraryTestcases},
-		{Name: "template-path", Cases: templatesPathTestCases},
+		{Name: "template-path", Cases: templatesPathTestCases()},
 		{Name: "offline-http", Cases: offlineHttpTestcases},
 		{Name: "fuzz", Cases: fuzzingTestCases},
 		{Name: "generic", Cases: genericTestcases},
