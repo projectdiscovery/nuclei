@@ -13,8 +13,21 @@ import (
 // dump creates a dump of the http request in form of a byte slice
 func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 	if req.request != nil {
-		// Use a clone to avoid a race condition with the http transport
-		bin, err := req.request.Clone(req.request.Context()).Dump()
+		// Clone the wrapper first: Request.Clone updates its receiver, which can
+		// otherwise change the URL used by request post-processors/signers.
+		requestCopy := *req.request
+		requestCopy.Request = req.request.Request.Clone(req.request.Context())
+		requestCopy.URL = req.request.URL.Clone()
+		requestCopy.Request.URL = requestCopy.URL.URL
+		if req.request.GetBody != nil {
+			body, err := req.request.GetBody()
+			if err != nil {
+				return nil, errkit.Wrapf(err, "could not clone request body: %v", req.request.String())
+			}
+			requestCopy.Body = body
+		}
+
+		bin, err := requestCopy.Dump()
 		if err != nil {
 			return nil, errkit.Wrapf(err, "could not dump request: %v", req.request.String())
 		}

@@ -733,7 +733,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		var dumpError error
-		// TODO: dump is currently not working with post-processors - somehow it alters the signature
 		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
 			return dumpError
