@@ -251,6 +251,8 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 
 	// while merging parameters first preference is given to target params
 	finalparams := parsed.Params
+	finalparams.IncludeEquals = true
+	reqURL.Params.IncludeEquals = true
 	finalparams.Merge(reqURL.Params.Encode())
 	reqURL.Params = finalparams
 
@@ -382,6 +384,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 	if err := r.validateSelfContainedHost(urlx.Hostname()); err != nil {
 		return nil, err
 	}
+	urlx.Params.IncludeEquals = true
 	return r.generateHttpRequest(ctx, urlx, values, payloads)
 }
 
