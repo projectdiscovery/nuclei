@@ -2,6 +2,7 @@ package reporting
 
 import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/csv"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
@@ -49,6 +50,8 @@ type Options struct {
 	JSONExporter *jsonexporter.Options `yaml:"json"`
 	// JSONLExporter contains configuration options for JSONL Exporter Module
 	JSONLExporter *jsonl.Options `yaml:"jsonl"`
+	// CSVExporter contains configuration options for CSV Exporter Module
+	CSVExporter *csv.Options `yaml:"csv"`
 	// PDFExporter contains configuration options for PDF Exporter Module
 	PDFExporter *pdf.Options `yaml:"pdf"`
 	// MongoDBExporter containers the configuration options for the MongoDB Exporter Module
