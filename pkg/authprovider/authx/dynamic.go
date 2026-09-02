@@ -1,9 +1,13 @@
 package authx
 
 import (
+	"bytes"
 	"fmt"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -19,6 +23,9 @@ type LazyFetchSecret func(d *Dynamic) error
 type fetchState struct {
 	once sync.Once
 	err  error
+	// owner is the goroutine running the fetch callback. Nested Fetch/GetStrategies
+	// on that goroutine must not wait on once (sync.Once deadlocks on re-entry).
+	owner atomic.Int64
 }
 
 var (
@@ -191,6 +198,11 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // GetStrategies returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
+	// Nested lookup from inside the fetch callback (login template ApplyAuth)
+	// must not wait on Fetch and must not apply still-unresolved secrets.
+	if d.fetchingOnThisGoroutine() {
+		return nil
+	}
 	// Ensure fetch has completed before returning strategies.
 	// Fetch errors are treated as non-fatal here so a failed dynamic auth fetch
 	// does not terminate the entire scan process.
@@ -219,7 +231,13 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		return errkit.New("dynamic secret not validated: call Validate() before Fetch()")
 	}
 
+	if d.fetchingOnThisGoroutine() {
+		return d.fetchState.err
+	}
+
 	d.fetchState.once.Do(func() {
+		d.fetchState.owner.Store(goroutineID())
+		defer d.fetchState.owner.Store(0)
 		if d.fetchCallback == nil {
 			d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
 			return
@@ -239,4 +257,32 @@ func (d *Dynamic) Error() error {
 		return nil
 	}
 	return d.fetchState.err
+}
+
+func (d *Dynamic) fetchingOnThisGoroutine() bool {
+	if d == nil || d.fetchState == nil {
+		return false
+	}
+	owner := d.fetchState.owner.Load()
+	return owner != 0 && owner == goroutineID()
+}
+
+func goroutineID() int64 {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	s := buf[:n]
+	const prefix = "goroutine "
+	if !bytes.HasPrefix(s, []byte(prefix)) {
+		return 0
+	}
+	s = s[len(prefix):]
+	i := bytes.IndexByte(s, ' ')
+	if i <= 0 {
+		return 0
+	}
+	id, err := strconv.ParseInt(string(s[:i]), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
 }
