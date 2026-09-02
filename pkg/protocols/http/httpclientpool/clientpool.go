@@ -278,6 +278,45 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	return dialers.RawHTTPClient
 }
 
+// defaultIdleConnPoolSize is the floor for the per-host idle connection pool.
+//
+// The pool has to cover the connections the transport has OPEN against a host
+// at once, and that is not the same as the number of requests in flight.
+// http.Transport starts a dial whenever a request does not find an idle
+// connection immediately; if one frees up first the request takes it and the
+// racing dial still completes, so a scan holds many more connections than it
+// has simultaneous requests. Measured against a keep-alive target at -c 25:
+// requests in flight peaked at 22-31, while open connections peaked at 121-178.
+//
+// http.Transport closes a connection returned to a host whose idle pool is
+// already full, so a pool sized to the nominal concurrency discards most of
+// those and the next request dials again: 3,070 connections for 5,388 requests
+// at a pool of 25, against 414 at 500.
+//
+// A pool that is never filled costs nothing -- it is a ceiling on retained
+// connections, not an allocation; the transport only ever holds connections it
+// actually opened and reaps them after IdleConnTimeout. 500 is the value this
+// used before the per-host client pool was introduced.
+const defaultIdleConnPoolSize = 500
+
+// idleConnPoolSize returns the per-host idle connection pool size for a client.
+//
+// templateThreads (-c) and requestThreads (a template's own payload
+// parallelism) only ever raise the floor. Neither may lower it: -c is not an
+// upper bound on open connections (see above), and a template that declares two
+// payload threads must not shrink a pool shared with everything else running
+// against that host.
+func idleConnPoolSize(templateThreads, requestThreads int) int {
+	size := defaultIdleConnPoolSize
+	if templateThreads > size {
+		size = templateThreads
+	}
+	if requestThreads > size {
+		size = requestThreads
+	}
+	return size
+}
+
 // Get creates or gets a client for the protocol based on custom configuration.
 // The host parameter scopes the client to a specific target, enabling per-host
 // connection reuse with keep-alive. Pass an empty string for non-scanning uses.
@@ -322,22 +361,7 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
 	}
 
-	// Size the idle pool to the number of requests this process can have in
-	// flight against a SINGLE host, so a completed request hands its connection
-	// to the next one instead of the transport closing it.
-	//
-	// In template-spray, per-host in-flight is TemplateThreads: each of the N
-	// templates running in parallel issues one request per host (BulkSize is
-	// hosts-in-parallel, which does not add per-host concurrency). A template
-	// with its own `threads:`, or payload/fuzz concurrency, can exceed that.
-	//
-	// A fixed 4 (the previous default) throttles reuse badly once per-host
-	// concurrency rises: measured on 10 hosts at TemplateThreads=20, idle=4 gave
-	// 43% reuse / 572 rps versus 81% / 1088 rps at idle=16 — a 1.9x throughput
-	// difference from this constant alone. The curve is flat past
-	// idle ~= per-host in-flight, so overshooting is cheap and undershooting is
-	// not; the cap only exists to bound retained sockets (hosts * idle fds).
-	maxIdleConnsPerHost := perHostIdleConns(options, configuration)
+	maxIdleConnsPerHost := idleConnPoolSize(options.TemplateThreads, configuration.Threads)
 	maxIdleConns := maxIdleConnsPerHost
 	maxConnsPerHost := 0 // unlimited by default; the SPM handler controls concurrency
 
@@ -715,35 +739,4 @@ func RecordHTTPToHTTPSPortMismatch(options *types.Options, hostname string) {
 	}
 
 	tracker.RecordHTTPToHTTPSPort(hostname)
-}
-
-// minIdleConnsPerHost / maxIdleConnsPerHostCap bound the derived idle pool.
-// The floor keeps behaviour sane when concurrency options are unset; the ceiling
-// bounds retained file descriptors, since a process holds up to
-// hosts * maxIdleConnsPerHost idle sockets.
-const (
-	minIdleConnsPerHost    = 4
-	maxIdleConnsPerHostCap = 64
-)
-
-// perHostIdleConns derives the idle-connection budget for one host's transport
-// from the concurrency that can actually target that host.
-func perHostIdleConns(options *types.Options, configuration *Configuration) int {
-	n := minIdleConnsPerHost
-	// Templates running in parallel each issue one request per host.
-	if options != nil && options.TemplateThreads > n {
-		n = options.TemplateThreads
-	}
-	// A template declaring its own `threads:` drives that many per host.
-	if configuration != nil && configuration.Threads > n {
-		n = configuration.Threads
-	}
-	// Payload/fuzz requests within a single template also run concurrently.
-	if options != nil && options.PayloadConcurrency > n {
-		n = options.PayloadConcurrency
-	}
-	if n > maxIdleConnsPerHostCap {
-		n = maxIdleConnsPerHostCap
-	}
-	return n
 }

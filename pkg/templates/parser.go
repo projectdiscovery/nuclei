@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -20,10 +21,9 @@ type Parser struct {
 	ShouldValidate bool
 	NoStrictSyntax bool
 
-	// parsedTemplatesCache stores lightweight parsed template structures
-	// (without raw bytes).
-	// Used for validation and filtering. This cache can be copied safely
-	// between ephemeral instances.
+	// parsedTemplatesCache stores clean parsed template structures used for
+	// validation, filtering, and engine-local compilation. Entries also retain
+	// source bytes when they exactly match the parsed structure.
 	parsedTemplatesCache *Cache
 
 	// compiledTemplatesCache stores fully compiled templates with all protocol
@@ -149,49 +149,38 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		_ = reader.Close()
 	}()
 
-	// For local YAML files, check if preprocessing is needed
-	var data []byte
+	sourceData, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	data := sourceData
+	cacheSource := true
+
+	// For local YAML files, check if preprocessing is needed.
 	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
-		data, err = io.ReadAll(reader)
-		if err != nil {
-			return nil, err
-		}
 		data, err = yamlutil.PreProcess(data, templatePath)
 		if err != nil {
 			return nil, err
 		}
+
+		cacheSource = bytes.Equal(data, sourceData)
 	}
 
 	template := &Template{}
 
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
-		if data == nil {
-			data, err = io.ReadAll(reader)
-			if err != nil {
-				return nil, err
-			}
-		}
 		if p.NoStrictSyntax {
 			err = json.Unmarshal(data, template)
 		} else {
 			err = template.unmarshalJSONStrict(data)
 		}
 	case config.YAML:
-		if data != nil {
-			// Already read and preprocessed
-			if p.NoStrictSyntax {
-				err = yamlutil.Unmarshal(data, template)
-			} else {
-				err = yamlutil.UnmarshalStrict(data, template)
-			}
+		if p.NoStrictSyntax {
+			err = yamlutil.Unmarshal(data, template)
 		} else {
-			// Stream directly from reader
-			decoder := yamlutil.NewDecoder(reader)
-			if !p.NoStrictSyntax {
-				decoder.SetStrict(true)
-			}
-			err = decoder.Decode(template)
+			err = yamlutil.UnmarshalStrict(data, template)
 		}
 	default:
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
@@ -200,7 +189,11 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 
-	p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+	if cacheSource {
+		p.parsedTemplatesCache.Store(templatePath, template, sourceData, nil)
+	} else {
+		p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+	}
 
 	return template, nil
 }

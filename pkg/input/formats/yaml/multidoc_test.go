@@ -27,13 +27,29 @@ func TestYamlFormatterParse(t *testing.T) {
 	}()
 
 	var urls []string
+	var withResponse int
 	err = format.Parse(file, func(request *types.RequestResponse) bool {
 		urls = append(urls, request.URL.String())
+		if request.Response != nil && request.Response.Raw != "" {
+			withResponse++
+			require.Contains(t, request.Response.Raw, "HTTP/")
+		}
 		return false
 	}, proxifyInputFile)
 	require.Nilf(t, err, "error parsing yaml file: %v", err)
 	require.Len(t, urls, len(expectedUrls), "invalid number of urls")
 	require.ElementsMatch(t, urls, expectedUrls, "invalid urls")
+	require.Equal(t, len(expectedUrls), withResponse, "yaml items should include response bodies for passive mode")
+}
+
+func TestBuildProxifyResponseAppendsBody(t *testing.T) {
+	resp := buildProxifyResponse(&proxifyResponse{
+		Raw:  "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n",
+		Body: "hello",
+	})
+	require.NotNil(t, resp)
+	require.Equal(t, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", resp.Raw)
+	require.Equal(t, "hello", resp.Body)
 }
 
 func TestYamlFormatterParseWithVariables(t *testing.T) {
