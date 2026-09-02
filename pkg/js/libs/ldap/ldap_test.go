@@ -114,3 +114,15 @@ func requireNetworkPolicyError(t *testing.T, err error, target string) {
 		t.Fatalf("expected network-policy denial for %q, got %q", target, err)
 	}
 }
+
+func TestAuthenticateOptionsPreferHash(t *testing.T) {
+	if !authenticationUsesHash(AuthenticateOptions{Username: "user", Hash: "ntlm-hash"}) {
+		t.Fatal("expected hash authentication mode")
+	}
+	if !authenticationUsesHash(AuthenticateOptions{Username: "user", Password: "password", Hash: "ntlm-hash"}) {
+		t.Fatal("expected hash to take precedence over password")
+	}
+	if authenticationUsesHash(AuthenticateOptions{Username: "user", Password: "password"}) {
+		t.Fatal("expected password authentication mode")
+	}
+}

@@ -236,6 +236,9 @@ func initDialers(options *types.Options) error {
 		if val := ctx.Value("executionId"); val != nil {
 			executionId = val.(string)
 		}
+		if !IsHostAllowed(executionId, addr) {
+			return nil, ErrHostDenied.Msgf(addr)
+		}
 		dialer := GetDialersWithId(executionId)
 		if dialer == nil {
 			return nil, fmt.Errorf("dialers not initialized for %s", executionId)

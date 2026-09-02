@@ -40,6 +40,13 @@ export class TelnetClient {
     }
 
     /**
+     * ConnectWithOptions connects to Telnet using the supplied connection options.
+     */
+    public ConnectWithOptions(opts: TelnetOptions): boolean {
+        return false;
+    }
+
+    /**
      * Info gathers information about the telnet server including encryption support.
      * Uses the telnetmini library's DetectEncryption helper function.
      * WARNING: The connection used for detection becomes unusable after this call.
@@ -88,6 +95,22 @@ export interface IsTelnetResponse {
     IsTelnet?: boolean,
     
     Banner?: string,
+}
+
+/**
+ * TelnetOptions defines the connection options for a Telnet server.
+ */
+export interface TelnetOptions {
+    
+    Host?: string,
+    
+    Port?: number,
+    
+    Username?: string,
+    
+    Password?: string,
+    
+    Timeout?: number,
 }
 
 /**
