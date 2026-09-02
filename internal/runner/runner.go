@@ -117,6 +117,10 @@ func New(options *types.Options) (*Runner, error) {
 		Logger:  options.Logger,
 	}
 
+	if err := config.DefaultConfig.InitializationError(); err != nil && !options.HealthCheck {
+		return nil, fmt.Errorf("initialize nuclei configuration: %w", err)
+	}
+
 	if options.HealthCheck {
 		runner.Logger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)
@@ -128,9 +132,10 @@ func New(options *types.Options) (*Runner, error) {
 
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
-		if err := installer.NucleiVersionCheck(); err != nil {
+		latestIgnoreHash, versionCheckErr := installer.NucleiVersionCheck()
+		if versionCheckErr != nil {
 			if options.Verbose || options.Debug {
-				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", err)
+				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
 			}
 		}
 
@@ -147,15 +152,15 @@ func New(options *types.Options) (*Runner, error) {
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
 		}
 		if err := tm.FreshInstallIfNotExists(); err != nil {
-			runner.Logger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
+			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
 		if err := tm.UpdateIfOutdated(); err != nil {
-			runner.Logger.Warning().Msgf("failed to update nuclei templates: %s\n", err)
+			runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
 		}
 
-		if config.DefaultConfig.NeedsIgnoreFileUpdate() {
+		if config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
 			if err := installer.UpdateIgnoreFile(); err != nil {
-				runner.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+				runner.Logger.Warning().Msgf("Failed to update .nuclei-ignore file: %s\n", err)
 			}
 		}
 
@@ -165,6 +170,7 @@ func New(options *types.Options) (*Runner, error) {
 			if !config.DefaultConfig.NeedsTemplateUpdate() {
 				runner.Logger.Info().Msgf("No new updates found for nuclei templates")
 			}
+
 			// manually trigger update of custom templates
 			if ctm != nil {
 				ctm.Update(context.TODO())
@@ -181,6 +187,7 @@ func New(options *types.Options) (*Runner, error) {
 		if options.Validate {
 			parser.ShouldValidate = true
 		}
+
 		// TODO: refactor to pass options reference globally without cycles
 		parser.NoStrictSyntax = options.NoStrictSyntax
 		runner.parser = parser
@@ -193,10 +200,12 @@ func New(options *types.Options) (*Runner, error) {
 		if engine.MustDisableSandbox() {
 			runner.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
 		}
+
 		browser, err := engine.New(options)
 		if err != nil {
 			return nil, err
 		}
+
 		runner.browser = browser
 	}
 
@@ -205,6 +214,7 @@ func New(options *types.Options) (*Runner, error) {
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
 		var err error
+
 		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{}, "")
 		if err != nil {
 			return nil, err
@@ -214,10 +224,12 @@ func New(options *types.Options) (*Runner, error) {
 	if err := reporting.CreateConfigIfNotExists(); err != nil {
 		return nil, err
 	}
+
 	reportingOptions, err := createReportingOptions(options)
 	if err != nil {
 		return nil, err
 	}
+
 	if reportingOptions != nil && httpclient != nil {
 		reportingOptions.HttpClient = httpclient
 	}
@@ -227,6 +239,7 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create issue reporting client")
 		}
+
 		runner.issuesClient = client
 	}
 
@@ -289,10 +302,12 @@ func New(options *types.Options) (*Runner, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
+
 	if hpDetector != nil {
 		outputWriter.SetHoneypotDetector(hpDetector)
 		runner.honeypotDetector = hpDetector
 	}
+
 	// setup a proxy writer to automatically upload results to PDCP
 	runner.output = runner.setupPDCPUpload(outputWriter)
 	if options.HTTPStats {
@@ -303,9 +318,11 @@ func New(options *types.Options) (*Runner, error) {
 	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
 	}
+
 	if options.StatsJSON {
 		options.EnableProgressBar = true
 	}
+
 	// Creates the progress tracking object
 	var progressErr error
 	statsInterval := options.StatsInterval
@@ -331,12 +348,15 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		err = json.Unmarshal(file, &resumeCfg)
 		if err != nil {
 			return nil, err
 		}
+
 		resumeCfg.Compile()
 	}
+
 	runner.resumeCfg = resumeCfg
 
 	if options.DASTReport || options.DASTServer {
@@ -345,11 +365,13 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create fuzz stats db")
 		}
+
 		if !options.DASTServer {
 			dastServer, err := server.NewStatsServer(runner.fuzzStats)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not create dast server")
 			}
+
 			runner.dastServer = dastServer
 		}
 	}
@@ -359,6 +381,7 @@ func New(options *types.Options) (*Runner, error) {
 			if request.Error == "none" || request.Error == "" {
 				return
 			}
+
 			runner.fuzzStats.RecordErrorEvent(fuzzStats.ErrorEvent{
 				TemplateID: request.Template,
 				URL:        request.Input,
@@ -396,6 +419,7 @@ func New(options *types.Options) (*Runner, error) {
 		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
 		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
 	}
+
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		runner.Logger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -408,9 +432,11 @@ func New(options *types.Options) (*Runner, error) {
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
+
 	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
 		options.RateLimitDuration = time.Second
 	}
+
 	// If per-host rate limiting is enabled, make global rate limiter unlimited
 	if options.PerHostRateLimit {
 		runner.rateLimiter = utils.GetRateLimiter(context.Background(), 0, 0)
@@ -420,6 +446,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Initialization successful, disable cleanup on error
 	cleanupOnError = false
+
 	return runner, nil
 }
 
@@ -428,6 +455,7 @@ func (r *Runner) runStandardEnumeration(executerOpts *protocols.ExecutorOptions,
 	if r.options.AutomaticScan {
 		return r.executeSmartWorkflowInput(executerOpts, store, engine)
 	}
+
 	return r.executeTemplatesInput(store, engine)
 }
 
@@ -971,15 +999,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	cfg := config.DefaultConfig
 
 	updateutils.Aurora = r.colorizer
-	versionInfo := func(version, latestVersion, versionType string) string {
-		if !cfg.CanCheckForUpdates() {
-			return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))
-		}
-		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
-	}
-
-	gologger.Info().Msg(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
-	gologger.Info().Msg(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
+	gologger.Info().Msg(versionInfo(cfg, r.colorizer, config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	gologger.Info().Msg(templateVersionInfo(cfg, r.colorizer))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
 			r.Logger.Warning().Msgf("%s", r.pdcpUploadErrMsg)
@@ -1013,19 +1034,40 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	}
 }
 
+func versionInfo(cfg *config.Config, colorizer *aurora.Aurora, version, latestVersion, versionType string) string {
+	if !cfg.CanCheckForUpdates() {
+		return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, colorizer.BrightYellow("unknown"))
+	}
+
+	return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
+}
+
+func templateVersionInfo(cfg *config.Config, colorizer *aurora.Aurora) string {
+	return versionInfo(cfg, colorizer, cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates")
+}
+
 // SaveResumeConfig to file
 func (r *Runner) SaveResumeConfig(path string) error {
 	dir := filepath.Dir(path)
 	if !fileutil.FolderExists(dir) {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return err
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return fmt.Errorf("create resume directory %q: %w", dir, err)
 		}
 	}
+
 	resumeCfgClone := r.resumeCfg.Clone()
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
-	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
+	data, err := json.MarshalIndent(resumeCfgClone, "", "\t")
+	if err != nil {
+		return fmt.Errorf("encode resume configuration: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, permissionutil.ConfigFilePermission); err != nil {
+		return fmt.Errorf("write resume configuration %q: %w", path, err)
+	}
+
+	return nil
 }
 
 // upload existing scan results to cloud with progress
