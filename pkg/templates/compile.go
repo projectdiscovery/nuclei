@@ -167,6 +167,7 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 	options.TemplatePath = filePath
 
 	var template *Template
+	var cacheableTemplate *Template
 	var err error
 
 	if !options.DoNotCache {
@@ -177,6 +178,7 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 
 		if parsed != nil && len(raw) > 0 {
 			template, err = parseCachedTemplate(parsed, raw, preprocessor, options)
+			cacheableTemplate = cloneTemplate(parsed)
 		}
 	}
 
@@ -190,11 +192,19 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 			_ = reader.Close()
 		}()
 
-		template, err = ParseTemplateFromReader(reader, preprocessor, options)
+		data, readErr := io.ReadAll(reader)
+		if readErr != nil {
+			return nil, readErr
+		}
+
+		template, cacheableTemplate, err = parseTemplateFromData(data, preprocessor, options)
 	}
 
 	if err != nil {
 		return nil, err
+	}
+	if cacheableTemplate != nil {
+		copyTemplateVerification(cacheableTemplate, template)
 	}
 
 	if template.isGlobalMatchersEnabled() {
@@ -224,7 +234,10 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 
 	template.Path = filePath
 	if !options.DoNotCache {
-		parser.compiledTemplatesCache.StoreWithoutRaw(filePath, cacheSafeCompiledTemplate(template), err)
+		if cacheableTemplate == nil {
+			cacheableTemplate = template
+		}
+		parser.compiledTemplatesCache.StoreWithoutRaw(filePath, cacheSafeCompiledTemplate(cacheableTemplate), err)
 	}
 
 	return template, nil
@@ -241,6 +254,24 @@ func cacheSafeCompiledTemplate(template *Template) *Template {
 	updateRequestOptions(&tplCopy)
 
 	return &tplCopy
+}
+
+// copyTemplateVerification mirrors verification metadata onto the cacheable
+// pre-compilation template copy.
+func copyTemplateVerification(dst, src *Template) {
+	if dst == nil || src == nil {
+		return
+	}
+
+	dst.Verified = src.Verified
+	dst.TemplateVerifier = src.TemplateVerifier
+	dst.verificationDigest = src.verificationDigest
+	dst.verifierFingerprint = src.verifierFingerprint
+	if dst.Options != nil && src.Options != nil {
+		dst.Options.TemplateVerifier = src.Options.TemplateVerifier
+		dst.Options.Verified = src.Options.Verified
+		dst.Options.RawTemplate = src.Options.RawTemplate
+	}
 }
 
 // cacheSafeExecutorOptions copies immutable template metadata and drops
@@ -353,6 +384,9 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 
 		result, err, shared := parser.compiledTemplatesLoadGroup.Do(filePath, func() (interface{}, error) {
 			if value, _, cacheErr := parser.compiledTemplatesCache.Has(filePath); value != nil || cacheErr != nil {
+				if value != nil && value.Options == nil {
+					return parseFromSource(filePath, preprocessor, options, parser)
+				}
 				return nil, cacheErr
 			}
 			return parseFromSource(filePath, preprocessor, options, parser)
@@ -361,7 +395,7 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			return nil, err
 		}
 
-		if !shared && result != nil {
+		if !shared {
 			template, _ := result.(*Template)
 			return template, nil
 		}
@@ -409,6 +443,16 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 	template := &tplCopy
 
 	if template.isGlobalMatchersEnabled() {
+		if err := template.compileProtocolRequests(template.Options); err != nil {
+			return nil, true, err
+		}
+		if template.Executer != nil {
+			if err := template.Executer.Compile(); err != nil {
+				return nil, true, errors.Wrap(err, "could not compile request")
+			}
+			template.TotalRequests = template.Executer.Requests()
+		}
+
 		item := &globalmatchers.Item{
 			TemplateID:   template.ID,
 			TemplatePath: filePath,
@@ -642,6 +686,13 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		return nil, err
 	}
 
+	template, _, err := parseTemplateFromData(data, preprocessor, options)
+	return template, err
+}
+
+// parseTemplateFromData parses and compiles template data while also returning
+// the prepared pre-compilation template definition that is safe to cache.
+func parseTemplateFromData(data []byte, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, *Template, error) {
 	// a preprocessor is a variable like
 	// {{randstr}} which is replaced before unmarshalling
 	// as it is known to be a random static value per template
@@ -650,16 +701,20 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 
 	if !hasPreprocessor {
 		// if no preprocessors exists parse template and exit
-		template, err := parseTemplate(data, options)
+		template, err := parseTemplateNoVerify(data, options)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		cacheableTemplate := cloneTemplate(template)
+		if err := verifyAndCompileTemplate(template, data); err != nil {
+			return nil, nil, err
 		}
 		if !template.Verified && len(template.Workflows) == 0 {
 			if config.DefaultConfig.LogAllEvents {
 				gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
 			}
 		}
-		return template, nil
+		return template, cacheableTemplate, nil
 	}
 
 	// if preprocessor is required / exists in this template
@@ -678,14 +733,15 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 
 	template, err := parseTemplateNoVerify(processedData, options)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// add generated constants to constants map and executer options
 	template.Constants = generators.MergeMaps(template.Constants, generatedConstants)
 	template.Options.Constants = template.Constants
+	cacheableTemplate := cloneTemplate(template)
 	if err := verifyAndCompileTemplate(template, data); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !template.Verified && len(template.Workflows) == 0 {
@@ -695,7 +751,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		}
 	}
 
-	return template, nil
+	return template, cacheableTemplate, nil
 }
 
 func hasTemplatePreprocessor(data []byte, preprocessor Preprocessor) bool {

@@ -606,7 +606,6 @@ func init() {
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.Operators = protocols.CloneOperators(r.Operators)
-	r.CompiledOperators = nil
 	r.FuzzPreCondition = protocols.CloneMatchers(r.FuzzPreCondition)
 	if r.options == nil {
 		if opts != nil {

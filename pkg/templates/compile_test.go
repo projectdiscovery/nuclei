@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -835,6 +836,26 @@ func TestParseCompiledCacheRegistersGlobalMatcherFromCache(t *testing.T) {
 	second, err := templates.Parse(templatePath, nil, secondOptions)
 	require.NoError(t, err)
 	require.Nil(t, second)
+
+	var matched bool
+	secondOptions.GlobalMatchers.Match(
+		output.InternalEvent{
+			"body":          "test",
+			"template-id":   "origin",
+			"template-info": model.Info{},
+			"template-path": "origin.yaml",
+		},
+		func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+			body, _ := data["body"].(string)
+			return matcher.MatchWords(body, data)
+		},
+		nil,
+		false,
+		func(_ output.InternalEvent, result *operators.Result) {
+			matched = result != nil
+		},
+	)
+	require.True(t, matched)
 }
 
 func TestParseCompiledCacheIgnoresEntryWithoutOptions(t *testing.T) {
