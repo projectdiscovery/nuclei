@@ -44,11 +44,7 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		ResumeCfg:    types.NewResumeCfg(),
 		Parser:       base.parser,
 		Browser:      base.browserInstance,
-		// Thread-safe executes can run concurrently with different Output writers.
-		// The compiled-template cache shallow-copies requests and mutates shared
-		// ExecutorOptions.Output via UpdateOptions/ApplyNewEngineOptions, which
-		// would otherwise route all findings to whichever call last won the race.
-		DoNotCache: true,
+		DoNotCache:   opts.DoNotCacheTemplates,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache

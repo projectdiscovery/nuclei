@@ -959,5 +959,6 @@ func prettyPrint(templateId string, buff string) {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }
