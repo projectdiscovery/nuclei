@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -57,91 +58,91 @@ func updateRequestOptions(template *Template) {
 		if i == 0 {
 			template.RequestsDNS = append(template.RequestsDNS[:0:0], template.RequestsDNS...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsDNS[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsDNS[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsHTTP {
 		if i == 0 {
 			template.RequestsHTTP = append(template.RequestsHTTP[:0:0], template.RequestsHTTP...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsHTTP[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsHTTP[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsCode {
 		if i == 0 {
 			template.RequestsCode = append(template.RequestsCode[:0:0], template.RequestsCode...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsCode[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsCode[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsFile {
 		if i == 0 {
 			template.RequestsFile = append(template.RequestsFile[:0:0], template.RequestsFile...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsFile[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsFile[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsHeadless {
 		if i == 0 {
 			template.RequestsHeadless = append(template.RequestsHeadless[:0:0], template.RequestsHeadless...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsHeadless[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsHeadless[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsNetwork {
 		if i == 0 {
 			template.RequestsNetwork = append(template.RequestsNetwork[:0:0], template.RequestsNetwork...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsNetwork[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsNetwork[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsJavascript {
 		if i == 0 {
 			template.RequestsJavascript = append(template.RequestsJavascript[:0:0], template.RequestsJavascript...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsJavascript[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsJavascript[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsSSL {
 		if i == 0 {
 			template.RequestsSSL = append(template.RequestsSSL[:0:0], template.RequestsSSL...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsSSL[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsSSL[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsWHOIS {
 		if i == 0 {
 			template.RequestsWHOIS = append(template.RequestsWHOIS[:0:0], template.RequestsWHOIS...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsWHOIS[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsWHOIS[i] = rCopy
+		requests[r] = rCopy
 	}
 	for i, r := range template.RequestsWebsocket {
 		if i == 0 {
 			template.RequestsWebsocket = append(template.RequestsWebsocket[:0:0], template.RequestsWebsocket...)
 		}
-		rCopy := *r
+		rCopy := cloneProtocolRequest(r)
 		rCopy.UpdateOptions(template.Options)
-		template.RequestsWebsocket[i] = &rCopy
-		requests[r] = &rCopy
+		template.RequestsWebsocket[i] = rCopy
+		requests[r] = rCopy
 	}
 
 	if len(template.RequestsQueue) > 0 {
@@ -153,6 +154,11 @@ func updateRequestOptions(template *Template) {
 		}
 		template.RequestsQueue = queue
 	}
+}
+
+func cloneProtocolRequest[T any](request *T) *T {
+	cloned := cloneTemplateValue(reflect.ValueOf(request), make(map[cloneVisit]reflect.Value))
+	return cloned.Interface().(*T)
 }
 
 // parseFromSource parses a template from source with caching support
@@ -218,10 +224,93 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 
 	template.Path = filePath
 	if !options.DoNotCache {
-		parser.compiledTemplatesCache.StoreWithoutRaw(filePath, template, err)
+		parser.compiledTemplatesCache.StoreWithoutRaw(filePath, cacheSafeCompiledTemplate(template), err)
 	}
 
 	return template, nil
+}
+
+// cacheSafeCompiledTemplate removes execution-scoped state before storing a
+// compiled template in the shared cache.
+func cacheSafeCompiledTemplate(template *Template) *Template {
+	tplCopy := *template
+	tplCopy.Executer = nil
+	tplCopy.CompiledWorkflow = nil
+	tplCopy.Workflow.Workflows = cloneWorkflowDefinitions(template.Workflow.Workflows)
+	tplCopy.Options = cacheSafeExecutorOptions(template.Options)
+	updateRequestOptions(&tplCopy)
+
+	return &tplCopy
+}
+
+// cacheSafeExecutorOptions copies immutable template metadata and drops
+// per-execution objects such as writers, rate limiters, and callbacks.
+func cacheSafeExecutorOptions(options *protocols.ExecutorOptions) *protocols.ExecutorOptions {
+	if options == nil {
+		return nil
+	}
+
+	safeOptions := options.Copy()
+	safeOptions.TemplateVerificationCallback = nil
+	safeOptions.Output = nil
+	safeOptions.IssuesClient = nil
+	safeOptions.Progress = nil
+	safeOptions.RateLimiter = nil
+	safeOptions.Catalog = nil
+	safeOptions.ProjectFile = nil
+	safeOptions.Browser = nil
+	safeOptions.Interactsh = nil
+	safeOptions.HostErrorsCache = nil
+	safeOptions.InputHelper = nil
+	safeOptions.FuzzStatsDB = nil
+	safeOptions.WorkflowLoader = nil
+	safeOptions.Parser = nil
+	safeOptions.GlobalMatchers = nil
+	safeOptions.Logger = nil
+	safeOptions.AuthProvider = nil
+	safeOptions.TemporaryDirectory = ""
+
+	return safeOptions
+}
+
+// cloneWorkflowDefinitions copies workflow definitions without compiled
+// executers so cache hits can rebuild workflow execution state per call.
+func cloneWorkflowDefinitions(items []*workflows.WorkflowTemplate) []*workflows.WorkflowTemplate {
+	if len(items) == 0 {
+		return nil
+	}
+
+	cloned := make([]*workflows.WorkflowTemplate, len(items))
+	for i, item := range items {
+		if item == nil {
+			continue
+		}
+		itemCopy := *item
+		itemCopy.Executers = nil
+		itemCopy.Subtemplates = cloneWorkflowDefinitions(item.Subtemplates)
+		itemCopy.Matchers = cloneWorkflowMatchers(item.Matchers)
+		cloned[i] = &itemCopy
+	}
+	return cloned
+}
+
+// cloneWorkflowMatchers copies workflow matchers and their subtemplate
+// definitions while leaving matcher compile state to the per-call compile path.
+func cloneWorkflowMatchers(items []*workflows.Matcher) []*workflows.Matcher {
+	if len(items) == 0 {
+		return nil
+	}
+
+	cloned := make([]*workflows.Matcher, len(items))
+	for i, item := range items {
+		if item == nil {
+			continue
+		}
+		itemCopy := *item
+		itemCopy.Subtemplates = cloneWorkflowDefinitions(item.Subtemplates)
+		cloned[i] = &itemCopy
+	}
+	return cloned
 }
 
 func parseCachedTemplate(cached *Template, data []byte, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, error) {
@@ -272,7 +361,7 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			return nil, err
 		}
 
-		if !shared {
+		if !shared && result != nil {
 			template, _ := result.(*Template)
 			return template, nil
 		}
@@ -289,9 +378,13 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 	if value == nil || err != nil {
 		return nil, value != nil || err != nil, err
 	}
+	if value.Options == nil {
+		return nil, false, nil
+	}
 
 	// Copy the template, apply new options, and recompile requests
 	tplCopy := *value
+	tplCopy.Workflow.Workflows = cloneWorkflowDefinitions(value.Workflow.Workflows)
 	newBase := options.Copy()
 	newBase.TemplateID = tplCopy.Options.TemplateID
 	newBase.TemplatePath = tplCopy.Options.TemplatePath
@@ -310,15 +403,6 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 
 	tplCopy.Options = newBase
 	tplCopy.Options.ApplyNewEngineOptions(options)
-
-	if tplCopy.CompiledWorkflow != nil {
-		tplCopy.CompiledWorkflow.Options.ApplyNewEngineOptions(options)
-		for _, w := range tplCopy.CompiledWorkflow.Workflows {
-			for _, ex := range w.Executers {
-				ex.Options.ApplyNewEngineOptions(options)
-			}
-		}
-	}
 
 	// Update options for all request types
 	updateRequestOptions(&tplCopy)
@@ -348,6 +432,11 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 		template.CompiledWorkflow.Options = tplCopy.Options
 	} else if err := template.compileProtocolRequests(template.Options); err != nil {
 		return nil, true, err
+	} else if template.Executer != nil {
+		if err := template.Executer.Compile(); err != nil {
+			return nil, true, errors.Wrap(err, "could not compile request")
+		}
+		template.TotalRequests = template.Executer.Requests()
 	}
 
 	if isCachedTemplateValid(template) {
