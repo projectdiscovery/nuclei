@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
@@ -31,6 +30,21 @@ func getTimeoutFromContext(ctx context.Context) time.Duration {
 		}
 	}
 	return defaultTimeout
+}
+
+func proxyURLFromContext(ctx context.Context) string {
+	if proxyURL, ok := ctx.Value("proxyURL").(string); ok {
+		return proxyURL
+	}
+	return ""
+}
+
+func executionIDFromContext(ctx context.Context) (string, error) {
+	executionId, _ := ctx.Value("executionId").(string)
+	if executionId == "" {
+		return "", fmt.Errorf("executionId missing from context")
+	}
+	return executionId, nil
 }
 
 type dialFunc func(ctx context.Context, network, address string) (net.Conn, error)
@@ -132,6 +146,38 @@ func (c *bufferedConn) Read(b []byte) (int, error) {
 	return c.reader.Read(b)
 }
 
+// Dial opens a connection using the execution dialer.
+// When an HTTP(S) proxy is present in context, TCP dials use HTTP CONNECT.
+// Misconfigured proxies return an error instead of silently dialing direct.
+func Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
+	executionId, err := executionIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	if proxyURL := proxyURLFromContext(ctx); proxyURL != "" {
+		if protocol != "tcp" {
+			return nil, fmt.Errorf("http proxy does not support protocol %q", protocol)
+		}
+		parsed, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid proxy URL %s: %w", redactProxyURL(proxyURL), err)
+		}
+		switch parsed.Scheme {
+		case "http", "https":
+			return dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, getTimeoutFromContext(ctx))
+		default:
+			return nil, fmt.Errorf("unsupported proxy scheme %q in %s (expected http or https)", parsed.Scheme, redactProxyURL(proxyURL))
+		}
+	}
+
+	return dialer.Fastdialer.Dial(ctx, protocol, address)
+}
+
 // Open opens a new connection to the address with a timeout.
 // supported protocols: tcp, udp
 // @example
@@ -141,30 +187,7 @@ func (c *bufferedConn) Read(b []byte) (int, error) {
 // ```
 func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
 	timeout := getTimeoutFromContext(ctx)
-	executionId := ctx.Value("executionId").(string)
-
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
-	// check for HTTP proxy in context
-	if proxyURL, ok := ctx.Value("proxyURL").(string); ok && proxyURL != "" && protocol == "tcp" {
-		parsed, err := url.Parse(proxyURL)
-		if err != nil {
-			gologger.Warning().Msgf("Could not parse proxy URL '%s': %v, falling back to direct dial\n", redactProxyURL(proxyURL), err)
-		} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
-			conn, err := dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, timeout)
-			if err != nil {
-				return nil, err
-			}
-			return &NetConn{conn: conn, timeout: timeout}, nil
-		} else {
-			gologger.Warning().Msgf("Unsupported proxy scheme '%s' in URL '%s', falling back to direct dial\n", parsed.Scheme, redactProxyURL(proxyURL))
-		}
-	}
-
-	conn, err := dialer.Fastdialer.Dial(ctx, protocol, address)
+	conn, err := Dial(ctx, protocol, address)
 	if err != nil {
 		return nil, err
 	}
@@ -188,33 +211,27 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 		config = c
 	}
 
-	executionId := ctx.Value("executionId").(string)
+	if proxyURLFromContext(ctx) != "" {
+		conn, err := Dial(ctx, protocol, address)
+		if err != nil {
+			return nil, err
+		}
+		tlsConn := tls.Client(conn, config)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return nil, fmt.Errorf("TLS handshake failed: %w", err)
+		}
+		return &NetConn{conn: tlsConn, timeout: timeout}, nil
+	}
+
+	executionId, err := executionIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-
-	// check for HTTP proxy in context
-	if proxyURL, ok := ctx.Value("proxyURL").(string); ok && proxyURL != "" && protocol == "tcp" {
-		parsed, err := url.Parse(proxyURL)
-		if err != nil {
-			gologger.Warning().Msgf("Could not parse proxy URL '%s': %v, falling back to direct dial\n", redactProxyURL(proxyURL), err)
-		} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
-			conn, err := dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, timeout)
-			if err != nil {
-				return nil, err
-			}
-			tlsConn := tls.Client(conn, config)
-			if err := tlsConn.HandshakeContext(ctx); err != nil {
-				_ = conn.Close()
-				return nil, fmt.Errorf("TLS handshake failed: %w", err)
-			}
-			return &NetConn{conn: tlsConn, timeout: timeout}, nil
-		} else {
-			gologger.Warning().Msgf("Unsupported proxy scheme '%s' in URL '%s', falling back to direct dial\n", parsed.Scheme, redactProxyURL(proxyURL))
-		}
-	}
-
 	conn, err := dialer.Fastdialer.DialTLSWithConfig(ctx, protocol, address, config)
 	if err != nil {
 		return nil, err

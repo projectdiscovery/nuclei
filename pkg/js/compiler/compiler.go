@@ -45,10 +45,14 @@ type ExecuteOptions struct {
 
 	TimeoutVariants *types.Timeouts
 
-	// ProxyURL is the HTTP proxy URL to use for network connections via
-	// HTTP CONNECT. SOCKS proxies are handled by the fastdialer layer
-	// and should not be passed here.
+	// ProxyURL is the HTTP(S) proxy URL for JS net dials via HTTP CONNECT.
+	// SOCKS proxies are handled by fastdialer and must not be set here.
 	ProxyURL string
+
+	// CustomHeaders contains global CLI headers for the nuclei/http module.
+	// Raw nuclei/net connections construct their own wire payloads and do not
+	// consume these headers.
+	CustomHeaders []string
 
 	// Manually exported objects
 	exports map[string]interface{}
