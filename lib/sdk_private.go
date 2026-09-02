@@ -144,6 +144,9 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 
 // init
 func (e *NucleiEngine) init(ctx context.Context) error {
+	if err := config.DefaultConfig.InitializationError(); err != nil {
+		return errors.Wrap(err, "initialize nuclei configuration")
+	}
 	// Update logger ref (if it was changed by [WithLogger])
 	// (Logger is already initialized)
 	if e.opts.Logger != e.Logger {
@@ -339,14 +342,23 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.httpxClient = nucleiUtils.GetInputLivenessChecker(client)
 	}
 
-	// Only Happens once regardless how many times this function is called
-	// This will update ignore file to filter out templates with weak matchers to avoid false positives
-	// and also upgrade templates to latest version if available
-	installer.NucleiSDKVersionCheck()
-
 	if DefaultConfig.CanCheckForUpdates() {
-		return e.processUpdateCheckResults()
+		// Only Happens once regardless how many times this function is called
+		// This will update ignore file to filter out templates with weak matchers to avoid false positives
+		// and also upgrade templates to latest version if available
+		latestIgnoreHash, _ := installer.NucleiSDKVersionCheck()
+
+		if err := e.processUpdateCheckResults(); err != nil {
+			return err
+		}
+
+		if DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
+			if err := installer.UpdateIgnoreFile(); err != nil {
+				e.opts.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+			}
+		}
 	}
+
 	return nil
 }
 

@@ -58,7 +58,7 @@ func TestTemplateInstallation(t *testing.T) {
 	// we should have at least 1000 templates
 	require.Greater(t, counter, 1000)
 	// every time we install templates, it should override the ignore file with latest one
-	require.FileExists(t, config.DefaultConfig.GetIgnoreFilePath())
+	require.FileExists(t, config.DefaultConfig.GetActiveIgnoreFilePath())
 	t.Logf("Installed %d templates", counter)
 }
 

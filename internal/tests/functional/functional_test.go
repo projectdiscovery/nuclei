@@ -59,7 +59,12 @@ func runTestMain(m *testing.M) int {
 		ci:            isCI(),
 		runner: testutils.NewRunner(
 			testutils.WithWorkingDir(repoRoot),
-			testutils.WithBaseEnv("NUCLEI_CONFIG_DIR="+configDir),
+			testutils.WithBaseEnv(
+				"NUCLEI_CONFIG_DIR="+configDir,
+				"NUCLEI_TEMPLATES_DIR="+filepath.Join(configDir, "templates"),
+				"XDG_STATE_HOME="+filepath.Join(configDir, "state"),
+				"XDG_CACHE_HOME="+filepath.Join(configDir, "cache"),
+			),
 		),
 	}
 	defer func() {
@@ -447,23 +452,31 @@ func candidateExecutableNames(name string) []string {
 }
 
 func prepareFunctionalEnvironment(binaryPath, repoRoot, configDir string) error {
-	configRoot := filepath.Join(configDir, "nuclei")
-	if err := os.MkdirAll(configRoot, 0755); err != nil {
-		return fmt.Errorf("failed to create functional nuclei config root: %w", err)
-	}
-	ignoreFile := filepath.Join(configRoot, ".nuclei-ignore")
-	if err := os.WriteFile(ignoreFile, nil, 0644); err != nil {
-		return fmt.Errorf("failed to create functional ignore file: %w", err)
-	}
+	templatesDir := filepath.Join(configDir, "templates")
 	for _, args := range [][]string{{"-update-templates"}, {"-validate"}} {
 		cmd := exec.Command(binaryPath, args...)
 		cmd.Dir = repoRoot
-		cmd.Env = append(os.Environ(), "NUCLEI_CONFIG_DIR="+configDir)
+		cmd.Env = append(os.Environ(),
+			"NUCLEI_CONFIG_DIR="+configDir,
+			"NUCLEI_TEMPLATES_DIR="+templatesDir,
+			"XDG_STATE_HOME="+filepath.Join(configDir, "state"),
+			"XDG_CACHE_HOME="+filepath.Join(configDir, "cache"),
+		)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("functional setup command %v failed: %w\n%s", args, err, strings.TrimSpace(string(output)))
 		}
 	}
+
+	ignoreFile, err := os.ReadFile(filepath.Join(templatesDir, ".nuclei-ignore"))
+	if err != nil {
+		return fmt.Errorf("failed to read functional ignore file: %w", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(configDir, ".nuclei-ignore"), ignoreFile, 0o600); err != nil {
+		return fmt.Errorf("failed to write legacy functional ignore file: %w", err)
+	}
+
 	return nil
 }
 
