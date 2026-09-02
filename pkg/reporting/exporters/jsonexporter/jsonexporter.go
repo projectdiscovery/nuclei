@@ -62,7 +62,7 @@ func (exporter *Exporter) Close() error {
 	}
 
 	// Attempt to write the JSON to file specified in options.JSONExport
-	if err := os.WriteFile(exporter.options.File, obj, 0644); err != nil {
+	if err := os.WriteFile(exporter.options.File, obj, 0600); err != nil {
 		return errors.Wrap(err, "failed to create JSON file")
 	}
 

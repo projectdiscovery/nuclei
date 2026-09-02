@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/projectdiscovery/gologger"
@@ -18,6 +18,7 @@ import (
 
 const indexFileName = "index.md"
 const extension = ".md"
+const maxFilenameLength = 255
 
 type Exporter struct {
 	directory string
@@ -42,12 +43,12 @@ func New(options *Options) (*Exporter, error) {
 		}
 		directory = dir
 	}
-	_ = os.MkdirAll(directory, 0755)
+	_ = os.MkdirAll(directory, 0750)
 
 	// index generation header
 	dataHeader := util.CreateTableHeader("Hostname/IP", "Finding", "Severity")
 
-	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0644)
+	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func New(options *Options) (*Exporter, error) {
 // Export exports a passed result event to markdown
 func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	// index file generation
-	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -111,29 +112,30 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(format.CreateReportDescription(event, util.MarkdownFormatter{}, exporter.options.OmitRaw))
 	data := dataBuilder.Bytes()
 
-	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0644)
+	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0600)
 }
 
 func createFileName(event *output.ResultEvent) string {
-	filenameBuilder := &strings.Builder{}
-	filenameBuilder.WriteString(event.TemplateID)
-	filenameBuilder.WriteString("-")
-	filenameBuilder.WriteString(event.Host)
-	filenameBuilder.WriteString("-")
-	filenameBuilder.WriteString(uuid.NewString())
-
-	var suffix string
+	operatorName := ""
 	if event.MatcherName != "" {
-		suffix = event.MatcherName
+		operatorName = event.MatcherName
 	} else if event.ExtractorName != "" {
-		suffix = event.ExtractorName
+		operatorName = event.ExtractorName
 	}
-	if suffix != "" {
-		filenameBuilder.WriteRune('-')
-		filenameBuilder.WriteString(event.MatcherName)
+
+	// Keep the UUID and extension at the end of the filename. Truncating the
+	// fully assembled name would remove both for long template IDs or hosts,
+	// causing unrelated findings to overwrite the same report file.
+	uniqueSuffix := "-" + uuid.NewString()
+	if operatorName != "" {
+		operatorBudget := maxFilenameLength - len(uniqueSuffix) - len(extension) - 1
+		uniqueSuffix += "-" + truncateFilename(sanitizeFilenamePart(operatorName), operatorBudget)
 	}
-	filenameBuilder.WriteString(extension)
-	return sanitizeFilename(filenameBuilder.String())
+	uniqueSuffix += extension
+
+	prefix := sanitizeFilenamePart(event.TemplateID + "-" + event.Host)
+	prefix = truncateFilename(prefix, maxFilenameLength-len(uniqueSuffix))
+	return prefix + uniqueSuffix
 }
 
 // Close closes the exporter after operation
@@ -142,9 +144,10 @@ func (exporter *Exporter) Close() error {
 }
 
 func sanitizeFilename(filename string) string {
-	if len(filename) > 256 {
-		filename = filename[0:255]
-	}
+	return truncateFilename(sanitizeFilenamePart(filename), maxFilenameLength)
+}
+
+func sanitizeFilenamePart(filename string) string {
 	// Note: "\\" must be replaced together with "/" so an attacker-controlled
 	// host or template id with Windows-style path separators cannot traverse
 	// out of the configured directory when this value is later used as a
@@ -153,4 +156,18 @@ func sanitizeFilename(filename string) string {
 	// alone (or any sequence containing "..") is treated by filepath.Clean as
 	// a parent reference once joined with the report directory.
 	return stringsutil.ReplaceAll(filename, "_", "?", "/", "\\", "..", ">", "|", ":", ";", "*", "<", "\"", "'", " ")
+}
+
+func truncateFilename(filename string, maxBytes int) string {
+	if maxBytes <= 0 {
+		return ""
+	}
+	if len(filename) <= maxBytes {
+		return filename
+	}
+	filename = filename[:maxBytes]
+	for !utf8.ValidString(filename) {
+		filename = filename[:len(filename)-1]
+	}
+	return filename
 }

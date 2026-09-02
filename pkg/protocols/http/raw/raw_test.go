@@ -253,6 +253,16 @@ Connection: close`, parseURL(t, "https://test.com/test/"), true, false)
 	require.Contains(t, string(request.UnsafeRawBytes), "GET /test.js?a=b", "Could not parse unsafe method request path correctly")
 }
 
+func TestParseUnsafeRequestWithOnlyMethod(t *testing.T) {
+	// a request line with a single token (no path, no HTTP version) must not
+	// panic when unsafe is true, since unsafe requests intentionally skip
+	// the malformed-field validation.
+	require.NotPanics(t, func() {
+		_, err := Parse("GET\n\n", parseURL(t, "https://test.com/test/"), true, false)
+		require.Nil(t, err, "could not parse unsafe request with only method")
+	})
+}
+
 func TestParseUnsafeRequestStripsLeadingAnnotations(t *testing.T) {
 	request, err := Parse(`@Host: honey.scanme.sh
 GET /foo HTTP/1.1

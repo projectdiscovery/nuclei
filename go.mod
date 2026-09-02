@@ -2,6 +2,8 @@ module github.com/projectdiscovery/nuclei/v3
 
 go 1.26
 
+toolchain go1.26.5
+
 require (
 	github.com/andygrunwald/go-jira v1.16.1
 	github.com/antchfx/htmlquery v1.3.5
@@ -73,7 +75,7 @@ require (
 	github.com/go-pg/pg/v10 v10.15.0
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/goccy/go-json v0.10.5
-	github.com/google/go-github/v30 v30.1.0
+	github.com/google/go-github/v81 v81.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
 	github.com/h2non/filetype v1.1.3
@@ -250,6 +252,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/certificate-transparency-go v1.3.2 // indirect
+	github.com/google/go-github/v30 v30.1.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gosimple/slug v1.15.0 // indirect

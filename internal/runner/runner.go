@@ -1017,7 +1017,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 func (r *Runner) SaveResumeConfig(path string) error {
 	dir := filepath.Dir(path)
 	if !fileutil.FolderExists(dir) {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			return err
 		}
 	}

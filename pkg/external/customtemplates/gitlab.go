@@ -72,7 +72,7 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 	location := config.DefaultConfig.CustomGitLabTemplatesDirectory
 
 	// Ensure the CustomGitLabTemplateDirectory directory exists or create it if it doesn't yet exist
-	err := os.MkdirAll(filepath.Dir(location), 0755)
+	err := os.MkdirAll(filepath.Dir(location), 0750)
 	if err != nil {
 		gologger.Error().Msgf("Error creating directory: %v", err)
 		return
@@ -112,7 +112,7 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 		}
 
 		// Ensure the subdirectory exists or create it if it doesn't yet exist
-		err = os.MkdirAll(projectOutputPath, 0755)
+		err = os.MkdirAll(projectOutputPath, 0750)
 		if err != nil {
 			gologger.Error().Msgf("Error creating subdirectory: %v", err)
 			return
@@ -162,7 +162,7 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 				// (the previous implementation flattened everything by writing
 				// only the basename, silently clobbering files with identical
 				// names in different directories).
-				if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(outputPath), 0750); err != nil {
 					gologger.Error().Msgf("error creating parent directory for GitLab project (%s) file: %s %s", project.Name, file.Path, err)
 					return
 				}
@@ -170,7 +170,7 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 				// Write the downloaded template to the local filesystem at
 				// the precomputed safe output path (preserves directory
 				// structure and prevents traversal).
-				err = os.WriteFile(outputPath, contents, 0644)
+				err = os.WriteFile(outputPath, contents, 0600)
 				if err != nil {
 					gologger.Error().Msgf("error writing GitLab project (%s) file: %s %s", project.Name, file.Path, err)
 					return

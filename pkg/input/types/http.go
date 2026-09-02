@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/textproto"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -233,7 +234,7 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 		Request: &HttpRequest{},
 	}
 	/// must contain at least 3 parts
-	parts := strings.Split(methodLine, " ")
+	parts := strings.Fields(methodLine)
 	if len(parts) < 3 {
 		return nil, fmt.Errorf("invalid method line: %s", methodLine)
 	}
@@ -261,6 +262,7 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 
 	// parse headers
 	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()
+	var host string
 	for {
 		line, err := protoReader.ReadLine()
 		if err != nil {

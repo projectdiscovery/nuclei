@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -22,6 +23,7 @@ type Concurrency struct {
 // Server represents the HTTP server that handles the concurrency settings endpoints.
 type Server struct {
 	addr   string
+	token  string
 	config *types.Options
 }
 
@@ -29,17 +31,56 @@ type Server struct {
 func New(addr string, config *types.Options) *Server {
 	return &Server{
 		addr:   addr,
+		token:  config.HttpApiToken,
 		config: config,
 	}
 }
 
 // Start initializes the server and its routes, then starts listening on the specified address.
+//
+// A dedicated ServeMux is used (rather than http.DefaultServeMux via
+// http.HandleFunc/http.ListenAndServe) so this experimental endpoint never
+// accidentally exposes handlers registered on the default mux by other
+// packages (e.g. net/http/pprof, which is blank-imported for the separate,
+// opt-in -enable-pprof server).
 func (s *Server) Start() error {
-	http.HandleFunc("/api/concurrency", s.handleConcurrency)
-	if err := http.ListenAndServe(s.addr, nil); err != nil {
+	if s.token == "" {
+		gologger.Warning().Msgf("http-api-endpoint is running without a token (-http-api-token); anyone able to reach %s can read and change scan settings", s.addr)
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/concurrency", s.handleConcurrency)
+
+	var handler http.Handler = mux
+	if s.token != "" {
+		handler = s.tokenAuthMiddleware(handler)
+	}
+
+	server := &http.Server{
+		Addr:              s.addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		return err
 	}
 	return nil
+}
+
+// tokenAuthMiddleware requires a matching ?token= query parameter on every
+// request when a token has been configured.
+func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" || token != s.token {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // handleConcurrency routes the request based on its method to the appropriate handler.

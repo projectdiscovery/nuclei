@@ -146,14 +146,14 @@ func downloadTemplate(client *azblob.Client, containerName string, path string, 
 	}
 
 	// Ensure the directory exists
-	err = os.MkdirAll(filepath.Dir(outputPath), 0755)
+	err = os.MkdirAll(filepath.Dir(outputPath), 0750)
 	if err != nil {
 		gologger.Error().Msgf("Error creating directory: %v", err)
 		return err
 	}
 
 	// Write the downloaded template to the local filesystem at the outputPath with the filename of the blob name
-	err = os.WriteFile(outputPath, downloadedData.Bytes(), 0644)
+	err = os.WriteFile(outputPath, downloadedData.Bytes(), 0600)
 
 	return err
 }
