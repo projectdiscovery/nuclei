@@ -21,16 +21,34 @@ type FileAuthProvider struct {
 }
 
 // NewFileAuthProvider creates a new file based auth provider
-func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvider, error) {
+func NewFileAuthProvider(path string, callback authx.LazyFetchSecret, autoLoginOpts *authx.AutoLoginRuntimeOptions) (AuthProvider, error) {
 	store, err := authx.GetAuthDataFromFile(path)
 	if err != nil {
 		return nil, err
 	}
-	if len(store.Secrets) == 0 && len(store.Dynamic) == 0 {
+	return newProviderFromStore(path, store, callback, autoLoginOpts)
+}
+
+// NewStoreAuthProvider builds an auth provider from an already-constructed Authx
+// store (e.g. one assembled from CLI flags rather than read from a file).
+func NewStoreAuthProvider(store *authx.Authx, callback authx.LazyFetchSecret, autoLoginOpts *authx.AutoLoginRuntimeOptions) (AuthProvider, error) {
+	return newProviderFromStore("", store, callback, autoLoginOpts)
+}
+
+// newProviderFromStore validates the store, installs fetch callbacks and builds
+// the domain lookup indexes shared by the file- and store-based constructors.
+func newProviderFromStore(path string, store *authx.Authx, callback authx.LazyFetchSecret, autoLoginOpts *authx.AutoLoginRuntimeOptions) (AuthProvider, error) {
+	if store == nil || (len(store.Secrets) == 0 && len(store.Dynamic) == 0) {
 		return nil, ErrNoSecrets
 	}
-	if len(store.Dynamic) > 0 && callback == nil {
-		return nil, errkit.New("lazy fetch callback is required for dynamic secrets")
+	if callback == nil {
+		// The lazy fetch callback is only required for template-based dynamic
+		// secrets; auto-login dynamics resolve their session without a template.
+		for _, dynamic := range store.Dynamic {
+			if dynamic.AutoLogin == nil {
+				return nil, errkit.New("lazy fetch callback is required for dynamic secrets")
+			}
+		}
 	}
 	for _, secret := range store.Secrets {
 		if err := secret.Validate(); err != nil {
@@ -45,7 +63,13 @@ func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvi
 			errorErr.Msgf("invalid dynamic in file: %s", path)
 			return nil, errorErr
 		}
-		dynamic.SetLazyFetchCallback(callback)
+		if dynamic.AutoLogin != nil {
+			// Auto-login resolves its session via the form-login engine rather
+			// than a template, so it uses a dedicated callback.
+			dynamic.SetAutoLoginCallback(autoLoginOpts)
+		} else {
+			dynamic.SetLazyFetchCallback(callback)
+		}
 		store.Dynamic[i] = dynamic
 	}
 	f := &FileAuthProvider{Path: path, store: store}
@@ -191,4 +215,13 @@ func (f *FileAuthProvider) PreFetchSecrets() error {
 		}
 	}
 	return nil
+}
+
+// Close drops any in-memory session captured by dynamic (auto-login) secrets so
+// nuclei does not retain live session material after the scan. It is a no-op for
+// static secrets and never contacts the target.
+func (f *FileAuthProvider) Close() {
+	for i := range f.store.Dynamic {
+		f.store.Dynamic[i].Close()
+	}
 }
