@@ -69,3 +69,45 @@ func TestGetTemplatesPathAllowsNamesContainingKnownConfigFiles(t *testing.T) {
 		require.Equal(t, []string{templatePath}, templates)
 	}
 }
+
+func TestGetTemplatesPathSkipsKnownConfigFiles(t *testing.T) {
+	catalog := NewFSCatalog(fstest.MapFS{
+		"http/cves.json.yaml":  {Data: []byte("id: tmpl")},
+		"http/ok.yaml":         {Data: []byte("id: ok")},
+		"cves.json":            {Data: []byte("[]")},
+		"contributors.json":    {Data: []byte("[]")},
+		"TEMPLATES-STATS.json": {Data: []byte("{}")},
+	}, t.TempDir())
+
+	templates, errs := catalog.GetTemplatesPath([]string{"cves.json"})
+	require.Empty(t, errs)
+	require.Empty(t, templates)
+
+	templates, errs = catalog.GetTemplatesPath([]string{"."})
+	require.Empty(t, errs)
+	require.ElementsMatch(t, []string{"http/cves.json.yaml", "http/ok.yaml"}, templates)
+}
+
+func TestGetTemplatesPathRemoteDefinitionsUsePathExtension(t *testing.T) {
+	catalog := NewFSCatalog(fstest.MapFS{}, t.TempDir())
+
+	yamlURL := "https://example.com/templates/cves.json.yaml"
+	templates, errs := catalog.GetTemplatesPath([]string{yamlURL})
+	require.Empty(t, errs)
+	require.Equal(t, []string{yamlURL}, templates)
+
+	queryURL := "https://example.com/templates/ok.yaml?ref=cves.json"
+	templates, errs = catalog.GetTemplatesPath([]string{queryURL})
+	require.Empty(t, errs)
+	require.Equal(t, []string{queryURL}, templates)
+
+	configURL := "https://example.com/nuclei-templates/cves.json"
+	templates, errs = catalog.GetTemplatesPath([]string{configURL})
+	require.Empty(t, errs)
+	require.Empty(t, templates)
+
+	jsonlURL := "https://example.com/data.jsonl"
+	templates, errs = catalog.GetTemplatesPath([]string{jsonlURL})
+	require.NotContains(t, templates, jsonlURL)
+	require.Contains(t, errs, jsonlURL)
+}

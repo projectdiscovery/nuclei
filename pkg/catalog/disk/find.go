@@ -5,14 +5,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -27,12 +25,12 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	erred := make(map[string]error)
 
 	for _, t := range definitions {
-		if isKnownConfigFile(t) {
+		if config.IsKnownConfigFile(t) {
 			// TODO: this is a temporary fix to avoid treating these files as templates
 			// this should be replaced with more appropriate and robust logic
 			continue
 		}
-		if strings.Contains(t, urlutil.SchemeSeparator) && stringsutil.ContainsAny(t, config.GetSupportTemplateFileExtensions()...) {
+		if strings.Contains(t, urlutil.SchemeSeparator) && config.HasSupportedTemplateExtension(t) {
 			if _, ok := processed[t]; !ok {
 				processed[t] = true
 				allTemplates = append(allTemplates, t)
@@ -55,16 +53,12 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	for _, v := range allTemplates {
 		// TODO: this is a temporary fix to avoid treating these files as templates
 		// this should be replaced with more appropriate and robust logic
-		if !isKnownConfigFile(v) {
+		if !config.IsKnownConfigFile(v) {
 			filteredTemplates = append(filteredTemplates, v)
 		}
 	}
 
 	return filteredTemplates, erred
-}
-
-func isKnownConfigFile(path string) bool {
-	return slices.Contains(config.GetKnownConfigFiles(), filepath.Base(path))
 }
 
 // GetTemplatePath parses the specified input template path and returns a compiled
