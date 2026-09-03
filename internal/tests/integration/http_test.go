@@ -1867,7 +1867,7 @@ func (h *httpCache) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-http-cache")
 	if err != nil {
 		return err
 	}
@@ -1899,7 +1899,7 @@ func (h *httpDisableCache) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-http-cache")
 	if err != nil {
 		return err
 	}
