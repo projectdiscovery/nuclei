@@ -135,11 +135,25 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.opts.ExcludeTags = []string{}
 	}
 
-	// these templates are known to have weak matchers
-	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
-
 	e.inputProvider = provider.NewSimpleInputProvider()
+}
+
+func (e *NucleiEngine) loadIgnoreFile() error {
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		e.Logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// These templates are known to have weak matchers, so exclude their tags by default.
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
+
+	return nil
 }
 
 // init
@@ -162,6 +176,10 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	if err := runner.ValidateOptions(e.opts); err != nil {
+		return err
+	}
+
+	if err := e.loadIgnoreFile(); err != nil {
 		return err
 	}
 
