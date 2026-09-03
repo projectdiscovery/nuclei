@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -104,19 +105,36 @@ func updateRequestOptions(template *Template) {
 
 // parseFromSource parses a template from source with caching support
 func parseFromSource(filePath string, preprocessor Preprocessor, options *protocols.ExecutorOptions, parser *Parser) (*Template, error) {
-	reader, err := utils.ReaderFromPathOrURL(filePath, options.Catalog)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		_ = reader.Close()
-	}()
-
 	options = options.Copy()
 	options.TemplatePath = filePath
 
-	template, err := ParseTemplateFromReader(reader, preprocessor, options)
+	var template *Template
+	var err error
+
+	if !options.DoNotCache {
+		parsed, raw, cachedErr := parser.parsedTemplatesCache.Has(filePath)
+		if cachedErr != nil {
+			return nil, cachedErr
+		}
+
+		if parsed != nil && len(raw) > 0 {
+			template, err = parseCachedTemplate(parsed, raw, preprocessor, options)
+		}
+	}
+
+	if template == nil && err == nil {
+		reader, openErr := utils.ReaderFromPathOrURL(filePath, options.Catalog)
+		if openErr != nil {
+			return nil, openErr
+		}
+
+		defer func() {
+			_ = reader.Close()
+		}()
+
+		template, err = ParseTemplateFromReader(reader, preprocessor, options)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +172,25 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 	return template, nil
 }
 
+func parseCachedTemplate(cached *Template, data []byte, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, error) {
+	if hasTemplatePreprocessor(data, preprocessor) {
+		return ParseTemplateFromReader(bytes.NewReader(data), preprocessor, options)
+	}
+
+	template, err := prepareTemplate(cloneTemplate(cached), options)
+	if err != nil {
+		return nil, err
+	}
+	if err := verifyAndCompileTemplate(template, data); err != nil {
+		return nil, err
+	}
+
+	if !template.Verified && len(template.Workflows) == 0 && config.DefaultConfig.LogAllEvents {
+		gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
+	}
+	return template, nil
+}
+
 // getParser returns a cached parser instance
 func getParser(options *protocols.ExecutorOptions) *Parser {
 	parser, ok := options.Parser.(*Parser)
@@ -165,7 +202,6 @@ func getParser(options *protocols.ExecutorOptions) *Parser {
 }
 
 // Parse parses a yaml request template file
-// TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 func Parse(filePath string, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, error) {
 	parser := getParser(options)
 
@@ -439,14 +475,8 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	// a preprocessor is a variable like
 	// {{randstr}} which is replaced before unmarshalling
 	// as it is known to be a random static value per template
-	hasPreprocessor := false
+	hasPreprocessor := hasTemplatePreprocessor(data, preprocessor)
 	allPreprocessors := getPreprocessors(preprocessor)
-	for _, preprocessor := range allPreprocessors {
-		if preprocessor.Exists(data) {
-			hasPreprocessor = true
-			break
-		}
-	}
 
 	if !hasPreprocessor {
 		// if no preprocessors exists parse template and exit
@@ -498,6 +528,16 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	return template, nil
 }
 
+func hasTemplatePreprocessor(data []byte, preprocessor Preprocessor) bool {
+	for _, candidate := range getPreprocessors(preprocessor) {
+		if candidate.Exists(data) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // parseTemplate parses the template and applies verification.
 func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
 	template, err := parseTemplateNoVerify(data, srcOptions)
@@ -522,8 +562,6 @@ func verifyAndCompileTemplate(template *Template, data []byte) error {
 
 // parseTemplateNoVerify parses the template without applying any verification.
 func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
-	// Create a copy of the options specifically for this template
-	options := srcOptions.Copy()
 	template := &Template{}
 
 	var err error
@@ -543,6 +581,13 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to parse %s", template.Path)
 	}
+
+	return prepareTemplate(template, srcOptions)
+}
+
+func prepareTemplate(template *Template, srcOptions *protocols.ExecutorOptions) (*Template, error) {
+	// Create a copy of the options specifically for this template.
+	options := srcOptions.Copy()
 
 	if utils.IsBlank(template.Info.Name) {
 		return nil, errors.New("no template name field provided")
