@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -104,4 +106,56 @@ http:
 `
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
 	return path
+}
+
+// TestExecuteNucleiWithOptsCtxKeepsIgnoreFileExcludeTags is the end-to-end path
+// for #7695 once #7697 is on the tree: tags from a real .nuclei-ignore must
+// survive a per-execution WithTemplateFilters that only sets Tags.
+func TestExecuteNucleiWithOptsCtxKeepsIgnoreFileExcludeTags(t *testing.T) {
+	previousConfigDir := config.DefaultConfig.GetConfigDir()
+	previousTemplatesDir := config.DefaultConfig.TemplatesDirectory
+	previousStateDir := config.DefaultConfig.GetStateDir()
+	t.Cleanup(func() {
+		config.DefaultConfig.SetConfigDir(previousConfigDir)
+		config.DefaultConfig.SetStateDir(previousStateDir)
+		config.DefaultConfig.SetTemplatesDir(previousTemplatesDir)
+	})
+
+	dir := t.TempDir()
+	config.DefaultConfig.SetConfigDir(dir)
+	config.DefaultConfig.SetTemplatesDir(dir)
+
+	require.NoError(t, os.WriteFile(
+		config.DefaultConfig.GetActiveIgnoreFilePath(),
+		[]byte("tags:\n  - dos\n"),
+		0o600,
+	))
+
+	templatePath := writeSDKDosTaggedTemplate(t)
+
+	var reached atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached.Store(true)
+		_, _ = w.Write([]byte("token-dos"))
+	}))
+	t.Cleanup(srv.Close)
+
+	ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.Background(),
+		nuclei.WithOptions(types.DefaultOptions()),
+		nuclei.DisableUpdateCheck(),
+	)
+	require.NoError(t, err, "could not create thread-safe nuclei engine")
+	t.Cleanup(ne.Close)
+	var matches atomic.Int64
+	ne.GlobalResultCallback(func(*output.ResultEvent) { matches.Add(1) })
+
+	err = ne.ExecuteNucleiWithOptsCtx(context.Background(), []string{srv.URL},
+		nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{templatePath}}),
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"dos"}}),
+	)
+
+	require.ErrorIs(t, err, nuclei.ErrNoTemplatesAvailable,
+		"ignore-file dos exclusion must survive a Tags-only per-execution filter")
+	assert.Zero(t, matches.Load())
+	assert.False(t, reached.Load())
 }

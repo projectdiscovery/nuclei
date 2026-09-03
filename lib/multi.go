@@ -67,21 +67,27 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 // restoreBaseExcludeTags re-adds any of the engine's baseline excluded tags that
 // a per-execution option dropped, appending only what is missing so the result
 // is order-stable and repeated application is a no-op.
+//
+// The current ExcludeTags slice is cloned before merging so a caller-owned
+// backing array (e.g. a reused WithTemplateFilters ExcludeTags value with spare
+// capacity) is never mutated or shared across concurrent executions.
 func restoreBaseExcludeTags(base []string, opts *types.Options) {
 	if len(base) == 0 {
 		return
 	}
-	present := make(map[string]struct{}, len(opts.ExcludeTags)+len(base))
-	for _, tag := range opts.ExcludeTags {
+	merged := append([]string(nil), opts.ExcludeTags...)
+	present := make(map[string]struct{}, len(merged)+len(base))
+	for _, tag := range merged {
 		present[tag] = struct{}{}
 	}
 	for _, tag := range base {
 		if _, ok := present[tag]; ok {
 			continue
 		}
-		opts.ExcludeTags = append(opts.ExcludeTags, tag)
+		merged = append(merged, tag)
 		present[tag] = struct{}{}
 	}
+	opts.ExcludeTags = merged
 }
 
 // resolveEphemeralOutput combines the base/global writer with any per-call result callbacks.

@@ -1,6 +1,7 @@
 package nuclei
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -57,4 +58,31 @@ func TestRestoreBaseExcludeTagsIsIdempotent(t *testing.T) {
 	restoreBaseExcludeTags([]string{"dos", "fuzz"}, opts)
 
 	assert.Equal(t, []string{"dos", "fuzz"}, []string(opts.ExcludeTags))
+}
+
+// TestRestoreBaseExcludeTagsDoesNotMutateCallerSlice guards the concurrent
+// ThreadSafeNucleiEngine case where WithTemplateFilters assigns a caller-owned
+// ExcludeTags slice with spare capacity: a naive append would race and mutate
+// the caller's backing array.
+func TestRestoreBaseExcludeTagsDoesNotMutateCallerSlice(t *testing.T) {
+	shared := make([]string, 1, 8)
+	shared[0] = "custom"
+	base := []string{"dos", "fuzz"}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 32; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			opts := &types.Options{ExcludeTags: shared}
+			restoreBaseExcludeTags(base, opts)
+			if got := []string(opts.ExcludeTags); len(got) != 3 || got[0] != "custom" || got[1] != "dos" || got[2] != "fuzz" {
+				panic(got)
+			}
+		}()
+	}
+	wg.Wait()
+
+	assert.Equal(t, []string{"custom"}, shared[:1])
+	assert.Equal(t, make([]string, 7), shared[1:cap(shared)])
 }
