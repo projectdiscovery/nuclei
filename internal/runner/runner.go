@@ -604,10 +604,13 @@ func (r *Runner) RunEnumeration() error {
 			OutScope:              r.options.OutOfScope,
 			NucleiExecutorOptions: execurOpts,
 		})
+
 		if err != nil {
 			return err
 		}
+
 		r.dastServer = dastServer
+
 		return dastServer.Start()
 	}
 
@@ -617,16 +620,18 @@ func (r *Runner) RunEnumeration() error {
 			r.options.Templates = append(r.options.Templates, arr...)
 		}
 	}
+
 	if len(r.options.NewTemplatesWithVersion) > 0 {
 		if arr := installer.GetNewTemplatesInVersions(r.options.NewTemplatesWithVersion...); len(arr) > 0 {
 			r.options.Templates = append(r.options.Templates, arr...)
 		}
 	}
-	// Exclude ignored file for validation
+
+	// Apply the active ignore policy only when templates can execute.
 	if !r.options.Validate {
-		ignoreFile := config.ReadIgnoreFile()
-		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
-		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
+		if err := r.loadIgnoreFile(); err != nil {
+			return err
+		}
 	}
 
 	fuzzFreqCache := frequency.New(frequency.DefaultMaxTrackCount, r.options.FuzzParamFrequency)
@@ -884,6 +889,24 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	return err
+}
+
+func (r *Runner) loadIgnoreFile() error {
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		r.Logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
+	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
+
+	return nil
 }
 
 func shortDur(d time.Duration) string {

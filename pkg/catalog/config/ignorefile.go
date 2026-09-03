@@ -2,10 +2,11 @@ package config
 
 import (
 	"crypto/md5"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 )
 
@@ -15,25 +16,36 @@ type IgnoreFile struct {
 	Files []string `yaml:"files"`
 }
 
-// ReadIgnoreFile reads the .nuclei-ignore file returning blocked tags and paths.
-func ReadIgnoreFile() IgnoreFile {
+// ReadIgnoreFile reads the active .nuclei-ignore file and returns blocked tags
+// and paths. Callers must decide whether a read error is recoverable. Malformed
+// content is returned as an error to prevent a fail-open scan.
+func ReadIgnoreFile() (IgnoreFile, error) {
 	path := DefaultConfig.GetActiveIgnoreFilePath()
+
 	file, err := os.Open(path)
 	if err != nil {
-		gologger.Error().Msgf("Could not read .nuclei-ignore file %q: %s\n", path, err)
-		return IgnoreFile{}
+		return IgnoreFile{}, fmt.Errorf("error opening %q: %w", path, err)
 	}
 	defer func() {
 		_ = file.Close()
 	}()
 
+	decoder := yaml.NewDecoder(file)
 	ignore := IgnoreFile{}
-	if err := yaml.NewDecoder(file).Decode(&ignore); err != nil {
-		gologger.Error().Msgf("Could not parse .nuclei-ignore file %q: %s\n", path, err)
-		return IgnoreFile{}
+	if err := decoder.Decode(&ignore); err != nil {
+		return IgnoreFile{}, fmt.Errorf("error parsing %q: %w", path, err)
 	}
 
-	return ignore
+	var additionalDocument any
+	if err := decoder.Decode(&additionalDocument); !errors.Is(err, io.EOF) {
+		if err != nil {
+			return IgnoreFile{}, fmt.Errorf("error parsing %q: %w", path, err)
+		}
+
+		return IgnoreFile{}, fmt.Errorf("error parsing %q: multiple YAML documents are not supported", path)
+	}
+
+	return ignore, nil
 }
 
 // WriteActiveIgnoreFile atomically replaces the active root ignore file.
