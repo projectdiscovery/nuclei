@@ -64,6 +64,26 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 	return u, nil
 }
 
+// restoreBaseExcludeTags re-adds any of the engine's baseline excluded tags that
+// a per-execution option dropped, appending only what is missing so the result
+// is order-stable and repeated application is a no-op.
+func restoreBaseExcludeTags(base []string, opts *types.Options) {
+	if len(base) == 0 {
+		return
+	}
+	present := make(map[string]struct{}, len(opts.ExcludeTags)+len(base))
+	for _, tag := range opts.ExcludeTags {
+		present[tag] = struct{}{}
+	}
+	for _, tag := range base {
+		if _, ok := present[tag]; ok {
+			continue
+		}
+		opts.ExcludeTags = append(opts.ExcludeTags, tag)
+		present[tag] = struct{}{}
+	}
+}
+
 // resolveEphemeralOutput combines the base/global writer with any per-call result callbacks.
 // Global callbacks keep working; per-call callbacks are isolated to this execution.
 func resolveEphemeralOutput(base, call *NucleiEngine) output.Writer {
@@ -161,6 +181,18 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 			return err
 		}
 	}
+	// Per-execution options land on a COPY of the engine's options, so an option
+	// that assigns a whole filter set clears every field it does not name —
+	// WithTemplateFilters does exactly that. ExcludeTags is one of those fields,
+	// and it carries the .nuclei-ignore deny-list that applyRequiredDefaults
+	// installed at construction; nothing re-reads the ignore file afterwards, so
+	// the exclusions would be lost for this execution and templates tagged dos,
+	// bruteforce, fuzz, local or txt-service would run.
+	//
+	// Restore the engine's baseline exclusions so a per-execution filter can add
+	// to them but never silently discard them. IncludeTags remains the explicit
+	// per-tag override for callers who do want an ignored template to run.
+	restoreBaseExcludeTags(e.eng.opts.ExcludeTags, tmpEngine.opts)
 
 	// create ephemeral nuclei objects/instances/types using base nuclei engine
 	unsafeOpts, err := createEphemeralObjects(ctx, e.eng, tmpEngine.opts, resolveEphemeralOutput(e.eng, tmpEngine))
