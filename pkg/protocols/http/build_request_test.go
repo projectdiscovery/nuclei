@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -198,6 +199,41 @@ Host: {{Hostname}}`},
 	require.Nil(t, parseErr, "could not parse generated unsafe request URL")
 	require.Equal(t, "honey.scanme.sh", parsedURL.Host, "host should be overridden by @Host annotation in unsafe mode")
 	require.Equal(t, "http", parsedURL.Scheme, "scheme should inherit from input when annotation host has no scheme")
+}
+
+func TestUnsafeRawRequestPreservesAbsoluteRequestTarget(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	const requestLine = "GET http://intranet/foo?request=1 HTTP/1.1"
+	request := &Request{
+		ID:     "testing-http-unsafe-absolute-request-target",
+		Name:   "testing",
+		Unsafe: true,
+		Raw: []string{requestLine + `
+Host: {{Hostname}}`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts), "could not compile unsafe raw request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	generated, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "http://example.com/bar?input=1"), inputData, payloads, map[string]interface{}{})
+	require.NoError(t, err, "could not make unsafe raw request")
+	generatedURL, err := urlutil.ParseAbsoluteURL(generated.URL(), true)
+	require.NoError(t, err, "could not parse generated request URL")
+	require.Equal(t, "example.com", generatedURL.Host, "absolute request target must not override the scan target")
+	require.Equal(t, "/foo", generatedURL.Path, "absolute request target path must not merge with the scan target path")
+	require.Equal(t, "1", generatedURL.Params.Get("request"), "generated URL must include the absolute request target query")
+	require.Empty(t, generatedURL.Params.Get("input"), "generated URL must not include the scan target query")
+
+	requestBytes, err := dump(generated, generated.URL())
+	require.NoError(t, err, "could not dump unsafe raw request")
+	actualRequestLine := strings.TrimSuffix(strings.SplitN(string(requestBytes), "\n", 2)[0], "\r")
+	require.Equal(t, requestLine, actualRequestLine, "unsafe raw request line must remain unchanged")
 }
 
 func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
