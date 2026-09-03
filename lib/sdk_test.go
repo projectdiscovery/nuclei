@@ -129,8 +129,10 @@ func TestWithOptionsRateLimitSetsRuntimeLimiter(t *testing.T) {
 func TestIgnoreFileFilesSectionIsApplied(t *testing.T) {
 	previousConfigDir := config.DefaultConfig.GetConfigDir()
 	previousTemplatesDir := config.DefaultConfig.TemplatesDirectory
+	previousStateDir := config.DefaultConfig.GetStateDir()
 	t.Cleanup(func() {
 		config.DefaultConfig.SetConfigDir(previousConfigDir)
+		config.DefaultConfig.SetStateDir(previousStateDir)
 		config.DefaultConfig.SetTemplatesDir(previousTemplatesDir)
 	})
 

@@ -137,8 +137,22 @@ func (s *session) prepareCommon() {
 		_ = s.config.runtime.Set(k, v)
 	}
 
+	executionCtx := s.config.ctx
+	if s.config.opts.TimeoutVariants != nil {
+		s.config.runtime.SetContextValue("timeoutVariants", s.config.opts.TimeoutVariants)
+		executionCtx = context.WithValue(executionCtx, "timeoutVariants", s.config.opts.TimeoutVariants) //nolint:staticcheck
+	}
+	if s.config.opts.ProxyURL != "" {
+		s.config.runtime.SetContextValue("proxyURL", s.config.opts.ProxyURL)
+		executionCtx = context.WithValue(executionCtx, "proxyURL", s.config.opts.ProxyURL) //nolint:staticcheck
+	}
+	if len(s.config.opts.CustomHeaders) > 0 {
+		headers := append([]string(nil), s.config.opts.CustomHeaders...)
+		s.config.runtime.SetContextValue("customHeaders", headers)
+		executionCtx = context.WithValue(executionCtx, "customHeaders", headers) //nolint:staticcheck
+	}
 	s.config.runtime.SetContextValue("executionId", s.config.opts.ExecutionId)
-	s.config.runtime.SetContextValue("ctx", s.config.ctx)
+	s.config.runtime.SetContextValue("ctx", executionCtx)
 	enableRequire(s.config.runtime)
 }
 
@@ -207,6 +221,9 @@ func (s *session) cleanupCommon() {
 	}
 	s.config.runtime.RemoveContextValue("executionId")
 	s.config.runtime.RemoveContextValue("ctx")
+	s.config.runtime.RemoveContextValue("timeoutVariants")
+	s.config.runtime.RemoveContextValue("proxyURL")
+	s.config.runtime.RemoveContextValue("customHeaders")
 }
 
 func (s *session) cleanupPath() {

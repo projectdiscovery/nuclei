@@ -135,16 +135,30 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.opts.ExcludeTags = []string{}
 	}
 
+	e.inputProvider = provider.NewSimpleInputProvider()
+}
+
+func (e *NucleiEngine) loadIgnoreFile() error {
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		e.Logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
 	// .nuclei-ignore blocks templates that should not run by default, by tag
 	// (dos, fuzz, ...) and by path (templates known to have weak matchers, which
 	// would otherwise generate false positives). Both sections are applied, as
 	// the CLI runner does — applying only the tags leaves the `files` section
 	// inert for every SDK consumer.
-	ignoreFile := config.ReadIgnoreFile()
 	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
 	e.opts.ExcludedTemplates = append(e.opts.ExcludedTemplates, ignoreFile.Files...)
 
-	e.inputProvider = provider.NewSimpleInputProvider()
+	return nil
 }
 
 // init
@@ -167,6 +181,10 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	if err := runner.ValidateOptions(e.opts); err != nil {
+		return err
+	}
+
+	if err := e.loadIgnoreFile(); err != nil {
 		return err
 	}
 
