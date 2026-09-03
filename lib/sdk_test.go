@@ -8,6 +8,7 @@ import (
 	"time"
 
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
@@ -119,4 +120,36 @@ func TestWithOptionsRateLimitSetsRuntimeLimiter(t *testing.T) {
 	require.NotNil(t, execOpts, "executor options should be initialized")
 	require.NotNil(t, execOpts.RateLimiter, "rate limiter should be initialized")
 	require.Equal(t, opts.RateLimit, int(execOpts.RateLimiter.GetLimit()), "runtime limiter should match rate limit from WithOptions")
+}
+
+// TestIgnoreFileFilesSectionIsApplied verifies the SDK applies BOTH sections of
+// .nuclei-ignore, matching the CLI runner. The files section suppresses
+// templates known to have weak matchers, so skipping it hands SDK consumers
+// false positives the CLI would never report.
+func TestIgnoreFileFilesSectionIsApplied(t *testing.T) {
+	previousConfigDir := config.DefaultConfig.GetConfigDir()
+	previousTemplatesDir := config.DefaultConfig.TemplatesDirectory
+	t.Cleanup(func() {
+		config.DefaultConfig.SetConfigDir(previousConfigDir)
+		config.DefaultConfig.SetTemplatesDir(previousTemplatesDir)
+	})
+
+	dir := t.TempDir()
+	config.DefaultConfig.SetConfigDir(dir)
+	config.DefaultConfig.SetTemplatesDir(dir)
+
+	ignoreFile := "tags:\n  - dos\nfiles:\n  - http/fuzzing/wordpress-themes-detect.yaml\n"
+	require.NoError(t, os.WriteFile(config.DefaultConfig.GetActiveIgnoreFilePath(), []byte(ignoreFile), 0o600))
+
+	ne, err := nuclei.NewNucleiEngineCtx(context.Background(),
+		nuclei.WithOptions(types.DefaultOptions()),
+		nuclei.DisableUpdateCheck(),
+	)
+	require.NoError(t, err, "could not create nuclei engine")
+	defer ne.Close()
+
+	require.Contains(t, ne.Options().ExcludeTags, "dos",
+		"tags section should reach ExcludeTags")
+	require.Contains(t, ne.Options().ExcludedTemplates, "http/fuzzing/wordpress-themes-detect.yaml",
+		"files section should reach ExcludedTemplates")
 }

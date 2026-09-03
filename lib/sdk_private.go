@@ -135,9 +135,14 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.opts.ExcludeTags = []string{}
 	}
 
-	// these templates are known to have weak matchers
-	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
+	// .nuclei-ignore blocks templates that should not run by default, by tag
+	// (dos, fuzz, ...) and by path (templates known to have weak matchers, which
+	// would otherwise generate false positives). Both sections are applied, as
+	// the CLI runner does — applying only the tags leaves the `files` section
+	// inert for every SDK consumer.
+	ignoreFile := config.ReadIgnoreFile()
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
+	e.opts.ExcludedTemplates = append(e.opts.ExcludedTemplates, ignoreFile.Files...)
 
 	e.inputProvider = provider.NewSimpleInputProvider()
 }
