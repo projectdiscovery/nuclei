@@ -1,12 +1,14 @@
 package authx
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/getsops/sops/v3"
 	"github.com/getsops/sops/v3/decrypt"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/errkit"
@@ -215,7 +217,7 @@ func GetAuthDataFromFile(file string) (*Authx, error) {
 
 	data, err := decrypt.File(file, ext)
 	if err != nil {
-		if err.Error() == "sops metadata not found" { // regular file (prolly not encrypted)
+		if errors.Is(err, sops.MetadataNotFound) {
 			data, err = os.ReadFile(file)
 			if err != nil {
 				return nil, fmt.Errorf("could not read secret file: %w", err)
