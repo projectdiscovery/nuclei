@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -87,9 +88,9 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 		nj:              utils.NewNucleiJS(runtime),
 		FollowRedirects: true,
 		MaxRedirects:    defaultMaxRedirects,
-		TimeoutSeconds:  defaultTimeoutSeconds,
+		TimeoutSeconds:  timeoutSecondsFromRuntime(runtime),
 		MaxBodyBytes:    defaultMaxBodyBytes,
-		headers:         make(http.Header),
+		headers:         customHeadersFromRuntime(runtime),
 	}
 	c.nj.ObjectSig = "Client(options?)"
 
@@ -230,7 +231,7 @@ func Post(ctx context.Context, rawURL, body string) (*Response, error) {
 // @example
 // ```javascript
 // const http = require('nuclei/http');
-// const resp = http.Request('OPTIONS', 'https://example.com', '');
+// const resp = http.Request("OPTIONS", "https://example.com", "");
 // ```
 func Request(ctx context.Context, method, rawURL, body string) (*Response, error) {
 	return defaultClient().Request(ctx, method, rawURL, body)
@@ -240,13 +241,14 @@ func defaultClient() *Client {
 	return &Client{
 		FollowRedirects: true,
 		MaxRedirects:    defaultMaxRedirects,
-		TimeoutSeconds:  defaultTimeoutSeconds,
+		TimeoutSeconds:  0,
 		MaxBodyBytes:    defaultMaxBodyBytes,
 		headers:         make(http.Header),
 	}
 }
 
 func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response, error) {
+	timeout := requestTimeout(ctx, c.TimeoutSeconds)
 	c.init()
 
 	executionID := executionIDFrom(ctx, c)
@@ -281,8 +283,12 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 		tlsConfig.ServerName = host
 	}
 
+	proxy, err := proxyFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: proxy,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return dialers.Fastdialer.Dial(ctx, network, addr)
 		},
@@ -294,12 +300,13 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 		MaxIdleConns:          4,
 		MaxIdleConnsPerHost:   4,
 		IdleConnTimeout:       30 * time.Second,
-		ResponseHeaderTimeout: time.Duration(c.TimeoutSeconds) * time.Second,
+		ResponseHeaderTimeout: timeout,
 	}
+	defer transport.CloseIdleConnections()
 
 	httpClient := &http.Client{
 		Transport: transport,
-		Timeout:   time.Duration(c.TimeoutSeconds) * time.Second,
+		Timeout:   timeout,
 	}
 	if c.jar != nil {
 		httpClient.Jar = c.jar
@@ -330,9 +337,10 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 	if err != nil {
 		return nil, err
 	}
+	applyCustomHeaders(req.Header, customHeadersFromContext(ctx))
 	for k, vals := range c.headers {
 		for _, v := range vals {
-			req.Header.Add(k, v)
+			req.Header.Set(k, v)
 		}
 	}
 	if req.Header.Get("User-Agent") == "" {
@@ -364,6 +372,80 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 		header:     resp.Header.Clone(),
 	}
 	return out, nil
+}
+
+func timeoutSecondsFromRuntime(runtime *goja.Runtime) int {
+	if runtime != nil {
+		if value, ok := runtime.GetContextValue("timeoutVariants"); ok {
+			if timeouts, ok := value.(*types.Timeouts); ok && timeouts != nil && timeouts.HttpTimeout > 0 {
+				return int(timeouts.HttpTimeout / time.Second)
+			}
+		}
+	}
+	return defaultTimeoutSeconds
+}
+
+func requestTimeout(ctx context.Context, seconds int) time.Duration {
+	if seconds > 0 {
+		return time.Duration(seconds) * time.Second
+	}
+	if ctx != nil {
+		if timeouts, ok := ctx.Value("timeoutVariants").(*types.Timeouts); ok && timeouts != nil && timeouts.HttpTimeout > 0 {
+			return timeouts.HttpTimeout
+		}
+	}
+	return defaultTimeoutSeconds * time.Second
+}
+
+func proxyFromContext(ctx context.Context) (func(*http.Request) (*url.URL, error), error) {
+	if ctx == nil {
+		return http.ProxyFromEnvironment, nil
+	}
+	raw, _ := ctx.Value("proxyURL").(string)
+	if raw == "" {
+		return http.ProxyFromEnvironment, nil
+	}
+	proxyURL, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("http: invalid proxy URL: %w", err)
+	}
+	if proxyURL.Host == "" || (proxyURL.Scheme != "http" && proxyURL.Scheme != "https") {
+		return nil, fmt.Errorf("http: proxy URL must use http or https")
+	}
+	return http.ProxyURL(proxyURL), nil
+}
+
+func customHeadersFromRuntime(runtime *goja.Runtime) http.Header {
+	headers := make(http.Header)
+	if runtime == nil {
+		return headers
+	}
+	if value, ok := runtime.GetContextValue("customHeaders"); ok {
+		if raw, ok := value.([]string); ok {
+			applyCustomHeaders(headers, raw)
+		}
+	}
+	return headers
+}
+
+func customHeadersFromContext(ctx context.Context) []string {
+	if ctx == nil {
+		return nil
+	}
+	headers, _ := ctx.Value("customHeaders").([]string)
+	return headers
+}
+
+func applyCustomHeaders(headers http.Header, rawHeaders []string) {
+	for _, raw := range rawHeaders {
+		key, value, ok := strings.Cut(raw, ":")
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if !ok || key == "" || value == "" {
+			continue
+		}
+		headers.Set(key, value)
+	}
 }
 
 func executionIDFrom(ctx context.Context, c *Client) string {
