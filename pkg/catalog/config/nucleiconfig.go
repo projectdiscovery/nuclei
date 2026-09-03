@@ -315,6 +315,7 @@ func (c *Config) WriteTemplatesIndex(index map[string]string) error {
 	indexFile := c.GetTemplateIndexFilePath()
 
 	var buff bytes.Buffer
+
 	for k, v := range index {
 		_, _ = buff.WriteString(k + "," + v + "\n")
 	}
@@ -329,7 +330,6 @@ func (c *Config) createConfigDirIfNotExists() error {
 			return errkit.Newf("could not create nuclei config directory at %s: %v", c.configDir, err)
 		}
 	}
-
 	return nil
 }
 
