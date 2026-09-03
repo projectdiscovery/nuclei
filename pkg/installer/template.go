@@ -189,10 +189,6 @@ func (t *TemplateManager) finalizeTemplateRelease(cfg *config.Config, writtenOut
 		finalizationErr = errors.Join(finalizationErr, fmt.Errorf("reconcile template ownership: %w", err))
 	}
 
-	if err := cfg.UpdateNucleiIgnoreHash(); err != nil {
-		finalizationErr = errors.Join(finalizationErr, errkit.Wrap(err, "failed to update nuclei ignore hash"))
-	}
-
 	checksums, err := t.regenerateTemplateMetadata(cfg)
 	if err != nil {
 		finalizationErr = errors.Join(finalizationErr, fmt.Errorf("regenerate template metadata: %w", err))
