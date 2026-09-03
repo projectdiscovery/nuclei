@@ -150,8 +150,13 @@ func (e *NucleiEngine) loadIgnoreFile() error {
 		return err
 	}
 
-	// These templates are known to have weak matchers, so exclude their tags by default.
+	// .nuclei-ignore blocks templates that should not run by default, by tag
+	// (dos, fuzz, ...) and by path (templates known to have weak matchers, which
+	// would otherwise generate false positives). Both sections are applied, as
+	// the CLI runner does — applying only the tags leaves the `files` section
+	// inert for every SDK consumer.
 	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
+	e.opts.ExcludedTemplates = append(e.opts.ExcludedTemplates, ignoreFile.Files...)
 
 	return nil
 }
