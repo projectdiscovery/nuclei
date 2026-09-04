@@ -63,7 +63,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/get-case-insensitive.yaml", TestCase: &httpGetCaseInsensitive{}},
 	{Path: "protocols/http/get.yaml,protocols/http/get-case-insensitive.yaml", TestCase: &httpGetCaseInsensitiveCluster{}},
 	{Path: "protocols/http/get-redirects-chain-headers.yaml", TestCase: &httpGetRedirectsChainHeaders{}},
-	{Path: "protocols/http/dsl-matcher-variable.yaml", TestCase: &httpDSLVariable{}},
+	{Path: "protocols/http/dsl-matcher-variable.yaml", TestCase: &httpDSLVariable{}, Serial: true},
 	{Path: "protocols/http/dsl-functions.yaml", TestCase: &httpDSLFunctions{}},
 	{Path: "protocols/http/race-simple.yaml", TestCase: &httpRaceSimple{}},
 	{Path: "protocols/http/race-multiple.yaml", TestCase: &httpRaceMultiple{}},
