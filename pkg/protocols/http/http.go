@@ -296,6 +296,7 @@ var RequestPartDefinitions = map[string]string{
 	"headers_from_response": "HTTP response headers in name:value format",
 	"tls_version":           "TLS version negotiated for the HTTP connection",
 	"cipher":                "TLS cipher suite negotiated for the HTTP connection",
+	"key_exchange":          "TLS key exchange group negotiated for the HTTP connection",
 	"sni":                   "SNI value used in the TLS handshake",
 	"subject_cn":            "Leaf certificate subject common name",
 	"subject_dn":            "Leaf certificate subject distinguished name",
