@@ -278,6 +278,33 @@ func TestGetTemplateOutputLocationRoutesIgnoreFile(t *testing.T) {
 	require.Equal(t, cfg.GetActiveIgnoreFilePath(), writePath)
 }
 
+func TestWriteTemplateOutputValidatesIgnoreFile(t *testing.T) {
+	previousConfig := config.DefaultConfig
+	templatesDir := t.TempDir()
+	cfg := &config.Config{}
+	cfg.SetTemplatesDir(templatesDir)
+	config.DefaultConfig = cfg
+	t.Cleanup(func() { config.DefaultConfig = previousConfig })
+
+	path := cfg.GetActiveIgnoreFilePath()
+	valid := []byte("tags: [weak]\n")
+	require.NoError(t, os.WriteFile(path, valid, 0o600))
+
+	_, err := writeTemplateOutput(templatesDir, path, []byte("<html>blocked</html>\n"), 0o644)
+	require.Error(t, err)
+
+	got, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, valid, got)
+
+	payload := []byte("files: [blocked.yaml]\n")
+	_, err = writeTemplateOutput(templatesDir, path, payload, 0o644)
+	require.NoError(t, err)
+	got, err = os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, payload, got)
+}
+
 func TestCommitTemplateVersionRestoresMemoryOnWriteFailure(t *testing.T) {
 	stateDir := filepath.Join(t.TempDir(), "state")
 	require.NoError(t, os.WriteFile(stateDir, nil, 0o600))

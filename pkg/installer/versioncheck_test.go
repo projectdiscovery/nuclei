@@ -1,14 +1,23 @@
 package installer
 
 import (
+	"io"
+	"net/http"
 	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/generic"
 	"github.com/stretchr/testify/require"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 func TestVersionCheck(t *testing.T) {
 	ignoreHash, err := NucleiVersionCheck()
@@ -20,32 +29,85 @@ func TestVersionCheck(t *testing.T) {
 	}
 }
 
-func TestWriteNucleiIgnoreFile(t *testing.T) {
-	valid := []byte("tags:\n  - dos\nfiles:\n  - http/test.yaml\n")
+func TestUpdateIgnoreFileRejectsHTMLAndPreservesExisting(t *testing.T) {
+	html := []byte("<!DOCTYPE HTML>\n<html>\n<head>\n<meta name=\"description\" content=\"Zscaler: blocked\">\n</head>\n</html>\n")
+	withIgnoreDownload(t, http.StatusOK, html)
 
-	t.Run("valid ignore file", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), config.NucleiIgnoreFileName)
-		require.NoError(t, writeNucleiIgnoreFile(path, valid))
+	cfg := config.DefaultConfig
+	root := t.TempDir()
+	previous := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(previous) })
+	cfg.SetTemplatesDir(root)
 
-		got, err := os.ReadFile(path)
-		require.NoError(t, err)
-		require.Equal(t, valid, got)
+	valid := []byte("tags: [weak]\nfiles: [blocked.yaml]\n")
+	path := cfg.GetActiveIgnoreFilePath()
+	require.NoError(t, os.WriteFile(path, valid, 0o600))
+
+	err := UpdateIgnoreFile()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), path)
+
+	got, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, valid, got)
+}
+
+func TestUpdateIgnoreFileWritesValidContents(t *testing.T) {
+	payload := []byte("tags: [dos]\nfiles: [http/test.yaml]\n")
+	withIgnoreDownload(t, http.StatusOK, payload)
+
+	cfg := config.DefaultConfig
+	root := t.TempDir()
+	previous := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(previous) })
+	cfg.SetTemplatesDir(root)
+
+	require.NoError(t, UpdateIgnoreFile())
+
+	got, err := os.ReadFile(cfg.GetActiveIgnoreFilePath())
+	require.NoError(t, err)
+	require.Equal(t, payload, got)
+}
+
+func TestUpdateIgnoreFileRejectsUnexpectedStatus(t *testing.T) {
+	withIgnoreDownload(t, http.StatusForbidden, []byte("tags: [weak]\n"))
+
+	cfg := config.DefaultConfig
+	root := t.TempDir()
+	previous := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(previous) })
+	cfg.SetTemplatesDir(root)
+
+	err := UpdateIgnoreFile()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unexpected HTTP status")
+	_, statErr := os.Stat(cfg.GetActiveIgnoreFilePath())
+	require.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func withIgnoreDownload(t *testing.T, status int, body []byte) {
+	t.Helper()
+
+	previous := retryableHttpClient
+	t.Cleanup(func() { retryableHttpClient = previous })
+
+	retryableHttpClient = retryablehttp.NewClient(retryablehttp.Options{
+		RetryMax: 0,
+		HttpClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				header := make(http.Header)
+				header.Set("Content-Type", "text/plain")
+				return &http.Response{
+					StatusCode: status,
+					Status:     http.StatusText(status),
+					Body:       io.NopCloser(strings.NewReader(string(body))),
+					Header:     header,
+					Request:    req,
+					Proto:      "HTTP/1.1",
+					ProtoMajor: 1,
+					ProtoMinor: 1,
+				}, nil
+			}),
+		},
 	})
-
-	invalid := map[string][]byte{
-		"proxy html response": []byte("<!DOCTYPE HTML>\n<html>\n<head>\n<meta name=\"description\" content=\"Zscaler: blocked\">\n</head>\n</html>\n"),
-		"unrelated yaml":      []byte("error: access denied\nmessage: blocked by proxy\n"),
-	}
-	for name, data := range invalid {
-		t.Run(name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), config.NucleiIgnoreFileName)
-			require.NoError(t, os.WriteFile(path, valid, 0600))
-
-			require.Error(t, writeNucleiIgnoreFile(path, data))
-
-			got, err := os.ReadFile(path)
-			require.NoError(t, err)
-			require.Equal(t, valid, got, "invalid download must not overwrite the existing ignore file")
-		})
-	}
 }

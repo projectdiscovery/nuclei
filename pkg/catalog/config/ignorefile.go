@@ -1,14 +1,24 @@
 package config
 
 import (
+	"bytes"
 	"crypto/md5"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"reflect"
+	"slices"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 )
+
+// maxIgnoreFileBytes caps untrusted ignore-file payloads (PDTM downloads,
+// template archives) before YAML decode.
+const maxIgnoreFileBytes = 1 << 20
+
+var errMultipleIgnoreFileDocuments = errors.New("multiple YAML documents are not supported")
 
 // IgnoreFile is an internal nuclei template blocking configuration file
 type IgnoreFile struct {
@@ -30,19 +40,9 @@ func ReadIgnoreFile() (IgnoreFile, error) {
 		_ = file.Close()
 	}()
 
-	decoder := yaml.NewDecoder(file)
-	ignore := IgnoreFile{}
-	if err := decoder.Decode(&ignore); err != nil {
+	ignore, err := decodeIgnoreFile(file, false)
+	if err != nil {
 		return IgnoreFile{}, fmt.Errorf("error parsing %q: %w", path, err)
-	}
-
-	var additionalDocument any
-	if err := decoder.Decode(&additionalDocument); !errors.Is(err, io.EOF) {
-		if err != nil {
-			return IgnoreFile{}, fmt.Errorf("error parsing %q: %w", path, err)
-		}
-
-		return IgnoreFile{}, fmt.Errorf("error parsing %q: multiple YAML documents are not supported", path)
 	}
 
 	return ignore, nil
@@ -50,11 +50,90 @@ func ReadIgnoreFile() (IgnoreFile, error) {
 
 // WriteActiveIgnoreFile atomically replaces the active root ignore file.
 func (c *Config) WriteActiveIgnoreFile(data []byte) error {
-	if err := atomicWriteFile(c.GetActiveIgnoreFilePath(), data, 0o600); err != nil {
+	path := c.GetActiveIgnoreFilePath()
+	if err := validateIgnoreFileContents(data); err != nil {
+		return fmt.Errorf("invalid active .nuclei-ignore file %q: %w", path, err)
+	}
+
+	if err := atomicWriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write active .nuclei-ignore file: %w", err)
 	}
 
 	return nil
+}
+
+func validateIgnoreFileContents(data []byte) error {
+	if len(data) > maxIgnoreFileBytes {
+		return fmt.Errorf("payload exceeds %d bytes", maxIgnoreFileBytes)
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return errors.New("empty document")
+	}
+
+	if _, err := decodeIgnoreFile(bytes.NewReader(data), true); err != nil {
+		if errors.Is(err, io.EOF) {
+			return errors.New("empty document")
+		}
+		return err
+	}
+
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var raw map[string]any
+	if err := decoder.Decode(&raw); err != nil {
+		return err
+	}
+	if raw == nil {
+		return errors.New("document must be a YAML mapping")
+	}
+
+	allowed := ignoreFileFieldNames()
+	found := false
+	for key := range raw {
+		if !slices.Contains(allowed, key) {
+			return fmt.Errorf("unknown field %q", key)
+		}
+		found = true
+	}
+	if !found {
+		return fmt.Errorf("document must define at least one of %s", strings.Join(allowed, ", "))
+	}
+
+	return nil
+}
+
+func decodeIgnoreFile(r io.Reader, knownFields bool) (IgnoreFile, error) {
+	decoder := yaml.NewDecoder(r)
+	decoder.KnownFields(knownFields)
+
+	ignore := IgnoreFile{}
+	if err := decoder.Decode(&ignore); err != nil {
+		return IgnoreFile{}, err
+	}
+
+	var additionalDocument any
+	if err := decoder.Decode(&additionalDocument); !errors.Is(err, io.EOF) {
+		if err != nil {
+			return IgnoreFile{}, err
+		}
+
+		return IgnoreFile{}, errMultipleIgnoreFileDocuments
+	}
+
+	return ignore, nil
+}
+
+func ignoreFileFieldNames() []string {
+	typ := reflect.TypeOf(IgnoreFile{})
+	names := make([]string, 0, typ.NumField())
+	for i := 0; i < typ.NumField(); i++ {
+		name, _, _ := strings.Cut(typ.Field(i).Tag.Get("yaml"), ",")
+		if name == "" || name == "-" {
+			continue
+		}
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }
 
 // IgnoreFileNeedsUpdate reports whether the active ignore file is

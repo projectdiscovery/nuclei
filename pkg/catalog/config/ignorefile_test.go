@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -105,6 +106,77 @@ func TestReadIgnoreFileParsesActiveFile(t *testing.T) {
 	}
 	if len(ignore.Files) != 1 || ignore.Files[0] != "blocked.yaml" {
 		t.Fatalf("ignore files = %v, want [blocked.yaml]", ignore.Files)
+	}
+}
+
+func TestWriteActiveIgnoreFileRejectsInvalidPayloads(t *testing.T) {
+	root := setActiveIgnoreFileRoot(t)
+	cfg := DefaultConfig
+	path := filepath.Join(root, NucleiIgnoreFileName)
+	valid := []byte("tags: [weak]\nfiles: [blocked.yaml]\n")
+	if err := os.WriteFile(path, valid, 0o600); err != nil {
+		t.Fatalf("seed ignore file: %v", err)
+	}
+
+	cases := map[string][]byte{
+		"proxy html":          []byte("<!DOCTYPE HTML>\n<html>\n<head>\n<meta name=\"description\" content=\"Zscaler: blocked\">\n</head>\n</html>\n"),
+		"unrelated yaml":      []byte("error: access denied\nmessage: blocked by proxy\n"),
+		"empty":               []byte("   \n"),
+		"empty mapping":       []byte("{}\n"),
+		"null document":       []byte("null\n"),
+		"template yaml":       []byte("id: example\ninfo:\n  name: example\n"),
+		"additional document": []byte("tags: [weak]\n---\nfiles: [blocked.yaml]\n"),
+		"malformed yaml":      []byte("tags: ["),
+		"oversized":           bytes.Repeat([]byte("a"), maxIgnoreFileBytes+1),
+	}
+
+	for name, payload := range cases {
+		t.Run(name, func(t *testing.T) {
+			err := cfg.WriteActiveIgnoreFile(payload)
+			if err == nil {
+				t.Fatal("write invalid ignore file succeeded")
+			}
+			if message := err.Error(); !strings.Contains(message, strconv.Quote(path)) {
+				t.Fatalf("invalid write error = %q, want active path", message)
+			}
+			got, readErr := os.ReadFile(path)
+			if readErr != nil {
+				t.Fatalf("read ignore file: %v", readErr)
+			}
+			if !bytes.Equal(got, valid) {
+				t.Fatalf("invalid payload overwrote ignore file: got %q", got)
+			}
+		})
+	}
+}
+
+func TestWriteActiveIgnoreFileAcceptsKnownShapes(t *testing.T) {
+	root := setActiveIgnoreFileRoot(t)
+	cfg := DefaultConfig
+	path := filepath.Join(root, NucleiIgnoreFileName)
+
+	cases := map[string][]byte{
+		"tags and files": []byte("tags: [weak]\nfiles: [blocked.yaml]\n"),
+		"tags only":      []byte("tags: []\n"),
+		"files only":     []byte("files: [blocked.yaml]\n"),
+	}
+
+	for name, payload := range cases {
+		t.Run(name, func(t *testing.T) {
+			if err := cfg.WriteActiveIgnoreFile(payload); err != nil {
+				t.Fatalf("write ignore file: %v", err)
+			}
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read ignore file: %v", err)
+			}
+			if !bytes.Equal(got, payload) {
+				t.Fatalf("ignore file = %q, want %q", got, payload)
+			}
+			if _, err := ReadIgnoreFile(); err != nil {
+				t.Fatalf("read back written ignore file: %v", err)
+			}
+		})
 	}
 }
 

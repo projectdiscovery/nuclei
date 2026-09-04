@@ -492,6 +492,10 @@ func (t *TemplateManager) getTemplateOutputLocation(templateDir, uri string, f f
 	return templateDir, newPath
 }
 
+func isActiveIgnoreFilePath(writePath string) bool {
+	return filepath.Clean(writePath) == filepath.Clean(config.DefaultConfig.GetActiveIgnoreFilePath())
+}
+
 // writeTemplatesToDisk writes release outputs to disk and returns their digests.
 // The returned map includes every successfully written output; ownership
 // reconciliation filters it to official template paths.
@@ -595,6 +599,14 @@ type templateOutputWriteResult struct {
 
 func writeTemplateOutput(rootDir, writePath string, contents []byte, mode fs.FileMode) (templateOutputWriteResult, error) {
 	var result templateOutputWriteResult
+	if isActiveIgnoreFilePath(writePath) {
+		if err := config.DefaultConfig.WriteActiveIgnoreFile(contents); err != nil {
+			return result, err
+		}
+		result.touchedDirectories = append(result.touchedDirectories, filepath.Dir(writePath))
+		return result, nil
+	}
+
 	relativePath, err := filepath.Rel(rootDir, writePath)
 	if err != nil {
 		return result, err
