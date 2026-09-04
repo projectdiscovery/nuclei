@@ -212,6 +212,11 @@ type Options struct {
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.
 	PerHostRateLimit bool
+	// EnableHTTPCache enables HTTP caching (RFC 9111) for requests
+	//
+	// NOTE(dwisiswant0): this is experimental and might be enabled by default
+	// in the future releases.
+	EnableHTTPCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -578,6 +583,7 @@ func (options *Options) Copy() *Options {
 		DisableHTTPProbe:               options.DisableHTTPProbe,
 		PreflightPortScan:              options.PreflightPortScan,
 		PerHostRateLimit:               options.PerHostRateLimit,
+		EnableHTTPCache:                options.EnableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,

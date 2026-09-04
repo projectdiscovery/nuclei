@@ -33,8 +33,9 @@ clean:
 
 go-build: clean
 go-build:
-	CGO_ENABLED=0 $(GOBUILD) -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
-		 -o '${GOBUILD_OUTPUT}${GOBUILD_OUTPUT_EXT}' $(GOBUILD_PACKAGES)
+	CGO_ENABLED=0 GOEXPERIMENT=greenteagc GODEBUG=tlssha1=1 $(GOBUILD) \
+		-trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+		-o '${GOBUILD_OUTPUT}${GOBUILD_OUTPUT_EXT}' $(GOBUILD_PACKAGES)
 
 build: GOFLAGS = -pgo=auto
 build: GOBUILD_OUTPUT = ./bin/nuclei
