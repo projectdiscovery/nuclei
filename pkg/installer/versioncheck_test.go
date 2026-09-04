@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -45,7 +46,7 @@ func TestUpdateIgnoreFileRejectsHTMLAndPreservesExisting(t *testing.T) {
 
 	err := UpdateIgnoreFile()
 	require.Error(t, err)
-	require.Contains(t, err.Error(), path)
+	require.Contains(t, err.Error(), fmt.Sprintf("%q", path))
 
 	got, err := os.ReadFile(path)
 	require.NoError(t, err)
