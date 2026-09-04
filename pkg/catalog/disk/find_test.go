@@ -1,9 +1,9 @@
 package disk
 
 import (
-	"testing/fstest"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/require"
 )
@@ -55,4 +55,59 @@ func TestFindGlobPathMatchesResolvesContainedPath(t *testing.T) {
 	matches, err := cat.findGlobPathMatches(filepath.Join(templatesDir, "http", "*.yaml"), map[string]struct{}{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"http/test.yaml"}, matches)
+}
+
+func TestGetTemplatesPathAllowsNamesContainingKnownConfigFiles(t *testing.T) {
+	const templatePath = "http/cves.json.yaml"
+	catalog := NewFSCatalog(fstest.MapFS{
+		templatePath: {Data: []byte("id: test")},
+	}, t.TempDir())
+
+	for _, definitions := range [][]string{{templatePath}, {"http"}} {
+		templates, errs := catalog.GetTemplatesPath(definitions)
+		require.Empty(t, errs)
+		require.Equal(t, []string{templatePath}, templates)
+	}
+}
+
+func TestGetTemplatesPathSkipsKnownConfigFiles(t *testing.T) {
+	catalog := NewFSCatalog(fstest.MapFS{
+		"http/cves.json.yaml":  {Data: []byte("id: tmpl")},
+		"http/ok.yaml":         {Data: []byte("id: ok")},
+		"cves.json":            {Data: []byte("[]")},
+		"contributors.json":    {Data: []byte("[]")},
+		"TEMPLATES-STATS.json": {Data: []byte("{}")},
+	}, t.TempDir())
+
+	templates, errs := catalog.GetTemplatesPath([]string{"cves.json"})
+	require.Empty(t, errs)
+	require.Empty(t, templates)
+
+	templates, errs = catalog.GetTemplatesPath([]string{"."})
+	require.Empty(t, errs)
+	require.ElementsMatch(t, []string{"http/cves.json.yaml", "http/ok.yaml"}, templates)
+}
+
+func TestGetTemplatesPathRemoteDefinitionsUsePathExtension(t *testing.T) {
+	catalog := NewFSCatalog(fstest.MapFS{}, t.TempDir())
+
+	yamlURL := "https://example.com/templates/cves.json.yaml"
+	templates, errs := catalog.GetTemplatesPath([]string{yamlURL})
+	require.Empty(t, errs)
+	require.Equal(t, []string{yamlURL}, templates)
+
+	queryURL := "https://example.com/templates/ok.yaml?ref=cves.json"
+	templates, errs = catalog.GetTemplatesPath([]string{queryURL})
+	require.Empty(t, errs)
+	require.Equal(t, []string{queryURL}, templates)
+
+	configURL := "https://example.com/nuclei-templates/cves.json"
+	templates, errs = catalog.GetTemplatesPath([]string{configURL})
+	require.Empty(t, errs)
+	require.Empty(t, templates)
+
+	jsonlURL := "https://example.com/data.jsonl"
+	templates, errs = catalog.GetTemplatesPath([]string{jsonlURL})
+	require.NotContains(t, templates, jsonlURL)
+	require.Contains(t, errs, jsonlURL)
 }

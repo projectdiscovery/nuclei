@@ -89,6 +89,48 @@ func TestIsTemplate(t *testing.T) {
 			rootDir: "",
 			want:    false,
 		},
+		{
+			name:    "excluded config file nested slash path",
+			fpath:   "http/cves.json",
+			rootDir: "",
+			want:    false,
+		},
+		{
+			name:    "excluded config file native separators",
+			fpath:   filepath.Join("http", "cves.json"),
+			rootDir: "",
+			want:    false,
+		},
+		{
+			name:    "excluded config file case-insensitive",
+			fpath:   "CVES.JSON",
+			rootDir: "",
+			want:    false,
+		},
+		{
+			name:    "template name containing config filename",
+			fpath:   "http/cves.json.yaml",
+			rootDir: "",
+			want:    true,
+		},
+		{
+			name:    "template name containing contributors.json",
+			fpath:   "http/contributors.json.yaml",
+			rootDir: "",
+			want:    true,
+		},
+		{
+			name:    "template name containing TEMPLATES-STATS.json",
+			fpath:   "http/TEMPLATES-STATS.json.yaml",
+			rootDir: "",
+			want:    true,
+		},
+		{
+			name:    "native separators containing config filename",
+			fpath:   filepath.Join("http", "cves.json.yaml"),
+			rootDir: "",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -132,4 +174,51 @@ info:
 	require.NoError(t, err)
 	require.NotContains(t, index, "custom-template", "custom template directory should be excluded")
 	require.Contains(t, index, "sibling-template", "custom directory sibling prefix should be indexed")
+}
+
+func TestIsKnownConfigFile(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{path: "cves.json", want: true},
+		{path: "contributors.json", want: true},
+		{path: "TEMPLATES-STATS.json", want: true},
+		{path: "templates-stats.json", want: true},
+		{path: "http/cves.json", want: true},
+		{path: filepath.Join("http", "cves.json"), want: true},
+		{path: "https://example.com/nuclei-templates/cves.json", want: true},
+		{path: "cves.json.yaml", want: false},
+		{path: "http/cves.json.yaml", want: false},
+		{path: filepath.Join("http", "cves.json.yaml"), want: false},
+		{path: "http/contributors.json.yaml", want: false},
+		{path: "http/TEMPLATES-STATS.json.yaml", want: false},
+		{path: "https://example.com/http/cves.json.yaml", want: false},
+		{path: "https://example.com/t.yaml?ref=cves.json", want: false},
+		{path: "https://example.com/cves.json?download=1", want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			require.Equal(t, tt.want, IsKnownConfigFile(tt.path), tt.path)
+		})
+	}
+}
+
+func TestHasSupportedTemplateExtension(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{path: "http/cves.json.yaml", want: true},
+		{path: "http/ok.json", want: true},
+		{path: "https://example.com/t.yaml", want: true},
+		{path: "https://example.com/t.yaml?ref=cves.json", want: true},
+		{path: "https://example.com/data.jsonl", want: false},
+		{path: "readme.md", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			require.Equal(t, tt.want, HasSupportedTemplateExtension(tt.path), tt.path)
+		})
+	}
 }
