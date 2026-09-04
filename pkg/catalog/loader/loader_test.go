@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -58,6 +59,37 @@ func TestLoadTemplates(t *testing.T) {
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
 	})
+}
+
+func TestLoadTemplatesWithTagsRejectsCorruptIgnoreFileInValidationMode(t *testing.T) {
+	root := t.TempDir()
+	ignoreFilePath := filepath.Join(root, config.NucleiIgnoreFileName)
+	require.NoError(t, os.WriteFile(ignoreFilePath, []byte("tags: ["), 0o600))
+
+	cfg := config.DefaultConfig
+	oldRoot := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(oldRoot) })
+	cfg.SetTemplatesDir(root)
+
+	options := testutils.DefaultOptions.Copy()
+	options.Validate = true
+	metadataIndex, err := metadataindex.NewIndex(t.TempDir())
+	require.NoError(t, err)
+
+	store, err := New(&Config{
+		Catalog: disk.NewCatalog(""),
+		ExecutorOptions: &protocols.ExecutorOptions{
+			Options: options,
+			Parser:  templates.NewParser(),
+		},
+		Logger:        options.Logger,
+		MetadataIndex: metadataIndex,
+	})
+	require.NoError(t, err)
+
+	_, err = store.LoadTemplatesWithTags(nil, nil)
+	require.ErrorContains(t, err, "error parsing")
+	require.ErrorContains(t, err, strconv.Quote(ignoreFilePath))
 }
 
 func TestNewUsesConfiguredMetadataIndex(t *testing.T) {
