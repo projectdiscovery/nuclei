@@ -861,7 +861,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if clientErr != nil {
 				return errors.Wrap(clientErr, "could not get http client")
 			}
-			executingClient = httpclient
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a
@@ -887,7 +886,24 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			resp, err = httpclient.Do(generatedRequest.request)
+			var desyncDetected bool
+			resp, executingClient, desyncDetected, err = httpclientpool.DoWithDesyncRecovery(
+				httpclient, generatedRequest.request, request.options.Options, connConfig, hostname,
+			)
+			if desyncDetected {
+				httpclient = executingClient
+				if err != nil {
+					gologger.Debug().Msgf(
+						"[%s] Detected an implausibly early response for %s, but recovery failed: %v",
+						request.options.TemplateID, hostname, err,
+					)
+				} else {
+					gologger.Debug().Msgf(
+						"[%s] Recovered an implausibly early response for %s with connection reuse disabled",
+						request.options.TemplateID, hostname,
+					)
+				}
+			}
 
 			// If we forced http->https from a previous detection and the corrected
 			// request failed (e.g. a false positive where the port actually speaks
@@ -895,7 +911,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			// other templates hitting the same host:port are not affected, and retry
 			// once. This keeps the optimization while preventing a single
 			// wrong detection from silently dropping findings at scale.
-			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
+			if err != nil &&
+				!errors.Is(err, httpclientpool.ErrDesyncedResponse) &&
+				httpsCorrectionTracker != nil &&
+				generatedRequest.request != nil &&
+				generatedRequest.request.Scheme == "https" {
 				generatedRequest.request.Scheme = "http"
 				httpsCorrectionTracker.Evict(httpsCorrectionURL)
 				resp, err = httpclient.Do(generatedRequest.request)

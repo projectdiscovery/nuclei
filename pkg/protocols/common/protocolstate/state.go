@@ -215,6 +215,8 @@ func initDialers(options *types.Options) error {
 		Fastdialer:                 dialer,
 		NetworkPolicy:              networkPolicy,
 		HTTPClientPool:             httpClientPool,
+		HTTPDesyncHosts:            NewExpiringSet(time.Minute),
+		HTTPDesyncRTT:              NewExpiringDurationMap(time.Minute),
 		LocalFileAccessAllowed:     options.AllowLocalFileAccess,
 		RestrictLocalNetworkAccess: options.RestrictLocalNetworkAccess,
 		ExcludeTargets:             options.ExcludeTargets,

@@ -342,6 +342,13 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		clientKey += ":" + host
 	}
 
+	// A host caught sending unsolicited responses gets its own cache entry, so the
+	// keep-alive client already cached for it is not handed out again.
+	noReuse := IsHostDesynced(options, host)
+	if noReuse {
+		clientKey += ":noreuse"
+	}
+
 	// Fast path: lock-free cache hit.
 	if !hasExplicitJar {
 		if client, ok := pool.GetClient(clientKey); ok {
@@ -365,7 +372,8 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	maxIdleConns := maxIdleConnsPerHost
 	maxConnsPerHost := 0 // unlimited by default; the SPM handler controls concurrency
 
-	disableKeepAlives := configuration.Connection != nil && configuration.Connection.DisableKeepAlive
+	disableKeepAlives := noReuse ||
+		(configuration.Connection != nil && configuration.Connection.DisableKeepAlive)
 
 	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
 	if configuration.ResponseHeaderTimeout != 0 {
@@ -461,7 +469,10 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 			}
 		}
 
-		return &connTrackingTransport{base: transport}, nil
+		tracked := &connTrackingTransport{base: transport}
+		return &desyncDetectingTransport{
+			base: tracked, enabled: !disableKeepAlives, baselines: dialers.HTTPDesyncRTT,
+		}, nil
 	}
 
 	redirectFlow := configuration.RedirectFlow
@@ -515,7 +526,8 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		if jar != nil {
 			client.HTTPClient.Jar = jar
 		}
-		client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
+		hostSprayRetryPolicy := retryablehttp.HostSprayRetryPolicy()
+		client.CheckRetry = withoutDesyncRetry(hostSprayRetryPolicy)
 		return client, nil
 	}
 
@@ -529,6 +541,18 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	// Singleflight creation: concurrent first requests to the same host build
 	// exactly one client instead of racing Get/Set and orphaning transports.
 	return pool.GetOrCreateClient(clientKey, transportKey, createTransport, createClient)
+}
+
+func withoutDesyncRetry(policy retryablehttp.CheckRetry) retryablehttp.CheckRetry {
+	return func(ctx context.Context, response *http.Response, err error) (bool, error) {
+		var desyncErr *DesyncError
+		if errors.As(err, &desyncErr) {
+			// Recovery must switch to the no-reuse client; retrying inside
+			// retryablehttp would stay on this poisoned transport.
+			return false, nil
+		}
+		return policy(ctx, response, err)
+	}
 }
 
 // sharedTLSSessionCache is shared by all pooled transports so TLS session
