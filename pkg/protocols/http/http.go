@@ -175,8 +175,8 @@ type Request struct {
 	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
 
 	// description: |
-	//   DisableHTTPCache disables HTTP caching for this request, overriding global cache settings.
-	DisableHTTPCache bool `yaml:"disable-http-cache,omitempty" json:"disable-http-cache,omitempty" jsonschema:"title=disable HTTP cache,description=Disables HTTP caching for this request"`
+	//   DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset.
+	DisableHTTPCache bool `yaml:"disable-http-cache,omitempty" json:"disable-http-cache,omitempty" jsonschema:"title=disable HTTP cache,description=Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"`
 
 	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring

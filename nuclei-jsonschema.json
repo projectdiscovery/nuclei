@@ -883,7 +883,7 @@
         "disable-http-cache": {
           "type": "boolean",
           "title": "disable HTTP cache",
-          "description": "Disables HTTP caching for this request"
+          "description": "Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"
         },
         "read-all": {
           "type": "boolean",
