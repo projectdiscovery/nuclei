@@ -139,3 +139,42 @@ func TestTransportCaches200(t *testing.T) {
 		t.Fatalf("server hits = %d, want 1", got)
 	}
 }
+
+func TestDiskCacheCloses(t *testing.T) {
+	dir := t.TempDir()
+	c, db, err := openDiskCache(dir, defaultMaxCacheBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := dumpedResponse(t, http.StatusOK)
+	c.Set("a", body)
+	if _, ok := c.Get("a"); !ok {
+		t.Fatal("value missing before close")
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	c2, db2, err := openDiskCache(dir, defaultMaxCacheBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db2.Close() })
+	if _, ok := c2.Get("a"); !ok {
+		t.Fatal("value missing after reopen")
+	}
+}
+
+func TestDiskCacheRespectsSizeCap(t *testing.T) {
+	dir := t.TempDir()
+	c, db, err := openDiskCache(dir, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	c.Set("a", dumpedResponse(t, http.StatusOK))
+	if _, ok := c.Get("a"); ok {
+		t.Fatal("stored a response over a 1-byte directory cap")
+	}
+}
