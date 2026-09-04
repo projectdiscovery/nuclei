@@ -34,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
@@ -840,6 +841,19 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				fromCache = false
 			}
 		}
+		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
+		// over a network round-trip for identical safe GET/HEAD requests.
+		if resp == nil && request.options.HTTPResponseCache != nil &&
+			input.CookieJar == nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) {
+			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+				if cached := request.options.HTTPResponseCache.Get(key, generatedRequest.request.Request); cached != nil {
+					resp = cached
+					fromCache = true
+					err = nil
+				}
+			}
+		}
 		if resp == nil {
 			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
 				return errSignature
@@ -1012,6 +1026,14 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil && !fromCache {
 			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
+			}
+		}
+		if request.options.HTTPResponseCache != nil && !fromCache &&
+			input.CookieJar == nil &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) {
+			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+				request.options.HTTPResponseCache.Set(key, resp, respChain.BodyBytes())
 			}
 		}
 	})
