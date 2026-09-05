@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -299,6 +301,51 @@ func TestWorkflowsSameStepExecutersRefreshTemplateContext(t *testing.T) {
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "foo", secondWhoami, "could not refresh workflow context into later executers in the same step")
+}
+
+func TestWorkflowSubtemplatesUnblockCancelledAcquire(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	started := make(chan struct{})
+	var startOnce sync.Once
+	block := &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+		startOnce.Do(func() { close(started) })
+		<-ctx.Context().Done()
+	}}
+
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 1}}, Workflows: []*workflows.WorkflowTemplate{
+		{Executers: []*workflows.ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, outputs: []*output.InternalWrappedEvent{
+				{OperatorsResult: &operators.Result{}, Results: []*output.ResultEvent{{}}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
+		}, Subtemplates: []*workflows.WorkflowTemplate{
+			{Executers: []*workflows.ProtocolExecuterPair{{Executer: block, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
+			{Executers: []*workflows.ProtocolExecuterPair{{Executer: &mockExecuter{result: true}, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
+		}},
+	}}
+
+	engine := &Engine{}
+	parent, cancel := context.WithCancel(context.Background())
+	input := contextargs.NewWithInput(parent, "https://test.com")
+	ctx := scan.NewScanContext(parent, input)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		engine.executeWorkflow(ctx, workflow)
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first subtemplate did not start")
+	}
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("workflow stayed blocked after cancel")
+	}
 }
 
 type mockExecuter struct {

@@ -3,10 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	inputtypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -145,4 +147,114 @@ func Test_executeTemplateWithTargets_RespectsCancellation(t *testing.T) {
 
 	var matched atomic.Bool
 	e.executeTemplateWithTargets(ctx, tpl, targets, &matched)
+}
+
+func newCancelTestEngine() *Engine {
+	opts := &types.Options{
+		TemplateThreads:         1,
+		HeadlessTemplateThreads: 1,
+		BulkSize:                1,
+		HeadlessBulkSize:        1,
+		Logger:                  gologger.DefaultLogger,
+	}
+	e := New(opts)
+	e.SetExecuterOptions(&protocols.ExecutorOptions{Logger: e.Logger, ResumeCfg: types.NewResumeCfg(), ProtocolType: tmpltypes.HTTPProtocol})
+	return e
+}
+
+type gateExecuter struct {
+	started chan struct{}
+	once    sync.Once
+}
+
+func (g *gateExecuter) Compile() error { return nil }
+func (g *gateExecuter) Requests() int  { return 1 }
+func (g *gateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+	g.once.Do(func() { close(g.started) })
+	<-ctx.Context().Done()
+	return false, ctx.Context().Err()
+}
+func (g *gateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	_, err := g.Execute(ctx)
+	return nil, err
+}
+
+func TestExecuteTemplateSprayUnblocksCancelledAcquire(t *testing.T) {
+	e := newCancelTestEngine()
+	gate := &gateExecuter{started: make(chan struct{})}
+	templatesList := []*templates.Template{{Executer: gate}, {Executer: &gateExecuter{started: make(chan struct{})}}}
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "a"}}}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		e.executeTemplateSpray(ctx, templatesList, targets)
+	}()
+
+	select {
+	case <-gate.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first template did not start")
+	}
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("executeTemplateSpray stayed blocked after cancel")
+	}
+}
+
+func TestExecuteHostSprayUnblocksCancelledAcquire(t *testing.T) {
+	e := newCancelTestEngine()
+	gate := &gateExecuter{started: make(chan struct{})}
+	templatesList := []*templates.Template{{Executer: gate}}
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "a"}, {Input: "b"}}}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		e.executeHostSpray(ctx, templatesList, targets)
+	}()
+
+	select {
+	case <-gate.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first host did not start")
+	}
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("executeHostSpray stayed blocked after cancel")
+	}
+}
+
+func TestExecuteTemplatesOnTargetUnblocksCancelledAcquire(t *testing.T) {
+	e := newCancelTestEngine()
+	gate := &gateExecuter{started: make(chan struct{})}
+	var matched atomic.Bool
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		e.executeTemplatesOnTarget(ctx, []*templates.Template{{Executer: gate}, {Executer: &gateExecuter{started: make(chan struct{})}}}, &contextargs.MetaInput{Input: "a"}, &matched)
+	}()
+
+	select {
+	case <-gate.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first template did not start")
+	}
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("executeTemplatesOnTarget stayed blocked after cancel")
+	}
 }
