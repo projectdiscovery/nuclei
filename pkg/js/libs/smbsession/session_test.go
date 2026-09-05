@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,6 +58,83 @@ func TestListDirOnFakeBackend(t *testing.T) {
 	require.Equal(t, "docs", entries[1].Name)
 	require.True(t, entries[1].IsDir)
 	require.Equal(t, "backup", fake.mounted)
+}
+
+func TestListDirContextAlreadyCancelled(t *testing.T) {
+	started := make(chan struct{})
+	hang := &hangBackend{fakeBackend: *newFakeBackend(nil), started: started, wait: make(chan struct{})}
+	sess := &Session{backend: hang, closed: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := sess.ListDirContext(ctx, "backup", ".")
+	require.ErrorIs(t, err, context.Canceled)
+	select {
+	case <-started:
+		t.Fatal("Ls must not run when the context is already cancelled")
+	default:
+	}
+}
+
+func TestListDirContextUnblocksCancelledLs(t *testing.T) {
+	started := make(chan struct{})
+	closed := make(chan struct{})
+	hang := &hangBackend{fakeBackend: *newFakeBackend(nil), started: started, wait: closed}
+	sess := &Session{backend: hang, closed: closed}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := sess.ListDirContext(ctx, "backup", ".")
+		errCh <- err
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Ls did not start")
+	}
+	cancel()
+
+	select {
+	case err := <-errCh:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(2 * time.Second):
+		t.Fatal("listing stayed blocked after cancel")
+	}
+}
+
+func TestListTreeContextUnblocksCancelledLs(t *testing.T) {
+	started := make(chan struct{})
+	closed := make(chan struct{})
+	hang := &hangBackend{fakeBackend: *newFakeBackend(nil), started: started, wait: closed}
+	sess := &Session{backend: hang, closed: closed}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := sess.ListTreeContext(ctx, "backup", ".", 2, 100)
+		errCh <- err
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Ls did not start")
+	}
+	cancel()
+
+	select {
+	case err := <-errCh:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(2 * time.Second):
+		t.Fatal("tree listing stayed blocked after cancel")
+	}
+}
+
+func TestCloseIdempotent(t *testing.T) {
+	sess := &Session{closed: make(chan struct{})}
+	sess.Close()
+	sess.Close()
 }
 
 func TestListDirRejectsEscapeAndBadShare(t *testing.T) {
@@ -171,6 +249,19 @@ type fakeBackend struct {
 	dirs    map[string][]fakeNode
 	shares  []string
 	mounted string
+}
+
+type hangBackend struct {
+	fakeBackend
+	started   chan struct{}
+	startOnce sync.Once
+	wait      <-chan struct{}
+}
+
+func (h *hangBackend) Ls(string) ([]os.FileInfo, error) {
+	h.startOnce.Do(func() { close(h.started) })
+	<-h.wait
+	return nil, context.Canceled
 }
 
 func newFakeBackend(dirs map[string][]fakeNode) *fakeBackend {

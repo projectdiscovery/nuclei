@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
@@ -57,8 +58,10 @@ type shareOpener interface {
 
 // Session wraps an authenticated goimpacket SMB client.
 type Session struct {
-	client  *gpsmb.Client
-	backend shareBackend // when set (tests), used instead of client
+	client    *gpsmb.Client
+	backend   shareBackend // when set (tests), used instead of client
+	closed    chan struct{}
+	closeOnce sync.Once
 }
 
 // Dial connects and authenticates to host:port using the execution's dialer.
@@ -107,21 +110,28 @@ func Dial(ctx context.Context, executionID, host string, port int, creds Creds) 
 		if err != nil {
 			return nil, err
 		}
-		return &Session{client: client}, nil
+		return &Session{client: client, closed: make(chan struct{})}, nil
 	}
 }
 
 // FromClient wraps an already-connected goimpacket SMB client (e.g. dcerpc's).
 func FromClient(client *gpsmb.Client) *Session {
-	return &Session{client: client}
+	return &Session{client: client, closed: make(chan struct{})}
 }
 
-// Close tears down the SMB session. Safe on nil.
+// Close tears down the SMB session. Safe on nil and idempotent.
 func (s *Session) Close() {
-	if s == nil || s.client == nil {
+	if s == nil {
 		return
 	}
-	s.client.Close()
+	s.closeOnce.Do(func() {
+		if s.closed != nil {
+			close(s.closed)
+		}
+		if s.client != nil {
+			s.client.Close()
+		}
+	})
 }
 
 // Native returns the underlying goimpacket client for advanced callers.
@@ -156,11 +166,19 @@ func (s *Session) ListShares() ([]string, error) {
 
 // ListDir lists one directory on share (share-relative path).
 func (s *Session) ListDir(share, dir string) ([]Entry, error) {
+	return s.ListDirContext(context.Background(), share, dir)
+}
+
+// ListDirContext lists one directory and stops waiting when ctx is cancelled
+// by closing the session, matching Dial.
+func (s *Session) ListDirContext(ctx context.Context, share, dir string) ([]Entry, error) {
 	ops := s.ops()
 	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
-	return listDir(ops, share, dir)
+	return s.awaitEntries(ctx, func() ([]Entry, error) {
+		return listDir(ctx, ops, share, dir)
+	})
 }
 
 // ReadFile reads a file from share, capped at maxBytes (default DefaultMaxReadBytes).
@@ -174,14 +192,51 @@ func (s *Session) ReadFile(share, filePath string, maxBytes int64) (string, erro
 
 // ListTree walks share directories up to maxDepth / maxEntries.
 func (s *Session) ListTree(share, root string, maxDepth, maxEntries int) ([]Entry, error) {
+	return s.ListTreeContext(context.Background(), share, root, maxDepth, maxEntries)
+}
+
+// ListTreeContext walks share directories and stops waiting when ctx is cancelled
+// by closing the session, matching Dial.
+func (s *Session) ListTreeContext(ctx context.Context, share, root string, maxDepth, maxEntries int) ([]Entry, error) {
 	ops := s.ops()
 	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
-	return listTree(ops, share, root, maxDepth, maxEntries)
+	return s.awaitEntries(ctx, func() ([]Entry, error) {
+		return listTree(ctx, ops, share, root, maxDepth, maxEntries)
+	})
 }
 
-func listDir(ops shareBackend, share, dir string) ([]Entry, error) {
+func (s *Session) awaitEntries(ctx context.Context, fn func() ([]Entry, error)) ([]Entry, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	type rec struct {
+		entries []Entry
+		err     error
+	}
+	ch := make(chan rec, 1)
+	go func() {
+		entries, err := fn()
+		ch <- rec{entries, err}
+	}()
+	select {
+	case <-ctx.Done():
+		s.Close()
+		<-ch
+		return nil, ctx.Err()
+	case r := <-ch:
+		return r.entries, r.err
+	}
+}
+
+func listDir(ctx context.Context, ops shareBackend, share, dir string) ([]Entry, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := RequireShareName(share); err != nil {
 		return nil, err
 	}
@@ -252,7 +307,10 @@ func readFile(ops shareBackend, share, filePath string, maxBytes int64) (string,
 	return body, nil
 }
 
-func listTree(ops shareBackend, share, root string, maxDepth, maxEntries int) ([]Entry, error) {
+func listTree(ctx context.Context, ops shareBackend, share, root string, maxDepth, maxEntries int) ([]Entry, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := RequireShareName(share); err != nil {
 		return nil, err
 	}
@@ -273,6 +331,9 @@ func listTree(ops shareBackend, share, root string, maxDepth, maxEntries int) ([
 	var out []Entry
 	var walk func(rel string, depth int) error
 	walk = func(rel string, depth int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if len(out) >= maxEntries {
 			return fmt.Errorf("tree listing exceeded max entries (%d)", maxEntries)
 		}

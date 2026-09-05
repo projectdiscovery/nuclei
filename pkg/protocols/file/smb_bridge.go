@@ -84,7 +84,7 @@ func (request *Request) enumerateSMBInputs(ctx context.Context, input string, ca
 	defer sess.Close()
 
 	if request.NoRecursive {
-		entries, err := sess.ListDir(target.Share, target.Path)
+		entries, err := sess.ListDirContext(ctx, target.Share, target.Path)
 		if err != nil {
 			return err
 		}
@@ -101,7 +101,7 @@ func (request *Request) enumerateSMBInputs(ctx context.Context, input string, ca
 		return nil
 	}
 
-	entries, err := sess.ListTree(target.Share, target.Path, smbsession.DefaultMaxTreeDepth, smbsession.DefaultMaxTreeEntries)
+	entries, err := sess.ListTreeContext(ctx, target.Share, target.Path, smbsession.DefaultMaxTreeDepth, smbsession.DefaultMaxTreeEntries)
 	if err != nil {
 		return err
 	}
