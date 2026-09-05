@@ -163,14 +163,20 @@ func (h *StopAtFirstMatchHandler[T]) FoundFirstMatch() bool {
 	return false
 }
 
-// Acquire acquires a new work
-func (h *StopAtFirstMatchHandler[T]) Acquire() {
+// Acquire acquires a new work slot. A cancelled handler context returns
+// without taking a slot so a cancelled scan does not wait on a full pool.
+func (h *StopAtFirstMatchHandler[T]) Acquire() error {
+	if err := h.ctx.Err(); err != nil {
+		return err
+	}
 	switch h.poolType {
 	case Blocking:
-		h.sgPool.Add()
+		return h.sgPool.AddWithContext(h.ctx)
 	case NonBlocking:
 		h.wgPool.Add(1)
+		return nil
 	}
+	return nil
 }
 
 // Release releases a work

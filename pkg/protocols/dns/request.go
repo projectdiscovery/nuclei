@@ -69,6 +69,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		var multiErr error
 		m := &sync.Mutex{}
 
+	payloadLoop:
 		for {
 			value, ok := iterator.Value()
 			if !ok {
@@ -77,7 +78,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 			select {
 			case <-input.Context().Done():
-				return input.Context().Err()
+				break payloadLoop
 			default:
 			}
 
@@ -89,7 +90,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 
 			value = generators.MergeMaps(vars, value)
-			swg.Add()
+			if err := swg.AddWithContext(input.Context()); err != nil {
+				break payloadLoop
+			}
 			go func(newVars map[string]interface{}) {
 				defer swg.Done()
 				if err := request.execute(input, domain, metadata, previous, newVars, callback); err != nil {
@@ -100,6 +103,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}(value)
 		}
 		swg.Wait()
+		if err := input.Context().Err(); err != nil {
+			return err
+		}
 		if multiErr != nil {
 			return multiErr
 		}

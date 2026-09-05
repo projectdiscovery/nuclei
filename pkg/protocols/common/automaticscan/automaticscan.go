@@ -124,7 +124,7 @@ func (s *Service) Close() bool {
 }
 
 // Execute automatic scan on each target with -bs host concurrency
-func (s *Service) Execute() error {
+func (s *Service) Execute(ctx context.Context) error {
 	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
 	// setup host concurrency
 	sg, err := syncutil.New(syncutil.WithSize(s.opts.Options.BulkSize))
@@ -132,23 +132,30 @@ func (s *Service) Execute() error {
 		return err
 	}
 	s.target.Iterate(func(value *contextargs.MetaInput) bool {
-		sg.Add()
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+		if err := sg.AddWithContext(ctx); err != nil {
+			return false
+		}
 		go func(input *contextargs.MetaInput) {
 			defer sg.Done()
-			s.executeAutomaticScanOnTarget(input)
+			s.executeAutomaticScanOnTarget(ctx, input)
 		}(value)
 		return true
 	})
 	sg.Wait()
-	return nil
+	return ctx.Err()
 }
 
 // executeAutomaticScanOnTarget executes automatic scan on given target
-func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
+func (s *Service) executeAutomaticScanOnTarget(ctx context.Context, input *contextargs.MetaInput) {
 	// get tags using wappalyzer
 	tagsFromWappalyzer := s.getTagsUsingWappalyzer(input)
 	// get tags using detection templates
-	tagsFromDetectTemplates, matched := s.getTagsUsingDetectionTemplates(input)
+	tagsFromDetectTemplates, matched := s.getTagsUsingDetectionTemplates(ctx, input)
 	if matched > 0 {
 		s.hasResults.Store(true)
 	}
@@ -188,7 +195,7 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
 	eng.SetExecuterOptions(execOptions)
 
-	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
+	tmp := eng.ExecuteScanWithOpts(ctx, finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
 	s.hasResults.Store(tmp.Load())
 }
 
@@ -244,9 +251,7 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 }
 
 // getTagsUsingDetectionTemplates returns tags using detection templates
-func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) ([]string, int) {
-	ctx := context.Background()
-
+func (s *Service) getTagsUsingDetectionTemplates(ctx context.Context, input *contextargs.MetaInput) ([]string, int) {
 	ctxArgs := contextargs.NewWithInput(ctx, input.Input)
 
 	// execute tech detection templates on target
@@ -256,7 +261,9 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 	counter := atomic.Uint32{}
 
 	for _, t := range s.techTemplates {
-		sg.Add()
+		if err := sg.AddWithContext(ctx); err != nil {
+			break
+		}
 		go func(template *templates.Template) {
 			defer sg.Done()
 			ctx := scan.NewScanContext(ctx, ctxArgs)
