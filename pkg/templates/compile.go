@@ -282,6 +282,9 @@ func cacheSafeExecutorOptions(options *protocols.ExecutorOptions) *protocols.Exe
 	}
 
 	safeOptions := options.Copy()
+	safeOptions.Variables = cloneTemplateVariables(options.Variables)
+	safeOptions.Constants = cloneTemplateConstants(options.Constants)
+	safeOptions.ResumeCfg = nil
 	safeOptions.TemplateVerificationCallback = nil
 	safeOptions.Output = nil
 	safeOptions.IssuesClient = nil
@@ -428,11 +431,11 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 	newBase.RawTemplate = tplCopy.Options.RawTemplate
 
 	if tplCopy.Options.Variables.Len() > 0 {
-		newBase.Variables = tplCopy.Options.Variables
+		newBase.Variables = cloneTemplateVariables(tplCopy.Options.Variables)
 	}
 
 	if len(tplCopy.Options.Constants) > 0 {
-		newBase.Constants = tplCopy.Options.Constants
+		newBase.Constants = cloneTemplateConstants(tplCopy.Options.Constants)
 	}
 
 	tplCopy.Options = newBase

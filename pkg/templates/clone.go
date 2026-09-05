@@ -3,6 +3,7 @@ package templates
 import (
 	"reflect"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
 
@@ -21,16 +22,31 @@ func cloneTemplate(template *Template) *Template {
 	visited := make(map[cloneVisit]reflect.Value)
 	cloned := cloneTemplateValue(reflect.ValueOf(template), visited)
 	clonedTemplate := cloned.Interface().(*Template)
-	clonedTemplate.Variables.InsertionOrderedStringMap = *utils.NewEmptyInsertionOrderedStringMap(template.Variables.Len())
-	template.Variables.ForEach(func(key string, value interface{}) {
+	clonedTemplate.Variables = cloneTemplateVariables(template.Variables)
+	return clonedTemplate
+}
+
+func cloneTemplateVariables(src variables.Variable) variables.Variable {
+	dst := variables.Variable{LazyEval: src.LazyEval}
+	dst.InsertionOrderedStringMap = *utils.NewEmptyInsertionOrderedStringMap(src.Len())
+	visited := make(map[cloneVisit]reflect.Value)
+	src.ForEach(func(key string, value interface{}) {
 		clonedValue := cloneTemplateValue(reflect.ValueOf(value), visited)
 		if clonedValue.IsValid() {
-			clonedTemplate.Variables.Set(key, clonedValue.Interface())
+			dst.Set(key, clonedValue.Interface())
 		} else {
-			clonedTemplate.Variables.Set(key, nil)
+			dst.Set(key, nil)
 		}
 	})
-	return clonedTemplate
+	return dst
+}
+
+func cloneTemplateConstants(src map[string]interface{}) map[string]interface{} {
+	if src == nil {
+		return nil
+	}
+	cloned := cloneTemplateValue(reflect.ValueOf(src), make(map[cloneVisit]reflect.Value))
+	return cloned.Interface().(map[string]interface{})
 }
 
 func cloneTemplateValue(value reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {

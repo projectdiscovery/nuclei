@@ -704,6 +704,61 @@ func TestParseCompiledCacheDoesNotRetainExecutionOptions(t *testing.T) {
 	require.NotSame(t, cached.RequestsHTTP[0].Options(), second.RequestsHTTP[0].Options())
 }
 
+func TestParseCompiledCacheClonesVariablesAndConstants(t *testing.T) {
+	setup()
+
+	templatePath := filepath.Join(t.TempDir(), "vars.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: cache-vars
+
+info:
+  name: Cache Vars
+  author: pdteam
+  severity: info
+
+variables:
+  token: original
+
+constants:
+  flag: keep
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600))
+
+	parser := templates.NewParser()
+	firstOptions := executerOpts.Copy()
+	firstOptions.Parser = parser
+	first, err := templates.Parse(templatePath, nil, firstOptions)
+	require.NoError(t, err)
+	require.Equal(t, "original", first.Options.Variables.GetAll()["token"])
+
+	cached, err := parser.CompiledCache().Get(templatePath)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+	require.Equal(t, "original", cached.Options.Variables.GetAll()["token"])
+	require.Equal(t, "keep", cached.Options.Constants["flag"])
+
+	first.Options.Variables.Set("token", "from-first")
+	first.Options.Constants["flag"] = "from-first"
+	require.Equal(t, "original", cached.Options.Variables.GetAll()["token"])
+	require.Equal(t, "keep", cached.Options.Constants["flag"])
+
+	secondOptions := executerOpts.Copy()
+	secondOptions.Parser = parser
+	second, err := templates.Parse(templatePath, nil, secondOptions)
+	require.NoError(t, err)
+	second.Options.Variables.Set("token", "mutated")
+	second.Options.Constants["flag"] = "mutated"
+	require.Equal(t, "original", cached.Options.Variables.GetAll()["token"])
+	require.Equal(t, "keep", cached.Options.Constants["flag"])
+	require.Equal(t, "from-first", first.Options.Variables.GetAll()["token"])
+	require.Equal(t, "from-first", first.Options.Constants["flag"])
+	require.Equal(t, "mutated", second.Options.Variables.GetAll()["token"])
+	require.Equal(t, "mutated", second.Options.Constants["flag"])
+}
+
 func TestParseCompiledCacheRebuildsWorkflowPerExecution(t *testing.T) {
 	setup()
 
