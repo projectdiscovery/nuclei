@@ -2,22 +2,20 @@ package config
 
 import (
 	"bytes"
-	"crypto/md5"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 
+	"github.com/adrg/xdg"
 	"github.com/projectdiscovery/gologger"
 	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
-	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
 // DefaultConfig is the default nuclei configuration
@@ -27,32 +25,44 @@ var DefaultConfig *Config
 type Config struct {
 	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
 
-	// customtemplates exists in templates directory with the name of custom-templates provider
-	// below custom paths are absolute paths to respective custom-templates directories
+	// Custom template paths are absolute provider-specific directories under the
+	// active template root.
 	CustomS3TemplatesDirectory     string `json:"custom-s3-templates-directory"`
 	CustomGitHubTemplatesDirectory string `json:"custom-github-templates-directory"`
 	CustomGitLabTemplatesDirectory string `json:"custom-gitlab-templates-directory"`
 	CustomAzureTemplatesDirectory  string `json:"custom-azure-templates-directory"`
 
-	TemplateVersion        string `json:"nuclei-templates-version,omitempty"`
-	NucleiIgnoreHash       string `json:"nuclei-ignore-hash,omitempty"`
+	TemplateVersion string `json:"nuclei-templates-version,omitempty"`
+
+	// NucleiIgnoreHash is retained for SDK compatibility. Nuclei derives the
+	// current hash from the active ignore file and does not persist this field.
+	//
+	// Deprecated: local ignore-file hashes are derived from the active file.
+	NucleiIgnoreHash       string `json:"-"`
 	LogAllEvents           bool   `json:"-"` // when enabled logs all events (more than verbose)
 	HideTemplateSigWarning bool   `json:"-"` // when enabled disables template signature warning
 
-	// LatestXXX are not meant to be used directly and is used as
-	// local cache of nuclei version check endpoint
-	// these fields are only update during nuclei version check
-	// TODO: move these fields to a separate unexported struct as they are not meant to be used directly
-	LatestNucleiVersion          string           `json:"nuclei-latest-version"`
-	LatestNucleiTemplatesVersion string           `json:"nuclei-templates-latest-version"`
-	LatestNucleiIgnoreHash       string           `json:"nuclei-latest-ignore-hash,omitempty"`
-	Logger                       *gologger.Logger `json:"-"` // logger
+	// These fields cache version-check results.
+	LatestNucleiVersion          string `json:"nuclei-latest-version"`
+	LatestNucleiTemplatesVersion string `json:"nuclei-templates-latest-version"`
+
+	// LatestNucleiIgnoreHash is retained for SDK compatibility. Nuclei passes
+	// remote ignore hashes directly from version checks to the active-file
+	// comparison and does not persist this field.
+	//
+	// Deprecated: remote ignore hashes are transient version-check results.
+	LatestNucleiIgnoreHash string           `json:"-"`
+	Logger                 *gologger.Logger `json:"-"` // logger
 
 	// internal / unexported fields
-	disableUpdates bool     `json:"-"` // disable updates both version check and template updates
-	homeDir        string   `json:"-"` //  User Home Directory
-	configDir      string   `json:"-"` //  Nuclei Global Config Directory
-	debugArgs      []string `json:"-"` // debug args
+	disableUpdates    bool     `json:"-"` // disable updates both version check and template updates
+	configDir         string   `json:"-"` //  Nuclei Global Config Directory
+	stateDir          string   `json:"-"` // Restart-persistent operational state
+	cacheDir          string   `json:"-"` // Regenerable cached data
+	dataHome          string   `json:"-"` // User template data
+	dataDirs          []string `json:"-"` // Template data, in preference order
+	debugArgs         []string `json:"-"` // debug args
+	initializationErr error    `json:"-"`
 
 	m sync.Mutex
 }
@@ -76,37 +86,46 @@ func (c *Config) IsCustomTemplate(templatePath string) bool {
 			return true
 		}
 	}
+
 	if c.TemplatesDirectory == "" {
 		return false
 	}
+
 	return !filepathutil.IsPathWithinDirectory(templatePath, c.TemplatesDirectory)
 }
 
 // WriteVersionCheckData writes version check data to config file
-func (c *Config) WriteVersionCheckData(ignorehash, nucleiVersion, templatesVersion string) error {
+func (c *Config) WriteVersionCheckData(ignoreHash, nucleiVersion, templatesVersion string) error {
 	updated := false
-	if ignorehash != "" && c.LatestNucleiIgnoreHash != ignorehash {
-		c.LatestNucleiIgnoreHash = ignorehash
-		updated = true
+
+	if ignoreHash != "" && c.LatestNucleiIgnoreHash != ignoreHash {
+		// Retain the historical in-memory SDK behavior without persisting remote
+		// ignore metadata.
+		c.LatestNucleiIgnoreHash = ignoreHash
 	}
+
 	if nucleiVersion != "" && c.LatestNucleiVersion != nucleiVersion {
 		c.LatestNucleiVersion = nucleiVersion
 		updated = true
 	}
+
 	if templatesVersion != "" && c.LatestNucleiTemplatesVersion != templatesVersion {
 		c.LatestNucleiTemplatesVersion = templatesVersion
 		updated = true
 	}
+
 	// write config to disk if any of the fields are updated
 	if updated {
 		return c.WriteTemplatesConfig()
 	}
+
 	return nil
 }
 
 // GetTemplateDir returns the nuclei templates directory absolute path
 func (c *Config) GetTemplateDir() string {
 	val, _ := filepath.Abs(c.TemplatesDirectory)
+
 	return val
 }
 
@@ -114,6 +133,7 @@ func (c *Config) GetTemplateDir() string {
 func (c *Config) DisableUpdateCheck() {
 	c.m.Lock()
 	defer c.m.Unlock()
+
 	c.disableUpdates = true
 }
 
@@ -121,6 +141,7 @@ func (c *Config) DisableUpdateCheck() {
 func (c *Config) CanCheckForUpdates() bool {
 	c.m.Lock()
 	defer c.m.Unlock()
+
 	return !c.disableUpdates
 }
 
@@ -128,35 +149,29 @@ func (c *Config) CanCheckForUpdates() bool {
 func (c *Config) NeedsTemplateUpdate() bool {
 	c.m.Lock()
 	defer c.m.Unlock()
-	return !c.disableUpdates && (c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion) || !fileutil.FolderExists(c.TemplatesDirectory))
-}
 
-// NeedsIgnoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
-func (c *Config) NeedsIgnoreFileUpdate() bool {
-	c.m.Lock()
-	defer c.m.Unlock()
-	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
-}
-
-// UpdateNucleiIgnoreHash updates the nuclei ignore hash in config
-func (c *Config) UpdateNucleiIgnoreHash() error {
-	// calculate hash of ignore file and update config
-	ignoreFilePath := c.GetIgnoreFilePath()
-	if fileutil.FileExists(ignoreFilePath) {
-		bin, err := os.ReadFile(ignoreFilePath)
-		if err != nil {
-			return errkit.Newf("could not read nuclei ignore file: %v", err)
-		}
-		c.NucleiIgnoreHash = fmt.Sprintf("%x", md5.Sum(bin))
-		// write config to disk
-		return c.WriteTemplatesConfig()
-	}
-	return errkit.New("ignore file not found: could not update nuclei ignore hash")
+	return !c.disableUpdates &&
+		(c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion) || !fileutil.FolderExists(c.TemplatesDirectory))
 }
 
 // GetConfigDir returns the nuclei configuration directory
 func (c *Config) GetConfigDir() string {
 	return c.configDir
+}
+
+// GetStateDir returns the directory for restart-persistent operational state.
+func (c *Config) GetStateDir() string {
+	if c.stateDir != "" {
+		return c.stateDir
+	}
+
+	return defaultStateDir()
+}
+
+// SetStateDir changes the templates state directory. It is primarily useful to
+// SDK callers that isolate all Nuclei storage.
+func (c *Config) SetStateDir(dir string) {
+	c.stateDir = dir
 }
 
 // GetKeysDir returns the nuclei signer keys directory
@@ -175,8 +190,17 @@ func (c *Config) GetReportingConfigFilePath() string {
 }
 
 // GetIgnoreFilePath returns the nuclei ignore file path
+//
+// Deprecated: use GetActiveIgnoreFilePath. The config-directory ignore file is
+// no longer active.
 func (c *Config) GetIgnoreFilePath() string {
 	return filepath.Join(c.configDir, NucleiIgnoreFileName)
+}
+
+// GetActiveIgnoreFilePath returns the ignore file in the active public template
+// root.
+func (c *Config) GetActiveIgnoreFilePath() string {
+	return filepath.Join(c.TemplatesDirectory, NucleiIgnoreFileName)
 }
 
 func (c *Config) GetTemplateIndexFilePath() string {
@@ -197,58 +221,75 @@ func (c *Config) GetFlagsConfigFilePath() string {
 // if .new-additions file is not present empty slice is returned
 func (c *Config) GetNewAdditions() []string {
 	arr := []string{}
+
 	newAdditionsPath := filepath.Join(c.TemplatesDirectory, NewTemplateAdditionsFileName)
 	if !fileutil.FileExists(newAdditionsPath) {
 		return arr
 	}
+
 	bin, err := os.ReadFile(newAdditionsPath)
 	if err != nil {
 		return arr
 	}
+
 	for v := range strings.FieldsSeq(string(bin)) {
 		if IsTemplateWithRoot(v, c.TemplatesDirectory) {
 			arr = append(arr, v)
 		}
 	}
+
 	return arr
 }
 
-// GetCacheDir returns the nuclei cache directory
-// with new version of nuclei cache directory is changed
-// instead of saving resume files in nuclei config directory
-// they are saved in nuclei cache directory
+// GetCacheDir returns the directory for regenerable cached data.
 func (c *Config) GetCacheDir() string {
-	return folderutil.AppCacheDirOrDefault(".nuclei-cache", BinaryName)
+	if c.cacheDir != "" {
+		return c.cacheDir
+	}
+
+	return defaultCacheDir()
 }
 
 // SetConfigDir sets the nuclei configuration directory
 // and appropriate changes are made to the config
 func (c *Config) SetConfigDir(dir string) {
 	c.configDir = dir
+	// Preserve the historical SDK behavior that SetConfigDir also isolates
+	// templates state. NUCLEI_CONFIG_DIR is resolved separately and does not move
+	// state.
+	c.stateDir = dir
 	if err := c.createConfigDirIfNotExists(); err != nil {
 		c.Logger.Fatal().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
 	}
 
 	// if folder already exists read config or create new
 	if err := c.ReadTemplatesConfig(); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			c.Logger.Fatal().Msgf("Could not read templates state: %s", err)
+		}
+
 		// create new config
-		applyDefaultConfig()
+		if defaultsErr := c.applyDefaultConfig(); defaultsErr != nil {
+			c.Logger.Fatal().Msgf("Could not select default templates directory: %s", defaultsErr)
+		}
+
 		if err2 := c.WriteTemplatesConfig(); err2 != nil {
 			c.Logger.Fatal().Msgf("Could not create nuclei config file at %s: %s", c.getTemplatesConfigFilePath(), err2)
 		}
 	}
-
-	// while other config files are optional, ignore file is mandatory
-	// since it is used to ignore templates with weak matchers
-	c.copyIgnoreFile()
 }
 
 // SetTemplatesDir sets the new nuclei templates directory
 func (c *Config) SetTemplatesDir(dirPath string) {
+	c.setTemplatesDir(dirPath)
+}
+
+func (c *Config) setTemplatesDir(dirPath string) {
 	if dirPath != "" && !filepath.IsAbs(dirPath) {
 		cwd, _ := os.Getwd()
 		dirPath = filepath.Join(cwd, dirPath)
 	}
+
 	c.TemplatesDirectory = dirPath
 	// Update the custom templates directory
 	c.CustomGitHubTemplatesDirectory = filepath.Join(dirPath, CustomGitHubTemplatesDirName)
@@ -260,64 +301,26 @@ func (c *Config) SetTemplatesDir(dirPath string) {
 // SetTemplatesVersion sets the new nuclei templates version
 func (c *Config) SetTemplatesVersion(version string) error {
 	c.TemplateVersion = version
+
 	// write config to disk
 	if err := c.WriteTemplatesConfig(); err != nil {
 		return errkit.Newf("could not write nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
 	}
-	return nil
-}
 
-// ReadTemplatesConfig reads the nuclei templates config file
-func (c *Config) ReadTemplatesConfig() error {
-	if !fileutil.FileExists(c.getTemplatesConfigFilePath()) {
-		return errkit.Newf("nuclei config file at %s does not exist", c.getTemplatesConfigFilePath())
-	}
-	var cfg *Config
-	bin, err := os.ReadFile(c.getTemplatesConfigFilePath())
-	if err != nil {
-		return errkit.Newf("could not read nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
-	}
-	if err := json.Unmarshal(bin, &cfg); err != nil {
-		return errkit.Newf("could not unmarshal nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
-	}
-	// apply config
-	c.TemplatesDirectory = cfg.TemplatesDirectory
-	c.TemplateVersion = cfg.TemplateVersion
-	c.NucleiIgnoreHash = cfg.NucleiIgnoreHash
-	c.LatestNucleiIgnoreHash = cfg.LatestNucleiIgnoreHash
-	c.LatestNucleiTemplatesVersion = cfg.LatestNucleiTemplatesVersion
-	return nil
-}
-
-// WriteTemplatesConfig writes the nuclei templates config file
-func (c *Config) WriteTemplatesConfig() error {
-	// check if config folder exists if not create one
-	if err := c.createConfigDirIfNotExists(); err != nil {
-		return err
-	}
-	bin, err := json.Marshal(c)
-	if err != nil {
-		return errkit.Newf("failed to marshal nuclei config: %v", err)
-	}
-	if err = os.WriteFile(c.getTemplatesConfigFilePath(), bin, 0600); err != nil {
-		return errkit.Newf("failed to write nuclei config file at %s: %v", c.getTemplatesConfigFilePath(), err)
-	}
 	return nil
 }
 
 // WriteTemplatesIndex writes the nuclei templates index file
 func (c *Config) WriteTemplatesIndex(index map[string]string) error {
 	indexFile := c.GetTemplateIndexFilePath()
+
 	var buff bytes.Buffer
+
 	for k, v := range index {
 		_, _ = buff.WriteString(k + "," + v + "\n")
 	}
-	return os.WriteFile(indexFile, buff.Bytes(), 0600)
-}
 
-// getTemplatesConfigFilePath returns configDir/.templates-config.json file path
-func (c *Config) getTemplatesConfigFilePath() string {
-	return filepath.Join(c.configDir, TemplateConfigFileName)
+	return os.WriteFile(indexFile, buff.Bytes(), 0600)
 }
 
 // createConfigDirIfNotExists creates the nuclei config directory if not exists
@@ -328,22 +331,6 @@ func (c *Config) createConfigDirIfNotExists() error {
 		}
 	}
 	return nil
-}
-
-// copyIgnoreFile copies the nuclei ignore file default config directory
-// to the current config directory
-func (c *Config) copyIgnoreFile() {
-	if err := c.createConfigDirIfNotExists(); err != nil {
-		c.Logger.Error().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
-		return
-	}
-	ignoreFilePath := c.GetIgnoreFilePath()
-	if !fileutil.FileExists(ignoreFilePath) {
-		// copy ignore file from default config directory
-		if err := fileutil.CopyFile(filepath.Join(folderutil.AppConfigDirOrDefault(FallbackConfigFolderName, BinaryName), NucleiIgnoreFileName), ignoreFilePath); err != nil {
-			c.Logger.Error().Msgf("Could not copy nuclei ignore file at %s: %s", ignoreFilePath, err)
-		}
-	}
 }
 
 // IsDebugArgEnabled checks if debug arg is enabled
@@ -359,14 +346,17 @@ func (c *Config) parseDebugArgs(data string) {
 	for v := range strings.FieldsSeq(data) {
 		key := v
 		value := ""
+
 		// if it is key value pair then split it
 		if k, val, ok := strings.Cut(v, "="); ok {
 			key, value = strings.TrimSpace(k), strings.TrimSpace(val)
 		}
+
 		if value == "false" || value == "0" {
 			// if false or disabled then skip
 			continue
 		}
+
 		switch key {
 		case DebugArgHostErrorStats:
 			c.debugArgs = append(c.debugArgs, DebugArgHostErrorStats)
@@ -377,7 +367,7 @@ func (c *Config) parseDebugArgs(data string) {
 }
 
 func init() {
-	ConfigDir := folderutil.AppConfigDirOrDefault(FallbackConfigFolderName, BinaryName)
+	ConfigDir := defaultConfigDir()
 
 	if cfgDir := os.Getenv(NucleiConfigDirEnv); cfgDir != "" {
 		ConfigDir = cfgDir
@@ -389,9 +379,13 @@ func init() {
 			gologger.Error().Msgf("failed to create config directory at %v got: %s", ConfigDir, err)
 		}
 	}
+
 	DefaultConfig = &Config{
-		homeDir:   folderutil.HomeDirOrDefault(""),
 		configDir: ConfigDir,
+		stateDir:  defaultStateDir(),
+		cacheDir:  defaultCacheDir(),
+		dataHome:  xdg.DataHome,
+		dataDirs:  append([]string(nil), xdg.DataDirs...),
 		Logger:    gologger.DefaultLogger,
 	}
 
@@ -407,19 +401,24 @@ func init() {
 
 	// try to read config from file
 	if err := DefaultConfig.ReadTemplatesConfig(); err != nil {
-		gologger.Verbose().Msgf("config file not found, creating new config file at %s", DefaultConfig.getTemplatesConfigFilePath())
-		applyDefaultConfig()
-		// write config to file
-		if err := DefaultConfig.WriteTemplatesConfig(); err != nil {
-			gologger.Error().Msgf("failed to write config file at %s got: %s", DefaultConfig.getTemplatesConfigFilePath(), err)
+		if !errors.Is(err, os.ErrNotExist) {
+			DefaultConfig.initializationErr = err
+			gologger.Error().Msgf("Failed to read templates state: %s", err)
+		} else {
+			gologger.Verbose().Msgf("Templates state not found, creating %s", DefaultConfig.getTemplatesConfigFilePath())
+		}
+
+		if defaultsErr := DefaultConfig.applyDefaultConfig(); defaultsErr != nil {
+			DefaultConfig.initializationErr = errors.Join(DefaultConfig.initializationErr, defaultsErr)
+			gologger.Error().Msgf("Failed to select default templates directory: %s", defaultsErr)
+		} else if DefaultConfig.initializationErr == nil {
+			if writeErr := DefaultConfig.WriteTemplatesConfig(); writeErr != nil {
+				DefaultConfig.initializationErr = writeErr
+				gologger.Error().Msgf("Failed to write templates state at %s: %s", DefaultConfig.getTemplatesConfigFilePath(), writeErr)
+			}
 		}
 	}
 
-	// Loads/updates paths of custom templates
-	// Note: custom templates paths should not be updated in config file
-	// and even if it is changed we don't follow it since it is not expected behavior
-	// If custom templates are in default locations only then they are loaded while running nuclei
-	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
 	DefaultConfig.parseDebugArgs(env.GetEnvOrDefault("NUCLEI_ARGS", ""))
 
 	// expose the templates directory to the yaml preprocessor so include
@@ -430,9 +429,33 @@ func init() {
 	}
 }
 
-// Add Default Config adds default when .templates-config.json file is not present
-func applyDefaultConfig() {
-	DefaultConfig.TemplatesDirectory = filepath.Join(DefaultConfig.homeDir, NucleiTemplatesDirName)
-	// updates all necessary paths
-	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
+// InitializationError returns a templates state or path error detected during
+// package initialization.
+func (c *Config) InitializationError() error {
+	return c.initializationErr
+}
+
+func (c *Config) applyDefaultConfig() error {
+	dataHome := c.dataHome
+	if dataHome == "" {
+		dataHome = xdg.DataHome
+	}
+
+	dataDirs := c.dataDirs
+	if dataDirs == nil {
+		dataDirs = xdg.DataDirs
+	}
+
+	root, err := selectXDGTemplateRoot(dataHome, dataDirs)
+	if err != nil {
+		return err
+	}
+
+	rootChanged := filepath.Clean(c.TemplatesDirectory) != filepath.Clean(root)
+	c.setTemplatesDir(root)
+	if rootChanged {
+		c.TemplateVersion = ""
+	}
+
+	return nil
 }

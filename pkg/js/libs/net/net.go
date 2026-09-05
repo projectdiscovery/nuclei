@@ -1,11 +1,15 @@
 package net
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"net"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -18,6 +22,162 @@ var (
 	defaultTimeout = time.Duration(5) * time.Second
 )
 
+// getTimeoutFromContext returns the configured TCP timeout or defaultTimeout.
+func getTimeoutFromContext(ctx context.Context) time.Duration {
+	if tv, ok := ctx.Value("timeoutVariants").(*types.Timeouts); ok && tv != nil {
+		if tv.TcpReadTimeout > 0 {
+			return tv.TcpReadTimeout
+		}
+	}
+	return defaultTimeout
+}
+
+func proxyURLFromContext(ctx context.Context) string {
+	if proxyURL, ok := ctx.Value("proxyURL").(string); ok {
+		return proxyURL
+	}
+	return ""
+}
+
+func executionIDFromContext(ctx context.Context) (string, error) {
+	executionId, _ := ctx.Value("executionId").(string)
+	if executionId == "" {
+		return "", fmt.Errorf("executionId missing from context")
+	}
+	return executionId, nil
+}
+
+type dialFunc func(ctx context.Context, network, address string) (net.Conn, error)
+
+// dialHTTPProxy establishes a TCP connection through an HTTP CONNECT proxy.
+func dialHTTPProxy(ctx context.Context, dial dialFunc, proxyURL string, address string, timeout time.Duration) (net.Conn, error) {
+	parsed, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid proxy URL: %w", err)
+	}
+	proxyAddr := parsed.Host
+	if _, _, splitErr := net.SplitHostPort(proxyAddr); splitErr != nil {
+		defaultPort := "8080"
+		if parsed.Scheme == "https" {
+			defaultPort = "443"
+		}
+		proxyAddr = net.JoinHostPort(proxyAddr, defaultPort)
+	}
+
+	proxyConn, err := dial(ctx, "tcp", proxyAddr)
+	if err != nil {
+		return nil, fmt.Errorf("could not connect to proxy %s: %w", proxyAddr, err)
+	}
+	if parsed.Scheme == "https" {
+		config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
+		if hostname := parsed.Hostname(); hostname != "" {
+			config.ServerName = hostname
+		}
+		tlsConn := tls.Client(proxyConn, config)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = proxyConn.Close()
+			return nil, fmt.Errorf("could not establish TLS connection to proxy %s: %w", proxyAddr, err)
+		}
+		proxyConn = tlsConn
+	}
+
+	connectReq := &http.Request{
+		Method: http.MethodConnect,
+		URL:    &url.URL{Opaque: address},
+		Host:   address,
+		Header: make(http.Header),
+	}
+	if parsed.User != nil {
+		connectReq.Header.Set("Proxy-Authorization", "Basic "+basicAuth(parsed.User))
+	}
+
+	_ = proxyConn.SetDeadline(time.Now().Add(timeout))
+	if err := connectReq.Write(proxyConn); err != nil {
+		_ = proxyConn.Close()
+		return nil, fmt.Errorf("could not send CONNECT request: %w", err)
+	}
+
+	br := bufio.NewReader(proxyConn)
+	resp, err := http.ReadResponse(br, connectReq)
+	if err != nil {
+		_ = proxyConn.Close()
+		return nil, fmt.Errorf("could not read CONNECT response: %w", err)
+	}
+	_ = resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		_ = proxyConn.Close()
+		return nil, fmt.Errorf("proxy CONNECT returned status %d", resp.StatusCode)
+	}
+
+	// reset deadline after successful CONNECT
+	_ = proxyConn.SetDeadline(time.Time{})
+
+	// preserve any bytes the buffered reader consumed past the CONNECT response
+	if br.Buffered() > 0 {
+		return &bufferedConn{Conn: proxyConn, reader: br}, nil
+	}
+	return proxyConn, nil
+}
+
+// basicAuth encodes proxy user credentials.
+func basicAuth(user *url.Userinfo) string {
+	username := user.Username()
+	password, _ := user.Password()
+	return base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+}
+
+func redactProxyURL(proxyURL string) string {
+	parsed, err := url.Parse(proxyURL)
+	if err != nil {
+		return "<invalid proxy URL>"
+	}
+	parsed.User = nil
+	return parsed.String()
+}
+
+// bufferedConn preserves bytes buffered during the CONNECT handshake.
+type bufferedConn struct {
+	net.Conn
+	reader *bufio.Reader
+}
+
+func (c *bufferedConn) Read(b []byte) (int, error) {
+	return c.reader.Read(b)
+}
+
+// Dial opens a connection using the execution dialer.
+// When an HTTP(S) proxy is present in context, TCP dials use HTTP CONNECT.
+// Misconfigured proxies return an error instead of silently dialing direct.
+func Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
+	executionId, err := executionIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	if proxyURL := proxyURLFromContext(ctx); proxyURL != "" {
+		if protocol != "tcp" {
+			return nil, fmt.Errorf("http proxy does not support protocol %q", protocol)
+		}
+		parsed, err := url.Parse(proxyURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid proxy URL %s: %w", redactProxyURL(proxyURL), err)
+		}
+		switch parsed.Scheme {
+		case "http", "https":
+			return dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, getTimeoutFromContext(ctx))
+		default:
+			return nil, fmt.Errorf("unsupported proxy scheme %q in %s (expected http or https)", parsed.Scheme, redactProxyURL(proxyURL))
+		}
+	}
+
+	return dialer.Fastdialer.Dial(ctx, protocol, address)
+}
+
 // Open opens a new connection to the address with a timeout.
 // supported protocols: tcp, udp
 // @example
@@ -26,19 +186,15 @@ var (
 // const conn = net.Open('tcp', 'acme.com:80');
 // ```
 func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
-	executionId := ctx.Value("executionId").(string)
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-	conn, err := dialer.Fastdialer.Dial(ctx, protocol, address)
+	timeout := getTimeoutFromContext(ctx)
+	conn, err := Dial(ctx, protocol, address)
 	if err != nil {
 		return nil, err
 	}
-	return &NetConn{conn: conn, timeout: defaultTimeout}, nil
+	return &NetConn{conn: conn, timeout: timeout}, nil
 }
 
-// Open opens a new connection to the address with a timeout.
+// OpenTLS opens a new TLS connection to the address with a timeout.
 // supported protocols: tcp, udp
 // @example
 // ```javascript
@@ -46,6 +202,7 @@ func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
 // const conn = net.OpenTLS('tcp', 'acme.com:443');
 // ```
 func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
+	timeout := getTimeoutFromContext(ctx)
 	config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
 	host, _, _ := net.SplitHostPort(address)
 	if host != "" {
@@ -53,17 +210,33 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 		c.ServerName = host
 		config = c
 	}
-	executionId := ctx.Value("executionId").(string)
+
+	if proxyURLFromContext(ctx) != "" {
+		conn, err := Dial(ctx, protocol, address)
+		if err != nil {
+			return nil, err
+		}
+		tlsConn := tls.Client(conn, config)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			_ = conn.Close()
+			return nil, fmt.Errorf("TLS handshake failed: %w", err)
+		}
+		return &NetConn{conn: tlsConn, timeout: timeout}, nil
+	}
+
+	executionId, err := executionIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-
 	conn, err := dialer.Fastdialer.DialTLSWithConfig(ctx, protocol, address, config)
 	if err != nil {
 		return nil, err
 	}
-	return &NetConn{conn: conn, timeout: defaultTimeout}, nil
+	return &NetConn{conn: conn, timeout: timeout}, nil
 }
 
 type (

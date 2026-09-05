@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
+	"github.com/adrg/xdg"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
@@ -29,9 +32,31 @@ func TestNewIndex(t *testing.T) {
 	})
 
 	t.Run("with default directory", func(t *testing.T) {
+		oldConfig := config.DefaultConfig
+		oldCacheHome := xdg.CacheHome
+		cacheHome := t.TempDir()
+		xdg.CacheHome = cacheHome
+		config.DefaultConfig = &config.Config{}
+		t.Cleanup(func() {
+			config.DefaultConfig = oldConfig
+			xdg.CacheHome = oldCacheHome
+		})
+
 		cache, err := NewDefaultIndex()
 		require.NoError(t, err, "Failed to create cache with default directory")
 		require.NotNil(t, cache, "Cache should not be nil")
+		require.Equal(t, filepath.Join(cacheHome, config.BinaryName, IndexFileName), cache.cacheFile)
+	})
+
+	t.Run("creates private directory", func(t *testing.T) {
+		cacheDir := filepath.Join(t.TempDir(), "cache")
+		_, err := NewIndex(cacheDir)
+		require.NoError(t, err)
+		info, err := os.Stat(cacheDir)
+		require.NoError(t, err)
+		if runtime.GOOS != "windows" {
+			require.Equal(t, os.FileMode(0o700), info.Mode().Perm())
+		}
 	})
 }
 
@@ -125,6 +150,9 @@ func TestCachePersistence(t *testing.T) {
 		stat, err := os.Stat(cacheFile)
 		require.NoError(t, err, "Cache file should exist")
 		require.Greater(t, stat.Size(), int64(0), "Cache file should not be empty")
+		if runtime.GOOS != "windows" {
+			require.Equal(t, os.FileMode(0o600), stat.Mode().Perm())
+		}
 
 		// Create new cache and load
 		cache2, err := NewIndex(tmpDir)
