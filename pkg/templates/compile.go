@@ -399,8 +399,11 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			return nil, err
 		}
 
-		if !shared {
-			template, _ := result.(*Template)
+		// A nil result means the closure found the template already cached, which
+		// happens when another goroutine populated it after the check above. Only a
+		// typed result belongs to this caller; anything else re-reads the cache so
+		// the template is rebuilt against these options.
+		if template, ok := result.(*Template); ok && !shared {
 			return template, nil
 		}
 		if template, ok, err := parseCompiledTemplateFromCache(filePath, preprocessor, options, parser); ok || err != nil {

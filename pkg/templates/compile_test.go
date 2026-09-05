@@ -991,3 +991,47 @@ func TestWrongWorkflow(t *testing.T) {
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "workflows cannot have other protocols")
 }
+
+// TestParseConcurrentSharedParserIsRaceFree covers the loader path, which parses
+// templates concurrently through a single shared parser.
+func TestParseConcurrentSharedParserIsRaceFree(t *testing.T) {
+	setup()
+
+	dir := t.TempDir()
+	paths := make([]string, 0, 16)
+	for i := 0; i < 16; i++ {
+		path := filepath.Join(dir, fmt.Sprintf("concurrent-%d.yaml", i))
+		require.NoError(t, os.WriteFile(path, []byte(fmt.Sprintf(`id: concurrent-%d
+info:
+  name: Concurrent %d
+  author: pdteam
+  severity: info
+
+variables:
+  token: original
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"`, i, i)), 0o600))
+		paths = append(paths, path)
+	}
+
+	parser := templates.NewParser()
+
+	var wg sync.WaitGroup
+	for round := 0; round < 3; round++ {
+		for _, path := range paths {
+			wg.Add(1)
+			go func(path string) {
+				defer wg.Done()
+				options := executerOpts.Copy()
+				options.Parser = parser
+				parsed, err := templates.Parse(path, nil, options)
+				require.NoError(t, err)
+				require.NotNil(t, parsed)
+			}(path)
+		}
+	}
+	wg.Wait()
+}

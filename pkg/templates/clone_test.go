@@ -82,6 +82,17 @@ func TestCloneTemplatePreservesMutableAliases(t *testing.T) {
 	require.Equal(t, "original", sharedSlice[0])
 }
 
+func TestCloneTemplateKeepsExecutorOptionsByReference(t *testing.T) {
+	parser := NewParser()
+	original := &Template{}
+	original.Options = &protocols.ExecutorOptions{Parser: parser}
+
+	cloned := cloneTemplate(original)
+
+	require.Same(t, original.Options, cloned.Options)
+	require.Same(t, parser, cloned.Options.Parser)
+}
+
 func TestCacheSafeExecutorOptionsPreservesMutableAliases(t *testing.T) {
 	sharedMap := map[string]interface{}{"value": "original"}
 	options := &protocols.ExecutorOptions{

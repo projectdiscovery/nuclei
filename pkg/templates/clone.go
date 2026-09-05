@@ -3,9 +3,12 @@ package templates
 import (
 	"reflect"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
+
+var executorOptionsType = reflect.TypeOf((*protocols.ExecutorOptions)(nil))
 
 type cloneVisit struct {
 	typeOf   reflect.Type
@@ -59,6 +62,13 @@ func cloneTemplateConstants(src map[string]interface{}, visited map[cloneVisit]r
 
 func cloneTemplateValue(value reflect.Value, visited map[cloneVisit]reflect.Value) reflect.Value {
 	if !value.IsValid() {
+		return value
+	}
+
+	// ExecutorOptions reach engine-scoped state such as the shared parser and its
+	// caches, which other goroutines mutate while this template is cloned. Callers
+	// swap in a cache-safe copy, so carry the pointer instead of walking it.
+	if value.Type() == executorOptionsType {
 		return value
 	}
 
