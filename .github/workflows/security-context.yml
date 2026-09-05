@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 4 * * 1"
-  push:
-    paths: [.github/workflows/security-context.yml]
 
 permissions:
   contents: write
@@ -20,9 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      # A workflow can initially run from the branch that adds this file. The
-      # API analyzes the repository default branch, so check out that same
-      # branch before calculating the HEAD we wait for.
+      # The API analyzes the repository default branch, so use that branch for
+      # both scheduled and manually dispatched updates.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.repository.default_branch }}
@@ -74,19 +71,25 @@ jobs:
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
-      # Point the repository's agent instructions at the file, when it has any.
-      # Never create one: adding an agent instructions file uninvited is a
-      # bigger footprint than this warrants.
+      # Point every supported root agent-instructions file at the context.
+      # Create AGENTS.md as the cross-agent default when the repo has none.
       - name: Reference the context from agent instructions
         id: agents
         env:
           REPORT_CHANGED: ${{ steps.report.outputs.changed }}
         run: |
-          line="See SECURITY_CONTEXT.md for this repo's known vulnerabilities and recurring weak spots. Check it before writing or reviewing security-sensitive code."
+          line="Before writing or reviewing code, read SECURITY_CONTEXT.md. Check new and modified code against its historical fixes and recurring vulnerability patterns. Do not reintroduce a previously fixed issue or a similar variant."
           touched=""
           paths="SECURITY_CONTEXT.md"
-          for f in CLAUDE.md AGENTS.md; do
-            if [ ! -f "$f" ]; then continue; fi
+          instruction_files=""
+          for f in AGENTS.md CLAUDE.md; do
+            if [ -f "$f" ]; then instruction_files="${instruction_files} $f"; fi
+          done
+          if [ -z "$instruction_files" ]; then
+            printf '%s\n' '# Agent instructions' > AGENTS.md
+            instruction_files="AGENTS.md"
+          fi
+          for f in $instruction_files; do
             paths="$(printf '%s\n%s' "$paths" "$f")"
             if grep -q "SECURITY_CONTEXT.md" "$f"; then continue; fi
             printf '\n%s\n' "$line" >> "$f"
@@ -117,7 +120,7 @@ jobs:
 
             ${{ steps.context.outputs.visibility == 'private' && format('[Read the updated file]({0}/{1}/blob/security-context/refresh/SECURITY_CONTEXT.md)', github.server_url, github.repository) || format('[Full report for this repository](https://securitycontext.dev/r/{0})', github.repository) }}
 
-            ${{ steps.agents.outputs.touched != '' && format('Also adds a one-line reference to {0} so your coding agent picks this up automatically.', steps.agents.outputs.touched) || 'Tip: reference `SECURITY_CONTEXT.md` from your agent instructions file (`CLAUDE.md` or `AGENTS.md`) so your coding agent reads it automatically.' }}
+            ${{ steps.agents.outputs.touched != '' && format('Also adds a one-line reference to {0} so your coding agent picks this up automatically.', steps.agents.outputs.touched) || 'The repository agent instructions already reference `SECURITY_CONTEXT.md`.' }}
 
             ---
             _Your agent doesn't know this repo's security history. [Security Context](https://securitycontext.dev) keeps it where your agent can see it, so old vulnerabilities and their variants don't come back in new code._
