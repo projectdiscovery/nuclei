@@ -2,10 +2,14 @@ package nuclei
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -67,4 +71,88 @@ http:
 		require.NoError(t, err)
 		require.NotNil(t, cached)
 	}
+}
+
+func TestThreadSafeExecuteUsesSharedCompiledCache(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "template.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: thread-safe-shared-cache
+
+info:
+  name: Thread safe shared cache
+  author: pdteam
+  severity: info
+  tags: thread-safe-shared-cache
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "thread-safe-shared-cache"
+`), 0o600))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("thread-safe-shared-cache"))
+	}))
+	t.Cleanup(server.Close)
+
+	engine, err := NewThreadSafeNucleiEngineCtx(context.Background())
+	require.NoError(t, err)
+	t.Cleanup(engine.Close)
+
+	const executions = 4
+	var waitGroup sync.WaitGroup
+	errors := make([]error, executions)
+	for i := range executions {
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+			errors[i] = engine.ExecuteNucleiWithOptsCtx(context.Background(), []string{server.URL},
+				WithTemplatesOrWorkflows(TemplateSources{Templates: []string{templatePath}}),
+				WithTemplateFilters(TemplateFilters{Tags: []string{"thread-safe-shared-cache"}}),
+				WithResultCallback(func(*output.ResultEvent) {}),
+			)
+		}()
+	}
+	waitGroup.Wait()
+
+	for _, err := range errors {
+		require.NoError(t, err)
+	}
+	require.Equal(t, 1, engine.eng.GetParser().CompiledCount())
+}
+
+func TestThreadSafeExecuteHonorsDisableTemplateCache(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "template.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: thread-safe-disable-cache
+
+info:
+  name: Thread safe disable cache
+  author: pdteam
+  severity: info
+  tags: thread-safe-disable-cache
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	t.Cleanup(server.Close)
+
+	engine, err := NewThreadSafeNucleiEngineCtx(context.Background(), DisableTemplateCache())
+	require.NoError(t, err)
+	t.Cleanup(engine.Close)
+
+	err = engine.ExecuteNucleiWithOptsCtx(context.Background(), []string{server.URL},
+		WithTemplatesOrWorkflows(TemplateSources{Templates: []string{templatePath}}),
+		WithTemplateFilters(TemplateFilters{Tags: []string{"thread-safe-disable-cache"}}),
+	)
+	require.NoError(t, err)
+	require.Equal(t, 0, engine.eng.GetParser().CompiledCount())
 }

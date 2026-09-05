@@ -162,5 +162,7 @@ func getURLFromRequest(req *http.Request) string {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
-	r.options = opts
+	if opts != nil {
+		r.options = opts.Copy()
+	}
 }
