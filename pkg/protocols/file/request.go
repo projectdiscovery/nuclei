@@ -57,9 +57,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if input.MetaInput.Input == "" {
 		return errors.New("input cannot be empty file or folder expected")
 	}
-	err = request.getInputPaths(input.Context(), input.MetaInput.Input, func(filePath string) {
+	err = request.getInputPaths(input.Context(), input.MetaInput.Input, func(filePath string) error {
 		if err := wg.AddWithContext(input.Context()); err != nil {
-			return
+			return err
 		}
 		go func(filePath string) {
 			defer wg.Done()
@@ -214,6 +214,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				request.options.Progress.IncrementRequests()
 			}
 		}(filePath)
+		return nil
 	})
 
 	wg.Wait()

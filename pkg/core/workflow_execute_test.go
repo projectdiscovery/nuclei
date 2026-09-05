@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -305,21 +305,27 @@ func TestWorkflowsSameStepExecutersRefreshTemplateContext(t *testing.T) {
 
 func TestWorkflowSubtemplatesUnblockCancelledAcquire(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	started := make(chan struct{})
-	var startOnce sync.Once
+	var started atomic.Int32
 	block := &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
-		startOnce.Do(func() { close(started) })
+		started.Add(1)
+		<-ctx.Context().Done()
+	}}
+	var waitingStarted atomic.Bool
+	waiting := &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+		waitingStarted.Store(true)
 		<-ctx.Context().Done()
 	}}
 
-	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 1}}, Workflows: []*workflows.WorkflowTemplate{
+	// Two slots: the two blockers occupy them so the third AddWithContext waits.
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 2}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{}, Results: []*output.ResultEvent{{}}},
 			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}, Subtemplates: []*workflows.WorkflowTemplate{
 			{Executers: []*workflows.ProtocolExecuterPair{{Executer: block, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
-			{Executers: []*workflows.ProtocolExecuterPair{{Executer: &mockExecuter{result: true}, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
+			{Executers: []*workflows.ProtocolExecuterPair{{Executer: block, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
+			{Executers: []*workflows.ProtocolExecuterPair{{Executer: waiting, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
 		}},
 	}}
 
@@ -334,10 +340,13 @@ func TestWorkflowSubtemplatesUnblockCancelledAcquire(t *testing.T) {
 		engine.executeWorkflow(ctx, workflow)
 	}()
 
-	select {
-	case <-started:
-	case <-time.After(2 * time.Second):
-		t.Fatal("first subtemplate did not start")
+	deadline := time.After(2 * time.Second)
+	for started.Load() < 2 {
+		select {
+		case <-deadline:
+			t.Fatal("blocking subtemplates did not occupy both slots")
+		case <-time.After(10 * time.Millisecond):
+		}
 	}
 	cancel()
 
@@ -346,6 +355,7 @@ func TestWorkflowSubtemplatesUnblockCancelledAcquire(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("workflow stayed blocked after cancel")
 	}
+	require.False(t, waitingStarted.Load(), "third subtemplate must not start while slots are held")
 }
 
 type mockExecuter struct {

@@ -62,7 +62,7 @@ func (request *Request) executionID() string {
 //	    smb-password: secret
 //	# nuclei -t tmpl.yaml -target 'smb://fs01/backup/'
 //	# or -target '\\fs01\backup\creds.txt'
-func (request *Request) enumerateSMBInputs(ctx context.Context, input string, callback func(string)) error {
+func (request *Request) enumerateSMBInputs(ctx context.Context, input string, callback func(string) error) error {
 	target, err := ParseSMBTarget(input)
 	if err != nil {
 		return err
@@ -70,8 +70,7 @@ func (request *Request) enumerateSMBInputs(ctx context.Context, input string, ca
 
 	// Single-file targets: no dial needed for expansion (readSMBFile dials later).
 	if !isDirectorySMBTarget(input) {
-		callback(target.Display())
-		return nil
+		return callInputPath(ctx, callback, target.Display())
 	}
 
 	execID := request.executionID()
@@ -95,7 +94,9 @@ func (request *Request) enumerateSMBInputs(ctx context.Context, input string, ca
 			}
 			child := *target
 			child.Path = e.Name
-			callback(child.Display())
+			if err := callInputPath(ctx, callback, child.Display()); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -110,7 +111,9 @@ func (request *Request) enumerateSMBInputs(ctx context.Context, input string, ca
 		}
 		child := *target
 		child.Path = e.Name
-		callback(child.Display())
+		if err := callInputPath(ctx, callback, child.Display()); err != nil {
+			return err
+		}
 	}
 	return nil
 }

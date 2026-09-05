@@ -54,10 +54,26 @@ func TestGetJSRuntimeUnblocksCancelledAcquireWhenPoolIsFull(t *testing.T) {
 		held = append(held, runtime)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
 	start := time.Now()
-	_, err := flow.GetJSRuntimeContext(ctx, opts)
-	require.Error(t, err)
-	require.Less(t, time.Since(start), 200*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := flow.GetJSRuntimeContext(ctx, opts)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("acquire returned before cancel: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	cancel()
+
+	select {
+	case err := <-done:
+		require.Error(t, err)
+		require.Less(t, time.Since(start), 200*time.Millisecond)
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("blocked acquire did not return after cancel")
+	}
 }

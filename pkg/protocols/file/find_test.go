@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,18 +54,78 @@ func TestFindInputPaths(t *testing.T) {
 	}
 	expected := []string{"config.yaml", "final.yaml", "test.js"}
 	got := []string{}
-	err = request.getInputPaths(context.Background(), tempDir+"/*", func(item string) {
+	err = request.getInputPaths(context.Background(), tempDir+"/*", func(item string) error {
 		base := filepath.Base(item)
 		got = append(got, base)
+		return nil
 	})
 	require.Nil(t, err, "could not get input paths for glob")
 	require.ElementsMatch(t, expected, got, "could not get correct file matches for glob")
 
 	got = []string{}
-	err = request.getInputPaths(context.Background(), tempDir, func(item string) {
+	err = request.getInputPaths(context.Background(), tempDir, func(item string) error {
 		base := filepath.Base(item)
 		got = append(got, base)
+		return nil
 	})
 	require.Nil(t, err, "could not get input paths for directory")
 	require.ElementsMatch(t, expected, got, "could not get correct file matches for directory")
+}
+
+func TestGetInputPathsStopsWhenContextCancelled(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:         "testing-file",
+		MaxSize:    "1Gb",
+		Extensions: []string{"all"},
+		Operators:  newMockOperator(),
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-file",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	tempDir := t.TempDir()
+	for i := 0; i < 20; i++ {
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%d.txt", i)), []byte("TEST"), permissionutil.TempFilePermission))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := request.getInputPaths(ctx, tempDir, func(string) error {
+		t.Fatal("must not enumerate after cancel")
+		return nil
+	})
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestGetInputPathsStopsOnCallbackError(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:         "testing-file",
+		MaxSize:    "1Gb",
+		Extensions: []string{"all"},
+		Operators:  newMockOperator(),
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-file",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	tempDir := t.TempDir()
+	for i := 0; i < 20; i++ {
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%d.txt", i)), []byte("TEST"), permissionutil.TempFilePermission))
+	}
+
+	seen := 0
+	err := request.getInputPaths(context.Background(), tempDir, func(string) error {
+		seen++
+		return context.Canceled
+	})
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, seen)
 }

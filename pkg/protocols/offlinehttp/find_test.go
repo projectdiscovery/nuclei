@@ -1,6 +1,7 @@
 package offlinehttp
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,18 +48,44 @@ func TestFindResponses(t *testing.T) {
 	}
 	expected := []string{"config.txt", "final.txt", "test.txt"}
 	got := []string{}
-	err = request.getInputPaths(tempDir+"/*", func(item string) {
+	err = request.getInputPaths(context.Background(), tempDir+"/*", func(item string) error {
 		base := filepath.Base(item)
 		got = append(got, base)
+		return nil
 	})
 	require.Nil(t, err, "could not get input paths for glob")
 	require.ElementsMatch(t, expected, got, "could not get correct file matches for glob")
 
 	got = []string{}
-	err = request.getInputPaths(tempDir, func(item string) {
+	err = request.getInputPaths(context.Background(), tempDir, func(item string) error {
 		base := filepath.Base(item)
 		got = append(got, base)
+		return nil
 	})
 	require.Nil(t, err, "could not get input paths for directory")
 	require.ElementsMatch(t, expected, got, "could not get correct file matches for directory")
+}
+
+func TestGetInputPathsStopsWhenContextCancelled(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-offline",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOpts.Operators = []*operators.Operators{{}}
+	require.NoError(t, request.Compile(executerOpts))
+
+	tempDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "a.txt"), []byte("TEST"), permissionutil.TempFilePermission))
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "b.txt"), []byte("TEST"), permissionutil.TempFilePermission))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := request.getInputPaths(ctx, tempDir, func(string) error {
+		t.Fatal("must not enumerate after cancel")
+		return nil
+	})
+	require.ErrorIs(t, err, context.Canceled)
 }
