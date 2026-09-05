@@ -20,7 +20,7 @@ import (
 func TestGetJSRuntimeHonoursContext(t *testing.T) {
 	opts := &types.Options{JsConcurrency: 100}
 
-	runtime, err := flow.GetJSRuntime(context.Background(), opts)
+	runtime, err := flow.GetJSRuntimeContext(context.Background(), opts)
 	require.NoError(t, err, "a live scan still gets a runtime")
 	flow.PutJSRuntime(runtime, true)
 
@@ -29,8 +29,15 @@ func TestGetJSRuntimeHonoursContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err = flow.GetJSRuntime(ctx, opts)
+	_, err = flow.GetJSRuntimeContext(ctx, opts)
 	require.Error(t, err, "a cancelled scan must not queue for a runtime it will never use")
+}
+
+func TestGetJSRuntimeDeprecatedSignatureStillWorks(t *testing.T) {
+	opts := &types.Options{JsConcurrency: 100}
+	runtime := flow.GetJSRuntime(opts)
+	require.NotNil(t, runtime)
+	flow.PutJSRuntime(runtime, true)
 }
 
 func TestGetJSRuntimeUnblocksCancelledAcquireWhenPoolIsFull(t *testing.T) {
@@ -42,7 +49,7 @@ func TestGetJSRuntimeUnblocksCancelledAcquireWhenPoolIsFull(t *testing.T) {
 		}
 	})
 	for i := 0; i < 100; i++ {
-		runtime, err := flow.GetJSRuntime(context.Background(), opts)
+		runtime, err := flow.GetJSRuntimeContext(context.Background(), opts)
 		require.NoError(t, err)
 		held = append(held, runtime)
 	}
@@ -50,7 +57,7 @@ func TestGetJSRuntimeUnblocksCancelledAcquireWhenPoolIsFull(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	start := time.Now()
-	_, err := flow.GetJSRuntime(ctx, opts)
+	_, err := flow.GetJSRuntimeContext(ctx, opts)
 	require.Error(t, err)
 	require.Less(t, time.Since(start), 200*time.Millisecond)
 }

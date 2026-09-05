@@ -228,7 +228,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}
 
 	// get a new runtime from pool
-	runtime, err := GetJSRuntime(ctx.Context(), f.options.Options)
+	runtime, err := GetJSRuntimeContext(ctx.Context(), f.options.Options)
 	if err != nil {
 		return err
 	}
