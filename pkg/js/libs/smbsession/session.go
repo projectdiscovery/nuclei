@@ -176,7 +176,7 @@ func (s *Session) ListDirContext(ctx context.Context, share, dir string) ([]Entr
 	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
-	return s.awaitEntries(ctx, func() ([]Entry, error) {
+	return s.awaitEntries(ctx, func(ctx context.Context) ([]Entry, error) {
 		return listDir(ctx, ops, share, dir)
 	})
 }
@@ -202,12 +202,12 @@ func (s *Session) ListTreeContext(ctx context.Context, share, root string, maxDe
 	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
-	return s.awaitEntries(ctx, func() ([]Entry, error) {
+	return s.awaitEntries(ctx, func(ctx context.Context) ([]Entry, error) {
 		return listTree(ctx, ops, share, root, maxDepth, maxEntries)
 	})
 }
 
-func (s *Session) awaitEntries(ctx context.Context, fn func() ([]Entry, error)) ([]Entry, error) {
+func (s *Session) awaitEntries(ctx context.Context, fn func(context.Context) ([]Entry, error)) ([]Entry, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -220,7 +220,7 @@ func (s *Session) awaitEntries(ctx context.Context, fn func() ([]Entry, error)) 
 	}
 	ch := make(chan rec, 1)
 	go func() {
-		entries, err := fn()
+		entries, err := fn(ctx)
 		ch <- rec{entries, err}
 	}()
 	select {

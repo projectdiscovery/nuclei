@@ -131,6 +131,28 @@ func TestListTreeContextUnblocksCancelledLs(t *testing.T) {
 	}
 }
 
+func TestListDirContextNilContext(t *testing.T) {
+	fake := newFakeBackend(map[string][]fakeNode{
+		".": {{name: "a.txt", size: 1, content: "x"}},
+	})
+	sess := &Session{backend: fake, closed: make(chan struct{})}
+	entries, err := sess.ListDirContext(nil, "backup", ".")
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, "a.txt", entries[0].Name)
+}
+
+func TestListTreeContextNilContext(t *testing.T) {
+	fake := newFakeBackend(map[string][]fakeNode{
+		".": {{name: "a.txt", size: 1, content: "x"}},
+	})
+	sess := &Session{backend: fake, closed: make(chan struct{})}
+	entries, err := sess.ListTreeContext(nil, "backup", ".", 1, 100)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, "a.txt", entries[0].Name)
+}
+
 func TestCloseIdempotent(t *testing.T) {
 	sess := &Session{closed: make(chan struct{})}
 	sess.Close()
