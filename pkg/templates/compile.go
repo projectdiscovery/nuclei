@@ -249,7 +249,7 @@ func cacheSafeCompiledTemplate(template *Template) *Template {
 	tplCopy := *template
 	tplCopy.Executer = nil
 	tplCopy.CompiledWorkflow = nil
-	tplCopy.Workflow.Workflows = cloneWorkflowDefinitions(template.Workflow.Workflows)
+	tplCopy.Workflows = cloneWorkflowDefinitions(template.Workflows)
 	tplCopy.Options = cacheSafeExecutorOptions(template.Options)
 	updateRequestOptions(&tplCopy)
 
@@ -282,8 +282,9 @@ func cacheSafeExecutorOptions(options *protocols.ExecutorOptions) *protocols.Exe
 	}
 
 	safeOptions := options.Copy()
-	safeOptions.Variables = cloneTemplateVariables(options.Variables)
-	safeOptions.Constants = cloneTemplateConstants(options.Constants)
+	optionsVisited := newCloneVisited()
+	safeOptions.Variables = cloneTemplateVariables(options.Variables, optionsVisited)
+	safeOptions.Constants = cloneTemplateConstants(options.Constants, optionsVisited)
 	safeOptions.ResumeCfg = nil
 	safeOptions.TemplateVerificationCallback = nil
 	safeOptions.Output = nil
@@ -421,7 +422,7 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 
 	// Copy the template, apply new options, and recompile requests
 	tplCopy := *value
-	tplCopy.Workflow.Workflows = cloneWorkflowDefinitions(value.Workflow.Workflows)
+	tplCopy.Workflows = cloneWorkflowDefinitions(value.Workflows)
 	newBase := options.Copy()
 	newBase.TemplateID = tplCopy.Options.TemplateID
 	newBase.TemplatePath = tplCopy.Options.TemplatePath
@@ -430,12 +431,13 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 	newBase.Verified = tplCopy.Options.Verified
 	newBase.RawTemplate = tplCopy.Options.RawTemplate
 
+	cachedVisited := newCloneVisited()
 	if tplCopy.Options.Variables.Len() > 0 {
-		newBase.Variables = cloneTemplateVariables(tplCopy.Options.Variables)
+		newBase.Variables = cloneTemplateVariables(tplCopy.Options.Variables, cachedVisited)
 	}
 
 	if len(tplCopy.Options.Constants) > 0 {
-		newBase.Constants = cloneTemplateConstants(tplCopy.Options.Constants)
+		newBase.Constants = cloneTemplateConstants(tplCopy.Options.Constants, cachedVisited)
 	}
 
 	tplCopy.Options = newBase
@@ -765,20 +767,6 @@ func hasTemplatePreprocessor(data []byte, preprocessor Preprocessor) bool {
 	}
 
 	return false
-}
-
-// parseTemplate parses the template and applies verification.
-func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
-	template, err := parseTemplateNoVerify(data, srcOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := verifyAndCompileTemplate(template, data); err != nil {
-		return nil, err
-	}
-
-	return template, nil
 }
 
 // verifyAndCompileTemplate keeps signature verification before protocol

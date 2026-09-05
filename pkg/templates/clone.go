@@ -19,17 +19,25 @@ type cloneVisit struct {
 // point and are copied by value; exported maps, slices, pointers, and
 // interfaces are copied recursively.
 func cloneTemplate(template *Template) *Template {
-	visited := make(map[cloneVisit]reflect.Value)
+	visited := newCloneVisited()
 	cloned := cloneTemplateValue(reflect.ValueOf(template), visited)
 	clonedTemplate := cloned.Interface().(*Template)
-	clonedTemplate.Variables = cloneTemplateVariables(template.Variables)
+	clonedTemplate.Variables = cloneTemplateVariables(template.Variables, visited)
 	return clonedTemplate
 }
 
-func cloneTemplateVariables(src variables.Variable) variables.Variable {
+// newCloneVisited tracks values already cloned during one clone operation.
+// Callers cloning several fields of the same owner must share it so values
+// aliased across those fields stay aliased in the copy.
+func newCloneVisited() map[cloneVisit]reflect.Value {
+	return make(map[cloneVisit]reflect.Value)
+}
+
+// cloneTemplateVariables deep-copies variables, whose backing map is held in
+// unexported fields that cloneTemplateValue copies by reference.
+func cloneTemplateVariables(src variables.Variable, visited map[cloneVisit]reflect.Value) variables.Variable {
 	dst := variables.Variable{LazyEval: src.LazyEval}
 	dst.InsertionOrderedStringMap = *utils.NewEmptyInsertionOrderedStringMap(src.Len())
-	visited := make(map[cloneVisit]reflect.Value)
 	src.ForEach(func(key string, value interface{}) {
 		clonedValue := cloneTemplateValue(reflect.ValueOf(value), visited)
 		if clonedValue.IsValid() {
@@ -41,11 +49,11 @@ func cloneTemplateVariables(src variables.Variable) variables.Variable {
 	return dst
 }
 
-func cloneTemplateConstants(src map[string]interface{}) map[string]interface{} {
+func cloneTemplateConstants(src map[string]interface{}, visited map[cloneVisit]reflect.Value) map[string]interface{} {
 	if src == nil {
 		return nil
 	}
-	cloned := cloneTemplateValue(reflect.ValueOf(src), make(map[cloneVisit]reflect.Value))
+	cloned := cloneTemplateValue(reflect.ValueOf(src), visited)
 	return cloned.Interface().(map[string]interface{})
 }
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/stretchr/testify/require"
 )
@@ -79,6 +80,24 @@ func TestCloneTemplatePreservesMutableAliases(t *testing.T) {
 	require.Equal(t, "changed", clonedNextSlice[0])
 	require.Equal(t, "original", sharedMap["value"])
 	require.Equal(t, "original", sharedSlice[0])
+}
+
+func TestCacheSafeExecutorOptionsPreservesMutableAliases(t *testing.T) {
+	sharedMap := map[string]interface{}{"value": "original"}
+	options := &protocols.ExecutorOptions{
+		Constants: map[string]interface{}{"map": sharedMap},
+	}
+	options.Variables.InsertionOrderedStringMap = *utils.NewEmptyInsertionOrderedStringMap(1)
+	options.Variables.Set("map", sharedMap)
+
+	safeOptions := cacheSafeExecutorOptions(options)
+	safeConstantMap := safeOptions.Constants["map"].(map[string]interface{})
+	safeVariableMap := safeOptions.Variables.GetAll()["map"].(map[string]interface{})
+
+	safeConstantMap["value"] = "changed"
+
+	require.Equal(t, "changed", safeVariableMap["value"])
+	require.Equal(t, "original", sharedMap["value"])
 }
 
 func TestCloneTemplateHandlesMutableCycles(t *testing.T) {
