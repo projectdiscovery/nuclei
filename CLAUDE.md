@@ -82,3 +82,4 @@ Each protocol (HTTP, DNS, Network, etc.) implements:
 - **pkg/fuzz/** - Fuzzing engine and DAST capabilities
 - **pkg/input/** - Input processing for various formats (Burp, OpenAPI, etc.)
 - **pkg/reporting/** - Result export and issue tracking integrations
+See SECURITY_CONTEXT.md for this repo's known vulnerabilities and recurring weak spots. Check it before writing or reviewing security-sensitive code.

@@ -1,0 +1,124 @@
+name: Maintain security context
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+  push:
+    paths: [.github/workflows/security-context.yml]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: security-context
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # A workflow can initially run from the branch that adds this file. The
+      # API analyzes the repository default branch, so check out that same
+      # branch before calculating the HEAD we wait for.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      # Analyze this commit on securitycontext.dev, wait for the result, and
+      # download it. The run's own token authorizes private repositories —
+      # no secrets to configure.
+      - name: Generate SECURITY_CONTEXT.md
+        id: context
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          sc() { curl --fail-with-body -sS -H "X-GitHub-Token: $GITHUB_TOKEN" "$@"; }
+          base="https://securitycontext.dev"
+          head="$(git rev-parse HEAD)"
+
+          sc -X POST "$base/api/v1/context?wait=60" -H "Content-Type: application/json" \
+             -H "X-Secc-Client: github-action" --data "{\"repo\":\"$GITHUB_REPOSITORY\",\"head\":\"$head\"}" >/dev/null
+
+          for _ in {1..120}; do
+            state="$(sc "$base/api/v1/context/$GITHUB_REPOSITORY")"
+            status="$(jq -r .status <<<"$state")"
+            if [ "$status" = "error" ]; then
+              jq -r '.error // "analysis failed"' <<<"$state" >&2
+              exit 1
+            fi
+            if [ "$status" = "ready" ] && [ "$(jq -r '.summary.head_sha // empty' <<<"$state")" = "$head" ]; then
+              sc -L "$base/r/$GITHUB_REPOSITORY.md" -o SECURITY_CONTEXT.md
+              # A private report is access-gated on the web, so the pull request
+              # links the rendered file on this branch instead.
+              jq -r '"visibility=" + (.visibility // "public")' <<<"$state" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for analysis of $head" >&2
+          exit 1
+
+      # A pull request should mean the analysis changed. When only the volatile
+      # header moved (timestamps, analyzed commit, commit counts), restore the
+      # committed file so no PR is opened and any header-only PR closes.
+      - name: Skip the update unless the analysis changed
+        id: report
+        run: |
+          changed=true
+          if [ -n "$(git ls-files SECURITY_CONTEXT.md)" ] && git diff --quiet -I '^<!-- Generated' -I '^_Generated' -I '^_Analyzed commit' -I '^- Commits analyzed' -I '^- Commits flagged' -- SECURITY_CONTEXT.md; then
+            git checkout -- SECURITY_CONTEXT.md
+            changed=false
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+      # Point the repository's agent instructions at the file, when it has any.
+      # Never create one: adding an agent instructions file uninvited is a
+      # bigger footprint than this warrants.
+      - name: Reference the context from agent instructions
+        id: agents
+        env:
+          REPORT_CHANGED: ${{ steps.report.outputs.changed }}
+        run: |
+          line="See SECURITY_CONTEXT.md for this repo's known vulnerabilities and recurring weak spots. Check it before writing or reviewing security-sensitive code."
+          touched=""
+          paths="SECURITY_CONTEXT.md"
+          for f in CLAUDE.md AGENTS.md; do
+            if [ ! -f "$f" ]; then continue; fi
+            paths="$(printf '%s\n%s' "$paths" "$f")"
+            if grep -q "SECURITY_CONTEXT.md" "$f"; then continue; fi
+            printf '\n%s\n' "$line" >> "$f"
+            if [ -n "$touched" ]; then touched="$touched and $f"; else touched="$f"; fi
+          done
+          echo "touched=$touched" >> "$GITHUB_OUTPUT"
+          # Title the pull request for what it actually carries: when the
+          # analysis is unchanged, the only edit is the agent-instructions line.
+          if [ "$REPORT_CHANGED" = "false" ]; then
+            echo "subject=chore: reference security context from agent instructions" >> "$GITHUB_OUTPUT"
+          else
+            echo "subject=chore: refresh security context" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "paths<<SC_EOF"
+            echo "$paths"
+            echo "SC_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open an update pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: security-context/refresh
+          commit-message: ${{ steps.agents.outputs.subject }}
+          title: ${{ steps.agents.outputs.subject }}
+          body: |
+            Refreshes `SECURITY_CONTEXT.md`, this repository's security-fix history as working context, so agents and reviewers don't reintroduce fixes that already shipped.
+
+            ${{ steps.context.outputs.visibility == 'private' && format('[Read the updated file]({0}/{1}/blob/security-context/refresh/SECURITY_CONTEXT.md)', github.server_url, github.repository) || format('[Full report for this repository](https://securitycontext.dev/r/{0})', github.repository) }}
+
+            ${{ steps.agents.outputs.touched != '' && format('Also adds a one-line reference to {0} so your coding agent picks this up automatically.', steps.agents.outputs.touched) || 'Tip: reference `SECURITY_CONTEXT.md` from your agent instructions file (`CLAUDE.md` or `AGENTS.md`) so your coding agent reads it automatically.' }}
+
+            ---
+            _Your agent doesn't know this repo's security history. [Security Context](https://securitycontext.dev) keeps it where your agent can see it, so old vulnerabilities and their variants don't come back in new code._
+          add-paths: ${{ steps.agents.outputs.paths }}

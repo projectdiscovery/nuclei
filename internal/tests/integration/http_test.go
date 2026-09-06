@@ -43,6 +43,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/post-json-body.yaml", TestCase: &httpPostJSONBody{}},
 	{Path: "protocols/http/post-multipart-body.yaml", TestCase: &httpPostMultipartBody{}},
 	{Path: "protocols/http/raw-cookie-reuse.yaml", TestCase: &httpRawCookieReuse{}},
+	{Path: "protocols/http/disable-cookie-reuse.yaml", TestCase: &httpDisableCookieReuse{}},
 	{Path: "protocols/http/raw-dynamic-extractor.yaml", TestCase: &httpRawDynamicExtractor{}},
 	{Path: "protocols/http/raw-get-query.yaml", TestCase: &httpRawGetQuery{}},
 	{Path: "protocols/http/raw-get.yaml", TestCase: &httpRawGet{}},
@@ -901,6 +902,29 @@ func (h *httpPaths) Execute(filepath string) error {
 }
 
 type httpRawCookieReuse struct{}
+
+type httpDisableCookieReuse struct{}
+
+func (h *httpDisableCookieReuse) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/login", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		http.SetCookie(w, &http.Cookie{Name: "nuclei", Value: "test"})
+		_, _ = fmt.Fprint(w, "logged in")
+	})
+	router.GET("/anonymous", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if _, err := r.Cookie("nuclei"); errors.Is(err, http.ErrNoCookie) {
+			_, _ = fmt.Fprint(w, "anonymous")
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
 
 // Execute executes a test case and returns an error if occurred
 func (h *httpRawCookieReuse) Execute(filePath string) error {

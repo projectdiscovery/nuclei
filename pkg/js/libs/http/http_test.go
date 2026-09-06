@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -190,6 +191,113 @@ func TestClientSetHeader(t *testing.T) {
 	resp, err := client.Get(ctx, srv.URL)
 	require.NoError(t, err)
 	require.Equal(t, "from-client", resp.Body)
+}
+
+func TestClientInheritsGlobalHeaders(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, r.Header.Get("X-Global")+"|"+r.Header.Get("X-Override"))
+	}))
+	t.Cleanup(srv.Close)
+
+	executionID := initExec(t, &types.Options{})
+	client := newRuntimeClient(t, executionID, Options{})
+	client.SetHeader("X-Override", "client")
+
+	ctx := withExec(executionID)
+	ctx = context.WithValue(ctx, "customHeaders", []string{ //nolint:staticcheck
+		"X-Global: from-cli",
+		"X-Override: global",
+		"invalid",
+	})
+	resp, err := client.Get(ctx, srv.URL)
+	require.NoError(t, err)
+	require.Equal(t, "from-cli|client", resp.Body)
+}
+
+func TestClientUsesConfiguredProxy(t *testing.T) {
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "example.com", r.Host)
+		require.Equal(t, "/through-proxy", r.URL.Path)
+		_, _ = io.WriteString(w, "proxied")
+	}))
+	t.Cleanup(proxy.Close)
+
+	executionID := initExec(t, &types.Options{})
+	client := newRuntimeClient(t, executionID, Options{})
+	ctx := withExec(executionID)
+	ctx = context.WithValue(ctx, "proxyURL", proxy.URL) //nolint:staticcheck
+
+	resp, err := client.Get(ctx, "http://example.com/through-proxy")
+	require.NoError(t, err)
+	require.Equal(t, "proxied", resp.Body)
+}
+
+func TestClientUsesConfiguredProxyForHTTPS(t *testing.T) {
+	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "secure-proxied")
+	}))
+	t.Cleanup(target.Close)
+
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodConnect, r.Method)
+		upstream, err := net.Dial("tcp", r.Host)
+		require.NoError(t, err)
+		defer func() { _ = upstream.Close() }()
+
+		hijacker, ok := w.(http.Hijacker)
+		require.True(t, ok)
+		client, rw, err := hijacker.Hijack()
+		require.NoError(t, err)
+		defer func() { _ = client.Close() }()
+
+		_, err = rw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
+		require.NoError(t, err)
+		require.NoError(t, rw.Flush())
+
+		done := make(chan struct{})
+		go func() {
+			_, _ = io.Copy(upstream, client)
+			close(done)
+		}()
+		_, _ = io.Copy(client, upstream)
+		<-done
+	}))
+	t.Cleanup(proxy.Close)
+
+	executionID := initExec(t, &types.Options{})
+	client := newRuntimeClient(t, executionID, Options{})
+	ctx := withExec(executionID)
+	ctx = context.WithValue(ctx, "proxyURL", proxy.URL) //nolint:staticcheck
+
+	resp, err := client.Get(ctx, target.URL)
+	require.NoError(t, err)
+	require.Equal(t, "secure-proxied", resp.Body)
+}
+
+func TestClientRejectsInvalidConfiguredProxy(t *testing.T) {
+	executionID := initExec(t, &types.Options{})
+	client := newRuntimeClient(t, executionID, Options{})
+	ctx := withExec(executionID)
+	ctx = context.WithValue(ctx, "proxyURL", "socks5://127.0.0.1:1080") //nolint:staticcheck
+
+	_, err := client.Get(ctx, "http://example.com/")
+	require.ErrorContains(t, err, "must use http or https")
+}
+
+func TestClientUsesConfiguredHTTPTimeout(t *testing.T) {
+	timeouts := &types.Timeouts{HttpTimeout: 7 * time.Second}
+	ctx := context.WithValue(context.Background(), "timeoutVariants", timeouts) //nolint:staticcheck
+	require.Equal(t, 7*time.Second, requestTimeout(ctx, 0))
+	require.Equal(t, 2*time.Second, requestTimeout(ctx, 2), "client option must override the global timeout")
+
+	runtime := goja.New()
+	runtime.SetContextValue("executionId", "timeout-test")
+	runtime.SetContextValue("timeoutVariants", timeouts)
+	obj, err := runtime.New(runtime.ToValue(NewClient))
+	require.NoError(t, err)
+	client, ok := obj.Export().(*Client)
+	require.True(t, ok)
+	require.Equal(t, 7, client.TimeoutSeconds)
 }
 
 func TestClientHead(t *testing.T) {

@@ -226,6 +226,78 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 	})
 }
 
+func TestDynamicFetchReentry(t *testing.T) {
+	t.Run("nested Fetch from callback does not deadlock", func(t *testing.T) {
+		d := &Dynamic{
+			TemplatePath: "auth.yaml",
+			Variables:    []KV{{Key: "user", Value: "admin"}},
+		}
+		require.NoError(t, d.Validate())
+
+		var nestedErr error
+		d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+			nestedErr = dynamic.Fetch(false)
+			dynamic.Extracted = map[string]interface{}{"token": "abc"}
+			return nil
+		})
+
+		done := make(chan error, 1)
+		go func() {
+			done <- d.Fetch(false)
+		}()
+
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+			require.NoError(t, nestedErr)
+		case <-time.After(2 * time.Second):
+			t.Fatal("Fetch deadlocked on re-entry")
+		}
+	})
+
+	t.Run("nested GetStrategies does not apply unresolved secrets", func(t *testing.T) {
+		d := &Dynamic{
+			Secret: &Secret{
+				Type:    "Header",
+				Domains: []string{"example.com"},
+				Headers: []KV{{Key: "X-Token", Value: "{{token}}"}},
+			},
+			TemplatePath: "auth.yaml",
+			Variables:    []KV{{Key: "user", Value: "admin"}},
+		}
+		require.NoError(t, d.Validate())
+
+		d.SetLazyFetchCallback(func(dynamic *Dynamic) error {
+			req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+			require.NoError(t, err)
+			strategy := &DynamicAuthStrategy{Dynamic: *dynamic}
+			strategy.Apply(req)
+			require.Empty(t, req.Header.Get("X-Token"), "login request must not receive secret-file auth during fetch")
+			require.Nil(t, dynamic.GetStrategies())
+			dynamic.Extracted = map[string]interface{}{"token": "abc"}
+			return nil
+		})
+
+		done := make(chan error, 1)
+		go func() {
+			done <- d.Fetch(false)
+		}()
+
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("GetStrategies deadlocked on re-entry")
+		}
+
+		req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+		require.NoError(t, err)
+		strategy := &DynamicAuthStrategy{Dynamic: *d}
+		strategy.Apply(req)
+		require.Equal(t, "abc", req.Header.Get("X-Token"), "scan requests must still receive secrets after fetch")
+	})
+}
+
 func TestDynamicValidate(t *testing.T) {
 	t.Run("missing template path", func(t *testing.T) {
 		d := &Dynamic{
