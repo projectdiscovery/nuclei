@@ -1,22 +1,27 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/launcher/flags"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/chromeshell"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 )
+
+const chromeShellDownloadTimeout = 5 * time.Minute
 
 // Browser is a browser structure for nuclei headless module
 type Browser struct {
@@ -37,7 +42,7 @@ func New(options *types.Options) (*Browser, error) {
 	var launcherURL, dataStore string
 	var err error
 
-	chromeLauncher := launcher.New()
+	var chromeLauncher *launcher.Launcher
 
 	if options.CDPEndpoint == "" {
 		dataStore, err = os.MkdirTemp("", "nuclei-*")
@@ -45,59 +50,45 @@ func New(options *types.Options) (*Browser, error) {
 			return nil, errors.Wrap(err, "could not create temporary directory")
 		}
 
-		chromeLauncher = chromeLauncher.
-			Leakless(false).
-			Set("disable-crash-reporter").
-			Set("disable-gpu").
-			Set("disable-notifications").
-			Set("hide-scrollbars").
-			Set("ignore-certificate-errors").
-			Set("ignore-ssl-errors").
-			Set("incognito").
-			Set("mute-audio").
-			Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-			Delete("use-mock-keychain").
-			UserDataDir(dataStore)
+		newChromeLauncher := func(browserPath string) *launcher.Launcher {
+			configured := launcher.New().
+				Leakless(false).
+				Set("disable-crash-reporter").
+				Set("disable-gpu").
+				Set("disable-notifications").
+				Set("hide-scrollbars").
+				Set("ignore-certificate-errors").
+				Set("ignore-ssl-errors").
+				Set("incognito").
+				Set("mute-audio").
+				Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
+				Delete("use-mock-keychain").
+				UserDataDir(dataStore)
 
-		if MustDisableSandbox() {
-			chromeLauncher = chromeLauncher.NoSandbox(true)
+			if browserPath != "" {
+				configured.Bin(browserPath)
+			}
+			if MustDisableSandbox() {
+				configured.NoSandbox(true)
+			}
+			configured.Headless(!options.ShowBrowser)
+			if options.AliveHttpProxy != "" {
+				configured.Proxy(options.AliveHttpProxy)
+			}
+			for k, v := range options.ParseHeadlessOptionalArguments() {
+				configured.Set(flags.Flag(k), v)
+			}
+			return configured
 		}
 
-		executablePath, err := os.Executable()
+		browserPath, err := browserPath(options)
 		if err != nil {
 			return nil, err
 		}
-
-		// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
-		useMusl, _ := fileutil.UseMusl(executablePath)
-		if options.UseInstalledChrome || useMusl {
-			if chromePath, hasChrome := launcher.LookPath(); hasChrome {
-				chromeLauncher.Bin(chromePath)
-			} else {
-				return nil, errors.New("the chrome browser is not installed")
-			}
-		} else if !options.ShowBrowser && chromeshell.Supported() {
-			// Prefer chrome-headless-shell on linux/amd64 for headless templates;
-			// skip when headed since the shell binary cannot show a UI.
-			if shellPath, err := chromeshell.Ensure(); err == nil {
-				chromeLauncher.Bin(shellPath)
-			}
-		}
-
-		if options.ShowBrowser {
-			chromeLauncher = chromeLauncher.Headless(false)
-		} else {
-			chromeLauncher = chromeLauncher.Headless(true)
-		}
-		if options.AliveHttpProxy != "" {
-			chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
-		}
-
-		for k, v := range options.ParseHeadlessOptionalArguments() {
-			chromeLauncher.Set(flags.Flag(k), v)
-		}
-
-		launcherURL, err = chromeLauncher.Launch()
+		launcherURL, err = launchBrowser(browserPath, func(path string) (string, error) {
+			chromeLauncher = newChromeLauncher(path)
+			return chromeLauncher.Launch()
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -138,6 +129,46 @@ func New(options *types.Options) (*Browser, error) {
 		launcher:       chromeLauncher,
 	}
 	return engine, nil
+}
+
+func browserPath(options *types.Options) (string, error) {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
+	useMusl, _ := fileutil.UseMusl(executablePath)
+	if options.UseInstalledChrome || useMusl {
+		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+			return chromePath, nil
+		}
+		return "", errors.New("the chrome browser is not installed")
+	}
+	if options.ShowBrowser || !chromeshell.Supported() {
+		return "", nil
+	}
+
+	// Prefer chrome-headless-shell for local headless templates; skip it when
+	// headed since the shell binary cannot show a UI.
+	ctx, cancel := context.WithTimeout(context.Background(), chromeShellDownloadTimeout)
+	defer cancel()
+	shellPath, err := chromeshell.EnsureContext(ctx)
+	if err != nil {
+		gologger.Warning().Msgf("Could not prepare chrome-headless-shell, using the default browser: %s\n", err)
+		return "", nil
+	}
+	return shellPath, nil
+}
+
+func launchBrowser(browserPath string, launch func(string) (string, error)) (string, error) {
+	launcherURL, err := launch(browserPath)
+	if err == nil || browserPath == "" {
+		return launcherURL, err
+	}
+
+	gologger.Warning().Msgf("Could not launch chrome-headless-shell, using the default browser: %s\n", err)
+	return launch("")
 }
 
 // MustDisableSandbox determines if the current os and user needs sandbox mode disabled
