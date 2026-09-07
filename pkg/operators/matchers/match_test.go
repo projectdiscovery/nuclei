@@ -100,12 +100,7 @@ func TestHexEncoding(t *testing.T) {
 }
 
 func TestMatcher_MatchDSL(t *testing.T) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("contains(body, \"{{VARIABLE}}\")", dsl.HelperFunctions)
-	require.Nil(t, err, "couldn't compile expression")
-
-	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, dslCompiled: []*govaluate.EvaluableExpression{compiled}}
-	err = m.CompileMatchers()
-	require.Nil(t, err, "could not compile matcher")
+	m := mustCompileDSLMatcher(t, `contains(body, "{{VARIABLE}}")`)
 
 	values := []string{"PING", "pong"}
 
@@ -442,12 +437,7 @@ func TestMatchWords_CaseInsensitive_DynamicValue(t *testing.T) {
 
 func TestMatcher_MatchDSL_ErrorHandling(t *testing.T) {
 	// First expression errors (division by zero), second is true
-	bad, err := govaluate.NewEvaluableExpression("1 / 0")
-	require.NoError(t, err)
-	good, err := govaluate.NewEvaluableExpression("1 == 1")
-	require.NoError(t, err)
-
-	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, Condition: "or", dslCompiled: []*govaluate.EvaluableExpression{bad, good}}
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: DSLMatcher}, Condition: "or", DSL: []string{"1 / 0", "1 == 1"}}
 	require.NoError(t, m.CompileMatchers())
 	ok := m.MatchDSL(map[string]interface{}{})
 	require.True(t, ok)
