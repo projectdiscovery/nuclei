@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nuclei tech-graph visualizer</title>
+<style>
+  :root {
+    --bg: #0c0f17; --panel: #141926; --panel2: #1b2233; --line: #263149;
+    --txt: #e6edf6; --muted: #8b97ad; --accent: #5b8cff;
+    --cpe:#36c98a; --platform:#b07cff; --dir:#3bc4c4; --tag:#5b8cff; --id:#f0a23c;
+    --crit:#ff5470; --high:#ff8a3d; --med:#f5c451; --low:#5b8cff; --info:#7d8aa3;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+    font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { padding:18px 24px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    background:linear-gradient(180deg,#10141f,#0c0f17); position:sticky; top:0; z-index:5; }
+  h1 { font-size:16px; margin:0; font-weight:600; letter-spacing:.3px; }
+  h1 span { color:var(--accent); }
+  .meta { color:var(--muted); font-size:12px; }
+  .btn { background:var(--panel2); color:var(--txt); border:1px solid var(--line);
+    padding:7px 13px; border-radius:8px; cursor:pointer; font-size:13px; }
+  .btn:hover { border-color:var(--accent); }
+  main { padding:20px 24px; max-width:1240px; margin:0 auto; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:18px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card .n { font-size:24px; font-weight:700; }
+  .card .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  .srcbar { display:flex; height:10px; border-radius:6px; overflow:hidden; margin:4px 0 16px; border:1px solid var(--line); }
+  .srcbar div { height:100%; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-bottom:18px; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:middle; }
+  .tabs { display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:16px; }
+  .tab { padding:9px 15px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; }
+  .tab.active { color:var(--txt); border-bottom-color:var(--accent); }
+  .toolbar { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+  input[type=search], select { background:var(--panel2); border:1px solid var(--line); color:var(--txt);
+    padding:8px 12px; border-radius:8px; font-size:13px; }
+  input[type=search] { flex:1; min-width:220px; }
+  .tech { background:var(--panel); border:1px solid var(--line); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+  .tech > summary { padding:11px 15px; cursor:pointer; display:flex; align-items:center; gap:12px; list-style:none; }
+  .tech > summary::-webkit-details-marker { display:none; }
+  .tech .id { font-weight:600; }
+  .tech .cnt { margin-left:auto; color:var(--muted); font-size:12px; background:var(--panel2);
+    padding:2px 9px; border-radius:20px; }
+  .cpe { color:var(--muted); font-size:11px; font-family:ui-monospace,monospace; }
+  .tpls { border-top:1px solid var(--line); padding:6px 15px 12px; }
+  .row { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed #1e2740; font-size:13px; }
+  .row:last-child { border-bottom:none; }
+  .row .tid { font-family:ui-monospace,monospace; font-size:12px; }
+  .badge { font-size:10px; padding:1px 7px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; font-weight:600; }
+  .b-cpe{background:rgba(54,201,138,.16);color:var(--cpe)} .b-platform{background:rgba(176,124,255,.16);color:var(--platform)}
+  .b-dir{background:rgba(59,196,196,.16);color:var(--dir)} .b-tag{background:rgba(91,140,255,.16);color:var(--tag)}
+  .b-id{background:rgba(240,162,60,.16);color:var(--id)}
+  .sev { width:7px; height:7px; border-radius:50%; flex:none; }
+  .s-critical{background:var(--crit)} .s-high{background:var(--high)} .s-medium{background:var(--med)}
+  .s-low{background:var(--low)} .s-info{background:var(--info)} .s-unknown{background:#444}
+  .cat { color:var(--muted); font-size:11px; }
+  .drop { border:2px dashed var(--line); border-radius:14px; padding:60px; text-align:center; color:var(--muted); }
+  .drop.hot { border-color:var(--accent); color:var(--txt); }
+  .muted { color:var(--muted); }
+  .hidden { display:none; }
+  .alias { color:var(--muted); font-size:11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>nuclei <span>tech-graph</span> visualizer</h1>
+  <span class="meta" id="meta"></span>
+  <button class="btn" id="pick" style="margin-left:auto">Load tech-graph.json</button>
+  <input type="file" id="file" accept="application/json,.json" class="hidden" />
+</header>
+<main>
+  <div id="empty" class="drop">
+    Drop <b>tech-graph.json</b> here, or click <b>Load</b>.<br/>
+    <span class="muted">Generate it with <code>techgraph-gen -templates &lt;dir&gt; -output tech-graph.json</code></span>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="cards" id="cards"></div>
+    <div class="srcbar" id="srcbar"></div>
+    <div class="legend" id="legend"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="techs">Technologies</div>
+      <div class="tab" data-tab="baseline">Baseline</div>
+      <div class="tab" data-tab="detection">Detection</div>
+      <div class="tab" data-tab="synonyms">Synonyms</div>
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Search tech, template id, alias, cpe…" />
+      <select id="sort">
+        <option value="count">Sort: most templates</option>
+        <option value="name">Sort: name</option>
+      </select>
+      <select id="srcFilter">
+        <option value="">Source: all</option>
+        <option value="cpe">cpe</option><option value="platform">platform</option>
+        <option value="dir">dir</option><option value="tag">tag</option><option value="id">id</option>
+      </select>
+      <span class="muted" id="resultCount"></span>
+    </div>
+
+    <div id="view"></div>
+  </div>
+</main>
+
+<script>
+const SEV = ["critical","high","medium","low","info"];
+const SRC = ["cpe","platform","dir","tag","id"];
+const SRC_COLOR = {cpe:"--cpe",platform:"--platform",dir:"--dir",tag:"--tag",id:"--id"};
+let G = null;
+
+const $ = s => document.querySelector(s);
+const el = (t,c,h) => { const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; };
+const esc = s => String(s==null?"":s).replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+
+function load(json){
+  G = json;
+  $("#empty").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  $("#meta").textContent = `v${json.version} · ${json.generated_at||""} · ${json.source_hash? json.source_hash.slice(0,18)+"…":""}`;
+  renderCards(); renderTabs(); render();
+}
+
+function renderCards(){
+  const s = G.stats || {};
+  const cards = [
+    ["templates", s.total], ["dependents", s.dependents], ["techs", s.techs],
+    ["baseline", s.baseline], ["detection", s.detection], ["excluded", s.excluded], ["unmapped", s.unmapped],
+  ];
+  $("#cards").innerHTML = cards.map(([l,n])=>`<div class="card"><div class="n">${n??0}</div><div class="l">${l}</div></div>`).join("");
+  // source bar from per-source dependent counts
+  const bySrc = {cpe:s.dependents_cpe,platform:s.dependents_platform,dir:s.dependents_dir,tag:s.dependents_tag,id:s.dependents_id};
+  const tot = SRC.reduce((a,k)=>a+(bySrc[k]||0),0)||1;
+  $("#srcbar").innerHTML = SRC.map(k=>`<div style="width:${100*(bySrc[k]||0)/tot}%;background:var(${SRC_COLOR[k]})" title="${k}: ${bySrc[k]||0}"></div>`).join("");
+  $("#legend").innerHTML = SRC.map(k=>`<span><i style="background:var(${SRC_COLOR[k]})"></i>${k} ${bySrc[k]||0}</span>`).join("")
+    + ` <span style="margin-left:auto" class="muted">dependent attachment source</span>`;
+}
+
+let TAB = "techs";
+function renderTabs(){
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.onclick = ()=>{ TAB=t.dataset.tab; document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===t)); render(); };
+  });
+}
+["#q","#sort","#srcFilter"].forEach(s=>document.addEventListener("input",e=>{ if(e.target.matches(s)) render(); }));
+
+function render(){
+  const q = $("#q").value.trim().toLowerCase();
+  const v = $("#view"); v.innerHTML="";
+  if(TAB==="techs") return renderTechs(q,v);
+  if(TAB==="baseline") return renderList(G.baseline||[], q, v, b=>[b.id,b.category], b=>rowHTML(b.id,null,b.category,b.severity,b.tier));
+  if(TAB==="detection") return renderList(G.detection||[], q, v, d=>[d.id,d.tech], d=>rowHTML(d.id,null,"detector → "+(d.tech||"—")));
+  if(TAB==="synonyms"){
+    const ents=Object.entries(G.synonyms||{}).filter(([a,t])=>!q||a.includes(q)||t.includes(q)).sort();
+    $("#resultCount").textContent = ents.length+" synonyms";
+    ents.forEach(([a,t])=>{ const r=el("div","row"); r.innerHTML=`<span class="tid">${esc(a)}</span><span class="muted">→</span><span class="badge b-tag">${esc(t)}</span>`; v.appendChild(r); });
+  }
+}
+
+function renderTechs(q,v){
+  const srcF = $("#srcFilter").value;
+  let techs = Object.values(G.techs||{});
+  techs = techs.filter(t=>{
+    const tpls = t.templates||[];
+    if(srcF && !tpls.some(x=>x.source===srcF)) return false;
+    if(!q) return true;
+    if(t.id.toLowerCase().includes(q) || (t.cpe||"").toLowerCase().includes(q)) return true;
+    if((t.aliases||[]).some(a=>a.includes(q))) return true;
+    return tpls.some(x=>x.id.toLowerCase().includes(q));
+  });
+  techs.sort($("#sort").value==="name"
+    ? (a,b)=>a.id.localeCompare(b.id)
+    : (a,b)=>(b.templates||[]).length-(a.templates||[]).length);
+  $("#resultCount").textContent = `${techs.length} techs · ${techs.reduce((n,t)=>n+(t.templates||[]).length,0)} templates`;
+  const frag=document.createDocumentFragment();
+  for(const t of techs.slice(0,400)){
+    const d=el("details","tech");
+    const tpls=(t.templates||[]);
+    d.innerHTML=`<summary><span class="id">${esc(t.id)}</span>`
+      +(t.cpe?`<span class="cpe">${esc(t.cpe)}</span>`:"")
+      +(t.aliases&&t.aliases.length?`<span class="alias">${esc(t.aliases.slice(0,4).join(", "))}</span>`:"")
+      +`<span class="cnt">${tpls.length}</span></summary>`;
+    const body=el("div","tpls");
+    let list=tpls; if(srcF) list=list.filter(x=>x.source===srcF);
+    if(q) list=list.filter(x=>x.id.toLowerCase().includes(q)||t.id.toLowerCase().includes(q)||(t.aliases||[]).some(a=>a.includes(q)));
+    body.innerHTML = list.slice(0,300).map(x=>rowHTML(x.id,x.source,x.category,x.severity)).join("");
+    d.appendChild(body); frag.appendChild(d);
+  }
+  v.appendChild(frag);
+  if(techs.length>400) v.appendChild(el("div","muted",`Showing first 400 of ${techs.length}. Refine your search.`));
+}
+
+function renderList(items,q,v,keys,rowFn){
+  const f=items.filter(it=>!q||keys(it).some(k=>String(k||"").toLowerCase().includes(q)));
+  $("#resultCount").textContent = f.length+" items";
+  v.innerHTML = `<div class="tech"><div class="tpls">`+f.slice(0,1000).map(rowFn).join("")+`</div></div>`;
+}
+
+function rowHTML(id,source,category,severity,extra){
+  const sev=(severity||"unknown").toLowerCase();
+  return `<div class="row"><span class="sev s-${SEV.includes(sev)?sev:"unknown"}"></span>`
+    + `<span class="tid">${esc(id)}</span>`
+    + (source?`<span class="badge b-${source}">${esc(source)}</span>`:"")
+    + (category?`<span class="cat">${esc(category)}</span>`:"")
+    + (extra?`<span class="cat">· ${esc(extra)}</span>`:"")
+    + `</div>`;
+}
+
+// ---- loading: file picker, drag/drop, auto-fetch ----
+$("#pick").onclick=()=>$("#file").click();
+$("#file").onchange=e=>{ const f=e.target.files[0]; if(f) f.text().then(t=>load(JSON.parse(t))); };
+const dz=$("#empty");
+["dragover","dragenter"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("hot");}));
+["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove("hot");}));
+dz.addEventListener("drop",e=>{ const f=e.dataTransfer.files[0]; if(f) f.text().then(t=>load(JSON.parse(t))); });
+if(window.__TECHGRAPH__){ load(window.__TECHGRAPH__); }
+else { fetch("tech-graph.json").then(r=>r.ok?r.json():Promise.reject()).then(load).catch(()=>{}); }
+</script>
+</body>
+</html>
