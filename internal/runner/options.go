@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/csv"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
@@ -352,6 +353,16 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 			reportingOptions.JSONLExporter = &jsonl.Options{
 				File:    options.JSONLExport,
 				OmitRaw: options.OmitRawRequests,
+			}
+		}
+	}
+	if options.CSVExport != "" {
+		// Combine the CLI options with the config file options with the CLI options taking precedence
+		if reportingOptions.CSVExporter != nil {
+			reportingOptions.CSVExporter.File = options.CSVExport
+		} else {
+			reportingOptions.CSVExporter = &csv.Options{
+				File: options.CSVExport,
 			}
 		}
 	}
