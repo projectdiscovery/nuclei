@@ -41,17 +41,21 @@ func (matcher *Matcher) Validate() error {
 	case SizeMatcher:
 		expectedFields = append(commonExpectedFields, "Size", "Part")
 	case WordsMatcher:
-		expectedFields = append(commonExpectedFields, "Words", "Part", "Encoding", "CaseInsensitive")
+		expectedFields = append(commonExpectedFields, "Words", "Part", "Encoding", "CaseInsensitive", "Offset")
 	case BinaryMatcher:
-		expectedFields = append(commonExpectedFields, "Binary", "Part", "Encoding", "CaseInsensitive")
+		expectedFields = append(commonExpectedFields, "Binary", "Part", "Encoding", "CaseInsensitive", "Offset")
 	case RegexMatcher:
-		expectedFields = append(commonExpectedFields, "Regex", "Part", "Encoding", "CaseInsensitive")
+		expectedFields = append(commonExpectedFields, "Regex", "Part", "Encoding", "CaseInsensitive", "Offset")
 	case XPathMatcher:
 		expectedFields = append(commonExpectedFields, "XPath", "Part")
 	}
 
 	if err = checkFields(matcher, matcherMap, expectedFields...); err != nil {
 		return err
+	}
+
+	if matcher.Offset != nil && *matcher.Offset < 0 {
+		return fmt.Errorf("offset must be >= 0 (got %d)", *matcher.Offset)
 	}
 
 	// validate the XPath query

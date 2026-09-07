@@ -2,6 +2,7 @@ package matchers
 
 import (
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/antchfx/htmlquery"
@@ -78,7 +79,7 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 			}
 		}
 		// Continue if the word doesn't match
-		if !strings.Contains(corpus, word) {
+		if !matcher.matchStringAt(corpus, word) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
@@ -111,33 +112,8 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range matcher.regexCompiled {
-		// Literal prefix short-circuit
-		rstr := regex.String()
-		if !strings.Contains(rstr, "(?i") { // covers (?i) and (?i:
-			if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
-				if !strings.Contains(corpus, prefix) {
-					switch matcher.condition {
-					case ANDCondition:
-						return false, []string{}
-					case ORCondition:
-						continue
-					}
-				}
-			}
-		}
-
-		// Fast OR-path: return first match without full scan
-		if matcher.condition == ORCondition && !matcher.MatchAll {
-			m := regex.FindAllString(corpus, 1)
-			if len(m) == 0 {
-				continue
-			}
-			return true, m
-		}
-
-		// Single scan: get all matches directly
-		currentMatches := regex.FindAllString(corpus, -1)
-		if len(currentMatches) == 0 {
+		currentMatches, matched := matcher.findRegexMatches(corpus, regex)
+		if !matched {
 			switch matcher.condition {
 			case ANDCondition:
 				return false, []string{}
@@ -146,7 +122,10 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 			}
 		}
 
-		// If the condition was an OR (and MatchAll true), we still need to gather all
+		// If the condition was an OR, return on the first match.
+		if matcher.condition == ORCondition && !matcher.MatchAll {
+			return true, currentMatches
+		}
 		matchedRegexes = append(matchedRegexes, currentMatches...)
 
 		// If we are at the end of the regex, return with true
@@ -160,12 +139,50 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	return false, []string{}
 }
 
+func (matcher *Matcher) findRegexMatches(corpus string, regex *regexp.Regexp) ([]string, bool) {
+	if matcher.Offset != nil {
+		offset := *matcher.Offset
+		if offset < 0 || offset > len(corpus) {
+			return nil, false
+		}
+		loc := regex.FindStringIndex(corpus[offset:])
+		if loc == nil || loc[0] != 0 {
+			return nil, false
+		}
+		return []string{corpus[offset : offset+loc[1]]}, true
+	}
+
+	// Literal prefix short-circuit
+	rstr := regex.String()
+	if !strings.Contains(rstr, "(?i") { // covers (?i) and (?i:
+		if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
+			if !strings.Contains(corpus, prefix) {
+				return nil, false
+			}
+		}
+	}
+
+	if matcher.condition == ORCondition && !matcher.MatchAll {
+		m := regex.FindAllString(corpus, 1)
+		if len(m) == 0 {
+			return nil, false
+		}
+		return m, true
+	}
+
+	currentMatches := regex.FindAllString(corpus, -1)
+	if len(currentMatches) == 0 {
+		return nil, false
+	}
+	return currentMatches, true
+}
+
 // MatchBinary matches a binary check against a corpus
 func (matcher *Matcher) MatchBinary(corpus string) (bool, []string) {
 	var matchedBinary []string
 	// Iterate over all the words accepted as valid
 	for i, binary := range matcher.binaryDecoded {
-		if !strings.Contains(corpus, binary) {
+		if !matcher.matchStringAt(corpus, binary) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
@@ -189,6 +206,19 @@ func (matcher *Matcher) MatchBinary(corpus string) (bool, []string) {
 		}
 	}
 	return false, []string{}
+}
+
+// matchStringAt reports whether needle is present in corpus, optionally pinned
+// to matcher.Offset when that field is set.
+func (matcher *Matcher) matchStringAt(corpus, needle string) bool {
+	if matcher.Offset == nil {
+		return strings.Contains(corpus, needle)
+	}
+	offset := *matcher.Offset
+	if offset < 0 || offset > len(corpus) || offset+len(needle) > len(corpus) {
+		return false
+	}
+	return corpus[offset:offset+len(needle)] == needle
 }
 
 // MatchDSL matches on a generic map result

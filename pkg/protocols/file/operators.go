@@ -74,12 +74,13 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 }
 
 // responseToDSLMap converts a file chunk elaboration to a map for use in DSL matching
-func (request *Request) responseToDSLMap(raw, inputFilePath, matchedFileName string) output.InternalEvent {
+func (request *Request) responseToDSLMap(raw, inputFilePath, matchedFileName string, fileSize int64) output.InternalEvent {
 	return output.InternalEvent{
 		"path":          inputFilePath,
 		"matched":       matchedFileName,
 		"raw":           raw,
 		"type":          request.Type().String(),
+		"filesize":      fileSize,
 		"template-id":   request.options.TemplateID,
 		"template-info": request.options.TemplateInfo,
 		"template-path": request.options.TemplatePath,

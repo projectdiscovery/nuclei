@@ -440,6 +440,55 @@ func TestMatchWords_CaseInsensitive_DynamicValue(t *testing.T) {
 	require.Equal(t, []string{"example.com"}, matched)
 }
 
+func TestMatchOffset(t *testing.T) {
+	offset0 := 0
+	offset2 := 2
+
+	t.Run("word at start", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Words: []string{"MZ"}, Offset: &offset0}
+		require.NoError(t, m.CompileMatchers())
+		ok, snippets := m.MatchWords("MZ....", nil)
+		require.True(t, ok)
+		require.Equal(t, []string{"MZ"}, snippets)
+		ok, _ = m.MatchWords("xMZ...", nil)
+		require.False(t, ok)
+	})
+
+	t.Run("word at mid offset", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Words: []string{"AB"}, Offset: &offset2}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchWords("xxAByy", nil)
+		require.True(t, ok)
+		ok, _ = m.MatchWords("ABxxxx", nil)
+		require.False(t, ok)
+	})
+
+	t.Run("binary at start", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: BinaryMatcher}, Binary: []string{"4d5a"}, Offset: &offset0}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchBinary("MZ....")
+		require.True(t, ok)
+		ok, _ = m.MatchBinary("xMZ...")
+		require.False(t, ok)
+	})
+
+	t.Run("regex must start at offset", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Regex: []string{"MZ"}, Offset: &offset0}
+		require.NoError(t, m.CompileMatchers())
+		ok, snippets := m.MatchRegex("MZPE")
+		require.True(t, ok)
+		require.Equal(t, []string{"MZ"}, snippets)
+		ok, _ = m.MatchRegex("xxMZ")
+		require.False(t, ok)
+	})
+
+	t.Run("negative offset rejected", func(t *testing.T) {
+		neg := -1
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Words: []string{"MZ"}, Offset: &neg}
+		require.Error(t, m.CompileMatchers())
+	})
+}
+
 func TestMatcher_MatchDSL_ErrorHandling(t *testing.T) {
 	// First expression errors (division by zero), second is true
 	bad, err := govaluate.NewEvaluableExpression("1 / 0")

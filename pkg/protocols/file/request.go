@@ -252,7 +252,7 @@ func (request *Request) processReader(reader io.Reader, filePath string, input *
 	}
 
 	// build event structure to interface with internal logic
-	return request.buildEvent(input.MetaInput.Input, filePath, fileMatches, opResult, previousInternalEvent), fileMatches, nil
+	return request.buildEvent(input.MetaInput.Input, filePath, totalBytes, fileMatches, opResult, previousInternalEvent), fileMatches, nil
 }
 
 func (request *Request) findMatchesWithReader(reader io.Reader, input *contextargs.Context, filePath string, totalBytes int64, previous output.InternalEvent) ([]FileMatch, *operators.Result) {
@@ -302,7 +302,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 		processedBytes := units.BytesSize(float64(currentBytes))
 
 		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
-		dslMap := request.responseToDSLMap(lineContent, input.MetaInput.Input, filePath)
+		dslMap := request.responseToDSLMap(lineContent, input.MetaInput.Input, filePath, totalBytes)
 		maps.Copy(dslMap, previous)
 		// add vars to template context
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, dslMap)
@@ -368,10 +368,10 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 	return fileMatches, opResult
 }
 
-func (request *Request) buildEvent(input, filePath string, fileMatches []FileMatch, operatorResult *operators.Result, previous output.InternalEvent) *output.InternalWrappedEvent {
+func (request *Request) buildEvent(input, filePath string, fileSize int64, fileMatches []FileMatch, operatorResult *operators.Result, previous output.InternalEvent) *output.InternalWrappedEvent {
 	exprLines := make(map[string][]int)
 	exprBytes := make(map[string][]int)
-	internalEvent := request.responseToDSLMap("", input, filePath)
+	internalEvent := request.responseToDSLMap("", input, filePath, fileSize)
 	maps.Copy(internalEvent, previous)
 	for _, fileMatch := range fileMatches {
 		exprLines[fileMatch.Expr] = append(exprLines[fileMatch.Expr], fileMatch.Line)
