@@ -13,7 +13,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
-	github.com/miekg/dns v1.1.72
+	github.com/miekg/dns v1.1.73
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.6
@@ -111,7 +111,7 @@ require (
 	github.com/projectdiscovery/ratelimit v0.0.88
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.1.0
-	github.com/projectdiscovery/tlsx v1.3.2
+	github.com/projectdiscovery/tlsx v1.4.0
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
 	github.com/projectdiscovery/utils v0.11.3
@@ -215,7 +215,7 @@ require (
 	github.com/charmbracelet/x/exp/slice v0.0.0-20250908092851-c2208eb08494 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.7 // indirect
-	github.com/cloudflare/cfssl v1.6.4 // indirect
+	github.com/cloudflare/cfssl v1.6.5 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 // indirect
@@ -272,7 +272,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
-	github.com/google/certificate-transparency-go v1.3.2 // indirect
+	github.com/google/certificate-transparency-go v1.3.3 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -371,7 +371,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/sashabaranov/go-openai v1.37.0 // indirect
-	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
