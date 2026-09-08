@@ -72,6 +72,10 @@ type Config struct {
 	Catalog         catalog.Catalog
 	ExecutorOptions *protocols.ExecutorOptions
 	Logger          *gologger.Logger
+
+	// MetadataIndex is an optional shared index borrowed by the store. The
+	// caller remains responsible for persisting it.
+	MetadataIndex *index.Index
 }
 
 // Store is a storage for loaded nuclei templates
@@ -170,14 +174,20 @@ func New(cfg *Config) (*Store, error) {
 		return nil
 	})
 
-	// Initialize metadata index and filter (load from disk & cache for reuse)
-	store.metadataIndex = store.loadTemplatesIndex()
+	// Initialize metadata index and filter (load from disk & cache for reuse).
+	// A configured index is borrowed so multiple stores can share it without
+	// reloading and rewriting the entire persistent index for every store.
+	ownsMetadataIndex := cfg.MetadataIndex == nil
+	store.metadataIndex = cfg.MetadataIndex
+	if store.metadataIndex == nil {
+		store.metadataIndex = store.loadTemplatesIndex()
+	}
 	store.indexFilter = store.buildIndexFilter()
 	if cfg.ExecutorOptions != nil {
 		cfg.ExecutorOptions.TemplateVerificationCallback = store.getTemplateVerification
 	}
 	store.saveMetadataIndexOnce = sync.OnceFunc(func() {
-		if store.metadataIndex == nil {
+		if store.metadataIndex == nil || !ownsMetadataIndex {
 			return
 		}
 

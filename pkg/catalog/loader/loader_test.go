@@ -1,11 +1,15 @@
 package loader
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	metadataindex "github.com/projectdiscovery/nuclei/v3/pkg/catalog/index"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,6 +48,25 @@ func TestLoadTemplates(t *testing.T) {
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
 	})
+}
+
+func TestNewUsesConfiguredMetadataIndex(t *testing.T) {
+	indexDir := t.TempDir()
+	metadataIndex, err := metadataindex.NewIndex(indexDir)
+	require.NoError(t, err)
+
+	store, err := New(&Config{
+		Catalog:       disk.NewCatalog(""),
+		Logger:        &gologger.Logger{},
+		MetadataIndex: metadataIndex,
+	})
+	require.NoError(t, err)
+	require.Same(t, metadataIndex, store.metadataIndex)
+
+	metadataIndex.Set("/tmp/shared.yaml", &metadataindex.Metadata{ID: "shared"})
+	store.saveMetadataIndexOnce()
+	_, err = os.Stat(filepath.Join(indexDir, metadataindex.IndexFileName))
+	require.ErrorIs(t, err, os.ErrNotExist, "borrowed index persistence belongs to its owner")
 }
 
 func TestRemoteTemplates(t *testing.T) {
