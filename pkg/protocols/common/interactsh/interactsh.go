@@ -30,6 +30,7 @@ import (
 type Client struct {
 	sync.Once
 	sync.RWMutex
+	cacheOnce sync.Once
 
 	options *Options
 
@@ -57,22 +58,27 @@ type Client struct {
 
 // New returns a new interactsh server client
 func New(options *Options) (*Client, error) {
-	requestsCache := gcache.New[string, *RequestData](options.CacheSize).LRU().Build()
-	interactionsCache := gcache.New[string, []*server.Interaction](defaultMaxInteractionsCount).LRU().Build()
-	matchedTemplateCache := gcache.New[string, bool](defaultMaxInteractionsCount).LRU().Build()
-	interactshURLCache := gcache.New[string, string](defaultMaxInteractionsCount).LRU().Build()
-
 	interactClient := &Client{
 		eviction:         options.Eviction,
-		interactions:     interactionsCache,
-		matchedTemplates: matchedTemplateCache,
-		interactshURLs:   interactshURLCache,
 		options:          options,
-		requests:         requestsCache,
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.CooldownPeriod,
 	}
 	return interactClient, nil
+}
+
+func (c *Client) initializeCaches() {
+	c.cacheOnce.Do(func() {
+		requests := gcache.New[string, *RequestData](c.options.CacheSize).LRU().Build()
+		interactions := gcache.New[string, []*server.Interaction](defaultMaxInteractionsCount).LRU().Build()
+		matchedTemplates := gcache.New[string, bool](defaultMaxInteractionsCount).LRU().Build()
+		interactshURLs := gcache.New[string, string](defaultMaxInteractionsCount).LRU().Build()
+
+		c.interactions = interactions
+		c.matchedTemplates = matchedTemplates
+		c.interactshURLs = interactshURLs
+		c.requests = requests
+	})
 }
 
 func (c *Client) poll() error {
@@ -80,6 +86,7 @@ func (c *Client) poll() error {
 		// do not init if disabled
 		return ErrInteractshClientNotInitialized
 	}
+	c.initializeCaches()
 	interactsh, err := client.New(&client.Options{
 		ServerURL:           c.options.ServerURL,
 		Token:               c.options.Authorization,
@@ -234,6 +241,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 }
 
 func (c *Client) AlreadyMatched(data *RequestData) bool {
+	c.initializeCaches()
 	return c.matchedTemplates.Has(eventHash(data.Event))
 }
 
@@ -266,10 +274,12 @@ func (c *Client) Close() bool {
 		_ = c.interactsh.Close()
 	}
 
-	c.requests.Purge()
-	c.interactions.Purge()
-	c.matchedTemplates.Purge()
-	c.interactshURLs.Purge()
+	if c.requests != nil {
+		c.requests.Purge()
+		c.interactions.Purge()
+		c.matchedTemplates.Purge()
+		c.interactshURLs.Purge()
+	}
 
 	return c.matched.Load()
 }
@@ -309,6 +319,10 @@ func (c *Client) NewURLWithData(data string) (string, error) {
 // MakePlaceholders does placeholders for interact URLs and other data to a map
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 	data["interactsh-server"] = c.getHostname()
+	if len(urls) == 0 {
+		return
+	}
+	c.initializeCaches()
 	for _, url := range urls {
 		if interactshURLMarker, err := c.interactshURLs.Get(url); interactshURLMarker != "" && err == nil {
 			interactshMarker := strings.TrimSuffix(strings.TrimPrefix(interactshURLMarker, "{{"), "}}")
@@ -342,6 +356,10 @@ type RequestData struct {
 
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	if len(interactshURLs) == 0 {
+		return
+	}
+	c.initializeCaches()
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 

@@ -92,3 +92,40 @@ func TestProcessInteractionForRequestConcurrentEventUpdate(t *testing.T) {
 
 	require.False(t, matched)
 }
+
+func TestClientDefersCachesUntilInteractshUse(t *testing.T) {
+	client, err := New(DefaultOptions(nil, nil, nil))
+	require.NoError(t, err)
+
+	require.Nil(t, client.requests)
+	require.Nil(t, client.interactions)
+	require.Nil(t, client.matchedTemplates)
+	require.Nil(t, client.interactshURLs)
+
+	require.False(t, client.Close())
+	require.Nil(t, client.requests)
+	require.Nil(t, client.interactions)
+	require.Nil(t, client.matchedTemplates)
+	require.Nil(t, client.interactshURLs)
+}
+
+func TestClientInitializesCachesOnceConcurrently(t *testing.T) {
+	client, err := New(DefaultOptions(nil, nil, nil))
+	require.NoError(t, err)
+
+	const callers = 32
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(callers)
+	for range callers {
+		go func() {
+			defer waitGroup.Done()
+			client.initializeCaches()
+		}()
+	}
+	waitGroup.Wait()
+
+	require.NotNil(t, client.requests)
+	require.NotNil(t, client.interactions)
+	require.NotNil(t, client.matchedTemplates)
+	require.NotNil(t, client.interactshURLs)
+}
