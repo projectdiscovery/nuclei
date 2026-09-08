@@ -24,7 +24,8 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 		sg.Add(1)
 		go func(template *templates.Template) {
 			defer sg.Done()
-			defer e.templateExecutionStarted(template, "")()
+			finished := e.templateExecutionStarted(template, "")
+			defer func() { finished(ctx.Err()) }()
 			var err error
 			var match bool
 			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
@@ -246,7 +247,8 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error
 func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
-	defer e.templateExecutionStarted(template, value.Input)()
+	finished := e.templateExecutionStarted(template, value.Input)
+	defer func() { finished(ctx.Err()) }()
 	ctxArgs := contextargs.New(ctx)
 	ctxArgs.MetaInput = value
 	scanCtx := scan.NewScanContext(ctx, ctxArgs)

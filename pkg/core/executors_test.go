@@ -120,6 +120,25 @@ func TestExecuteTemplateOnInputReportsLifecycle(t *testing.T) {
 	}
 }
 
+func TestExecuteTemplateOnInputReportsCancellationOnFinish(t *testing.T) {
+	e := newTestEngine()
+	var finished TemplateExecutionEvent
+	e.SetTemplateExecutionCallback(func(event TemplateExecutionEvent) {
+		if event.State == TemplateExecutionFinished {
+			finished = event
+		}
+	})
+	tpl := &templates.Template{ID: "interrupted"}
+	tpl.Executer = &fakeExecuter{withResults: false}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, _ = e.executeTemplateOnInput(ctx, tpl, &contextargs.MetaInput{Input: "target"})
+	if finished.ContextErr != context.Canceled {
+		t.Fatalf("got finish context error %v, want context canceled", finished.ContextErr)
+	}
+}
+
 type fakeTargetProvider struct {
 	values []*contextargs.MetaInput
 }

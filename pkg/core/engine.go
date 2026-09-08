@@ -24,6 +24,7 @@ type TemplateExecutionEvent struct {
 	TemplatePath string
 	Target       string
 	State        TemplateExecutionState
+	ContextErr   error
 }
 
 // TemplateExecutionCallback observes template execution lifecycle transitions.
@@ -83,9 +84,9 @@ func (e *Engine) SetTemplateExecutionCallback(callback TemplateExecutionCallback
 	e.templateExecutionCallback = callback
 }
 
-func (e *Engine) templateExecutionStarted(template *templates.Template, target string) func() {
+func (e *Engine) templateExecutionStarted(template *templates.Template, target string) func(error) {
 	if e.templateExecutionCallback == nil {
-		return func() {}
+		return func(error) {}
 	}
 	event := TemplateExecutionEvent{
 		TemplateID:   template.ID,
@@ -94,8 +95,9 @@ func (e *Engine) templateExecutionStarted(template *templates.Template, target s
 		State:        TemplateExecutionStarted,
 	}
 	e.templateExecutionCallback(event)
-	return func() {
+	return func(contextErr error) {
 		event.State = TemplateExecutionFinished
+		event.ContextErr = contextErr
 		e.templateExecutionCallback(event)
 	}
 }
