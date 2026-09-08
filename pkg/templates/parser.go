@@ -168,6 +168,23 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return value, err
 	}
 
+	// Multiple engine executions can share the parsed cache. Coalesce their
+	// concurrent first access so an immutable template is read and parsed once.
+	// Recheck inside the flight because another caller may have populated the
+	// cache between the optimistic lookup above and becoming the flight leader.
+	key := fmt.Sprintf("%t:%s", p.NoStrictSyntax, templatePath)
+	loaded, loadErr, _ := p.parsedTemplatesCache.loads.Do(key, func() (any, error) {
+		cached, _, cachedErr := p.parsedTemplatesCache.Has(templatePath)
+		if cached != nil {
+			return cached, cachedErr
+		}
+		return p.parseTemplate(templatePath, catalog)
+	})
+	return loaded, loadErr
+}
+
+func (p *Parser) parseTemplate(templatePath string, catalog catalog.Catalog) (any, error) {
+
 	reader, err := utils.ReaderFromPathOrURL(templatePath, catalog)
 	if err != nil {
 		return nil, err
