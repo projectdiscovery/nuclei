@@ -9,12 +9,15 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"sync"
 	"sync/atomic"
 
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output/stats/waf"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
+
+var sharedWafDetector = sync.OnceValue(waf.NewWafDetector)
 
 // Tracker is a stats tracker instance for nuclei scans
 type Tracker struct {
@@ -33,7 +36,7 @@ func NewTracker() *Tracker {
 		statusCodes: mapsutil.NewSyncLockMap[string, *atomic.Int32](),
 		errorCodes:  mapsutil.NewSyncLockMap[string, *atomic.Int32](),
 		wafDetected: mapsutil.NewSyncLockMap[string, *atomic.Int32](),
-		wafDetector: waf.NewWafDetector(),
+		wafDetector: sharedWafDetector(),
 	}
 }
 
