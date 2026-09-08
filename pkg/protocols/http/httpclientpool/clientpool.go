@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
@@ -187,6 +188,8 @@ type Configuration struct {
 	NoTimeout bool
 	// DisableCookie disables cookie reuse for the http client (cookiejar impl)
 	DisableCookie bool
+	// DisableHTTPCache disables HTTP caching for this client instance
+	DisableHTTPCache bool
 	// FollowRedirects specifies the redirects flow
 	RedirectFlow RedirectFlow
 	// Connection defines custom connection configuration
@@ -226,6 +229,8 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.Itoa(int(c.RedirectFlow)))
 	builder.WriteString("r")
 	builder.WriteString(strconv.FormatBool(c.DisableCookie))
+	builder.WriteString("h")
+	builder.WriteString(strconv.FormatBool(c.DisableHTTPCache))
 	builder.WriteString("c")
 	builder.WriteString(strconv.FormatBool(c.Connection != nil))
 	if c.Connection != nil {
@@ -247,7 +252,7 @@ func (c *Configuration) Hash() string {
 
 // HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
-	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0
+	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0 && !c.DisableHTTPCache
 }
 
 // GetRawHTTP returns the rawhttp request client
@@ -360,6 +365,9 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	if configuration.ResponseHeaderTimeout > 0 && configuration.ResponseHeaderTimeout > retryableHttpOptions.Timeout {
 		retryableHttpOptions.Timeout = configuration.ResponseHeaderTimeout
 	}
+	if options.EnableHTTPCache && !configuration.DisableHTTPCache {
+		retryableHttpOptions.WrapTransport = httpcache.NewTransportWrapper()
+	}
 
 	maxIdleConnsPerHost := idleConnPoolSize(options.TemplateThreads, configuration.Threads)
 	maxIdleConns := maxIdleConnsPerHost
@@ -463,7 +471,6 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 
 		return &connTrackingTransport{base: transport}, nil
 	}
-
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
 
