@@ -47,6 +47,16 @@ func TestCacheCheck(t *testing.T) {
 	})
 }
 
+func TestCacheCloseReleasesStorageAndIsIdempotent(t *testing.T) {
+	cache := New(3, DefaultMaxHostsCount, nil)
+	cache.MarkFailed(protoType, newCtxArgs(t.Name()), errors.New("timeout"))
+
+	cache.Close()
+	require.Nil(t, cache.failedTargets)
+
+	require.NotPanics(t, cache.Close)
+}
+
 func TestCacheCheckTimeout(t *testing.T) {
 	// A host that consistently times out (request deadline exceeded) is
 	// unresponsive and must be skipped once MaxHostError consecutive timeouts
