@@ -40,7 +40,7 @@ func BenchmarkParseAcrossEngineLocalCaches(b *testing.B) {
 	engineOptions := make([]*protocols.ExecutorOptions, engineCount)
 	engineParsers := make([]*templates.Parser, engineCount)
 	for i := range engineCount {
-		engineParsers[i] = templates.NewParserWithParsedCache(sharedParser.Cache())
+		engineParsers[i] = templates.NewExecutionParser(sharedParser)
 		engineOptions[i] = executerOpts.Copy()
 		engineOptions[i].Parser = engineParsers[i]
 	}
@@ -57,7 +57,7 @@ func BenchmarkParseAcrossEngineLocalCaches(b *testing.B) {
 		}
 
 		for _, parser := range engineParsers {
-			parser.CompiledCache().Purge()
+			parser.PurgeCompiled()
 		}
 	}
 }
