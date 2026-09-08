@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
@@ -22,7 +23,8 @@ import (
 // hence they are ephemeral and are created on every ExecuteNucleiWithOpts invocation
 // in ThreadSafeNucleiEngine
 type unsafeOptions struct {
-	executerOpts *protocols.ExecutorOptions
+	executerOpts    *protocols.ExecutorOptions
+	executionParser *templates.Parser
 }
 
 // createEphemeralObjects creates ephemeral nuclei objects/instances/types.
@@ -31,7 +33,9 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 	if outputWriter == nil {
 		outputWriter = base.customWriter
 	}
-	u := &unsafeOptions{}
+	u := &unsafeOptions{
+		executionParser: templates.NewExecutionParser(base.parser),
+	}
 	u.executerOpts = &protocols.ExecutorOptions{
 		Output:       outputWriter,
 		Options:      opts,
@@ -42,13 +46,12 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		Interactsh:   base.interactshClient,
 		Colorizer:    aurora.New(aurora.WithColors(true)),
 		ResumeCfg:    types.NewResumeCfg(),
-		Parser:       base.parser,
+		Parser:       u.executionParser,
 		Browser:      base.browserInstance,
-		// Thread-safe executes can run concurrently with different Output writers.
-		// The compiled-template cache shallow-copies requests and mutates shared
-		// ExecutorOptions.Output via UpdateOptions/ApplyNewEngineOptions, which
-		// would otherwise route all findings to whichever call last won the race.
-		DoNotCache: true,
+		// Each execution has a private compiled-template cache because compiled
+		// requests retain mutable ExecutorOptions. Only clean parsed templates are
+		// shared with the long-lived engine parser.
+		DoNotCache: false,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
@@ -116,6 +119,10 @@ func resolveEphemeralOutput(base, call *NucleiEngine) output.Writer {
 
 // closeEphemeralObjects closes all resources used by ephemeral nuclei objects/instances/types
 func closeEphemeralObjects(u *unsafeOptions) {
+	if u.executionParser != nil {
+		u.executionParser.PurgeCompiled()
+		u.executionParser = nil
+	}
 	if u.executerOpts.RateLimiter != nil {
 		u.executerOpts.RateLimiter.Stop()
 	}

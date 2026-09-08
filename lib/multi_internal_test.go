@@ -1,12 +1,47 @@
 package nuclei
 
 import (
+	"context"
 	"sync"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestEphemeralObjectsUseExecutionLocalParser(t *testing.T) {
+	baseParser := templates.NewParser()
+	baseParser.Cache().Store("parsed", &templates.Template{}, []byte("raw"), nil)
+	base := &NucleiEngine{parser: baseParser}
+
+	first, err := createEphemeralObjects(context.Background(), base, types.DefaultOptions(), nil)
+	require.NoError(t, err)
+	second, err := createEphemeralObjects(context.Background(), base, types.DefaultOptions(), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { closeEphemeralObjects(second) })
+
+	firstParser, ok := first.executerOpts.Parser.(*templates.Parser)
+	require.True(t, ok)
+	secondParser, ok := second.executerOpts.Parser.(*templates.Parser)
+	require.True(t, ok)
+
+	require.NotSame(t, baseParser, firstParser)
+	require.NotSame(t, firstParser, secondParser)
+	require.Same(t, baseParser.Cache(), firstParser.Cache())
+	require.Same(t, baseParser.Cache(), secondParser.Cache())
+	require.NotSame(t, firstParser.CompiledCache(), secondParser.CompiledCache())
+	require.False(t, first.executerOpts.DoNotCache)
+
+	firstParser.CompiledCache().StoreWithoutRaw("compiled", &templates.Template{}, nil)
+	require.Equal(t, 1, firstParser.CompiledCount())
+	require.Zero(t, secondParser.CompiledCount())
+
+	closeEphemeralObjects(first)
+	require.Zero(t, firstParser.CompiledCount())
+	require.Equal(t, 1, baseParser.ParsedCount())
+}
 
 func TestRestoreBaseExcludeTags(t *testing.T) {
 	tests := []struct {
