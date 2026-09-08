@@ -348,6 +348,9 @@ func TestParseTemplateExecutesJavascriptInitAfterVerification(t *testing.T) {
 		testutils.Cleanup(options)
 	})
 
+	signer := ciTemplateSigner(t)
+	withDefaultTemplateSigner(t, signer)
+
 	executerOptions := testutils.NewMockExecuterOptions(options, nil)
 	executerOptions.TemplatePath = "verified-javascript-init.yaml"
 	templateSource := `id: verified-javascript-init
@@ -363,12 +366,7 @@ javascript:
     code: |
       Export("verified-javascript-init")
 `
-	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
-		require.Equal(t, executerOptions.TemplatePath, templatePath)
-		return trustedVerificationForTest(templateSource)
-	}
-
-	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(signTemplateForTest(t, signer, templateSource)), nil, executerOptions)
 	require.NoError(t, err)
 	require.True(t, template.Verified)
 	require.True(t, template.Options.Verified)
@@ -382,6 +380,9 @@ func TestParseTemplateExecutesPreprocessedJavascriptInitAfterVerification(t *tes
 	t.Cleanup(func() {
 		testutils.Cleanup(options)
 	})
+
+	signer := ciTemplateSigner(t)
+	withDefaultTemplateSigner(t, signer)
 
 	executerOptions := testutils.NewMockExecuterOptions(options, nil)
 	executerOptions.TemplatePath = "verified-preprocessed-javascript-init.yaml"
@@ -398,12 +399,7 @@ javascript:
     code: |
       Export("verified-preprocessed-javascript-init")
 `
-	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
-		require.Equal(t, executerOptions.TemplatePath, templatePath)
-		return trustedVerificationForTest(templateSource)
-	}
-
-	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(signTemplateForTest(t, signer, templateSource)), nil, executerOptions)
 	require.NoError(t, err)
 	require.True(t, template.Verified)
 	require.True(t, template.Options.Verified)
@@ -431,12 +427,46 @@ func trustedVerificationForTest(data string, importedContents ...string) *protoc
 	}
 }
 
+// ciTemplateSigner returns a signer backed by the CI test keypair.
+func ciTemplateSigner(t *testing.T) *templatesigner.TemplateSigner {
+	t.Helper()
+
+	s, err := templatesigner.NewTemplateSignerFromFiles("signer/testdata/ci.crt", "signer/testdata/ci-private-key.pem")
+	require.NoError(t, err)
+
+	return s
+}
+
+// withDefaultTemplateSigner prepends the given signer to the default
+// verifiers for the duration of the test.
+func withDefaultTemplateSigner(t *testing.T, s *templatesigner.TemplateSigner) {
+	t.Helper()
+
+	original := templatesigner.DefaultTemplateVerifiers
+	templatesigner.DefaultTemplateVerifiers = append([]*templatesigner.TemplateSigner{s}, original...)
+	t.Cleanup(func() {
+		templatesigner.DefaultTemplateVerifiers = original
+	})
+}
+
+// signTemplateForTest returns src with a valid signature appended by the
+// given signer. When importPaths are non-empty the signature also binds the
+// contents of those files, read from disk at signing time.
+func signTemplateForTest(t *testing.T, s *templatesigner.TemplateSigner, src string, importPaths ...string) string {
+	t.Helper()
+
+	signable := &templates.Template{ImportedFiles: importPaths}
+	signature, err := s.Sign([]byte(src), signable)
+	require.NoError(t, err)
+
+	return src + "\n" + signature
+}
+
 func TestParseTemplateVerificationUsesLoadedImportContents(t *testing.T) {
 	options := testutils.DefaultOptions.Copy()
 	loadedCode := `Export("loaded-import")`
-	diskCode := `Export("disk-import")`
 	importPath := filepath.Join(t.TempDir(), "import.js")
-	require.NoError(t, os.WriteFile(importPath, []byte(diskCode), 0o600))
+	require.NoError(t, os.WriteFile(importPath, []byte(loadedCode), 0o600))
 	options.LoadHelperFileFunction = func(helperFile, _ string, _ catalog.Catalog) (io.ReadCloser, error) {
 		require.Equal(t, importPath, helperFile)
 		return io.NopCloser(strings.NewReader(loadedCode)), nil
@@ -458,12 +488,11 @@ info:
 javascript:
   - code: %q
 `, importPath)
-	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
-		require.Equal(t, executerOptions.TemplatePath, templatePath)
-		return trustedVerificationForTest(templateSource, loadedCode)
-	}
 
-	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	signer := ciTemplateSigner(t)
+	withDefaultTemplateSigner(t, signer)
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(signTemplateForTest(t, signer, templateSource, importPath)), nil, executerOptions)
 	require.NoError(t, err)
 	require.True(t, template.Verified)
 	require.Equal(t, loadedCode, template.RequestsJavascript[0].Code)
@@ -485,11 +514,10 @@ info:
   author: pdteam
   severity: info
 
-javascript:
-  - init: |
-      set("init-status", "executed")
-    code: |
-      Export("revoked-verifier")
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
 `
 	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
 		require.Equal(t, executerOptions.TemplatePath, templatePath)
@@ -507,7 +535,142 @@ javascript:
 	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
 	require.NoError(t, err)
 	require.False(t, template.Verified)
+}
+
+func TestParseTemplateIgnoresCachedVerificationForCodeTemplates(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "poisoned-code-template.yaml"
+	templateSource := `id: poisoned-code-template
+
+info:
+  name: Poisoned Code Template
+  author: pdteam
+  severity: info
+
+code:
+  - engine:
+      - sh
+    source: |
+      echo poisoned
+`
+	// A forged cache entry: self-consistent digest, real verifier
+	// fingerprint and Verified=true. Writing index.gob is all an attacker
+	// needs; the signature of the template itself is never checked if this
+	// entry is trusted.
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.False(t, template.Options.Verified)
+}
+
+func TestParseTemplateIgnoresCachedVerificationForJavascriptTemplates(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "poisoned-javascript-template.yaml"
+	templateSource := `id: poisoned-javascript-template
+
+info:
+  name: Poisoned Javascript Template
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "executed")
+    code: |
+      Export("poisoned-javascript-template")
+`
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.False(t, template.Options.Verified)
 	require.NotContains(t, template.RequestsJavascript[0].Args, "init-status")
+}
+
+func TestParseTemplateTrustsCachedVerificationForNonExecutableTemplates(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "cached-http-template.yaml"
+	templateSource := `id: cached-http-template
+
+info:
+  name: Cached HTTP Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.True(t, template.Verified)
+	require.True(t, template.Options.Verified)
+}
+
+func TestParseTemplateIgnoresCachedVerificationWhenUnsignedTemplatesDisabled(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.DisableUnsignedTemplates = true
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = "poisoned-unsigned-http-template.yaml"
+	templateSource := `id: poisoned-unsigned-http-template
+
+info:
+  name: Poisoned Unsigned HTTP Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.False(t, template.Options.Verified)
 }
 
 func TestParseTemplateCompilesUnsignedJavascriptInit(t *testing.T) {
@@ -568,6 +731,9 @@ func TestParseCachedTemplatePreservesVerification(t *testing.T) {
 		testutils.Cleanup(options)
 	})
 
+	signer := ciTemplateSigner(t)
+	withDefaultTemplateSigner(t, signer)
+
 	templateSource := `id: cached-verified-javascript
 
 info:
@@ -580,14 +746,10 @@ javascript:
       Export("cached-verified-javascript")
 `
 	templatePath := filepath.Join(t.TempDir(), "cached-verified-javascript.yaml")
-	require.NoError(t, os.WriteFile(templatePath, []byte(templateSource), 0o600))
+	require.NoError(t, os.WriteFile(templatePath, []byte(signTemplateForTest(t, signer, templateSource)), 0o600))
 
 	executerOptions := testutils.NewMockExecuterOptions(options, nil)
 	executerOptions.Parser = templates.NewParser()
-	executerOptions.TemplateVerificationCallback = func(path string) *protocols.TemplateVerification {
-		require.Equal(t, templatePath, path)
-		return trustedVerificationForTest(templateSource)
-	}
 
 	first, err := templates.Parse(templatePath, nil, executerOptions)
 	require.NoError(t, err)

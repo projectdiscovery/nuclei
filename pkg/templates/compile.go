@@ -690,7 +690,22 @@ func applyTemplateVerification(template *Template, data []byte) {
 	// check if the template is verified
 	// only valid templates can be verified or signed
 	if digestErr == nil && options.TemplateVerificationCallback != nil && options.TemplatePath != "" {
-		if cached := options.TemplateVerificationCallback(options.TemplatePath); cached != nil {
+		// The metadata cache (index.gob) is an unauthenticated local file:
+		// anyone who can write to the cache directory can forge a
+		// self-consistent entry (Verified=true, a trusted verifier
+		// fingerprint, and a digest computed over their own payload) and
+		// have unsigned templates treated as verified. Execution of code and
+		// javascript templates is gated on this flag at runtime, so
+		// templates using those protocols always re-run signature
+		// verification against the real keys instead of trusting the cache.
+		// The same applies to every protocol when unsigned templates are
+		// explicitly disabled.
+		cacheVerificationTrusted := !template.HasCodeRequest() && !template.HasJavascriptRequest()
+		if template.Options.Options != nil && template.Options.Options.DisableUnsignedTemplates {
+			cacheVerificationTrusted = false
+		}
+
+		if cached := options.TemplateVerificationCallback(options.TemplatePath); cached != nil && cacheVerificationTrusted {
 			if cached.ContentDigest == verificationDigest && cached.ContentDigest != ([sha256.Size]byte{}) && cachedTemplateVerificationIsTrusted(cached) {
 				template.Verified = cached.Verified
 				template.TemplateVerifier = cached.Verifier
