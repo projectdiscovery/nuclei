@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -92,6 +93,30 @@ func Test_executeTemplateOnInput_CallbackErrorPropagates(t *testing.T) {
 	}
 	if ok {
 		t.Fatalf("expected match to be false on error")
+	}
+}
+
+func TestExecuteTemplateOnInputReportsLifecycle(t *testing.T) {
+	e := newTestEngine()
+	var events []TemplateExecutionEvent
+	e.SetTemplateExecutionCallback(func(event TemplateExecutionEvent) {
+		events = append(events, event)
+	})
+
+	tpl := &templates.Template{ID: "template-id", Path: "http/example.yaml"}
+	tpl.Executer = &fakeExecuter{withResults: false}
+
+	_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := []TemplateExecutionEvent{
+		{TemplateID: "template-id", TemplatePath: "http/example.yaml", Target: "https://example.com", State: TemplateExecutionStarted},
+		{TemplateID: "template-id", TemplatePath: "http/example.yaml", Target: "https://example.com", State: TemplateExecutionFinished},
+	}
+	if !reflect.DeepEqual(events, want) {
+		t.Fatalf("unexpected lifecycle events: got %#v want %#v", events, want)
 	}
 }
 
