@@ -44,6 +44,7 @@ type Cache struct {
 	verbose       bool
 	failedTargets gcache.Cache[string, *cacheItem]
 	TrackError    []string
+	closed        atomic.Bool
 }
 
 type cacheItem struct {
@@ -74,13 +75,20 @@ func (c *Cache) SetVerbose(verbose bool) {
 
 // Close closes the host errors cache
 func (c *Cache) Close() {
+	if !c.closed.CompareAndSwap(false, true) {
+		return
+	}
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugArgHostErrorStats) {
 		items := c.failedTargets.GetALL(false)
 		for k, val := range items {
 			gologger.Info().Label("MaxHostErrorStats").Msgf("Host: %s, Errors: %d", k, val.errors.Load())
 		}
 	}
-	c.failedTargets.Purge()
+	// The cache owns no background resource. Purge rebuilds an empty ARC with
+	// the original capacity, which allocates several megabytes immediately
+	// before callers discard a closed cache. Releasing the reference lets the
+	// garbage collector reclaim both entries and storage without replacement.
+	c.failedTargets = nil
 }
 
 // NormalizeCacheValue processes the input value and returns a normalized cache
