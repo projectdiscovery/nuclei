@@ -60,7 +60,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.20
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.0
-	github.com/bytedance/sonic v1.15.0
+	github.com/bytedance/sonic v1.15.3
 	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/clbanning/mxj/v2 v2.7.0
@@ -202,7 +202,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic/loader v0.5.0 // indirect
+	github.com/bytedance/sonic/loader v0.5.2 // indirect
 	github.com/caddyserver/certmagic v0.25.0 // indirect
 	github.com/caddyserver/zerossl v0.1.3 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
