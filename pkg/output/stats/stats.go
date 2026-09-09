@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output/stats/waf"
@@ -25,6 +26,11 @@ type Tracker struct {
 	statusCodes *mapsutil.SyncLockMap[string, *atomic.Int32]
 	errorCodes  *mapsutil.SyncLockMap[string, *atomic.Int32]
 	wafDetected *mapsutil.SyncLockMap[string, *atomic.Int32]
+	wafCalls    atomic.Uint64
+	wafBytes    atomic.Uint64
+	wafRegexes  atomic.Uint64
+	wafSkips    atomic.Uint64
+	wafDuration atomic.Uint64
 
 	// internal stuff
 	wafDetector *waf.WafDetector
@@ -55,12 +61,41 @@ func (t *Tracker) TrackErrorKind(errKind string) {
 // First it detects if a waf is running and if so, it increments
 // the counter for the waf.
 func (t *Tracker) TrackWAFDetected(httpResponse string) {
-	waf, ok := t.wafDetector.DetectWAF(httpResponse)
+	started := time.Now()
+	id, ok, detectionStats := t.wafDetector.DetectWAFWithStats(httpResponse)
+	t.wafCalls.Add(1)
+	t.wafBytes.Add(uint64(len(httpResponse)))
+	t.wafRegexes.Add(uint64(detectionStats.RegexEvaluations))
+	t.wafSkips.Add(uint64(detectionStats.PrefilterSkips))
+	t.wafDuration.Add(uint64(time.Since(started)))
 	if !ok {
 		return
 	}
 
-	t.incrementCounter(t.wafDetected, waf)
+	t.incrementCounter(t.wafDetected, id)
+}
+
+// WAFMetrics reports execution-local WAF analysis work. It is separate from
+// StatsOutput because it is operational telemetry rather than customer-facing
+// scan statistics.
+type WAFMetrics struct {
+	Calls            uint64
+	Bytes            uint64
+	RegexEvaluations uint64
+	PrefilterSkips   uint64
+	Duration         time.Duration
+}
+
+// GetWAFMetrics returns an atomic snapshot suitable for progress logging while
+// requests are still executing.
+func (t *Tracker) GetWAFMetrics() WAFMetrics {
+	return WAFMetrics{
+		Calls:            t.wafCalls.Load(),
+		Bytes:            t.wafBytes.Load(),
+		RegexEvaluations: t.wafRegexes.Load(),
+		PrefilterSkips:   t.wafSkips.Load(),
+		Duration:         time.Duration(t.wafDuration.Load()),
+	}
 }
 
 func (t *Tracker) incrementCounter(m *mapsutil.SyncLockMap[string, *atomic.Int32], key string) {
