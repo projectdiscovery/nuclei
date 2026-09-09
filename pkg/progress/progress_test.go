@@ -84,6 +84,18 @@ func TestMetricsMapPercent(t *testing.T) {
 	}
 }
 
+func TestPrintCallbackZeroTotal(t *testing.T) {
+	ticker := &StatsTicker{}
+	stats := &statsClientSpy{
+		counters: map[string]uint64{"requests": 0, "total": 0},
+		statics:  map[string]interface{}{"startedAt": time.Now()},
+	}
+
+	out, ok := ticker.makePrintCallback()(stats).(string)
+	require.True(t, ok)
+	require.Contains(t, out, "(0%)")
+}
+
 type statsClientSpy struct {
 	periodicStatsRequested bool
 	started                bool

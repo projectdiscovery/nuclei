@@ -198,8 +198,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 			builder.WriteString(clistats.String(total))
 			builder.WriteRune(' ')
 			builder.WriteRune('(')
-			//nolint:gomnd // this is not a magic number
-			builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
+			builder.WriteString(clistats.String(percentComplete(requests, total)))
 			builder.WriteRune('%')
 			builder.WriteRune(')')
 			builder.WriteRune('\n')
@@ -247,13 +246,16 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	errors, _ := stats.GetCounter("errors")
 	results["errors"] = clistats.String(errors)
 
-	var percentData float64
-	if total > 0 {
-		// nolint:gomnd // this is not a magic number
-		percentData = (float64(requests) * float64(100)) / float64(total)
-	}
-	results["percent"] = clistats.String(uint64(percentData))
+	results["percent"] = clistats.String(percentComplete(requests, total))
 	return results
+}
+
+func percentComplete(requests, total uint64) uint64 {
+	if total == 0 {
+		return 0
+	}
+	// nolint:gomnd // this is not a magic number
+	return uint64((float64(requests) * float64(100)) / float64(total))
 }
 
 // fmtDuration formats the duration for the time elapsed
