@@ -640,6 +640,216 @@ http:
 	require.False(t, template.Options.Verified)
 }
 
+func parseUnsignedWithPoisonedCache(t *testing.T, source, templatePath string) *templates.Template {
+	t.Helper()
+
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.TemplatePath = templatePath
+	executerOptions.TemplateVerificationCallback = func(gotPath string) *protocols.TemplateVerification {
+		require.Equal(t, templatePath, gotPath)
+		return trustedVerificationForTest(source)
+	}
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(source), nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.False(t, template.Options.Verified)
+	return template
+}
+
+func TestParseTemplateIgnoresCachedVerificationForFlowTemplates(t *testing.T) {
+	template := parseUnsignedWithPoisonedCache(t, `id: poisoned-flow-template
+
+info:
+  name: Poisoned Flow Template
+  author: pdteam
+  severity: info
+
+flow: http(1)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`, "poisoned-flow-template.yaml")
+	require.True(t, template.IsFlowTemplate())
+	require.Equal(t, "http(1)", template.Options.Flow)
+	require.NotNil(t, template.Executer)
+	require.False(t, template.HasJavascriptRequest())
+}
+
+func TestParseTemplateIgnoresCachedVerificationForWorkflowTemplates(t *testing.T) {
+	setup()
+
+	source, err := os.ReadFile("tests/workflow.yaml")
+	require.NoError(t, err)
+
+	executerOptions := executerOpts.Copy()
+	executerOptions.Parser = templates.NewParser()
+	executerOptions.TemplatePath = "tests/workflow.yaml"
+	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
+		require.Equal(t, executerOptions.TemplatePath, templatePath)
+		return trustedVerificationForTest(string(source))
+	}
+
+	template, err := templates.Parse("tests/workflow.yaml", nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.False(t, template.Options.Verified)
+	require.NotNil(t, template.CompiledWorkflow)
+	require.Len(t, template.CompiledWorkflow.Workflows, 2)
+}
+
+func TestParseTemplateIgnoresCachedVerificationForPreprocessedHttpTemplates(t *testing.T) {
+	template := parseUnsignedWithPoisonedCache(t, `id: poisoned-preprocessed-http
+
+info:
+  name: Poisoned Preprocessed HTTP
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{randstr}}"
+`, "poisoned-preprocessed-http.yaml")
+	require.True(t, template.HasHTTPRequest())
+	require.NotContains(t, template.RequestsHTTP[0].Path[0], "{{randstr}}")
+}
+
+func TestParseTemplateIgnoresCachedVerificationFromDisk(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	templateSource := `id: poisoned-disk-http
+
+info:
+  name: Poisoned Disk HTTP
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`
+	templatePath := filepath.Join(t.TempDir(), "poisoned-disk-http.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(templateSource), 0o600))
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.Parser = templates.NewParser()
+	executerOptions.TemplateVerificationCallback = func(gotPath string) *protocols.TemplateVerification {
+		require.Equal(t, templatePath, gotPath)
+		return trustedVerificationForTest(templateSource)
+	}
+
+	template, err := templates.Parse(templatePath, nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.False(t, template.Options.Verified)
+}
+
+func TestParseFromURLIgnoresCachedVerification(t *testing.T) {
+	source, err := os.ReadFile("tests/match-1.yaml")
+	require.NoError(t, err)
+
+	router := httprouter.New()
+	router.GET("/match-1.yaml", func(w netHttp.ResponseWriter, _ *netHttp.Request, _ httprouter.Params) {
+		_, _ = w.Write(source)
+	})
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	setup()
+	templatePath := server.URL + "/match-1.yaml"
+	executerOptions := executerOpts.Copy()
+	executerOptions.Parser = templates.NewParser()
+	executerOptions.TemplateVerificationCallback = func(gotPath string) *protocols.TemplateVerification {
+		require.Equal(t, templatePath, gotPath)
+		return trustedVerificationForTest(string(source))
+	}
+
+	template, err := templates.Parse(templatePath, nil, executerOptions)
+	require.NoError(t, err)
+	require.False(t, template.Verified)
+	require.False(t, template.Options.Verified)
+	require.Equal(t, "basic-get", template.ID)
+}
+
+func TestParseDoesNotTreatContentSwapAsVerified(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	signer := ciTemplateSigner(t)
+	withDefaultTemplateSigner(t, signer)
+
+	signedSource := `id: signed-http-before-swap
+
+info:
+  name: Signed HTTP Before Swap
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/signed"
+`
+	swappedSource := `id: swapped-unsigned-javascript
+
+info:
+  name: Swapped Unsigned Javascript
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "executed")
+    code: |
+      Export("swapped-unsigned-javascript")
+`
+	templatePath := filepath.Join(t.TempDir(), "swap.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(signTemplateForTest(t, signer, signedSource)), 0o600))
+	fileInfo, err := os.Stat(templatePath)
+	require.NoError(t, err)
+
+	executerOptions := testutils.NewMockExecuterOptions(options, nil)
+	executerOptions.Parser = templates.NewParser()
+
+	first, err := templates.Parse(templatePath, nil, executerOptions)
+	require.NoError(t, err)
+	require.True(t, first.Verified)
+	require.Equal(t, "signed-http-before-swap", first.ID)
+
+	require.NoError(t, os.WriteFile(templatePath, []byte(swappedSource), 0o600))
+	require.NoError(t, os.Chtimes(templatePath, fileInfo.ModTime(), fileInfo.ModTime()))
+
+	second, err := templates.Parse(templatePath, nil, executerOptions)
+	require.NoError(t, err)
+	if second.ID == "swapped-unsigned-javascript" {
+		require.False(t, second.Verified)
+		require.False(t, second.Options.Verified)
+		require.NotContains(t, second.RequestsJavascript[0].Args, "init-status")
+		return
+	}
+
+	require.Equal(t, "signed-http-before-swap", second.ID)
+	require.True(t, second.Verified)
+	require.False(t, second.HasJavascriptRequest())
+}
+
 func TestParseTemplateCompilesUnsignedJavascriptInit(t *testing.T) {
 	options := testutils.DefaultOptions.Copy()
 	testutils.Init(options)
