@@ -231,7 +231,56 @@ func TestLiteralPrefilterNeverRejectsProductionRegexMatches(t *testing.T) {
 			if compiled != nil && compiled.MatchString(input) && filterable && !prefilter.allows(input) {
 				t.Fatalf("prefilter rejected a production regex match: id=%s expression=%q input=%q", id, expression.Regex, input)
 			}
+			if compiled != nil && compiled.MatchString(input) && filterable {
+				exactMatches := detector.exactMatcher.find(input)
+				foldedMatches := detector.asciiFoldedMatcher.find(canonicalFoldString(input))
+				if !prefilter.allowsWithMatches(exactMatches, foldedMatches) {
+					t.Fatalf("multi-literal prefilter rejected a production regex match: id=%s expression=%q input=%q", id, expression.Regex, input)
+				}
+			}
 		}
+	}
+}
+
+func TestLiteralMatcherFindsOverlappingAndSuffixPatterns(t *testing.T) {
+	matcher := newLiteralMatcher([]string{"he", "her", "hers", "she", "he"})
+	found := matcher.find("ushers")
+	for _, pattern := range []string{"he", "her", "hers", "she"} {
+		if _, ok := found[pattern]; !ok {
+			t.Errorf("pattern %q was not found", pattern)
+		}
+	}
+	if _, ok := found["missing"]; ok {
+		t.Error("unexpected pattern was found")
+	}
+}
+
+func TestLiteralMatcherHandlesArbitraryUTF8Bytes(t *testing.T) {
+	patterns := []string{"KELVIN", string([]byte{0xff, 0xfe})}
+	matcher := newLiteralMatcher(patterns)
+	found := matcher.find("prefix KELVIN " + string([]byte{0xff, 0xfe}) + " suffix")
+	for _, pattern := range patterns {
+		if _, ok := found[pattern]; !ok {
+			t.Errorf("pattern %q was not found", pattern)
+		}
+	}
+}
+
+func TestASCIIFoldedMatcherMatchesCanonicalFold(t *testing.T) {
+	pattern := canonicalFoldString("CloudFlare")
+	matcher := newLiteralMatcher([]string{pattern})
+	_, found := findExactAndASCIIFolded("prefix cLoUdFlArE suffix", nil, matcher)
+	if _, ok := found[pattern]; !ok {
+		t.Fatalf("case-folded pattern %q was not found", pattern)
+	}
+}
+
+func TestUnicodeFoldedMatcherMatchesCanonicalFold(t *testing.T) {
+	pattern := canonicalFoldString("kelvin σ")
+	matcher := newLiteralMatcher([]string{pattern})
+	found := matcher.find(canonicalFoldString("prefix KELVIN ς suffix"))
+	if _, ok := found[pattern]; !ok {
+		t.Fatalf("unicode case-folded pattern %q was not found", pattern)
 	}
 }
 
@@ -299,6 +348,22 @@ func FuzzLiteralPrefilterSoundness(f *testing.F) {
 		prefilter, filterable := buildLiteralPrefilter(pattern)
 		if compiled.Match(input) && filterable && !prefilter.allows(string(input)) {
 			t.Fatalf("prefilter rejected regex match: pattern=%q input=%q", pattern, input)
+		}
+	})
+}
+
+func FuzzLiteralMatcherSoundness(f *testing.F) {
+	f.Add("alpha", []byte("prefix alpha suffix"))
+	f.Add("aba", []byte("ababa"))
+	f.Add(string([]byte{0xff, 0xfe}), []byte{0, 0xff, 0xfe, 0})
+
+	f.Fuzz(func(t *testing.T, pattern string, input []byte) {
+		if pattern == "" || !strings.Contains(string(input), pattern) {
+			return
+		}
+		found := newLiteralMatcher([]string{pattern}).find(string(input))
+		if _, ok := found[pattern]; !ok {
+			t.Fatalf("literal matcher missed pattern %q in input %q", pattern, input)
 		}
 	})
 }
