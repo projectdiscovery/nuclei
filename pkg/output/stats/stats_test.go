@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -53,4 +54,39 @@ func TestTrackersShareDetectorButNotCounters(t *testing.T) {
 	require.Empty(t, second.GetStats().StatusCodeStats)
 	require.Empty(t, second.GetStats().ErrorStats)
 	require.Empty(t, second.GetStats().WAFStats)
+}
+
+func TestWAFMetricsAreExecutionLocal(t *testing.T) {
+	first := NewTracker()
+	second := NewTracker()
+	response := "ordinary response with no WAF signature"
+
+	first.TrackWAFDetected(response)
+
+	metrics := first.GetWAFMetrics()
+	require.Equal(t, uint64(1), metrics.Calls)
+	require.Equal(t, uint64(len(response)), metrics.Bytes)
+	require.Greater(t, metrics.PrefilterSkips, uint64(0))
+	require.Greater(t, metrics.RegexEvaluations+metrics.PrefilterSkips, uint64(0))
+	require.Zero(t, second.GetWAFMetrics().Calls)
+}
+
+func TestWAFMetricsAreConcurrencySafe(t *testing.T) {
+	tracker := NewTracker()
+	response := "ordinary response with no WAF signature"
+
+	const calls = 32
+	var wg sync.WaitGroup
+	for range calls {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tracker.TrackWAFDetected(response)
+		}()
+	}
+	wg.Wait()
+
+	metrics := tracker.GetWAFMetrics()
+	require.Equal(t, uint64(calls), metrics.Calls)
+	require.Equal(t, uint64(calls*len(response)), metrics.Bytes)
 }
