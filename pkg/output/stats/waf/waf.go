@@ -17,9 +17,12 @@ const (
 )
 
 type WafDetector struct {
-	wafs           map[string]waf
-	regexCache     map[string]*regexp.Regexp
-	prefilterCache map[string]literalPrefilter
+	wafs                 map[string]waf
+	regexCache           map[string]*regexp.Regexp
+	prefilterCache       map[string]literalPrefilter
+	exactMatcher         *literalMatcher
+	asciiFoldedMatcher   *literalMatcher
+	unicodeFoldedMatcher *literalMatcher
 }
 
 // DetectionStats reports how much of the WAF regex set was evaluated for one
@@ -70,6 +73,30 @@ func (p literalPrefilter) allowsWithFoldedContent(content, foldedContent string)
 	return false
 }
 
+func (p literalPrefilter) allowsWithMatches(exactMatches, foldedMatches map[string]struct{}) bool {
+	for _, clause := range p.clauses {
+		needle := strongestLiteralNeedle(clause)
+		matched := exactMatches
+		if needle.foldCase {
+			matched = foldedMatches
+		}
+		if _, ok := matched[needle.value]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func strongestLiteralNeedle(clause literalClause) literalNeedle {
+	strongest := clause[0]
+	for _, candidate := range clause[1:] {
+		if len(candidate.value) > len(strongest.value) {
+			strongest = candidate
+		}
+	}
+	return strongest
+}
+
 // waf represents a web application firewall definition
 type waf struct {
 	Company string `json:"company"`
@@ -111,6 +138,26 @@ func NewWafDetector() *WafDetector {
 			store.prefilterCache[id] = prefilter
 		}
 	}
+	var exactPatterns []string
+	var foldedPatterns []string
+	var unicodePatterns []string
+	for _, prefilter := range store.prefilterCache {
+		for _, clause := range prefilter.clauses {
+			needle := strongestLiteralNeedle(clause)
+			if needle.foldCase {
+				if isASCII(needle.value) {
+					foldedPatterns = append(foldedPatterns, needle.value)
+				} else {
+					unicodePatterns = append(unicodePatterns, needle.value)
+				}
+			} else {
+				exactPatterns = append(exactPatterns, needle.value)
+			}
+		}
+	}
+	store.exactMatcher = newLiteralMatcher(exactPatterns)
+	store.asciiFoldedMatcher = newLiteralMatcher(foldedPatterns)
+	store.unicodeFoldedMatcher = newLiteralMatcher(unicodePatterns)
 	return store
 }
 
@@ -128,18 +175,16 @@ func (d *WafDetector) DetectWAFWithStats(content string) (string, bool, Detectio
 		return "", false, stats
 	}
 
-	var foldedContent string
-	foldedContentReady := false
+	exactMatches, foldedMatches := findExactAndASCIIFolded(content, d.exactMatcher, d.asciiFoldedMatcher)
+	if d.unicodeFoldedMatcher != nil {
+		mergeLiteralMatches(foldedMatches, d.unicodeFoldedMatcher.find(canonicalFoldString(content)))
+	}
 	for id, regex := range d.regexCache {
 		if regex == nil {
 			continue
 		}
 		if prefilter, ok := d.prefilterCache[id]; ok {
-			if prefilter.needsFoldCase && !foldedContentReady {
-				foldedContent = canonicalFoldString(content)
-				foldedContentReady = true
-			}
-			if !prefilter.allowsWithFoldedContent(content, foldedContent) {
+			if !prefilter.allowsWithMatches(exactMatches, foldedMatches) {
 				stats.PrefilterSkips++
 				continue
 			}
