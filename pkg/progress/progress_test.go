@@ -46,9 +46,49 @@ func TestStatsTickerInit_registersPeriodicStatsOnly_whenIntervalIsPositive(t *te
 	}
 }
 
+func TestMetricsMapPercent(t *testing.T) {
+	tests := []struct {
+		name        string
+		requests    uint64
+		total       uint64
+		wantPercent string
+	}{
+		{
+			name:        "total is known",
+			requests:    50,
+			total:       200,
+			wantPercent: "25",
+		},
+		{
+			name:        "total is unknown",
+			requests:    80,
+			total:       0,
+			wantPercent: "0",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given
+			stats := &statsClientSpy{
+				counters: map[string]uint64{"requests": test.requests, "total": test.total},
+				statics:  map[string]interface{}{"startedAt": time.Now().Add(-time.Second)},
+			}
+
+			// When
+			results := metricsMap(stats)
+
+			// Then
+			require.Equal(t, test.wantPercent, results["percent"])
+		})
+	}
+}
+
 type statsClientSpy struct {
 	periodicStatsRequested bool
 	started                bool
+	counters               map[string]uint64
+	statics                map[string]interface{}
 }
 
 func (s *statsClientSpy) Start() error {
@@ -62,16 +102,18 @@ func (s *statsClientSpy) Stop() error {
 
 func (s *statsClientSpy) AddCounter(string, uint64) {}
 
-func (s *statsClientSpy) GetCounter(string) (uint64, bool) {
-	return 0, false
+func (s *statsClientSpy) GetCounter(key string) (uint64, bool) {
+	value, ok := s.counters[key]
+	return value, ok
 }
 
 func (s *statsClientSpy) IncrementCounter(string, int) {}
 
 func (s *statsClientSpy) AddStatic(string, interface{}) {}
 
-func (s *statsClientSpy) GetStatic(string) (interface{}, bool) {
-	return nil, false
+func (s *statsClientSpy) GetStatic(key string) (interface{}, bool) {
+	value, ok := s.statics[key]
+	return value, ok
 }
 
 func (s *statsClientSpy) AddDynamic(string, clistats.DynamicCallback) {}

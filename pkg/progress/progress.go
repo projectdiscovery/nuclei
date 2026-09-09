@@ -247,10 +247,12 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	errors, _ := stats.GetCounter("errors")
 	results["errors"] = clistats.String(errors)
 
-	// nolint:gomnd // this is not a magic number
-	percentData := (float64(requests) * float64(100)) / float64(total)
-	percent := clistats.String(uint64(percentData))
-	results["percent"] = percent
+	var percentData float64
+	if total > 0 {
+		// nolint:gomnd // this is not a magic number
+		percentData = (float64(requests) * float64(100)) / float64(total)
+	}
+	results["percent"] = clistats.String(uint64(percentData))
 	return results
 }
 
