@@ -608,7 +608,7 @@ javascript:
 	require.NotContains(t, template.RequestsJavascript[0].Args, "init-status")
 }
 
-func TestParseTemplateTrustsCachedVerificationForNonExecutableTemplates(t *testing.T) {
+func TestParseTemplateIgnoresCachedVerificationForHttpTemplates(t *testing.T) {
 	options := testutils.DefaultOptions.Copy()
 	testutils.Init(options)
 	t.Cleanup(func() {
@@ -616,44 +616,11 @@ func TestParseTemplateTrustsCachedVerificationForNonExecutableTemplates(t *testi
 	})
 
 	executerOptions := testutils.NewMockExecuterOptions(options, nil)
-	executerOptions.TemplatePath = "cached-http-template.yaml"
-	templateSource := `id: cached-http-template
+	executerOptions.TemplatePath = "poisoned-http-template.yaml"
+	templateSource := `id: poisoned-http-template
 
 info:
-  name: Cached HTTP Template
-  author: pdteam
-  severity: info
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}"
-`
-	executerOptions.TemplateVerificationCallback = func(templatePath string) *protocols.TemplateVerification {
-		require.Equal(t, executerOptions.TemplatePath, templatePath)
-		return trustedVerificationForTest(templateSource)
-	}
-
-	template, err := templates.ParseTemplateFromReader(strings.NewReader(templateSource), nil, executerOptions)
-	require.NoError(t, err)
-	require.True(t, template.Verified)
-	require.True(t, template.Options.Verified)
-}
-
-func TestParseTemplateIgnoresCachedVerificationWhenUnsignedTemplatesDisabled(t *testing.T) {
-	options := testutils.DefaultOptions.Copy()
-	options.DisableUnsignedTemplates = true
-	testutils.Init(options)
-	t.Cleanup(func() {
-		testutils.Cleanup(options)
-	})
-
-	executerOptions := testutils.NewMockExecuterOptions(options, nil)
-	executerOptions.TemplatePath = "poisoned-unsigned-http-template.yaml"
-	templateSource := `id: poisoned-unsigned-http-template
-
-info:
-  name: Poisoned Unsigned HTTP Template
+  name: Poisoned HTTP Template
   author: pdteam
   severity: info
 
@@ -796,9 +763,6 @@ http:
 	for i := range compiledTemplates {
 		engineOptions := executerOpts.Copy()
 		engineOptions.Parser = templates.NewParserWithParsedCache(sharedParser.Cache())
-		engineOptions.TemplateVerificationCallback = func(string) *protocols.TemplateVerification {
-			return trustedVerificationForTest(templateSource)
-		}
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
@@ -809,7 +773,7 @@ http:
 
 	for i := range compiledTemplates {
 		require.NoError(t, parseErrors[i])
-		require.True(t, compiledTemplates[i].Verified)
+		require.NotNil(t, compiledTemplates[i])
 	}
 
 	require.Equal(t, int32(1), sourceReads.Load())
