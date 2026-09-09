@@ -235,7 +235,7 @@ CONFIGURATIONS:
    -ztls                                 use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default
    -sni string                           tls sni hostname to use (default: input domain name)
    -dka, -dialer-keep-alive value        keep-alive duration for network requests.
-   -lfa, -allow-local-file-access        allows file (payload) access anywhere on the system
+   -lfa, -allow-local-file-access        allow all templates in the run to read any file on the system (not just payloads)
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
