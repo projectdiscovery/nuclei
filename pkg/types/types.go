@@ -468,6 +468,12 @@ type Options struct {
 	DASTServerAddress string
 	// DASTReport enables dast report server & final report generation
 	DASTReport bool
+	// DASTProxy is the flag to start nuclei as an intercepting dast proxy
+	DASTProxy bool
+	// DASTProxyAddress is the listen address for the dast proxy
+	DASTProxyAddress string
+	// DASTProxyAuth is the user:pass credential pair required by the dast proxy
+	DASTProxyAuth string
 	// Scope contains a list of regexes for in-scope URLS
 	Scope goflags.StringSlice
 	// OutOfScope contains a list of regexes for out-scope URLS
@@ -706,6 +712,9 @@ func (options *Options) Copy() *Options {
 		DASTServerToken:                options.DASTServerToken,
 		DASTServerAddress:              options.DASTServerAddress,
 		DASTReport:                     options.DASTReport,
+		DASTProxy:                      options.DASTProxy,
+		DASTProxyAddress:               options.DASTProxyAddress,
+		DASTProxyAuth:                  options.DASTProxyAuth,
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,

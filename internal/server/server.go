@@ -3,8 +3,10 @@ package server
 import (
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/alitto/pond"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/scope"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
@@ -29,6 +32,7 @@ type DASTServer struct {
 	tasksPool    *pond.WorkerPool
 	deduplicator *requestDeduplicator
 	scopeManager *scope.Manager
+	proxy        *proxy.Proxy
 	startTime    time.Time
 
 	// metrics
@@ -48,6 +52,15 @@ type Options struct {
 	Templates []string
 	// Verbose is a flag that controls verbose output
 	Verbose bool
+
+	// ProxyAddress enables the intercepting proxy front-end on this address
+	ProxyAddress string
+	// ProxyCADir is the directory holding the proxy interception CA
+	ProxyCADir string
+	// ProxyUsername and ProxyPassword gate the intercepting proxy with basic
+	// authentication. Mandatory when ProxyAddress is not a loopback address.
+	ProxyUsername string
+	ProxyPassword string
 
 	// Scope fields for fuzzer
 	InScope  []string
@@ -97,6 +110,12 @@ func New(options *Options) (*DASTServer, error) {
 	}
 	server.scopeManager = scopeManager
 
+	if options.ProxyAddress != "" {
+		if err := server.setupProxy(); err != nil {
+			return nil, err
+		}
+	}
+
 	var builder strings.Builder
 	gologger.Debug().Msgf("Using %d parallel tasks with %d buffer", maxWorkers, bufferSize)
 	if options.Token != "" {
@@ -106,6 +125,50 @@ func New(options *Options) (*DASTServer, error) {
 	gologger.Info().Msgf("DAST Server Stats URL: %s", server.buildURL("/stats"))
 
 	return server, nil
+}
+
+// setupProxy wires the intercepting proxy front-end into the same queue the
+// HTTP API feeds.
+func (s *DASTServer) setupProxy() error {
+	interceptingProxy, err := proxy.New(&proxy.Options{
+		Address:   s.options.ProxyAddress,
+		CADir:     s.options.ProxyCADir,
+		Username:  s.options.ProxyUsername,
+		Password:  s.options.ProxyPassword,
+		Verbose:   s.options.Verbose,
+		Intercept: s.shouldIntercept,
+		Submit:    s.Submit,
+	})
+	if err != nil {
+		return err
+	}
+	s.proxy = interceptingProxy
+
+	gologger.Info().Msgf("DAST Proxy: http://%s", s.options.ProxyAddress)
+	gologger.Info().Msgf("DAST Proxy CA certificate: %s (install it to intercept https)", interceptingProxy.CertPath())
+	gologger.Info().Msgf("DAST Proxy CA download: %s", s.buildURL("/ca"))
+	// Info, not Warning: gologger orders LevelWarning above LevelInfo, so
+	// warnings are filtered out at default verbosity and these two notices
+	// describe what interception does to the user's traffic.
+	gologger.Info().Msgf("DAST Proxy: intercepted https is re-originated by nuclei, target certificates are not verified")
+	if len(s.options.InScope) == 0 && len(s.options.OutScope) == 0 {
+		gologger.Info().Msgf("DAST Proxy: no scope set, every proxied https host will be decrypted (narrow it with -fuzz-scope / -fuzz-out-scope)")
+	}
+	return nil
+}
+
+// shouldIntercept decides whether a CONNECT tunnel is decrypted. Only an
+// explicit out-of-scope match leaves a host encrypted, because in-scope
+// patterns may carry a path that a CONNECT host can never match against.
+func (s *DASTServer) shouldIntercept(hostPort string) bool {
+	host := hostPort
+	// Only the default port is dropped, so the synthesised URL has the same
+	// shape as the request URLs these rules are applied to once a request has
+	// actually been captured.
+	if parsedHost, port, err := net.SplitHostPort(hostPort); err == nil && port == "443" {
+		host = parsedHost
+	}
+	return !s.scopeManager.IsExplicitlyOutOfScope(&url.URL{Scheme: "https", Host: host, Path: "/"})
 }
 
 func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
@@ -124,6 +187,11 @@ func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 }
 
 func (s *DASTServer) Close() {
+	if s.proxy != nil {
+		if err := s.proxy.Close(); err != nil {
+			gologger.Warning().Msgf("Could not close dast proxy: %s", err)
+		}
+	}
 	if s.nucleiExecutor != nil {
 		s.nucleiExecutor.Close()
 	}
@@ -167,6 +235,9 @@ func (s *DASTServer) setupHandlers(onlyStats bool) {
 	}
 	mux.HandleFunc("GET /stats", s.handleStats)
 	mux.HandleFunc("GET /stats.json", s.handleStatsJSON)
+	if !onlyStats && s.optionsOrDefault().ProxyAddress != "" {
+		mux.HandleFunc("GET /ca", s.handleProxyCA)
+	}
 
 	handler := http.Handler(mux)
 	opts := s.optionsOrDefault()
@@ -187,10 +258,35 @@ func (s *DASTServer) Start() error {
 		s.setupHandlers(false)
 	}
 	s.httpServer.Addr = s.optionsOrDefault().Address
-	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+
+	if s.proxy == nil {
+		return s.serveAPI()
+	}
+
+	// Both front-ends feed the same queue; whichever fails first ends the run.
+	errs := make(chan error, 2)
+	go func() { errs <- s.serveAPI() }()
+	go func() { errs <- s.proxy.Start() }()
+	return <-errs
+}
+
+func (s *DASTServer) serveAPI() error {
+	if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
+}
+
+// handleProxyCA serves the interception CA certificate so it can be installed.
+// Only the certificate is ever served, never the private key.
+func (s *DASTServer) handleProxyCA(w http.ResponseWriter, _ *http.Request) {
+	if s.proxy == nil {
+		writeServerJSON(w, http.StatusNotFound, map[string]string{"error": "proxy is not enabled"})
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-pem-file")
+	w.Header().Set("Content-Disposition", `attachment; filename="nuclei-dast-proxy-ca.pem"`)
+	_, _ = w.Write(s.proxy.CertPEM())
 }
 
 // PostRequestsHandlerRequest is the request body for the /fuzz POST handler.
@@ -214,11 +310,25 @@ func (s *DASTServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.endpointsInQueue.Add(1)
-	s.tasksPool.Submit(func() {
-		s.consumeTaskRequest(req)
-	})
+	if !s.Submit(req.RawHTTP, req.URL) {
+		writeServerJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "scan queue is full"})
+		return
+	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// Submit queues a captured request for fuzzing and reports whether it was
+// accepted. It never blocks: a saturated scanner must not stall the live
+// traffic flowing through the proxy, so excess requests are dropped instead.
+func (s *DASTServer) Submit(rawHTTP, targetURL string) bool {
+	req := PostRequestsHandlerRequest{RawHTTP: rawHTTP, URL: targetURL}
+
+	s.endpointsInQueue.Add(1)
+	if !s.tasksPool.TrySubmit(func() { s.consumeTaskRequest(req) }) {
+		s.endpointsInQueue.Add(-1)
+		return false
+	}
+	return true
 }
 
 type StatsResponse struct {
@@ -235,6 +345,8 @@ type DASTServerInfo struct {
 	NucleiTemplateVersion string `json:"nuclei_template_version"`
 	NucleiDastServerAPI   string `json:"nuclei_dast_server_api"`
 	ServerAuthEnabled     bool   `json:"sever_auth_enabled"`
+	NucleiDastProxyAddr   string `json:"nuclei_dast_proxy_address,omitempty"`
+	ProxyAuthEnabled      bool   `json:"proxy_auth_enabled"`
 }
 
 type DASTScanStatistics struct {
@@ -247,6 +359,12 @@ type DASTScanStatistics struct {
 	TotalEndpointsTested  int64 `json:"total_endpoints_tested"`
 	TotalFuzzedRequests   int64 `json:"total_fuzzed_requests"`
 	TotalErroredRequests  int64 `json:"total_errored_requests"`
+
+	// Proxy counters, populated only in proxy mode. A rising drop count means
+	// the scanner cannot keep up with the proxied traffic.
+	ProxyRequestsIntercepted  int64 `json:"proxy_requests_intercepted"`
+	ProxyTunnelsPassedThrough int64 `json:"proxy_tunnels_passed_through"`
+	ProxyRequestsDropped      int64 `json:"proxy_requests_dropped"`
 }
 
 func (s *DASTServer) getStats() (StatsResponse, error) {
@@ -258,6 +376,8 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 			NucleiTemplateVersion: cfg.TemplateVersion,
 			NucleiDastServerAPI:   s.buildURL("/fuzz"),
 			ServerAuthEnabled:     s.options.Token != "",
+			NucleiDastProxyAddr:   s.options.ProxyAddress,
+			ProxyAuthEnabled:      s.options.ProxyUsername != "",
 		},
 		DASTScanStartTime: s.startTime,
 		DASTScanStatistics: DASTScanStatistics{
@@ -265,6 +385,12 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 			EndpointsBeingTested: s.endpointsBeingTested.Load(),
 			TotalTemplatesLoaded: int64(len(s.nucleiExecutor.store.Templates())),
 		},
+	}
+	if s.proxy != nil {
+		proxyStats := s.proxy.Stats()
+		resp.DASTScanStatistics.ProxyRequestsIntercepted = proxyStats.Intercepted
+		resp.DASTScanStatistics.ProxyTunnelsPassedThrough = proxyStats.TunnelsPassedThrough
+		resp.DASTScanStatistics.ProxyRequestsDropped = proxyStats.Dropped
 	}
 	if s.nucleiExecutor.executorOpts.FuzzStatsDB != nil {
 		fuzzStats := s.nucleiExecutor.executorOpts.FuzzStatsDB.GetStats()

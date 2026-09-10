@@ -264,6 +264,9 @@ FUZZING:
    -dtr, -dast-report                  write dast scan report to file
    -dtst, -dast-server-token string    dast server token (optional)
    -dtsa, -dast-server-address string  dast server address (default "localhost:9055")
+   -dtp, -dast-proxy                   enable dast proxy mode (fuzz live traffic proxied through nuclei)
+   -dtpa, -dast-proxy-address string   dast proxy listen address (default "127.0.0.1:9056")
+   -dtpau, -dast-proxy-auth string     dast proxy basic auth in user:pass format (required for non-loopback address)
    -dfp, -display-fuzz-points          display fuzz points in the output for debugging
    -fuzz-param-frequency int           frequency of uninteresting parameters for fuzzing before skipping (default 10)
    -fa, -fuzz-aggression string        fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")

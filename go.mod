@@ -66,6 +66,7 @@ require (
 	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
+	github.com/elazarl/goproxy v1.7.2
 	github.com/fatih/structs v1.1.0
 	github.com/fullstorydev/grpcurl v1.9.3
 	github.com/getkin/kin-openapi v0.144.0
