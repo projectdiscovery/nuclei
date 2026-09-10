@@ -930,6 +930,8 @@ github.com/projectdiscovery/dsl v0.8.22 h1:ZfPunLaaYUJTBffE1ShuAAV9hkSH2thvlszK4
 github.com/projectdiscovery/dsl v0.8.22/go.mod h1:fr8WMU381As89e4Z+SQ8tYQ1NudniWAS6NLPHrhe+Vs=
 github.com/projectdiscovery/dsl v0.8.23-0.20260910163452-5f5d5137a516 h1:7EeKy1pmhcxqFVgpWIk2vWkyzspOZxE8aqMlQSHezbE=
 github.com/projectdiscovery/dsl v0.8.23-0.20260910163452-5f5d5137a516/go.mod h1:TYqDNtD4hU8bGFgVxPqhYQ9K1z5rMLV/YFyvQgcU5TM=
+github.com/projectdiscovery/dsl v0.8.23-0.20260910174914-8e1207b367b8 h1:zaAfFHjyLPq9Aoii1mXPzXkITvXyPJTSZo6nNhzC1xI=
+github.com/projectdiscovery/dsl v0.8.23-0.20260910174914-8e1207b367b8/go.mod h1:TYqDNtD4hU8bGFgVxPqhYQ9K1z5rMLV/YFyvQgcU5TM=
 github.com/projectdiscovery/fastdialer v0.5.19 h1:FQOoGGaCyreq53yz3QI+KztvOKn2M9OXJqNg7/4e03w=
 github.com/projectdiscovery/fastdialer v0.5.19/go.mod h1:6I4/kPu9s/LTUgmPqIc0ZOEh8TfZGY0Nlr5M84cFAj8=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=

@@ -94,7 +94,7 @@ require (
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/dsl v0.8.23-0.20260910163452-5f5d5137a516
+	github.com/projectdiscovery/dsl v0.8.23-0.20260910174914-8e1207b367b8
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/goflags v0.2.0
