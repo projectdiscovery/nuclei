@@ -31,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -258,6 +259,19 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		if request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers() {
+			data := make(map[string]interface{})
+			data["type"] = request.Type().String()
+			data["host"] = input
+			data["matched"] = addressToDial
+			data["duration"] = handshakeDuration.Seconds()
+			data["ip"] = request.dialer.GetDialedIP(hostname)
+			maps.Copy(data, previous)
+			maps.Copy(data, payloadValues)
+			requesterr.Annotate(data, err, handshakeDuration)
+			event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
+			callback(event)
+		}
 
 		return errors.Wrap(err, "could not connect to server")
 	}

@@ -727,3 +727,193 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		require.Equal(t, context.Canceled, err)
 	})
 }
+
+func TestHTTPErrorMatcherOnConnectionFailure(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	templateID := "http-error-matcher"
+	request := &Request{
+		ID:     templateID,
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+				Errors: []string{"connection"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.NoError(t, err)
+
+	var matched bool
+	var event *output.InternalWrappedEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), "http://127.0.0.1:1")
+	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(e *output.InternalWrappedEvent) {
+		event = e
+		if e.OperatorsResult != nil && e.OperatorsResult.Matched {
+			matched = true
+		}
+	})
+	require.Error(t, err)
+	require.NotNil(t, event)
+	require.True(t, matched, "connection error should match type: error matcher")
+	require.Equal(t, "connection", event.InternalEvent["error_type"])
+	require.Equal(t, false, event.InternalEvent["timeout"])
+}
+
+func TestHTTPErrorMatcherSubstring(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	templateID := "http-error-substring"
+	request := &Request{
+		ID:     templateID,
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+				Errors: []string{"connection refused"},
+			}},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	ctxArgs := contextargs.NewWithInput(context.Background(), "http://127.0.0.1:1")
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(e *output.InternalWrappedEvent) {
+		if e.OperatorsResult != nil && e.OperatorsResult.Matched {
+			matched = true
+		}
+	})
+	require.Error(t, err)
+	require.True(t, matched)
+}
+
+func TestHTTPErrorMatcherDSL(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	templateID := "http-error-dsl"
+	request := &Request{
+		ID:     templateID,
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+				DSL:  []string{`error_type == "connection"`},
+			}},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	ctxArgs := contextargs.NewWithInput(context.Background(), "http://127.0.0.1:1")
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(e *output.InternalWrappedEvent) {
+		if e.OperatorsResult != nil && e.OperatorsResult.Matched {
+			matched = true
+		}
+	})
+	require.Error(t, err)
+	require.True(t, matched, "DSL error_type matcher should fire on connection failure")
+}
+
+func TestHTTPErrorMatcherBypassesHostErrorsCache(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	templateID := "http-error-host-cache"
+	request := &Request{
+		ID:     templateID,
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+				Errors: []string{"connection"},
+			}},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	// Host is marked unresponsive; without error matchers the request would be skipped.
+	executerOpts.HostErrorsCache = &spyHostErrorsCache{skip: true}
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	var callbacks int
+	ctxArgs := contextargs.NewWithInput(context.Background(), "http://127.0.0.1:1")
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(e *output.InternalWrappedEvent) {
+		callbacks++
+		if e.OperatorsResult != nil && e.OperatorsResult.Matched {
+			matched = true
+		}
+	})
+	require.Error(t, err)
+	require.Equal(t, 1, callbacks, "error matcher should bypass host-errors skip")
+	require.True(t, matched)
+}
+
+func TestHTTPErrorMatcherTimeout(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.Timeout = 1
+	testutils.Init(options)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(3 * time.Second)
+	}))
+	defer ts.Close()
+
+	templateID := "http-error-timeout"
+	request := &Request{
+		ID: templateID,
+		Raw: []string{`@timeout: 1s
+GET / HTTP/1.1
+Host: {{Hostname}}
+`},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+				Errors: []string{"timeout"},
+			}},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	var event *output.InternalWrappedEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(e *output.InternalWrappedEvent) {
+		event = e
+		if e.OperatorsResult != nil && e.OperatorsResult.Matched {
+			matched = true
+		}
+	})
+	require.Error(t, err)
+	require.NotNil(t, event)
+	require.True(t, matched, "timeout error should match type: error matcher")
+	require.Equal(t, true, event.InternalEvent["timeout"])
+	require.Equal(t, "timeout", event.InternalEvent["error_type"])
+}

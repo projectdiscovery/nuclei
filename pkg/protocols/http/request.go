@@ -37,6 +37,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
@@ -945,10 +946,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 		request.options.Progress.IncrementErrorsBy(1)
 
-		// In case of interactsh markers and request times out, still send
-		// a callback event so in case we receive an interaction, correlation is possible.
-		// Also, to log failed use-cases.
-		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+		duration := time.Since(timeStart)
+		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", duration, generatedRequest.meta)
+		requesterr.Annotate(outputEvent, err, duration)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -957,16 +957,23 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
 			outputEvent["ip"] = dialers.Fastdialer.GetDialedIP(hostname)
-			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
+		if request.options.Interactsh != nil {
+			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
+		}
 
-		if len(generatedRequest.interactshURLs) > 0 {
-			// according to logic we only need to trigger a callback if interactsh was used
-			// and request failed in hope that later on oast interaction will be received
-			event := &output.InternalWrappedEvent{}
-			if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
-				event.InternalEvent = outputEvent
+		hasErrorMatchers := request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers()
+		if hasErrorMatchers || len(generatedRequest.interactshURLs) > 0 {
+			var event *output.InternalWrappedEvent
+			if hasErrorMatchers {
+				event = eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+			} else {
+				// Interactsh-only failure path: keep a lightweight event for later OAST correlation.
+				event = &output.InternalWrappedEvent{}
+				if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
+					event.InternalEvent = outputEvent
+				}
 			}
 			callback(event)
 		}
@@ -1397,8 +1404,13 @@ func (request *Request) recordHostResultAndCancelIfUnresponsive(input *contextar
 	}
 }
 
-// isUnresponsiveAddress checks if the error is a unreponsive based on its execution history
+// isUnresponsiveAddress checks if the host is marked unresponsive based on
+// execution history. Templates with error/timeout matchers intentionally bypass
+// this skip so they can still observe and match request failures.
 func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
+	if request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers() {
+		return false
+	}
 	if request.options.HostErrorsCache != nil {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
