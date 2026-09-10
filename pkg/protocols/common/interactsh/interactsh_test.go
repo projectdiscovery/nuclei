@@ -11,6 +11,7 @@ import (
 
 	"github.com/logrusorgru/aurora/v4"
 	serverint "github.com/projectdiscovery/interactsh/pkg/server"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
@@ -89,6 +90,41 @@ func TestProcessInteractionRoutesResultToRequestWriter(t *testing.T) {
 	require.True(t, matched)
 	require.Equal(t, 1, requestWriter.ResultCount())
 	require.Zero(t, baseWriter.ResultCount(), "a shared client must not route a delayed result to its base writer")
+}
+
+func TestProcessInteractionWithFrequencyTrackerAndNonFuzzRequest(t *testing.T) {
+	matcher := &matchers.Matcher{
+		Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+		Part:  "interactsh_protocol",
+		Words: []string{"dns"},
+	}
+	op := &operators.Operators{Matchers: []*matchers.Matcher{matcher}}
+	require.NoError(t, op.Compile())
+
+	resultWriter := &requestRoutingWriter{}
+	options := DefaultOptions(resultWriter, nil, &requestRoutingProgress{})
+	options.FuzzParamsFrequency = frequency.New(10, 2)
+	client := &Client{options: options}
+	client.initializeCaches()
+	data := &RequestData{
+		Event: &output.InternalWrappedEvent{InternalEvent: output.InternalEvent{
+			templateIdAttribute: "non-fuzz-oob",
+			"host":              "example.com",
+		}},
+		Operators: op,
+		MatchFunc: func(_ map[string]interface{}, _ *matchers.Matcher) (bool, []string) {
+			return true, []string{"dns"}
+		},
+		ExtractFunc: func(map[string]interface{}, *extractors.Extractor) map[string]struct{} { return nil },
+		MakeResultFunc: func(*output.InternalWrappedEvent) []*output.ResultEvent {
+			return []*output.ResultEvent{{TemplateID: "non-fuzz-oob", MatcherStatus: true}}
+		},
+	}
+
+	matched := client.processInteractionForRequest(&serverint.Interaction{Protocol: "dns"}, data)
+
+	require.True(t, matched)
+	require.Equal(t, 1, resultWriter.ResultCount())
 }
 
 func TestRequestScopeRemovesOnlyItsRegistrations(t *testing.T) {
