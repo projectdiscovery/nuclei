@@ -221,6 +221,17 @@ type Options struct {
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
 	AutomaticScan bool
+	// StrictProbe losslessly skips templates that cannot reach their
+	// target service (web templates on non-HTTP ports, network templates on
+	// closed ports).
+	StrictProbe bool
+	// TechFilter is an opt-in heuristic (CLI: -tf). When false (default), scan
+	// behavior matches pre-tech-filter nuclei: no fingerprinting, no product-tag
+	// skipping, no scan-scoped HTTP response cache. When true, fingerprints HTTP
+	// targets (Wappalyzer) and skips templates whose product/macro tags cannot
+	// match the host. Fail-open on unknown hosts and unbound templates. No-op
+	// when no templates are tech-bound.
+	TechFilter bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Validate validates the templates passed to nuclei.
@@ -586,6 +597,8 @@ func (options *Options) Copy() *Options {
 		EnableHTTPCache:                options.EnableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
+		StrictProbe:                    options.StrictProbe,
+		TechFilter:                     options.TechFilter,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
 		NoStrictSyntax:                 options.NoStrictSyntax,

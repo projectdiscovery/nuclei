@@ -41,6 +41,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	scanplan "github.com/projectdiscovery/nuclei/v3/pkg/core/plan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/techfilter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
@@ -62,14 +64,18 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	ptrutil "github.com/projectdiscovery/utils/ptr"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -660,6 +666,12 @@ func (r *Runner) RunEnumeration() error {
 		DoNotCache:          r.options.DoNotCacheTemplates,
 		Logger:              r.Logger,
 	}
+	// Attach scan-scoped HTTP response cache only for opt-in -tf, and only
+	// before templates compile so request executers share the same pointer.
+	// Default scans leave this nil (no behavioral change).
+	if r.options.TechFilter {
+		executorOpts.HTTPResponseCache = httprespcache.New()
+	}
 
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {
 		// Go StdLib style experimental/debug feature switch
@@ -710,6 +722,15 @@ func (r *Runner) RunEnumeration() error {
 		return errors.Wrap(err, "Could not create loader.")
 	}
 	executorOpts.WorkflowLoader = workflowLoader
+
+	// Lossless reachability prune: if no web port is reachable on any target,
+	// exclude web-protocol templates at load time — they cannot connect, so
+	// cannot produce a finding. Reuses the standard protocol-type exclusion.
+	if r.strictProbeEnabled() && r.noHTTPServiceReachable() {
+		r.options.ExcludeProtocols = append(r.options.ExcludeProtocols,
+			templateTypes.HTTPProtocol, templateTypes.HeadlessProtocol, templateTypes.WebsocketProtocol)
+		gologger.Info().Msgf("reachability prune: no HTTP service on any target; excluding web-protocol templates (lossless)")
+	}
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
@@ -803,6 +824,15 @@ func (r *Runner) RunEnumeration() error {
 			return errors.Wrap(err, "could not probe http input")
 		}
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
+		executorOpts.InputHelper.InputsHTTPProbed = r.inputProvider.InputType() != provider.MultiFormatInputProvider
+		// Under strict-probe, skip web templates per-input for targets that
+		// probed as non-HTTP (lossless), instead of falling back to raw URL.
+		executorOpts.InputHelper.StrictProbe = r.strictProbeEnabled()
+		if r.strictProbeEnabled() {
+			r.Logger.Info().Msgf("Strict probe enabled: hosts without httpx confirmation are skipped for HTTP/headless templates")
+		}
+	} else if r.options.StrictProbe && r.options.DisableHTTPProbe {
+		r.Logger.Warning().Msgf("strict-probe has no effect with -no-httpx (httpx probing is disabled)")
 	}
 
 	inputCount := int(r.inputProvider.Count())
@@ -977,11 +1007,144 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		return nil, errors.New("no templates provided for scan")
 	}
 
-	// pass input provider to engine
-	// TODO: this should be not necessary after r.hmapInputProvider is removed + refactored
 	if r.inputProvider == nil {
 		return nil, errors.New("no input provider found")
 	}
+
+	return r.executeTemplatesWithScanPlan(engine, finalTemplates)
+}
+
+// executeTemplatesWithScanPlan chooses spray strategy and optionally attaches a
+// reachability / tech filter, then runs a single Execute pass. Wall clock must
+// match or beat baseline spray; probing is skipped when its cost would dominate.
+func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplates []*templates.Template) (*atomic.Bool, error) {
+	hostCount := int(r.inputProvider.Count())
+	baselineReqs := estimateTemplateRequests(finalTemplates) * hostCount
+	concreteNet, portsToProbe := countReachabilityStats(finalTemplates)
+	techBound := techfilter.CountTechBound(finalTemplates)
+
+	planIn := scanplan.Input{
+		Hosts:                    hostCount,
+		Templates:                len(finalTemplates),
+		Requests:                 baselineReqs,
+		BulkSize:                 r.options.BulkSize,
+		Stream:                   r.options.Stream,
+		StrictProbe:              r.strictProbeEnabled(),
+		PortsToProbe:             portsToProbe,
+		ConcreteNetworkTemplates: concreteNet,
+		TechFilter:               r.options.TechFilter,
+		TechBoundTemplates:       techBound,
+	}
+	p := scanplan.Decide(planIn)
+
+	// Resolve -ss auto before Execute so the engine placeholder is unused.
+	if stringsutil.EqualFoldAny(r.options.ScanStrategy, scanstrategy.Auto.String(), "") {
+		r.options.ScanStrategy = p.Strategy
+	}
+
+	var httpHelper *input.Helper
+	if opts := engine.ExecuterOptions(); opts != nil {
+		httpHelper = opts.InputHelper
+	}
+
+	var reachFilter func(*templates.Template, *contextargs.MetaInput) bool
+	var techFilterFn func(*templates.Template, *contextargs.MetaInput) bool
+	var techIdx *techReachabilityIndex
+	filteredReqs := baselineReqs
+
+	if p.BuildReachability {
+		idx, groups, err := r.buildHostReachability(finalTemplates, httpHelper, p.ProbePorts)
+		if err != nil {
+			r.Logger.Warning().Msgf("could not build host reachability index, continuing unfiltered: %s", err)
+		} else {
+			baseline, filtered := estimateGroupedExecutions(finalTemplates, groups, hostCount)
+			filteredReqs = filtered
+			saved := baseline - filtered
+			pct := 0.0
+			if baseline > 0 {
+				pct = 100 * float64(saved) / float64(baseline)
+			}
+			for _, g := range groups {
+				r.Logger.Info().Msgf("host-group %s: hosts=%d templates=%d", g.key, len(g.hosts), len(templatesForHostGroup(finalTemplates, g)))
+			}
+			r.Logger.Info().Msgf(
+				"host-groups: groups=%d baseline_exec=%d filtered_exec=%d saved=%d (%.1f%%) mode=single-pass",
+				len(groups), baseline, filtered, saved, pct,
+			)
+			if p.UseReachabilityFilter {
+				reachFilter = idx.Allow
+			}
+		}
+	}
+
+	if p.UseTechFilter {
+		var err error
+		var cache *httprespcache.Cache
+		if opts := engine.ExecuterOptions(); opts != nil {
+			if opts.HTTPResponseCache == nil {
+				opts.HTTPResponseCache = httprespcache.New()
+			}
+			cache = opts.HTTPResponseCache
+		}
+		techIdx, err = r.buildTechReachability(finalTemplates, httpHelper, cache)
+		if err != nil {
+			r.Logger.Warning().Msgf("could not build tech filter index, continuing without tech-filter: %s", err)
+			if cache != nil {
+				cache.Disable()
+			}
+			techIdx = nil
+		} else {
+			base, techFiltered := estimateTechFilteredExecutions(finalTemplates, techIdx, hostCount)
+			// When stacked with reachability, take the more aggressive (lower) estimate
+			// as a lower bound for progress; actual AND filter may skip more.
+			if techFiltered < filteredReqs {
+				filteredReqs = techFiltered
+			}
+			saved := base - techFiltered
+			pct := 0.0
+			if base > 0 {
+				pct = 100 * float64(saved) / float64(base)
+			}
+			r.Logger.Info().Msgf(
+				"tech-filter: baseline_exec=%d filtered_exec=%d saved=%d (%.1f%%) bound_templates=%d",
+				base, techFiltered, saved, pct, techBound,
+			)
+			techFilterFn = techIdx.Allow
+		}
+	} else if opts := engine.ExecuterOptions(); opts != nil && opts.HTTPResponseCache != nil {
+		// -tf set but planner skipped (e.g. no tech-bound templates): do not
+		// alter request paths via an idle response cache.
+		opts.HTTPResponseCache.Disable()
+	}
+
+	p.ApplyFiltered(filteredReqs)
+	engine.TemplateTargetFilter = composeTemplateFilters(reachFilter, techFilterFn)
+	if engine.TemplateTargetFilter != nil {
+		defer func() { engine.TemplateTargetFilter = nil }()
+	}
+	if opts := engine.ExecuterOptions(); opts != nil {
+		// Cluster members keep their own Info.Tags; apply tech filter there so
+		// clustering cannot re-introduce skipped product templates.
+		if techIdx != nil {
+			opts.ClusterMemberFilter = techIdx.AllowClusterMember
+			defer func() { opts.ClusterMemberFilter = nil }()
+		}
+		if p.ExpectedRequests > 0 && (engine.TemplateTargetFilter != nil || opts.ClusterMemberFilter != nil) {
+			opts.ExpectedRequestsOverride = p.ExpectedRequests
+			defer func() { opts.ExpectedRequestsOverride = 0 }()
+		}
+		if opts.HTTPResponseCache != nil {
+			defer func() {
+				hits, misses, stores := opts.HTTPResponseCache.Stats()
+				r.Logger.Info().Msgf("http-response-cache: hits=%d misses=%d stores=%d", hits, misses, stores)
+				opts.HTTPResponseCache = nil
+			}()
+		}
+	}
+
+	r.Logger.Info().Msgf("scan-plan: strategy=%s reach=%v tech=%v expected_req=%d reason=%s",
+		r.options.ScanStrategy, p.UseReachabilityFilter, p.UseTechFilter, p.ExpectedRequests, p.Reason)
+
 	results := engine.ExecuteScanWithOpts(context.Background(), finalTemplates, r.inputProvider, r.options.DisableClustering)
 	return results, nil
 }

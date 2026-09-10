@@ -306,6 +306,8 @@ OPTIMIZATIONS:
    -ss, -scan-strategy value        strategy to use while scanning(auto/host-spray/template-spray) (default auto)
    -irt, -input-read-timeout value  timeout on input read (default 3m0s)
    -nh, -no-httpx                   disable httpx probing for non-url input
+   -stp, -strict-probe              skip templates whose target service is unreachable (HTTP on non-web ports, network on closed ports; lossless)
+   -tf, -tech-filter                opt-in: fingerprint HTTP targets and skip unmatched product/macro-tagged templates (off by default)
    -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing
 
