@@ -96,6 +96,9 @@ type ExecutorOptions struct {
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
 	Interactsh *interactsh.Client
+	// InteractshScope isolates delayed callbacks and cleanup for one execution
+	// when Interactsh is shared by concurrent engines.
+	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
 	// Stop execution once first match is found (Assigned while parsing templates)
@@ -149,6 +152,20 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
+}
+
+// RegisterInteractshRequest attaches execution-local output dependencies before
+// registering a delayed OOB callback on a potentially shared Interactsh client.
+func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interactsh.RequestData) {
+	if e == nil || e.Interactsh == nil || data == nil {
+		return
+	}
+	data.Output = e.Output
+	data.Progress = e.Progress
+	data.IssuesClient = e.IssuesClient
+	data.FuzzParamsFrequency = e.FuzzParamsFrequency
+	data.Scope = e.InteractshScope
+	e.Interactsh.RequestEvent(urls, data)
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
@@ -273,44 +290,44 @@ func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateT
 // Copy returns a copy of the executeroptions structure
 func (e *ExecutorOptions) Copy() *ExecutorOptions {
 	copy := &ExecutorOptions{
-		TemplateID:          e.TemplateID,
-		TemplatePath:        e.TemplatePath,
-		TemplateInfo:        e.TemplateInfo,
-		TemplateVerifier:    e.TemplateVerifier,
+		TemplateID:                   e.TemplateID,
+		TemplatePath:                 e.TemplatePath,
+		TemplateInfo:                 e.TemplateInfo,
+		TemplateVerifier:             e.TemplateVerifier,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
-		RawTemplate:         e.RawTemplate,
-		Output:              e.Output,
-		Options:             e.Options,
-		IssuesClient:        e.IssuesClient,
-		Progress:            e.Progress,
-		RateLimiter:         e.RateLimiter,
-		Catalog:             e.Catalog,
-		ProjectFile:         e.ProjectFile,
-		Browser:             e.Browser,
-		Interactsh:          e.Interactsh,
-		HostErrorsCache:     e.HostErrorsCache,
-		StopAtFirstMatch:    e.StopAtFirstMatch,
-		Variables:           e.Variables,
-		Constants:           e.Constants,
-		ExcludeMatchers:     e.ExcludeMatchers,
-		InputHelper:         e.InputHelper,
-		FuzzParamsFrequency: e.FuzzParamsFrequency,
-		FuzzStatsDB:         e.FuzzStatsDB,
-		Operators:           e.Operators,
-		DoNotCache:          e.DoNotCache,
-		Colorizer:           e.Colorizer,
-		WorkflowLoader:      e.WorkflowLoader,
-		ResumeCfg:           e.ResumeCfg,
-		ProtocolType:        e.ProtocolType,
-		Flow:                e.Flow,
-		IsMultiProtocol:     e.IsMultiProtocol,
-		JsCompiler:          e.JsCompiler,
-		AuthProvider:        e.AuthProvider,
-		TemporaryDirectory:  e.TemporaryDirectory,
-		Parser:              e.Parser,
-		ExportReqURLPattern: e.ExportReqURLPattern,
-		GlobalMatchers:      e.GlobalMatchers,
-		Logger:              e.Logger,
+		RawTemplate:                  e.RawTemplate,
+		Output:                       e.Output,
+		Options:                      e.Options,
+		IssuesClient:                 e.IssuesClient,
+		Progress:                     e.Progress,
+		RateLimiter:                  e.RateLimiter,
+		Catalog:                      e.Catalog,
+		ProjectFile:                  e.ProjectFile,
+		Browser:                      e.Browser,
+		Interactsh:                   e.Interactsh,
+		HostErrorsCache:              e.HostErrorsCache,
+		StopAtFirstMatch:             e.StopAtFirstMatch,
+		Variables:                    e.Variables,
+		Constants:                    e.Constants,
+		ExcludeMatchers:              e.ExcludeMatchers,
+		InputHelper:                  e.InputHelper,
+		FuzzParamsFrequency:          e.FuzzParamsFrequency,
+		FuzzStatsDB:                  e.FuzzStatsDB,
+		Operators:                    e.Operators,
+		DoNotCache:                   e.DoNotCache,
+		Colorizer:                    e.Colorizer,
+		WorkflowLoader:               e.WorkflowLoader,
+		ResumeCfg:                    e.ResumeCfg,
+		ProtocolType:                 e.ProtocolType,
+		Flow:                         e.Flow,
+		IsMultiProtocol:              e.IsMultiProtocol,
+		JsCompiler:                   e.JsCompiler,
+		AuthProvider:                 e.AuthProvider,
+		TemporaryDirectory:           e.TemporaryDirectory,
+		Parser:                       e.Parser,
+		ExportReqURLPattern:          e.ExportReqURLPattern,
+		GlobalMatchers:               e.GlobalMatchers,
+		Logger:                       e.Logger,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()

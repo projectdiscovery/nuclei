@@ -380,7 +380,7 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			&compiler.ExecuteOptions{
 				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
-				Source: &request.PreCondition,
+				Source:          &request.PreCondition,
 			},
 		)
 		// if precondition was successful
@@ -631,7 +631,7 @@ func (request *Request) executeRequestWithPayloads(
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: data, UsesInteractsh: true}
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,

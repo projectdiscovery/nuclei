@@ -5,8 +5,10 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
+	"github.com/logrusorgru/aurora/v4"
 	serverint "github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
@@ -15,6 +17,106 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type requestRoutingWriter struct {
+	writes atomic.Int32
+}
+
+func (*requestRoutingWriter) Close() {}
+func (*requestRoutingWriter) Colorizer() *aurora.Aurora {
+	return aurora.New(aurora.WithColors(false))
+}
+func (w *requestRoutingWriter) Write(*output.ResultEvent) error {
+	w.writes.Add(1)
+	return nil
+}
+func (*requestRoutingWriter) WriteFailure(*output.InternalWrappedEvent) error { return nil }
+func (*requestRoutingWriter) Request(string, string, string, error)           {}
+func (*requestRoutingWriter) RequestStatsLog(string, string)                  {}
+func (*requestRoutingWriter) WriteStoreDebugData(string, string, string, string) {
+}
+func (w *requestRoutingWriter) ResultCount() int { return int(w.writes.Load()) }
+
+type requestRoutingProgress struct{}
+
+func (*requestRoutingProgress) Stop()                           {}
+func (*requestRoutingProgress) Init(int64, int, int64)          {}
+func (*requestRoutingProgress) AddToTotal(int64)                {}
+func (*requestRoutingProgress) IncrementRequests()              {}
+func (*requestRoutingProgress) SetRequests(uint64)              {}
+func (*requestRoutingProgress) IncrementMatched()               {}
+func (*requestRoutingProgress) IncrementErrorsBy(int64)         {}
+func (*requestRoutingProgress) IncrementFailedRequestsBy(int64) {}
+
+func TestProcessInteractionRoutesResultToRequestWriter(t *testing.T) {
+	matcher := &matchers.Matcher{
+		Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+		Part:  "interactsh_protocol",
+		Words: []string{"dns"},
+	}
+	op := &operators.Operators{Matchers: []*matchers.Matcher{matcher}}
+	require.NoError(t, op.Compile())
+
+	baseWriter := &requestRoutingWriter{}
+	requestWriter := &requestRoutingWriter{}
+
+	client := &Client{options: DefaultOptions(baseWriter, nil, &requestRoutingProgress{})}
+	client.initializeCaches()
+	data := &RequestData{
+		Event: &output.InternalWrappedEvent{InternalEvent: output.InternalEvent{
+			templateIdAttribute: "scoped-oob",
+			"host":              "example.com",
+		}},
+		Operators: op,
+		MatchFunc: func(_ map[string]interface{}, _ *matchers.Matcher) (bool, []string) {
+			return true, []string{"dns"}
+		},
+		ExtractFunc: func(map[string]interface{}, *extractors.Extractor) map[string]struct{} { return nil },
+		MakeResultFunc: func(*output.InternalWrappedEvent) []*output.ResultEvent {
+			return []*output.ResultEvent{{TemplateID: "scoped-oob", MatcherStatus: true}}
+		},
+		Output:   requestWriter,
+		Progress: &requestRoutingProgress{},
+	}
+
+	matched := client.processInteractionForRequest(&serverint.Interaction{
+		Protocol:      "dns",
+		RawRequest:    "request",
+		RawResponse:   "response",
+		RemoteAddress: "127.0.0.1",
+	}, data)
+
+	require.True(t, matched)
+	require.Equal(t, 1, requestWriter.ResultCount())
+	require.Zero(t, baseWriter.ResultCount(), "a shared client must not route a delayed result to its base writer")
+}
+
+func TestRequestScopeRemovesOnlyItsRegistrations(t *testing.T) {
+	options := DefaultOptions(nil, nil, nil)
+	options.CooldownPeriod = 0
+	client, err := New(options)
+	require.NoError(t, err)
+	client.setHostname("oast.test")
+
+	first := client.NewRequestScope()
+	second := client.NewRequestScope()
+	newData := func(scope *RequestScope) *RequestData {
+		return &RequestData{
+			Event: &output.InternalWrappedEvent{InternalEvent: output.InternalEvent{}},
+			Scope: scope,
+		}
+	}
+	client.RequestEvent([]string{"first.oast.test"}, newData(first))
+	client.RequestEvent([]string{"second.oast.test"}, newData(second))
+	require.True(t, client.requests.Has("first"))
+	require.True(t, client.requests.Has("second"))
+
+	first.Close()
+	require.False(t, client.requests.Has("first"))
+	require.True(t, client.requests.Has("second"), "closing one execution must not purge another execution")
+
+	second.Close()
+	require.False(t, client.requests.Has("second"))
+}
 func TestProcessInteractionForRequestConcurrentEventUpdate(t *testing.T) {
 	const (
 		keyCount        = 4096

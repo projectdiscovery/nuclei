@@ -210,7 +210,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 				Request:        gr.Request,
 			}
 			setInteractshCallback = true
-			request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
+			request.options.RegisterInteractshRequest(gr.InteractURLs, requestData)
 			gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 		} else {
 			callback(event)
