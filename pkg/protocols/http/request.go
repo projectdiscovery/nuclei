@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/unresolvedvars"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -553,6 +554,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				if err == types.ErrNoMoreRequests {
 					return true, nil
 				}
+				if unresolvedvars.Is(err) {
+					unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, input.MetaInput.Input, err)
+					return true, nil
+				}
 				return true, err
 			}
 			// ideally if http template used a custom port or hostname
@@ -747,12 +752,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
 			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
+				unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, input.MetaInput.Input, varErr)
 				return ErrMissingVars
 			}
 		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
 			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
+				unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, input.MetaInput.Input, varErr)
 				return ErrMissingVars
 			}
 		}

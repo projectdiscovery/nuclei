@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/unresolvedvars"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -374,7 +375,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		interactshURLs = result.InteractURLs
 
 		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
-			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
+			unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, actualAddress, err)
 			return nil
 		}
 
