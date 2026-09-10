@@ -57,6 +57,36 @@ func TestCacheCloseReleasesStorageAndIsIdempotent(t *testing.T) {
 	require.NotPanics(t, cache.Close)
 }
 
+func TestCacheAllocatesStorageOnlyForTrackedFailure(t *testing.T) {
+	cache := New(3, DefaultMaxHostsCount, nil)
+	t.Cleanup(cache.Close)
+	ctx := newCtxArgs(t.Name())
+
+	require.Nil(t, cache.failedTargets)
+	require.False(t, cache.Check(protoType, ctx))
+	cache.Remove(ctx)
+	cache.MarkFailedOrRemove(protoType, ctx, nil)
+	cache.MarkFailedOrRemove(protoType, ctx, errors.New("template condition failed"))
+	require.Nil(t, cache.failedTargets, "read, success, and template errors must not allocate host storage")
+
+	cache.MarkFailedOrRemove(protoType, ctx, errors.New("net/http: timeout awaiting response headers"))
+	require.NotNil(t, cache.failedTargets)
+}
+
+func TestCacheCloseBeforeFirstFailureKeepsStorageUnallocated(t *testing.T) {
+	cache := New(3, DefaultMaxHostsCount, nil)
+	cache.Close()
+
+	ctx := newCtxArgs(t.Name())
+	require.NotPanics(t, func() {
+		cache.MarkFailedOrRemove(protoType, ctx, errors.New("net/http: timeout awaiting response headers"))
+		cache.MarkFailedOrRemove(protoType, ctx, nil)
+		cache.Remove(ctx)
+		require.False(t, cache.Check(protoType, ctx))
+	})
+	require.Nil(t, cache.failedTargets)
+}
+
 func TestCacheCheckTimeout(t *testing.T) {
 	// A host that consistently times out (request deadline exceeded) is
 	// unresponsive and must be skipped once MaxHostError consecutive timeouts
@@ -221,11 +251,12 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 	}
 
 	// the cache is not atomic during items creation, so we pre-create them with counter to zero
+	failedTargets := cache.getFailedTargets(true)
 	for _, test := range tests {
 		normalizedValue := cache.NormalizeCacheValue(test.host)
 		newItem := &cacheItem{errors: atomic.Int32{}}
 		newItem.errors.Store(0)
-		_ = cache.failedTargets.Set(normalizedValue, newItem)
+		_ = failedTargets.Set(normalizedValue, newItem)
 	}
 
 	wg := sync.WaitGroup{}
