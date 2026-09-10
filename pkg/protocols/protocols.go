@@ -3,6 +3,7 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
+	"reflect"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -342,6 +343,85 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
 	return copy
+}
+
+// CloneOperators returns a copy of operators with only template-authored fields.
+// Compiled matcher/extractor state is rebuilt per execution by Request.Compile.
+func CloneOperators(src operators.Operators) operators.Operators {
+	value := cloneExportedValue(reflect.ValueOf(src))
+	cloned := value.Interface().(operators.Operators)
+	cloned.TemplateID = ""
+	cloned.ExcludeMatchers = nil
+	return cloned
+}
+
+// CloneMatchers returns a copy of matcher definitions without compiled matcher
+// state so callers can safely compile them for a single execution.
+func CloneMatchers(src []*matchers.Matcher) []*matchers.Matcher {
+	if src == nil {
+		return nil
+	}
+	value := cloneExportedValue(reflect.ValueOf(src))
+	return value.Interface().([]*matchers.Matcher)
+}
+
+func cloneExportedValue(value reflect.Value) reflect.Value {
+	if !value.IsValid() {
+		return value
+	}
+
+	switch value.Kind() {
+	case reflect.Interface:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := cloneExportedValue(value.Elem())
+		result := reflect.New(value.Type()).Elem()
+		result.Set(cloned)
+		return result
+	case reflect.Pointer:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.New(value.Type().Elem())
+		cloned.Elem().Set(cloneExportedValue(value.Elem()))
+		return cloned
+	case reflect.Struct:
+		cloned := reflect.New(value.Type()).Elem()
+		for i := 0; i < value.NumField(); i++ {
+			if value.Type().Field(i).IsExported() {
+				cloned.Field(i).Set(cloneExportedValue(value.Field(i)))
+			}
+		}
+		return cloned
+	case reflect.Slice:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for i := 0; i < value.Len(); i++ {
+			cloned.Index(i).Set(cloneExportedValue(value.Index(i)))
+		}
+		return cloned
+	case reflect.Map:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iterator := value.MapRange()
+		for iterator.Next() {
+			cloned.SetMapIndex(cloneExportedValue(iterator.Key()), cloneExportedValue(iterator.Value()))
+		}
+		return cloned
+	case reflect.Array:
+		cloned := reflect.New(value.Type()).Elem()
+		for i := 0; i < value.Len(); i++ {
+			cloned.Index(i).Set(cloneExportedValue(value.Index(i)))
+		}
+		return cloned
+	default:
+		return value
+	}
 }
 
 // Request is an interface implemented any protocol based request generator.

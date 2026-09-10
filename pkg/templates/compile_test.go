@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -663,6 +664,271 @@ http:
 	require.NotSame(t, cachedTemplate.RequestsHTTP[0], compiledTemplates[0].RequestsHTTP[0])
 }
 
+func TestParseCompiledCacheDoesNotRetainExecutionOptions(t *testing.T) {
+	setup()
+
+	templatePath := "tests/match-1.yaml"
+	parser := templates.NewParser()
+	firstOptions := executerOpts.Copy()
+	firstOptions.Parser = parser
+
+	first, err := templates.Parse(templatePath, nil, firstOptions)
+	require.NoError(t, err)
+	require.NotNil(t, first.Executer)
+
+	cached, err := parser.CompiledCache().Get(templatePath)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+	require.Nil(t, cached.Executer)
+	require.Nil(t, cached.CompiledWorkflow)
+	require.Nil(t, cached.Options.TemplateVerificationCallback)
+	require.Nil(t, cached.Options.Output)
+	require.Nil(t, cached.Options.RateLimiter)
+	require.Nil(t, cached.Options.Catalog)
+	require.Nil(t, cached.Options.AuthProvider)
+	require.Empty(t, cached.Options.TemporaryDirectory)
+	require.Nil(t, cached.RequestsHTTP[0].Options().Output)
+	require.Nil(t, cached.RequestsHTTP[0].Options().RateLimiter)
+
+	secondOutput := testutils.NewMockOutputWriter(firstOptions.Options.OmitTemplate)
+	secondOptions := executerOpts.Copy()
+	secondOptions.Parser = parser
+	secondOptions.Output = secondOutput
+
+	second, err := templates.Parse(templatePath, nil, secondOptions)
+	require.NoError(t, err)
+	require.NotNil(t, second.Executer)
+	require.Same(t, secondOutput, second.RequestsHTTP[0].Options().Output)
+	require.Same(t, secondOptions.RateLimiter, second.RequestsHTTP[0].Options().RateLimiter)
+	require.NotSame(t, cached.RequestsHTTP[0], second.RequestsHTTP[0])
+	require.NotSame(t, cached.RequestsHTTP[0].Options(), second.RequestsHTTP[0].Options())
+}
+
+func TestParseCompiledCacheClonesVariablesAndConstants(t *testing.T) {
+	setup()
+
+	templatePath := filepath.Join(t.TempDir(), "vars.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: cache-vars
+
+info:
+  name: Cache Vars
+  author: pdteam
+  severity: info
+
+variables:
+  token: original
+
+constants:
+  flag: keep
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600))
+
+	parser := templates.NewParser()
+	firstOptions := executerOpts.Copy()
+	firstOptions.Parser = parser
+	first, err := templates.Parse(templatePath, nil, firstOptions)
+	require.NoError(t, err)
+	require.Equal(t, "original", first.Options.Variables.GetAll()["token"])
+
+	cached, err := parser.CompiledCache().Get(templatePath)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+	require.Equal(t, "original", cached.Options.Variables.GetAll()["token"])
+	require.Equal(t, "keep", cached.Options.Constants["flag"])
+
+	first.Options.Variables.Set("token", "from-first")
+	first.Options.Constants["flag"] = "from-first"
+	require.Equal(t, "original", cached.Options.Variables.GetAll()["token"])
+	require.Equal(t, "keep", cached.Options.Constants["flag"])
+
+	secondOptions := executerOpts.Copy()
+	secondOptions.Parser = parser
+	second, err := templates.Parse(templatePath, nil, secondOptions)
+	require.NoError(t, err)
+	second.Options.Variables.Set("token", "mutated")
+	second.Options.Constants["flag"] = "mutated"
+	require.Equal(t, "original", cached.Options.Variables.GetAll()["token"])
+	require.Equal(t, "keep", cached.Options.Constants["flag"])
+	require.Equal(t, "from-first", first.Options.Variables.GetAll()["token"])
+	require.Equal(t, "from-first", first.Options.Constants["flag"])
+	require.Equal(t, "mutated", second.Options.Variables.GetAll()["token"])
+	require.Equal(t, "mutated", second.Options.Constants["flag"])
+}
+
+func TestParseCompiledCacheRebuildsWorkflowPerExecution(t *testing.T) {
+	setup()
+
+	templatePath := "tests/workflow.yaml"
+	parser := templates.NewParser()
+	firstOptions := executerOpts.Copy()
+	firstOptions.Parser = parser
+
+	first, err := templates.Parse(templatePath, nil, firstOptions)
+	require.NoError(t, err)
+	require.NotNil(t, first.CompiledWorkflow)
+
+	cached, err := parser.CompiledCache().Get(templatePath)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+	require.Nil(t, cached.CompiledWorkflow)
+	require.Nil(t, cached.Options.WorkflowLoader)
+
+	secondOptions := executerOpts.Copy()
+	secondOptions.Parser = parser
+	second, err := templates.Parse(templatePath, nil, secondOptions)
+	require.NoError(t, err)
+	require.NotNil(t, second.CompiledWorkflow)
+	require.NotSame(t, first.CompiledWorkflow, second.CompiledWorkflow)
+	require.NotSame(t, first.CompiledWorkflow.Workflows[0], second.CompiledWorkflow.Workflows[0])
+	require.Same(t, secondOptions.RateLimiter, second.CompiledWorkflow.Workflows[0].Executers[0].Options.RateLimiter)
+}
+
+func TestParseCompiledCacheRebuildsWorkflowMatchersPerExecution(t *testing.T) {
+	setup()
+
+	dir := t.TempDir()
+	firstTemplatePath := filepath.Join(dir, "first.yaml")
+	err := os.WriteFile(firstTemplatePath, []byte(`id: workflow-matcher-first
+
+info:
+  name: Workflow Matcher First
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - first
+`), 0o600)
+	require.NoError(t, err)
+
+	secondTemplatePath := filepath.Join(dir, "second.yaml")
+	err = os.WriteFile(secondTemplatePath, []byte(`id: workflow-matcher-second
+
+info:
+  name: Workflow Matcher Second
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - second
+`), 0o600)
+	require.NoError(t, err)
+
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err = os.WriteFile(workflowPath, []byte(fmt.Sprintf(`id: workflow-matcher-cache
+
+info:
+  name: Workflow Matcher Cache
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: %q
+    matchers:
+      - name: first
+        subtemplates:
+          - template: %q
+`, firstTemplatePath, secondTemplatePath)), 0o600)
+	require.NoError(t, err)
+
+	parser := templates.NewParser()
+	firstOptions := executerOpts.Copy()
+	firstOptions.Parser = parser
+
+	first, err := templates.Parse(workflowPath, nil, firstOptions)
+	require.NoError(t, err)
+	require.NotNil(t, first.CompiledWorkflow)
+
+	cached, err := parser.CompiledCache().Get(workflowPath)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+	require.Empty(t, cached.Workflow.Workflows[0].Matchers[0].Subtemplates[0].Executers)
+
+	secondOptions := executerOpts.Copy()
+	secondOptions.Parser = parser
+	second, err := templates.Parse(workflowPath, nil, secondOptions)
+	require.NoError(t, err)
+	require.NotNil(t, second.CompiledWorkflow)
+	require.NotSame(t, first.CompiledWorkflow.Workflows[0].Matchers[0], second.CompiledWorkflow.Workflows[0].Matchers[0])
+	require.Len(t, second.CompiledWorkflow.Workflows[0].Matchers[0].Subtemplates[0].Executers, 1)
+}
+
+func TestParseCompiledCacheRegistersGlobalMatcherFromCache(t *testing.T) {
+	setup()
+
+	parser := templates.NewParser()
+	templatePath := "tests/global-matcher.yaml"
+	firstOptions := executerOpts.Copy()
+	firstOptions.Options = firstOptions.Options.Copy()
+	firstOptions.Parser = parser
+	firstOptions.Options.EnableGlobalMatchersTemplates = false
+
+	first, err := templates.Parse(templatePath, nil, firstOptions)
+	require.NoError(t, err)
+	require.NotNil(t, first)
+
+	secondOptions := executerOpts.Copy()
+	secondOptions.Options = secondOptions.Options.Copy()
+	secondOptions.Parser = parser
+	secondOptions.Options.EnableGlobalMatchersTemplates = true
+	secondOptions.GlobalMatchers = globalmatchers.New()
+
+	second, err := templates.Parse(templatePath, nil, secondOptions)
+	require.NoError(t, err)
+	require.Nil(t, second)
+
+	var matched bool
+	secondOptions.GlobalMatchers.Match(
+		output.InternalEvent{
+			"body":          "test",
+			"template-id":   "origin",
+			"template-info": model.Info{},
+			"template-path": "origin.yaml",
+		},
+		func(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+			body, _ := data["body"].(string)
+			return matcher.MatchWords(body, data)
+		},
+		nil,
+		false,
+		func(_ output.InternalEvent, result *operators.Result) {
+			matched = result != nil
+		},
+	)
+	require.True(t, matched)
+}
+
+func TestParseCompiledCacheIgnoresEntryWithoutOptions(t *testing.T) {
+	setup()
+
+	parser := templates.NewParser()
+	templatePath := "tests/match-1.yaml"
+	parser.CompiledCache().StoreWithoutRaw(templatePath, &templates.Template{ID: "invalid-cache-entry"}, nil)
+
+	options := executerOpts.Copy()
+	options.Parser = parser
+
+	parsed, err := templates.Parse(templatePath, nil, options)
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+	require.Equal(t, "basic-get", parsed.ID)
+}
+
 func TestParseSharedTemplatePreservesRuntimePreprocessing(t *testing.T) {
 	var sourceReads int
 	templateSource := `id: shared-preprocessed-template
@@ -724,4 +990,48 @@ func TestWrongWorkflow(t *testing.T) {
 	got, err := templates.Parse(filePath, nil, executerOpts)
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "workflows cannot have other protocols")
+}
+
+// TestParseConcurrentSharedParserIsRaceFree covers the loader path, which parses
+// templates concurrently through a single shared parser.
+func TestParseConcurrentSharedParserIsRaceFree(t *testing.T) {
+	setup()
+
+	dir := t.TempDir()
+	paths := make([]string, 0, 16)
+	for i := 0; i < 16; i++ {
+		path := filepath.Join(dir, fmt.Sprintf("concurrent-%d.yaml", i))
+		require.NoError(t, os.WriteFile(path, []byte(fmt.Sprintf(`id: concurrent-%d
+info:
+  name: Concurrent %d
+  author: pdteam
+  severity: info
+
+variables:
+  token: original
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"`, i, i)), 0o600))
+		paths = append(paths, path)
+	}
+
+	parser := templates.NewParser()
+
+	var wg sync.WaitGroup
+	for round := 0; round < 3; round++ {
+		for _, path := range paths {
+			wg.Add(1)
+			go func(path string) {
+				defer wg.Done()
+				options := executerOpts.Copy()
+				options.Parser = parser
+				parsed, err := templates.Parse(path, nil, options)
+				require.NoError(t, err)
+				require.NotNil(t, parsed)
+			}(path)
+		}
+	}
+	wg.Wait()
 }
