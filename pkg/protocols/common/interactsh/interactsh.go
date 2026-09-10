@@ -293,7 +293,10 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	if fuzzParamsFrequency == nil {
 		fuzzParamsFrequency = c.options.FuzzParamsFrequency
 	}
-	if fuzzParamsFrequency != nil {
+	// Parameter frequency applies only to fuzz-generated requests. Regular OOB
+	// requests do not carry the concrete HTTP request/parameter needed to build
+	// a frequency key, even though the execution itself owns a tracker.
+	if fuzzParamsFrequency != nil && data.Request != nil && data.Operators != nil {
 		if !matched {
 			fuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		} else {
