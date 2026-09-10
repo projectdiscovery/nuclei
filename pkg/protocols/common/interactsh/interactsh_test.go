@@ -155,6 +155,18 @@ func TestHasMarkersDoesNotTreatPipeAsEncodedBrace(t *testing.T) {
 	require.False(t, HasMarkers("%7|%7|interactsh-url%7|%7|"))
 }
 
+func TestHasMarkersDetectsInteractshSNIAnnotation(t *testing.T) {
+	require.True(t, HasMarkers("@tls-sni: interactsh-url\nGET / HTTP/1.1"))
+	require.True(t, HasMarkers("  @tls-sni: https://interactsh-url  \nGET / HTTP/1.1"))
+	require.False(t, HasMarkers("@tls-sni: request.host\nGET / HTTP/1.1"))
+}
+
+func TestNilClientURLReturnsInitializationError(t *testing.T) {
+	var client *Client
+	_, err := client.URL()
+	require.ErrorIs(t, err, ErrInteractshClientNotInitialized)
+}
+
 func TestHasMarkersDoesNotTreatMixedRawEncodedBracesAsMarker(t *testing.T) {
 	items := []string{
 		"%7B{interactsh-url}}",
