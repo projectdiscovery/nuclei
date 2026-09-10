@@ -47,8 +47,19 @@ func LoadOrCreateCA(dir string) (*CA, error) {
 	certPath := filepath.Join(dir, caCertFileName)
 	keyPath := filepath.Join(dir, caKeyFileName)
 
-	if fileutil.FileExists(certPath) && fileutil.FileExists(keyPath) {
+	certExists, keyExists := fileutil.FileExists(certPath), fileutil.FileExists(keyPath)
+	if certExists && keyExists {
 		return loadCA(certPath, keyPath)
+	}
+	// Half a keypair is unusable, and regenerating over it would invalidate a
+	// certificate the user may already have installed and trusted. Say which
+	// file is orphaned instead of guessing.
+	if certExists != keyExists {
+		orphan := certPath
+		if keyExists {
+			orphan = keyPath
+		}
+		return nil, errors.Errorf("dast proxy CA is incomplete, remove %s to generate a new keypair", orphan)
 	}
 	return createCA(dir, certPath, keyPath)
 }
@@ -138,6 +149,9 @@ func createCA(dir, certPath, keyPath string) (*CA, error) {
 		return nil, errors.Wrap(err, "could not write dast proxy CA key")
 	}
 	if err := writeNewFile(certPath, certPEM, caCertFileMode); err != nil {
+		// Leaving the key behind would wedge every later start on the
+		// incomplete-keypair check above.
+		_ = os.Remove(keyPath)
 		return nil, errors.Wrap(err, "could not write dast proxy CA certificate")
 	}
 

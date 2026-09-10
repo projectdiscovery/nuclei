@@ -60,3 +60,31 @@ func TestLoadOrCreateCARejectsGroupReadableKey(t *testing.T) {
 	_, err = LoadOrCreateCA(dir)
 	require.ErrorContains(t, err, "readable by other users")
 }
+
+func TestLoadOrCreateCARejectsIncompleteKeypair(t *testing.T) {
+	for _, orphan := range []string{caCertFileName, caKeyFileName} {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, orphan), []byte("x"), 0o600))
+
+		_, err := LoadOrCreateCA(dir)
+		require.ErrorContains(t, err, "incomplete", orphan)
+		require.ErrorContains(t, err, orphan)
+	}
+}
+
+// A failed certificate write must not leave the key behind, or the
+// incomplete-keypair check would wedge every later start.
+func TestLoadOrCreateCACleansUpKeyWhenCertificateWriteFails(t *testing.T) {
+	dir := t.TempDir()
+	// A directory at the certificate path makes the write fail.
+	require.NoError(t, os.Mkdir(filepath.Join(dir, caCertFileName), 0o755))
+
+	_, err := LoadOrCreateCA(dir)
+	require.Error(t, err)
+	require.NoFileExists(t, filepath.Join(dir, caKeyFileName), "orphaned key must be removed")
+
+	require.NoError(t, os.Remove(filepath.Join(dir, caCertFileName)))
+	ca, err := LoadOrCreateCA(dir)
+	require.NoError(t, err, "startup must recover once the blocker is gone")
+	require.True(t, ca.Certificate.Leaf.IsCA)
+}
