@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/logrusorgru/aurora/v4"
 	serverint "github.com/projectdiscovery/interactsh/pkg/server"
@@ -116,6 +117,36 @@ func TestRequestScopeRemovesOnlyItsRegistrations(t *testing.T) {
 
 	second.Close()
 	require.False(t, client.requests.Has("second"))
+}
+
+func TestRequestScopeCloseWaitsForInFlightCallback(t *testing.T) {
+	options := DefaultOptions(nil, nil, nil)
+	options.CooldownPeriod = 0
+	client, err := New(options)
+	require.NoError(t, err)
+
+	scope := client.NewRequestScope()
+	require.True(t, scope.beginCallback())
+
+	closed := make(chan struct{})
+	go func() {
+		scope.Close()
+		close(closed)
+	}()
+
+	select {
+	case <-closed:
+		t.Fatal("scope closed before its admitted callback completed")
+	case <-time.After(25 * time.Millisecond):
+	}
+
+	scope.endCallback()
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Fatal("scope did not close after its admitted callback completed")
+	}
+	require.False(t, scope.beginCallback(), "a closed scope must reject later callbacks")
 }
 
 func TestHasMarkersDoesNotTreatPipeAsEncodedBrace(t *testing.T) {

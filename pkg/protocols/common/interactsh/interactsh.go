@@ -33,7 +33,8 @@ import (
 type Client struct {
 	sync.Once
 	sync.RWMutex
-	cacheOnce sync.Once
+	cacheOnce          sync.Once
+	requestLifecycleMu sync.RWMutex
 
 	options *Options
 
@@ -63,10 +64,12 @@ type Client struct {
 // engine execution. A shared Client can serve many concurrent executions, but
 // each execution still needs its own callback window and deterministic cleanup.
 type RequestScope struct {
-	client *Client
-	once   sync.Once
-	mu     sync.Mutex
-	ids    map[string]struct{}
+	client    *Client
+	once      sync.Once
+	mu        sync.Mutex
+	ids       map[string]struct{}
+	closing   bool
+	callbacks sync.WaitGroup
 }
 
 // NewRequestScope creates an execution-scoped interaction lifecycle. Call
@@ -80,8 +83,29 @@ func (s *RequestScope) track(id string) {
 		return
 	}
 	s.mu.Lock()
-	s.ids[id] = struct{}{}
+	if !s.closing {
+		s.ids[id] = struct{}{}
+	}
 	s.mu.Unlock()
+}
+
+func (s *RequestScope) beginCallback() bool {
+	if s == nil {
+		return true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closing {
+		return false
+	}
+	s.callbacks.Add(1)
+	return true
+}
+
+func (s *RequestScope) endCallback() {
+	if s != nil {
+		s.callbacks.Done()
+	}
 }
 
 // Close waits the same callback cooldown used by a standalone Client, then
@@ -93,23 +117,33 @@ func (s *RequestScope) Close() {
 	}
 	s.once.Do(func() {
 		s.mu.Lock()
+		hasRegistrations := len(s.ids) > 0
+		s.mu.Unlock()
+		if hasRegistrations && s.client.cooldownDuration > 0 {
+			time.Sleep(s.client.cooldownDuration)
+		}
+
+		// Serialize registration removal with the poller's request lookup and
+		// callback admission. A callback that already found this execution's
+		// request is counted before closing begins; a later callback cannot start.
+		s.client.requestLifecycleMu.Lock()
+		s.mu.Lock()
+		s.closing = true
 		ids := make([]string, 0, len(s.ids))
 		for id := range s.ids {
 			ids = append(ids, id)
 		}
 		s.mu.Unlock()
-
-		if len(ids) == 0 {
-			return
-		}
-		if s.client.cooldownDuration > 0 {
-			time.Sleep(s.client.cooldownDuration)
-		}
 		if s.client.requests != nil {
 			for _, id := range ids {
 				s.client.requests.Remove(id)
 			}
 		}
+		s.client.requestLifecycleMu.Unlock()
+
+		// Result writers, progress reporters, and issue clients remain owned by
+		// the execution until every callback admitted above has completed.
+		s.callbacks.Wait()
 	})
 }
 
@@ -164,7 +198,10 @@ func (c *Client) poll() error {
 	c.setHostname(interactDomain)
 
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
+		c.requestLifecycleMu.RLock()
 		request, err := c.requests.Get(interaction.UniqueID)
+		callbackAdmitted := request != nil && request.Scope.beginCallback()
+		c.requestLifecycleMu.RUnlock()
 		// for more context in github actions
 		if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
 			gologger.DefaultLogger.Print().Msgf("[Interactsh]: got interaction of %v for request %v and error %v", interaction, request, err)
@@ -181,6 +218,10 @@ func (c *Client) poll() error {
 			}
 			return
 		}
+		if !callbackAdmitted {
+			return
+		}
+		defer request.Scope.endCallback()
 
 		if requestShouldStopAtFirstMatch(request) || c.options.StopAtFirstMatch {
 			if gotItem, err := c.matchedTemplates.Get(eventHash(request.Event)); gotItem && err == nil {
@@ -461,7 +502,12 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		interactions, err := c.interactions.Get(id)
 		if interactions != nil && err == nil {
 			for _, interaction := range interactions {
-				if c.processInteractionForRequest(interaction, data) {
+				if !data.Scope.beginCallback() {
+					break
+				}
+				matched := c.processInteractionForRequest(interaction, data)
+				data.Scope.endCallback()
+				if matched {
 					c.interactions.Remove(id)
 					break
 				}
