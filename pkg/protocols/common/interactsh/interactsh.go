@@ -16,11 +16,14 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -54,6 +57,60 @@ type Client struct {
 	// determines if wait the cooldown period in case of generated URL
 	generated atomic.Bool
 	matched   atomic.Bool
+}
+
+// RequestScope owns the delayed interaction registrations created by one
+// engine execution. A shared Client can serve many concurrent executions, but
+// each execution still needs its own callback window and deterministic cleanup.
+type RequestScope struct {
+	client *Client
+	once   sync.Once
+	mu     sync.Mutex
+	ids    map[string]struct{}
+}
+
+// NewRequestScope creates an execution-scoped interaction lifecycle. Call
+// Close after the execution work pool has drained.
+func (c *Client) NewRequestScope() *RequestScope {
+	return &RequestScope{client: c, ids: make(map[string]struct{})}
+}
+
+func (s *RequestScope) track(id string) {
+	if s == nil || id == "" {
+		return
+	}
+	s.mu.Lock()
+	s.ids[id] = struct{}{}
+	s.mu.Unlock()
+}
+
+// Close waits the same callback cooldown used by a standalone Client, then
+// removes only this execution's unmatched registrations. The shared poller and
+// registrations belonging to other executions remain active.
+func (s *RequestScope) Close() {
+	if s == nil || s.client == nil {
+		return
+	}
+	s.once.Do(func() {
+		s.mu.Lock()
+		ids := make([]string, 0, len(s.ids))
+		for id := range s.ids {
+			ids = append(ids, id)
+		}
+		s.mu.Unlock()
+
+		if len(ids) == 0 {
+			return
+		}
+		if s.client.cooldownDuration > 0 {
+			time.Sleep(s.client.cooldownDuration)
+		}
+		if s.client.requests != nil {
+			for _, id := range ids {
+				s.client.requests.Remove(id)
+			}
+		}
+	})
 }
 
 // New returns a new interactsh server client
@@ -189,11 +246,15 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		gologger.DefaultLogger.Print().Msgf("[Interactsh]: got result %v and status %v after processing interaction", result, matched)
 	}
 
-	if c.options.FuzzParamsFrequency != nil {
+	fuzzParamsFrequency := data.FuzzParamsFrequency
+	if fuzzParamsFrequency == nil {
+		fuzzParamsFrequency = c.options.FuzzParamsFrequency
+	}
+	if fuzzParamsFrequency != nil {
 		if !matched {
-			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
+			fuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		} else {
-			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
+			fuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		}
 	}
 
@@ -229,7 +290,19 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 
 	// if event is not already matched, write it to output
-	if !data.Event.InteractshMatched.Load() && writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
+	outputWriter := data.Output
+	if outputWriter == nil {
+		outputWriter = c.options.Output
+	}
+	progressClient := data.Progress
+	if progressClient == nil {
+		progressClient = c.options.Progress
+	}
+	issuesClient := data.IssuesClient
+	if issuesClient == nil {
+		issuesClient = c.options.IssuesClient
+	}
+	if !data.Event.InteractshMatched.Load() && writer.WriteResult(data.Event, outputWriter, progressClient, issuesClient) {
 		data.Event.InteractshMatched.Store(true)
 		c.matched.Store(true)
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
@@ -358,6 +431,14 @@ type RequestData struct {
 
 	Parameter string
 	Request   *retryablehttp.Request
+
+	// These fields route delayed results back to the execution that registered
+	// the request when the Interactsh client is shared concurrently.
+	Output              output.Writer
+	Progress            progress.Progress
+	IssuesClient        reporting.Client
+	FuzzParamsFrequency *frequency.Tracker
+	Scope               *RequestScope
 }
 
 // RequestEvent is the event for a network request sent by nuclei.
@@ -368,6 +449,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	c.initializeCaches()
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
+		data.Scope.track(id)
 
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
 			gotItem, err := c.matchedTemplates.Get(eventHash(data.Event))

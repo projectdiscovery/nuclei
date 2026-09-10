@@ -291,7 +291,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						}
 						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
-						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+						request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
 					}
 					wrappedCallback(event)
 				}, 0)
@@ -597,7 +597,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 					}
 					allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
-					request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+					request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
 					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 				}
 				// Add the extracts to the dynamic values if any.
