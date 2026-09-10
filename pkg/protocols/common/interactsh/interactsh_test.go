@@ -148,6 +148,17 @@ func TestRequestScopeCloseWaitsForInFlightCallback(t *testing.T) {
 	require.False(t, scope.beginCallback(), "a closed scope must reject later callbacks")
 }
 
+func TestHasMarkersDetectsInteractshSNIAnnotation(t *testing.T) {
+	require.True(t, HasMarkers("@tls-sni: interactsh-url\nGET / HTTP/1.1"))
+	require.True(t, HasMarkers("  @tls-sni: https://interactsh-url  \nGET / HTTP/1.1"))
+	require.False(t, HasMarkers("@tls-sni: request.host\nGET / HTTP/1.1"))
+}
+
+func TestNilClientURLReturnsInitializationError(t *testing.T) {
+	var client *Client
+	_, err := client.URL()
+	require.ErrorIs(t, err, ErrInteractshClientNotInitialized)
+}
 func TestProcessInteractionForRequestConcurrentEventUpdate(t *testing.T) {
 	const (
 		keyCount        = 4096

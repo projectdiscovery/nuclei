@@ -60,6 +60,8 @@ type Client struct {
 	matched   atomic.Bool
 }
 
+var interactshSNIAnnotationRegex = regexp.MustCompile(`(?m)^[\t ]*@tls-sni:[\t ]*(?:https?://)?interactsh-url[\t ]*$`)
+
 // RequestScope owns the delayed interaction registrations created by one
 // engine execution. A shared Client can serve many concurrent executions, but
 // each execution still needs its own callback window and deterministic cleanup.
@@ -361,6 +363,9 @@ func (c *Client) AlreadyMatched(data *RequestData) bool {
 
 // URL returns a new URL that can be interacted with
 func (c *Client) URL() (string, error) {
+	if c == nil {
+		return "", ErrInteractshClientNotInitialized
+	}
 	// first time initialization
 	var err error
 	c.Do(func() {
@@ -540,9 +545,11 @@ func HasMatchers(op *operators.Operators) bool {
 	return false
 }
 
-// HasMarkers checks if the text contains interactsh markers
+// HasMarkers checks if the text contains any syntax that asks Nuclei to
+// generate an Interactsh URL. In addition to template markers, raw HTTP
+// requests support the special @tls-sni annotation without braces.
 func HasMarkers(data string) bool {
-	return interactshURLMarkerRegex.Match([]byte(data))
+	return interactshURLMarkerRegex.Match([]byte(data)) || interactshSNIAnnotationRegex.MatchString(data)
 }
 
 func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *operators.Result) {
