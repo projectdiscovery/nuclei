@@ -2,6 +2,7 @@ package smbsession
 
 import (
 	"context"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -79,13 +80,23 @@ func TestReadFileOnFakeBackend(t *testing.T) {
 }
 
 func TestReadFileRejectsOversize(t *testing.T) {
-	fake := newFakeBackend(map[string][]fakeNode{
+	fake := &countingBackend{fakeBackend: newFakeBackend(map[string][]fakeNode{
 		".": {{name: "big.bin", size: 100, content: strings.Repeat("x", 100)}},
-	})
+	})}
 	sess := &Session{backend: fake}
 	_, err := sess.ReadFile("backup", "big.bin", 10)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "exceeds max read size")
+	require.EqualValues(t, 11, fake.bytesRead)
+}
+
+func TestReadFileRejectsBackendWithoutBoundedRead(t *testing.T) {
+	fake := &catOnlyBackend{}
+	sess := &Session{backend: fake}
+	_, err := sess.ReadFile("backup", "secret.txt", 10)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "does not support bounded file reads")
+	require.Zero(t, fake.catCalls)
 }
 
 func TestReadFileRejectsEmptyPath(t *testing.T) {
@@ -171,6 +182,45 @@ type fakeBackend struct {
 	dirs    map[string][]fakeNode
 	shares  []string
 	mounted string
+}
+
+type countingBackend struct {
+	*fakeBackend
+	bytesRead int64
+}
+
+func (f *countingBackend) Open(name string) (io.ReadCloser, error) {
+	rc, err := f.fakeBackend.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return &countingReadCloser{ReadCloser: rc, bytesRead: &f.bytesRead}, nil
+}
+
+type countingReadCloser struct {
+	io.ReadCloser
+	bytesRead *int64
+}
+
+func (r *countingReadCloser) Read(p []byte) (int, error) {
+	n, err := r.ReadCloser.Read(p)
+	*r.bytesRead += int64(n)
+	return n, err
+}
+
+type catOnlyBackend struct {
+	catCalls int
+}
+
+func (f *catOnlyBackend) UseShare(string) error { return nil }
+
+func (f *catOnlyBackend) Ls(string) ([]os.FileInfo, error) { return nil, nil }
+
+func (f *catOnlyBackend) ListShares() ([]string, error) { return nil, nil }
+
+func (f *catOnlyBackend) Cat(string) (string, error) {
+	f.catCalls++
+	return "", errors.New("Cat must not be called")
 }
 
 func newFakeBackend(dirs map[string][]fakeNode) *fakeBackend {
