@@ -15,6 +15,43 @@ export function Connect(host: string, port: number, password: string): boolean |
 
 
 /**
+ * ConnectWithOptions tries to connect to Redis using the supplied options.
+ * @example
+ * ```javascript
+ * const redis = require('nuclei/redis');
+ * const opts = new redis.RedisOptions();
+ * opts.Host = 'acme.com';
+ * opts.Port = 6379;
+ * opts.Password = 'password';
+ * opts.DB = 1;
+ * const connected = redis.ConnectWithOptions(opts);
+ * ```
+ */
+export function ConnectWithOptions(opts: RedisOptions): boolean | null {
+    return null;
+}
+
+
+
+/**
+ * RedisOptions defines the connection options for a Redis server.
+ */
+export interface RedisOptions {
+    
+    Host?: string,
+    
+    Port?: number,
+    
+    Password?: string,
+    
+    DB?: number,
+    
+    Timeout?: number,
+}
+
+
+
+/**
  * GetServerInfo returns the server info for a redis server
  * @example
  * ```javascript

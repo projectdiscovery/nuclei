@@ -39,6 +39,15 @@ type (
 	OracleClient struct {
 		connector *goora.OracleConnector
 	}
+
+	// OracleOptions defines the connection options for an Oracle database.
+	OracleOptions struct {
+		Host        string
+		Port        int
+		ServiceName string
+		Username    string
+		Password    string
+	}
 )
 
 // IsOracle checks if a host is running an Oracle server
@@ -56,6 +65,9 @@ func (c *OracleClient) IsOracle(ctx context.Context, host string, port int) (IsO
 // @memo
 func isOracle(ctx context.Context, executionId string, host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return resp, protocolstate.ErrHostDenied.Msgf(host)
+	}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
@@ -90,15 +102,24 @@ func (c *OracleClient) oracleDbInstance(ctx context.Context, connStr string, exe
 	if err != nil {
 		return nil, err
 	}
-
-	if c.connector == nil {
-		connector := goora.NewConnector(connStr)
-		oraConnector, ok := connector.(*goora.OracleConnector)
-		if !ok {
-			return nil, fmt.Errorf("failed to cast connector to OracleConnector")
-		}
-		c.connector = oraConnector
+	config, err := goora.ParseConfig(connStr)
+	if err != nil {
+		return nil, err
 	}
+	for _, server := range config.Servers {
+		if !protocolstate.IsHostAllowed(executionId, server.Addr) {
+			return nil, protocolstate.ErrHostDenied.Msgf(server.Addr)
+		}
+	}
+
+	connector := goora.NewConnector(connStr)
+	oraConnector, ok := connector.(*goora.OracleConnector)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast connector to OracleConnector")
+	}
+	// A connector embeds its DSN, so replace it for each invocation to ensure
+	// option changes and the sandboxed DSN are applied to the actual dial.
+	c.connector = oraConnector
 
 	// Refresh the dialer on every call so the connector uses the current
 	// execution context instead of a stale or already-canceled one.
@@ -149,7 +170,9 @@ func isOracleTracePathOption(key string) bool {
 	}
 }
 
-// Connect connects to an Oracle database
+// Connect connects to an Oracle database.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // @example
 // ```javascript
 // const oracle = require('nuclei/oracle');
@@ -157,8 +180,24 @@ func isOracleTracePathOption(key string) bool {
 // client.Connect('acme.com', 1521, 'XE', 'user', 'password');
 // ```
 func (c *OracleClient) Connect(ctx context.Context, host string, port int, serviceName string, username string, password string) (bool, error) {
-	connStr := goora.BuildUrl(host, port, serviceName, username, password, nil)
+	return c.ConnectWithOptions(ctx, OracleOptions{
+		Host: host, Port: port, ServiceName: serviceName, Username: username, Password: password,
+	})
+}
 
+// ConnectWithOptions connects to Oracle using the supplied connection options.
+func (c *OracleClient) ConnectWithOptions(ctx context.Context, opts OracleOptions) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	if opts.Host == "" || opts.Port <= 0 {
+		return false, fmt.Errorf("invalid host or port")
+	}
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
+		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
+	}
+	connStr, err := buildOracleDSN(opts)
+	if err != nil {
+		return false, err
+	}
 	return c.ConnectWithDSN(ctx, connStr)
 }
 
@@ -185,6 +224,16 @@ func (c *OracleClient) ConnectWithDSN(ctx context.Context, dsn string) (bool, er
 	}
 
 	return true, nil
+}
+
+func buildOracleDSN(opts OracleOptions) (string, error) {
+	if opts.Host == "" || opts.Port <= 0 {
+		return "", fmt.Errorf("invalid host or port")
+	}
+	if opts.ServiceName == "" {
+		return "", fmt.Errorf("service name cannot be empty")
+	}
+	return goora.BuildUrl(opts.Host, opts.Port, opts.ServiceName, opts.Username, opts.Password, nil), nil
 }
 
 // ExecuteQuery connects to MS SQL database using given credentials and executes a query.

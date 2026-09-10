@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -11,6 +12,26 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	pluginsredis "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/redis"
 )
+
+// RedisOptions defines the connection options for a Redis server.
+// @example
+// ```javascript
+// const redis = require('nuclei/redis');
+// const opts = new redis.RedisOptions();
+// opts.Host = 'acme.com';
+// opts.Port = 6379;
+// opts.Password = 'password';
+// opts.DB = 0;
+// opts.Timeout = 10;
+// const connected = redis.ConnectWithOptions(opts);
+// ```
+type RedisOptions struct {
+	Host     string // Host is the hostname or IP of the Redis server.
+	Port     int    // Port is the Redis port (usually 6379).
+	Password string // Password is the Redis AUTH password.
+	DB       int    // DB is the Redis database index.
+	Timeout  int    // Timeout is the dial/read/write timeout in seconds.
+}
 
 // GetServerInfo returns the server info for a redis server
 // @example
@@ -30,11 +51,7 @@ func getServerInfo(ctx context.Context, executionId string, host string, port in
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	client := redis.NewClient(redisClientOptions(executionId, RedisOptions{Host: host, Port: port}))
 	defer func() {
 		_ = client.Close()
 	}()
@@ -54,7 +71,9 @@ func getServerInfo(ctx context.Context, executionId string, host string, port in
 	return infoCmd.Val(), nil
 }
 
-// Connect tries to connect redis server with password
+// Connect tries to connect redis server with password.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // @example
 // ```javascript
 // const redis = require('nuclei/redis');
@@ -65,18 +84,37 @@ func Connect(ctx context.Context, host string, port int, password string) (bool,
 	return memoizedconnect(ctx, executionId, host, port, password)
 }
 
+// ConnectWithOptions tries to connect to Redis using the supplied options.
+// @example
+// ```javascript
+// const redis = require('nuclei/redis');
+// const opts = new redis.RedisOptions();
+// opts.Host = 'acme.com';
+// opts.Port = 6379;
+// opts.Password = 'password';
+// opts.DB = 1;
+// const connected = redis.ConnectWithOptions(opts);
+// ```
+func ConnectWithOptions(ctx context.Context, opts RedisOptions) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	return connectWithOptions(ctx, executionId, opts)
+}
+
 // @memo
 func connect(ctx context.Context, executionId string, host string, port int, password string) (bool, error) {
-	if !protocolstate.IsHostAllowed(executionId, host) {
+	return connectWithOptions(ctx, executionId, RedisOptions{Host: host, Port: port, Password: password})
+}
+
+func connectWithOptions(ctx context.Context, executionId string, opts RedisOptions) (bool, error) {
+	if opts.Host == "" || opts.Port <= 0 {
+		return false, fmt.Errorf("invalid host or port")
+	}
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
-	})
+	client := redis.NewClient(redisClientOptions(executionId, opts))
 	defer func() {
 		_ = client.Close()
 	}()
@@ -92,6 +130,35 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 	}
 
 	return true, nil
+}
+
+func redisClientOptions(executionId string, opts RedisOptions) *redis.Options {
+	clientOpts := &redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", opts.Host, opts.Port),
+		Password: opts.Password,
+		DB:       opts.DB,
+		Dialer:   redisDialer(executionId),
+	}
+	if opts.Timeout > 0 {
+		timeout := time.Duration(opts.Timeout) * time.Second
+		clientOpts.DialTimeout = timeout
+		clientOpts.ReadTimeout = timeout
+		clientOpts.WriteTimeout = timeout
+	}
+	return clientOpts
+}
+
+func redisDialer(executionId string) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		if !protocolstate.IsHostAllowed(executionId, address) {
+			return nil, protocolstate.ErrHostDenied.Msgf(address)
+		}
+		dialers := protocolstate.GetDialersWithId(executionId)
+		if dialers == nil {
+			return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+		}
+		return dialers.Fastdialer.Dial(ctx, network, address)
+	}
 }
 
 // GetServerInfoAuth returns the server info for a redis server
@@ -112,11 +179,7 @@ func getServerInfoAuth(ctx context.Context, executionId string, host string, por
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
-	})
+	client := redis.NewClient(redisClientOptions(executionId, RedisOptions{Host: host, Port: port, Password: password}))
 	defer func() {
 		_ = client.Close()
 	}()
@@ -149,6 +212,9 @@ func IsAuthenticated(ctx context.Context, host string, port int) (bool, error) {
 
 // @memo
 func isAuthenticated(ctx context.Context, executionId string, host string, port int) (bool, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	plugin := pluginsredis.REDISPlugin{}
 	timeout := 5 * time.Second
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -187,11 +253,7 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password,
-		DB:       0, // use default DB
-	})
+	client := redis.NewClient(redisClientOptions(executionId, RedisOptions{Host: host, Port: port, Password: password}))
 	defer func() {
 		_ = client.Close()
 	}()

@@ -100,3 +100,42 @@ func restoreOracleTemplatesDir(t *testing.T, templatesDir string) {
 		config.DefaultConfig.SetTemplatesDir(oldTemplatesDir)
 	})
 }
+
+func TestBuildOracleDSNMapsOptions(t *testing.T) {
+	dsn, err := buildOracleDSN(OracleOptions{
+		Host: "127.0.0.1", Port: 1521, ServiceName: "XE", Username: "user", Password: "pass",
+	})
+	require.NoError(t, err)
+
+	cfg, err := go_ora.ParseConfig(dsn)
+	require.NoError(t, err)
+	require.Len(t, cfg.Servers, 1)
+	require.Equal(t, "127.0.0.1", cfg.Servers[0].Addr)
+	require.Equal(t, 1521, cfg.Servers[0].Port)
+	require.Equal(t, "XE", cfg.ServiceName)
+}
+
+func TestBuildOracleDSNValidatesTarget(t *testing.T) {
+	_, err := buildOracleDSN(OracleOptions{Port: 1521, ServiceName: "XE"})
+	require.EqualError(t, err, "invalid host or port")
+	_, err = buildOracleDSN(OracleOptions{Host: "127.0.0.1", Port: 1521})
+	require.EqualError(t, err, "service name cannot be empty")
+}
+
+func TestConnectWithOptionsDeniesRestrictedLocalHostBeforeDial(t *testing.T) {
+	executionID := t.Name()
+	require.NoError(t, protocolstate.Init(&types.Options{
+		ExecutionId:                executionID,
+		RestrictLocalNetworkAccess: true,
+	}))
+	t.Cleanup(func() { protocolstate.Close(executionID) })
+
+	ctx := context.WithValue(context.Background(), "executionId", executionID) // nolint:staticcheck
+	connected, err := (&OracleClient{}).ConnectWithOptions(ctx, OracleOptions{
+		Host: "127.0.0.1", Port: 1521, ServiceName: "XE", Username: "user", Password: "pass",
+	})
+	require.False(t, connected)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "network policy")
+	require.Contains(t, err.Error(), "127.0.0.1")
+}

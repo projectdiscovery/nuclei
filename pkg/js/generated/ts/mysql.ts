@@ -64,6 +64,14 @@ export class MySQLClient {
     
 
     /**
+    * ConnectWithOptions connects to MySQL using the supplied connection options.
+    */
+    public ConnectWithOptions(opts: MySQLOptions): boolean | null {
+        return null;
+    }
+    
+
+    /**
     * returns MySQLInfo when fingerprint is successful
     * @example
     * ```javascript

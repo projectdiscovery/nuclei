@@ -59,6 +59,14 @@ type (
 		ServerName string // default to host (when using tls)
 		Upgrade    bool   // when true first connects to non-tls and then upgrades to tls
 	}
+
+	// AuthenticateOptions defines credentials for LDAP authentication. Hash takes
+	// precedence over Password when both are provided.
+	AuthenticateOptions struct {
+		Username string
+		Password string
+		Hash     string
+	}
 )
 
 // Constructor for creating a new ldap client
@@ -161,6 +169,8 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 
 // Authenticate authenticates with the ldap server using the given username and password
 // performs NTLMBind first and then Bind/UnauthenticatedBind if NTLMBind fails
+//
+// Deprecated: prefer AuthenticateWithOptions for new templates.
 // @example
 // ```javascript
 // const ldap = require('nuclei/ldap');
@@ -168,24 +178,35 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 // client.Authenticate('user', 'password');
 // ```
 func (c *Client) Authenticate(username, password string) bool {
+	return c.AuthenticateWithOptions(AuthenticateOptions{Username: username, Password: password})
+}
+
+// AuthenticateWithOptions authenticates using a password or an NTLM hash.
+func (c *Client) AuthenticateWithOptions(opts AuthenticateOptions) bool {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
 		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
 	}
-	if err := c.conn.NTLMBind(c.Realm, username, password); err == nil {
+	if authenticationUsesHash(opts) {
+		if err := c.conn.NTLMBindWithHash(c.Realm, opts.Username, opts.Hash); err != nil {
+			c.nj.ThrowError(err)
+		}
+		return true
+	}
+	if err := c.conn.NTLMBind(c.Realm, opts.Username, opts.Password); err == nil {
 		// if bind with NTLMBind(), there is nothing
 		// else to do, you are authenticated
 		return true
 	}
 
 	var err error
-	switch password {
+	switch opts.Password {
 	case "":
-		if err = c.conn.UnauthenticatedBind(username); err != nil {
+		if err = c.conn.UnauthenticatedBind(opts.Username); err != nil {
 			c.nj.ThrowError(err)
 		}
 	default:
-		if err = c.conn.Bind(username, password); err != nil {
+		if err = c.conn.Bind(opts.Username, opts.Password); err != nil {
 			c.nj.ThrowError(err)
 		}
 	}
@@ -200,15 +221,11 @@ func (c *Client) Authenticate(username, password string) bool {
 // client.AuthenticateWithNTLMHash('pdtm', 'hash');
 // ```
 func (c *Client) AuthenticateWithNTLMHash(username, hash string) bool {
-	c.nj.Require(c.conn != nil, "no existing connection")
-	if c.BaseDN == "" {
-		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
-	}
-	var err error
-	if err = c.conn.NTLMBindWithHash(c.Realm, username, hash); err != nil {
-		c.nj.ThrowError(err)
-	}
-	return err == nil
+	return c.AuthenticateWithOptions(AuthenticateOptions{Username: username, Hash: hash})
+}
+
+func authenticationUsesHash(opts AuthenticateOptions) bool {
+	return opts.Hash != ""
 }
 
 // Search accepts whatever filter and returns a list of maps having provided attributes

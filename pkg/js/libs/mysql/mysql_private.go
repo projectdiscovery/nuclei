@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -51,11 +52,14 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	if opts.Protocol == "" {
 		opts.Protocol = "tcp"
 	}
-	// We're going to use a custom dialer when creating MySQL connections, so if we've been
-	// given "tcp" as the protocol, then quietly switch it to "nucleitcp", which we have
-	// already registered.
-	if opts.Protocol == "tcp" {
+	switch opts.Protocol {
+	case "tcp", "nucleitcp":
+		// We're going to use a custom dialer when creating MySQL connections, so if we've been
+		// given "tcp" as the protocol, then quietly switch it to "nucleitcp", which we have
+		// already registered with fastdialer + network policy.
 		opts.Protocol = "nucleitcp"
+	default:
+		return "", fmt.Errorf("unsupported mysql protocol %q (only tcp is allowed)", opts.Protocol)
 	}
 	if opts.DbName == "" {
 		opts.DbName = "/"
@@ -73,13 +77,22 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	if opts.RawQuery != "" {
 		dsn.WriteString(opts.RawQuery)
 	}
-	return dsn.String(), nil
+	config, err := mysql.ParseDSN(dsn.String())
+	if err != nil {
+		return "", err
+	}
+	if opts.Timeout > 0 {
+		config.Timeout = time.Duration(opts.Timeout) * time.Second
+	}
+	return config.FormatDSN(), nil
 }
 
 // sandboxDSN enforces the local file access sandbox on a MySQL DSN. The
 // driver's allowAllFiles option lets a malicious server read any local file
 // off the host via LOAD DATA LOCAL INFILE, so it is only honored when -lfa is
 // enabled, mirroring the fs.ReadFile restriction.
+// It also rewrites the network to nucleitcp so ConnectWithDSN cannot bypass
+// fastdialer / network policy via a raw tcp or unix DSN.
 func sandboxDSN(dsn string, lfaAllowed bool) (string, error) {
 	cfg, err := mysql.ParseDSN(dsn)
 	if err != nil {
@@ -87,6 +100,12 @@ func sandboxDSN(dsn string, lfaAllowed bool) (string, error) {
 	}
 	if cfg.AllowAllFiles && !lfaAllowed {
 		cfg.AllowAllFiles = false
+	}
+	switch cfg.Net {
+	case "", "tcp", "nucleitcp":
+		cfg.Net = "nucleitcp"
+	default:
+		return "", fmt.Errorf("unsupported mysql protocol %q (only tcp is allowed)", cfg.Net)
 	}
 	return cfg.FormatDSN(), nil
 }
@@ -96,6 +115,13 @@ func openDB(executionId, dsn string) (*sql.DB, error) {
 	dsn, err := sandboxDSN(dsn, protocolstate.IsLfaAllowed(&types.Options{ExecutionId: executionId}))
 	if err != nil {
 		return nil, err
+	}
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return nil, err
+	}
+	if !protocolstate.IsHostAllowed(executionId, cfg.Addr) {
+		return nil, protocolstate.ErrHostDenied.Msgf(cfg.Addr)
 	}
 	return sql.Open("mysql", dsn)
 }

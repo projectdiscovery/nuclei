@@ -47,6 +47,14 @@ export class PGClient {
     
 
     /**
+    * ConnectWithOptions connects to Postgres using the supplied connection options.
+    */
+    public ConnectWithOptions(opts: PostgresOptions): boolean | null {
+        return null;
+    }
+    
+
+    /**
     * ExecuteQuery connects to Postgres database using given credentials and database name.
     * and executes a query on the db.
     * If connection is successful, it returns the result of the query.
@@ -80,6 +88,28 @@ export class PGClient {
     }
     
 
+}
+
+
+
+/**
+ * PostgresOptions defines the connection options for a Postgres database.
+ */
+export interface PostgresOptions {
+    
+    Host?: string,
+    
+    Port?: number,
+    
+    Username?: string,
+    
+    Password?: string,
+    
+    DbName?: string,
+    
+    Timeout?: number,
+    
+    SSLMode?: string,
 }
 
 
