@@ -214,6 +214,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 				ExtractFunc:    request.Extract,
 				Parameter:      gr.Parameter,
 				Request:        gr.Request,
+				Eviction:       request.options.InteractshEvictionDuration(),
 			}
 			setInteractshCallback = true
 			request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)

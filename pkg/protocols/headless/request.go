@@ -233,6 +233,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 			Operators:      request.CompiledOperators,
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
+			Eviction:       request.options.InteractshEvictionDuration(),
 		})
 	}
 	if len(page.InteractshURLs) > 0 {

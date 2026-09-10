@@ -487,6 +487,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			Operators:      request.CompiledOperators,
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
+			Eviction:       request.options.InteractshEvictionDuration(),
 		})
 	}
 	if len(interactshURLs) > 0 {
