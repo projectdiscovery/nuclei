@@ -61,6 +61,12 @@ type Options struct {
 	// authentication. Mandatory when ProxyAddress is not a loopback address.
 	ProxyUsername string
 	ProxyPassword string
+	// EnableFuzzAPI exposes POST /fuzz. Proxy-only mode leaves it off so the
+	// stats/CA listener cannot be used to inject arbitrary raw HTTP.
+	EnableFuzzAPI bool
+	// ForwardProxy is an optional HTTP(S) proxy URL for the intercepting
+	// proxy's forwarding leg. Ambient HTTP_PROXY is not used.
+	ForwardProxy string
 
 	// Scope fields for fuzzer
 	InScope  []string
@@ -121,7 +127,9 @@ func New(options *Options) (*DASTServer, error) {
 	if options.Token != "" {
 		builder.WriteString(" (with token)")
 	}
-	gologger.Info().Msgf("DAST Server API: %s", server.buildURL("/fuzz"))
+	if options.EnableFuzzAPI {
+		gologger.Info().Msgf("DAST Server API: %s", server.buildURL("/fuzz"))
+	}
 	gologger.Info().Msgf("DAST Server Stats URL: %s", server.buildURL("/stats"))
 
 	return server, nil
@@ -131,13 +139,14 @@ func New(options *Options) (*DASTServer, error) {
 // HTTP API feeds.
 func (s *DASTServer) setupProxy() error {
 	interceptingProxy, err := proxy.New(&proxy.Options{
-		Address:   s.options.ProxyAddress,
-		CADir:     s.options.ProxyCADir,
-		Username:  s.options.ProxyUsername,
-		Password:  s.options.ProxyPassword,
-		Verbose:   s.options.Verbose,
-		Intercept: s.shouldIntercept,
-		Submit:    s.Submit,
+		Address:      s.options.ProxyAddress,
+		CADir:        s.options.ProxyCADir,
+		Username:     s.options.ProxyUsername,
+		Password:     s.options.ProxyPassword,
+		Verbose:      s.options.Verbose,
+		Intercept:    s.shouldIntercept,
+		Submit:       s.Submit,
+		ForwardProxy: s.options.ForwardProxy,
 	})
 	if err != nil {
 		return err
@@ -228,19 +237,18 @@ func (s *DASTServer) optionsOrDefault() *Options {
 }
 
 func (s *DASTServer) setupHandlers(onlyStats bool) {
+	opts := s.optionsOrDefault()
 	mux := http.NewServeMux()
-	// POST /fuzz - Queue a request for fuzzing
-	if !onlyStats {
+	if !onlyStats && opts.EnableFuzzAPI {
 		mux.HandleFunc("POST /fuzz", s.handleRequest)
 	}
 	mux.HandleFunc("GET /stats", s.handleStats)
 	mux.HandleFunc("GET /stats.json", s.handleStatsJSON)
-	if !onlyStats && s.optionsOrDefault().ProxyAddress != "" {
+	if !onlyStats && opts.ProxyAddress != "" {
 		mux.HandleFunc("GET /ca", s.handleProxyCA)
 	}
 
 	handler := http.Handler(mux)
-	opts := s.optionsOrDefault()
 	if opts.Token != "" {
 		handler = s.tokenAuthMiddleware(handler)
 	}
@@ -370,11 +378,15 @@ type DASTScanStatistics struct {
 func (s *DASTServer) getStats() (StatsResponse, error) {
 	cfg := config.DefaultConfig
 
+	api := ""
+	if s.options.EnableFuzzAPI {
+		api = s.buildURL("/fuzz")
+	}
 	resp := StatsResponse{
 		DASTServerInfo: DASTServerInfo{
 			NucleiVersion:         config.Version,
 			NucleiTemplateVersion: cfg.TemplateVersion,
-			NucleiDastServerAPI:   s.buildURL("/fuzz"),
+			NucleiDastServerAPI:   api,
 			ServerAuthEnabled:     s.options.Token != "",
 			NucleiDastProxyAddr:   s.options.ProxyAddress,
 			ProxyAuthEnabled:      s.options.ProxyUsername != "",

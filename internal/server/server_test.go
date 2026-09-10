@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/alitto/pond"
@@ -106,4 +107,29 @@ func TestSubmitDropsInsteadOfBlockingWhenQueueIsFull(t *testing.T) {
 	require.False(t, server.Submit("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n", "http://example.com/"),
 		"a saturated queue must drop rather than block live proxy traffic")
 	require.Zero(t, server.endpointsInQueue.Load(), "a dropped request must not stay counted as queued")
+}
+
+func TestProxyOnlyDoesNotExposeFuzzAPI(t *testing.T) {
+	server := &DASTServer{options: &Options{ProxyAddress: "127.0.0.1:9056"}}
+	server.setupHandlers(false)
+
+	request := httptest.NewRequest(http.MethodPost, "/fuzz", strings.NewReader(`{"raw_http":"GET / HTTP/1.1\r\n\r\n","url":"http://example.com/"}`))
+	response := httptest.NewRecorder()
+	server.httpServer.Handler.ServeHTTP(response, request)
+	require.Equal(t, http.StatusNotFound, response.Code)
+
+	request = httptest.NewRequest(http.MethodGet, "/ca", nil)
+	response = httptest.NewRecorder()
+	server.httpServer.Handler.ServeHTTP(response, request)
+	require.Equal(t, http.StatusNotFound, response.Code, "CA download needs a running proxy instance")
+}
+
+func TestFuzzAPIEnabledWhenRequested(t *testing.T) {
+	server := &DASTServer{options: &Options{EnableFuzzAPI: true}}
+	server.setupHandlers(false)
+
+	request := httptest.NewRequest(http.MethodPost, "/fuzz", strings.NewReader(`{"raw_http":"","url":""}`))
+	response := httptest.NewRecorder()
+	server.httpServer.Handler.ServeHTTP(response, request)
+	require.Equal(t, http.StatusBadRequest, response.Code)
 }

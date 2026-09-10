@@ -604,6 +604,8 @@ func (r *Runner) RunEnumeration() error {
 			InScope:               r.options.Scope,
 			OutScope:              r.options.OutOfScope,
 			NucleiExecutorOptions: execurOpts,
+			EnableFuzzAPI:         r.options.DASTServer,
+			ForwardProxy:          r.options.AliveHttpProxy,
 		}
 		if r.options.DASTProxy {
 			username, password, err := proxy.ParseAuth(r.options.DASTProxyAuth)

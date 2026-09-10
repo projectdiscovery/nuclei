@@ -219,6 +219,34 @@ func TestCaptureRequestDropsProxyCredentials(t *testing.T) {
 	require.True(t, strings.HasPrefix(raw, "GET / HTTP/1.1"), "request line must be origin form, got %q", raw)
 }
 
+func TestCaptureRequestDropsHopByHopHeaders(t *testing.T) {
+	request, err := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	require.NoError(t, err)
+	request.Header.Set("Connection", "close, X-Proxy-Debug")
+	request.Header.Set("X-Proxy-Debug", "1")
+	request.Header.Set("Keep-Alive", "timeout=5")
+	request.Header.Set("TE", "trailers")
+	request.Header.Set("X-Custom", "keep")
+
+	raw, ok := captureRequest(request)
+	require.True(t, ok)
+	require.NotContains(t, raw, "X-Proxy-Debug")
+	require.NotContains(t, raw, "Keep-Alive")
+	require.NotContains(t, raw, "TE:")
+	require.NotContains(t, raw, "Connection:")
+	require.Contains(t, raw, "X-Custom: keep")
+}
+
+func TestNewRejectsInvalidForwardProxy(t *testing.T) {
+	_, err := New(&Options{
+		Address:      "127.0.0.1:9056",
+		CADir:        t.TempDir(),
+		ForwardProxy: "://bad",
+		Submit:       func(string, string) bool { return true },
+	})
+	require.ErrorContains(t, err, "forward proxy")
+}
+
 func TestCaptureRequestRejectsNonHTTPScheme(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, "http://example.com/", nil)
 	require.NoError(t, err)
@@ -279,4 +307,43 @@ func TestProxyChallengesUnauthenticatedConnect(t *testing.T) {
 	require.Equal(t, 1, resp.ProtoMajor)
 	require.Equal(t, 1, resp.ProtoMinor)
 	require.Contains(t, resp.Header.Get("Proxy-Authenticate"), "Basic")
+}
+
+func TestProxyPassesThroughExcludedHostsWithoutMITM(t *testing.T) {
+	upstream := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "upstream-body")
+	}))
+	defer upstream.Close()
+
+	upstreamURL, err := url.Parse(upstream.URL)
+	require.NoError(t, err)
+
+	instance, proxyURL, mirrored := newTestProxy(t, &Options{
+		Intercept: func(host string) bool {
+			return host != upstreamURL.Host
+		},
+	})
+
+	// Trust only the upstream certificate. An intercepted connection is
+	// signed by the nuclei CA and would fail this handshake.
+	upstreamRoots := x509.NewCertPool()
+	upstreamRoots.AddCert(upstream.Certificate())
+	client := &http.Client{Transport: &http.Transport{
+		Proxy:           http.ProxyURL(proxyURL),
+		TLSClientConfig: &tls.Config{RootCAs: upstreamRoots, MinVersion: tls.VersionTLS12},
+	}}
+	resp, err := client.Get(upstream.URL + "/secret")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "upstream-body", string(body))
+	require.True(t, resp.TLS.PeerCertificates[0].Equal(upstream.Certificate()),
+		"pass-through must present the target certificate, not a nuclei-minted one")
+
+	require.Equal(t, int64(1), instance.Stats().TunnelsPassedThrough)
+	require.Zero(t, instance.Stats().Intercepted)
+	require.Empty(t, mirrored)
 }

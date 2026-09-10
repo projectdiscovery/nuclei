@@ -400,7 +400,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.DASTReport, "dast-report", "dtr", false, "write dast scan report to file"),
 		flagSet.StringVarP(&options.DASTServerToken, "dast-server-token", "dtst", "", "dast server token (optional)"),
 		flagSet.StringVarP(&options.DASTServerAddress, "dast-server-address", "dtsa", "localhost:9055", "dast server address"),
-		flagSet.BoolVarP(&options.DASTProxy, "dast-proxy", "dtp", false, "enable dast proxy mode (fuzz live traffic proxied through nuclei)"),
+		flagSet.BoolVarP(&options.DASTProxy, "dast-proxy", "dtp", false, "enable intercepting dast proxy (CA/stats on -dtsa; POST /fuzz needs -dast-server)"),
 		flagSet.StringVarP(&options.DASTProxyAddress, "dast-proxy-address", "dtpa", "127.0.0.1:9056", "dast proxy listen address"),
 		flagSet.StringVarP(&options.DASTProxyAuth, "dast-proxy-auth", "dtpau", "", "dast proxy basic auth in user:pass format (required for non-loopback address)"),
 		flagSet.BoolVarP(&options.DisplayFuzzPoints, "display-fuzz-points", "dfp", false, "display fuzz points in the output for debugging"),

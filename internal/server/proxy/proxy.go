@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -30,11 +31,17 @@ const (
 )
 
 // hopByHopHeaders are stripped from mirrored requests: they belong to the
-// client-to-proxy leg and must not reach the target.
+// client-to-proxy leg and must not be replayed at a target.
 var hopByHopHeaders = []string{
+	"Connection",
+	"Keep-Alive",
 	"Proxy-Authorization",
 	"Proxy-Authenticate",
 	"Proxy-Connection",
+	"TE",
+	"Trailer",
+	"Transfer-Encoding",
+	"Upgrade",
 }
 
 // Options configures the intercepting proxy.
@@ -56,6 +63,10 @@ type Options struct {
 	// Submit hands a captured request to the scanner. It must not block, and
 	// returns false when the request could not be queued.
 	Submit func(rawHTTP, targetURL string) bool
+	// ForwardProxy is an optional HTTP(S) proxy URL for the forwarding leg.
+	// Ambient HTTP_PROXY / HTTPS_PROXY are ignored so a leftover environment
+	// variable cannot silently chain this listener.
+	ForwardProxy string
 }
 
 // Proxy is an intercepting proxy that mirrors traffic into the scanner.
@@ -91,6 +102,9 @@ func New(options *Options) (*Proxy, error) {
 		return nil, errors.New("proxy requires a submit callback")
 	}
 	if err := validateBinding(options); err != nil {
+		return nil, err
+	}
+	if _, err := parseForwardProxy(options.ForwardProxy); err != nil {
 		return nil, err
 	}
 	ca, err := LoadOrCreateCA(options.CADir)
@@ -156,10 +170,10 @@ func (p *Proxy) handler() http.Handler {
 	// matching the rest of nuclei (see httpclientpool), since DAST targets
 	// routinely serve self-signed ones. Interception inherently replaces the
 	// browser's own validation, so this is reported at startup.
+	forward, _ := parseForwardProxy(p.options.ForwardProxy)
 	handler.Tr = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402
-		// Picks up -proxy, which the runner exports into the environment.
-		Proxy: http.ProxyFromEnvironment,
+		Proxy:           forward,
 	}
 
 	// Every action carries our own CA. goproxy's package level OkConnect and
@@ -318,9 +332,7 @@ func captureRequest(req *http.Request) (string, bool) {
 	// goproxy only strips hop-by-hop headers after this hook has run, so the
 	// copy is sanitised here. The proxy credential in particular must never be
 	// replayed to a target or written into scan output.
-	for _, header := range hopByHopHeaders {
-		capture.Header.Del(header)
-	}
+	stripHopByHopHeaders(capture.Header)
 
 	dumped, err := httputil.DumpRequest(capture, true)
 	if err != nil {
@@ -328,6 +340,30 @@ func captureRequest(req *http.Request) (string, bool) {
 		return "", false
 	}
 	return string(dumped), true
+}
+
+func stripHopByHopHeaders(header http.Header) {
+	for _, extra := range header.Values("Connection") {
+		for _, name := range strings.Split(extra, ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				header.Del(name)
+			}
+		}
+	}
+	for _, name := range hopByHopHeaders {
+		header.Del(name)
+	}
+}
+
+func parseForwardProxy(raw string) (func(*http.Request) (*url.URL, error), error) {
+	if raw == "" {
+		return nil, nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return nil, errors.Errorf("invalid dast proxy forward proxy %q", raw)
+	}
+	return http.ProxyURL(parsed), nil
 }
 
 func hasBody(req *http.Request) bool {
