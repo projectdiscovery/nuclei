@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	utilsllm "github.com/projectdiscovery/utils/llm"
 )
@@ -44,7 +44,7 @@ func configureLLM(options *types.Options) error {
 		return err
 	}
 
-	matchers.SetGlobalLLMClient(&llmMatcherClient{client: client})
+	llmclient.SetGlobalClient(&llmMatcherClient{client: client})
 
 	return nil
 }

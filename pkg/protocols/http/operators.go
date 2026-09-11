@@ -79,6 +79,8 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 		return extractor.ExtractJSON(item)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
+	case extractors.LLMExtractor:
+		return extractor.ExtractLLM(item)
 	}
 	return nil
 }

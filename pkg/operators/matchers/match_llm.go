@@ -3,39 +3,19 @@ package matchers
 import (
 	"context"
 	"strings"
-	"sync"
 
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
-// LLMClient is the minimal surface an llm matcher needs. It is intentionally
-// decoupled from any provider SDK so the matcher can be unit-tested with a stub
-// and the concrete client (backed by the shared provider layer) is injected at
-// compile time.
-type LLMClient interface {
-	Complete(ctx context.Context, prompt string, asJSON bool) (string, error)
-}
+// LLMClient is re-exported for tests and callers that inject a client directly.
+type LLMClient = llmclient.Client
 
-// SetLLMClient installs the client used by this matcher. Compilation wires the
-// scan's configured client here; a nil client makes the matcher resolve to
-// "unverified" (no match) rather than erroring.
+// SetLLMClient installs a client on this matcher. When unset, the matcher uses
+// the scan-wide client; a nil resolution makes the matcher fail closed (no
+// match) rather than erroring.
 func (matcher *Matcher) SetLLMClient(client LLMClient) {
 	matcher.llmClient = client
-}
-
-// globalLLMClient is the scan-wide client, configured once at startup from the
-// -llm options. A matcher's own client (set in tests) takes precedence.
-var (
-	globalLLMMu     sync.RWMutex
-	globalLLMClient LLMClient
-)
-
-// SetGlobalLLMClient installs the scan-wide llm client. A nil client disables
-// llm matching, which then fails closed to "no match".
-func SetGlobalLLMClient(client LLMClient) {
-	globalLLMMu.Lock()
-	defer globalLLMMu.Unlock()
-	globalLLMClient = client
 }
 
 func (matcher *Matcher) resolveLLMClient() LLMClient {
@@ -43,10 +23,7 @@ func (matcher *Matcher) resolveLLMClient() LLMClient {
 		return matcher.llmClient
 	}
 
-	globalLLMMu.RLock()
-	defer globalLLMMu.RUnlock()
-
-	return globalLLMClient
+	return llmclient.GlobalClient()
 }
 
 // defaultVerdicts is the verdict set when a matcher declares none.
@@ -75,10 +52,7 @@ func (matcher *Matcher) MatchLLM(corpus string) (bool, []string) {
 		return false, nil
 	}
 
-	input := corpus
-	if matcher.MaxInputTokens > 0 {
-		input = truncateApproxTokens(input, matcher.MaxInputTokens)
-	}
+	input := llmclient.TruncateApproxTokens(corpus, matcher.MaxInputTokens)
 
 	answer, err := client.Complete(context.Background(), matcher.buildLLMPrompt(input), true)
 	if err != nil {
@@ -127,16 +101,4 @@ func (matcher *Matcher) buildLLMPrompt(input string) string {
 	builder.WriteString("\n--- END RESPONSE ---")
 
 	return builder.String()
-}
-
-// truncateApproxTokens trims input to roughly maxTokens, using the common
-// 4-chars-per-token approximation. Exact token counting is provider-specific;
-// this only needs to keep a large body from blowing the context window.
-func truncateApproxTokens(input string, maxTokens int) string {
-	maxChars := maxTokens * 4
-	if len(input) <= maxChars {
-		return input
-	}
-
-	return input[:maxChars]
 }

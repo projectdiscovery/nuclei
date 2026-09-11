@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -255,6 +256,11 @@ func (template *Template) requiresLLM() bool {
 		}
 		for _, matcher := range request.Matchers {
 			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+				return true
+			}
+		}
+		for _, extractor := range request.Extractors {
+			if extractor != nil && extractor.GetType() == extractors.LLMExtractor {
 				return true
 			}
 		}

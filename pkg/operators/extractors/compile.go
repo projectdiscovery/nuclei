@@ -37,6 +37,8 @@ func (e *Extractor) CompileExtractors() error {
 		requiredField, valueCount = "xpath", len(e.XPath)
 	case DSLExtractor:
 		requiredField, valueCount = "dsl", len(e.DSL)
+	case LLMExtractor:
+		requiredField, valueCount = "schema", len(e.Schema)
 	}
 	if valueCount == 0 {
 		return fmt.Errorf("%s extractor requires at least one %s value", e.extractorType, requiredField)
