@@ -496,6 +496,28 @@ type Options struct {
 	timeouts *Timeouts
 	// m is a mutex to protect timeouts from concurrent access
 	m sync.Mutex
+	// templateThreadsProvider is private so Options remains safe for integrations
+	// that serialize its exported configuration fields.
+	templateThreadsProvider func() int
+}
+
+// SetTemplateThreadsProvider configures a dynamic template concurrency source.
+// The provider is consulted while an execution schedules templates, allowing an
+// embedding application to redistribute a fixed concurrency budget as peer
+// executions start and finish. It must be safe for concurrent use.
+func (options *Options) SetTemplateThreadsProvider(provider func() int) {
+	options.templateThreadsProvider = provider
+}
+
+// CurrentTemplateThreads returns the dynamic template concurrency when the
+// configured provider returns a positive value, or TemplateThreads otherwise.
+func (options *Options) CurrentTemplateThreads() int {
+	if options.templateThreadsProvider != nil {
+		if current := options.templateThreadsProvider(); current > 0 {
+			return current
+		}
+	}
+	return options.TemplateThreads
 }
 
 func (options *Options) Copy() *Options {
@@ -551,6 +573,7 @@ func (options *Options) Copy() *Options {
 		NoHostErrors:                   options.NoHostErrors,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
+		templateThreadsProvider:        options.templateThreadsProvider,
 		HeadlessBulkSize:               options.HeadlessBulkSize,
 		HeadlessTemplateThreads:        options.HeadlessTemplateThreads,
 		Timeout:                        options.Timeout,
