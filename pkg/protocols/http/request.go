@@ -140,7 +140,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	childCtx, cancel := context.WithCancel(context.Background())
+	childCtx, cancel := context.WithCancel(input.Context())
 	defer cancel()
 
 	spmHandler := httputils.NewNonBlockingSPMHandler[error](childCtx, maxErrorsWhenParallel, shouldStop)
@@ -172,7 +172,9 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 			// stop sending more requests condition is met
 			break
 		}
-		spmHandler.Acquire()
+		if err := spmHandler.Acquire(); err != nil {
+			break
+		}
 		// execute http request
 		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
@@ -217,7 +219,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(input.Context())
 	defer cancel()
 
 	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
@@ -264,7 +266,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					continue
 				}
-				spmHandler.Acquire()
+				if err := spmHandler.Acquire(); err != nil {
+					continue
+				}
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					spmHandler.Release()
 					continue
@@ -430,7 +434,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(input.Context())
 	defer cancel()
 
 	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
@@ -487,7 +491,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			return nil
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
-		spmHandler.Acquire()
+		if err := spmHandler.Acquire(); err != nil {
+			break
+		}
 		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
 			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {

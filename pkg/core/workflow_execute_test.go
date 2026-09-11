@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -299,6 +301,61 @@ func TestWorkflowsSameStepExecutersRefreshTemplateContext(t *testing.T) {
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "foo", secondWhoami, "could not refresh workflow context into later executers in the same step")
+}
+
+func TestWorkflowSubtemplatesUnblockCancelledAcquire(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	var started atomic.Int32
+	block := &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+		started.Add(1)
+		<-ctx.Context().Done()
+	}}
+	var waitingStarted atomic.Bool
+	waiting := &mockExecuter{result: true, executeScanHook: func(ctx *scan.ScanContext) {
+		waitingStarted.Store(true)
+		<-ctx.Context().Done()
+	}}
+
+	// Two slots: the two blockers occupy them so the third AddWithContext waits.
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 2}}, Workflows: []*workflows.WorkflowTemplate{
+		{Executers: []*workflows.ProtocolExecuterPair{{
+			Executer: &mockExecuter{result: true, outputs: []*output.InternalWrappedEvent{
+				{OperatorsResult: &operators.Result{}, Results: []*output.ResultEvent{{}}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
+		}, Subtemplates: []*workflows.WorkflowTemplate{
+			{Executers: []*workflows.ProtocolExecuterPair{{Executer: block, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
+			{Executers: []*workflows.ProtocolExecuterPair{{Executer: block, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
+			{Executers: []*workflows.ProtocolExecuterPair{{Executer: waiting, Options: &protocols.ExecutorOptions{Progress: progressBar}}}},
+		}},
+	}}
+
+	engine := &Engine{}
+	parent, cancel := context.WithCancel(context.Background())
+	input := contextargs.NewWithInput(parent, "https://test.com")
+	ctx := scan.NewScanContext(parent, input)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		engine.executeWorkflow(ctx, workflow)
+	}()
+
+	deadline := time.After(2 * time.Second)
+	for started.Load() < 2 {
+		select {
+		case <-deadline:
+			t.Fatal("blocking subtemplates did not occupy both slots")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("workflow stayed blocked after cancel")
+	}
+	require.False(t, waitingStarted.Load(), "third subtemplate must not start while slots are held")
 }
 
 type mockExecuter struct {

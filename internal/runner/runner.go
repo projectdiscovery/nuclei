@@ -951,7 +951,7 @@ func (r *Runner) executeSmartWorkflowInput(executorOpts *protocols.ExecutorOptio
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
-	if err := service.Execute(); err != nil {
+	if err := service.Execute(context.Background()); err != nil {
 		return nil, errors.Wrap(err, "could not execute automatic scan")
 	}
 	result := &atomic.Bool{}

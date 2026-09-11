@@ -132,7 +132,9 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 					}
 
 					for _, subtemplate := range matcher.Subtemplates {
-						swg.Add()
+						if err := swg.AddWithContext(ctx.Context()); err != nil {
+							return
+						}
 
 						go func(subtemplate *workflows.WorkflowTemplate) {
 							defer swg.Done()
@@ -161,7 +163,9 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 	}
 	if len(template.Subtemplates) > 0 && firstMatched {
 		for _, subtemplate := range template.Subtemplates {
-			swg.Add()
+			if err := swg.AddWithContext(ctx.Context()); err != nil {
+				return err
+			}
 
 			go func(template *workflows.WorkflowTemplate) {
 				// create a new context with the same input but with unset callbacks

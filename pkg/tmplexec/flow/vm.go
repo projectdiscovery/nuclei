@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/projectdiscovery/goja"
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -29,8 +29,21 @@ var gojapool = &sync.Pool{
 
 var sizedgojapool *sizedpool.SizedPool[*goja.Runtime]
 
-// GetJSRuntime returns a new JS runtime from pool
+// GetJSRuntime returns a JS runtime from the process-global pool.
+//
+// Deprecated: GetJSRuntime ignores cancellation and can block until another
+// scan releases a runtime. Use GetJSRuntimeContext.
 func GetJSRuntime(opts *types.Options) *goja.Runtime {
+	runtime, _ := GetJSRuntimeContext(context.TODO(), opts)
+	return runtime
+}
+
+// GetJSRuntimeContext returns a JS runtime from the process-global pool.
+//
+// A runtime stays checked out for as long as the flow runs, including any wait
+// on the rate limiter, so this can block once the pool is saturated. The
+// context lets a cancelled scan stop waiting for a runtime it will not use.
+func GetJSRuntimeContext(ctx context.Context, opts *types.Options) (*goja.Runtime, error) {
 	jsOnce.Do(func() {
 		if opts.JsConcurrency < 100 {
 			opts.JsConcurrency = 100
@@ -40,8 +53,7 @@ func GetJSRuntime(opts *types.Options) *goja.Runtime {
 			sizedpool.WithSize[*goja.Runtime](int64(opts.JsConcurrency)),
 		)
 	})
-	runtime, _ := sizedgojapool.Get(context.TODO())
-	return runtime
+	return sizedgojapool.Get(ctx)
 }
 
 // PutJSRuntime returns a JS runtime to pool

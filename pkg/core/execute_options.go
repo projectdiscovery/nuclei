@@ -122,7 +122,7 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 		}
 
 		// resize check point - nop if there are no changes
-		wp.RefreshWithConfig(e.GetWorkPoolConfig())
+		wp.RefreshWithConfigContext(ctx, e.GetWorkPoolConfig())
 
 		templateType := template.Type()
 		var wg *syncutil.AdaptiveWaitGroup
@@ -132,7 +132,13 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 			wg = wp.Default
 		}
 
-		wg.Add()
+		// A slot can be held for as long as a template runs, so this waits rather than
+		// returning quickly once the pool is full. Without the context a cancelled scan
+		// blocks here until unrelated work finishes, long after it has anything left to do.
+		if err := wg.AddWithContext(ctx); err != nil {
+			return results
+		}
+
 		go func(tpl *templates.Template) {
 			defer wg.Done()
 			// All other request types are executed here
@@ -157,7 +163,10 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 		default:
 		}
 
-		wp.Add()
+		if err := wp.AddWithContext(ctx); err != nil {
+			return false
+		}
+
 		go func(targetval *contextargs.MetaInput) {
 			defer wp.Done()
 			e.executeTemplatesOnTarget(ctx, templatesList, targetval, results)

@@ -62,6 +62,10 @@ func (w *WorkPool) InputPool(templateType types.ProtocolType) *syncutil.Adaptive
 }
 
 func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
+	w.RefreshWithConfigContext(context.Background(), config)
+}
+
+func (w *WorkPool) RefreshWithConfigContext(ctx context.Context, config WorkPoolConfig) {
 	if w.config.TypeConcurrency != config.TypeConcurrency {
 		w.config.TypeConcurrency = config.TypeConcurrency
 	}
@@ -74,7 +78,7 @@ func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
 	if w.config.HeadlessInputConcurrency != config.HeadlessInputConcurrency {
 		w.config.HeadlessInputConcurrency = config.HeadlessInputConcurrency
 	}
-	w.Refresh(context.Background())
+	w.Refresh(ctx)
 }
 
 func (w *WorkPool) Refresh(ctx context.Context) {
