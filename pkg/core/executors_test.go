@@ -266,6 +266,53 @@ func TestExecuteTemplateSprayRefreshesDynamicTemplateConcurrency(t *testing.T) {
 	}
 	t.Logf("dynamic execution completed all %d templates in %s with peak concurrency %d", templateCount, elapsed, executer.maxInFlight.Load())
 }
+
+func TestExecuteTemplateSprayHonorsSharedConcurrencyLimiter(t *testing.T) {
+	const (
+		templateCount = 8
+		sharedBudget  = 2
+	)
+
+	tokens := make(chan struct{}, sharedBudget)
+	executer := &adaptiveConcurrencyExecuter{delay: 50 * time.Millisecond}
+	options := &types.Options{
+		BulkSize:                1,
+		TemplateThreads:         templateCount,
+		HeadlessBulkSize:        1,
+		HeadlessTemplateThreads: 1,
+	}
+	options.SetTemplateThreadsLimiter(func(ctx context.Context) error {
+		select {
+		case tokens <- struct{}{}:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}, func() {
+		<-tokens
+	})
+	engine := New(options)
+	engine.SetExecuterOptions(&protocols.ExecutorOptions{
+		Logger:       engine.Logger,
+		Options:      options,
+		ResumeCfg:    types.NewResumeCfg(),
+		ProtocolType: tmpltypes.NetworkProtocol,
+	})
+	templatesList := make([]*templates.Template, 0, templateCount)
+	for range templateCount {
+		templatesList = append(templatesList, &templates.Template{Executer: executer})
+	}
+
+	engine.ExecuteScanWithOpts(context.Background(), templatesList,
+		&fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "slow-target"}}}, true)
+
+	if got := executer.completed.Load(); got != templateCount {
+		t.Fatalf("completed %d templates, expected %d", got, templateCount)
+	}
+	if got := executer.maxInFlight.Load(); got > sharedBudget {
+		t.Fatalf("maximum concurrency was %d, shared budget is %d", got, sharedBudget)
+	}
+}
 func (s *slowExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
 	return nil, nil
 }

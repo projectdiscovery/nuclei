@@ -132,14 +132,26 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 			wg = wp.Default
 		}
 
-		wg.Add()
-		go func(tpl *templates.Template) {
+		if err := wg.AddWithContext(ctx); err != nil {
+			return results
+		}
+		usesSharedTemplateBudget := templateType != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				wg.Done()
+				return results
+			}
+		}
+		go func(tpl *templates.Template, sharedBudget bool) {
 			defer wg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
 			// All other request types are executed here
 			// Note: executeTemplateWithTargets creates goroutines and blocks
 			// given template is executed on all targets
 			e.executeTemplateWithTargets(ctx, tpl, target, results)
-		}(template)
+		}(template, usesSharedTemplateBudget)
 	}
 	return results
 }

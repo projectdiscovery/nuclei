@@ -232,16 +232,28 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		} else {
 			sg = wp.Default
 		}
-		sg.Add()
-		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
+		if err := sg.AddWithContext(ctx); err != nil {
+			return
+		}
+		usesSharedTemplateBudget := tpl.Type() != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				sg.Done()
+				return
+			}
+		}
+		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup, sharedBudget bool) {
 			defer wg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
 
 			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
-		}(tpl, target, sg)
+		}(tpl, target, sg, usesSharedTemplateBudget)
 	}
 }
 

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -499,6 +500,10 @@ type Options struct {
 	// templateThreadsProvider is private so Options remains safe for integrations
 	// that serialize its exported configuration fields.
 	templateThreadsProvider func() int
+	// templateThreadAcquire and templateThreadRelease optionally enforce a
+	// concurrency budget shared by multiple embedded Nuclei engines.
+	templateThreadAcquire func(context.Context) error
+	templateThreadRelease func()
 }
 
 // SetTemplateThreadsProvider configures a dynamic template concurrency source.
@@ -518,6 +523,29 @@ func (options *Options) CurrentTemplateThreads() int {
 		}
 	}
 	return options.TemplateThreads
+}
+
+// SetTemplateThreadsLimiter configures an optional concurrency limiter shared
+// by embedding applications across multiple Nuclei engines. A successful
+// acquire must have a matching release. Both callbacks must be concurrency-safe.
+func (options *Options) SetTemplateThreadsLimiter(acquire func(context.Context) error, release func()) {
+	options.templateThreadAcquire = acquire
+	options.templateThreadRelease = release
+}
+
+// AcquireTemplateThread reserves one shared template-execution slot.
+func (options *Options) AcquireTemplateThread(ctx context.Context) error {
+	if options.templateThreadAcquire == nil {
+		return nil
+	}
+	return options.templateThreadAcquire(ctx)
+}
+
+// ReleaseTemplateThread releases one shared template-execution slot.
+func (options *Options) ReleaseTemplateThread() {
+	if options.templateThreadRelease != nil {
+		options.templateThreadRelease()
+	}
 }
 
 func (options *Options) Copy() *Options {
@@ -574,6 +602,8 @@ func (options *Options) Copy() *Options {
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
 		templateThreadsProvider:        options.templateThreadsProvider,
+		templateThreadAcquire:          options.templateThreadAcquire,
+		templateThreadRelease:          options.templateThreadRelease,
 		HeadlessBulkSize:               options.HeadlessBulkSize,
 		HeadlessTemplateThreads:        options.HeadlessTemplateThreads,
 		Timeout:                        options.Timeout,
