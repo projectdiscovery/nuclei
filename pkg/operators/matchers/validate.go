@@ -59,7 +59,7 @@ func (matcher *Matcher) Validate() error {
 		expectedFields = append(commonExpectedFields, "XPath", "Part")
 	case LLMMatcher:
 		requiredField, valueCount = "prompt", len(matcher.Prompt)
-		expectedFields = append(commonExpectedFields, "Prompt", "Expect", "Options", "MinConfidence", "MaxInputTokens", "Part")
+		expectedFields = append(commonExpectedFields, "Prompt", "Expect", "Options", "MinConfidence", "MaxInputTokens", "AllowSole", "Part")
 	}
 
 	if err = checkFields(matcher, matcherMap, expectedFields...); err != nil {

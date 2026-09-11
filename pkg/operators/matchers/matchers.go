@@ -126,6 +126,11 @@ type Matcher struct {
 	//   MaxInputTokens caps how much of the response part is sent to the model
 	//   for an llm matcher, as an approximate token count.
 	MaxInputTokens int `yaml:"max-input-tokens,omitempty" json:"max-input-tokens,omitempty" jsonschema:"title=max llm input tokens,description=Approximate cap on response tokens sent to the model"`
+	// description: |
+	//   AllowSole permits an llm matcher to be the only matcher on a high or
+	//   critical template. Without it such a template is rejected, so a model is
+	//   never the sole arbiter of a severe finding by accident.
+	AllowSole bool `yaml:"allow-sole,omitempty" json:"allow-sole,omitempty" jsonschema:"title=allow llm as sole matcher,description=Permit an llm matcher to be the only matcher on a high or critical template"`
 
 	// description: |
 	//   Encoding specifies the encoding for the words field if any.
