@@ -21,8 +21,19 @@ import (
 
 // defaultCommandTimeout bounds a single nuclei process in integration tests.
 // The CI job is 50m; without this a hung scan leaves the suite nameless until
-// the runner kills the step.
-const defaultCommandTimeout = 2 * time.Minute
+// the runner kills the step. It must stay well above the slowest legitimate
+// case: raw-unsafe-path scans scanme.sh over the network and can take minutes.
+const defaultCommandTimeout = 10 * time.Minute
+
+// commandWaitDelay bounds the wait for output pipes after the process is
+// killed. A grandchild that inherited stdout/stderr keeps the pipe open, and
+// without this Output/CombinedOutput blocks forever despite the killed process.
+const commandWaitDelay = 10 * time.Second
+
+// ErrCommandTimeout reports that nuclei was killed by commandTimeout. Callers
+// treat it as fatal rather than flaky: retrying a hang only burns the budget
+// the whole suite shares.
+var ErrCommandTimeout = errors.New("nuclei timed out")
 
 type Runner struct {
 	BinaryPath                 string
@@ -134,6 +145,7 @@ func (r *Runner) command(ctx context.Context, binaryPath string, args ...string)
 	}
 
 	cmd := exec.CommandContext(ctx, resolvedBinary, args...)
+	cmd.WaitDelay = commandWaitDelay
 	if r.WorkingDir != "" {
 		cmd.Dir = r.WorkingDir
 	}
@@ -158,7 +170,7 @@ func (r *Runner) runCommand(combined bool, binaryPath string, setup func(cmd *ex
 		output, err = cmd.Output()
 	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return output, fmt.Errorf("nuclei timed out after %s: %w", r.commandTimeout(), err)
+		return output, fmt.Errorf("%w after %s: %v", ErrCommandTimeout, r.commandTimeout(), err)
 	}
 	return output, err
 }
