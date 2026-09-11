@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/ai"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/code"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns"
@@ -118,11 +119,19 @@ type Template struct {
 	// description: |
 	//   Javascript contains the javascript request to make in the template.
 	RequestsJavascript []*javascript.Request `yaml:"javascript,omitempty" json:"javascript,omitempty" jsonschema:"title=javascript requests to make,description=Javascript requests to make for the template"`
+	// description: |
+	//   AI contains prompts that expand into protocol requests when the
+	//   template is loaded. Prompts are not evaluated during a scan.
+	RequestsAI []*ai.Request `yaml:"ai,omitempty" json:"ai,omitempty" jsonschema:"title=prompts to expand into requests,description=Prompts expanded into protocol requests at template load time"`
 
 	// description: |
 	//   Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline,omitempty" jsonschema:"title=workflows to run,description=Workflows to run for the template"`
 	CompiledWorkflow   *workflows.Workflow `yaml:"-" json:"-" jsonschema:"-"`
+
+	// aiExpanded records that ai prompts have already been mapped onto protocol
+	// requests, so a cached template is not expanded a second time.
+	aiExpanded bool `yaml:"-" json:"-" jsonschema:"-"`
 
 	// description: |
 	//   Self Contained marks Requests for the template as self-contained

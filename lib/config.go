@@ -418,6 +418,51 @@ func EnableCodeTemplates() NucleiSDKOptions {
 	}
 }
 
+// EnableAITemplates allows loading templates that declare ai prompts. Prompts
+// are expanded into protocol requests once at load time, never during a scan.
+func EnableAITemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableAITemplates = true
+		return nil
+	}
+}
+
+// AIOptions configures how ai prompts are expanded into protocol requests.
+//
+// Expansion happens once per template at load time, so these settings shape
+// template compilation rather than the scan itself. A run whose prompts are
+// already cached needs none of them.
+type AIOptions struct {
+	Provider       string        // preset endpoint (openai, ollama, llamacpp, ...); ignored when BaseURL is set
+	BaseURL        string        // any OpenAI compatible endpoint, including a local one
+	Model          string        // model used to expand prompts
+	CacheDirectory string        // where expanded prompts are cached; empty uses the nuclei config directory
+	Timeout        time.Duration // bounds a single expansion call; empty uses the resolver default
+}
+
+// WithAIOptions sets the resolver used to expand ai prompts. It implies
+// EnableAITemplates, since configuring a resolver without enabling the
+// capability would silently do nothing.
+//
+// The API key is read from the NUCLEI_AI_API_KEY environment variable and is
+// deliberately absent here so it cannot be captured in a config struct.
+func WithAIOptions(opts AIOptions) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if opts.Timeout < 0 {
+			return errors.New("ai timeout cannot be negative")
+		}
+
+		e.opts.EnableAITemplates = true
+		e.opts.AIProvider = opts.Provider
+		e.opts.AIBaseURL = opts.BaseURL
+		e.opts.AIModel = opts.Model
+		e.opts.AICacheDirectory = opts.CacheDirectory
+		e.opts.AITimeout = opts.Timeout
+
+		return nil
+	}
+}
+
 // EnableSelfContainedTemplates allows loading/executing self-contained templates
 func EnableSelfContainedTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {

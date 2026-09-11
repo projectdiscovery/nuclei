@@ -137,6 +137,9 @@ Usage:
   ./nuclei [flags]
 
 Flags:
+COMMON:
+   -mt, -max-time value  maximum time to run before automatic termination (e.g., 1h, 30m)
+
 TARGET:
    -u, -target string[]          target URLs/hosts to scan
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
@@ -147,11 +150,11 @@ TARGET:
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
 
 TARGET-FORMAT:
-   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
-   -ro, -required-only            use only required fields in input format when generating requests
-   -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
-   -vtt, -vars-text-templating    enable text templating for vars in input file (only for yaml input mode)
-   -vfp, -var-file-paths string[] list of yaml file contained vars to inject into yaml input
+   -im, -input-mode string         mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
+   -ro, -required-only             use only required fields in input format when generating requests
+   -sfv, -skip-format-validation   skip format validation (like missing vars) when parsing input file
+   -vtt, -vars-text-templating     enable text templating for vars in input file (only for yaml input mode)
+   -vfp, -var-file-paths string[]  list of yaml file contained vars to inject into yaml input
 
 TEMPLATES:
    -nt, -new-templates                    run only new templates added in latest nuclei-templates release
@@ -173,6 +176,12 @@ TEMPLATES:
    -esc, -enable-self-contained           enable loading self-contained templates
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
+   -eai, -enable-ai-templates             enable loading templates that declare ai prompts
+   -aip, -ai-provider string              ai provider to expand prompts with (groq, llamacpp, lmstudio, ollama, openai, openrouter, together, vllm) (default "openai")
+   -aim, -ai-model string                 ai model to expand prompts with
+   -aiu, -ai-base-url string              openai compatible endpoint to expand prompts with (overrides -ai-provider)
+   -aic, -ai-cache string                 directory to cache expanded ai prompts in
+   -ait, -ai-timeout value                time to wait for a prompt expansion (raise it for slow local models) (default 2m0s)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -186,8 +195,8 @@ FILTERING:
    -em, -exclude-matchers string[]    template matchers to exclude in result
    -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
-   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
-   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
+   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript, ai
+   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript, ai
    -tc, -template-condition string[]  templates to run based on expression condition
 
 OUTPUT:
@@ -198,7 +207,7 @@ OUTPUT:
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format
    -irr, -include-rr -omit-raw   include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use -omit-raw] (default true)
-   -or, -omit-raw                omit request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)
+   -or, -omit-raw                omit request/response pairs in the JSON, JSONL, Markdown, and PDF outputs (for findings only)
    -ot, -omit-template           omit encoded template in the JSON, JSONL output
    -nm, -no-meta                 disable printing result metadata in cli output
    -ts, -timestamp               enables printing timestamp in cli output
@@ -273,23 +282,23 @@ FUZZING:
 UNCOVER:
    -uc, -uncover                  enable uncover engine
    -uq, -uncover-query string[]   uncover search query
-   -ue, -uncover-engine string[]  uncover search engine (shodan,censys,fofa,shodan-idb,quake,hunter,zoomeye,netlas,criminalip,publicwww,hunterhow,google) (default shodan)
+   -ue, -uncover-engine string[]  uncover search engine (shodan,censys,fofa,shodan-idb,quake,hunter,zoomeye,netlas,criminalip,publicwww,hunterhow,google,odin,binaryedge,onyphe,driftnet,greynoise,daydaymap,nerdydata) (default shodan)
    -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
    -ul, -uncover-limit int        uncover results to return (default 100)
    -ur, -uncover-ratelimit int    override ratelimit of engines with unknown ratelimit (default 60 req/min) (default 60)
 
 RATE-LIMIT:
-   -rl, -rate-limit int               maximum number of requests to send per second (default 150)
-   -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
-   -per-host-rate-limit               enable per-host rate limiting (global rate limit becomes unlimited when enabled)
-   -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
-   -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
-   -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
-   -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)
-   -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
-   -jsc, -js-concurrency int          maximum number of javascript runtimes to be executed in parallel (default 120)
-   -pc, -payload-concurrency int      max payload concurrency for each template (default 25)
-   -prc, -probe-concurrency int       http probe concurrency with httpx (default 50)
+   -rl, -rate-limit int                     maximum number of requests to send per second (default 150)
+   -rld, -rate-limit-duration value         maximum number of requests to send per second (default 1s)
+   -per-host-rate-limit                     enable per-host rate limiting (global rate limit becomes unlimited when enabled)
+   -rlm, -rate-limit-minute int             maximum number of requests to send per minute (DEPRECATED)
+   -bs, -bulk-size int                      maximum number of hosts to be analyzed in parallel per template (default 25)
+   -c, -concurrency int                     maximum number of templates to be executed in parallel (default 25)
+   -hbs, -headless-bulk-size int            maximum number of headless hosts to be analyzed in parallel per template (default 10)
+   -headc, -headless-concurrency int        maximum number of headless templates to be executed in parallel (default 10)
+   -jsc, -js-concurrency int                maximum number of javascript runtimes to be executed in parallel (default 120)
+   -pc, -payload-concurrency int            max payload concurrency for each template (default 25)
+   -prc, -probe-concurrency int             http probe concurrency with httpx (default 50)
    -tlc, -template-loading-concurrency int  maximum number of concurrent template loading operations (default 50)
 
 OPTIMIZATIONS:
@@ -300,7 +309,7 @@ OPTIMIZATIONS:
    -te, -track-error string[]       adds given error to max-host-error watchlist (standard, file)
    -nmhe, -no-mhe                   disable skipping host from scan based on errors
    -project                         use a project folder to avoid sending same request multiple times
-   -project-path string             set a specific project path (default "/tmp")
+   -project-path string             set a specific project path (default "/var/folders/ny/g1md_dq528v3n6vlmp_77hpw0000gn/T/")
    -spm, -stop-at-first-match       stop processing HTTP requests after the first match (may break template/workflow logic)
    -stream                          stream mode - start elaborating without sorting the input
    -ss, -scan-strategy value        strategy to use while scanning(auto/host-spray/template-spray) (default auto)
@@ -308,6 +317,7 @@ OPTIMIZATIONS:
    -nh, -no-httpx                   disable httpx probing for non-url input
    -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing
+   -http-cache                      enable HTTP cache (RFC 9111) for HTTP requests
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)
@@ -345,9 +355,9 @@ UPDATE:
    -duc, -disable-update-check       disable automatic nuclei/templates update check
 
 HONEYPOT:
-   -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration
-   -hpt, -honeypot-threshold int     number of distinct template IDs required to flag a honeypot host (default 15)
-   -shp, -suppress-honeypot          suppress output for flagged honeypot hosts
+   -hpd, -honeypot-detect         detect potential honeypot hosts based on match concentration
+   -hpt, -honeypot-threshold int  number of distinct template IDs required to flag a honeypot host (default 15)
+   -shp, -suppress-honeypot       suppress output for flagged honeypot hosts
 
 STATISTICS:
    -stats                    display statistics about the running scan
@@ -368,7 +378,6 @@ CLOUD:
 AUTHENTICATION:
    -sf, -secret-file string[]  path to config file containing secrets for nuclei authenticated scan
    -ps, -prefetch-secrets      prefetch secrets from the secrets file
-   # NOTE: Headers in secrets files preserve exact casing (useful for case-sensitive APIs)
 
 
 EXAMPLES:
@@ -387,8 +396,8 @@ Run nuclei with a JSON output:
 Run nuclei with sorted Markdown outputs (with environment variables):
 	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.projectdiscovery.io/getting-started/running
-
+Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
+	
 ```
 
 Additional documentation is available at: [**`docs.projectdiscovery.io/getting-started/running`**](https://docs.projectdiscovery.io/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)

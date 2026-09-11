@@ -347,6 +347,20 @@ Javascript contains the javascript request to make in the template.
 
 <div class="dd">
 
+<code>ai</code>  <i>[]<a href="#airequest">ai.Request</a></i>
+
+</div>
+<div class="dt">
+
+AI contains prompts that expand into protocol requests when the
+template is loaded. Prompts are not evaluated during a scan.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>self-contained</code>  <i>bool</i>
 
 </div>
@@ -4688,6 +4702,91 @@ Payloads contains any payloads for the current request.
 Payloads support both key-values combinations where a list
 of payloads is provided, or optionally a single file can also
 be provided as payload which will be read on run-time.
+
+</div>
+
+<hr />
+
+
+
+
+
+## ai.Request
+Request is a prompt backed request definition. It carries no execution
+ behaviour of its own: Expand turns it into the protocol requests that
+ actually run.
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.ai</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>id</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+ID is the optional id of the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>prompt</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Prompt describes, in natural language, what the template should do.
+It is mapped onto nuclei protocol primitives when the template loads.
+
+
+
+Examples:
+
+
+```yaml
+prompt: GET /admin and flag responses that are a working admin login form
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>model</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Model optionally pins the resolver model used to expand the prompt.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>expansion</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Expansion pins the digest of the fragment this prompt resolved to.
+Nuclei writes it on first expansion and refuses to run if a later
+expansion disagrees, so a template cannot silently change meaning.
 
 </div>
 

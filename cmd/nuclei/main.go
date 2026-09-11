@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/ai"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -304,6 +305,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableSelfContainedTemplates, "enable-self-contained", "esc", false, "enable loading self-contained templates"),
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
+		flagSet.BoolVarP(&options.EnableAITemplates, "enable-ai-templates", "eai", false, "enable loading templates that declare ai prompts"),
+		flagSet.StringVarP(&options.AIProvider, "ai-provider", "aip", "openai", fmt.Sprintf("ai provider to expand prompts with (%s)", strings.Join(ai.ProviderNames(), ", "))),
+		flagSet.StringVarP(&options.AIModel, "ai-model", "aim", "", "ai model to expand prompts with"),
+		flagSet.StringVarP(&options.AIBaseURL, "ai-base-url", "aiu", "", "openai compatible endpoint to expand prompts with (overrides -ai-provider)"),
+		flagSet.StringVarP(&options.AICacheDirectory, "ai-cache", "aic", "", "directory to cache expanded ai prompts in"),
+		flagSet.DurationVarP(&options.AITimeout, "ai-timeout", "ait", 2*time.Minute, "time to wait for a prompt expansion (raise it for slow local models)"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",

@@ -3,6 +3,35 @@
   "$id": "https://templates.-template",
   "$ref": "#/$defs/templates.Template",
   "$defs": {
+    "ai.Request": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "id of the request",
+          "description": "ID is the optional ID of the Request"
+        },
+        "prompt": {
+          "type": "string",
+          "title": "prompt describing the check",
+          "description": "Natural language description of the check to perform"
+        },
+        "model": {
+          "type": "string",
+          "title": "resolver model",
+          "description": "Model used to expand the prompt into protocol requests"
+        },
+        "expansion": {
+          "type": "string",
+          "title": "pinned expansion digest",
+          "description": "Digest of the protocol fragment this prompt resolved to"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "prompt"
+      ]
+    },
     "analyzers.AnalyzerTemplate": {
       "properties": {
         "name": {
@@ -1734,6 +1763,14 @@
           "type": "array",
           "title": "javascript requests to make",
           "description": "Javascript requests to make for the template"
+        },
+        "ai": {
+          "items": {
+            "$ref": "#/$defs/ai.Request"
+          },
+          "type": "array",
+          "title": "prompts to expand into requests",
+          "description": "Prompts expanded into protocol requests at template load time"
         },
         "workflows": {
           "items": {

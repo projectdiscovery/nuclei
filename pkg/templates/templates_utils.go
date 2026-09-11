@@ -6,6 +6,13 @@ import "github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 //
 // If n is provided, it checks for more than n requests.
 func HasRequest[T protocols.Request](requests []T, n ...int) bool {
+	return hasRequest(requests, n...)
+}
+
+// hasRequest is shared by HasRequest and by request kinds that are not
+// protocols.Request implementations, such as ai prompts, which expand into
+// protocol requests instead of executing themselves.
+func hasRequest[T any](requests []T, n ...int) bool {
 	if len(n) > 0 {
 		return len(requests) > n[0]
 	}
@@ -85,6 +92,13 @@ func (t *Template) HasCodeRequest(n ...int) bool {
 // If n is provided, it checks for more than n requests.
 func (t *Template) HasJavascriptRequest(n ...int) bool {
 	return HasRequest(t.RequestsJavascript, n...)
+}
+
+// HasAIRequest returns true if the template has an AI prompt request.
+//
+// If n is provided, it checks for more than n requests.
+func (t *Template) HasAIRequest(n ...int) bool {
+	return hasRequest(t.RequestsAI, n...)
 }
 
 // IsUnsignedJavascriptTemplate returns true if the template has a Javascript

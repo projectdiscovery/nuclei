@@ -22,6 +22,8 @@ const (
 	CapabilityGlobalMatchers Capability = "global-matchers"
 	// CapabilityFile requires the -file flag.
 	CapabilityFile Capability = "file"
+	// CapabilityAI requires the -ai flag.
+	CapabilityAI Capability = "ai"
 )
 
 type capabilityDefinition struct {
@@ -98,6 +100,19 @@ var capabilityDefinitions = []capabilityDefinition{
 		},
 		required: func(template *Template) bool {
 			return template.requiresGlobalMatchers()
+		},
+	},
+	{
+		capability:   CapabilityAI,
+		stat:         ExcludedAITemplateStats,
+		flag:         "-enable-ai-templates",
+		templateKind: "ai prompt",
+		loadBlocking: true,
+		enabled: func(options *types.Options) bool {
+			return options.EnableAITemplates
+		},
+		required: func(template *Template) bool {
+			return template.HasAIRequest()
 		},
 	},
 	{

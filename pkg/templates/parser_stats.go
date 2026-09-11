@@ -11,6 +11,7 @@ const (
 	SkippedUnverifiedTemplateStats           = "skipped-unverified-templates"
 
 	ExcludedCodeTemplateStats           = "excluded-code-templates"
+	ExcludedAITemplateStats             = "excluded-ai-templates"
 	ExcludedDASTTemplateStats           = "excluded-dast-templates"
 	ExcludedFileTemplateStats           = "excluded-file-templates"
 	ExcludedGlobalMatchersTemplateStats = "excluded-global-matcher-templates"

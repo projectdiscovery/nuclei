@@ -40,6 +40,7 @@ var (
 	WHOISRequestDoc               encoder.Doc
 	CODERequestDoc                encoder.Doc
 	JAVASCRIPTRequestDoc          encoder.Doc
+	AIRequestDoc                  encoder.Doc
 	HTTPSignatureTypeHolderDoc    encoder.Doc
 	VARIABLESVariableDoc          encoder.Doc
 )
@@ -48,7 +49,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 20)
+	TemplateDoc.Fields = make([]encoder.Doc, 21)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -136,34 +137,39 @@ func init() {
 	TemplateDoc.Fields[14].Note = ""
 	TemplateDoc.Fields[14].Description = "Javascript contains the javascript request to make in the template."
 	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "Javascript contains the javascript request to make in the template."
-	TemplateDoc.Fields[15].Name = "self-contained"
-	TemplateDoc.Fields[15].Type = "bool"
+	TemplateDoc.Fields[15].Name = "ai"
+	TemplateDoc.Fields[15].Type = "[]ai.Request"
 	TemplateDoc.Fields[15].Note = ""
-	TemplateDoc.Fields[15].Description = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[15].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[16].Name = "stop-at-first-match"
+	TemplateDoc.Fields[15].Description = "AI contains prompts that expand into protocol requests when the\ntemplate is loaded. Prompts are not evaluated during a scan."
+	TemplateDoc.Fields[15].Comments[encoder.LineComment] = "AI contains prompts that expand into protocol requests when the"
+	TemplateDoc.Fields[16].Name = "self-contained"
 	TemplateDoc.Fields[16].Type = "bool"
 	TemplateDoc.Fields[16].Note = ""
-	TemplateDoc.Fields[16].Description = "Stop execution once first match is found"
-	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Stop execution once first match is found"
-	TemplateDoc.Fields[17].Name = "signature"
-	TemplateDoc.Fields[17].Type = "http.SignatureTypeHolder"
+	TemplateDoc.Fields[16].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[17].Name = "stop-at-first-match"
+	TemplateDoc.Fields[17].Type = "bool"
 	TemplateDoc.Fields[17].Note = ""
-	TemplateDoc.Fields[17].Description = "Signature is the request signature method\nWARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks"
-	TemplateDoc.Fields[17].Comments[encoder.LineComment] = "Signature is the request signature method"
-	TemplateDoc.Fields[17].Values = []string{
+	TemplateDoc.Fields[17].Description = "Stop execution once first match is found"
+	TemplateDoc.Fields[17].Comments[encoder.LineComment] = "Stop execution once first match is found"
+	TemplateDoc.Fields[18].Name = "signature"
+	TemplateDoc.Fields[18].Type = "http.SignatureTypeHolder"
+	TemplateDoc.Fields[18].Note = ""
+	TemplateDoc.Fields[18].Description = "Signature is the request signature method\nWARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks"
+	TemplateDoc.Fields[18].Comments[encoder.LineComment] = "Signature is the request signature method"
+	TemplateDoc.Fields[18].Values = []string{
 		"AWS",
 	}
-	TemplateDoc.Fields[18].Name = "variables"
-	TemplateDoc.Fields[18].Type = "variables.Variable"
-	TemplateDoc.Fields[18].Note = ""
-	TemplateDoc.Fields[18].Description = "Variables contains any variables for the current request."
-	TemplateDoc.Fields[18].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
-	TemplateDoc.Fields[19].Name = "constants"
-	TemplateDoc.Fields[19].Type = "map[string]interface{}"
+	TemplateDoc.Fields[19].Name = "variables"
+	TemplateDoc.Fields[19].Type = "variables.Variable"
 	TemplateDoc.Fields[19].Note = ""
-	TemplateDoc.Fields[19].Description = "Constants contains any scalar constant for the current template"
-	TemplateDoc.Fields[19].Comments[encoder.LineComment] = "Constants contains any scalar constant for the current template"
+	TemplateDoc.Fields[19].Description = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[19].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[20].Name = "constants"
+	TemplateDoc.Fields[20].Type = "map[string]interface{}"
+	TemplateDoc.Fields[20].Note = ""
+	TemplateDoc.Fields[20].Description = "Constants contains any scalar constant for the current template"
+	TemplateDoc.Fields[20].Comments[encoder.LineComment] = "Constants contains any scalar constant for the current template"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -458,6 +464,86 @@ func init() {
 		{
 			Key:   "headers_from_response",
 			Value: "HTTP response headers in name:value format",
+		},
+		{
+			Key:   "tls_version",
+			Value: "TLS version negotiated for the HTTP connection",
+		},
+		{
+			Key:   "cipher",
+			Value: "TLS cipher suite negotiated for the HTTP connection",
+		},
+		{
+			Key:   "sni",
+			Value: "SNI value used in the TLS handshake",
+		},
+		{
+			Key:   "subject_cn",
+			Value: "Leaf certificate subject common name",
+		},
+		{
+			Key:   "subject_dn",
+			Value: "Leaf certificate subject distinguished name",
+		},
+		{
+			Key:   "subject_an",
+			Value: "Leaf certificate subject alternative names",
+		},
+		{
+			Key:   "subject_org",
+			Value: "Leaf certificate subject organization",
+		},
+		{
+			Key:   "issuer_cn",
+			Value: "Leaf certificate issuer common name",
+		},
+		{
+			Key:   "issuer_dn",
+			Value: "Leaf certificate issuer distinguished name",
+		},
+		{
+			Key:   "issuer_org",
+			Value: "Leaf certificate issuer organization",
+		},
+		{
+			Key:   "serial",
+			Value: "Leaf certificate serial number",
+		},
+		{
+			Key:   "fingerprint_hash",
+			Value: "Leaf certificate fingerprint hashes (md5/sha1/sha256)",
+		},
+		{
+			Key:   "not_before",
+			Value: "Leaf certificate not-before timestamp",
+		},
+		{
+			Key:   "not_after",
+			Value: "Leaf certificate not-after timestamp",
+		},
+		{
+			Key:   "expired",
+			Value: "Whether the leaf certificate has expired",
+		},
+		{
+			Key:   "self_signed",
+			Value: "Whether the leaf certificate is self-signed",
+		},
+		{
+			Key:   "mismatched",
+			Value: "Whether the leaf certificate does not match the SNI hostname",
+		},
+		{
+			Key:   "domains",
+			Value: "Deduplicated domains from subject CN and SANs",
+		},
+		{
+			Key:   "wildcard_certificate",
+			Value: "Whether the leaf certificate is a wildcard certificate",
+		},
+		{
+			Key:   "emails",
+			Value: "Email addresses embedded in the leaf certificate",
 		},
 	}
 	HTTPRequestDoc.Fields = make([]encoder.Doc, 40)
@@ -1288,7 +1374,7 @@ func init() {
 			Value: "Raw contains the raw file contents",
 		},
 	}
-	FILERequestDoc.Fields = make([]encoder.Doc, 7)
+	FILERequestDoc.Fields = make([]encoder.Doc, 12)
 	FILERequestDoc.Fields[0].Name = "extensions"
 	FILERequestDoc.Fields[0].Type = "[]string"
 	FILERequestDoc.Fields[0].Note = ""
@@ -1330,6 +1416,33 @@ func init() {
 	FILERequestDoc.Fields[6].Note = ""
 	FILERequestDoc.Fields[6].Description = "NoRecursive specifies whether to not do recursive checks if folders are provided."
 	FILERequestDoc.Fields[6].Comments[encoder.LineComment] = "NoRecursive specifies whether to not do recursive checks if folders are provided."
+	FILERequestDoc.Fields[7].Name = "smb-user"
+	FILERequestDoc.Fields[7].Type = "string"
+	FILERequestDoc.Fields[7].Note = ""
+	FILERequestDoc.Fields[7].Description = "SMBUser authenticates to remote SMB shares when the file input is a UNC\nor smb:// path (issue #6142). Guest/anon: empty password."
+	FILERequestDoc.Fields[7].Comments[encoder.LineComment] = "SMBUser authenticates to remote SMB shares when the file input is a UNC"
+
+	FILERequestDoc.Fields[7].AddExample("", "auditor")
+	FILERequestDoc.Fields[8].Name = "smb-password"
+	FILERequestDoc.Fields[8].Type = "string"
+	FILERequestDoc.Fields[8].Note = ""
+	FILERequestDoc.Fields[8].Description = "SMBPassword is the password for SMB file targets."
+	FILERequestDoc.Fields[8].Comments[encoder.LineComment] = "SMBPassword is the password for SMB file targets."
+	FILERequestDoc.Fields[9].Name = "smb-domain"
+	FILERequestDoc.Fields[9].Type = "string"
+	FILERequestDoc.Fields[9].Note = ""
+	FILERequestDoc.Fields[9].Description = "SMBDomain is the optional NTLM domain / workgroup."
+	FILERequestDoc.Fields[9].Comments[encoder.LineComment] = "SMBDomain is the optional NTLM domain / workgroup."
+	FILERequestDoc.Fields[10].Name = "smb-hash"
+	FILERequestDoc.Fields[10].Type = "string"
+	FILERequestDoc.Fields[10].Note = ""
+	FILERequestDoc.Fields[10].Description = "SMBHash enables pass-the-hash (overrides smb-password when set)."
+	FILERequestDoc.Fields[10].Comments[encoder.LineComment] = "SMBHash enables pass-the-hash (overrides smb-password when set)."
+	FILERequestDoc.Fields[11].Name = "smb-port"
+	FILERequestDoc.Fields[11].Type = "int"
+	FILERequestDoc.Fields[11].Note = ""
+	FILERequestDoc.Fields[11].Description = "SMBPort overrides the default SMB port (445) for UNC targets."
+	FILERequestDoc.Fields[11].Comments[encoder.LineComment] = "SMBPort overrides the default SMB port (445) for UNC targets."
 
 	NETWORKRequestDoc.Type = "network.Request"
 	NETWORKRequestDoc.Comments[encoder.LineComment] = " Request contains a Network protocol request to be made from a template"
@@ -2171,6 +2284,39 @@ func init() {
 	JAVASCRIPTRequestDoc.Fields[8].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
 	JAVASCRIPTRequestDoc.Fields[8].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
 
+	AIRequestDoc.Type = "ai.Request"
+	AIRequestDoc.Comments[encoder.LineComment] = " Request is a prompt backed request definition. It carries no execution"
+	AIRequestDoc.Description = "Request is a prompt backed request definition. It carries no execution\n behaviour of its own: Expand turns it into the protocol requests that\n actually run."
+	AIRequestDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "ai",
+		},
+	}
+	AIRequestDoc.Fields = make([]encoder.Doc, 4)
+	AIRequestDoc.Fields[0].Name = "id"
+	AIRequestDoc.Fields[0].Type = "string"
+	AIRequestDoc.Fields[0].Note = ""
+	AIRequestDoc.Fields[0].Description = "ID is the optional id of the request"
+	AIRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
+	AIRequestDoc.Fields[1].Name = "prompt"
+	AIRequestDoc.Fields[1].Type = "string"
+	AIRequestDoc.Fields[1].Note = ""
+	AIRequestDoc.Fields[1].Description = "Prompt describes, in natural language, what the template should do.\nIt is mapped onto nuclei protocol primitives when the template loads."
+	AIRequestDoc.Fields[1].Comments[encoder.LineComment] = "Prompt describes, in natural language, what the template should do."
+
+	AIRequestDoc.Fields[1].AddExample("", "GET /admin and flag responses that are a working admin login form")
+	AIRequestDoc.Fields[2].Name = "model"
+	AIRequestDoc.Fields[2].Type = "string"
+	AIRequestDoc.Fields[2].Note = ""
+	AIRequestDoc.Fields[2].Description = "Model optionally pins the resolver model used to expand the prompt."
+	AIRequestDoc.Fields[2].Comments[encoder.LineComment] = "Model optionally pins the resolver model used to expand the prompt."
+	AIRequestDoc.Fields[3].Name = "expansion"
+	AIRequestDoc.Fields[3].Type = "string"
+	AIRequestDoc.Fields[3].Note = ""
+	AIRequestDoc.Fields[3].Description = "Expansion pins the digest of the fragment this prompt resolved to.\nNuclei writes it on first expansion and refuses to run if a later\nexpansion disagrees, so a template cannot silently change meaning."
+	AIRequestDoc.Fields[3].Comments[encoder.LineComment] = "Expansion pins the digest of the fragment this prompt resolved to."
+
 	HTTPSignatureTypeHolderDoc.Type = "http.SignatureTypeHolder"
 	HTTPSignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"
 	HTTPSignatureTypeHolderDoc.Description = "SignatureTypeHolder is used to hold internal type of the signature"
@@ -2231,6 +2377,7 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&WHOISRequestDoc,
 			&CODERequestDoc,
 			&JAVASCRIPTRequestDoc,
+			&AIRequestDoc,
 			&HTTPSignatureTypeHolderDoc,
 			&VARIABLESVariableDoc,
 		},

@@ -428,6 +428,18 @@ type Options struct {
 	EnableGlobalMatchersTemplates bool
 	// EnableFileTemplates enables file templates
 	EnableFileTemplates bool
+	// EnableAITemplates enables expansion of ai prompt templates
+	EnableAITemplates bool
+	// AICacheDirectory overrides where expanded ai prompts are cached
+	AICacheDirectory string
+	// AIProvider selects the preset endpoint used to expand ai prompts
+	AIProvider string
+	// AIBaseURL points at any OpenAI compatible endpoint, including local ones
+	AIBaseURL string
+	// AIModel is the model used to expand ai prompts
+	AIModel string
+	// AITimeout bounds a single prompt expansion call
+	AITimeout time.Duration
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
@@ -689,6 +701,12 @@ func (options *Options) Copy() *Options {
 		EnableSelfContainedTemplates:   options.EnableSelfContainedTemplates,
 		EnableGlobalMatchersTemplates:  options.EnableGlobalMatchersTemplates,
 		EnableFileTemplates:            options.EnableFileTemplates,
+		EnableAITemplates:              options.EnableAITemplates,
+		AICacheDirectory:               options.AICacheDirectory,
+		AIProvider:                     options.AIProvider,
+		AIBaseURL:                      options.AIBaseURL,
+		AIModel:                        options.AIModel,
+		AITimeout:                      options.AITimeout,
 		EnableCloudUpload:              options.EnableCloudUpload,
 		ScanID:                         options.ScanID,
 		ScanName:                       options.ScanName,

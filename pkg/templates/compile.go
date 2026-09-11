@@ -330,7 +330,19 @@ func (template *Template) Requests() int {
 		len(template.RequestsWebsocket) +
 		len(template.RequestsWHOIS) +
 		len(template.RequestsCode) +
-		len(template.RequestsJavascript)
+		len(template.RequestsJavascript) +
+		// unexpanded prompts still count as requests so that a template gated
+		// behind -ai reaches the capability check instead of failing earlier
+		// with a misleading "no requests defined" error
+		template.unexpandedAIRequests()
+}
+
+func (template *Template) unexpandedAIRequests() int {
+	if template.aiExpanded {
+		return 0
+	}
+
+	return len(template.RequestsAI)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
@@ -595,6 +607,13 @@ func prepareTemplate(template *Template, srcOptions *protocols.ExecutorOptions) 
 
 	if template.Info.Authors.IsEmpty() {
 		return nil, errors.New("no template author field provided")
+	}
+
+	// prompts are mapped onto protocol requests before anything inspects the
+	// template, so protocol detection, request counting and compilation all see
+	// an ordinary template
+	if err := template.expandAIRequests(options); err != nil {
+		return nil, err
 	}
 
 	numberOfWorkflows := len(template.Workflows)

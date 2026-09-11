@@ -75,6 +75,7 @@ func TestCapabilitiesFromOptions(t *testing.T) {
 		EnableSelfContainedTemplates:  true,
 		EnableGlobalMatchersTemplates: true,
 		EnableFileTemplates:           true,
+		EnableAITemplates:             true,
 	}
 
 	require.Equal(t, CapabilitySet{
@@ -84,6 +85,7 @@ func TestCapabilitiesFromOptions(t *testing.T) {
 		CapabilitySelfContained:  true,
 		CapabilityGlobalMatchers: true,
 		CapabilityFile:           true,
+		CapabilityAI:             true,
 	}, CapabilitiesFromOptions(options))
 }
 
@@ -110,6 +112,7 @@ func TestAllCapabilities(t *testing.T) {
 		CapabilityDAST,
 		CapabilitySelfContained,
 		CapabilityGlobalMatchers,
+		CapabilityAI,
 		CapabilityFile,
 	}, AllCapabilities())
 }
@@ -150,6 +153,12 @@ func TestCapabilityMetadata(t *testing.T) {
 			expectedStat: ExcludedGlobalMatchersTemplateStats,
 			expectedFlag: "-enable-global-matchers",
 			expectedKind: "global matchers",
+		},
+		{
+			capability:   CapabilityAI,
+			expectedStat: ExcludedAITemplateStats,
+			expectedFlag: "-enable-ai-templates",
+			expectedKind: "ai prompt",
 		},
 		{
 			capability:   CapabilityFile,
