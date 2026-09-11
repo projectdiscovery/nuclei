@@ -44,6 +44,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
+	case matchers.LLMMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchLLM(item))
 	}
 	return false, []string{}
 }

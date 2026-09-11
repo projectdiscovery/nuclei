@@ -114,7 +114,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.3.2
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
-	github.com/projectdiscovery/utils v0.11.3
+	github.com/projectdiscovery/utils v0.11.4-0.20260911142304-8e42f58e8d5f
 	github.com/projectdiscovery/wappalyzergo v0.2.96
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
@@ -370,7 +370,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
-	github.com/sashabaranov/go-openai v1.37.0 // indirect
+	github.com/sashabaranov/go-openai v1.42.0 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect

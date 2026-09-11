@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -22,6 +23,8 @@ const (
 	CapabilityGlobalMatchers Capability = "global-matchers"
 	// CapabilityFile requires the -file flag.
 	CapabilityFile Capability = "file"
+	// CapabilityLLM requires the -llm flag.
+	CapabilityLLM Capability = "llm"
 )
 
 type capabilityDefinition struct {
@@ -98,6 +101,19 @@ var capabilityDefinitions = []capabilityDefinition{
 		},
 		required: func(template *Template) bool {
 			return template.requiresGlobalMatchers()
+		},
+	},
+	{
+		capability:   CapabilityLLM,
+		stat:         ExcludedLLMTemplateStats,
+		flag:         "-llm",
+		templateKind: "llm",
+		loadBlocking: true,
+		enabled: func(options *types.Options) bool {
+			return options.EnableLLM
+		},
+		required: func(template *Template) bool {
+			return template.requiresLLM()
 		},
 	},
 	{
@@ -223,6 +239,24 @@ func (template *Template) requiresGlobalMatchers() bool {
 	for _, request := range template.RequestsHTTP {
 		if request != nil && request.GlobalMatchers {
 			return true
+		}
+	}
+
+	return false
+}
+
+// requiresLLM reports whether any http matcher in the template is an llm
+// matcher, so the capability check can exclude it when -llm is off rather than
+// letting it silently fail closed to no match at scan time.
+func (template *Template) requiresLLM() bool {
+	for _, request := range template.RequestsHTTP {
+		if request == nil {
+			continue
+		}
+		for _, matcher := range request.Matchers {
+			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+				return true
+			}
 		}
 	}
 

@@ -121,6 +121,10 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, fmt.Errorf("initialize nuclei configuration: %w", err)
 	}
 
+	if err := configureLLM(options); err != nil {
+		return nil, fmt.Errorf("configure llm: %w", err)
+	}
+
 	if options.HealthCheck {
 		runner.Logger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)

@@ -104,6 +104,30 @@ type Matcher struct {
 	//       []string{"//a[@target=\"_blank\"]"}
 	XPath []string `yaml:"xpath,omitempty" json:"xpath,omitempty" jsonschema:"title=xpath queries to match in response,description=xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"`
 	// description: |
+	//   Prompt is the natural-language question for an llm matcher. The model
+	//   judges the selected response part and returns a verdict; the matcher
+	//   fires when the verdict equals Expect with at least MinConfidence.
+	// examples:
+	//   - value: "\"Is this a working admin login form rather than a marketing page?\""
+	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm prompt,description=Natural language question the model answers about the response part"`
+	// description: |
+	//   Expect is the verdict that counts as a match for an llm matcher.
+	//   Defaults to "yes".
+	Expect string `yaml:"expect,omitempty" json:"expect,omitempty" jsonschema:"title=expected llm verdict,description=Verdict that counts as a match; defaults to yes"`
+	// description: |
+	//   Options restricts the model to a fixed set of verdicts for an llm
+	//   matcher. Defaults to yes/no.
+	Options []string `yaml:"options,omitempty" json:"options,omitempty" jsonschema:"title=allowed llm verdicts,description=Fixed set of verdicts the model may return; defaults to yes and no"`
+	// description: |
+	//   MinConfidence is the minimum confidence (0-1) an llm verdict needs to
+	//   count as a match. Defaults to 0.
+	MinConfidence float64 `yaml:"min-confidence,omitempty" json:"min-confidence,omitempty" jsonschema:"title=minimum llm confidence,description=Minimum confidence between 0 and 1 for an llm verdict to match"`
+	// description: |
+	//   MaxInputTokens caps how much of the response part is sent to the model
+	//   for an llm matcher, as an approximate token count.
+	MaxInputTokens int `yaml:"max-input-tokens,omitempty" json:"max-input-tokens,omitempty" jsonschema:"title=max llm input tokens,description=Approximate cap on response tokens sent to the model"`
+
+	// description: |
 	//   Encoding specifies the encoding for the words field if any.
 	// values:
 	//   - "hex"
@@ -135,6 +159,7 @@ type Matcher struct {
 	binaryDecoded []string
 	regexCompiled []*regexp.Regexp
 	dslCompiled   []*govaluate.EvaluableExpression
+	llmClient     LLMClient
 }
 
 // ConditionType is the type of condition for matcher

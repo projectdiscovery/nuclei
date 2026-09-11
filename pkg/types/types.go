@@ -428,6 +428,22 @@ type Options struct {
 	EnableGlobalMatchersTemplates bool
 	// EnableFileTemplates enables file templates
 	EnableFileTemplates bool
+	// EnableLLM enables llm matchers and extractors (semantic matching)
+	EnableLLM bool
+	// LLMProvider selects a preset endpoint for llm matching
+	LLMProvider string
+	// LLMBaseURL is any OpenAI-compatible endpoint for llm matching, local included
+	LLMBaseURL string
+	// LLMModel is the model used for llm matching
+	LLMModel string
+	// LLMTimeout bounds a single llm call, in seconds
+	LLMTimeout int
+	// LLMMaxCalls caps llm calls for the whole scan (0 = unlimited)
+	LLMMaxCalls int
+	// LLMConcurrency caps in-flight llm calls
+	LLMConcurrency int
+	// LLMCache enables caching of llm responses within a scan
+	LLMCache bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
