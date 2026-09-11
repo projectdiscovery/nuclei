@@ -433,7 +433,7 @@ func EnableAITemplates() NucleiSDKOptions {
 // template compilation rather than the scan itself. A run whose prompts are
 // already cached needs none of them.
 type AIOptions struct {
-	Provider       string        // preset endpoint (openai, ollama, llamacpp, ...); ignored when BaseURL is set
+	Provider       string        // anthropic, openai, ollama, llamacpp, ...; ignored when BaseURL is set
 	BaseURL        string        // any OpenAI compatible endpoint, including a local one
 	Model          string        // model used to expand prompts
 	CacheDirectory string        // where expanded prompts are cached; empty uses the nuclei config directory

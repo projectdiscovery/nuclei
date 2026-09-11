@@ -183,3 +183,30 @@ func TestNewResolverRequiresAModel(t *testing.T) {
 	_, err := NewResolver(ProviderConfig{Provider: "ollama"})
 	require.ErrorContains(t, err, "no ai model configured")
 }
+
+func TestNewResolverDispatchesAnthropicToMessagesAPI(t *testing.T) {
+	resolver, err := NewResolver(ProviderConfig{Provider: "anthropic", Model: "claude-opus-5"})
+	require.NoError(t, err)
+	require.IsType(t, &anthropicResolver{}, resolver)
+}
+
+func TestNewResolverDispatchesPresetsToChatCompletions(t *testing.T) {
+	for _, provider := range []string{"openai", "ollama", "groq", "vllm"} {
+		resolver, err := NewResolver(ProviderConfig{Provider: provider, Model: "any"})
+		require.NoError(t, err, provider)
+		require.IsType(t, &openAIResolver{}, resolver, provider)
+	}
+}
+
+func TestBaseURLOverridesAnthropicDispatch(t *testing.T) {
+	// a base url means the caller is pointing at an OpenAI compatible gateway,
+	// whatever they named the provider
+	resolver, err := NewResolver(ProviderConfig{Provider: "anthropic", BaseURL: "http://localhost:8080/v1", Model: "any"})
+	require.NoError(t, err)
+	require.IsType(t, &openAIResolver{}, resolver)
+}
+
+func TestProviderNamesIncludesAnthropic(t *testing.T) {
+	require.Contains(t, ProviderNames(), "anthropic")
+	require.IsIncreasing(t, ProviderNames())
+}

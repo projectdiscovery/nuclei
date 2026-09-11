@@ -177,7 +177,7 @@ TEMPLATES:
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
    -eai, -enable-ai-templates             enable loading templates that declare ai prompts
-   -aip, -ai-provider string              ai provider to expand prompts with (groq, llamacpp, lmstudio, ollama, openai, openrouter, together, vllm) (default "openai")
+   -aip, -ai-provider string              ai provider to expand prompts with (anthropic, groq, llamacpp, lmstudio, ollama, openai, openrouter, together, vllm) (default "openai")
    -aim, -ai-model string                 ai model to expand prompts with
    -aiu, -ai-base-url string              openai compatible endpoint to expand prompts with (overrides -ai-provider)
    -aic, -ai-cache string                 directory to cache expanded ai prompts in
