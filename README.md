@@ -1,7 +1,7 @@
 ![nuclei](/static/nuclei-cover-image.png)
 
 <div align="center">
-  
+
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">`English`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">`中文`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">`Korean`</a> •
@@ -10,7 +10,8 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">`日本語`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">`Portuguese`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_TR.md">`Türkçe`</a>
-  
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_FA.md">`فارسی`</a>
+
 </div>
 
 <p align="center">
@@ -664,7 +665,7 @@ Thanks to all the amazing [**`community contributors for sending PRs`**](https:/
 <br>
 
 <div align="center">
-  
+
   <sub>**`nuclei`** is distributed under [**MIT License**](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)</sub>
 
 </div>
