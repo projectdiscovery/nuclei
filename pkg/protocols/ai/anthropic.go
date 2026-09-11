@@ -73,6 +73,12 @@ func (resolver *anthropicResolver) complete(ctx context.Context, model, prompt s
 		return nil, errkit.Newf("ai provider declined the prompt (%s)", response.StopDetails.Category)
 	}
 
+	// thinking tokens count against max_tokens, so a reasoning model can hit the
+	// cap before writing any fragment at all
+	if response.StopReason == anthropic.StopReasonMaxTokens {
+		return nil, errkit.Newf("ai provider truncated the response after %d tokens, the model needs a higher output limit", response.Usage.OutputTokens)
+	}
+
 	var builder strings.Builder
 	for _, block := range response.Content {
 		if text, ok := block.AsAny().(anthropic.TextBlock); ok {

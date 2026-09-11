@@ -20,9 +20,12 @@ const defaultProvider = "openai"
 // is dispatched to its own client instead of carrying a base url preset.
 const providerAnthropic = "anthropic"
 
-// maxResponseTokens caps a resolved fragment. Expansions are a handful of
-// requests and matchers; anything longer is a runaway answer, not a template.
-const maxResponseTokens = 4096
+// maxResponseTokens caps a resolved fragment on providers that require a limit.
+//
+// A fragment is a handful of requests and matchers, but reasoning models spend
+// an unpredictable number of tokens before emitting any of it, so this is set
+// well above what the answer itself needs.
+const maxResponseTokens = 16384
 
 // openAICompatiblePresets are base urls for well known /v1/chat/completions
 // endpoints.

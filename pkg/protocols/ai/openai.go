@@ -53,9 +53,12 @@ func (resolver *openAIResolver) Resolve(ctx context.Context, prompt string, mode
 func (resolver *openAIResolver) complete(ctx context.Context, model, prompt string) ([]byte, error) {
 	// temperature 0 so that a cache miss on the same prompt tends to produce
 	// the same fragment, which keeps template review meaningful
+	// no token cap: reasoning models spend an unpredictable amount before they
+	// emit any content, and a cap truncates them into an empty response. The
+	// capability contract bounds the answer instead, and validateFragment
+	// rejects anything that comes back malformed.
 	response, err := resolver.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 		Model:       model,
-		MaxTokens:   maxResponseTokens,
 		Temperature: 0,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: capabilityContract},
@@ -70,5 +73,12 @@ func (resolver *openAIResolver) complete(ctx context.Context, model, prompt stri
 		return nil, errkit.New("ai provider returned no choices")
 	}
 
-	return []byte(stripCodeFence(response.Choices[0].Message.Content)), nil
+	choice := response.Choices[0]
+	// a server side cap truncates the same way ours used to, and the symptom is
+	// an empty fragment rather than an obvious error, so name the cause
+	if choice.FinishReason == openai.FinishReasonLength {
+		return nil, errkit.Newf("ai provider truncated the response after %d tokens, the model needs a higher output limit", response.Usage.CompletionTokens)
+	}
+
+	return []byte(stripCodeFence(choice.Message.Content)), nil
 }
