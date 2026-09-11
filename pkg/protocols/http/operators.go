@@ -44,6 +44,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
+	case matchers.LLMMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchLLM(item))
 	}
 	return false, []string{}
 }
@@ -77,6 +79,8 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 		return extractor.ExtractJSON(item)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
+	case extractors.LLMExtractor:
+		return extractor.ExtractLLM(item)
 	}
 	return nil
 }

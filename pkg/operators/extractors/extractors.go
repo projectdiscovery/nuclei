@@ -113,4 +113,20 @@ type Extractor struct {
 	//   - false
 	//   - true
 	CaseInsensitive bool `yaml:"case-insensitive,omitempty" json:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
+
+	// description: |
+	//   Prompt is the natural-language instruction for an llm extractor. The
+	//   model reads the response part and returns the values named by Schema.
+	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm extraction prompt,description=Natural language instruction describing what to extract"`
+	// description: |
+	//   Schema names the fields an llm extractor returns, mapping each field to
+	//   its type (string, number, boolean). It shapes both the prompt and the
+	//   parsed output.
+	Schema map[string]string `yaml:"schema,omitempty" json:"schema,omitempty" jsonschema:"title=llm extraction schema,description=Fields to extract mapped to their type"`
+	// description: |
+	//   MaxInputTokens caps how much of the response part is sent to the model
+	//   for an llm extractor, as an approximate token count.
+	MaxInputTokens int `yaml:"max-input-tokens,omitempty" json:"max-input-tokens,omitempty" jsonschema:"title=max llm input tokens,description=Approximate cap on response tokens sent to the model"`
+
+	llmClient LLMClient
 }
