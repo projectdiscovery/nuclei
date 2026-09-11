@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -170,6 +171,100 @@ func (s *slowExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	case <-time.After(200 * time.Millisecond):
 		return true, nil
 	}
+}
+
+type adaptiveConcurrencyExecuter struct {
+	delay       time.Duration
+	started     atomic.Int32
+	completed   atomic.Int32
+	inFlight    atomic.Int32
+	maxInFlight atomic.Int32
+	onStart     func(int32)
+}
+
+func (s *adaptiveConcurrencyExecuter) Compile() error { return nil }
+func (s *adaptiveConcurrencyExecuter) Requests() int  { return 1 }
+func (s *adaptiveConcurrencyExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+	started := s.started.Add(1)
+	if s.onStart != nil {
+		s.onStart(started)
+	}
+	inFlight := s.inFlight.Add(1)
+	for {
+		maximum := s.maxInFlight.Load()
+		if inFlight <= maximum || s.maxInFlight.CompareAndSwap(maximum, inFlight) {
+			break
+		}
+	}
+	defer s.inFlight.Add(-1)
+
+	select {
+	case <-ctx.Context().Done():
+		return false, ctx.Context().Err()
+	case <-time.After(s.delay):
+		s.completed.Add(1)
+		return true, nil
+	}
+}
+func (s *adaptiveConcurrencyExecuter) ExecuteWithResults(*scan.ScanContext) ([]*output.ResultEvent, error) {
+	return nil, nil
+}
+
+func TestExecuteTemplateSprayRefreshesDynamicTemplateConcurrency(t *testing.T) {
+	const (
+		templateCount      = 8
+		initialConcurrency = 2
+		finalConcurrency   = 8
+	)
+
+	var currentConcurrency atomic.Int32
+	currentConcurrency.Store(initialConcurrency)
+	var expandOnce sync.Once
+	executer := &adaptiveConcurrencyExecuter{
+		delay: 100 * time.Millisecond,
+		onStart: func(started int32) {
+			if started == initialConcurrency {
+				expandOnce.Do(func() { currentConcurrency.Store(finalConcurrency) })
+			}
+		},
+	}
+	options := &types.Options{
+		BulkSize:                1,
+		TemplateThreads:         initialConcurrency,
+		HeadlessBulkSize:        1,
+		HeadlessTemplateThreads: 1,
+	}
+	options.SetTemplateThreadsProvider(func() int { return int(currentConcurrency.Load()) })
+	if got := options.Copy().CurrentTemplateThreads(); got != initialConcurrency {
+		t.Fatalf("copied options returned concurrency %d, expected %d", got, initialConcurrency)
+	}
+	engine := New(options)
+	engine.SetExecuterOptions(&protocols.ExecutorOptions{
+		Logger:       engine.Logger,
+		Options:      options,
+		ResumeCfg:    types.NewResumeCfg(),
+		ProtocolType: tmpltypes.NetworkProtocol,
+	})
+	templatesList := make([]*templates.Template, 0, templateCount)
+	for range templateCount {
+		templatesList = append(templatesList, &templates.Template{Executer: executer})
+	}
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "slow-target"}}}
+
+	started := time.Now()
+	engine.ExecuteScanWithOpts(context.Background(), templatesList, targets, true)
+	elapsed := time.Since(started)
+
+	if got := executer.completed.Load(); got != templateCount {
+		t.Fatalf("completed %d templates, expected %d", got, templateCount)
+	}
+	if got := executer.maxInFlight.Load(); got <= initialConcurrency {
+		t.Fatalf("maximum concurrency stayed at %d; expected it to expand beyond %d", got, initialConcurrency)
+	}
+	if elapsed >= 350*time.Millisecond {
+		t.Fatalf("dynamic execution took %s; fixed concurrency would take about 400ms", elapsed)
+	}
+	t.Logf("dynamic execution completed all %d templates in %s with peak concurrency %d", templateCount, elapsed, executer.maxInFlight.Load())
 }
 func (s *slowExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
 	return nil, nil

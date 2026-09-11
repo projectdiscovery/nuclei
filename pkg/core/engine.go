@@ -61,7 +61,7 @@ func New(options *types.Options) *Engine {
 func (e *Engine) GetWorkPoolConfig() WorkPoolConfig {
 	config := WorkPoolConfig{
 		InputConcurrency:         e.options.BulkSize,
-		TypeConcurrency:          e.options.TemplateThreads,
+		TypeConcurrency:          e.options.CurrentTemplateThreads(),
 		HeadlessInputConcurrency: e.options.HeadlessBulkSize,
 		HeadlessTypeConcurrency:  e.options.HeadlessTemplateThreads,
 	}
