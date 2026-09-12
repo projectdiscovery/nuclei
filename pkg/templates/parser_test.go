@@ -3,9 +3,14 @@ package templates
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -13,6 +18,103 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/stretchr/testify/require"
 )
+
+type countingCatalog struct {
+	reads atomic.Int32
+}
+
+func (c *countingCatalog) OpenFile(string) (io.ReadCloser, error) {
+	c.reads.Add(1)
+	time.Sleep(25 * time.Millisecond)
+	return io.NopCloser(strings.NewReader("id: concurrent-parse\ninfo:\n  name: Concurrent parse\n  author: pd\n  severity: info\n")), nil
+}
+
+func (*countingCatalog) GetTemplatePath(string) ([]string, error) { return nil, nil }
+func (*countingCatalog) GetTemplatesPath([]string) ([]string, map[string]error) {
+	return nil, nil
+}
+func (*countingCatalog) ResolvePath(string, string) (string, error) { return "", nil }
+
+func TestParserLifecycle(t *testing.T) {
+	t.Run("purge clears parsed and compiled caches", func(t *testing.T) {
+		parser := NewParser()
+		parser.Cache().Store("tpl-a", &Template{}, []byte("raw"), nil)
+		parser.CompiledCache().Store("tpl-a", &Template{}, []byte("raw"), nil)
+
+		require.Equal(t, 1, parser.ParsedCount())
+		require.Equal(t, 1, parser.CompiledCount())
+		parser.Purge()
+		require.Zero(t, parser.ParsedCount())
+		require.Zero(t, parser.CompiledCount())
+	})
+
+	t.Run("execution parser shares only parsed cache", func(t *testing.T) {
+		parent := NewParser()
+		parent.ShouldValidate = true
+		parent.NoStrictSyntax = true
+		parent.Cache().Store("parsed", &Template{}, []byte("raw"), nil)
+		parent.CompiledCache().StoreWithoutRaw("parent-compiled", &Template{}, nil)
+
+		execution := NewExecutionParser(parent)
+		sibling := NewExecutionParser(parent)
+
+		require.Same(t, parent.Cache(), execution.Cache())
+		require.Same(t, parent.Cache(), sibling.Cache())
+		require.NotSame(t, parent.CompiledCache(), execution.CompiledCache())
+		require.NotSame(t, execution.CompiledCache(), sibling.CompiledCache())
+		require.True(t, execution.ShouldValidate)
+		require.True(t, execution.NoStrictSyntax)
+		require.Equal(t, 1, execution.ParsedCount())
+		require.Zero(t, execution.CompiledCount())
+
+		execution.CompiledCache().StoreWithoutRaw("execution-compiled", &Template{}, nil)
+		require.Equal(t, 1, execution.CompiledCount())
+		require.Zero(t, sibling.CompiledCount())
+		require.Equal(t, 1, parent.CompiledCount())
+	})
+
+	t.Run("purge compiled preserves shared parsed cache", func(t *testing.T) {
+		parent := NewParser()
+		parent.Cache().Store("parsed", &Template{}, []byte("raw"), nil)
+		execution := NewExecutionParser(parent)
+		execution.CompiledCache().StoreWithoutRaw("compiled", &Template{}, nil)
+
+		execution.PurgeCompiled()
+
+		require.Zero(t, execution.CompiledCount())
+		require.Equal(t, 1, execution.ParsedCount())
+		require.Equal(t, 1, parent.ParsedCount())
+	})
+}
+
+func TestParseTemplateCoalescesConcurrentCacheMisses(t *testing.T) {
+	const callers = 20
+	cache := NewCache()
+	catalog := &countingCatalog{}
+	start := make(chan struct{})
+	errs := make(chan error, callers)
+	var wg sync.WaitGroup
+
+	for range callers {
+		parser := NewParserWithParsedCache(cache)
+		wg.Add(1)
+		go func(parser *Parser) {
+			defer wg.Done()
+			<-start
+			_, err := parser.ParseTemplate("concurrent.yaml", catalog)
+			errs <- err
+		}(parser)
+	}
+
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	require.EqualValues(t, 1, catalog.reads.Load(), "one shared cache miss should read and parse the template once")
+}
 
 func TestLoadTemplate(t *testing.T) {
 	catalog := disk.NewCatalog("")
