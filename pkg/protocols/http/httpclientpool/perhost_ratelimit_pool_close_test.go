@@ -47,3 +47,22 @@ func TestPerHostRateLimitPoolSmoothsLowRates(t *testing.T) {
 	require.Less(t, time.Since(started), 500*time.Millisecond,
 		"the first request beyond the initial bucket should be continuously refilled, not wait for a fixed window")
 }
+
+func TestUnboundedPerHostRateLimitPoolRetainsBudgetsBeyondDefaultCapacity(t *testing.T) {
+	opts := &types.Options{RateLimit: 10, RateLimitDuration: time.Second}
+	pool := NewPerHostRateLimitPool(0, time.Hour, time.Hour, opts)
+	t.Cleanup(pool.Close)
+
+	first, err := pool.GetOrCreate("https://first.example.com")
+	require.NoError(t, err)
+	for i := 0; i < 2048; i++ {
+		_, err = pool.GetOrCreate(fmt.Sprintf("https://host%d.example.com", i))
+		require.NoError(t, err)
+	}
+	again, err := pool.GetOrCreate("https://first.example.com")
+	require.NoError(t, err)
+
+	require.Same(t, first, again, "large scans must not receive a fresh host budget after table churn")
+	require.Equal(t, 2049, pool.Size())
+	require.Zero(t, pool.Stats().Evictions)
+}

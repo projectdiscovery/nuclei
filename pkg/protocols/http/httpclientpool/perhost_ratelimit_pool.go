@@ -46,8 +46,8 @@ type rateLimitEntry struct {
 }
 
 func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, options *types.Options) *PerHostRateLimitPool {
-	if size <= 0 {
-		size = 1024
+	if size < 0 {
+		size = 0
 	}
 	// For global scan tracking, use very long TTL to keep entries for entire scan duration
 	// Default to 24 hours if not specified, which should cover even very long scans

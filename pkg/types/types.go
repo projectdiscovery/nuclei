@@ -213,6 +213,11 @@ type Options struct {
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.
 	PerHostRateLimit bool
+	// PerHostRateLimitPoolSize bounds the number of remembered HTTP host
+	// limiters. Zero uses the default bounded pool. A negative value retains
+	// every host for the lifetime of the scan protocol state; embedders should
+	// use that mode only when they provide bounded scan-lifetime cleanup.
+	PerHostRateLimitPoolSize int
 	// EnableHTTPCache enables HTTP caching (RFC 9111) for requests
 	//
 	// NOTE(dwisiswant0): this is experimental and might be enabled by default
@@ -636,6 +641,7 @@ func (options *Options) Copy() *Options {
 		DisableHTTPProbe:               options.DisableHTTPProbe,
 		PreflightPortScan:              options.PreflightPortScan,
 		PerHostRateLimit:               options.PerHostRateLimit,
+		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
