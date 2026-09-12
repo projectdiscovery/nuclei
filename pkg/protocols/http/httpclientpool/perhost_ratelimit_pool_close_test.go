@@ -40,3 +40,18 @@ func TestPerHostRateLimitPool_CloseReleasesLimiters(t *testing.T) {
 		return runtime.NumGoroutine()-base <= n/5
 	}, 3*time.Second, 20*time.Millisecond, "limiter goroutines should be released after Close")
 }
+
+func TestPerHostRateLimitPoolSmoothsLowRates(t *testing.T) {
+	opts := &types.Options{RateLimit: 50, RateLimitDuration: time.Second}
+	pool := NewPerHostRateLimitPool(1, time.Hour, time.Hour, opts)
+	t.Cleanup(pool.Close)
+
+	limiter, err := pool.GetOrCreate("https://smooth.example.com")
+	require.NoError(t, err)
+	started := time.Now()
+	for range 51 {
+		limiter.Take()
+	}
+	require.Less(t, time.Since(started), 500*time.Millisecond,
+		"the first request beyond the initial bucket should be continuously refilled, not wait for a fixed window")
+}
