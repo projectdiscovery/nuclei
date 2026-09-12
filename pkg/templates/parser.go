@@ -51,6 +51,25 @@ func NewParserWithParsedCache(cache *Cache) *Parser {
 	}
 }
 
+// NewExecutionParser creates a parser for one engine execution. Parsed template
+// data is shared with the long-lived parent, while compiled templates remain
+// private because they retain execution-specific options and mutable state.
+func NewExecutionParser(parent *Parser) *Parser {
+	if parent == nil {
+		return NewParser()
+	}
+
+	parent.Lock()
+	defer parent.Unlock()
+
+	return &Parser{
+		ShouldValidate:         parent.ShouldValidate,
+		NoStrictSyntax:         parent.NoStrictSyntax,
+		parsedTemplatesCache:   parent.parsedTemplatesCache,
+		compiledTemplatesCache: NewCache(),
+	}
+}
+
 // Purge clears the parsed and compiled template caches. It should be called
 // when the parser is no longer needed (e.g. on engine Close) so a long-running
 // embedder does not retain every compiled template (a heap-heavy object) for
@@ -59,6 +78,14 @@ func (p *Parser) Purge() {
 	p.Lock()
 	defer p.Unlock()
 	p.parsedTemplatesCache.Purge()
+	p.compiledTemplatesCache.Purge()
+}
+
+// PurgeCompiled releases execution-specific compiled templates without
+// clearing parsed template data that may be shared by other executions.
+func (p *Parser) PurgeCompiled() {
+	p.Lock()
+	defer p.Unlock()
 	p.compiledTemplatesCache.Purge()
 }
 
@@ -140,6 +167,23 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 	if value != nil {
 		return value, err
 	}
+
+	// Multiple engine executions can share the parsed cache. Coalesce their
+	// concurrent first access so an immutable template is read and parsed once.
+	// Recheck inside the flight because another caller may have populated the
+	// cache between the optimistic lookup above and becoming the flight leader.
+	key := fmt.Sprintf("%t:%s", p.NoStrictSyntax, templatePath)
+	loaded, loadErr, _ := p.parsedTemplatesCache.loads.Do(key, func() (any, error) {
+		cached, _, cachedErr := p.parsedTemplatesCache.Has(templatePath)
+		if cached != nil {
+			return cached, cachedErr
+		}
+		return p.parseTemplate(templatePath, catalog)
+	})
+	return loaded, loadErr
+}
+
+func (p *Parser) parseTemplate(templatePath string, catalog catalog.Catalog) (any, error) {
 
 	reader, err := utils.ReaderFromPathOrURL(templatePath, catalog)
 	if err != nil {

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -212,6 +213,11 @@ type Options struct {
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.
 	PerHostRateLimit bool
+	// PerHostRateLimitPoolSize bounds the number of remembered HTTP host
+	// limiters. Zero uses the default bounded pool. A negative value retains
+	// every host for the lifetime of the scan protocol state; embedders should
+	// use that mode only when they provide bounded scan-lifetime cleanup.
+	PerHostRateLimitPoolSize int
 	// EnableHTTPCache enables HTTP caching (RFC 9111) for requests
 	//
 	// NOTE(dwisiswant0): this is experimental and might be enabled by default
@@ -496,6 +502,55 @@ type Options struct {
 	timeouts *Timeouts
 	// m is a mutex to protect timeouts from concurrent access
 	m sync.Mutex
+	// templateThreadsProvider is private so Options remains safe for integrations
+	// that serialize its exported configuration fields.
+	templateThreadsProvider func() int
+	// templateThreadAcquire and templateThreadRelease optionally enforce a
+	// concurrency budget shared by multiple embedded Nuclei engines.
+	templateThreadAcquire func(context.Context) error
+	templateThreadRelease func()
+}
+
+// SetTemplateThreadsProvider configures a dynamic template concurrency source.
+// The provider is consulted while an execution schedules templates, allowing an
+// embedding application to redistribute a fixed concurrency budget as peer
+// executions start and finish. It must be safe for concurrent use.
+func (options *Options) SetTemplateThreadsProvider(provider func() int) {
+	options.templateThreadsProvider = provider
+}
+
+// CurrentTemplateThreads returns the dynamic template concurrency when the
+// configured provider returns a positive value, or TemplateThreads otherwise.
+func (options *Options) CurrentTemplateThreads() int {
+	if options.templateThreadsProvider != nil {
+		if current := options.templateThreadsProvider(); current > 0 {
+			return current
+		}
+	}
+	return options.TemplateThreads
+}
+
+// SetTemplateThreadsLimiter configures an optional concurrency limiter shared
+// by embedding applications across multiple Nuclei engines. A successful
+// acquire must have a matching release. Both callbacks must be concurrency-safe.
+func (options *Options) SetTemplateThreadsLimiter(acquire func(context.Context) error, release func()) {
+	options.templateThreadAcquire = acquire
+	options.templateThreadRelease = release
+}
+
+// AcquireTemplateThread reserves one shared template-execution slot.
+func (options *Options) AcquireTemplateThread(ctx context.Context) error {
+	if options.templateThreadAcquire == nil {
+		return nil
+	}
+	return options.templateThreadAcquire(ctx)
+}
+
+// ReleaseTemplateThread releases one shared template-execution slot.
+func (options *Options) ReleaseTemplateThread() {
+	if options.templateThreadRelease != nil {
+		options.templateThreadRelease()
+	}
 }
 
 func (options *Options) Copy() *Options {
@@ -551,6 +606,9 @@ func (options *Options) Copy() *Options {
 		NoHostErrors:                   options.NoHostErrors,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
+		templateThreadsProvider:        options.templateThreadsProvider,
+		templateThreadAcquire:          options.templateThreadAcquire,
+		templateThreadRelease:          options.templateThreadRelease,
 		HeadlessBulkSize:               options.HeadlessBulkSize,
 		HeadlessTemplateThreads:        options.HeadlessTemplateThreads,
 		Timeout:                        options.Timeout,
@@ -583,6 +641,7 @@ func (options *Options) Copy() *Options {
 		DisableHTTPProbe:               options.DisableHTTPProbe,
 		PreflightPortScan:              options.PreflightPortScan,
 		PerHostRateLimit:               options.PerHostRateLimit,
+		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,

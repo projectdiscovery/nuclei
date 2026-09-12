@@ -104,6 +104,9 @@ type ExecutorOptions struct {
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
 	Interactsh *interactsh.Client
+	// InteractshScope isolates delayed callbacks and cleanup for one execution
+	// when Interactsh is shared by concurrent engines.
+	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
 	// Stop execution once first match is found (Assigned while parsing templates)
@@ -157,6 +160,20 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
+}
+
+// RegisterInteractshRequest attaches execution-local output dependencies before
+// registering a delayed OOB callback on a potentially shared Interactsh client.
+func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interactsh.RequestData) {
+	if e == nil || e.Interactsh == nil || data == nil {
+		return
+	}
+	data.Output = e.Output
+	data.Progress = e.Progress
+	data.IssuesClient = e.IssuesClient
+	data.FuzzParamsFrequency = e.FuzzParamsFrequency
+	data.Scope = e.InteractshScope
+	e.Interactsh.RequestEvent(urls, data)
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
@@ -315,6 +332,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
+		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,

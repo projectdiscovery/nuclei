@@ -46,8 +46,8 @@ type rateLimitEntry struct {
 }
 
 func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, options *types.Options) *PerHostRateLimitPool {
-	if size <= 0 {
-		size = 1024
+	if size < 0 {
+		size = 0
 	}
 	// For global scan tracking, use very long TTL to keep entries for entire scan duration
 	// Default to 24 hours if not specified, which should cover even very long scans
@@ -151,7 +151,7 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 	p.misses.Add(1)
 
 	// Create new rate limiter for this host
-	limiter := utils.GetRateLimiter(context.Background(), p.options.RateLimit, p.options.RateLimitDuration)
+	limiter := newPerHostRateLimiter(p.options)
 
 	entry := &rateLimitEntry{
 		limiter:   limiter,
@@ -165,6 +165,17 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 	}
 
 	return limiter, nil
+}
+
+// newPerHostRateLimiter continuously refills every finite host budget instead
+// of starting one fixed-window timer goroutine per host. Apart from producing
+// steadier target pressure, this keeps a large host pool cheap and prevents
+// several concurrent engines from consuming the whole window at once.
+func newPerHostRateLimiter(options *types.Options) *ratelimit.Limiter {
+	if options == nil || options.RateLimit == 0 || options.RateLimitDuration == 0 {
+		return utils.GetRateLimiter(context.Background(), 0, 0)
+	}
+	return ratelimit.NewLeakyBucket(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {
