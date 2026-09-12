@@ -167,18 +167,15 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 	return limiter, nil
 }
 
-// newPerHostRateLimiter keeps low customer-selected rates smooth instead of
-// allowing a full fixed-window burst followed by a long pause. Apart from
-// producing steadier target pressure, this also prevents several concurrent
-// engines sharing the host pool from consuming the whole window at once.
+// newPerHostRateLimiter continuously refills every finite host budget instead
+// of starting one fixed-window timer goroutine per host. Apart from producing
+// steadier target pressure, this keeps a large host pool cheap and prevents
+// several concurrent engines from consuming the whole window at once.
 func newPerHostRateLimiter(options *types.Options) *ratelimit.Limiter {
 	if options == nil || options.RateLimit == 0 || options.RateLimitDuration == 0 {
 		return utils.GetRateLimiter(context.Background(), 0, 0)
 	}
-	if options.RateLimit <= 50 {
-		return ratelimit.NewLeakyBucket(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
-	}
-	return utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
+	return ratelimit.NewLeakyBucket(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {
