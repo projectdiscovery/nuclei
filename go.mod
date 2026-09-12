@@ -108,7 +108,7 @@ require (
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/networkpolicy v0.1.49
-	github.com/projectdiscovery/ratelimit v0.0.88
+	github.com/projectdiscovery/ratelimit v0.0.90-0.20260910081235-9a6bcf83b7fc
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.4.0
