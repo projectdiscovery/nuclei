@@ -103,6 +103,10 @@ func (m *literalMatcher) find(content string) map[string]struct{} {
 func findExactAndASCIIFolded(content string, exactMatcher, foldedMatcher *literalMatcher) (map[string]struct{}, map[string]struct{}) {
 	exactFound := make(map[string]struct{})
 	foldedFound := make(map[string]struct{})
+	if foldedMatcher != nil && !isASCII(content) {
+		foldedFound = foldedMatcher.find(canonicalFoldString(content))
+		foldedMatcher = nil
+	}
 	var exactState, foldedState int32
 	for index := 0; index < len(content); index++ {
 		value := content[index]

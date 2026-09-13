@@ -534,6 +534,11 @@ func (options *Options) CurrentTemplateThreads() int {
 // by embedding applications across multiple Nuclei engines. A successful
 // acquire must have a matching release. Both callbacks must be concurrency-safe.
 func (options *Options) SetTemplateThreadsLimiter(acquire func(context.Context) error, release func()) {
+	if acquire == nil || release == nil {
+		options.templateThreadAcquire = nil
+		options.templateThreadRelease = nil
+		return
+	}
 	options.templateThreadAcquire = acquire
 	options.templateThreadRelease = release
 }

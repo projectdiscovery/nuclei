@@ -275,6 +275,15 @@ func TestASCIIFoldedMatcherMatchesCanonicalFold(t *testing.T) {
 	}
 }
 
+func TestASCIIFoldedMatcherPreservesUnicodeSimpleFold(t *testing.T) {
+	pattern := canonicalFoldString("kelvin")
+	matcher := newLiteralMatcher([]string{pattern})
+	_, found := findExactAndASCIIFolded("prefix KELVIN suffix", nil, matcher)
+	if _, ok := found[pattern]; !ok {
+		t.Fatal("ASCII literal must match a Unicode simple-fold equivalent")
+	}
+}
+
 func TestUnicodeFoldedMatcherMatchesCanonicalFold(t *testing.T) {
 	pattern := canonicalFoldString("kelvin σ")
 	matcher := newLiteralMatcher([]string{pattern})

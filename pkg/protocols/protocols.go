@@ -514,6 +514,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
+	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency

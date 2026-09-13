@@ -80,15 +80,17 @@ func (c *Client) NewRequestScope() *RequestScope {
 	return &RequestScope{client: c, ids: make(map[string]struct{})}
 }
 
-func (s *RequestScope) track(id string) {
+func (s *RequestScope) track(id string) bool {
 	if s == nil || id == "" {
-		return
+		return true
 	}
 	s.mu.Lock()
-	if !s.closing {
-		s.ids[id] = struct{}{}
+	defer s.mu.Unlock()
+	if s.closing {
+		return false
 	}
-	s.mu.Unlock()
+	s.ids[id] = struct{}{}
+	return true
 }
 
 func (s *RequestScope) beginCallback() bool {
@@ -498,7 +500,6 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	c.initializeCaches()
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
-		data.Scope.track(id)
 
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
 			gotItem, err := c.matchedTemplates.Get(eventHash(data.Event))
@@ -521,7 +522,11 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 				}
 			}
 		} else {
-			_ = c.requests.SetWithExpire(id, data, c.eviction)
+			c.requestLifecycleMu.RLock()
+			if data.Scope.track(id) {
+				_ = c.requests.SetWithExpire(id, data, c.eviction)
+			}
+			c.requestLifecycleMu.RUnlock()
 		}
 	}
 }

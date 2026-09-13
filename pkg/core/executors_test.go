@@ -246,8 +246,8 @@ func TestExecuteTemplateSprayRefreshesDynamicTemplateConcurrency(t *testing.T) {
 		ProtocolType: tmpltypes.NetworkProtocol,
 	})
 	templatesList := make([]*templates.Template, 0, templateCount)
-	for range templateCount {
-		templatesList = append(templatesList, &templates.Template{Executer: executer})
+	for index := range templateCount {
+		templatesList = append(templatesList, &templates.Template{ID: fmt.Sprintf("adaptive-%d", index), Executer: executer})
 	}
 	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "slow-target"}}}
 
@@ -299,12 +299,50 @@ func TestExecuteTemplateSprayHonorsSharedConcurrencyLimiter(t *testing.T) {
 		ProtocolType: tmpltypes.NetworkProtocol,
 	})
 	templatesList := make([]*templates.Template, 0, templateCount)
-	for range templateCount {
-		templatesList = append(templatesList, &templates.Template{Executer: executer})
+	for index := range templateCount {
+		templatesList = append(templatesList, &templates.Template{ID: fmt.Sprintf("shared-limit-%d", index), Executer: executer})
 	}
 
 	engine.ExecuteScanWithOpts(context.Background(), templatesList,
 		&fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "slow-target"}}}, true)
+
+	if got := executer.completed.Load(); got != templateCount {
+		t.Fatalf("completed %d templates, expected %d", got, templateCount)
+	}
+	if got := executer.maxInFlight.Load(); got > sharedBudget {
+		t.Fatalf("maximum concurrency was %d, shared budget is %d", got, sharedBudget)
+	}
+}
+
+func TestExecuteAllSelfContainedHonorsSharedConcurrencyLimiter(t *testing.T) {
+	const (
+		templateCount = 8
+		sharedBudget  = 2
+	)
+
+	tokens := make(chan struct{}, sharedBudget)
+	executer := &adaptiveConcurrencyExecuter{delay: 20 * time.Millisecond}
+	options := &types.Options{}
+	options.SetTemplateThreadsLimiter(func(ctx context.Context) error {
+		select {
+		case tokens <- struct{}{}:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}, func() {
+		<-tokens
+	})
+	engine := New(options)
+	templatesList := make([]*templates.Template, 0, templateCount)
+	for index := range templateCount {
+		templatesList = append(templatesList, &templates.Template{ID: fmt.Sprintf("self-contained-%d", index), Executer: executer})
+	}
+
+	var results atomic.Bool
+	var waitGroup sync.WaitGroup
+	engine.executeAllSelfContained(context.Background(), templatesList, &results, &waitGroup)
+	waitGroup.Wait()
 
 	if got := executer.completed.Load(); got != templateCount {
 		t.Fatalf("completed %d templates, expected %d", got, templateCount)

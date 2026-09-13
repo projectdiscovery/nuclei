@@ -112,12 +112,14 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		case "interactsh-url":
 			if r.options == nil || r.options.Interactsh == nil {
 				overrides.err = commoninteractsh.ErrInteractshClientNotInitialized
-				break
+				overrides.request = request
+				return overrides, true
 			}
 			interactshURL, err := r.options.Interactsh.NewURLWithData("interactsh-url")
 			if err != nil {
 				overrides.err = err
-				break
+				overrides.request = request
+				return overrides, true
 			}
 			value = interactshURL
 			overrides.interactshURLs = append(overrides.interactshURLs, interactshURL)

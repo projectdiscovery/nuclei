@@ -57,7 +57,7 @@ func TestRequestParseAnnotationsSNI(t *testing.T) {
 	t.Run("interactsh-without-client", func(t *testing.T) {
 		req := &Request{
 			options:           &protocols.ExecutorOptions{},
-			connConfiguration: &httpclientpool.Configuration{},
+			connConfiguration: &httpclientpool.Configuration{NoTimeout: true},
 		}
 		rawRequest := `@tls-sni: interactsh-url
 		GET / HTTP/1.1
@@ -70,6 +70,8 @@ func TestRequestParseAnnotationsSNI(t *testing.T) {
 		require.True(t, modified)
 		require.ErrorIs(t, overrides.err, commoninteractsh.ErrInteractshClientNotInitialized)
 		require.Empty(t, overrides.interactshURLs)
+		require.Same(t, httpReq, overrides.request)
+		require.Nil(t, overrides.cancelFunc)
 	})
 }
 

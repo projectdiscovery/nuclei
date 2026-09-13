@@ -66,3 +66,25 @@ func TestUnboundedPerHostRateLimitPoolRetainsBudgetsBeyondDefaultCapacity(t *tes
 	require.Equal(t, 2049, pool.Size())
 	require.Zero(t, pool.Stats().Evictions)
 }
+
+func TestPerHostRateLimitPoolRejectsNegativeSettings(t *testing.T) {
+	tests := []struct {
+		name    string
+		options *types.Options
+	}{
+		{name: "rate", options: &types.Options{RateLimit: -1, RateLimitDuration: time.Second}},
+		{name: "duration", options: &types.Options{RateLimit: 1, RateLimitDuration: -time.Second}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pool := NewPerHostRateLimitPool(1, time.Hour, time.Hour, test.options)
+			t.Cleanup(pool.Close)
+
+			limiter, err := pool.GetOrCreate("https://invalid.example.com")
+			require.Error(t, err)
+			require.Nil(t, limiter)
+			require.Zero(t, pool.Size())
+		})
+	}
+}

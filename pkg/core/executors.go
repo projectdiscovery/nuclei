@@ -21,9 +21,18 @@ import (
 // executeAllSelfContained executes all self contained templates that do not use `target`
 func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
 	for _, v := range alltemplates {
+		usesSharedTemplateBudget := v.Type() != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				return
+			}
+		}
 		sg.Add(1)
-		go func(template *templates.Template) {
+		go func(template *templates.Template, sharedBudget bool) {
 			defer sg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
 			finished := e.templateExecutionStarted(template, "")
 			defer func() { finished(ctx.Err()) }()
 			var err error
@@ -44,7 +53,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step (self-contained): %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
 			results.CompareAndSwap(false, match)
-		}(v)
+		}(v, usesSharedTemplateBudget)
 	}
 }
 

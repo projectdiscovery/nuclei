@@ -2,6 +2,7 @@ package httpclientpool
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -151,7 +152,10 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 	p.misses.Add(1)
 
 	// Create new rate limiter for this host
-	limiter := newPerHostRateLimiter(p.options)
+	limiter, err := newPerHostRateLimiter(p.options)
+	if err != nil {
+		return nil, err
+	}
 
 	entry := &rateLimitEntry{
 		limiter:   limiter,
@@ -171,11 +175,20 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 // of starting one fixed-window timer goroutine per host. Apart from producing
 // steadier target pressure, this keeps a large host pool cheap and prevents
 // several concurrent engines from consuming the whole window at once.
-func newPerHostRateLimiter(options *types.Options) *ratelimit.Limiter {
-	if options == nil || options.RateLimit == 0 || options.RateLimitDuration == 0 {
-		return utils.GetRateLimiter(context.Background(), 0, 0)
+func newPerHostRateLimiter(options *types.Options) (*ratelimit.Limiter, error) {
+	if options == nil {
+		return utils.GetRateLimiter(context.Background(), 0, 0), nil
 	}
-	return ratelimit.NewLeakyBucket(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
+	if options.RateLimit < 0 {
+		return nil, fmt.Errorf("rate limit must not be negative: %d", options.RateLimit)
+	}
+	if options.RateLimitDuration < 0 {
+		return nil, fmt.Errorf("rate limit duration must not be negative: %s", options.RateLimitDuration)
+	}
+	if options.RateLimit == 0 || options.RateLimitDuration == 0 {
+		return utils.GetRateLimiter(context.Background(), 0, 0), nil
+	}
+	return ratelimit.NewLeakyBucket(context.Background(), uint(options.RateLimit), options.RateLimitDuration), nil
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {

@@ -155,6 +155,23 @@ func TestRequestScopeRemovesOnlyItsRegistrations(t *testing.T) {
 	require.False(t, client.requests.Has("second"))
 }
 
+func TestClosedRequestScopeRejectsNewRegistrations(t *testing.T) {
+	options := DefaultOptions(nil, nil, nil)
+	options.CooldownPeriod = 0
+	client, err := New(options)
+	require.NoError(t, err)
+	client.setHostname("oast.test")
+
+	scope := client.NewRequestScope()
+	scope.Close()
+	client.RequestEvent([]string{"late.oast.test"}, &RequestData{
+		Event: &output.InternalWrappedEvent{InternalEvent: output.InternalEvent{}},
+		Scope: scope,
+	})
+
+	require.False(t, client.requests.Has("late"))
+}
+
 func TestRequestScopeCloseWaitsForInFlightCallback(t *testing.T) {
 	options := DefaultOptions(nil, nil, nil)
 	options.CooldownPeriod = 0
