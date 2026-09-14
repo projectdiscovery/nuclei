@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -133,6 +135,27 @@ func CacheableRequest(req *http.Request) bool {
 		}
 	}
 	return true
+}
+
+// JarAllows reports whether the cookie jar would attach no cookies to u.
+// A jar is created for every input, so its mere presence must not disable the
+// cache. What matters is whether cookies would change the request or response:
+// if the jar has nothing for this URL, a response captured without cookies is
+// equivalent to a fresh one.
+func JarAllows(jar *cookiejar.Jar, u *url.URL) bool {
+	if jar == nil {
+		return true
+	}
+	if u == nil {
+		return false
+	}
+	return len(jar.Cookies(u)) == 0
+}
+
+// ResponseSetsCookie reports whether resp carries Set-Cookie. Such responses are
+// never stored, so serving from cache can never hide a jar update.
+func ResponseSetsCookie(resp *http.Response) bool {
+	return resp != nil && len(resp.Header.Values("Set-Cookie")) > 0
 }
 
 // Get returns a fresh *http.Response (new Body reader) or nil on miss.

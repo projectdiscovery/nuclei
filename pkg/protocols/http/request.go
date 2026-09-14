@@ -844,8 +844,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
 		// over a network round-trip for identical safe GET/HEAD requests.
 		if resp == nil && request.options.HTTPResponseCache != nil &&
-			input.CookieJar == nil &&
-			httprespcache.CacheableRequest(generatedRequest.request.Request) {
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) {
 			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
 				if cached := request.options.HTTPResponseCache.Get(key, generatedRequest.request.Request); cached != nil {
 					resp = cached
@@ -1029,9 +1030,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 		if request.options.HTTPResponseCache != nil && !fromCache &&
-			input.CookieJar == nil &&
 			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
-			httprespcache.CacheableRequest(generatedRequest.request.Request) {
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) &&
+			!httprespcache.ResponseSetsCookie(resp) {
 			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
 				request.options.HTTPResponseCache.Set(key, resp, respChain.BodyBytes())
 			}

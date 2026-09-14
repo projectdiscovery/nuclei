@@ -220,6 +220,10 @@ type Options struct {
 	// target service (web templates on non-HTTP ports, network templates on
 	// closed ports).
 	StrictProbe bool
+	// ResponseCache reuses identical safe GET/HEAD responses inside one scan.
+	// Only requests without auth, cookies, Host override, body, cache directives
+	// or non-allowlisted headers are eligible, so the reuse is lossless.
+	ResponseCache bool
 	// TechFilter is an opt-in heuristic (CLI: -tf). When false (default), scan
 	// behavior matches pre-tech-filter nuclei: no fingerprinting, no product-tag
 	// skipping, no scan-scoped HTTP response cache. When true, fingerprints HTTP
@@ -592,6 +596,7 @@ func (options *Options) Copy() *Options {
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		StrictProbe:                    options.StrictProbe,
+		ResponseCache:                  options.ResponseCache,
 		TechFilter:                     options.TechFilter,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,

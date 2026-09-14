@@ -636,7 +636,7 @@ func (r *Runner) RunEnumeration() error {
 	// Attach scan-scoped HTTP response cache only for opt-in -tf, and only
 	// before templates compile so request executers share the same pointer.
 	// Default scans leave this nil (no behavioral change).
-	if r.options.TechFilter {
+	if r.options.TechFilter || r.options.ResponseCache {
 		executorOpts.HTTPResponseCache = httprespcache.New()
 	}
 
@@ -1060,9 +1060,10 @@ func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplate
 			)
 			techFilterFn = techIdx.Allow
 		}
-	} else if opts := engine.ExecuterOptions(); opts != nil && opts.HTTPResponseCache != nil {
+	} else if opts := engine.ExecuterOptions(); opts != nil && opts.HTTPResponseCache != nil && !r.options.ResponseCache {
 		// -tf set but planner skipped (e.g. no tech-bound templates): do not
-		// alter request paths via an idle response cache.
+		// alter request paths via an idle response cache. Keep it when the user
+		// asked for -response-cache explicitly.
 		opts.HTTPResponseCache.Disable()
 	}
 
