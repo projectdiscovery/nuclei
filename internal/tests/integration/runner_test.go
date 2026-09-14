@@ -4,6 +4,7 @@
 package integration_test
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -173,6 +174,11 @@ func executeIntegrationCase(testCase integrationCase) error {
 		err = testCase.TestCase.Execute(testCase.Path)
 		if err == nil {
 			return nil
+		}
+		// a killed nuclei is not a flake; retrying it just spends the package
+		// timeout that every remaining case shares
+		if errors.Is(err, testutils.ErrCommandTimeout) {
+			return err
 		}
 	}
 	if retries > 1 {

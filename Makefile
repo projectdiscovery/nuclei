@@ -91,8 +91,10 @@ test: GOFLAGS = $(RACE) -v -timeout 1h -count 1
 test:
 	$(GOTEST) $(GOFLAGS) ./...
 
+# Keep this under the GitHub Actions step timeout (50m) so a hung nuclei process
+# is reported by go test instead of the runner killing the job with no test name.
 integration:
-	$(GOTEST) -tags=integration -timeout 1h ./internal/tests/integration
+	$(GOTEST) -tags=integration -timeout 40m ./internal/tests/integration
 
 integration-debug:
 	$(GOTEST) -tags=integration ./internal/tests/integration -v $(GO_TEST_ARGS) -args $(INTEGRATION_ARGS)
