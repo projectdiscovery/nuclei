@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -165,6 +166,14 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+		if request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers() {
+			outputEvent := request.responseToDSLMap("", "", "", "", input.MetaInput.Input, input.MetaInput.Input, "")
+			outputEvent["duration"] = runDuration.Seconds()
+			maps.Copy(outputEvent, payloads)
+			requesterr.Annotate(outputEvent, err, runDuration)
+			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+			callback(event)
+		}
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer page.Close()

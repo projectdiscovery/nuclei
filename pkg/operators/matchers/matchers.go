@@ -10,7 +10,7 @@ import (
 type Matcher struct {
 	// description: |
 	//   Type is the type of the matcher.
-	Type MatcherTypeHolder `yaml:"type" json:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl"`
+	Type MatcherTypeHolder `yaml:"type" json:"type" jsonschema:"title=type of matcher,description=Type of the matcher,enum=status,enum=size,enum=word,enum=regex,enum=binary,enum=dsl,enum=xpath,enum=error"`
 	// description: |
 	//   Condition is the optional condition between two matcher variables. By default,
 	//   the condition is assumed to be OR.
@@ -103,6 +103,20 @@ type Matcher struct {
 	//     value: >
 	//       []string{"//a[@target=\"_blank\"]"}
 	XPath []string `yaml:"xpath,omitempty" json:"xpath,omitempty" jsonschema:"title=xpath queries to match in response,description=xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"`
+	// description: |
+	//   Errors are patterns matched against a failed request (no successful response).
+	//
+	//   Reserved kinds (matched via error classification): timeout, connection, any.
+	//   Any other value is treated as a substring of the error message.
+	//   When empty, any request error matches.
+	// examples:
+	//   - name: Match request timeouts by kind
+	//     value: >
+	//       []string{"timeout"}
+	//   - name: Match a substring in the error message
+	//     value: >
+	//       []string{"connection refused"}
+	Errors []string `yaml:"errors,omitempty" json:"errors,omitempty" jsonschema:"title=error patterns to match,description=Error kinds (timeout, connection, any) or substrings of the error message"`
 	// description: |
 	//   Encoding specifies the encoding for the words field if any.
 	// values:

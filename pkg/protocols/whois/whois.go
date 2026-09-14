@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -126,6 +127,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	res, err := request.client.Do(rdapReq)
 	duration := time.Since(timeStart)
 	if err != nil {
+		if request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers() {
+			data := make(map[string]interface{})
+			data["type"] = request.Type().String()
+			data["host"] = query
+			data["duration"] = duration.Seconds()
+			requesterr.Annotate(data, err, duration)
+			event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+			callback(event)
+		}
 		return errors.Wrap(err, "could not make whois request")
 	}
 	gologger.Verbose().Msgf("Sent WHOIS request to %s", query)

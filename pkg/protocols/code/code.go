@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
@@ -332,6 +333,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-info"] = request.options.TemplateInfo
 	if gOutput.Stderr.Len() > 0 {
 		data["stderr"] = fmtStdout(gOutput.Stderr.String())
+	}
+	if err != nil {
+		requesterr.Annotate(data, err, 0)
 	}
 
 	// expose response variables in proto_var format

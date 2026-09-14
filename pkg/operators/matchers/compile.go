@@ -38,7 +38,7 @@ func (matcher *Matcher) CompileMatchers() error {
 	}
 
 	// By default, match on body if user hasn't provided any specific items
-	if matcher.Part == "" && matcher.GetType() != DSLMatcher {
+	if matcher.Part == "" && matcher.GetType() != DSLMatcher && matcher.GetType() != ErrorMatcher {
 		matcher.Part = "body"
 	}
 
@@ -90,17 +90,31 @@ func (matcher *Matcher) CompileMatchers() error {
 	}
 
 	if matcher.CaseInsensitive {
-		if matcher.GetType() != WordsMatcher {
-			return fmt.Errorf("case-insensitive flag is supported only for 'word' matchers (not '%s')", matcher.Type)
-		}
-		for i := range matcher.Words {
-			matcher.Words[i] = strings.ToLower(matcher.Words[i])
+		switch matcher.GetType() {
+		case WordsMatcher:
+			for i := range matcher.Words {
+				matcher.Words[i] = strings.ToLower(matcher.Words[i])
+			}
+		case ErrorMatcher:
+			// Applied at MatchError time so reserved kinds (timeout/connection/any) stay intact.
+		default:
+			return fmt.Errorf("case-insensitive flag is supported only for 'word' and 'error' matchers (not '%s')", matcher.Type)
 		}
 	}
 	return nil
 }
 
-// GetType returns the condition type of the matcher
+// NeedsPart returns true when the matcher requires a response part corpus.
+func (matcher *Matcher) NeedsPart() bool {
+	switch matcher.GetType() {
+	case DSLMatcher, ErrorMatcher:
+		return false
+	default:
+		return true
+	}
+}
+
+// GetCondition returns the condition type of the matcher
 // todo: the field should be exposed natively
 func (matcher *Matcher) GetCondition() ConditionType {
 	return matcher.condition
