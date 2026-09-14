@@ -169,13 +169,13 @@ func Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
 		}
 		switch parsed.Scheme {
 		case "http", "https":
-			return dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, getTimeoutFromContext(ctx))
+			return dialHTTPProxy(ctx, protocolstate.DialAllowed, proxyURL, address, getTimeoutFromContext(ctx))
 		default:
 			return nil, fmt.Errorf("unsupported proxy scheme %q in %s (expected http or https)", parsed.Scheme, redactProxyURL(proxyURL))
 		}
 	}
 
-	return dialer.Fastdialer.Dial(ctx, protocol, address)
+	return protocolstate.DialAllowed(ctx, protocol, address)
 }
 
 // Open opens a new connection to the address with a timeout.
@@ -210,7 +210,6 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 		c.ServerName = host
 		config = c
 	}
-
 	if proxyURLFromContext(ctx) != "" {
 		conn, err := Dial(ctx, protocol, address)
 		if err != nil {
@@ -224,15 +223,7 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 		return &NetConn{conn: tlsConn, timeout: timeout}, nil
 	}
 
-	executionId, err := executionIDFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-	conn, err := dialer.Fastdialer.DialTLSWithConfig(ctx, protocol, address, config)
+	conn, err := protocolstate.DialTLSAllowed(ctx, protocol, address, config)
 	if err != nil {
 		return nil, err
 	}

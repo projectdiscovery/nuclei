@@ -1,0 +1,34 @@
+id: javascript-fs-read-allowed-paths
+
+info:
+  name: JavaScript FS Read Allowed Paths
+  author: pdteam
+  severity: info
+  description: reads a file granted via --allowed-paths
+
+javascript:
+  - code: |
+      const fs = require('nuclei/fs');
+      let ok = false;
+      let content = "";
+      try {
+        content = fs.ReadFileAsString(ReadPath);
+        ok = content === "granted-secret";
+      } catch (e) {
+        ok = false;
+      }
+      Export(to_json({ ok: ok, content: content }));
+    args:
+      Host: "{{Host}}"
+      ReadPath: "{{ReadPath}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        condition: and
+        words:
+          - '"ok": true'
+          - "granted-secret"

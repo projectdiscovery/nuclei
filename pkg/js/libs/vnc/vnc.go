@@ -68,7 +68,7 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
@@ -132,7 +132,7 @@ func isVNC(ctx context.Context, executionId string, host string, port int) (IsVN
 	if dialer == nil {
 		return IsVNCResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

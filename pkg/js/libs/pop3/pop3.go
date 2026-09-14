@@ -49,7 +49,7 @@ func isPoP3(ctx context.Context, executionId string, host string, port int) (IsP
 	}
 
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

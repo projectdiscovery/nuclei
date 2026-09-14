@@ -121,16 +121,16 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 	return ok
 }
 
-// IsHostAllowed checks if the host is allowed by network policy
+// IsHostAllowed checks if the host is allowed by network policy.
+// When dialers or policy are unavailable the check fails closed.
 func IsHostAllowed(executionId string, targetUrl string) bool {
 	dialers, ok := dialers.Get(executionId)
-	if !ok {
-		return true
+	if !ok || dialers == nil {
+		return false
 	}
 
 	np := dialers.NetworkPolicy
 	if np == nil {
-		// no policy present: deny rather than allow.
 		return false
 	}
 

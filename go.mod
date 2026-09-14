@@ -85,6 +85,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/jhump/protoreflect v1.17.0
 	github.com/kitabisa/go-ci v1.0.3
+	github.com/landlock-lsm/go-landlock v0.9.0
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.12.3
 	github.com/logrusorgru/aurora/v4 v4.0.0
@@ -104,7 +105,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.73
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e
-	github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76
+	github.com/projectdiscovery/gozero v0.1.1-0.20260705152723-8e53eced4d92
 	github.com/projectdiscovery/httpx v1.12.0
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
@@ -437,6 +438,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.77 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 	software.sslmate.com/src/go-pkcs12 v0.7.2 // indirect
 )

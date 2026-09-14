@@ -2,7 +2,6 @@ package oracle
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
@@ -22,15 +21,7 @@ func (o *oracleCustomDialer) dialWithCtx(ctx context.Context, network, address s
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	dialers := protocolstate.GetDialersWithId(o.executionId)
-	if dialers == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", o.executionId)
-	}
-	if !protocolstate.IsHostAllowed(o.executionId, address) {
-		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(address)
-	}
-	return dialers.Fastdialer.Dial(ctx, network, address)
+	return protocolstate.DialAllowedWithExecutionID(ctx, o.executionId, network, address)
 }
 
 func (o *oracleCustomDialer) Dial(network, address string) (net.Conn, error) {
