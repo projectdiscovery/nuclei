@@ -5,7 +5,6 @@ package llm
 
 import (
 	"context"
-	"sync"
 )
 
 // Client is the minimal surface an llm operator needs. It is intentionally
@@ -16,28 +15,6 @@ type Client interface {
 	Complete(ctx context.Context, prompt string, asJSON bool) (string, error)
 }
 
-var (
-	globalMu     sync.RWMutex
-	globalClient Client
-)
-
-// SetGlobalClient installs the scan-wide client. A nil client disables llm
-// operators, which then fail closed (no match / no extraction) rather than
-// erroring.
-func SetGlobalClient(client Client) {
-	globalMu.Lock()
-	defer globalMu.Unlock()
-	globalClient = client
-}
-
-// GlobalClient returns the scan-wide client, or nil when llm is not enabled.
-func GlobalClient() Client {
-	globalMu.RLock()
-	defer globalMu.RUnlock()
-
-	return globalClient
-}
-
 // TruncateApproxTokens trims input to roughly maxTokens using the common
 // 4-chars-per-token approximation. Exact counting is provider-specific; this
 // only needs to keep a large body from blowing the context window.
@@ -46,10 +23,11 @@ func TruncateApproxTokens(input string, maxTokens int) string {
 		return input
 	}
 
-	maxChars := maxTokens * 4
-	if len(input) <= maxChars {
+	// Compare by division so a large max-input-tokens cannot overflow int and
+	// produce a negative slice bound.
+	if maxTokens >= len(input)/4+1 {
 		return input
 	}
 
-	return input[:maxChars]
+	return input[:maxTokens*4]
 }

@@ -16,6 +16,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -437,6 +438,18 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.TemplateID = options.TemplateID
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
+		}
+		// http is the only protocol that evaluates llm operators today; the
+		// template compiler rejects them elsewhere.
+		for _, matcher := range compiled.Matchers {
+			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+				matcher.SetLLMClient(options.LLMClient)
+			}
+		}
+		for _, extractor := range compiled.Extractors {
+			if extractor != nil && extractor.GetType() == extractors.LLMExtractor {
+				extractor.SetLLMClient(options.LLMClient)
+			}
 		}
 		request.CompiledOperators = compiled
 	}

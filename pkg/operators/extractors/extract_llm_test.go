@@ -47,9 +47,17 @@ func TestExtractLLMSchemaReachesPromptInStableOrder(t *testing.T) {
 
 func TestExtractLLMFailClosed(t *testing.T) {
 	cases := map[string]*Extractor{
-		"nil client":  llmExtractor(map[string]string{"x": "string"}),
-		"error":       func() *Extractor { e := llmExtractor(map[string]string{"x": "string"}); e.SetLLMClient(&stubLLM{err: errors.New("boom")}); return e }(),
-		"unparseable": func() *Extractor { e := llmExtractor(map[string]string{"x": "string"}); e.SetLLMClient(&stubLLM{answer: "not json"}); return e }(),
+		"nil client": llmExtractor(map[string]string{"x": "string"}),
+		"error": func() *Extractor {
+			e := llmExtractor(map[string]string{"x": "string"})
+			e.SetLLMClient(&stubLLM{err: errors.New("boom")})
+			return e
+		}(),
+		"unparsable": func() *Extractor {
+			e := llmExtractor(map[string]string{"x": "string"})
+			e.SetLLMClient(&stubLLM{answer: "not json"})
+			return e
+		}(),
 	}
 	for name, e := range cases {
 		require.Empty(t, e.ExtractLLM("body"), name)

@@ -20,14 +20,6 @@ func (e *Extractor) SetLLMClient(client LLMClient) {
 	e.llmClient = client
 }
 
-func (e *Extractor) resolveLLMClient() LLMClient {
-	if e.llmClient != nil {
-		return e.llmClient
-	}
-
-	return llmclient.GlobalClient()
-}
-
 // ExtractLLM asks the model to read the response part and return the values
 // named by Schema, as a set of extracted strings.
 //
@@ -38,7 +30,7 @@ func (e *Extractor) resolveLLMClient() LLMClient {
 func (e *Extractor) ExtractLLM(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
 
-	client := e.resolveLLMClient()
+	client := e.llmClient
 	if client == nil {
 		return results
 	}

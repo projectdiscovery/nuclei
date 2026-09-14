@@ -22,13 +22,15 @@ func (a *llmMatcherClient) Complete(ctx context.Context, prompt string, asJSON b
 	})
 }
 
-// configureLLM builds the scan-wide llm client from options and installs it for
-// llm matchers. It is a no-op unless -llm is set, so nothing reaches a model
-// until the user opts in. The API key is read from the environment by the
-// provider layer, never from options.
-func configureLLM(options *types.Options) error {
+// configureLLM builds the scan's llm client from options. It returns nil unless
+// -llm is set, so nothing reaches a model until the user opts in. The API key is
+// read from the environment by the provider layer, never from options.
+//
+// The client is returned rather than installed globally so two scans in one
+// process cannot overwrite each other's provider, cache, budget, or timeout.
+func configureLLM(options *types.Options) (llmclient.Client, error) {
 	if !options.EnableLLM {
-		return nil
+		return nil, nil
 	}
 
 	client, err := utilsllm.New(utilsllm.Config{
@@ -41,10 +43,8 @@ func configureLLM(options *types.Options) error {
 		MaxConcurrency: options.LLMConcurrency,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	llmclient.SetGlobalClient(&llmMatcherClient{client: client})
-
-	return nil
+	return &llmMatcherClient{client: client}, nil
 }

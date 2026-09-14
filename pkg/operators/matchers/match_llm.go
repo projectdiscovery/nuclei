@@ -11,23 +11,21 @@ import (
 // LLMClient is re-exported for tests and callers that inject a client directly.
 type LLMClient = llmclient.Client
 
-// SetLLMClient installs a client on this matcher. When unset, the matcher uses
-// the scan-wide client; a nil resolution makes the matcher fail closed (no
-// match) rather than erroring.
+// SetLLMClient installs the scan's client on this matcher. It is injected when
+// the request compiles, so two scans in one process never share a provider,
+// cache, or budget. An unset client makes the matcher fail closed (no match)
+// rather than erroring.
 func (matcher *Matcher) SetLLMClient(client LLMClient) {
 	matcher.llmClient = client
 }
 
-func (matcher *Matcher) resolveLLMClient() LLMClient {
-	if matcher.llmClient != nil {
-		return matcher.llmClient
-	}
-
-	return llmclient.GlobalClient()
-}
-
 // defaultVerdicts is the verdict set when a matcher declares none.
 var defaultVerdicts = []string{"yes", "no"}
+
+// defaultMinConfidence applies when a matcher sets none. It is deliberately
+// non-zero: a model that omits the confidence field unmarshals to 0, and a 0
+// floor would let that count as a match.
+const defaultMinConfidence = 0.5
 
 // llmVerdict is the structured answer the model is asked to return. Keeping the
 // model to a fixed enum plus a confidence is what turns a fuzzy question into a
@@ -42,12 +40,13 @@ type llmVerdict struct {
 // MatchLLM asks the model to classify the response part and reports whether the
 // verdict equals Expect with at least MinConfidence.
 //
-// Every failure path - no client, call error, unparseable answer, a verdict
-// outside the allowed set - returns false. An llm matcher can therefore only
-// ever add a finding that the model positively confirmed; a broken or slow
-// provider degrades a template to "no match", never to a false positive.
+// Every failure path - no client, call error, unparsable answer, a verdict
+// outside the allowed set, a confidence outside 0-1 - returns false. Combined
+// with validateLLM rejecting negative, that means an llm matcher can only ever
+// add a finding the model positively confirmed: a broken or slow provider
+// degrades the template to "no match" rather than to a false positive.
 func (matcher *Matcher) MatchLLM(corpus string) (bool, []string) {
-	client := matcher.resolveLLMClient()
+	client := matcher.llmClient
 	if client == nil {
 		return false, nil
 	}
@@ -72,7 +71,17 @@ func (matcher *Matcher) MatchLLM(corpus string) (bool, []string) {
 	if !strings.EqualFold(strings.TrimSpace(verdict.Verdict), expect) {
 		return false, nil
 	}
-	if verdict.Confidence < matcher.MinConfidence {
+	// A confidence outside the contract means the model ignored it, so the
+	// number carries no meaning and the verdict cannot be trusted.
+	if verdict.Confidence < 0 || verdict.Confidence > 1 {
+		return false, nil
+	}
+
+	minConfidence := matcher.MinConfidence
+	if minConfidence == 0 {
+		minConfidence = defaultMinConfidence
+	}
+	if verdict.Confidence < minConfidence {
 		return false, nil
 	}
 
@@ -80,9 +89,12 @@ func (matcher *Matcher) MatchLLM(corpus string) (bool, []string) {
 }
 
 // buildLLMPrompt wraps the author's question with the output contract and the
-// response under a delimiter. The delimiter and the "only classify" instruction
-// are the prompt-injection guardrail: the body is data to judge, not
-// instructions to follow.
+// response under a delimiter.
+//
+// The delimiter and the "only classify" instruction are a hint to the model,
+// not an isolation boundary: a response body can still steer a model that
+// chooses to follow it. What actually bounds the damage is that the verdict is
+// constrained to a fixed enum, cannot be negated, and only ever adds a finding.
 func (matcher *Matcher) buildLLMPrompt(input string) string {
 	verdicts := matcher.Options
 	if len(verdicts) == 0 {
