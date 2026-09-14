@@ -846,7 +846,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 
 			connConfig := request.connConfiguration
-			if input.CookieJar != nil {
+			if input.CookieJar != nil && !request.DisableCookie {
 				connConfig = connConfig.Clone()
 				connConfig.Connection.SetCookieJar(input.CookieJar)
 			}

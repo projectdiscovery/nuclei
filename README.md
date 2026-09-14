@@ -64,11 +64,11 @@
 
 ### **1. Nuclei CLI**
 
-_Install Nuclei on your machine. Get started by following the installation guide [**`here`**](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide [**`a free cloud tier`**](https://cloud.projectdiscovery.io/sign-up) and comes with a generous monthly free limits:_
+_Install Nuclei on your machine. Get started by following the installation guide [**`here`**](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, we provide [**`a free cloud tier`**](https://cloud.projectdiscovery.io/sign-up) that comes with generous monthly free limits:_
 
 - Store and visualize your vulnerability findings
-- Write and manage your nuclei templates
-- Access latest nuclei templates
+- Write and manage your Nuclei templates
+- Access the latest Nuclei templates
 - Discover and store your targets
 
 > [!Important]
@@ -91,7 +91,7 @@ _For security teams and enterprises, we provide a cloud-hosted service built on 
 - We're constantly [**`adding new features`**](https://feedback.projectdiscovery.io/changelog)!
 - **Ideal for:** Pentesters, security teams, and enterprises
 
-[**`Sign up to Pro`**](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) or [**`Talk to our team`**](https://projectdiscovery.io/request-demo?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) if you have large organization and complex requirements.
+[**`Sign up to Pro`**](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) or [**`Talk to our team`**](https://projectdiscovery.io/request-demo?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) if you have a large organization and complex requirements.
 
 <br>
 <br>
@@ -235,7 +235,7 @@ CONFIGURATIONS:
    -ztls                                 use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default
    -sni string                           tls sni hostname to use (default: input domain name)
    -dka, -dialer-keep-alive value        keep-alive duration for network requests.
-   -lfa, -allow-local-file-access        allows file (payload) access anywhere on the system
+   -lfa, -allow-local-file-access        allow all templates in the run to read any file on the system (not just payloads)
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
@@ -264,6 +264,9 @@ FUZZING:
    -dtr, -dast-report                  write dast scan report to file
    -dtst, -dast-server-token string    dast server token (optional)
    -dtsa, -dast-server-address string  dast server address (default "localhost:9055")
+   -dtp, -dast-proxy                   enable dast proxy mode (fuzz live traffic proxied through nuclei)
+   -dtpa, -dast-proxy-address string   dast proxy listen address (default "127.0.0.1:9056")
+   -dtpau, -dast-proxy-auth string     dast proxy basic auth in user:pass format (required for non-loopback address)
    -dfp, -display-fuzz-points          display fuzz points in the output for debugging
    -fuzz-param-frequency int           frequency of uninteresting parameters for fuzzing before skipping (default 10)
    -fa, -fuzz-aggression string        fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")

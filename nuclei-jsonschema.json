@@ -880,6 +880,11 @@
           "title": "optional disable cookie reuse",
           "description": "Optional setting that disables cookie reuse"
         },
+        "disable-http-cache": {
+          "type": "boolean",
+          "title": "disable HTTP cache",
+          "description": "Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"
+        },
         "read-all": {
           "type": "boolean",
           "title": "force read all body",

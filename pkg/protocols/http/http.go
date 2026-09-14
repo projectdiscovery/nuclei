@@ -175,6 +175,10 @@ type Request struct {
 	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
 
 	// description: |
+	//   DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset.
+	DisableHTTPCache bool `yaml:"disable-http-cache,omitempty" json:"disable-http-cache,omitempty" jsonschema:"title=disable HTTP cache,description=Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"`
+
+	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring
 	//   any specified content length headers.
 	ForceReadAllBody bool `yaml:"read-all,omitempty" json:"read-all,omitempty" jsonschema:"title=force read all body,description=Enables force reading of entire unsafe http request body"`
@@ -354,10 +358,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:       request.Threads,
-		MaxRedirects:  request.MaxRedirects,
-		NoTimeout:     false,
-		DisableCookie: request.DisableCookie,
+		Threads:          request.Threads,
+		MaxRedirects:     request.MaxRedirects,
+		NoTimeout:        false,
+		DisableCookie:    request.DisableCookie,
+		DisableHTTPCache: request.DisableHTTPCache,
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: disableKeepAlive,
 		},
