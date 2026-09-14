@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
@@ -60,34 +61,57 @@ func AllowedFileRoots(options *types.Options) []string {
 // javascript/code file access is still checked against AllowedFileRoots.
 func SandboxFileRoots(options *types.Options) []string {
 	roots := AllowedFileRoots(options)
-	// State and cache are nuclei's own bookkeeping (templates.json and friends).
-	// They stay out of AllowedFileRoots so templates cannot read them, but the
-	// process must be able to write them or template updates fail.
-	if stateDir := config.DefaultConfig.GetStateDir(); stateDir != "" {
-		roots = append(roots, canonicalRoot(stateDir))
-	}
-	if cacheDir := config.DefaultConfig.GetCacheDir(); cacheDir != "" {
-		roots = append(roots, canonicalRoot(cacheDir))
-	}
 	if options == nil {
 		return uniqueRoots(roots)
 	}
 	if cwd, err := os.Getwd(); err == nil && cwd != "" {
 		roots = append(roots, canonicalRoot(cwd))
 	}
-	paths := []string{
-		options.TargetsFilePath,
-		options.Resume,
+	// Inputs only: these must already exist. Creating a missing one would
+	// fabricate an empty directory that shadows real template resolution.
+	inputs := []string{options.TargetsFilePath, options.Resume}
+	inputs = append(inputs, options.Templates...)
+	inputs = append(inputs, options.Workflows...)
+	for _, path := range inputs {
+		if path == "" {
+			continue
+		}
+		roots = append(roots, canonicalRoot(containingDir(path)))
+	}
+	return uniqueRoots(roots)
+}
+
+// SandboxOwnedFileRoots returns directories nuclei manages itself and must be
+// able to create: its templates, config, state and cache dirs, the go-rod
+// browser cache, and any output destination the user asked for. They are kept
+// out of AllowedFileRoots so template code cannot read nuclei's own state.
+func SandboxOwnedFileRoots(options *types.Options) []string {
+	roots := make([]string, 0, 8)
+	for _, dir := range []string{
+		config.DefaultConfig.GetTemplateDir(),
+		config.DefaultConfig.GetConfigDir(),
+		config.DefaultConfig.GetStateDir(),
+		config.DefaultConfig.GetCacheDir(),
+		launcher.DefaultBrowserDir,
+	} {
+		if dir != "" {
+			roots = append(roots, canonicalRoot(dir))
+		}
+	}
+	if options == nil {
+		return uniqueRoots(roots)
+	}
+	outputs := []string{
 		options.Output,
 		options.JSONExport,
 		options.JSONLExport,
 		options.MarkdownExportDirectory,
 		options.SarifExport,
-		options.StoreResponseDir,
 	}
-	paths = append(paths, options.Templates...)
-	paths = append(paths, options.Workflows...)
-	for _, path := range paths {
+	if options.StoreResponse {
+		outputs = append(outputs, options.StoreResponseDir)
+	}
+	for _, path := range outputs {
 		if path == "" {
 			continue
 		}

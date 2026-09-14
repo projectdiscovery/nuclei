@@ -38,7 +38,7 @@ func platformSupported() bool {
 	return err == nil && v > 0
 }
 
-func applyPlatform(roots []string, includeRuntime bool) error {
+func applyPlatform(roots, owned []string, includeRuntime bool) error {
 	var opts []landlock.Rule
 	if includeRuntime {
 		if dirs := existingDirs(hostRuntimeRODirs); len(dirs) > 0 {
@@ -59,7 +59,10 @@ func applyPlatform(roots []string, includeRuntime bool) error {
 		}
 	}
 
-	if dirs := ensureDirs(roots); len(dirs) > 0 {
+	if dirs := existingDirs(roots); len(dirs) > 0 {
+		opts = append(opts, landlock.RWDirs(dirs...))
+	}
+	if dirs := ensureDirs(owned); len(dirs) > 0 {
 		opts = append(opts, landlock.RWDirs(dirs...))
 	}
 	if len(opts) == 0 {

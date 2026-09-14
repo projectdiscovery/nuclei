@@ -26,6 +26,7 @@ func Init(options *types.Options) error {
 	// Apply directly.
 	_ = sandbox.Apply(sandbox.Config{
 		AllowedRoots:   protocolstate.SandboxFileRoots(options),
+		OwnedRoots:     protocolstate.SandboxOwnedFileRoots(options),
 		Disabled:       options.DisableSandbox || testing.Testing(),
 		IncludeRuntime: true,
 	})

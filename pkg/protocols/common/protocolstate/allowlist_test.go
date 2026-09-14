@@ -69,7 +69,9 @@ func TestSandboxFileRootsCoversCLIPathsButAllowlistDoesNot(t *testing.T) {
 
 	sandboxRoots := protocolstate.SandboxFileRoots(opts)
 	require.True(t, rootListContains(sandboxRoots, workDir), "targets file dir must be sandbox-reachable: %v", sandboxRoots)
-	require.True(t, rootListContains(sandboxRoots, outputDir), "output dir must be sandbox-reachable even before the file exists: %v", sandboxRoots)
+
+	ownedRoots := protocolstate.SandboxOwnedFileRoots(opts)
+	require.True(t, rootListContains(ownedRoots, outputDir), "output dir must be sandbox-reachable even before the file exists: %v", ownedRoots)
 
 	// the template-facing allowlist stays narrow
 	allowlist := protocolstate.AllowedFileRoots(opts)
@@ -83,18 +85,36 @@ func TestSandboxFileRootsCoversStateAndCacheDirs(t *testing.T) {
 	restoreTemplatesDir(t, templatesDir)
 
 	opts := &types.Options{ExecutionId: t.Name()}
-	roots := protocolstate.SandboxFileRoots(opts)
+	roots := protocolstate.SandboxOwnedFileRoots(opts)
 	allowlist := protocolstate.AllowedFileRoots(opts)
 
 	configDir := config.DefaultConfig.GetConfigDir()
 	for _, dir := range []string{config.DefaultConfig.GetStateDir(), config.DefaultConfig.GetCacheDir()} {
 		require.NotEmpty(t, dir)
-		require.True(t, rootListContains(roots, dir), "sandbox must cover %s: %v", dir, roots)
+		require.True(t, rootListContains(roots, dir), "sandbox must own %s: %v", dir, roots)
 		if dir == configDir {
 			// darwin collapses config, state and cache onto one directory
 			continue
 		}
 		require.False(t, rootListContains(allowlist, dir), "templates must not reach %s: %v", dir, allowlist)
+	}
+}
+
+// A missing -t path must never be treated as an owned root. Creating it would
+// leave an empty directory that template resolution then prefers over the real
+// templates dir, which silently loads zero templates.
+func TestSandboxOwnedRootsExcludeTemplateInputPaths(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+
+	opts := &types.Options{
+		ExecutionId: t.Name(),
+		Templates:   goflags.StringSlice{"http/cves/"},
+	}
+
+	owned := protocolstate.SandboxOwnedFileRoots(opts)
+	for _, root := range owned {
+		require.NotContains(t, root, filepath.Join("http", "cves"), "template input path must not be an owned root: %v", owned)
 	}
 }
 

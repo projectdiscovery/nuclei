@@ -17,8 +17,16 @@ var (
 
 // Config configures filesystem sandbox enforcement.
 type Config struct {
+	// AllowedRoots are granted only when they already exist. They cover paths
+	// the user pointed nuclei at (targets, templates, cwd); creating a missing
+	// one would fabricate a directory that shadows real template resolution.
 	AllowedRoots []string
-	Disabled     bool
+	// OwnedRoots are directories nuclei manages itself (templates, config,
+	// state, cache, requested outputs). A missing one is created, because
+	// landlock can only reference existing paths and dropping the root would
+	// leave the process unable to create it afterwards.
+	OwnedRoots []string
+	Disabled   bool
 	// IncludeRuntime grants read-only access to host paths the nuclei process
 	// itself needs (libc, CA certs, /dev, /proc). It must not be folded into
 	// AllowedRoots: those roots also feed the JS/code filesystem allowlist.
@@ -45,7 +53,7 @@ func Apply(cfg Config) error {
 	if applied {
 		return nil
 	}
-	if len(cfg.AllowedRoots) == 0 {
+	if len(cfg.AllowedRoots) == 0 && len(cfg.OwnedRoots) == 0 {
 		gologger.Verbose().Msgf("filesystem sandbox skipped: %v", ErrNoAllowedRoots)
 		return ErrNoAllowedRoots
 	}
@@ -54,7 +62,7 @@ func Apply(cfg Config) error {
 		applied = true
 		return nil
 	}
-	if err := applyPlatform(cfg.AllowedRoots, cfg.IncludeRuntime); err != nil {
+	if err := applyPlatform(cfg.AllowedRoots, cfg.OwnedRoots, cfg.IncludeRuntime); err != nil {
 		gologger.Warning().Msgf("filesystem sandbox not applied: %v", err)
 		return err
 	}
