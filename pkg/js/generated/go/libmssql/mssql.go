@@ -3,7 +3,7 @@ package mssql
 import (
 	lib_mssql "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/mssql"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 
@@ -20,6 +20,7 @@ func init() {
 
 			// Objects / Classes
 			"MSSQLClient": gojs.GetClassConstructor[lib_mssql.MSSQLClient](&lib_mssql.MSSQLClient{}),
+			"MSSQLInfo":   gojs.GetClassConstructor[lib_mssql.MSSQLInfo](&lib_mssql.MSSQLInfo{}),
 		},
 	).Register()
 }

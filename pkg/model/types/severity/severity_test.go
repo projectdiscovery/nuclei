@@ -3,8 +3,7 @@ package severity
 import (
 	"testing"
 
-	"gopkg.in/yaml.v2"
-
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/stretchr/testify/require"
 )
 

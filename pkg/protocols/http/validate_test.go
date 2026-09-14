@@ -4,6 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 )
 
 func TestValidateRedirectsCombinations(t *testing.T) {
@@ -49,5 +54,35 @@ func TestValidateRedirectsCombinations(t *testing.T) {
 		req := &Request{}
 		err := req.validate()
 		require.NoError(t, err)
+	})
+}
+
+func TestValidateFuzzingWithRequestCondition(t *testing.T) {
+	t.Run("matcher dsl", func(t *testing.T) {
+		req := &Request{
+			Fuzzing: []*fuzz.Rule{{}},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{
+					{DSL: []string{"duration_1 > 18"}},
+				},
+			},
+		}
+		err := req.validate()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "'fuzzing' and 'request-condition' can't be used together")
+	})
+
+	t.Run("extractor part", func(t *testing.T) {
+		req := &Request{
+			Fuzzing: []*fuzz.Rule{{}},
+			Operators: operators.Operators{
+				Extractors: []*extractors.Extractor{
+					{Part: "body_1"},
+				},
+			},
+		}
+		err := req.validate()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "'fuzzing' and 'request-condition' can't be used together")
 	})
 }

@@ -1,0 +1,7 @@
+id=http-json-fuzz
+name=HTTP JSON fuzz template
+author=nuclei-fuzzer
+severity=medium
+method=POST
+path=/api/v1/login
+matcher=success

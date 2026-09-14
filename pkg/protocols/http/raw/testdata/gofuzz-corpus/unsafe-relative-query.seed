@@ -1,0 +1,6 @@
+method=GET
+path=1337?with=param
+host={{Hostname}}
+input-url=https://example.com/test.js?x=1
+unsafe=true
+disable-automerge=false

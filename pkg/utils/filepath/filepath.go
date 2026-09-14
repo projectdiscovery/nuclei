@@ -1,6 +1,7 @@
 package filepathutil
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -9,11 +10,8 @@ import (
 // IsPathWithinDirectory returns true when path resolves inside directory.
 // Both values are canonicalized to handle symlinks and platform-specific case rules.
 //
-// As a fail-closed safety net, an empty path or empty directory ALWAYS returns
-// false. filepath.Abs("") returns the process working directory, which would
-// otherwise turn an unset/missing argument into a silent CWD-relative sandbox
-// — a footgun that callers must not rely on. Callers that need to anchor on
-// the working directory must pass it explicitly via os.Getwd().
+// An empty path or empty directory always returns false; callers that want to
+// anchor on the working directory must pass it explicitly via os.Getwd().
 func IsPathWithinDirectory(path string, directory string) bool {
 	if path == "" || directory == "" {
 		return false
@@ -40,6 +38,24 @@ func IsPathWithinAnyDirectory(path string, directories ...string) bool {
 		}
 	}
 	return false
+}
+
+// IsHardLinkedRegularFile reports whether path is a regular file with more than
+// one hard link. Symlinks and non-regular files return false, as does the case
+// where the link count cannot be determined (e.g. on Windows).
+func IsHardLinkedRegularFile(path string) bool {
+	if path == "" {
+		return false
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+	if !info.Mode().IsRegular() {
+		return false
+	}
+	n, ok := hardLinkCount(path, info)
+	return ok && n > 1
 }
 
 func canonicalizePath(path string) string {

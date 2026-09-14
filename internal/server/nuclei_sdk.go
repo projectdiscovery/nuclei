@@ -120,8 +120,8 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(opts.Options, opts.Catalog, executorOpts)
-	if !strings.EqualFold(opts.Options.InputFileMode, "list") || opts.Options.DAST || opts.Options.DASTServer {
-		// if input type is not list (implicitly enable fuzzing)
+	if (!strings.EqualFold(opts.Options.InputFileMode, "list") || opts.Options.DAST || opts.Options.DASTServer || opts.Options.DASTProxy) && !opts.Options.OfflineHTTP {
+		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		opts.Options.DAST = true
 	}
 	store, err := loader.New(loaderConfig)
@@ -193,10 +193,13 @@ func (n *nucleiExecutor) ExecuteScan(target PostRequestsHandlerRequest) error {
 }
 
 func (n *nucleiExecutor) Close() {
+	if n == nil || n.executorOpts == nil {
+		return
+	}
 	if n.executorOpts.FuzzStatsDB != nil {
 		n.executorOpts.FuzzStatsDB.Close()
 	}
-	if n.options.Interactsh != nil {
+	if n.options != nil && n.options.Interactsh != nil {
 		_ = n.options.Interactsh.Close()
 	}
 	if n.executorOpts.InputHelper != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -125,7 +126,7 @@ func executeQuery(ctx context.Context, executionId string, host string, port int
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable&executionId=%s", username, password, target, dbName, executionId)
+	connStr := buildPostgresConnURL(username, password, target, dbName, executionId)
 	db, err := pgwrap.OpenDB(ctx, executionId, connStr)
 	if err != nil {
 		return nil, err
@@ -143,6 +144,19 @@ func executeQuery(ctx context.Context, executionId string, host string, port int
 		return nil, err
 	}
 	return resp, nil
+}
+
+func buildPostgresConnURL(username, password, target, dbName, executionId string) string {
+	values := url.Values{}
+	values.Set("sslmode", "disable")
+	values.Set("executionId", executionId)
+
+	return fmt.Sprintf("postgres://%s@%s/%s?%s",
+		url.UserPassword(username, password).String(),
+		target,
+		url.PathEscape(dbName),
+		values.Encode(),
+	)
 }
 
 // ConnectWithDB connects to Postgres database using given credentials and database name.

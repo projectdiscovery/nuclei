@@ -1,9 +1,9 @@
 package engine
 
 import (
+	"github.com/projectdiscovery/fasttemplate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
-	"github.com/valyala/fasttemplate"
 )
 
 // replaceWithValues replaces the template markers with the values

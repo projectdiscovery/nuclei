@@ -2,8 +2,11 @@ package server
 
 import (
 	_ "embed"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,9 +14,8 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/scope"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
@@ -25,11 +27,12 @@ import (
 // DASTServer is a server that performs execution of fuzzing templates
 // on user input passed to the API.
 type DASTServer struct {
-	echo         *echo.Echo
+	httpServer   *http.Server
 	options      *Options
 	tasksPool    *pond.WorkerPool
 	deduplicator *requestDeduplicator
 	scopeManager *scope.Manager
+	proxy        *proxy.Proxy
 	startTime    time.Time
 
 	// metrics
@@ -49,6 +52,21 @@ type Options struct {
 	Templates []string
 	// Verbose is a flag that controls verbose output
 	Verbose bool
+
+	// ProxyAddress enables the intercepting proxy front-end on this address
+	ProxyAddress string
+	// ProxyCADir is the directory holding the proxy interception CA
+	ProxyCADir string
+	// ProxyUsername and ProxyPassword gate the intercepting proxy with basic
+	// authentication. Mandatory when ProxyAddress is not a loopback address.
+	ProxyUsername string
+	ProxyPassword string
+	// EnableFuzzAPI exposes POST /fuzz. Proxy-only mode leaves it off so the
+	// stats/CA listener cannot be used to inject arbitrary raw HTTP.
+	EnableFuzzAPI bool
+	// ForwardProxy is an optional HTTP(S) proxy URL for the intercepting
+	// proxy's forwarding leg. Ambient HTTP_PROXY is not used.
+	ForwardProxy string
 
 	// Scope fields for fuzzer
 	InScope  []string
@@ -98,19 +116,73 @@ func New(options *Options) (*DASTServer, error) {
 	}
 	server.scopeManager = scopeManager
 
+	if options.ProxyAddress != "" {
+		if err := server.setupProxy(); err != nil {
+			return nil, err
+		}
+	}
+
 	var builder strings.Builder
 	gologger.Debug().Msgf("Using %d parallel tasks with %d buffer", maxWorkers, bufferSize)
 	if options.Token != "" {
 		builder.WriteString(" (with token)")
 	}
-	gologger.Info().Msgf("DAST Server API: %s", server.buildURL("/fuzz"))
+	if options.EnableFuzzAPI {
+		gologger.Info().Msgf("DAST Server API: %s", server.buildURL("/fuzz"))
+	}
 	gologger.Info().Msgf("DAST Server Stats URL: %s", server.buildURL("/stats"))
 
 	return server, nil
 }
 
+// setupProxy wires the intercepting proxy front-end into the same queue the
+// HTTP API feeds.
+func (s *DASTServer) setupProxy() error {
+	interceptingProxy, err := proxy.New(&proxy.Options{
+		Address:      s.options.ProxyAddress,
+		CADir:        s.options.ProxyCADir,
+		Username:     s.options.ProxyUsername,
+		Password:     s.options.ProxyPassword,
+		Verbose:      s.options.Verbose,
+		Intercept:    s.shouldIntercept,
+		Submit:       s.Submit,
+		ForwardProxy: s.options.ForwardProxy,
+	})
+	if err != nil {
+		return err
+	}
+	s.proxy = interceptingProxy
+
+	gologger.Info().Msgf("DAST Proxy: http://%s", s.options.ProxyAddress)
+	gologger.Info().Msgf("DAST Proxy CA certificate: %s (install it to intercept https)", interceptingProxy.CertPath())
+	gologger.Info().Msgf("DAST Proxy CA download: %s", s.buildURL("/ca"))
+	// Info, not Warning: gologger orders LevelWarning above LevelInfo, so
+	// warnings are filtered out at default verbosity and these two notices
+	// describe what interception does to the user's traffic.
+	gologger.Info().Msgf("DAST Proxy: intercepted https is re-originated by nuclei, target certificates are not verified")
+	if len(s.options.InScope) == 0 && len(s.options.OutScope) == 0 {
+		gologger.Info().Msgf("DAST Proxy: no scope set, every proxied https host will be decrypted (narrow it with -fuzz-scope / -fuzz-out-scope)")
+	}
+	return nil
+}
+
+// shouldIntercept decides whether a CONNECT tunnel is decrypted. Only an
+// explicit out-of-scope match leaves a host encrypted, because in-scope
+// patterns may carry a path that a CONNECT host can never match against.
+func (s *DASTServer) shouldIntercept(hostPort string) bool {
+	host := hostPort
+	// Only the default port is dropped, so the synthesised URL has the same
+	// shape as the request URLs these rules are applied to once a request has
+	// actually been captured.
+	if parsedHost, port, err := net.SplitHostPort(hostPort); err == nil && port == "443" {
+		host = parsedHost
+	}
+	return !s.scopeManager.IsExplicitlyOutOfScope(&url.URL{Scheme: "https", Host: host, Path: "/"})
+}
+
 func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 	server := &DASTServer{
+		options: &Options{},
 		nucleiExecutor: &nucleiExecutor{
 			executorOpts: &protocols.ExecutorOptions{
 				FuzzStatsDB: fuzzStatsDB,
@@ -124,65 +196,105 @@ func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 }
 
 func (s *DASTServer) Close() {
-	s.nucleiExecutor.Close()
-	_ = s.echo.Close()
-	s.tasksPool.StopAndWaitFor(1 * time.Minute)
+	if s.proxy != nil {
+		if err := s.proxy.Close(); err != nil {
+			gologger.Warning().Msgf("Could not close dast proxy: %s", err)
+		}
+	}
+	if s.nucleiExecutor != nil {
+		s.nucleiExecutor.Close()
+	}
+	if s.httpServer != nil {
+		_ = s.httpServer.Close()
+	}
+	if s.tasksPool != nil {
+		s.tasksPool.StopAndWaitFor(1 * time.Minute)
+	}
 }
 
 func (s *DASTServer) buildURL(endpoint string) string {
 	values := make(url.Values)
-	if s.options.Token != "" {
-		values.Set("token", s.options.Token)
+	opts := s.optionsOrDefault()
+	if opts.Token != "" {
+		values.Set("token", opts.Token)
 	}
 
 	// Use url.URL struct to safely construct the URL
 	u := &url.URL{
 		Scheme:   "http",
-		Host:     s.options.Address,
+		Host:     opts.Address,
 		Path:     endpoint,
 		RawQuery: values.Encode(),
 	}
 	return u.String()
 }
 
+func (s *DASTServer) optionsOrDefault() *Options {
+	if s.options != nil {
+		return s.options
+	}
+	return &Options{}
+}
+
 func (s *DASTServer) setupHandlers(onlyStats bool) {
-	e := echo.New()
-	e.Use(middleware.Recover())
-	if s.options.Verbose {
-		cfg := middleware.DefaultLoggerConfig
-		cfg.Skipper = func(c echo.Context) bool {
-			// Skip /stats and /stats.json
-			return c.Request().URL.Path == "/stats" || c.Request().URL.Path == "/stats.json"
-		}
-		e.Use(middleware.LoggerWithConfig(cfg))
+	opts := s.optionsOrDefault()
+	mux := http.NewServeMux()
+	if !onlyStats && opts.EnableFuzzAPI {
+		mux.HandleFunc("POST /fuzz", s.handleRequest)
 	}
-	e.Use(middleware.CORS())
-
-	if s.options.Token != "" {
-		e.Use(middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-			KeyLookup: "query:token",
-			Validator: func(key string, c echo.Context) (bool, error) {
-				return key == s.options.Token, nil
-			},
-		}))
+	mux.HandleFunc("GET /stats", s.handleStats)
+	mux.HandleFunc("GET /stats.json", s.handleStatsJSON)
+	if !onlyStats && opts.ProxyAddress != "" {
+		mux.HandleFunc("GET /ca", s.handleProxyCA)
 	}
 
-	e.HideBanner = true
-	// POST /fuzz - Queue a request for fuzzing
-	if !onlyStats {
-		e.POST("/fuzz", s.handleRequest)
+	handler := http.Handler(mux)
+	if opts.Token != "" {
+		handler = s.tokenAuthMiddleware(handler)
 	}
-	e.GET("/stats", s.handleStats)
-	e.GET("/stats.json", s.handleStatsJSON)
+	handler = corsMiddleware(handler)
+	if opts.Verbose {
+		handler = requestLoggerMiddleware(handler)
+	}
+	handler = recoverMiddleware(handler)
 
-	s.echo = e
+	s.httpServer = &http.Server{Handler: handler}
 }
 
 func (s *DASTServer) Start() error {
-	if err := s.echo.Start(s.options.Address); err != nil && err != http.ErrServerClosed {
+	if s.httpServer == nil {
+		s.setupHandlers(false)
+	}
+	s.httpServer.Addr = s.optionsOrDefault().Address
+
+	if s.proxy == nil {
+		return s.serveAPI()
+	}
+
+	// Both front-ends feed the same queue; whichever fails first ends the run.
+	errs := make(chan error, 2)
+	go func() { errs <- s.serveAPI() }()
+	go func() { errs <- s.proxy.Start() }()
+	return <-errs
+}
+
+func (s *DASTServer) serveAPI() error {
+	if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
+}
+
+// handleProxyCA serves the interception CA certificate so it can be installed.
+// Only the certificate is ever served, never the private key.
+func (s *DASTServer) handleProxyCA(w http.ResponseWriter, _ *http.Request) {
+	if s.proxy == nil {
+		writeServerJSON(w, http.StatusNotFound, map[string]string{"error": "proxy is not enabled"})
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-pem-file")
+	w.Header().Set("Content-Disposition", `attachment; filename="nuclei-dast-proxy-ca.pem"`)
+	_, _ = w.Write(s.proxy.CertPEM())
 }
 
 // PostRequestsHandlerRequest is the request body for the /fuzz POST handler.
@@ -191,24 +303,40 @@ type PostRequestsHandlerRequest struct {
 	URL     string `json:"url"`
 }
 
-func (s *DASTServer) handleRequest(c echo.Context) error {
+func (s *DASTServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	var req PostRequestsHandlerRequest
-	if err := c.Bind(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		fmt.Printf("Error binding request: %s\n", err)
-		return err
+		writeServerJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
 	}
 
 	// Validate the request
 	if req.RawHTTP == "" || req.URL == "" {
 		fmt.Printf("Missing required fields\n")
-		return c.JSON(400, map[string]string{"error": "missing required fields"})
+		writeServerJSON(w, http.StatusBadRequest, map[string]string{"error": "missing required fields"})
+		return
 	}
 
+	if !s.Submit(req.RawHTTP, req.URL) {
+		writeServerJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "scan queue is full"})
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// Submit queues a captured request for fuzzing and reports whether it was
+// accepted. It never blocks: a saturated scanner must not stall the live
+// traffic flowing through the proxy, so excess requests are dropped instead.
+func (s *DASTServer) Submit(rawHTTP, targetURL string) bool {
+	req := PostRequestsHandlerRequest{RawHTTP: rawHTTP, URL: targetURL}
+
 	s.endpointsInQueue.Add(1)
-	s.tasksPool.Submit(func() {
-		s.consumeTaskRequest(req)
-	})
-	return c.NoContent(200)
+	if !s.tasksPool.TrySubmit(func() { s.consumeTaskRequest(req) }) {
+		s.endpointsInQueue.Add(-1)
+		return false
+	}
+	return true
 }
 
 type StatsResponse struct {
@@ -225,6 +353,8 @@ type DASTServerInfo struct {
 	NucleiTemplateVersion string `json:"nuclei_template_version"`
 	NucleiDastServerAPI   string `json:"nuclei_dast_server_api"`
 	ServerAuthEnabled     bool   `json:"sever_auth_enabled"`
+	NucleiDastProxyAddr   string `json:"nuclei_dast_proxy_address,omitempty"`
+	ProxyAuthEnabled      bool   `json:"proxy_auth_enabled"`
 }
 
 type DASTScanStatistics struct {
@@ -237,17 +367,29 @@ type DASTScanStatistics struct {
 	TotalEndpointsTested  int64 `json:"total_endpoints_tested"`
 	TotalFuzzedRequests   int64 `json:"total_fuzzed_requests"`
 	TotalErroredRequests  int64 `json:"total_errored_requests"`
+
+	// Proxy counters, populated only in proxy mode. A rising drop count means
+	// the scanner cannot keep up with the proxied traffic.
+	ProxyRequestsIntercepted  int64 `json:"proxy_requests_intercepted"`
+	ProxyTunnelsPassedThrough int64 `json:"proxy_tunnels_passed_through"`
+	ProxyRequestsDropped      int64 `json:"proxy_requests_dropped"`
 }
 
 func (s *DASTServer) getStats() (StatsResponse, error) {
 	cfg := config.DefaultConfig
 
+	api := ""
+	if s.options.EnableFuzzAPI {
+		api = s.buildURL("/fuzz")
+	}
 	resp := StatsResponse{
 		DASTServerInfo: DASTServerInfo{
 			NucleiVersion:         config.Version,
 			NucleiTemplateVersion: cfg.TemplateVersion,
-			NucleiDastServerAPI:   s.buildURL("/fuzz"),
+			NucleiDastServerAPI:   api,
 			ServerAuthEnabled:     s.options.Token != "",
+			NucleiDastProxyAddr:   s.options.ProxyAddress,
+			ProxyAuthEnabled:      s.options.ProxyUsername != "",
 		},
 		DASTScanStartTime: s.startTime,
 		DASTScanStatistics: DASTScanStatistics{
@@ -255,6 +397,12 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 			EndpointsBeingTested: s.endpointsBeingTested.Load(),
 			TotalTemplatesLoaded: int64(len(s.nucleiExecutor.store.Templates())),
 		},
+	}
+	if s.proxy != nil {
+		proxyStats := s.proxy.Stats()
+		resp.DASTScanStatistics.ProxyRequestsIntercepted = proxyStats.Intercepted
+		resp.DASTScanStatistics.ProxyTunnelsPassedThrough = proxyStats.TunnelsPassedThrough
+		resp.DASTScanStatistics.ProxyRequestsDropped = proxyStats.Dropped
 	}
 	if s.nucleiExecutor.executorOpts.FuzzStatsDB != nil {
 		fuzzStats := s.nucleiExecutor.executorOpts.FuzzStatsDB.GetStats()
@@ -274,23 +422,116 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 //go:embed templates/index.html
 var indexTemplate string
 
-func (s *DASTServer) handleStats(c echo.Context) error {
+func (s *DASTServer) handleStats(w http.ResponseWriter, _ *http.Request) {
 	stats, err := s.getStats()
 	if err != nil {
-		return c.JSON(500, map[string]string{"error": err.Error()})
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
 
 	tmpl, err := template.New("index").Parse(indexTemplate)
 	if err != nil {
-		return c.JSON(500, map[string]string{"error": err.Error()})
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
-	return tmpl.Execute(c.Response().Writer, stats)
+	if err := tmpl.Execute(w, stats); err != nil {
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 }
 
-func (s *DASTServer) handleStatsJSON(c echo.Context) error {
+func (s *DASTServer) handleStatsJSON(w http.ResponseWriter, _ *http.Request) {
 	resp, err := s.getStats()
 	if err != nil {
-		return c.JSON(500, map[string]string{"error": err.Error()})
+		writeServerJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
-	return c.JSONPretty(200, resp, "  ")
+	writeServerJSONPretty(w, http.StatusOK, resp)
+}
+
+func (s *DASTServer) tokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			writeServerJSON(w, http.StatusBadRequest, map[string]string{"message": "missing key in the query string"})
+			return
+		}
+		if token != s.optionsOrDefault().Token {
+			writeServerJSON(w, http.StatusUnauthorized, map[string]string{"message": "Unauthorized"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	const allowMethods = "GET,HEAD,PUT,PATCH,POST,DELETE"
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		w.Header().Add("Vary", "Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		if r.Method == http.MethodOptions {
+			if origin != "" {
+				w.Header().Add("Vary", "Access-Control-Request-Method")
+				w.Header().Add("Vary", "Access-Control-Request-Headers")
+				w.Header().Set("Access-Control-Allow-Methods", allowMethods)
+				if headers := r.Header.Get("Access-Control-Request-Headers"); headers != "" {
+					w.Header().Set("Access-Control-Allow-Headers", headers)
+				}
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func requestLoggerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/stats" || r.URL.Path == "/stats.json" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		start := time.Now()
+		next.ServeHTTP(recorder, r)
+		fmt.Printf("%s %s %d %s\n", r.Method, r.URL.RequestURI(), recorder.statusCode, time.Since(start))
+	})
+}
+
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(statusCode int) {
+	r.statusCode = statusCode
+	r.ResponseWriter.WriteHeader(statusCode)
+}
+
+func writeServerJSON(w http.ResponseWriter, statusCode int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(value)
+}
+
+func writeServerJSONPretty(w http.ResponseWriter, statusCode int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	_ = encoder.Encode(value)
 }

@@ -15,7 +15,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
+	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/projectdiscovery/utils/errkit"
@@ -79,6 +81,8 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		}
 		data := map[string]interface{}{}
 		tmpl := tmpls[0]
+		restore := skipSecretFileOnAuthTemplate(tmpl)
+		defer restore()
 		// add args to tmpl here
 		vars := map[string]interface{}{}
 		mainCtx := context.Background()
@@ -147,5 +151,48 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 			opts.OnError(finalErr)
 		}
 		return finalErr
+	}
+}
+
+// skipSecretFileOnAuthTemplate disables secret-file auth on the login template for
+// the duration of the fetch. Login requests that hit the same domain as the
+// secret would otherwise ApplyAuth → Fetch and deadlock on sync.Once (#7639).
+// Previous SkipSecretFile values are restored so a cached template is unchanged.
+func skipSecretFileOnAuthTemplate(tmpl *templates.Template) func() {
+	if tmpl == nil {
+		return func() {}
+	}
+	var reqs []*httpprotocol.Request
+	seen := make(map[*httpprotocol.Request]struct{})
+	add := func(r *httpprotocol.Request) {
+		if r == nil {
+			return
+		}
+		if _, ok := seen[r]; ok {
+			return
+		}
+		seen[r] = struct{}{}
+		reqs = append(reqs, r)
+	}
+	for _, r := range tmpl.RequestsHTTP {
+		add(r)
+	}
+	for _, r := range tmpl.RequestsWithHTTP {
+		add(r)
+	}
+	for _, req := range tmpl.RequestsQueue {
+		if r, ok := req.(*httpprotocol.Request); ok {
+			add(r)
+		}
+	}
+	prev := make([]bool, len(reqs))
+	for i, r := range reqs {
+		prev[i] = r.SkipSecretFile
+		r.SkipSecretFile = true
+	}
+	return func() {
+		for i, r := range reqs {
+			r.SkipSecretFile = prev[i]
+		}
 	}
 }

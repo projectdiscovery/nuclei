@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,10 +24,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -137,7 +138,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -177,30 +178,45 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
+
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
-	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(target.MetaInput).GetAll()))
-	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
+	scope := request.options.NewVariablesScope(defaultVars, optionVars, dynamicValues, previous)
+
+	request.options.AddTemplateCtxToVariablesScope(target.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+
+	variables := request.options.Variables.EvaluateScope(scope).Values
+	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, previous)
+	if request.options.HasTemplateCtx(target.MetaInput) {
+		payloadValues = generators.MergeMaps(payloadValues, request.options.GetTemplateCtx(target.MetaInput).GetAll())
+	}
+	payloadValues = generators.MergeMaps(payloadValues, request.options.Constants)
 
 	requestOptions := request.options
 	for key, value := range request.Headers {
-		finalData, dataErr := expressions.EvaluateByte([]byte(value), payloadValues)
+		result, dataErr := render.Render(render.Input{Text: value, Values: payloadValues})
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 			return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
-		header.Set(key, string(finalData))
+
+		header.Set(key, result.Text)
 	}
+
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 		ServerName:         hostname,
 		MinVersion:         tls.VersionTLS10,
 	}
+
 	if requestOptions.Options.SNI != "" {
 		tlsConfig.ServerName = requestOptions.Options.SNI
 	}
+
 	websocketDialer := ws.Dialer{
 		Header:    ws.HandshakeHeaderHTTP(header),
 		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
@@ -212,31 +228,40 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		gologger.Debug().Msgf("WebSocket Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
-	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
+	addressResult, dataErr := render.Render(render.Input{Text: request.Address, Values: payloadValues})
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 		return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 	}
 
-	addressToDial := string(finalAddress)
+	addressToDial := addressResult.Text
+
 	parsedAddress, err := url.Parse(addressToDial)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
+
 	if parsedAddress.Path == "" || parsedAddress.Path == "/" {
 		parsedAddress.Path = parsed.Path
 	}
+
 	addressToDial = parsedAddress.String()
 
+	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
+	handshakeDuration := time.Since(timeStart)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 		return errors.Wrap(err, "could not connect to server")
 	}
+
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -246,12 +271,14 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		_, _ = io.Copy(responseBuilder, readBuffer) // Copy initial response
 	}
 
-	events, requestOutput, err := request.readWriteInputWebsocket(conn, payloadValues, input, responseBuilder)
+	events, requestOutput, stepDurations, err := request.readWriteInputWebsocket(conn, payloadValues, input, responseBuilder)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 		return errors.Wrap(err, "could not read write response")
 	}
+
 	requestOptions.Progress.IncrementRequests()
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
@@ -271,6 +298,11 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	data["host"] = input
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
+	if len(stepDurations) > 0 {
+		addWebsocketDurationFields(data, stepDurations)
+	} else {
+		data["duration"] = handshakeDuration.Seconds()
+	}
 
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(target.MetaInput, request.Type(), request.ID, data)
@@ -289,10 +321,11 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	}
 
 	callback(event)
+
 	return nil
 }
 
-func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *strings.Builder) (events map[string]interface{}, req string, err error) {
+func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *strings.Builder) (events map[string]interface{}, req string, durations []time.Duration, err error) {
 	reqBuilder := &strings.Builder{}
 	inputEvents := make(map[string]interface{})
 
@@ -300,27 +333,29 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 	for _, req := range request.Inputs {
 		reqBuilder.Grow(len(req.Data))
 
-		finalData, dataErr := expressions.EvaluateByte([]byte(req.Data), payloadValues)
+		result, dataErr := render.Render(render.Input{Text: req.Data, Values: payloadValues})
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return nil, "", errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
+			return nil, "", nil, errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
-		reqBuilder.WriteString(string(finalData))
+		reqBuilder.WriteString(result.Text)
 
-		err = wsutil.WriteClientMessage(conn, ws.OpText, finalData)
+		timeStart := time.Now()
+		err = wsutil.WriteClientMessage(conn, ws.OpText, []byte(result.Text))
 		if err != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return nil, "", errors.Wrap(err, "could not write request to server")
+			return nil, "", nil, errors.Wrap(err, "could not write request to server")
 		}
 
 		msg, opCode, err := wsutil.ReadServerData(conn)
 		if err != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return nil, "", errors.Wrap(err, "could not write request to server")
+			return nil, "", nil, errors.Wrap(err, "could not read response from server")
 		}
+		durations = append(durations, time.Since(timeStart))
 		// Only perform matching and writes in case we receive
 		// text or binary opcode from the websocket server.
 		if opCode != ws.OpText && opCode != ws.OpBinary {
@@ -339,7 +374,15 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 			}
 		}
 	}
-	return inputEvents, reqBuilder.String(), nil
+	return inputEvents, reqBuilder.String(), durations, nil
+}
+
+func addWebsocketDurationFields(event map[string]interface{}, durations []time.Duration) {
+	for i, duration := range durations {
+		seconds := duration.Seconds()
+		event["duration_"+strconv.Itoa(i+1)] = seconds
+		event["duration"] = seconds
+	}
 }
 
 // getAddress returns the address of the host to make request to
@@ -388,6 +431,7 @@ var RequestPartDefinitions = map[string]string{
 	"type":     "Type is the type of request made",
 	"success":  "Success specifies whether websocket connection was successful",
 	"request":  "Websocket request made to the server",
+	"duration": "Latest measured operation duration in seconds",
 	"response": "Websocket response received from the server",
 	"host":     "Host is the input to the template",
 	"matched":  "Matched is the input which was matched upon",

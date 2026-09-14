@@ -3,7 +3,7 @@ package dcerpc
 import (
 	lib_dcerpc "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/dcerpc"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

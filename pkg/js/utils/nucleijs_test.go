@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/stretchr/testify/require"
 )
 

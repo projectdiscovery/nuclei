@@ -3,7 +3,7 @@ package krbroast
 import (
 	lib_krbroast "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/krbroast"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

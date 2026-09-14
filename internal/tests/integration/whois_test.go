@@ -9,6 +9,7 @@ import (
 
 var whoisTestCases = []integrationCase{
 	{Path: "protocols/whois/basic.yaml", TestCase: &whoisBasic{}},
+	{Path: "protocols/whois/duration.yaml", TestCase: &whoisBasic{}},
 }
 
 type whoisBasic struct{}

@@ -1,0 +1,5 @@
+method=POST
+path=/api/v1/login
+host=scanme.sh
+header=Content-Type: application/json
+body={"username":"admin","password":"admin"}

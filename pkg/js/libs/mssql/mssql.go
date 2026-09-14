@@ -3,14 +3,13 @@ package mssql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
 	"strings"
-	"time"
 
 	_ "github.com/microsoft/go-mssqldb"
-	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -68,11 +67,7 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
-		url.PathEscape(username),
-		url.PathEscape(password),
-		target,
-		dbName)
+	connString := mssqlConnString(target, username, password, dbName)
 
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
@@ -116,34 +111,21 @@ func (c *MSSQLClient) IsMssql(ctx context.Context, host string, port int) (bool,
 
 // @memo
 func isMssql(ctx context.Context, executionId string, host string, port int) (bool, error) {
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
+	// Reuse the memoized fingerprint probe so IsMssql + FingerprintMssql share one dial.
+	_, err := memoizedfingerprintMssql(ctx, executionId, host, port)
+	return isMssqlResult(err)
+}
 
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return false, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+// isMssqlResult maps fingerprint probe errors to IsMssql's (ok, err) contract.
+func isMssqlResult(err error) (bool, error) {
 	if err != nil {
+		// Unparsable / non-MSSQL TDS replies are a negative detection, not a probe failure.
+		if errors.Is(err, errNotMssql) {
+			return false, nil
+		}
 		return false, err
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
-
-	data, check, err := mssql.DetectMSSQL(conn, 5*time.Second)
-	if check && err != nil {
-		return false, nil
-	} else if !check && err != nil {
-		return false, err
-	}
-	if data.Version != "" {
-		return true, nil
-	}
-	return false, nil
+	return true, nil
 }
 
 // ExecuteQuery connects to MS SQL database using given credentials and executes a query.
@@ -165,8 +147,6 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-
 	ok, err := c.IsMssql(ctx, host, port)
 	if err != nil {
 		return nil, err
@@ -175,11 +155,8 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 		return nil, fmt.Errorf("not a mssql service")
 	}
 
-	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
-		url.PathEscape(username),
-		url.PathEscape(password),
-		target,
-		dbName)
+	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+	connString := mssqlConnString(target, username, password, dbName)
 
 	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
@@ -205,4 +182,12 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 		return nil, err
 	}
 	return data, nil
+}
+
+func mssqlConnString(target, username, password, dbName string) string {
+	return fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
+		url.PathEscape(username),
+		url.PathEscape(password),
+		target,
+		url.QueryEscape(dbName))
 }

@@ -79,7 +79,7 @@ type javascriptNoAccess struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *javascriptNoAccess) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "trust_me_bro.real", debug, "-ms", "-j")
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, "trust_me_bro.real", debug, "-ms", "-j")
 	if err != nil {
 		return err
 	}

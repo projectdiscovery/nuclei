@@ -17,8 +17,8 @@ import (
 )
 
 var isCodeDisabled = func() bool { return osutils.IsWindows() && os.Getenv("CI") == "true" }
-var signedCodeTemplates sync.Once
-var signedCodeTemplatesErr error
+var signedIntegrationTemplates sync.Once
+var signedIntegrationTemplatesErr error
 
 func hasAnyExecutable(names ...string) bool {
 	for _, name := range names {
@@ -34,6 +34,7 @@ var codeTestCases = []integrationCase{
 	{Path: "protocols/code/py-file.yaml", TestCase: &codeFile{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-env-var.yaml", TestCase: &codeEnvVar{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/unsigned.yaml", TestCase: &unsignedCode{}, DisableOn: isCodeDisabled},
+	{Path: "protocols/code/dast-unsigned.yaml", TestCase: &dastUnsignedCode{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-nosig.yaml", TestCase: &codePyNoSig{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() || isCodeDisabled() }},
@@ -50,23 +51,20 @@ const (
 
 var testcertpath = ""
 
-func ensureSignedCodeTemplates() error {
-	if isCodeDisabled() {
-		return nil
-	}
-	signedCodeTemplates.Do(func() {
+func ensureSignedIntegrationTemplates() error {
+	signedIntegrationTemplates.Do(func() {
 		previousWD, err := os.Getwd()
 		if err != nil {
-			signedCodeTemplatesErr = err
+			signedIntegrationTemplatesErr = err
 			return
 		}
 		if err := os.Chdir(suite.fixturesDir); err != nil {
-			signedCodeTemplatesErr = err
+			signedIntegrationTemplatesErr = err
 			return
 		}
 		defer func() {
-			if chdirErr := os.Chdir(previousWD); chdirErr != nil && signedCodeTemplatesErr == nil {
-				signedCodeTemplatesErr = chdirErr
+			if chdirErr := os.Chdir(previousWD); chdirErr != nil && signedIntegrationTemplatesErr == nil {
+				signedIntegrationTemplatesErr = chdirErr
 			}
 		}()
 
@@ -78,13 +76,16 @@ func ensureSignedCodeTemplates() error {
 
 		tsigner, err := signer.NewTemplateSignerFromFiles(certPath, keyPath)
 		if err != nil {
-			signedCodeTemplatesErr = err
+			signedIntegrationTemplatesErr = err
 			return
 		}
 
-		templatesToSign := []string{
-			"workflow/code-template-1.yaml",
-			"workflow/code-template-2.yaml",
+		var templatesToSign []string
+		if !isCodeDisabled() {
+			templatesToSign = append(templatesToSign,
+				"workflow/code-template-1.yaml",
+				"workflow/code-template-2.yaml",
+			)
 		}
 		for _, v := range codeTestCases {
 			if v.DisableOn != nil && v.DisableOn() {
@@ -96,22 +97,40 @@ func ensureSignedCodeTemplates() error {
 			if _, ok := v.TestCase.(*codePyNoSig); ok {
 				continue
 			}
+			if _, ok := v.TestCase.(*dastUnsignedCode); ok {
+				continue
+			}
+			templatesToSign = append(templatesToSign, v.Path)
+		}
+		for _, v := range jsTestcases {
+			if v.DisableOn != nil && v.DisableOn() {
+				continue
+			}
 			templatesToSign = append(templatesToSign, v.Path)
 		}
 		for _, templatePath := range templatesToSign {
 			if err := templates.SignTemplate(tsigner, fixturePath(templatePath)); err != nil {
-				signedCodeTemplatesErr = err
+				signedIntegrationTemplatesErr = err
 				return
 			}
 		}
 	})
-	return signedCodeTemplatesErr
+	return signedIntegrationTemplatesErr
 }
 
 func getEnvValues() []string {
 	return []string{
 		signer.CertEnvVarName + "=" + testcertpath,
 	}
+}
+
+func runSignedNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
+	if err := ensureSignedIntegrationTemplates(); err != nil {
+		return nil, err
+	}
+	args := []string{"-t", template, "-target", url}
+	args = append(args, extra...)
+	return testutils.RunNucleiBareArgsAndGetResults(debug, getEnvValues(), args...)
 }
 
 type codeSnippet struct{}
@@ -168,6 +187,22 @@ type unsignedCode struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *unsignedCode) Execute(filePath string) error {
 	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
+
+	// should error out
+	if err != nil {
+		return nil
+	}
+
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
+}
+
+type dastUnsignedCode struct{}
+
+// Execute runs an unsigned template that pairs a fuzzable request with a code
+// block under -dast, which must not bypass the code-signing check.
+func (h *dastUnsignedCode) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-dast")
 
 	// should error out
 	if err != nil {

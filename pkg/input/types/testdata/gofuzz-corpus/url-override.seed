@@ -1,0 +1,6 @@
+method=PUT
+path=/openapi/generated
+host=api.example.com
+url=https://target.example.org/base
+header=X-Request-ID: fuzz
+body={"ok":true}

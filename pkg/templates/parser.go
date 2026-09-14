@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -14,18 +15,15 @@ import (
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
-
-	"gopkg.in/yaml.v2"
 )
 
 type Parser struct {
 	ShouldValidate bool
 	NoStrictSyntax bool
 
-	// parsedTemplatesCache stores lightweight parsed template structures
-	// (without raw bytes).
-	// Used for validation and filtering. This cache can be copied safely
-	// between ephemeral instances.
+	// parsedTemplatesCache stores clean parsed template structures used for
+	// validation, filtering, and engine-local compilation. Entries also retain
+	// source bytes when they exactly match the parsed structure.
 	parsedTemplatesCache *Cache
 
 	// compiledTemplatesCache stores fully compiled templates with all protocol
@@ -51,6 +49,17 @@ func NewParserWithParsedCache(cache *Cache) *Parser {
 		parsedTemplatesCache:   cache,
 		compiledTemplatesCache: NewCache(),
 	}
+}
+
+// Purge clears the parsed and compiled template caches. It should be called
+// when the parser is no longer needed (e.g. on engine Close) so a long-running
+// embedder does not retain every compiled template (a heap-heavy object) for
+// the entire process lifetime.
+func (p *Parser) Purge() {
+	p.Lock()
+	defer p.Unlock()
+	p.parsedTemplatesCache.Purge()
+	p.compiledTemplatesCache.Purge()
 }
 
 // Cache returns the parsed templates cache
@@ -104,7 +113,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 
 	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
-		stats.Increment(SyntaxErrorStats)
+		stats.Increment(TemplateSyntaxErrorStats)
 		return false, errkit.Newf("Could not load template %s: %s", templatePath, validationError)
 	}
 
@@ -117,7 +126,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	if ret {
 		validationWarning := validateTemplateOptionalFields(template)
 		if validationWarning != nil {
-			stats.Increment(SyntaxWarningStats)
+			stats.Increment(TemplateSyntaxWarningStats)
 			checkOpenFileError(validationWarning)
 			return ret, errkit.Newf("Could not load template %s: %s", templatePath, validationWarning)
 		}
@@ -140,49 +149,38 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		_ = reader.Close()
 	}()
 
-	// For local YAML files, check if preprocessing is needed
-	var data []byte
+	sourceData, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	data := sourceData
+	cacheSource := true
+
+	// For local YAML files, check if preprocessing is needed.
 	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
-		data, err = io.ReadAll(reader)
+		data, err = yamlutil.PreProcess(data, templatePath)
 		if err != nil {
 			return nil, err
 		}
-		data, err = yamlutil.PreProcess(data)
-		if err != nil {
-			return nil, err
-		}
+
+		cacheSource = bytes.Equal(data, sourceData)
 	}
 
 	template := &Template{}
 
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
-		if data == nil {
-			data, err = io.ReadAll(reader)
-			if err != nil {
-				return nil, err
-			}
-		}
 		if p.NoStrictSyntax {
 			err = json.Unmarshal(data, template)
 		} else {
 			err = template.unmarshalJSONStrict(data)
 		}
 	case config.YAML:
-		if data != nil {
-			// Already read and preprocessed
-			if p.NoStrictSyntax {
-				err = yaml.Unmarshal(data, template)
-			} else {
-				err = yaml.UnmarshalStrict(data, template)
-			}
+		if p.NoStrictSyntax {
+			err = yamlutil.Unmarshal(data, template)
 		} else {
-			// Stream directly from reader
-			decoder := yaml.NewDecoder(reader)
-			if !p.NoStrictSyntax {
-				decoder.SetStrict(true)
-			}
-			err = decoder.Decode(template)
+			err = yamlutil.UnmarshalStrict(data, template)
 		}
 	default:
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
@@ -191,7 +189,11 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 
-	p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+	if cacheSource {
+		p.parsedTemplatesCache.Store(templatePath, template, sourceData, nil)
+	} else {
+		p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+	}
 
 	return template, nil
 }
@@ -210,7 +212,7 @@ func (p *Parser) LoadWorkflow(templatePath string, catalog catalog.Catalog) (boo
 
 	if len(template.Workflows) > 0 {
 		if validationError := validateTemplateMandatoryFields(template); validationError != nil {
-			stats.Increment(SyntaxErrorStats)
+			stats.Increment(TemplateSyntaxErrorStats)
 			return false, validationError
 		}
 		return true, nil
