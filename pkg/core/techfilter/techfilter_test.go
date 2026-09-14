@@ -112,3 +112,66 @@ func TestCountTechBound(t *testing.T) {
 		t.Fatalf("CountTechBound = %d", n)
 	}
 }
+
+// A tag only binds when fingerprinting can emit it. nuclei-templates carries
+// thousands of tags that name no product; binding to one of those prunes the
+// template on every host, because no profile can ever contain it.
+func TestOnlyKnownFingerprintTokensBind(t *testing.T) {
+	nonProducts := [][]string{
+		{"misconfig", "headers", "generic", "vuln"}, // http-missing-security-headers
+		{"tech", "discovery"},                       // tech-detect
+		{"waf", "tech", "misc", "discovery"},        // waf-detect
+		{"wpscan"},
+		{"top-100"}, {"top-200"},
+		{"auth-bypass"}, {"time-based-sqli"},
+		{"install"}, {"files"}, {"file-upload"},
+		{"phishing"}, {"osint-social"},
+		{"debug"}, {"devops"}, {"token"}, {"tokens"}, {"fpd"}, {"oss"},
+	}
+	nginx := ProfileFromFingerprint(map[string][]string{"Nginx": {"Web servers"}})
+	for _, tags := range nonProducts {
+		tpl := tagged(tags...)
+		if got := TemplateProductTags(tpl); len(got) != 0 {
+			t.Fatalf("tags %v must not bind, got %v", tags, got)
+		}
+		if !Allow(nginx, tpl) {
+			t.Fatalf("unbound template %v must run on every host", tags)
+		}
+	}
+}
+
+// The inversion must not disable the filter: real products still bind, and a
+// template for another stack is still pruned.
+func TestKnownProductsStillBind(t *testing.T) {
+	for _, tags := range [][]string{{"wordpress"}, {"apache"}, {"joomla"}, {"cms"}} {
+		if got := TemplateProductTags(tagged(tags...)); len(got) == 0 {
+			t.Fatalf("tags %v name a product and must bind", tags)
+		}
+	}
+
+	nginx := ProfileFromFingerprint(map[string][]string{"Nginx": {"Web servers"}})
+	if Allow(nginx, tagged("wordpress", "rce")) {
+		t.Fatal("a wordpress template must not run on an nginx-only profile")
+	}
+	wp := ProfileFromFingerprint(map[string][]string{"WordPress": {"CMS"}})
+	if !Allow(wp, tagged("wordpress", "rce")) {
+		t.Fatal("a wordpress template must run on a wordpress profile")
+	}
+}
+
+func TestKnownFingerprintTokensVocabulary(t *testing.T) {
+	tokens := knownFingerprintTokens()
+	if len(tokens) < 5000 {
+		t.Fatalf("expected the wappalyzer vocabulary, got %d tokens", len(tokens))
+	}
+	for _, want := range []string{"wordpress", "nginx", "apache", "cms", "webserver"} {
+		if _, ok := tokens[want]; !ok {
+			t.Fatalf("token %q missing from the vocabulary", want)
+		}
+	}
+	for _, bad := range []string{"discovery", "headers", "wpscan", "top-200"} {
+		if _, ok := tokens[bad]; ok {
+			t.Fatalf("token %q is not a product and must not be in the vocabulary", bad)
+		}
+	}
+}

@@ -23,9 +23,10 @@ import (
 )
 
 const (
-	techFilterWorkers     = 50
-	techFilterMaxBody     = 1 * unitutils.Mega
-	techFilterHTTPTimeout = 5 * time.Second
+	techFilterWorkers      = 50
+	techFilterMaxBody      = 1 * unitutils.Mega
+	techFilterHTTPTimeout  = 5 * time.Second
+	techFilterMaxRedirects = 5
 )
 
 // techReachabilityIndex filters template×target pairs by product/macro tags.
@@ -108,9 +109,16 @@ func (r *Runner) buildTechReachability(tpls []*templates.Template, httpHelper *i
 	if err != nil {
 		return nil, err
 	}
+	// Redirects must be followed. A site that answers "/" with a 302 to its real
+	// entry point (WordPress -> /wp-admin/install.php, any app -> /login) returns
+	// an empty body, so the probe would detect nothing and every template bound
+	// to the undetected product would be pruned. Same-host only, so the probe
+	// never leaves the target authority.
 	httpclient, err := httpclientpool.Get(r.options, &httpclientpool.Configuration{
 		DisableCookie:         true,
 		ResponseHeaderTimeout: techFilterHTTPTimeout,
+		RedirectFlow:          httpclientpool.FollowSameHostRedirect,
+		MaxRedirects:          techFilterMaxRedirects,
 	}, "")
 	if err != nil {
 		return nil, err

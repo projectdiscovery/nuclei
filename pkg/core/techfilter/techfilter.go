@@ -9,9 +9,12 @@
 package techfilter
 
 import (
+	"encoding/json"
 	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 )
 
 // genericTags are common nuclei tags that do not bind a template to a product.
@@ -191,9 +194,16 @@ func TemplateProductTags(t *templates.Template) []string {
 	raw := t.Info.Tags.ToSlice()
 	out := make([]string, 0, len(raw))
 	seen := make(map[string]struct{}, len(raw))
+	known := knownFingerprintTokens()
 	for _, tag := range raw {
 		tag = NormalizeProduct(tag)
 		if tag == "" || IsGenericTag(tag) {
+			continue
+		}
+		// A tag binds only when fingerprinting can actually emit it. Anything
+		// else would never match a profile and would prune the template on
+		// every host, so it must leave the template unbound.
+		if _, ok := known[tag]; !ok {
 			continue
 		}
 		if _, ok := seen[tag]; ok {
@@ -204,6 +214,35 @@ func TemplateProductTags(t *templates.Template) []string {
 	}
 	return out
 }
+
+// knownFingerprintTokens is every token a host profile can contain: the
+// normalized name of every Wappalyzer app plus every category macro.
+//
+// This is an allowlist on purpose. nuclei-templates carries thousands of tags
+// that name no product at all (discovery, wpscan, top-200, auth-bypass, ...).
+// Treating an unrecognized tag as a product binds the template to something no
+// fingerprint can ever report, which silently drops it on every host. Unknown
+// tags must therefore bind nothing.
+var knownFingerprintTokens = sync.OnceValue(func() map[string]struct{} {
+	var data struct {
+		Apps map[string]json.RawMessage `json:"apps"`
+	}
+	tokens := make(map[string]struct{}, 8192)
+	if err := json.Unmarshal([]byte(wappalyzer.GetFingerprints()), &data); err == nil {
+		for name := range data.Apps {
+			if p := NormalizeProduct(name); p != "" {
+				tokens[p] = struct{}{}
+			}
+		}
+	}
+	for _, macro := range categoryMacros {
+		tokens[macro] = struct{}{}
+	}
+	for tag := range weakFingerprintTags {
+		tokens[tag] = struct{}{}
+	}
+	return tokens
+})
 
 // IsTechBound reports whether the template is constrained to a product/macro.
 func IsTechBound(t *templates.Template) bool {
