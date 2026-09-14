@@ -60,6 +60,15 @@ func AllowedFileRoots(options *types.Options) []string {
 // javascript/code file access is still checked against AllowedFileRoots.
 func SandboxFileRoots(options *types.Options) []string {
 	roots := AllowedFileRoots(options)
+	// State and cache are nuclei's own bookkeeping (templates.json and friends).
+	// They stay out of AllowedFileRoots so templates cannot read them, but the
+	// process must be able to write them or template updates fail.
+	if stateDir := config.DefaultConfig.GetStateDir(); stateDir != "" {
+		roots = append(roots, canonicalRoot(stateDir))
+	}
+	if cacheDir := config.DefaultConfig.GetCacheDir(); cacheDir != "" {
+		roots = append(roots, canonicalRoot(cacheDir))
+	}
 	if options == nil {
 		return uniqueRoots(roots)
 	}

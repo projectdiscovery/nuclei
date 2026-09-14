@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -73,6 +74,28 @@ func TestSandboxFileRootsCoversCLIPathsButAllowlistDoesNot(t *testing.T) {
 	// the template-facing allowlist stays narrow
 	allowlist := protocolstate.AllowedFileRoots(opts)
 	require.False(t, rootListContains(allowlist, workDir), "templates must not gain access to the targets dir: %v", allowlist)
+}
+
+// Template updates write templates.json under the state dir, so the sandbox
+// must cover it while templates themselves stay locked out of it.
+func TestSandboxFileRootsCoversStateAndCacheDirs(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+
+	opts := &types.Options{ExecutionId: t.Name()}
+	roots := protocolstate.SandboxFileRoots(opts)
+	allowlist := protocolstate.AllowedFileRoots(opts)
+
+	configDir := config.DefaultConfig.GetConfigDir()
+	for _, dir := range []string{config.DefaultConfig.GetStateDir(), config.DefaultConfig.GetCacheDir()} {
+		require.NotEmpty(t, dir)
+		require.True(t, rootListContains(roots, dir), "sandbox must cover %s: %v", dir, roots)
+		if dir == configDir {
+			// darwin collapses config, state and cache onto one directory
+			continue
+		}
+		require.False(t, rootListContains(allowlist, dir), "templates must not reach %s: %v", dir, allowlist)
+	}
 }
 
 func TestSandboxFileRootsIncludesWorkingDirectory(t *testing.T) {
