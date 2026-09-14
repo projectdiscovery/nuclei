@@ -279,7 +279,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
-	return len(request.Address)
+	requests := len(request.Address)
+	if len(request.ports) > 0 {
+		requests *= len(request.ports)
+	}
+	if request.generator != nil {
+		requests *= request.generator.NewIterator().Total()
+	}
+	return requests
 }
 
 func (request *Request) SetDialer(dialer *fastdialer.Dialer) {

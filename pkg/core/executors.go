@@ -21,9 +21,20 @@ import (
 // executeAllSelfContained executes all self contained templates that do not use `target`
 func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
 	for _, v := range alltemplates {
+		usesSharedTemplateBudget := v.Type() != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				return
+			}
+		}
 		sg.Add(1)
-		go func(template *templates.Template) {
+		go func(template *templates.Template, sharedBudget bool) {
 			defer sg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
+			finished := e.templateExecutionStarted(template, "")
+			defer func() { finished(ctx.Err()) }()
 			var err error
 			var match bool
 			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
@@ -42,7 +53,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step (self-contained): %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
 			results.CompareAndSwap(false, match)
-		}(v)
+		}(v, usesSharedTemplateBudget)
 	}
 }
 
@@ -230,21 +241,35 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		} else {
 			sg = wp.Default
 		}
-		sg.Add()
-		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
+		if err := sg.AddWithContext(ctx); err != nil {
+			return
+		}
+		usesSharedTemplateBudget := tpl.Type() != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				sg.Done()
+				return
+			}
+		}
+		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup, sharedBudget bool) {
 			defer wg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
 
 			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
-		}(tpl, target, sg)
+		}(tpl, target, sg, usesSharedTemplateBudget)
 	}
 }
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error
 func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
+	finished := e.templateExecutionStarted(template, value.Input)
+	defer func() { finished(ctx.Err()) }()
 	ctxArgs := contextargs.New(ctx)
 	ctxArgs.MetaInput = value
 	scanCtx := scan.NewScanContext(ctx, ctxArgs)

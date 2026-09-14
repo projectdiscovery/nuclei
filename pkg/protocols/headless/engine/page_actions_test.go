@@ -984,6 +984,49 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	}
 }
 
+func TestHeadlessRunHonorsParentCancellation(t *testing.T) {
+	opts := &types.Options{AllowLocalFileAccess: true}
+	require.NoError(t, protocolstate.Init(opts))
+
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	require.NoError(t, err)
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.NoError(t, err)
+	defer func() { _ = instance.Close() }()
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, request *http.Request) {
+		requestStarted <- struct{}{}
+		<-request.Context().Done()
+	}))
+	defer server.Close()
+
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-requestStarted
+		cancel()
+	}()
+
+	input := contextargs.NewWithInput(parent, server.URL)
+	actions := []*Action{{
+		ActionType: ActionTypeHolder{ActionType: ActionNavigate},
+		Data:       map[string]string{"url": "{{BaseURL}}"},
+	}}
+
+	startedAt := time.Now()
+	_, page, err := instance.Run(input, actions, nil, &Options{Timeout: 5 * time.Second, Options: opts})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, page)
+	require.Less(t, time.Since(startedAt), 2*time.Second)
+}
+
 func TestContainsAnyModificationActionType(t *testing.T) {
 	if containsAnyModificationActionType() {
 		t.Error("Expected false, got true")
