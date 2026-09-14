@@ -55,3 +55,22 @@ func TestCookieComponent(t *testing.T) {
 	newCookie, _ := rebuilt.Cookie("session")
 	require.Equal(t, "new-session", newCookie.Value, "unexpected cookie value")
 }
+
+func TestCookieComponentSkipsIgnored(t *testing.T) {
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
+	require.NoError(t, err)
+	req.AddCookie(&http.Cookie{Name: "session", Value: "abc"})
+	req.AddCookie(&http.Cookie{Name: "_ga", Value: "GA1.2.1"})
+
+	cookieComponent := NewCookie()
+	ok, err := cookieComponent.Parse(req)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	var names []string
+	_ = cookieComponent.Iterate(func(key string, value interface{}) error {
+		names = append(names, key)
+		return nil
+	})
+	require.Equal(t, []string{"session"}, names)
+}
