@@ -146,7 +146,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	tlsxOptions := &clients.Options{
-		AllCiphers:        true,
 		ScanMode:          request.ScanMode,
 		Expired:           true,
 		SelfSigned:        true,
@@ -197,7 +196,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -254,7 +253,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = host
 	}
 
+	timeStart := time.Now()
 	response, err := request.tlsx.Connect(host, hostIp, port)
+	duration := time.Since(timeStart)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -283,6 +284,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["response"] = jsonDataString
 	data["host"] = input.MetaInput.Input
 	data["matched"] = addressToDial
+	data["duration"] = duration.Seconds()
 	if input.MetaInput.CustomIP != "" {
 		data["ip"] = hostIp
 	} else {
@@ -292,6 +294,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
+	request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, "duration", data["duration"])
 
 	// if response is not struct compatible, error out
 	if !structs.IsStruct(response) {
@@ -363,6 +366,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":          "Matched is the input which was matched upon",
 	"type":             "Type is the type of request made",
 	"timestamp":        "Timestamp is the time when the request was made",
+	"duration":         "Protocol operation duration in seconds",
 	"response":         "JSON SSL protocol handshake details",
 	"cipher":           "Cipher is the encryption algorithm used",
 	"domains":          "Domains are the list of domain names in the certificate",

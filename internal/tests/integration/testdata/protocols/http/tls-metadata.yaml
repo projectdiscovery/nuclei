@@ -1,0 +1,22 @@
+id: http-tls-metadata
+
+info:
+  name: HTTP TLS metadata from same connection
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "test-ok"
+      - type: dsl
+        dsl:
+          - sni == "test"
+          - tls_version != ""
+          - cipher != ""
+          - len(to_string(domains)) > 0 || subject_cn != "" || len(to_string(subject_an)) > 0

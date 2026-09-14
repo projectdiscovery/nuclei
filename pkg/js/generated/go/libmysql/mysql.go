@@ -20,9 +20,10 @@ func init() {
 			// Var and consts
 
 			// Objects / Classes
-			"MySQLClient":  gojs.GetClassConstructor[lib_mysql.MySQLClient](&lib_mysql.MySQLClient{}),
-			"MySQLInfo":    gojs.GetClassConstructor[lib_mysql.MySQLInfo](&lib_mysql.MySQLInfo{}),
-			"MySQLOptions": gojs.GetClassConstructor[lib_mysql.MySQLOptions](&lib_mysql.MySQLOptions{}),
+			"HandshakeInfo": gojs.GetClassConstructor[lib_mysql.HandshakeInfo](&lib_mysql.HandshakeInfo{}),
+			"MySQLClient":   gojs.GetClassConstructor[lib_mysql.MySQLClient](&lib_mysql.MySQLClient{}),
+			"MySQLInfo":     gojs.GetClassConstructor[lib_mysql.MySQLInfo](&lib_mysql.MySQLInfo{}),
+			"MySQLOptions":  gojs.GetClassConstructor[lib_mysql.MySQLOptions](&lib_mysql.MySQLOptions{}),
 		},
 	).Register()
 }

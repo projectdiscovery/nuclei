@@ -53,19 +53,20 @@ func (s *Agent) Start(interval time.Duration) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 	ticker := time.NewTicker(interval)
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				ticker.Stop()
-			case <-ticker.C:
-				s.monitorWorker(cancel)
-			default:
-				continue
-			}
-		}
-	}()
+	go s.run(ctx, ticker, cancel)
 	return cancel
+}
+
+func (s *Agent) run(ctx context.Context, ticker *time.Ticker, cancel context.CancelFunc) {
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.monitorWorker(cancel)
+		}
+	}
 }
 
 // monitorWorker is a worker for monitoring running goroutines
