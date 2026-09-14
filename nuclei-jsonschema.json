@@ -722,6 +722,36 @@
           "markdownDescription": "Do not recurse into folders when directories are provided",
           "title": "do not perform recursion",
           "type": "boolean"
+        },
+        "smb-domain": {
+          "description": "Domain for SMB authentication",
+          "markdownDescription": "Domain for SMB authentication",
+          "title": "SMB domain",
+          "type": "string"
+        },
+        "smb-hash": {
+          "description": "NT hash for SMB pass-the-hash",
+          "markdownDescription": "NT hash for SMB pass-the-hash",
+          "title": "SMB NT hash",
+          "type": "string"
+        },
+        "smb-password": {
+          "description": "Password for SMB file targets",
+          "markdownDescription": "Password for SMB file targets",
+          "title": "SMB password",
+          "type": "string"
+        },
+        "smb-port": {
+          "description": "TCP port for SMB (default 445)",
+          "markdownDescription": "TCP port for SMB (default 445)",
+          "title": "SMB port",
+          "type": "integer"
+        },
+        "smb-user": {
+          "description": "Username for SMB file targets",
+          "markdownDescription": "Username for SMB file targets",
+          "title": "SMB username",
+          "type": "string"
         }
       },
       "type": "object"
@@ -1088,6 +1118,12 @@
           ],
           "markdownDescription": "Disable Cookie is an optional setting to disable cookie reuse for this request\nExample: \n```yaml\n- disable-cookie: true\n```",
           "title": "optional disable cookie reuse",
+          "type": "boolean"
+        },
+        "disable-http-cache": {
+          "description": "Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset",
+          "markdownDescription": "Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset",
+          "title": "disable HTTP cache",
           "type": "boolean"
         },
         "disable-path-automerge": {

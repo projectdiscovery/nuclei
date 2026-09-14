@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/schema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
@@ -173,6 +174,10 @@ type Request struct {
 	// description: |
 	//   DisableCookie is an optional setting that disables cookie reuse
 	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
+
+	// description: |
+	//   DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset.
+	DisableHTTPCache bool `yaml:"disable-http-cache,omitempty" json:"disable-http-cache,omitempty" jsonschema:"title=disable HTTP cache,description=Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"`
 
 	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring
@@ -352,10 +357,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:       request.Threads,
-		MaxRedirects:  request.MaxRedirects,
-		NoTimeout:     false,
-		DisableCookie: request.DisableCookie,
+		Threads:          request.Threads,
+		MaxRedirects:     request.MaxRedirects,
+		NoTimeout:        false,
+		DisableCookie:    request.DisableCookie,
+		DisableHTTPCache: request.DisableHTTPCache,
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: disableKeepAlive,
 		},
@@ -557,6 +563,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
 	}
+
+	// Avoid reusing client-side HTTP proxy connections for the legacy non-threaded spray path.
+	if shouldDisableKeepAliveForHTTPProxy(request, options) {
+		request.connConfiguration.Connection.DisableKeepAlive = true
+	}
 	return nil
 }
 
@@ -604,6 +615,15 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 // HasFuzzing indicates whether the request has fuzzing rules defined.
 func (request *Request) HasFuzzing() bool {
 	return len(request.Fuzzing) > 0
+}
+
+// shouldDisableKeepAliveForHTTPProxy preserves the pre-pooling behavior only for
+// standard HTTP proxies in non-threaded template/auto spray scans.
+func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.ExecutorOptions) bool {
+	if request == nil || options == nil || options.Options == nil || options.Options.AliveHttpProxy == "" {
+		return false
+	}
+	return request.Threads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
 }
 
 // AnalyzeConnectionReuse determines if a request can safely reuse connections.

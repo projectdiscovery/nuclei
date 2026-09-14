@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -92,7 +93,14 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		actualTemplatePath = fixturePath(actualTemplatePath)
 	}
 	defaultOpts.Templates = goflags.StringSlice{actualTemplatePath}
-	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		defaultOpts.Logger.Warning().Msgf("%s; continuing without ignore exclusions\n", err)
+	} else if err != nil {
+		return nil, err
+	} else {
+		defaultOpts.ExcludeTags = ignoreFile.Tags
+	}
 
 	outputWriter := testutils.NewMockOutputWriter(defaultOpts.OmitTemplate)
 	var results []string

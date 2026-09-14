@@ -140,6 +140,9 @@ func compileFuzzTemplate(data []byte) (*Template, error) {
 	if template == nil {
 		return nil, errors.New("nil compiled template")
 	}
+	if err := compileTemplate(template); err != nil {
+		return nil, err
+	}
 	exerciseFuzzParsedTemplate(template)
 	return template, nil
 }

@@ -52,7 +52,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 		}
 
 		inputItem := ctx.Input.Clone()
-		if g.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
+		if g.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(ctx.Input.MetaInput, req.Type()) {
 			if inputItem.MetaInput.Input = g.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
 				return nil
 			}

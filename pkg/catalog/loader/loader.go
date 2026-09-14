@@ -272,8 +272,10 @@ func getTemplateVerification(metadataIndex *index.Index, templatePath string) *p
 	}
 
 	return &protocols.TemplateVerification{
-		Verified: metadata.Verified,
-		Verifier: metadata.TemplateVerifier,
+		Verified:            metadata.Verified,
+		Verifier:            metadata.TemplateVerifier,
+		VerifierFingerprint: metadata.VerifierFingerprint,
+		ContentDigest:       metadata.ContentDigest,
 	}
 }
 
@@ -656,7 +658,6 @@ func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{})
 
 func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *templates.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
-	parsedCache := store.parserCacheOnce()
 
 	for templatePath := range filteredTemplatePaths {
 		if _, err := load(templatePath, store.tagFilter); err != nil {
@@ -666,22 +667,14 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 			}
 		}
 
-		var template *templates.Template
-		var err error
-
-		if parsedCache != nil {
-			if cachedTemplate, _, cacheErr := parsedCache.Has(templatePath); cacheErr == nil && cachedTemplate != nil {
-				template = cachedTemplate
-			}
-		}
-
-		if template == nil {
-			template, err = templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
-			if err != nil {
-				if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
-					areTemplatesValid = false
-					continue
-				}
+		// The load step validates the parsed definition and filters templates.
+		// FYI parse must still run because protocol compilation can surface
+		// additional validation errors.
+		template, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
+		if err != nil {
+			if isParsingError(store, "Error occurred parsing template %s: %s\n", templatePath, err) {
+				areTemplatesValid = false
+				continue
 			}
 		}
 
@@ -830,7 +823,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	// tags, so it must be matched against the ignore-file tags specifically:
 	// otherwise user-requested -exclude-tags drops would be mislabeled as
 	// .nuclei-ignore exclusions.
-	ignoreFileTags := config.ReadIgnoreFile().Tags
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		store.logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+	} else if err != nil {
+		return nil, err
+	}
+	ignoreFileTags := ignoreFile.Tags
+
 	noteExcludedByTag := func(templatePath string, metadata *index.Metadata) {
 		if len(ignoreFileTags) == 0 || !slices.ContainsFunc(ignoreFileTags, metadata.HasTag) {
 			return
@@ -900,7 +900,12 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 			if loaded {
 				parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 
-				if parsed != nil && !metadataReusable {
+				verificationChanged := parsed != nil && (metadata == nil ||
+					metadata.Verified != parsed.Verified ||
+					metadata.TemplateVerifier != parsed.TemplateVerifier ||
+					metadata.VerifierFingerprint != parsed.VerifierFingerprint() ||
+					metadata.ContentDigest != parsed.ContentDigest())
+				if parsed != nil && (!metadataReusable || verificationChanged) {
 					if store.metadataIndex != nil {
 						metadata = store.cacheValidatedMetadata(templatePath, parsed)
 					} else {
