@@ -15,9 +15,10 @@ import (
 // Inclusion fields (e.g., Authors, Tags, IDs, Severities, ProtocolTypes) use
 // AND logic across different filter types and OR logic within each type.
 // Exclusion fields (e.g., ExcludeTags, ExcludeIDs, ExcludeSeverities,
-// ExcludeProtocolTypes) take precedence over inclusion fields. Additionally,
-// IncludeTemplates and IncludeTags can force inclusion of templates even if
-// they match exclusion criteria.
+// ExcludeProtocolTypes) take precedence over normal inclusion fields.
+// IncludeTags can force inclusion only for the same excluded tag; other
+// exclusion criteria and unrelated excluded tags still apply. IncludeTemplates
+// remains an explicit template override.
 type Filter struct {
 	// once ensures that IDs and ExcludedIDs are compiled the first time Matches is called.
 	once sync.Once
@@ -31,7 +32,7 @@ type Filter struct {
 	// ExcludeTags to exclude (takes precedence over Tags).
 	ExcludeTags []string
 
-	// IncludeTags to force include even if excluded.
+	// IncludeTags to force include matching tag exclusions.
 	IncludeTags []string
 
 	// IDs to include (supports wildcards).
@@ -75,7 +76,7 @@ type Filter struct {
 func (f *Filter) Matches(m *Metadata) bool {
 	f.once.Do(f.Compile)
 
-	if f.isForcedInclude(m) {
+	if f.matchesIncludeTemplate(m) {
 		return true
 	}
 
@@ -90,19 +91,13 @@ func (f *Filter) Matches(m *Metadata) bool {
 	return true
 }
 
-// isForcedInclude checks if template is forced to be included.
-func (f *Filter) isForcedInclude(m *Metadata) bool {
+// matchesIncludeTemplate checks if template is explicitly included by path.
+func (f *Filter) matchesIncludeTemplate(m *Metadata) bool {
 	if len(f.IncludeTemplates) > 0 {
 		for _, includePath := range f.IncludeTemplates {
 			if matchesPath(m.FilePath, includePath) {
 				return true
 			}
-		}
-	}
-
-	if len(f.IncludeTags) > 0 {
-		if slices.ContainsFunc(f.IncludeTags, m.HasTag) {
-			return true
 		}
 	}
 
@@ -120,8 +115,10 @@ func (f *Filter) isExcluded(m *Metadata) bool {
 	}
 
 	if len(f.ExcludeTags) > 0 {
-		if slices.ContainsFunc(f.ExcludeTags, m.HasTag) {
-			return true
+		for _, excludeTag := range f.ExcludeTags {
+			if m.HasTag(excludeTag) && !slices.Contains(f.IncludeTags, excludeTag) {
+				return true
+			}
 		}
 	}
 

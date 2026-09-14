@@ -18,6 +18,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/internal/fuzzplayground"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 )
 
 type integrationHarness struct {
@@ -63,12 +64,26 @@ func TestMain(m *testing.M) {
 		_ = os.RemoveAll(tempDir)
 		os.Exit(1)
 	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to determine user home directory: %v\n", err)
+		_ = os.RemoveAll(tempDir)
+		os.Exit(1)
+	}
+	templatesDir := filepath.Join(homeDir, config.NucleiTemplatesDirName)
+	config.DefaultConfig.SetTemplatesDir(templatesDir)
 
 	previousRunner := testutils.DefaultRunner()
 	runner := testutils.NewRunner(
 		testutils.WithBinaryPath(binaryPath),
 		testutils.WithWorkingDir(workingFixturesDir),
 		testutils.WithExtraArgs(integrationExtraArgs...),
+		testutils.WithBaseEnv(
+			"NUCLEI_TEMPLATES_DIR="+templatesDir,
+			"XDG_CONFIG_HOME="+filepath.Join(tempDir, "config"),
+			"XDG_STATE_HOME="+filepath.Join(tempDir, "state"),
+			"XDG_CACHE_HOME="+filepath.Join(tempDir, "cache"),
+		),
 	)
 	testutils.SetDefaultRunner(runner)
 

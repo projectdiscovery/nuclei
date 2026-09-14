@@ -31,15 +31,21 @@ func javascriptGoExecSambaDisabled() bool {
 
 var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/redis-lua-script.yaml", TestCase: &javascriptRedisLuaScript{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
 	{Path: "protocols/javascript/grpc-health.yaml", TestCase: &javascriptGRPCHealth{}},
 	{Path: "protocols/javascript/grpc-denied.yaml", TestCase: &javascriptGRPCDenied{}},
+	{Path: "protocols/javascript/http-get.yaml", TestCase: &javascriptHTTPGet{}},
+	{Path: "protocols/javascript/http-client-flow.yaml", TestCase: &javascriptHTTPClientFlow{}},
+	{Path: "protocols/javascript/http-denied.yaml", TestCase: &javascriptHTTPDenied{}},
 	{Path: "protocols/javascript/rsync-test.yaml", TestCase: &javascriptRsyncTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/mysql-connect.yaml", TestCase: &javascriptMySQLConnect{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/mysql-fingerprint.yaml", TestCase: &javascriptMySQLFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/mssql-fingerprint.yaml", TestCase: &javascriptMSSQLFingerprint{}},
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
 	{Path: "protocols/javascript/telnet-auth-test.yaml", TestCase: &javascriptTelnetAuthTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
@@ -113,6 +119,16 @@ func (j *javascriptRedisPassBrute) Execute(filePath string) error {
 	}, javascriptServiceReadyTimeout, 0, nil))
 }
 
+type javascriptRedisLuaScript struct{}
+
+func (j *javascriptRedisLuaScript) Execute(filePath string) error {
+	return runJavascriptDockerCase(filePath, newJavascriptDockerSpec("6379/tcp", &dockertest.RunOptions{
+		Repository: "redis",
+		Tag:        "latest",
+		Cmd:        []string{"redis-server", "--requirepass", "iamadmin"},
+	}, javascriptServiceReadyTimeout, 0, nil))
+}
+
 type javascriptSSHServerFingerprint struct{}
 
 func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
@@ -163,6 +179,57 @@ func (j *javascriptMySQLConnect) Execute(filePath string) error {
 			"MYSQL_ROOT_PASSWORD=secret",
 		},
 	}, javascriptDatabaseReadyTimeout, 0, mysqlReadyCheck("root", "secret")))
+}
+
+type javascriptMySQLFingerprint struct{}
+
+// Execute fingerprints multiple MySQL/MariaDB server versions and asserts the
+// extended handshake fields (protocol, version, salt, capabilities, auth plugin).
+func (j *javascriptMySQLFingerprint) Execute(filePath string) error {
+	cases := []struct {
+		name       string
+		repository string
+		tag        string
+		env        []string
+	}{
+		{
+			name:       "mysql-5.7",
+			repository: "mysql",
+			tag:        "5.7",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mysql-8.0",
+			repository: "mysql",
+			tag:        "8.0",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mysql-8.4",
+			repository: "mysql",
+			tag:        "8.4",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mariadb-11.4",
+			repository: "mariadb",
+			tag:        "11.4",
+			env:        []string{"MARIADB_ROOT_PASSWORD=secret"},
+		},
+	}
+
+	var errs []error
+	for _, tc := range cases {
+		err := runJavascriptDockerCase(filePath, newJavascriptDockerSpec("3306/tcp", &dockertest.RunOptions{
+			Repository: tc.repository,
+			Tag:        tc.tag,
+			Env:        tc.env,
+		}, javascriptDatabaseReadyTimeout, 0, mysqlReadyCheck("root", "secret")))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", tc.name, err))
+		}
+	}
+	return multierr.Combine(errs...)
 }
 
 type javascriptMultiPortsSSH struct{}
