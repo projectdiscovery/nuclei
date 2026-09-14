@@ -150,6 +150,8 @@ func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int
 // and list shares by using given credentials.
 // Credentials cannot be blank. guest or anonymous credentials
 // can be used by providing empty password.
+//
+// Deprecated: prefer ListSharesWithOptions for new templates.
 // @example
 // ```javascript
 // const smb = require('nuclei/smb');
@@ -164,6 +166,50 @@ func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int
 func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user, password string) ([]string, error) {
 	executionId := ctx.Value("executionId").(string)
 	return memoizedlistShares(ctx, executionId, host, port, user, password)
+}
+
+type (
+	// SMBOptions represents configuration for authenticated SMB operations.
+	// @example
+	// ```javascript
+	// const smb = require('nuclei/smb');
+	// const client = new smb.SMBClient();
+	// const opts = new smb.SMBOptions();
+	// opts.Host = 'acme.com';
+	// opts.Port = 445;
+	// opts.User = 'Administrator';
+	// opts.Password = 'password';
+	// opts.Domain = 'ACME';
+	// const shares = client.ListSharesWithOptions(opts);
+	// ```
+	SMBOptions struct {
+		Host     string // Host is the hostname or IP of the SMB server.
+		Port     int    // Port is the SMB port (usually 445).
+		User     string // User is the username for NTLM authentication.
+		Password string // Password is the password for NTLM authentication.
+		Hash     string // Hash is an optional hex-encoded NTLM hash (pass-the-hash).
+		Domain   string // Domain is the NTLM domain / workgroup.
+		Timeout  int    // Timeout is the dial timeout in seconds (default 10).
+	}
+)
+
+// ListSharesWithOptions lists SMB share names using SMBOptions.
+// Supports domain and pass-the-hash via smbsession.
+// @example
+// ```javascript
+// const smb = require('nuclei/smb');
+// const client = new smb.SMBClient();
+// const opts = new smb.SMBOptions();
+// opts.Host = 'acme.com';
+// opts.Port = 445;
+// opts.User = 'Administrator';
+// opts.Hash = 'aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0';
+// opts.Domain = 'ACME';
+// const shares = client.ListSharesWithOptions(opts);
+// ```
+func (c *SMBClient) ListSharesWithOptions(ctx context.Context, opts SMBOptions) ([]string, error) {
+	executionId := ctx.Value("executionId").(string)
+	return listSharesWithOptions(ctx, executionId, opts)
 }
 
 // ListDir lists files and directories under path on the given share
