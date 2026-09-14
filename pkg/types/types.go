@@ -212,6 +212,11 @@ type Options struct {
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.
 	PerHostRateLimit bool
+	// EnableHTTPCache enables HTTP caching (RFC 9111) for requests
+	//
+	// NOTE(dwisiswant0): this is experimental and might be enabled by default
+	// in the future releases.
+	EnableHTTPCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -467,6 +472,12 @@ type Options struct {
 	DASTServerAddress string
 	// DASTReport enables dast report server & final report generation
 	DASTReport bool
+	// DASTProxy is the flag to start nuclei as an intercepting dast proxy
+	DASTProxy bool
+	// DASTProxyAddress is the listen address for the dast proxy
+	DASTProxyAddress string
+	// DASTProxyAuth is the user:pass credential pair required by the dast proxy
+	DASTProxyAuth string
 	// Scope contains a list of regexes for in-scope URLS
 	Scope goflags.StringSlice
 	// OutOfScope contains a list of regexes for out-scope URLS
@@ -582,6 +593,7 @@ func (options *Options) Copy() *Options {
 		DisableHTTPProbe:               options.DisableHTTPProbe,
 		PreflightPortScan:              options.PreflightPortScan,
 		PerHostRateLimit:               options.PerHostRateLimit,
+		EnableHTTPCache:                options.EnableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
@@ -706,6 +718,9 @@ func (options *Options) Copy() *Options {
 		DASTServerToken:                options.DASTServerToken,
 		DASTServerAddress:              options.DASTServerAddress,
 		DASTReport:                     options.DASTReport,
+		DASTProxy:                      options.DASTProxy,
+		DASTProxyAddress:               options.DASTProxyAddress,
+		DASTProxyAuth:                  options.DASTProxyAuth,
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,

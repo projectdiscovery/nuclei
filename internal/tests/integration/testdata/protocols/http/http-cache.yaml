@@ -1,0 +1,23 @@
+id: http-cache
+
+info:
+  name: HTTP Cache Test
+  author: dwisiswant0
+  severity: info
+  description: Tests if HTTP cache (RFC 9111) works as expected
+  tags: test
+
+requests:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+    disable-http-cache: false
+    matchers:
+      - type: dsl
+        dsl:
+          - body_1 == "1"
+          - body_2 == "1"

@@ -823,7 +823,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	// tags, so it must be matched against the ignore-file tags specifically:
 	// otherwise user-requested -exclude-tags drops would be mislabeled as
 	// .nuclei-ignore exclusions.
-	ignoreFileTags := config.ReadIgnoreFile().Tags
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		store.logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+	} else if err != nil {
+		return nil, err
+	}
+	ignoreFileTags := ignoreFile.Tags
+
 	noteExcludedByTag := func(templatePath string, metadata *index.Metadata) {
 		if len(ignoreFileTags) == 0 || !slices.ContainsFunc(ignoreFileTags, metadata.HasTag) {
 			return

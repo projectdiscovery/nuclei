@@ -6,6 +6,6 @@ func platformSupported() bool {
 	return false
 }
 
-func applyPlatform(_ []string) error {
+func applyPlatform(_ []string, _ bool) error {
 	return nil
 }

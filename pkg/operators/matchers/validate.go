@@ -33,25 +33,38 @@ func (matcher *Matcher) Validate() error {
 	var err error
 
 	var expectedFields []string
+	var requiredField string
+	var valueCount int
 	switch matcher.matcherType {
 	case DSLMatcher:
+		requiredField, valueCount = "dsl", len(matcher.DSL)
 		expectedFields = append(commonExpectedFields, "DSL")
 	case StatusMatcher:
+		requiredField, valueCount = "status", len(matcher.Status)
 		expectedFields = append(commonExpectedFields, "Status", "Part")
 	case SizeMatcher:
+		requiredField, valueCount = "size", len(matcher.Size)
 		expectedFields = append(commonExpectedFields, "Size", "Part")
 	case WordsMatcher:
+		requiredField, valueCount = "words", len(matcher.Words)
 		expectedFields = append(commonExpectedFields, "Words", "Part", "Encoding", "CaseInsensitive")
 	case BinaryMatcher:
+		requiredField, valueCount = "binary", len(matcher.Binary)
 		expectedFields = append(commonExpectedFields, "Binary", "Part", "Encoding", "CaseInsensitive")
 	case RegexMatcher:
+		requiredField, valueCount = "regex", len(matcher.Regex)
 		expectedFields = append(commonExpectedFields, "Regex", "Part", "Encoding", "CaseInsensitive")
 	case XPathMatcher:
+		requiredField, valueCount = "xpath", len(matcher.XPath)
 		expectedFields = append(commonExpectedFields, "XPath", "Part")
 	}
 
 	if err = checkFields(matcher, matcherMap, expectedFields...); err != nil {
 		return err
+	}
+
+	if requiredField != "" && valueCount == 0 {
+		return fmt.Errorf("%s matcher requires at least one %s value", matcher.matcherType, requiredField)
 	}
 
 	// validate the XPath query

@@ -19,6 +19,10 @@ var (
 type Config struct {
 	AllowedRoots []string
 	Disabled     bool
+	// IncludeRuntime grants read-only access to host paths the nuclei process
+	// itself needs (libc, CA certs, /dev, /proc). It must not be folded into
+	// AllowedRoots: those roots also feed the JS/code filesystem allowlist.
+	IncludeRuntime bool
 }
 
 // ResetForTesting clears the apply-once gate. It must only be used from tests.
@@ -50,7 +54,7 @@ func Apply(cfg Config) error {
 		applied = true
 		return nil
 	}
-	if err := applyPlatform(cfg.AllowedRoots); err != nil {
+	if err := applyPlatform(cfg.AllowedRoots, cfg.IncludeRuntime); err != nil {
 		gologger.Warning().Msgf("filesystem sandbox not applied: %v", err)
 		return err
 	}

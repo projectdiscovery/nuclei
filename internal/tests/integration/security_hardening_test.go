@@ -6,6 +6,7 @@ package integration_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 var securityHardeningTestcases = []integrationCase{
@@ -28,7 +29,21 @@ func (j *javascriptFSReadDeny) Execute(filePath string) error {
 type javascriptFSReadDenyWithLFA struct{}
 
 func (j *javascriptFSReadDenyWithLFA) Execute(filePath string) error {
-	results, err := runSignedNucleiTemplateAndGetResults(filePath, "127.0.0.1", debug, "-allow-local-file-access")
+	denied := "/etc/passwd"
+	if runtime.GOOS == "windows" {
+		sys := os.Getenv("SystemRoot")
+		if sys == "" {
+			sys = `C:\Windows`
+		}
+		denied = filepath.Join(sys, "win.ini")
+	}
+	results, err := runSignedNucleiTemplateAndGetResults(
+		filePath,
+		"127.0.0.1",
+		debug,
+		"-allow-local-file-access",
+		"-var", "DeniedPath="+denied,
+	)
 	if err != nil {
 		return err
 	}

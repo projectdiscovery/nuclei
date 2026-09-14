@@ -48,7 +48,8 @@ func runLandlockWorker(t *testing.T) {
 	allowedFile := filepath.Join(root, "allowed.txt")
 	require.NoError(t, os.WriteFile(allowedFile, []byte("inside"), 0o600))
 
-	require.NoError(t, sandbox.Apply(sandbox.Config{AllowedRoots: []string{root}}))
+	missing := filepath.Join(root, "does-not-exist")
+	require.NoError(t, sandbox.Apply(sandbox.Config{AllowedRoots: []string{root, missing}}))
 
 	inside, err := os.ReadFile(allowedFile)
 	require.NoError(t, err)

@@ -91,7 +91,10 @@ type (
 // log(to_json(info));
 // ```
 func (c *MSSQLClient) FingerprintMssql(ctx context.Context, host string, port int) (MSSQLInfo, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return MSSQLInfo{}, fmt.Errorf("mssql: missing executionId")
+	}
 	return memoizedfingerprintMssql(ctx, executionId, host, port)
 }
 

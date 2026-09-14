@@ -24,6 +24,24 @@ func (e *Extractor) CompileExtractors() error {
 		return fmt.Errorf("regex extractor group must be >= 0, got %d", e.RegexGroup)
 	}
 
+	var requiredField string
+	var valueCount int
+	switch e.extractorType {
+	case RegexExtractor:
+		requiredField, valueCount = "regex", len(e.Regex)
+	case KValExtractor:
+		requiredField, valueCount = "kval", len(e.KVal)
+	case JSONExtractor:
+		requiredField, valueCount = "json", len(e.JSON)
+	case XPathExtractor:
+		requiredField, valueCount = "xpath", len(e.XPath)
+	case DSLExtractor:
+		requiredField, valueCount = "dsl", len(e.DSL)
+	}
+	if valueCount == 0 {
+		return fmt.Errorf("%s extractor requires at least one %s value", e.extractorType, requiredField)
+	}
+
 	// Compile the regexes
 	for _, regex := range e.Regex {
 		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {

@@ -12,7 +12,7 @@ javascript:
       let ok = true;
       let errMsg = "";
       try {
-        fs.ReadFileAsString('/etc/passwd');
+        fs.ReadFileAsString(DeniedPath);
       } catch (e) {
         ok = false;
         errMsg = String(e);
@@ -20,6 +20,7 @@ javascript:
       Export(to_json({ ok: ok, err: errMsg }));
     args:
       Host: "{{Host}}"
+      DeniedPath: "{{DeniedPath}}"
     matchers-condition: and
     matchers:
       - type: dsl

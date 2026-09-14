@@ -241,6 +241,10 @@ Dynamic Application Security Testing (DAST) API Server
         <div class="terminal-line"><span class="key">Template Version</span><span class="value">{{.DASTServerInfo.NucleiTemplateVersion}}</span></div>
         <div class="terminal-line"><span class="key">DAST Server API</span><span class="value">{{.DASTServerInfo.NucleiDastServerAPI}}</span></div>
         <div class="terminal-line"><span class="key">Auth Status</span><span class="value">{{if .DASTServerInfo.ServerAuthEnabled}}ENABLED{{else}}DISABLED{{end}}</span></div>
+        {{if .DASTServerInfo.NucleiDastProxyAddr}}
+        <div class="terminal-line"><span class="key">DAST Proxy</span><span class="value">{{.DASTServerInfo.NucleiDastProxyAddr}}</span></div>
+        <div class="terminal-line"><span class="key">Proxy Auth Status</span><span class="value">{{if .DASTServerInfo.ProxyAuthEnabled}}ENABLED{{else}}DISABLED{{end}}</span></div>
+        {{end}}
     </div>
 
     <div class="section">
@@ -255,6 +259,15 @@ Dynamic Application Security Testing (DAST) API Server
         <div class="terminal-line"><span class="key">Total Requests</span><span class="value">{{.DASTScanStatistics.TotalFuzzedRequests}}</span></div>
         <div class="terminal-line"><span class="key">Total Errors</span><span class="value">{{.DASTScanStatistics.TotalErroredRequests}}</span></div>
     </div>
+
+    {{if .DASTServerInfo.NucleiDastProxyAddr}}
+    <div class="section">
+        <div class="section-header">[~] Proxy Traffic</div>
+        <div class="terminal-line"><span class="key">Requests Intercepted</span><span class="value">{{.DASTScanStatistics.ProxyRequestsIntercepted}}</span></div>
+        <div class="terminal-line"><span class="key">Tunnels Passed Through</span><span class="value">{{.DASTScanStatistics.ProxyTunnelsPassedThrough}}</span></div>
+        <div class="terminal-line"><span class="key">Requests Dropped</span><span class="value">{{.DASTScanStatistics.ProxyRequestsDropped}}</span></div>
+    </div>
+    {{end}}
 
     <div class="section">
         <div class="section-header">[!] Security Findings</div>
