@@ -30,8 +30,12 @@ const (
 
 // techReachabilityIndex filters template×target pairs by product/macro tags.
 type techReachabilityIndex struct {
-	byInput   map[string]techfilter.HostProfile // keyed by normalizeInputKey
-	boundTags map[string][]string               // template ID -> product tags
+	byInput map[string]techfilter.HostProfile // keyed by normalizeInputKey
+
+	// boundTags memoizes template ID -> product tags. It is filled lazily from
+	// the template execution goroutines, so every access needs the mutex.
+	tagsMu    sync.RWMutex
+	boundTags map[string][]string
 }
 
 func normalizeInputKey(raw string) string {
@@ -54,13 +58,24 @@ func (idx *techReachabilityIndex) tagsFor(t *templates.Template) []string {
 	if t == nil {
 		return nil
 	}
+	idx.tagsMu.RLock()
+	tags, ok := idx.boundTags[t.ID]
+	idx.tagsMu.RUnlock()
+	if ok {
+		return tags
+	}
+
+	tags = techfilter.TemplateProductTags(t)
+
+	idx.tagsMu.Lock()
+	defer idx.tagsMu.Unlock()
 	if idx.boundTags == nil {
 		idx.boundTags = make(map[string][]string)
 	}
-	if tags, ok := idx.boundTags[t.ID]; ok {
-		return tags
+	// Another goroutine may have won the race; keep one slice per template ID.
+	if existing, ok := idx.boundTags[t.ID]; ok {
+		return existing
 	}
-	tags := techfilter.TemplateProductTags(t)
 	idx.boundTags[t.ID] = tags
 	return tags
 }
