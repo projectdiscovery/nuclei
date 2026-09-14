@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/server"
+	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -359,14 +360,14 @@ func New(options *types.Options) (*Runner, error) {
 
 	runner.resumeCfg = resumeCfg
 
-	if options.DASTReport || options.DASTServer {
+	if options.DASTReport || options.DASTServer || options.DASTProxy {
 		var err error
 		runner.fuzzStats, err = fuzzStats.NewTracker()
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create fuzz stats db")
 		}
 
-		if !options.DASTServer {
+		if !options.DASTServer && !options.DASTProxy {
 			dastServer, err := server.NewStatsServer(runner.fuzzStats)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not create dast server")
@@ -577,7 +578,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// If the user has asked for DAST server mode, run the live
 	// DAST fuzzing server.
-	if r.options.DASTServer {
+	if r.options.DASTServer || r.options.DASTProxy {
 		execurOpts := &server.NucleiExecutorOptions{
 			Options:            r.options,
 			Output:             r.output,
@@ -594,7 +595,7 @@ func (r *Runner) RunEnumeration() error {
 			FuzzStatsDB:        r.fuzzStats,
 			Logger:             r.Logger,
 		}
-		dastServer, err := server.New(&server.Options{
+		serverOptions := &server.Options{
 			Address:               r.options.DASTServerAddress,
 			Templates:             r.options.Templates,
 			OutputWriter:          r.output,
@@ -603,7 +604,21 @@ func (r *Runner) RunEnumeration() error {
 			InScope:               r.options.Scope,
 			OutScope:              r.options.OutOfScope,
 			NucleiExecutorOptions: execurOpts,
-		})
+			EnableFuzzAPI:         r.options.DASTServer,
+			ForwardProxy:          r.options.AliveHttpProxy,
+		}
+		if r.options.DASTProxy {
+			username, password, err := proxy.ParseAuth(r.options.DASTProxyAuth)
+			if err != nil {
+				return err
+			}
+			serverOptions.ProxyAddress = r.options.DASTProxyAddress
+			serverOptions.ProxyCADir = config.DefaultConfig.GetConfigDir()
+			serverOptions.ProxyUsername = username
+			serverOptions.ProxyPassword = password
+		}
+
+		dastServer, err := server.New(serverOptions)
 
 		if err != nil {
 			return err
