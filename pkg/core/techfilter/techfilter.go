@@ -77,6 +77,11 @@ var categoryMacros = map[string]string{
 // HostProfile is the set of product + macro tags inferred for one target.
 type HostProfile struct {
 	Tags map[string]struct{} // empty / nil => unknown => fail-open
+
+	// Cats are the Wappalyzer category ids of every detected product. They
+	// record what the fingerprint actually has evidence about, which is what
+	// makes it safe to rule a template out. See AllowTags.
+	Cats map[int]struct{}
 }
 
 // HasTags reports whether fingerprinting produced at least one tag.
@@ -172,9 +177,14 @@ func isAllDigits(s string) bool {
 // products maps product name -> category names from Wappalyzer.
 func ProfileFromFingerprint(products map[string][]string) HostProfile {
 	tags := make(map[string]struct{})
+	observed := make(map[int]struct{})
+	byProduct := productCategories()
 	for product, cats := range products {
 		if p := NormalizeProduct(product); p != "" {
 			tags[p] = struct{}{}
+			for _, id := range byProduct[p] {
+				observed[id] = struct{}{}
+			}
 		}
 		for _, c := range cats {
 			if m := NormalizeCategory(c); m != "" {
@@ -182,7 +192,7 @@ func ProfileFromFingerprint(products map[string][]string) HostProfile {
 			}
 		}
 	}
-	return HostProfile{Tags: tags}
+	return HostProfile{Tags: tags, Cats: observed}
 }
 
 // TemplateProductTags returns product/macro tags that bind a template to a stack.
@@ -268,8 +278,58 @@ func AllowTags(profile HostProfile, bound []string) bool {
 			return true
 		}
 	}
+
+	// No positive match. Ruling the template out now would assume the
+	// fingerprint is complete, and it never is: it is one page of one host, and
+	// a stack is routinely invisible from it (WordPress behind nginx is the
+	// ordinary case, not the exception). Absence of evidence is not evidence of
+	// absence, so a template is dropped only when the fingerprint positively
+	// contradicts it: something else was identified in the same category, and
+	// the template's own product was not. If any bound product sits in a
+	// category the fingerprint says nothing about, the template runs.
+	byProduct := productCategories()
+	for _, tag := range bound {
+		cats, ok := byProduct[tag]
+		if !ok || len(cats) == 0 {
+			return true // category macro or unknown product: no contradiction possible
+		}
+		contradicted := false
+		for _, id := range cats {
+			if _, seen := profile.Cats[id]; seen {
+				contradicted = true
+				break
+			}
+		}
+		if !contradicted {
+			return true
+		}
+	}
 	return false
 }
+
+// productCategories maps a normalized product token to its Wappalyzer category
+// ids. It is the evidence index: a category id present in a host profile means
+// fingerprinting actually identified something of that kind on that host.
+var productCategories = sync.OnceValue(func() map[string][]int {
+	var data struct {
+		Apps map[string]struct {
+			Cats []int `json:"cats"`
+		} `json:"apps"`
+	}
+	out := make(map[string][]int, 8192)
+	if err := json.Unmarshal([]byte(wappalyzer.GetFingerprints()), &data); err != nil {
+		return out
+	}
+	for name, app := range data.Apps {
+		p := NormalizeProduct(name)
+		if p == "" || len(app.Cats) == 0 {
+			continue
+		}
+		// Aliases collapse several apps onto one token; union their categories.
+		out[p] = append(out[p], app.Cats...)
+	}
+	return out
+})
 
 // CountTechBound returns how many templates carry product/macro tags.
 func CountTechBound(tpls []*templates.Template) int {

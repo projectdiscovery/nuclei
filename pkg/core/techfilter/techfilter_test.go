@@ -53,14 +53,17 @@ func TestAllowFailOpenAndMatch(t *testing.T) {
 	if !Allow(empty, wp) {
 		t.Fatal("unknown host must fail-open for bound templates")
 	}
-	if Allow(nginx, wp) {
-		t.Fatal("wordpress template must not run on nginx-only host")
+	// An nginx fingerprint says nothing about the CMS behind it, and WordPress
+	// behind nginx is an ordinary stack. Absence of a CMS in the profile is not
+	// evidence that there is none.
+	if !Allow(nginx, wp) {
+		t.Fatal("nginx says nothing about a CMS, so a wordpress template must run")
 	}
 	if !Allow(nginx, ngx) {
 		t.Fatal("nginx template must run on nginx host")
 	}
-	if Allow(nginx, cms) {
-		t.Fatal("cms-bound template must not run on nginx-only host")
+	if !Allow(nginx, cms) {
+		t.Fatal("nginx says nothing about a CMS, so a cms-bound template must run")
 	}
 	wpHost := ProfileFromFingerprint(map[string][]string{"WordPress": {"CMS"}})
 	if !Allow(wpHost, cms) {
@@ -149,13 +152,41 @@ func TestKnownProductsStillBind(t *testing.T) {
 		}
 	}
 
-	nginx := ProfileFromFingerprint(map[string][]string{"Nginx": {"Web servers"}})
-	if Allow(nginx, tagged("wordpress", "rce")) {
-		t.Fatal("a wordpress template must not run on an nginx-only profile")
-	}
 	wp := ProfileFromFingerprint(map[string][]string{"WordPress": {"CMS"}})
 	if !Allow(wp, tagged("wordpress", "rce")) {
 		t.Fatal("a wordpress template must run on a wordpress profile")
+	}
+}
+
+// A template is dropped only when the fingerprint contradicts it: it identified
+// something else of the same kind and not the template's own product.
+func TestPruneOnlyOnPositiveContradiction(t *testing.T) {
+	nginx := ProfileFromFingerprint(map[string][]string{"Nginx": {"Web servers"}})
+	wpHost := ProfileFromFingerprint(map[string][]string{
+		"WordPress": {"CMS"}, "Nginx": {"Web servers"},
+	})
+
+	// Contradiction: a web server was identified and it is not apache.
+	if Allow(nginx, tagged("apache")) {
+		t.Fatal("nginx was identified, so an apache template is contradicted")
+	}
+	// Contradiction: a CMS was identified and it is not joomla.
+	if Allow(wpHost, tagged("joomla")) {
+		t.Fatal("wordpress was identified, so a joomla template is contradicted")
+	}
+	// No evidence: nothing of that kind was identified at all.
+	for _, tags := range [][]string{{"wordpress"}, {"joomla"}, {"cms"}, {"mysql"}} {
+		if !Allow(nginx, tagged(tags...)) {
+			t.Fatalf("nginx gives no evidence about %v, so it must run", tags)
+		}
+	}
+	// One uncontradicted product is enough to keep a multi-product template.
+	if !Allow(nginx, tagged("apache", "wordpress")) {
+		t.Fatal("wordpress is uncontradicted, so the template must run")
+	}
+	// A positive match always wins.
+	if !Allow(wpHost, tagged("wordpress")) {
+		t.Fatal("a positive match must run")
 	}
 }
 

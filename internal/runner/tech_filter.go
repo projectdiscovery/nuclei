@@ -12,11 +12,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/useragent"
 	syncutil "github.com/projectdiscovery/utils/sync"
 	unitutils "github.com/projectdiscovery/utils/unit"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
@@ -194,7 +194,9 @@ func fingerprintTarget(wapp *wappalyzer.Wappalyze, client *retryablehttp.Client,
 	if err != nil {
 		return techfilter.HostProfile{}
 	}
-	req.Header.Set("User-Agent", useragent.PickRandom().Raw)
+	// Same user agent the templates will send, so the response seeded below is
+	// reachable from the cache instead of being stored under a key nothing hits.
+	req.Header.Set("User-Agent", httpProtocol.StableUserAgent())
 	resp, err := client.Do(req)
 	if err != nil {
 		return techfilter.HostProfile{}
