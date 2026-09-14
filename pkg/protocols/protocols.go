@@ -34,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -157,6 +158,17 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
+	// ExpectedRequestsOverride, when > 0, is used by Progress.Init instead of the
+	// full templates×hosts product. Set by the scan planner when a reachability
+	// filter will skip impossible pairs so ETA matches filtered work.
+	ExpectedRequestsOverride int64
+	// ClusterMemberFilter, when set, decides whether a clustered template member
+	// should produce results on a given input. Used so tech/reachability filters
+	// still apply after request clustering merges templates.
+	ClusterMemberFilter func(templateID string, info model.Info, input *contextargs.MetaInput) bool
+	// HTTPResponseCache is an optional scan-scoped in-memory cache for safe
+	// GET/HEAD responses (shared with tech fingerprinting).
+	HTTPResponseCache *httprespcache.Cache
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
@@ -338,6 +350,9 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ExportReqURLPattern:          e.ExportReqURLPattern,
 		GlobalMatchers:               e.GlobalMatchers,
 		Logger:                       e.Logger,
+		ClusterMemberFilter:          e.ClusterMemberFilter,
+		ExpectedRequestsOverride:     e.ExpectedRequestsOverride,
+		HTTPResponseCache:            e.HTTPResponseCache,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()

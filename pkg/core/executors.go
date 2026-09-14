@@ -168,6 +168,21 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			return true
 		}
 
+		// Reachability filter (strict-probe): skip template×target pairs that
+		// cannot produce findings. Done here so spray stays a single pass.
+		if !skip && e.TemplateTargetFilter != nil && !e.TemplateTargetFilter(template, scannedValue) {
+			skip = true
+			// When Progress was inited with the filtered total, do not credit
+			// skips again (would overshoot 100%). Otherwise credit baseline.
+			if e.executerOpts != nil && e.executerOpts.Progress != nil && e.executerOpts.ExpectedRequestsOverride <= 0 {
+				reqs := int64(template.TotalRequests)
+				if reqs <= 0 {
+					reqs = 1
+				}
+				e.executerOpts.Progress.IncrementFailedRequestsBy(reqs)
+			}
+		}
+
 		tasks <- task{index: index, skip: skip, value: scannedValue}
 		index++
 		return true
@@ -219,6 +234,17 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 				_ = e.executerOpts.Output.Write(skipEvent)
 			}
 			break
+		}
+
+		if e.TemplateTargetFilter != nil && !e.TemplateTargetFilter(tpl, target) {
+			if e.executerOpts != nil && e.executerOpts.Progress != nil && e.executerOpts.ExpectedRequestsOverride <= 0 {
+				reqs := int64(tpl.TotalRequests)
+				if reqs <= 0 {
+					reqs = 1
+				}
+				e.executerOpts.Progress.IncrementFailedRequestsBy(reqs)
+			}
+			continue
 		}
 
 		// resize check point - nop if there are no changes
