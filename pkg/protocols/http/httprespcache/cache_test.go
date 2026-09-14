@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -146,5 +147,62 @@ func TestCacheEntryBudget(t *testing.T) {
 	mk2("/b", "x") // over byte budget
 	if c2.Len() != 1 {
 		t.Fatalf("byte budget len=%d want 1", c2.Len())
+	}
+}
+
+func TestCacheableRequestEmptyBody(t *testing.T) {
+	// Raw templates hand over a non-nil but empty reader with ContentLength 0.
+	// That request is bodyless on the wire, so it stays cacheable.
+	empty := httptest.NewRequest(http.MethodGet, "http://x/", strings.NewReader(""))
+	empty.ContentLength = 0
+	if empty.Body == nil {
+		t.Fatal("test needs a non-nil body")
+	}
+	if !CacheableRequest(empty) {
+		t.Fatal("GET with an empty body should be cacheable")
+	}
+
+	// A GET that really carries bytes is excluded: the body is part of the
+	// request identity but is not part of the cache key.
+	withBody := httptest.NewRequest(http.MethodGet, "http://x/", strings.NewReader("payload"))
+	withBody.ContentLength = int64(len("payload"))
+	if CacheableRequest(withBody) {
+		t.Fatal("GET with a payload must not be cacheable")
+	}
+
+	// Unknown length is treated as a payload.
+	unknown := httptest.NewRequest(http.MethodGet, "http://x/", strings.NewReader("payload"))
+	unknown.ContentLength = -1
+	if CacheableRequest(unknown) {
+		t.Fatal("GET with an unknown body length must not be cacheable")
+	}
+}
+
+func TestCacheableRequestHostHeader(t *testing.T) {
+	// Raw templates repeat the target host in a Host header. net/http drops it
+	// and sends the URL host, so the request is unchanged and stays cacheable.
+	same := httptest.NewRequest(http.MethodGet, "http://x.example/", nil)
+	same.Header.Set("Host", "x.example")
+	if !CacheableRequest(same) {
+		t.Fatal("redundant Host header should stay cacheable")
+	}
+
+	withDefaultPort := httptest.NewRequest(http.MethodGet, "http://x.example/", nil)
+	withDefaultPort.Header.Set("Host", "x.example:80")
+	if !CacheableRequest(withDefaultPort) {
+		t.Fatal("Host header with the default port should stay cacheable")
+	}
+
+	// A different Host is a deliberate override and must not share a response.
+	other := httptest.NewRequest(http.MethodGet, "http://x.example/", nil)
+	other.Header.Set("Host", "evil.example")
+	if CacheableRequest(other) {
+		t.Fatal("Host override must not be cacheable")
+	}
+
+	otherPort := httptest.NewRequest(http.MethodGet, "http://x.example/", nil)
+	otherPort.Header.Set("Host", "x.example:8080")
+	if CacheableRequest(otherPort) {
+		t.Fatal("Host header with a different port must not be cacheable")
 	}
 }

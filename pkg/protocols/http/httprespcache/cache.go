@@ -24,7 +24,9 @@ var representationHeaderNames = []string{
 }
 
 const (
-	defaultMaxEntries = 4096
+	// Entry cap sized above a typical per-host unique GET set; the byte cap below
+	// is the real memory bound, so a larger entry cap cannot grow memory.
+	defaultMaxEntries = 16384
 	defaultMaxBytes   = 64 << 20 // 64 MiB of retained response bodies
 )
 
@@ -116,7 +118,12 @@ func CacheableRequest(req *http.Request) bool {
 	if method != http.MethodGet && method != http.MethodHead {
 		return false
 	}
-	if req.Body != nil && req.Body != http.NoBody {
+	// A GET/HEAD carrying a real payload is excluded: the body is part of the
+	// request identity but not of the cache key. An empty body is not.
+	// Every GET/HEAD built here goes through retryablehttp, which computes
+	// ContentLength from the buffered body, so ContentLength == 0 proves the
+	// body carries no bytes even when the reader itself is non-nil.
+	if req.Body != nil && req.Body != http.NoBody && req.ContentLength != 0 {
 		return false
 	}
 	if req.Host != "" && req.URL.Host != "" && !strings.EqualFold(req.Host, req.URL.Host) {
@@ -127,6 +134,14 @@ func CacheableRequest(req *http.Request) bool {
 		case "user-agent", "accept", "accept-language", "accept-encoding",
 			"connection", "upgrade-insecure-requests":
 			continue
+		case "host":
+			// net/http never writes Header["Host"] on the wire; it sends
+			// req.Host or req.URL.Host. A Host header that repeats the target
+			// host therefore changes nothing. A different one is a deliberate
+			// Host override and must not share a cached response.
+			if !sameHost(req.Header.Get("Host"), req.URL) {
+				return false
+			}
 		case "cache-control", "pragma":
 			// Explicit cache directives: never serve from the scan cache.
 			return false
@@ -135,6 +150,30 @@ func CacheableRequest(req *http.Request) bool {
 		}
 	}
 	return true
+}
+
+// sameHost reports whether host names the same authority as u, ignoring the
+// default port for the URL scheme.
+func sameHost(host string, u *url.URL) bool {
+	if host == "" || u == nil {
+		return false
+	}
+	return strings.EqualFold(canonicalHost(host, u.Scheme), canonicalHost(u.Host, u.Scheme))
+}
+
+func canonicalHost(host, scheme string) string {
+	host = strings.TrimSpace(host)
+	defaultPort := ""
+	switch strings.ToLower(scheme) {
+	case "http":
+		defaultPort = ":80"
+	case "https":
+		defaultPort = ":443"
+	}
+	if defaultPort != "" {
+		host = strings.TrimSuffix(host, defaultPort)
+	}
+	return host
 }
 
 // JarAllows reports whether the cookie jar would attach no cookies to u.

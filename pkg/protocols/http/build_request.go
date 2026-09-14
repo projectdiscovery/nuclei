@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -573,8 +574,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	}
 
 	if !r.request.Unsafe {
-		userAgent := useragent.PickRandom()
-		httputil.SetHeader(req, "User-Agent", userAgent.Raw)
+		httputil.SetHeader(req, "User-Agent", r.userAgent())
 	}
 
 	// Only set these headers on non-raw requests
@@ -617,4 +617,24 @@ func (r *requestGenerator) renderText(text string, values map[string]interface{}
 	r.interactshURLs = result.InteractURLs
 
 	return result.Text, nil
+}
+
+// stableUserAgent is one Chrome user agent, chosen once per process. A random
+// user agent per request makes otherwise identical requests differ, so the
+// scan-scoped response cache can never reuse them. With -response-cache we send
+// one constant user agent instead, which also makes scans reproducible.
+var stableUserAgent = sync.OnceValue(func() string {
+	if agents, err := useragent.PickWithFilters(1, useragent.Chrome); err == nil && len(agents) > 0 {
+		return agents[0].Raw
+	}
+	return useragent.PickRandom().Raw
+})
+
+// userAgent returns the user agent for one request.
+func (r *requestGenerator) userAgent() string {
+	if r.request != nil && r.request.options != nil && r.request.options.Options != nil &&
+		r.request.options.Options.ResponseCache {
+		return stableUserAgent()
+	}
+	return useragent.PickRandom().Raw
 }
