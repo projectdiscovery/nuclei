@@ -207,16 +207,7 @@ func fingerprintTarget(wapp *wappalyzer.Wappalyze, client *retryablehttp.Client,
 		return techfilter.HostProfile{}
 	}
 	if cache != nil {
-		// Seed under the fingerprint request's full key so matching template
-		// GETs (same UA / Accept*) reuse this RTT.
-		cache.SeedHTTP(req.Request, resp, body)
-		if resp.Request != nil && resp.Request.URL != nil &&
-			resp.Request.URL.String() != seedURL {
-			finalReq := req.Request.Clone(req.Context())
-			finalReq.URL = resp.Request.URL
-			finalReq.Host = ""
-			cache.SeedHTTP(finalReq, resp, body)
-		}
+		seedFingerprintResponse(cache, req, resp, body, seedURL)
 	}
 	info := wapp.FingerprintWithInfo(resp.Header, body)
 	products := make(map[string][]string, len(info))
@@ -224,6 +215,28 @@ func fingerprintTarget(wapp *wappalyzer.Wappalyze, client *retryablehttp.Client,
 		products[name] = append([]string(nil), app.Categories...)
 	}
 	return techfilter.ProfileFromFingerprint(products)
+}
+
+// seedFingerprintResponse stores the probe response under the URL it actually
+// belongs to, so templates can reuse the RTT.
+//
+// The probe follows redirects, so resp may describe a different URL than the one
+// requested. Seeding it under the requested URL would hand every template that
+// asks for that URL the redirect target's status, headers and body instead of
+// the redirect itself, which silently changes what they match on.
+func seedFingerprintResponse(cache *httprespcache.Cache, req *retryablehttp.Request, resp *http.Response, body []byte, seedURL string) {
+	finalURL := seedURL
+	if resp != nil && resp.Request != nil && resp.Request.URL != nil {
+		finalURL = resp.Request.URL.String()
+	}
+	if finalURL == seedURL {
+		cache.SeedHTTP(req.Request, resp, body)
+		return
+	}
+	finalReq := req.Request.Clone(req.Context())
+	finalReq.URL = resp.Request.URL
+	finalReq.Host = ""
+	cache.SeedHTTP(finalReq, resp, body)
 }
 
 // estimateTechFilteredExecutions counts template×host pairs that survive the tech filter.
