@@ -10,13 +10,22 @@ import (
 	"github.com/rs/xid"
 )
 
-// Default resume file
-const DefaultResumeFileName = "resume-%s.cfg"
+// DefaultResumeFileName is the default filename for the resume file.
+const (
+	DefaultResumeFileName      = "resume-%s.cfg"
+	defaultCrashResumeFileName = "crash-resume-file-%s.dump"
+)
 
 func DefaultResumeFilePath() string {
-	cacheDir := config.DefaultConfig.GetCacheDir()
-	resumeFile := filepath.Join(cacheDir, fmt.Sprintf(DefaultResumeFileName, xid.New().String()))
+	stateDir := config.DefaultConfig.GetStateDir()
+	resumeFile := filepath.Join(stateDir, fmt.Sprintf(DefaultResumeFileName, xid.New().String()))
+
 	return resumeFile
+}
+
+// DefaultCrashResumeFilePath returns the generated crash checkpoint path.
+func DefaultCrashResumeFilePath(id string) string {
+	return filepath.Join(config.DefaultConfig.GetStateDir(), fmt.Sprintf(defaultCrashResumeFileName, id))
 }
 
 // ResumeCfg contains the scan progression

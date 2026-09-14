@@ -33,20 +33,29 @@ func (matcher *Matcher) Validate() error {
 	var err error
 
 	var expectedFields []string
+	var requiredField string
+	var valueCount int
 	switch matcher.matcherType {
 	case DSLMatcher:
+		requiredField, valueCount = "dsl", len(matcher.DSL)
 		expectedFields = append(commonExpectedFields, "DSL")
 	case StatusMatcher:
+		requiredField, valueCount = "status", len(matcher.Status)
 		expectedFields = append(commonExpectedFields, "Status", "Part")
 	case SizeMatcher:
+		requiredField, valueCount = "size", len(matcher.Size)
 		expectedFields = append(commonExpectedFields, "Size", "Part")
 	case WordsMatcher:
+		requiredField, valueCount = "words", len(matcher.Words)
 		expectedFields = append(commonExpectedFields, "Words", "Part", "Encoding", "CaseInsensitive", "Offset")
 	case BinaryMatcher:
+		requiredField, valueCount = "binary", len(matcher.Binary)
 		expectedFields = append(commonExpectedFields, "Binary", "Part", "Encoding", "CaseInsensitive", "Offset")
 	case RegexMatcher:
+		requiredField, valueCount = "regex", len(matcher.Regex)
 		expectedFields = append(commonExpectedFields, "Regex", "Part", "Encoding", "CaseInsensitive", "Offset")
 	case XPathMatcher:
+		requiredField, valueCount = "xpath", len(matcher.XPath)
 		expectedFields = append(commonExpectedFields, "XPath", "Part")
 	}
 
@@ -54,6 +63,9 @@ func (matcher *Matcher) Validate() error {
 		return err
 	}
 
+	if requiredField != "" && valueCount == 0 {
+		return fmt.Errorf("%s matcher requires at least one %s value", matcher.matcherType, requiredField)
+	}
 	if matcher.Offset != nil && *matcher.Offset < 0 {
 		return fmt.Errorf("offset must be >= 0 (got %d)", *matcher.Offset)
 	}
