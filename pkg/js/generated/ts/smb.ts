@@ -2,8 +2,8 @@
 
 /**
  * SMBClient is a client for SMB servers.
- * Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.
- * github.com/projectdiscovery/go-smb2 driver
+ * Unauthenticated discovery uses zgrab2 / fingerprintx.
+ * Authenticated share I/O uses goimpacket via smbsession.
  * @example
  * ```javascript
  * const smb = require('nuclei/smb');
@@ -66,10 +66,69 @@ export class SMBClient {
     * 	}
     * ```
     */
-    public ListShares(host: string, port: number, user: string): string[] | null {
+    public ListShares(host: string, port: number, user: string, password: string): string[] | null {
         return null;
     }
-    
+
+    /**
+    * ListDir lists files and directories under path on the given share
+    * (nmap smb-ls). path may be empty or "." for the share root.
+    * user may be "DOMAIN\\user" or "user@domain".
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.SMBClient();
+    * const entries = client.ListDir('acme.com', 445, 'user', 'pass', 'backup', '.');
+    * for (const e of entries) { log(e.Name + (e.IsDir ? '/' : '')); }
+    * ```
+    */
+    public ListDir(host: string, port: number, user: string, password: string, share: string, dir: string): ShareEntry[] | null {
+        return null;
+    }
+
+    /**
+    * ReadFile reads a file from share/path into a string, capped at 10 MiB.
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.SMBClient();
+    * const body = client.ReadFile('acme.com', 445, 'user', 'pass', 'backup', 'creds.txt');
+    * log(body);
+    * ```
+    */
+    public ReadFile(host: string, port: number, user: string, password: string, share: string, filePath: string): string | null {
+        return null;
+    }
+
+    /**
+    * ListTree recursively lists files under path on share up to a fixed depth
+    * and entry budget. Entry names are share-relative paths.
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.SMBClient();
+    * const tree = client.ListTree('acme.com', 445, 'user', 'pass', 'backup', '.');
+    * for (const e of tree) { log(e.Name); }
+    * ```
+    */
+    public ListTree(host: string, port: number, user: string, password: string, share: string, dir: string): ShareEntry[] | null {
+        return null;
+    }
+
+    /**
+    * ListProtocols discovers which SMB dialects/capabilities the server
+    * exposes (nmap smb-protocols).
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.SMBClient();
+    * const info = client.ListProtocols('acme.com', 445);
+    * log(to_json(info));
+    * ```
+    */
+    public ListProtocols(host: string, port: number): ProtocolInfo | null {
+        return null;
+    }
 
     /**
     * DetectSMBGhost tries to detect SMBGhost vulnerability
@@ -86,6 +145,31 @@ export class SMBClient {
     }
     
 
+}
+
+/**
+ * ShareEntry is a single file or directory on an SMB share.
+ */
+export interface ShareEntry {
+    Name?: string,
+    Size?: number,
+    IsDir?: boolean,
+    ModTime?: string,
+}
+
+/**
+ * ProtocolInfo summarises dialects and capabilities discovered during
+ * SMB negotiation (nmap smb-protocols style).
+ */
+export interface ProtocolInfo {
+    SMB1Supported?: boolean,
+    SMB2Supported?: boolean,
+    Version?: string,
+    Dialect?: string,
+    HasNTLM?: boolean,
+    NativeOS?: string,
+    NTLM?: string,
+    GroupName?: string,
 }
 
 

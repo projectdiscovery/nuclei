@@ -1,3 +1,20 @@
+// Package file implements the nuclei file protocol for local and remote SMB paths.
+//
+// Local paths use os.Open / directory walks as before. Remote targets use the
+// shared smbsession stack (issue #6142 / #4707):
+//
+//	nuclei -t file-template.yaml -target '\\fs01\share\secret.txt'
+//	nuclei -t file-template.yaml -target 'smb://user:pass@fs01/share/'
+//
+// Template auth (when not embedded in the URL):
+//
+//	file:
+//	  - extensions: [all]
+//	    smb-user: auditor
+//	    smb-password: secret
+//	    # smb-domain: CORP
+//	    # smb-hash: <nthash>
+//	    # smb-port: 445
 package file
 
 import (
@@ -69,6 +86,25 @@ type Request struct {
 	// description: |
 	//   NoRecursive specifies whether to not do recursive checks if folders are provided.
 	NoRecursive bool `yaml:"no-recursive,omitempty" json:"no-recursive,omitempty" jsonschema:"title=do not perform recursion,description=Specifies whether to not do recursive checks if folders are provided"`
+
+	// description: |
+	//   SMBUser authenticates to remote SMB shares when the file input is a UNC
+	//   or smb:// path (issue #6142). Guest/anon: empty password.
+	// examples:
+	//   - value: "\"auditor\""
+	SMBUser string `yaml:"smb-user,omitempty" json:"smb-user,omitempty" jsonschema:"title=SMB username,description=Username for SMB file targets"`
+	// description: |
+	//   SMBPassword is the password for SMB file targets.
+	SMBPassword string `yaml:"smb-password,omitempty" json:"smb-password,omitempty" jsonschema:"title=SMB password,description=Password for SMB file targets"`
+	// description: |
+	//   SMBDomain is the optional NTLM domain / workgroup.
+	SMBDomain string `yaml:"smb-domain,omitempty" json:"smb-domain,omitempty" jsonschema:"title=SMB domain,description=Domain for SMB authentication"`
+	// description: |
+	//   SMBHash enables pass-the-hash (overrides smb-password when set).
+	SMBHash string `yaml:"smb-hash,omitempty" json:"smb-hash,omitempty" jsonschema:"title=SMB NT hash,description=NT hash for SMB pass-the-hash"`
+	// description: |
+	//   SMBPort overrides the default SMB port (445) for UNC targets.
+	SMBPort int `yaml:"smb-port,omitempty" json:"smb-port,omitempty" jsonschema:"title=SMB port,description=TCP port for SMB (default 445)"`
 
 	allExtensions bool
 }

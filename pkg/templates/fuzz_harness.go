@@ -140,6 +140,9 @@ func compileFuzzTemplate(data []byte) (*Template, error) {
 	if template == nil {
 		return nil, errors.New("nil compiled template")
 	}
+	if err := compileTemplate(template); err != nil {
+		return nil, err
+	}
 	exerciseFuzzParsedTemplate(template)
 	return template, nil
 }
@@ -234,7 +237,8 @@ func (candidate *fuzzTemplateCandidate) yaml() []byte {
 	builder.WriteString("http:\n  - ")
 	if candidate.useRawRequest {
 		builder.WriteString("raw:\n      - |\n")
-		for _, line := range strings.Split(candidate.rawRequest(), "\r\n") {
+		rawReq := candidate.rawRequest()
+		for line := range strings.SplitSeq(rawReq, "\r\n") {
 			if line == "" {
 				builder.WriteString("        \n")
 				continue

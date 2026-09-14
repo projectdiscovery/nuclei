@@ -1,0 +1,19 @@
+id: whois-duration
+
+info:
+  name: WHOIS Duration
+  author: pdteam
+  severity: info
+
+flow: whois("duration_whois")
+
+whois:
+  - id: duration_whois
+    query: "{{Host}}"
+    matchers:
+      - type: dsl
+        condition: and
+        dsl:
+          - "duration > 0 && duration < 60"
+          - "duration_whois_duration > 0 && duration_whois_duration < 60"
+          - "duration == duration_whois_duration"

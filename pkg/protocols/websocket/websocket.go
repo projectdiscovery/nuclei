@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -137,7 +138,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -251,7 +252,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	addressToDial = parsedAddress.String()
 
+	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
+	handshakeDuration := time.Since(timeStart)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -268,7 +271,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		_, _ = io.Copy(responseBuilder, readBuffer) // Copy initial response
 	}
 
-	events, requestOutput, err := request.readWriteInputWebsocket(conn, payloadValues, input, responseBuilder)
+	events, requestOutput, stepDurations, err := request.readWriteInputWebsocket(conn, payloadValues, input, responseBuilder)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -295,6 +298,11 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	data["host"] = input
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
+	if len(stepDurations) > 0 {
+		addWebsocketDurationFields(data, stepDurations)
+	} else {
+		data["duration"] = handshakeDuration.Seconds()
+	}
 
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(target.MetaInput, request.Type(), request.ID, data)
@@ -317,7 +325,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	return nil
 }
 
-func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *strings.Builder) (events map[string]interface{}, req string, err error) {
+func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *strings.Builder) (events map[string]interface{}, req string, durations []time.Duration, err error) {
 	reqBuilder := &strings.Builder{}
 	inputEvents := make(map[string]interface{})
 
@@ -329,27 +337,25 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-
-			return nil, "", errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
+			return nil, "", nil, errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
 		reqBuilder.WriteString(result.Text)
 
+		timeStart := time.Now()
 		err = wsutil.WriteClientMessage(conn, ws.OpText, []byte(result.Text))
 		if err != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-
-			return nil, "", errors.Wrap(err, "could not write request to server")
+			return nil, "", nil, errors.Wrap(err, "could not write request to server")
 		}
 
 		msg, opCode, err := wsutil.ReadServerData(conn)
 		if err != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-
-			return nil, "", errors.Wrap(err, "could not read response from server")
+			return nil, "", nil, errors.Wrap(err, "could not read response from server")
 		}
-
+		durations = append(durations, time.Since(timeStart))
 		// Only perform matching and writes in case we receive
 		// text or binary opcode from the websocket server.
 		if opCode != ws.OpText && opCode != ws.OpBinary {
@@ -368,8 +374,15 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 			}
 		}
 	}
+	return inputEvents, reqBuilder.String(), durations, nil
+}
 
-	return inputEvents, reqBuilder.String(), nil
+func addWebsocketDurationFields(event map[string]interface{}, durations []time.Duration) {
+	for i, duration := range durations {
+		seconds := duration.Seconds()
+		event["duration_"+strconv.Itoa(i+1)] = seconds
+		event["duration"] = seconds
+	}
 }
 
 // getAddress returns the address of the host to make request to
@@ -418,6 +431,7 @@ var RequestPartDefinitions = map[string]string{
 	"type":     "Type is the type of request made",
 	"success":  "Success specifies whether websocket connection was successful",
 	"request":  "Websocket request made to the server",
+	"duration": "Latest measured operation duration in seconds",
 	"response": "Websocket response received from the server",
 	"host":     "Host is the input to the template",
 	"matched":  "Matched is the input which was matched upon",

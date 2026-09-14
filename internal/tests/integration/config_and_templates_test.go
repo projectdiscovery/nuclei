@@ -119,7 +119,9 @@ func TestTemplatesDirEnv(t *testing.T) {
 func TestCustomConfigDir(t *testing.T) {
 	t.Run("ConfigDirIsolated", func(t *testing.T) {
 		customTempDir := t.TempDir()
-		results, err := testutils.RunNucleiBareArgsAndGetResults(suite.debug, []string{"NUCLEI_CONFIG_DIR=" + customTempDir}, "-t", "protocols/http/get.yaml", "-u", newTemplateDirTarget(t))
+		stateHome := t.TempDir()
+		templatesDir := t.TempDir()
+		results, err := testutils.RunNucleiBareArgsAndGetResults(suite.debug, []string{"NUCLEI_CONFIG_DIR=" + customTempDir, "XDG_STATE_HOME=" + stateHome, "NUCLEI_TEMPLATES_DIR=" + templatesDir}, "-t", "protocols/http/get.yaml", "-u", newTemplateDirTarget(t))
 		if err != nil {
 			t.Fatalf("custom config dir request failed: %v", err)
 		}
@@ -132,10 +134,13 @@ func TestCustomConfigDir(t *testing.T) {
 			for _, file := range files {
 				fileNames = append(fileNames, file.Name())
 			}
-			for _, requiredFile := range []string{".templates-config.json", "config.yaml", "reporting-config.yaml"} {
+			for _, requiredFile := range []string{"config.yaml", "reporting-config.yaml"} {
 				if !slices.Contains(fileNames, requiredFile) {
 					t.Fatalf("missing required config file %q in custom config dir: %v", requiredFile, fileNames)
 				}
+			}
+			if _, err := os.Stat(filepath.Join(stateHome, "nuclei", "templates.json")); err != nil {
+				t.Fatalf("missing templates state file: %v", err)
 			}
 		}
 	})

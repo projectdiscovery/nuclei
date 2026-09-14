@@ -175,9 +175,12 @@ func isAuthenticated(ctx context.Context, executionId string, host string, port 
 // @example
 // ```javascript
 // const redis = require('nuclei/redis');
-// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])');
+// // Old signature (backwards compatible) - keys and args are optional
+// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("ping")');
+// // New signature with keys and args
+// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])', ['mykey'], []);
 // ```
-func RunLuaScript(ctx context.Context, host string, port int, password string, script string) (interface{}, error) {
+func RunLuaScript(ctx context.Context, host string, port int, password string, script string, keys interface{}, args interface{}) (interface{}, error) {
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
@@ -199,8 +202,58 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 		return "", err
 	}
 
-	// Get Redis server info
-	infoCmd := client.Eval(ctx, script, []string{})
+	// Convert interface{} to []string for keys (handle backwards compatibility)
+	keysSlice := []string{}
+	if keys != nil {
+		switch v := keys.(type) {
+		case []string:
+			keysSlice = v
+		case []interface{}:
+			keysSlice = make([]string, 0, len(v))
+			for _, item := range v {
+				keysSlice = append(keysSlice, fmt.Sprintf("%v", item))
+			}
+		case string:
+			// the goja runtime zero-fills omitted trailing JS arguments with
+			// the previous parameter's type, so a 4-arg call (old signature)
+			// delivers "" here: treat it as no keys (backwards compat)
+			if v != "" {
+				return nil, fmt.Errorf("keys must be []string or []interface{}, got string")
+			}
+		default:
+			return nil, fmt.Errorf("keys must be []string or []interface{}, got %T", keys)
+		}
+	}
+
+	// Convert interface{} args to []interface{} for Eval (handle backwards
+	// compatibility). Non-string items (numbers, booleans from JavaScript)
+	// are stringified rather than dropped: Redis ARGV values are always
+	// bulk strings on the Lua side, so "123"/"true" match JS expectations.
+	argsInterface := []interface{}{}
+	if args != nil {
+		switch v := args.(type) {
+		case []string:
+			argsInterface = make([]interface{}, len(v))
+			for i, arg := range v {
+				argsInterface[i] = arg
+			}
+		case []interface{}:
+			argsInterface = make([]interface{}, len(v))
+			for i, item := range v {
+				argsInterface[i] = fmt.Sprintf("%v", item)
+			}
+		case string:
+			// zero-value padding from omitted JS arguments (see keys above)
+			if v != "" {
+				return nil, fmt.Errorf("args must be []string or []interface{}, got string")
+			}
+		default:
+			return nil, fmt.Errorf("args must be []string or []interface{}, got %T", args)
+		}
+	}
+
+	// Execute the Lua script with keys and args
+	infoCmd := client.Eval(ctx, script, keysSlice, argsInterface...)
 
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
