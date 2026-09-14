@@ -48,6 +48,44 @@ func TestAllowedFileRootsWithAllowedPaths(t *testing.T) {
 	require.True(t, rootListContains(roots, extraDir))
 }
 
+// The OS sandbox restricts the whole process, so it must keep nuclei's own
+// CLI inputs and outputs reachable even though templates may not read them.
+// Without this, `nuclei -l targets.txt` fails with permission denied.
+func TestSandboxFileRootsCoversCLIPathsButAllowlistDoesNot(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+
+	workDir := t.TempDir()
+	targets := filepath.Join(workDir, "targets.txt")
+	require.NoError(t, os.WriteFile(targets, []byte("scanme.sh\n"), 0o600))
+
+	outputDir := t.TempDir()
+	opts := &types.Options{
+		ExecutionId:     t.Name(),
+		TargetsFilePath: targets,
+		Output:          filepath.Join(outputDir, "results.txt"),
+	}
+
+	sandboxRoots := protocolstate.SandboxFileRoots(opts)
+	require.True(t, rootListContains(sandboxRoots, workDir), "targets file dir must be sandbox-reachable: %v", sandboxRoots)
+	require.True(t, rootListContains(sandboxRoots, outputDir), "output dir must be sandbox-reachable even before the file exists: %v", sandboxRoots)
+
+	// the template-facing allowlist stays narrow
+	allowlist := protocolstate.AllowedFileRoots(opts)
+	require.False(t, rootListContains(allowlist, workDir), "templates must not gain access to the targets dir: %v", allowlist)
+}
+
+func TestSandboxFileRootsIncludesWorkingDirectory(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	roots := protocolstate.SandboxFileRoots(&types.Options{ExecutionId: t.Name()})
+	require.True(t, rootListContains(roots, cwd), "cwd must be sandbox-reachable without -lfa: %v", roots)
+}
+
 func TestNormalizePathRejectsTraversalOutsideTemplates(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreTemplatesDir(t, templatesDir)

@@ -12,11 +12,16 @@ import (
 )
 
 // hostRuntimeRODirs are paths a running nuclei process needs to read (shared
-// libraries, TLS trust store, devices). They are landlock-only and never
-// added to the template filesystem allowlist.
+// libraries, TLS trust store, kernel interfaces). They are landlock-only and
+// never added to the template filesystem allowlist. Home, /root and /var stay
+// out so credentials and user data remain denied.
 var hostRuntimeRODirs = []string{
-	"/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc", "/dev", "/proc", "/sys", "/run", "/opt",
+	"/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc", "/proc", "/sys", "/opt",
 }
+
+// hostRuntimeRWDirs need writes for ordinary operation: /dev/null and friends
+// are written by almost any process, and /run carries runtime sockets.
+var hostRuntimeRWDirs = []string{"/dev", "/run"}
 
 var containerSockets = []string{
 	"/var/run/docker.sock",
@@ -39,6 +44,9 @@ func applyPlatform(roots []string, includeRuntime bool) error {
 		if dirs := existingDirs(hostRuntimeRODirs); len(dirs) > 0 {
 			opts = append(opts, landlock.RODirs(dirs...))
 		}
+		if dirs := existingDirs(hostRuntimeRWDirs); len(dirs) > 0 {
+			opts = append(opts, landlock.RWDirs(dirs...))
+		}
 		for _, sock := range containerSockets {
 			if fileExists(sock) {
 				opts = append(opts, landlock.RWFiles(sock))
@@ -51,7 +59,7 @@ func applyPlatform(roots []string, includeRuntime bool) error {
 		}
 	}
 
-	if dirs := existingDirs(roots); len(dirs) > 0 {
+	if dirs := ensureDirs(roots); len(dirs) > 0 {
 		opts = append(opts, landlock.RWDirs(dirs...))
 	}
 	if len(opts) == 0 {
@@ -63,6 +71,28 @@ func applyPlatform(roots []string, includeRuntime bool) error {
 	return nil
 }
 
+// ensureDirs is existingDirs for roots nuclei owns (templates, config, output).
+// Landlock can only reference paths that already exist, and these are routinely
+// absent on a first run, so a missing one is created rather than dropped:
+// dropping it would leave the process unable to create it afterwards.
+func ensureDirs(paths []string) []string {
+	usable := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			if mkErr := os.MkdirAll(path, 0o755); mkErr != nil {
+				continue
+			}
+		}
+		usable = append(usable, path)
+	}
+	return existingDirs(usable)
+}
+
+// existingDirs keeps only paths that are directories today, without creating
+// anything. Used for host runtime paths, which must never be fabricated.
 func existingDirs(paths []string) []string {
 	out := make([]string, 0, len(paths))
 	seen := make(map[string]struct{}, len(paths))

@@ -24,7 +24,10 @@ func AllowedFileRoots(options *types.Options) []string {
 	if tempDir := os.TempDir(); tempDir != "" {
 		roots = append(roots, canonicalRoot(tempDir))
 	}
-	if options != nil && options.StoreResponseDir != "" {
+	// StoreResponseDir defaults to a relative "output" folder, so it is only a
+	// real root once response storing is actually requested. Adding it
+	// unconditionally would make the sandbox create an unused output dir.
+	if options != nil && options.StoreResponse && options.StoreResponseDir != "" {
 		roots = append(roots, canonicalRoot(options.StoreResponseDir))
 	}
 	if options == nil || !IsLfaAllowed(options) {
@@ -47,6 +50,50 @@ func AllowedFileRoots(options *types.Options) []string {
 		}
 	}
 	return uniqueRoots(roots)
+}
+
+// SandboxFileRoots returns the roots the OS-level sandbox must leave usable.
+// It is deliberately wider than AllowedFileRoots: landlock restricts the whole
+// process, so it also has to cover the paths nuclei itself was told to read and
+// write (target lists, outputs, exports, resume state, template paths) plus the
+// working directory. Template code does not gain access to any of these, since
+// javascript/code file access is still checked against AllowedFileRoots.
+func SandboxFileRoots(options *types.Options) []string {
+	roots := AllowedFileRoots(options)
+	if options == nil {
+		return uniqueRoots(roots)
+	}
+	if cwd, err := os.Getwd(); err == nil && cwd != "" {
+		roots = append(roots, canonicalRoot(cwd))
+	}
+	paths := []string{
+		options.TargetsFilePath,
+		options.Resume,
+		options.Output,
+		options.JSONExport,
+		options.JSONLExport,
+		options.MarkdownExportDirectory,
+		options.SarifExport,
+		options.StoreResponseDir,
+	}
+	paths = append(paths, options.Templates...)
+	paths = append(paths, options.Workflows...)
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		roots = append(roots, canonicalRoot(containingDir(path)))
+	}
+	return uniqueRoots(roots)
+}
+
+// containingDir returns path when it is an existing directory and its parent
+// otherwise, so a not-yet-created output file still grants its target folder.
+func containingDir(path string) string {
+	if info, err := os.Stat(path); err == nil && info.IsDir() {
+		return path
+	}
+	return filepath.Dir(path)
 }
 
 func canonicalRoot(path string) string {

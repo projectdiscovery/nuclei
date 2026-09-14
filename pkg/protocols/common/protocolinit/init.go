@@ -25,7 +25,7 @@ func Init(options *types.Options) error {
 	// unless --no-sandbox / DisableSandbox is set. Sandbox package tests call
 	// Apply directly.
 	_ = sandbox.Apply(sandbox.Config{
-		AllowedRoots:   protocolstate.AllowedFileRoots(options),
+		AllowedRoots:   protocolstate.SandboxFileRoots(options),
 		Disabled:       options.DisableSandbox || testing.Testing(),
 		IncludeRuntime: true,
 	})
