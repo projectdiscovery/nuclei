@@ -13,6 +13,12 @@ import (
 // the matchers package needs, keeping matchers free of any provider SDK import.
 type llmMatcherClient struct {
 	client *utilsllm.Client
+	model  string
+}
+
+// Model names the model behind a verdict so it can be recorded in the finding.
+func (a *llmMatcherClient) Model() string {
+	return a.model
 }
 
 func (a *llmMatcherClient) Complete(ctx context.Context, prompt string, asJSON bool) (string, error) {
@@ -46,5 +52,5 @@ func configureLLM(options *types.Options) (llmclient.Client, error) {
 		return nil, err
 	}
 
-	return &llmMatcherClient{client: client}, nil
+	return &llmMatcherClient{client: client, model: options.LLMModel}, nil
 }

@@ -46,21 +46,40 @@ type llmVerdict struct {
 // add a finding the model positively confirmed: a broken or slow provider
 // degrades the template to "no match" rather than to a false positive.
 func (matcher *Matcher) MatchLLM(corpus string) (bool, []string) {
+	isMatch, snippets, _ := matcher.MatchLLMWithAudit(corpus)
+
+	return isMatch, snippets
+}
+
+// MatchLLMWithAudit is MatchLLM plus the record of what the model was asked and
+// answered. The audit is returned only when the model produced a usable verdict,
+// so a failure carries nothing to report.
+func (matcher *Matcher) MatchLLMWithAudit(corpus string) (bool, []string, *LLMAudit) {
 	client := matcher.llmClient
 	if client == nil {
-		return false, nil
+		return false, nil, nil
 	}
 
 	input := llmclient.TruncateApproxTokens(corpus, matcher.MaxInputTokens)
 
-	answer, err := client.Complete(context.Background(), matcher.buildLLMPrompt(input), true)
+	prompt := matcher.buildLLMPrompt(input)
+	answer, err := client.Complete(context.Background(), prompt, true)
 	if err != nil {
-		return false, nil
+		return false, nil, nil
 	}
 
 	var verdict llmVerdict
 	if err := json.Unmarshal([]byte(answer), &verdict); err != nil {
-		return false, nil
+		return false, nil, nil
+	}
+
+	audit := &LLMAudit{
+		PromptHash: hashPrompt(prompt),
+		Verdict:    strings.TrimSpace(verdict.Verdict),
+		Confidence: verdict.Confidence,
+	}
+	if namer, ok := client.(modelNamer); ok {
+		audit.Model = namer.Model()
 	}
 
 	expect := matcher.Expect
@@ -69,12 +88,12 @@ func (matcher *Matcher) MatchLLM(corpus string) (bool, []string) {
 	}
 
 	if !strings.EqualFold(strings.TrimSpace(verdict.Verdict), expect) {
-		return false, nil
+		return false, nil, audit
 	}
 	// A confidence outside the contract means the model ignored it, so the
 	// number carries no meaning and the verdict cannot be trusted.
 	if verdict.Confidence < 0 || verdict.Confidence > 1 {
-		return false, nil
+		return false, nil, nil
 	}
 
 	minConfidence := matcher.MinConfidence
@@ -82,10 +101,10 @@ func (matcher *Matcher) MatchLLM(corpus string) (bool, []string) {
 		minConfidence = defaultMinConfidence
 	}
 	if verdict.Confidence < minConfidence {
-		return false, nil
+		return false, nil, audit
 	}
 
-	return true, []string{verdict.Evidence}
+	return true, []string{verdict.Evidence}, audit
 }
 
 // buildLLMPrompt wraps the author's question with the output contract and the

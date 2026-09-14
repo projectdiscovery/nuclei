@@ -153,3 +153,62 @@ func TestValidateLLMAcceptsBounds(t *testing.T) {
 		require.NoError(t, m.validateLLM(), confidence)
 	}
 }
+
+type namedStubLLM struct {
+	stubLLM
+	model string
+}
+
+func (s *namedStubLLM) Model() string { return s.model }
+
+func TestMatchLLMWithAuditRecordsVerdict(t *testing.T) {
+	m := llmMatcher("admin login form?")
+	m.MinConfidence = 0.8
+	m.SetLLMClient(&namedStubLLM{
+		stubLLM: stubLLM{answer: `{"verdict":"yes","confidence":0.94,"evidence":"login form"}`},
+		model:   "qwen2.5:7b",
+	})
+
+	ok, _, audit := m.MatchLLMWithAudit("<form ...>")
+	require.True(t, ok)
+	require.NotNil(t, audit)
+	require.Equal(t, "qwen2.5:7b", audit.Model)
+	require.Equal(t, "yes", audit.Verdict)
+	require.InDelta(t, 0.94, audit.Confidence, 0.0001)
+	require.Len(t, audit.PromptHash, 16)
+}
+
+// A verdict that simply did not meet the bar is still worth recording: it is
+// how someone sees the model was asked and said no.
+func TestMatchLLMWithAuditRecordsRejectedVerdict(t *testing.T) {
+	m := llmMatcher("admin login form?")
+	m.MinConfidence = 0.9
+	m.SetLLMClient(&stubLLM{answer: `{"verdict":"yes","confidence":0.4}`})
+
+	ok, _, audit := m.MatchLLMWithAudit("<form ...>")
+	require.False(t, ok)
+	require.NotNil(t, audit)
+	require.InDelta(t, 0.4, audit.Confidence, 0.0001)
+}
+
+func TestMatchLLMWithAuditReportsNothingOnFailure(t *testing.T) {
+	for name, client := range map[string]LLMClient{
+		"call error": &stubLLM{err: errors.New("provider down")},
+		"unparsable": &stubLLM{answer: "not json"},
+	} {
+		m := llmMatcher("admin login form?")
+		m.SetLLMClient(client)
+
+		ok, _, audit := m.MatchLLMWithAudit("<form ...>")
+		require.False(t, ok, name)
+		require.Nil(t, audit, name)
+	}
+}
+
+// The prompt embeds part of the response, so only its hash may travel.
+func TestLLMAuditHashIsStableAndOpaque(t *testing.T) {
+	first, second := hashPrompt("classify this"), hashPrompt("classify this")
+	require.Equal(t, first, second)
+	require.NotEqual(t, first, hashPrompt("classify that"))
+	require.NotContains(t, first, "classify")
+}
