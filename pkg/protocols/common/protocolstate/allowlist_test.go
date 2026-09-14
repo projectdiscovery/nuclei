@@ -118,6 +118,24 @@ func TestSandboxOwnedRootsExcludeTemplateInputPaths(t *testing.T) {
 	}
 }
 
+func TestSandboxOwnedRootsCoverBrowserProfileOnlyForHeadless(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+
+	configDir, err := os.UserConfigDir()
+	require.NoError(t, err)
+	profile := filepath.Join(configDir, "chromium")
+
+	// go-rod starts a cached browser without -user-data-dir to check it still
+	// works, so chrome falls back here. Denying it makes go-rod re-download the
+	// browser on every run.
+	headless := protocolstate.SandboxOwnedFileRoots(&types.Options{ExecutionId: t.Name(), Headless: true})
+	require.Contains(t, headless, profile, "headless runs must own the browser profile dir: %v", headless)
+
+	plain := protocolstate.SandboxOwnedFileRoots(&types.Options{ExecutionId: t.Name()})
+	require.NotContains(t, plain, profile, "non-headless runs must not create a browser profile dir: %v", plain)
+}
+
 func TestSandboxFileRootsIncludesWorkingDirectory(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreTemplatesDir(t, templatesDir)

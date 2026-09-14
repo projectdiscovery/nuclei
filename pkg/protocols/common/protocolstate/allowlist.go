@@ -101,6 +101,9 @@ func SandboxOwnedFileRoots(options *types.Options) []string {
 	if options == nil {
 		return uniqueRoots(roots)
 	}
+	if options.Headless {
+		roots = append(roots, browserProfileRoots()...)
+	}
 	outputs := []string{
 		options.Output,
 		options.JSONExport,
@@ -118,6 +121,23 @@ func SandboxOwnedFileRoots(options *types.Options) []string {
 		roots = append(roots, canonicalRoot(containingDir(path)))
 	}
 	return uniqueRoots(roots)
+}
+
+// browserProfileRoots returns the profile directories chrome falls back to when
+// it is started without -user-data-dir. go-rod does exactly that when it checks
+// whether a cached browser still works, so denying these makes chrome's crash
+// handler abort, go-rod conclude the browser is broken, and re-download it on
+// every run. Only the landlock sandbox consumes these paths.
+func browserProfileRoots() []string {
+	configDir, err := os.UserConfigDir()
+	if err != nil || configDir == "" {
+		return nil
+	}
+	roots := make([]string, 0, 2)
+	for _, name := range []string{"chromium", "google-chrome"} {
+		roots = append(roots, canonicalRoot(filepath.Join(configDir, name)))
+	}
+	return roots
 }
 
 // containingDir returns path when it is an existing directory and its parent
