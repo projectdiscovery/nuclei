@@ -684,29 +684,14 @@ func applyTemplateVerification(template *Template, data []byte) {
 	}
 
 	options := template.Options
-	verificationDigest, digestErr := templateVerificationDigest(data, template)
+	verificationDigest, _ := templateVerificationDigest(data, template)
 	template.verificationDigest = verificationDigest
 
-	// check if the template is verified
-	// only valid templates can be verified or signed
-	if digestErr == nil && options.TemplateVerificationCallback != nil && options.TemplatePath != "" {
-		if cached := options.TemplateVerificationCallback(options.TemplatePath); cached != nil {
-			if cached.ContentDigest == verificationDigest && cached.ContentDigest != ([sha256.Size]byte{}) && cachedTemplateVerificationIsTrusted(cached) {
-				template.Verified = cached.Verified
-				template.TemplateVerifier = cached.Verifier
-				template.verifierFingerprint = cached.VerifierFingerprint
-				options.TemplateVerifier = cached.Verifier
-				// Mirror verification onto options for execution-time checks.
-				options.Verified = cached.Verified
-				//nolint
-				if !(template.Verified && template.TemplateVerifier == "projectdiscovery/nuclei-templates") {
-					template.Options.RawTemplate = data
-				}
-
-				return
-			}
-		}
-	}
+	// index.gob is an unauthenticated local file. A forged entry can pair
+	// Verified=true with a trusted fingerprint and a digest of the
+	// unsigned payload, so never copy a cached verdict. Always verify
+	// against DefaultTemplateVerifiers. Unsigned templates still
+	// short-circuit in ExtractSignatureAndContent with no ECDSA.
 
 	var verifier *signer.TemplateSigner
 
@@ -743,20 +728,6 @@ func (template *Template) ContentDigest() [sha256.Size]byte {
 // authenticated this template.
 func (template *Template) VerifierFingerprint() [sha256.Size]byte {
 	return template.verifierFingerprint
-}
-
-func cachedTemplateVerificationIsTrusted(cached *protocols.TemplateVerification) bool {
-	if !cached.Verified || cached.VerifierFingerprint == ([sha256.Size]byte{}) {
-		return false
-	}
-
-	for _, verifier := range signer.DefaultTemplateVerifiers {
-		if verifier.Identifier() == cached.Verifier && verifier.Fingerprint() == cached.VerifierFingerprint {
-			return true
-		}
-	}
-
-	return false
 }
 
 func templateVerificationDigest(data []byte, template *Template) ([sha256.Size]byte, error) {
