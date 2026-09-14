@@ -115,6 +115,15 @@ func runLandlockRuntimeWorker(t *testing.T) {
 
 	require.NoError(t, os.WriteFile("/dev/null", []byte("x"), 0o600), "/dev/null must stay writable")
 
+	// Unpacking a browser or swapping a template tree moves files between
+	// directories. Without the refer right the kernel rejects this as EXDEV.
+	nested := filepath.Join(workDir, "nested")
+	require.NoError(t, os.MkdirAll(nested, 0o755))
+	staged := filepath.Join(nested, "payload")
+	require.NoError(t, os.WriteFile(staged, []byte("staged"), 0o600))
+	require.NoError(t, os.Rename(staged, filepath.Join(workDir, "payload")),
+		"cross-directory rename inside a granted root must be allowed")
+
 	_, err = os.ReadFile(secret)
 	require.Error(t, err, "paths outside the granted roots must stay denied")
 	require.True(t, isPermissionError(err), "expected permission error, got: %v", err)

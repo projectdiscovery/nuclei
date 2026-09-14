@@ -60,10 +60,10 @@ func applyPlatform(roots, owned []string, includeRuntime bool) error {
 	}
 
 	if dirs := existingDirs(roots); len(dirs) > 0 {
-		opts = append(opts, landlock.RWDirs(dirs...))
+		opts = append(opts, writableDirs(dirs))
 	}
 	if dirs := ensureDirs(owned); len(dirs) > 0 {
-		opts = append(opts, landlock.RWDirs(dirs...))
+		opts = append(opts, writableDirs(dirs))
 	}
 	if len(opts) == 0 {
 		return ErrNoAllowedRoots
@@ -72,6 +72,23 @@ func applyPlatform(roots, owned []string, includeRuntime bool) error {
 		return fmt.Errorf("landlock restrict: %w", err)
 	}
 	return nil
+}
+
+// writableDirs grants read-write access, adding the "refer" right when the
+// kernel supports it. RWDirs alone forbids moving a file between two
+// directories, which the kernel reports as EXDEV and which breaks ordinary
+// work like unpacking a browser or swapping a template tree into place.
+//
+// Refer needs Landlock v2. Requesting it on a v1 kernel makes go-landlock
+// downgrade the whole ruleset to a no-op, so on v1 we keep the plain rule and
+// accept that cross-directory renames stay blocked rather than silently
+// dropping the sandbox.
+func writableDirs(dirs []string) landlock.Rule {
+	rule := landlock.RWDirs(dirs...)
+	if v, err := llsyscall.LandlockGetABIVersion(); err == nil && v >= 2 {
+		return rule.WithRefer()
+	}
+	return rule
 }
 
 // ensureDirs is existingDirs for roots nuclei owns (templates, config, output).
