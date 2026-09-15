@@ -32,6 +32,42 @@ func GetKnownConfigFiles() []string {
 	return knownConfigFiles
 }
 
+// templateFileName returns the basename of a local path or URL, after
+// converting slashes and stripping query/fragment. Callers must not match
+// against the raw string: "cves.json.yaml" contains "cves.json", and a
+// Windows Base() of a slash-separated path is the whole path.
+func templateFileName(path string) string {
+	path = strings.TrimSpace(path)
+	if i := strings.Index(path, "://"); i >= 0 {
+		path = path[i+3:]
+	}
+	if j := strings.IndexAny(path, "?#"); j >= 0 {
+		path = path[:j]
+	}
+	return filepath.Base(filepath.FromSlash(path))
+}
+
+// IsKnownConfigFile reports whether path is one of the template-repo
+// metadata files that must not be loaded as a template. Matching is by
+// exact basename (case-insensitive), not substring.
+func IsKnownConfigFile(path string) bool {
+	name := templateFileName(path)
+	for _, known := range knownConfigFiles {
+		if strings.EqualFold(name, known) {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSupportedTemplateExtension reports whether path has a nuclei
+// template extension on the final path segment, not merely as a
+// substring of the whole string (so ".jsonl" is not ".json").
+func HasSupportedTemplateExtension(path string) bool {
+	ext := strings.ToLower(filepath.Ext(templateFileName(path)))
+	return stringsutil.EqualFoldAny(ext, GetSupportTemplateFileExtensions()...)
+}
+
 // GetKnownMiscDirectories returns known misc directories with trailing slashes.
 //
 // The trailing slash ensures that directory matching is explicit and avoids
@@ -75,10 +111,9 @@ func IsTemplate(fpath string) bool {
 // directories relative to the root.
 func IsTemplateWithRoot(fpath, rootDir string) bool {
 	fpath = filepath.FromSlash(fpath)
-	fname := filepath.Base(fpath)
 	fext := strings.ToLower(filepath.Ext(fpath))
 
-	if stringsutil.ContainsAny(fname, GetKnownConfigFiles()...) {
+	if IsKnownConfigFile(fpath) {
 		return false
 	}
 
