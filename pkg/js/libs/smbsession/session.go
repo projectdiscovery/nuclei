@@ -46,7 +46,6 @@ type Entry struct {
 type shareBackend interface {
 	UseShare(name string) error
 	Ls(dir string) ([]os.FileInfo, error)
-	Cat(file string) (string, error)
 	ListShares() ([]string, error)
 }
 
@@ -165,11 +164,16 @@ func (s *Session) ListDir(share, dir string) ([]Entry, error) {
 
 // ReadFile reads a file from share, capped at maxBytes (default DefaultMaxReadBytes).
 func (s *Session) ReadFile(share, filePath string, maxBytes int64) (string, error) {
-	ops := s.ops()
-	if ops == nil {
+	if s == nil {
 		return "", fmt.Errorf("smb session not connected")
 	}
-	return readFile(ops, share, filePath, maxBytes)
+	if s.backend != nil {
+		return readFile(s.backend, share, filePath, maxBytes)
+	}
+	if s.client == nil || s.client.Session == nil {
+		return "", fmt.Errorf("smb session not connected")
+	}
+	return readClientFile(s.client, share, filePath, maxBytes)
 }
 
 // ListTree walks share directories up to maxDepth / maxEntries.
@@ -224,32 +228,57 @@ func readFile(ops shareBackend, share, filePath string, maxBytes int64) (string,
 	if err := ops.UseShare(share); err != nil {
 		return "", fmt.Errorf("mount share %q: %w", share, err)
 	}
-	// Prefer streaming Open+LimitReader when the backend supports it (tests /
-	// future goimpacket Open). Fall back to Cat for the stock client.
-	if opener, ok := ops.(shareOpener); ok {
-		f, err := opener.Open(normalized)
-		if err != nil {
-			return "", err
-		}
-		defer func() { _ = f.Close() }()
-		limited := io.LimitReader(f, maxBytes+1)
-		body, err := io.ReadAll(limited)
-		if err != nil {
-			return "", err
-		}
-		if int64(len(body)) > maxBytes {
-			return "", fmt.Errorf("file %q exceeds max read size of %d bytes", normalized, maxBytes)
-		}
-		return string(body), nil
+	opener, ok := ops.(shareOpener)
+	if !ok {
+		return "", fmt.Errorf("SMB backend does not support bounded file reads")
 	}
-	body, err := ops.Cat(normalized)
+	f, err := opener.Open(normalized)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	return readBoundedFile(f, normalized, maxBytes)
+}
+
+func readClientFile(client *gpsmb.Client, share, filePath string, maxBytes int64) (string, error) {
+	if err := RequireShareName(share); err != nil {
+		return "", err
+	}
+	if maxBytes <= 0 {
+		maxBytes = DefaultMaxReadBytes
+	}
+	normalized, err := NormalizeSharePath(filePath)
+	if err != nil {
+		return "", err
+	}
+	if normalized == "." {
+		return "", fmt.Errorf("file path cannot be empty")
+	}
+
+	mountedShare, err := client.Session.Mount(share)
+	if err != nil {
+		return "", fmt.Errorf("mount share %q: %w", share, err)
+	}
+	defer func() { _ = mountedShare.Umount() }()
+
+	f, err := mountedShare.Open(normalized)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	return readBoundedFile(f, normalized, maxBytes)
+}
+
+func readBoundedFile(f io.Reader, name string, maxBytes int64) (string, error) {
+	limited := io.LimitReader(f, maxBytes+1)
+	body, err := io.ReadAll(limited)
 	if err != nil {
 		return "", err
 	}
 	if int64(len(body)) > maxBytes {
-		return "", fmt.Errorf("file %q exceeds max read size of %d bytes", normalized, maxBytes)
+		return "", fmt.Errorf("file %q exceeds max read size of %d bytes", name, maxBytes)
 	}
-	return body, nil
+	return string(body), nil
 }
 
 func listTree(ops shareBackend, share, root string, maxDepth, maxEntries int) ([]Entry, error) {
