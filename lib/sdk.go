@@ -70,7 +70,7 @@ type NucleiEngine struct {
 
 	// unexported core fields
 	ctx              context.Context
-	interactshClient *interactsh.Client
+	interactshClient interactsh.InteractshClient
 	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
