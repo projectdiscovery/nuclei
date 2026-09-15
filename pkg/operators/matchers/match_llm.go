@@ -108,12 +108,13 @@ func (matcher *Matcher) MatchLLMWithAudit(corpus string) (bool, []string, *LLMAu
 }
 
 // buildLLMPrompt wraps the author's question with the output contract and the
-// response under a delimiter.
+// response under a random boundary (see FrameResponse).
 //
-// The delimiter and the "only classify" instruction are a hint to the model,
-// not an isolation boundary: a response body can still steer a model that
-// chooses to follow it. What actually bounds the damage is that the verdict is
-// constrained to a fixed enum, cannot be negated, and only ever adds a finding.
+// Isolation is defense in depth. The random boundary stops the response from
+// forging the closing marker and smuggling instructions after it, but a model
+// may still be swayed by text it reads; what bounds the damage is that the
+// verdict is constrained to a fixed enum, cannot be negated, and only ever adds
+// a finding.
 func (matcher *Matcher) buildLLMPrompt(input string) string {
 	verdicts := matcher.Options
 	if len(verdicts) == 0 {
@@ -127,9 +128,7 @@ func (matcher *Matcher) buildLLMPrompt(input string) string {
 	builder.WriteString("\n\nReturn JSON only: {\"verdict\": one of [")
 	builder.WriteString(strings.Join(verdicts, ", "))
 	builder.WriteString("], \"confidence\": 0-1, \"evidence\": short quote}\n\n")
-	builder.WriteString("--- BEGIN RESPONSE ---\n")
-	builder.WriteString(input)
-	builder.WriteString("\n--- END RESPONSE ---")
+	builder.WriteString(llmclient.FrameResponse(input))
 
 	return builder.String()
 }

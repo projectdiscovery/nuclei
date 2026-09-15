@@ -41,8 +41,12 @@ func TestExtractLLMSchemaReachesPromptInStableOrder(t *testing.T) {
 	e.SetLLMClient(stub)
 
 	e.ExtractLLM("body")
-	// sorted: product before version, regardless of map order
-	require.Less(t, indexOf(stub.lastGot, "product"), indexOf(stub.lastGot, "version"))
+	// both fields must be present, then product must come before version,
+	// so an absent field (index -1) cannot make the order check pass falsely
+	pi, vi := indexOf(stub.lastGot, "product"), indexOf(stub.lastGot, "version")
+	require.NotEqual(t, -1, pi, "product field must reach the prompt")
+	require.NotEqual(t, -1, vi, "version field must reach the prompt")
+	require.Less(t, pi, vi, "schema fields must be in stable sorted order")
 }
 
 func TestExtractLLMFailClosed(t *testing.T) {
