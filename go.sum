@@ -956,8 +956,6 @@ github.com/projectdiscovery/httpx v1.12.0 h1:NN5iDrw7NjPBDlACdjac4lePTQmZ5aOmgOz
 github.com/projectdiscovery/httpx v1.12.0/go.mod h1:OgtyibNGdu9BrJxRdNKm280Davw1Z4s2FAhfPNNtLB4=
 github.com/projectdiscovery/interactsh v1.3.1 h1:5HzeVGVCAX/cjTguJ+7ClOmML5r97Ty7op9s+/F7BiM=
 github.com/projectdiscovery/interactsh v1.3.1/go.mod h1:MXQ11EoBPROb4bEw+WP9e4DX4fMhrpS6EwfMfZomBsw=
-github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6 h1:GUHQYLllWhoca+C4UAT0+TTB1PrUT05klj39V6/KpK8=
-github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6/go.mod h1:f8P5X5+jEkUqK9z3oNWtSH1g23jMfw3nuEqmtA1jXA4=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb h1:MGtI4oE12ruWv11ZlPXXd7hl/uAaQZrFvrIDYDeVMd8=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb/go.mod h1:vmgC0DTFCfoCLp0RAfsfYTZZan0QMVs+cmTbH6blfjk=
 github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 h1:eR+0HE//Ciyfwy3HC7fjRyKShSJHYoX2Pv7pPshjK/Q=
@@ -988,8 +986,8 @@ github.com/projectdiscovery/uncover v1.2.1 h1:8U46T/96CLT7BPoXBgkTvWqB06lOyeTSLv
 github.com/projectdiscovery/uncover v1.2.1/go.mod h1:0p8onrWxfpXQEYs90ZDzTSpu1107gWmodX1NWqu/+z4=
 github.com/projectdiscovery/useragent v0.0.109 h1:b86BPdZvmgbJousa04jAugDRY4Y+rAvEamE0TFCPmeE=
 github.com/projectdiscovery/useragent v0.0.109/go.mod h1:sRyBqDAcD31RKYrO8fyXGowLd36fNwY1g0MNW9mp7zk=
-github.com/projectdiscovery/utils v0.11.4-0.20260910160917-83d6b6e62668 h1:umwLd2H4q5hfHPdAHSQWdrmBvECZs2qsF9hskvo1jw8=
-github.com/projectdiscovery/utils v0.11.4-0.20260910160917-83d6b6e62668/go.mod h1:DzaUDLQ+Tqsn2nOL47M1mRBZSVyCmwsAlR2E9dxHB4Y=
+github.com/projectdiscovery/utils v0.11.4 h1:iU/exyhNugDcuUkYMDl24PjF51ZYpW//Xz6pV1+o2sg=
+github.com/projectdiscovery/utils v0.11.4/go.mod h1:HMxhxLigsAr+M9Oa8n9Z0ROZcs8wAJHGsgR7UGb+oUE=
 github.com/projectdiscovery/wappalyzergo v0.3.0 h1:2AsEkjnKgFZK4tjaiNhwC0zfj04rpckSvIOZINeTGyQ=
 github.com/projectdiscovery/wappalyzergo v0.3.0/go.mod h1:6xTRCUQhX8m+L1eqJDQIALJlRv2Bnhrmku80YU9bBXE=
 github.com/projectdiscovery/yamldoc-go v1.0.7 h1:Odmjd1o4EkMff2F6QHi1dIYPIQPZUFy24YqmQCprmTk=
@@ -1046,8 +1044,8 @@ github.com/sandrolain/httpcache v1.4.0 h1:Jf4Vx62X2ybvNPSpPvI1kT3xvMdDG1AsApQjOQ
 github.com/sandrolain/httpcache v1.4.0/go.mod h1:kHBuXveitSn39SNPBhdf/ybG272X706HJ2RJqOQ+Em0=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 h1:KRzFb2m7YtdldCEkzs6KqmJw4nqEVZGK7IN2kJkjTuQ=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.2/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=
-github.com/sashabaranov/go-openai v1.37.0 h1:hQQowgYm4OXJ1Z/wTrE+XZaO20BYsL0R3uRPSpfNZkY=
-github.com/sashabaranov/go-openai v1.37.0/go.mod h1:lj5b/K+zjTSFxVLijLSTDZuP7adOgerWeFyZLUhAKRg=
+github.com/sashabaranov/go-openai v1.42.0 h1:fgeZx7/D8dRT//PwXAGe9ylOMtj6vrs999uWF71K+f8=
+github.com/sashabaranov/go-openai v1.42.0/go.mod h1:lj5b/K+zjTSFxVLijLSTDZuP7adOgerWeFyZLUhAKRg=
 github.com/segmentio/ksuid v1.0.4 h1:sBo2BdShXjmcugAMwjugoGUdUV0pcxY5mW4xKRn3v4c=
 github.com/segmentio/ksuid v1.0.4/go.mod h1:/XUiZBD3kVx5SmUOl55voK5yeAbBNNIed+2O73XgrPE=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=

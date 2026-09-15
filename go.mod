@@ -115,7 +115,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.4.0
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
-	github.com/projectdiscovery/utils v0.11.4-0.20260910160917-83d6b6e62668
+	github.com/projectdiscovery/utils v0.11.4
 	github.com/projectdiscovery/wappalyzergo v0.3.0
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
@@ -365,14 +365,13 @@ require (
 	github.com/projectdiscovery/blackrock v0.0.2 // indirect
 	github.com/projectdiscovery/cdncheck v1.3.0 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
-	github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
-	github.com/sashabaranov/go-openai v1.37.0 // indirect
+	github.com/sashabaranov/go-openai v1.42.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect

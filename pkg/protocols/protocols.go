@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -81,6 +82,10 @@ type ExecutorOptions struct {
 	// Verified reports whether a trusted verifier verified the template's
 	// signature. Code and JavaScript protocols check it at execution time.
 	Verified bool
+	// LLMClient is the scan's llm client, injected into llm matchers and
+	// extractors when a request compiles. Nil unless -llm is set, which makes
+	// those operators fail closed.
+	LLMClient llmclient.Client
 	// TemplateVerificationCallback returns cached verification info for a template path.
 	// If it returns nil, verification should be computed normally.
 	TemplateVerificationCallback func(templatePath string) *TemplateVerification
@@ -321,6 +326,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		TemplateInfo:                 e.TemplateInfo,
 		TemplateVerifier:             e.TemplateVerifier,
 		Verified:                     e.Verified,
+		LLMClient:                    e.LLMClient,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
 		RawTemplate:                  e.RawTemplate,
 		Output:                       e.Output,
