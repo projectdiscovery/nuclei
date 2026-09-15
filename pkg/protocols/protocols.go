@@ -103,10 +103,10 @@ type ExecutorOptions struct {
 	// Browser is a browser engine for running headless templates
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
-	Interactsh *interactsh.Client
 	// InteractshScope isolates delayed callbacks and cleanup for one execution
 	// when Interactsh is shared by concurrent engines.
 	InteractshScope *interactsh.RequestScope
+	Interactsh      interactsh.InteractshClient
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
 	// Stop execution once first match is found (Assigned while parsing templates)
@@ -332,7 +332,6 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
-		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
@@ -514,7 +513,6 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
-	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency

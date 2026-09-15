@@ -59,6 +59,10 @@ type Client struct {
 	generated atomic.Bool
 	matched   atomic.Bool
 }
+var _ InteractshClient = &Client{}
+
+
+
 
 var interactshSNIAnnotationRegex = regexp.MustCompile(`(?m)^[\t ]*@tls-sni:[\t ]*(?:https?://)?interactsh-url[\t ]*$`)
 
@@ -152,7 +156,7 @@ func (s *RequestScope) Close() {
 }
 
 // New returns a new interactsh server client
-func New(options *Options) (*Client, error) {
+func New(options *Options) (InteractshClient, error) {
 	interactClient := &Client{
 		eviction:         options.Eviction,
 		options:          options,
