@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -45,7 +46,7 @@ func TruncateApproxTokens(input string, maxTokens int) string {
 // nonce, so an attacker who controls the body cannot forge the closing marker,
 // which is what actually keeps injected text inside the data region.
 func FrameResponse(input string) string {
-	nonce := randomNonce()
+	nonce := boundaryMarker()
 
 	var builder strings.Builder
 	builder.WriteString("The response is delimited by the random marker ")
@@ -61,14 +62,18 @@ func FrameResponse(input string) string {
 	return builder.String()
 }
 
-// randomNonce returns an unpredictable boundary token. It falls back to a
-// process-unique value if the system RNG is unavailable, which still cannot be
-// predicted from the response body.
-func randomNonce() string {
+// boundaryMarker returns the framing token, generated once per process.
+//
+// It is stable rather than per-call so that framing an identical response
+// yields an identical prompt, which keeps the provider cache effective; a fresh
+// token every call would make every prompt unique and defeat -llm-cache. The
+// token is never revealed in output, so an attacker who controls a response
+// body still cannot predict it to forge the boundary.
+var boundaryMarker = sync.OnceValue(func() string {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {
 		return "nonce-" + strconv.FormatInt(time.Now().UnixNano(), 16)
 	}
 
 	return hex.EncodeToString(buf)
-}
+})
