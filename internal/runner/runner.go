@@ -83,7 +83,7 @@ var (
 // Runner is a client for running the enumeration process.
 type Runner struct {
 	output             output.Writer
-	interactsh         *interactsh.Client
+	interactsh         interactsh.InteractshClient
 	options            *types.Options
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog

@@ -53,7 +53,7 @@ func (i *Instance) Close() error {
 }
 
 // SetInteractsh client
-func (i *Instance) SetInteractsh(interactsh *interactsh.Client) {
+func (i *Instance) SetInteractsh(interactsh interactsh.InteractshClient) {
 	i.interactsh = interactsh
 }
 

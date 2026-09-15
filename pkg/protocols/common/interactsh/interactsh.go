@@ -55,8 +55,10 @@ type Client struct {
 	matched   atomic.Bool
 }
 
+var _ InteractshClient = &Client{}
+
 // New returns a new interactsh server client
-func New(options *Options) (*Client, error) {
+func New(options *Options) (InteractshClient, error) {
 	requestsCache := gcache.New[string, *RequestData](options.CacheSize).LRU().Build()
 	interactionsCache := gcache.New[string, []*server.Interaction](defaultMaxInteractionsCount).LRU().Build()
 	matchedTemplateCache := gcache.New[string, bool](defaultMaxInteractionsCount).LRU().Build()

@@ -103,7 +103,7 @@ type ExecutorOptions struct {
 	// Browser is a browser engine for running headless templates
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
-	Interactsh *interactsh.Client
+	Interactsh interactsh.InteractshClient
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
 	// Stop execution once first match is found (Assigned while parsing templates)
