@@ -50,6 +50,9 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		// would otherwise route all findings to whichever call last won the race.
 		DoNotCache: true,
 	}
+	if base.interactshClient != nil {
+		u.executerOpts.InteractshScope = base.interactshClient.NewRequestScope()
+	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
 	}
@@ -116,6 +119,9 @@ func resolveEphemeralOutput(base, call *NucleiEngine) output.Writer {
 
 // closeEphemeralObjects closes all resources used by ephemeral nuclei objects/instances/types
 func closeEphemeralObjects(u *unsafeOptions) {
+	if u.executerOpts.InteractshScope != nil {
+		u.executerOpts.InteractshScope.Close()
+	}
 	if u.executerOpts.RateLimiter != nil {
 		u.executerOpts.RateLimiter.Stop()
 	}
@@ -124,6 +130,7 @@ func closeEphemeralObjects(u *unsafeOptions) {
 	u.executerOpts.Output = nil
 	u.executerOpts.IssuesClient = nil
 	u.executerOpts.Interactsh = nil
+	u.executerOpts.InteractshScope = nil
 	u.executerOpts.HostErrorsCache = nil
 	u.executerOpts.Progress = nil
 	u.executerOpts.Catalog = nil

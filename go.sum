@@ -926,8 +926,8 @@ github.com/projectdiscovery/cdncheck v1.3.0 h1:/bWdNXIU1P5ASZuW8QA+tAw1FNHhmWlWX
 github.com/projectdiscovery/cdncheck v1.3.0/go.mod h1:GIAA0SqjDfxzDQjHR/X+bK05BGmUGfsVplP5Zdv/kHA=
 github.com/projectdiscovery/clistats v0.1.7 h1:NXf4lUzx1QcbJd6QycNwwYHTv2FsW9MchQ2LsgSL6C0=
 github.com/projectdiscovery/clistats v0.1.7/go.mod h1:RxRGxhMzkT344VTTvZWIrojurUXdQQRN1yfwgg/88I8=
-github.com/projectdiscovery/dsl v0.8.22 h1:ZfPunLaaYUJTBffE1ShuAAV9hkSH2thvlszK48FlZS0=
-github.com/projectdiscovery/dsl v0.8.22/go.mod h1:fr8WMU381As89e4Z+SQ8tYQ1NudniWAS6NLPHrhe+Vs=
+github.com/projectdiscovery/dsl v0.8.23-0.20260910174914-8e1207b367b8 h1:zaAfFHjyLPq9Aoii1mXPzXkITvXyPJTSZo6nNhzC1xI=
+github.com/projectdiscovery/dsl v0.8.23-0.20260910174914-8e1207b367b8/go.mod h1:TYqDNtD4hU8bGFgVxPqhYQ9K1z5rMLV/YFyvQgcU5TM=
 github.com/projectdiscovery/fastdialer v0.5.20 h1:MlXoVXQERJY4ILqMNYfuoTKVR4Ix4XonJLkFaoHzgM0=
 github.com/projectdiscovery/fastdialer v0.5.20/go.mod h1:zdtIbBt5ELNygMEPDSyQ9Nr9KpP9FuAvJwzNIrZZoJA=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -966,8 +966,8 @@ github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5 h1:L/e8z8yw
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5/go.mod h1:pGW2ncnTxTxHtP9wzcIJAB+3/NMp6IiuQWd2NK7K+oc=
 github.com/projectdiscovery/networkpolicy v0.1.50 h1:z/ZMuNAtPH6Q7BlMZ4DLA1ytm+7TYPAdBCNLjNqaV0U=
 github.com/projectdiscovery/networkpolicy v0.1.50/go.mod h1:QAAMLSm1YsbGeZTFNGBMtyob28B1VUVblNT56wPhDJc=
-github.com/projectdiscovery/ratelimit v0.0.89 h1:MQBfC9lEVdddepPiKcZzgDppSyASo0lmzVKqZ+d8PO8=
-github.com/projectdiscovery/ratelimit v0.0.89/go.mod h1:pQg2urKomS0WkMmLCF5HhWyuresBXosh1kIfn1Tlwug=
+github.com/projectdiscovery/ratelimit v0.0.90-0.20260912164306-aeeca5645294 h1:d5fkf/st46mg+QpOkzOuFBBCYfV8ljO3pmi8CChwIyE=
+github.com/projectdiscovery/ratelimit v0.0.90-0.20260912164306-aeeca5645294/go.mod h1:pQg2urKomS0WkMmLCF5HhWyuresBXosh1kIfn1Tlwug=
 github.com/projectdiscovery/rawhttp v0.1.92 h1:38GRsVLNllES/dZcEcA6s6P+rYBp34H9mDphMJMDvvg=
 github.com/projectdiscovery/rawhttp v0.1.92/go.mod h1:spfXTPjxCj+bfWLynMVB7uOb+LS3PDNAI9HexMEV1Zg=
 github.com/projectdiscovery/rdap v0.9.0 h1:wPhHx5pQ2QI+WGhyNb2PjhTl0NtB39Nk7YFZ9cp8ZGA=
