@@ -409,9 +409,13 @@ func (c *Client) URL() (string, error) {
 
 // Close the interactsh clients after waiting for cooldown period.
 func (c *Client) Close() bool {
+	if c == nil {
+		return false
+	}
 	if c.cooldownDuration > 0 && c.generated.Load() {
 		time.Sleep(c.cooldownDuration)
 	}
+
 	if c.interactsh != nil {
 		_ = c.interactsh.StopPolling()
 		_ = c.interactsh.Close()
