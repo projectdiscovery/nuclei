@@ -106,7 +106,7 @@ type ExecutorOptions struct {
 	// InteractshScope isolates delayed callbacks and cleanup for one execution
 	// when Interactsh is shared by concurrent engines.
 	InteractshScope *interactsh.RequestScope
-	Interactsh      interactsh.InteractshClient
+	Interactsh      interactsh.IClient
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
 	// Stop execution once first match is found (Assigned while parsing templates)

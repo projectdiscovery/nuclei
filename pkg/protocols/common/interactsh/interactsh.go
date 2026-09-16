@@ -58,11 +58,11 @@ type Client struct {
 	// determines if wait the cooldown period in case of generated URL
 	generated atomic.Bool
 	matched   atomic.Bool
+
+	onInteraction func(i *server.Interaction, foundRequest *RequestData)
 }
-var _ InteractshClient = &Client{}
 
-
-
+var _ IClient = &Client{}
 
 var interactshSNIAnnotationRegex = regexp.MustCompile(`(?m)^[\t ]*@tls-sni:[\t ]*(?:https?://)?interactsh-url[\t ]*$`)
 
@@ -156,7 +156,7 @@ func (s *RequestScope) Close() {
 }
 
 // New returns a new interactsh server client
-func New(options *Options) (InteractshClient, error) {
+func New(options *Options) (*Client, error) {
 	interactClient := &Client{
 		eviction:         options.Eviction,
 		options:          options,
@@ -164,6 +164,10 @@ func New(options *Options) (InteractshClient, error) {
 		cooldownDuration: options.CooldownPeriod,
 	}
 	return interactClient, nil
+}
+
+func (c *Client) SetInteractionCallback(cb func(interaction *server.Interaction, foundRequest *RequestData)) {
+	c.onInteraction = cb
 }
 
 func (c *Client) initializeCaches() {
@@ -208,6 +212,10 @@ func (c *Client) poll() error {
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		c.requestLifecycleMu.RLock()
 		request, err := c.requests.Get(interaction.UniqueID)
+		if c.onInteraction != nil {
+			c.onInteraction(interaction, request)
+		}
+
 		callbackAdmitted := request != nil && request.Scope.beginCallback()
 		c.requestLifecycleMu.RUnlock()
 		// for more context in github actions

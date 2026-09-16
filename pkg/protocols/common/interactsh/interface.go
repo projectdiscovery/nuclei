@@ -2,7 +2,7 @@ package interactsh
 
 import "regexp"
 
-type InteractshClient interface {
+type IClient interface {
 	AlreadyMatched(data *RequestData) bool
 	URL() (string, error)
 	Close() bool
