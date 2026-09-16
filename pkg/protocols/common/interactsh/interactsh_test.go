@@ -353,5 +353,7 @@ func TestClientInitializesCachesOnceConcurrently(t *testing.T) {
 func TestClientNilReceiver(t *testing.T) {
 	var client *Client
 	var iClient IClient = client
-	iClient.Close()
+	if res := iClient.Close(); res != false {
+		t.Fatal("Close() on a nil receiver returned true, want false")
+	}
 }
