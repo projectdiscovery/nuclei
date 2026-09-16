@@ -59,7 +59,8 @@ type Client struct {
 	generated atomic.Bool
 	matched   atomic.Bool
 
-	onInteraction func(i *server.Interaction, foundRequest *RequestData)
+	onInteractionMu sync.RWMutex
+	onInteraction   func(i *server.Interaction, foundRequest *RequestData)
 }
 
 var _ IClient = &Client{}
@@ -167,6 +168,8 @@ func New(options *Options) (*Client, error) {
 }
 
 func (c *Client) SetInteractionCallback(cb func(interaction *server.Interaction, foundRequest *RequestData)) {
+	c.onInteractionMu.Lock()
+	defer c.onInteractionMu.Unlock()
 	c.onInteraction = cb
 }
 
@@ -212,8 +215,12 @@ func (c *Client) poll() error {
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		c.requestLifecycleMu.RLock()
 		request, err := c.requests.Get(interaction.UniqueID)
-		if c.onInteraction != nil {
-			c.onInteraction(interaction, request)
+
+		c.onInteractionMu.RLock()
+		cb := c.onInteraction
+		c.onInteractionMu.RUnlock()
+		if cb != nil {
+			cb(interaction, request)
 		}
 
 		callbackAdmitted := request != nil && request.Scope.beginCallback()
