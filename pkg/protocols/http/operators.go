@@ -217,3 +217,44 @@ func (request *Request) truncateResponse(response interface{}) string {
 	}
 	return responseString
 }
+
+// needsFullResponse reports whether any operator on this request reads the
+// headers+body concatenation, exposed as the "response" key and as part "all".
+//
+// Building it costs FullResponseBytes: a make() the size of the entire response
+// plus two copies, allocated for every response on every request. Across the
+// public template corpus only 81 of 11,634 http templates (0.7%) ever read it,
+// so for the rest that allocation is pure waste and is retained for as long as
+// the event is (the interactsh cache holds events until their OAST callback).
+func (request *Request) needsFullResponse() bool {
+	for _, m := range request.Operators.Matchers {
+		if partNeedsFullResponse(m.Part) || dslNeedsFullResponse(m.DSL) {
+			return true
+		}
+	}
+	for _, e := range request.Operators.Extractors {
+		if partNeedsFullResponse(e.Part) || dslNeedsFullResponse(e.DSL) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// partNeedsFullResponse covers "all" plus "response" and its req-condition
+// variants (response_1, response_2, ...).
+func partNeedsFullResponse(part string) bool {
+	return part == "all" || strings.HasPrefix(part, "response")
+}
+
+// dslNeedsFullResponse is deliberately a substring test: a dsl expression can
+// reach the key by any construction, so anything mentioning it forces the build.
+func dslNeedsFullResponse(expressions []string) bool {
+	for _, expression := range expressions {
+		if strings.Contains(expression, "response") {
+			return true
+		}
+	}
+
+	return false
+}
