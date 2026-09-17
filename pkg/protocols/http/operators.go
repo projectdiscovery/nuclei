@@ -227,12 +227,12 @@ func (request *Request) truncateResponse(response interface{}) string {
 // so for the rest that allocation is pure waste and is retained for as long as
 // the event is (the interactsh cache holds events until their OAST callback).
 func (request *Request) needsFullResponse() bool {
-	for _, m := range request.Operators.Matchers {
+	for _, m := range request.Matchers {
 		if partNeedsFullResponse(m.Part) || dslNeedsFullResponse(m.DSL) {
 			return true
 		}
 	}
-	for _, e := range request.Operators.Extractors {
+	for _, e := range request.Extractors {
 		if partNeedsFullResponse(e.Part) || dslNeedsFullResponse(e.DSL) {
 			return true
 		}
