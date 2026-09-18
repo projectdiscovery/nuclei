@@ -992,11 +992,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	// define max body read limit
 	maxBodylimit := MaxBodyRead // 10MB
-	if request.MaxSize > 0 {
-		maxBodylimit = request.MaxSize
-	}
 	if request.options.Options.ResponseReadSize != 0 {
 		maxBodylimit = request.options.Options.ResponseReadSize
+	}
+	// A template's own max-size is a further restriction on top of the global
+	// cap, not an alternative to it. A template that states it only needs the
+	// first few hundred bytes should not be handed the whole response because
+	// the scan happens to configure a larger ceiling.
+	if request.MaxSize > 0 && request.MaxSize < maxBodylimit {
+		maxBodylimit = request.MaxSize
 	}
 
 	// respChain is http response chain that reads response body
