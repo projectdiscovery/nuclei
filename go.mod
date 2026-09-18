@@ -130,7 +130,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.9
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/http2curl v1.0.0
 )
