@@ -163,6 +163,13 @@ func TestLoadFilter(t *testing.T) {
 		r.Bind("https://b.com", nil)
 		require.Nil(t, r.LoadFilter())
 	})
+
+	t.Run("plain duplicate of a target line loads everything", func(t *testing.T) {
+		r := NewRegistry(templatesDir)
+		target := bindLine(t, r, `{"target": "https://a.com", "tags": ["thinkphp"]}`)
+		r.Merge(target, nil)
+		require.Nil(t, r.LoadFilter())
+	})
 }
 
 func TestTechTokens(t *testing.T) {

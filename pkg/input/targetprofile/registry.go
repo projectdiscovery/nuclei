@@ -102,6 +102,7 @@ func (r *Registry) Merge(input string, selection *Selection) {
 	case !ok || current == nil:
 		// already unrestricted
 	case selection == nil:
+		r.unrestricted = true
 		r.targets[input] = nil
 	default:
 		r.targets[input] = r.union(current, selection)
