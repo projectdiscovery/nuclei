@@ -154,12 +154,18 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			skip = false
 		}
 
+		// out of scope pairs keep their index so resume positions stay stable
+		inScope := e.inScope(template, scannedValue)
+		if !inScope {
+			skip = true
+		}
+
 		currentInfo.Lock()
 		currentInfo.InFlight[index] = struct{}{}
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
+		if inScope && e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
 			skipEvent := &output.ResultEvent{
 				TemplateID:    template.ID,
 				TemplatePath:  template.Path,
@@ -208,6 +214,10 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		case <-ctx.Done():
 			return
 		default:
+		}
+
+		if !e.inScope(tpl, target) {
+			continue
 		}
 
 		// Check whether the target has already been marked as permanently
@@ -264,6 +274,15 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg, usesSharedTemplateBudget)
 	}
+}
+
+// inScope reports whether per-target profiles select template for input.
+func (e *Engine) inScope(template *templates.Template, input *contextargs.MetaInput) bool {
+	if e.executerOpts.TargetScope == nil {
+		return true
+	}
+	selection := e.executerOpts.TargetScope.For(input)
+	return selection == nil || template.SelectedBy(selection)
 }
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error

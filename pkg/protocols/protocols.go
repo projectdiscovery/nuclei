@@ -170,7 +170,8 @@ type TargetScope interface {
 	For(input *contextargs.MetaInput) TemplateSelection
 }
 
-// TemplateSelection decides which templates run on a target.
+// TemplateSelection decides which templates run on a target. Implementations
+// must be comparable, such as pointers, since targets are grouped by selection.
 type TemplateSelection interface {
 	// Allows reports whether the template loaded from templatePath is selected.
 	Allows(templatePath string) bool
