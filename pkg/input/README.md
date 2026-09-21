@@ -43,7 +43,7 @@ https://d.example
 | Key | Selects |
 | --- | --- |
 | `target` | the target (URL, host, IP, CIDR or ASN), required |
-| `profile` | a template profile by ID or path; the line's other keys override it |
+| `profile` | a template profile ID from the templates `profiles` directory (paths are rejected); the line's other keys override it |
 | `templates` | template paths, relative to the templates directory |
 | `tags`, `exclude-tags`, `include-tags`, `author`, `template-id`, `exclude-id`, `severity`, `exclude-severity`, `type`, `exclude-type` | same as the CLI flags |
 | `tech` | technologies the target runs: templates bound to another product (`metadata.product`) are skipped, every other template runs |

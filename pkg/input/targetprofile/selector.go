@@ -11,6 +11,7 @@ package targetprofile
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -89,6 +90,11 @@ func parseLine(line string) (target, profile string, sel selector, err error) {
 // configure the whole scan (code, var, rate limits...) cannot apply to a single
 // target and are returned as ignored.
 func loadProfile(profile, templatesDir string) (selector, []string, error) {
+	// Target lines often come from other tools, so a profile is only looked up
+	// by ID inside the profiles directory and never read from a given path.
+	if profile == "" || strings.ContainsAny(profile, `/\`) || filepath.Ext(profile) != "" {
+		return nil, nil, fmt.Errorf("profile %q must be a profile ID from %s", profile, filepath.Join(templatesDir, "profiles"))
+	}
 	path, err := configuration.ResolveProfilePath(profile, templatesDir)
 	if err != nil {
 		return nil, nil, err

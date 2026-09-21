@@ -1,6 +1,7 @@
 package targetprofile
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -70,6 +71,28 @@ func TestParseLineRejectsInvalidLines(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestProfileMustBeAnID(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "profiles"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "profiles", "php.yml"), []byte("tags: [thinkphp]\n"), 0o600))
+	outside := filepath.Join(dir, "outside.yml")
+	require.NoError(t, os.WriteFile(outside, []byte("tags: [tomcat]\n"), 0o600))
+
+	r := NewRegistry(dir)
+	for _, profile := range []string{outside, "../outside.yml", "../outside", "profiles/php.yml", "php.yml", `profiles\php`, ".."} {
+		t.Run(profile, func(t *testing.T) {
+			line, err := json.Marshal(map[string]string{"target": "a.com", "profile": profile})
+			require.NoError(t, err)
+			_, _, err = r.ParseLine(string(line))
+			require.ErrorContains(t, err, "profile ID")
+		})
+	}
+
+	_, selection, err := r.ParseLine(`{"target": "a.com", "profile": "php"}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"thinkphp"}, selection.rules[0].filter.Tags)
 }
 
 func TestSelectionFilters(t *testing.T) {
