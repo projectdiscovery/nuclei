@@ -89,7 +89,7 @@ func TestSelectionFilters(t *testing.T) {
 
 func TestSelectionTech(t *testing.T) {
 	r := NewRegistry(templatesDir)
-	tomcat := bindLine(t, r, `{"target": "https://a.com", "tech": ["Apache Tomcat", "apache:tomcat"]}`)
+	tomcat := bindLine(t, r, `{"target": "https://a.com", "tech": ["Apache Tomcat"]}`)
 	php := bindLine(t, r, `{"target": "https://b.com", "tech": ["ThinkPHP"], "severity": ["critical", "medium"]}`)
 	r.Prepare(allTemplates)
 
@@ -163,4 +163,18 @@ func TestLoadFilter(t *testing.T) {
 		r.Bind("https://b.com", nil)
 		require.Nil(t, r.LoadFilter())
 	})
+}
+
+func TestTechTokens(t *testing.T) {
+	for tech, want := range map[string][]string{
+		"nginx":         {"nginx"},
+		"ThinkPHP":      {"thinkphp"},
+		"apache_tomcat": {"apache-tomcat"},
+		"Apache Tomcat": {"apache-tomcat", "apache", "tomcat"},
+		"apache:tomcat": {"apache-tomcat", "apache", "tomcat"},
+		"Microsoft IIS": {"microsoft-iis", "microsoft", "iis"},
+		"  ":            nil,
+	} {
+		require.Equal(t, want, techTokens(tech), tech)
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/index"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -59,7 +60,9 @@ func compileRule(sel selector, templatesDir string) (*rule, error) {
 	if len(sel[keyTech]) > 0 {
 		r.tech = make(map[string]struct{}, len(sel[keyTech]))
 		for _, tech := range sel[keyTech] {
-			r.tech[normalizeTech(tech)] = struct{}{}
+			for _, token := range techTokens(tech) {
+				r.tech[token] = struct{}{}
+			}
 		}
 	}
 
@@ -107,14 +110,28 @@ func anyMatches(rules []*rule, m *index.Metadata) bool {
 	return slices.ContainsFunc(rules, func(r *rule) bool { return r.matches(m) })
 }
 
-// normalizeTech maps tech names from fingerprinting tools ("Apache Tomcat",
-// "apache:tomcat", "apache_tomcat") and template metadata to one token.
-func normalizeTech(tech string) string {
-	tech = strings.ToLower(strings.TrimSpace(tech))
-	if i := strings.LastIndexByte(tech, ':'); i >= 0 {
-		tech = tech[i+1:]
+// techTokens expands a tech name reported by a fingerprinting tool into the
+// tokens template metadata uses: "Apache Tomcat" and "apache:tomcat" yield
+// apache-tomcat, apache and tomcat. Extra tokens can only select more
+// templates, never fewer.
+func techTokens(tech string) []string {
+	words := strings.FieldsFunc(strings.ToLower(tech), func(r rune) bool { return r == ':' || unicode.IsSpace(r) })
+	if len(words) == 0 {
+		return nil
 	}
-	tech = strings.ReplaceAll(tech, "_", "-")
+	tokens := []string{normalizeTech(strings.Join(words, " "))}
+	if len(words) > 1 {
+		for _, word := range words {
+			tokens = append(tokens, normalizeTech(word))
+		}
+	}
+	return tokens
+}
+
+// normalizeTech maps a product or tag to its token form ("Apache_Tomcat" and
+// "apache tomcat" both become apache-tomcat).
+func normalizeTech(tech string) string {
+	tech = strings.ReplaceAll(strings.ToLower(tech), "_", "-")
 	return strings.Join(strings.Fields(tech), "-")
 }
 
