@@ -20,6 +20,11 @@ export class Client {
     public Protocol?: string;
 
 
+    /**
+    * ResponseHeaders are the handshake response headers, set after connecting.
+    * Upgrade, Connection and Sec-WebSocket-* headers are validated by the
+    * handshake and not included; Protocol holds the negotiated subprotocol.
+    */
     public ResponseHeaders?: Record<string, string>;
 
 

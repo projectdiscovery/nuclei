@@ -67,6 +67,8 @@ type (
 		// Protocol is the subprotocol the server accepted, set after connecting.
 		Protocol string
 		// ResponseHeaders are the handshake response headers, set after connecting.
+		// Upgrade, Connection and Sec-WebSocket-* headers are validated by the
+		// handshake and not included; Protocol holds the negotiated subprotocol.
 		ResponseHeaders map[string]string
 
 		nj          *utils.NucleiJS
