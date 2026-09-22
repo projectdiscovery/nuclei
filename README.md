@@ -52,6 +52,7 @@
   - [_`Network scan`_](#network-scan)
   - [_`Scanning with your custom template`_](#scanning-with-your-custom-template)
   - [_`Connect Nuclei to ProjectDiscovery_`_](#connect-nuclei-to-projectdiscovery)
+  - [_`Semantic matching with OrcaRouter`_](#semantic-matching-with-orcarouter)
 - [**`Nuclei Templates, Community and Rewards`**](#nuclei-templates-community-and-rewards-) 💎
 - [**`Our Mission`**](#our-mission)
 - [**`Contributors`**](#contributors-heart) ❤
@@ -174,13 +175,21 @@ TEMPLATES:
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
    -llm                                   enable llm matchers and extractors (semantic matching)
-   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-provider string                   llm provider for semantic matching (groq, llamacpp, lmstudio, ollama, openai, openrouter, orcarouter, together, vllm) (default "openai")
    -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
    -llm-model string                      model used for semantic matching
+   -llm-api-key string                    api key for the selected llm provider (orcarouter also reads ORCAROUTER_API_KEY)
    -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
    -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
    -llm-concurrency int                   maximum concurrent llm calls (default 4)
    -llm-cache                             cache llm responses within a scan (default true)
+   -llm-login                             connect an orcarouter account with OAuth 2.0 + PKCE and store the issued api key
+   -llm-login-flow string                 orcarouter login delivery: auto, loopback (callback on 127.0.0.1) or oob (paste a displayed code) (default "auto")
+   -llm-logout                            remove the stored orcarouter credential
+   -llm-status                            show the stored orcarouter credential and where it lives
+   -llm-models                            list the orcarouter models available to this credential
+   -llm-auth-base-url string              orcarouter auth origin override (default https://www.orcarouter.ai)
+   -llm-api-base-url string               orcarouter inference origin override (default https://api.orcarouter.ai/v1)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -448,6 +457,44 @@ nuclei -target https://example.com -dashboard
 
 > [!NOTE]
 > This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [**`documentation`**](https://docs.projectdiscovery.io/cloud/scanning/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+
+### Semantic matching with OrcaRouter
+
+`-llm` matchers and extractors can run against [OrcaRouter](https://www.orcarouter.ai), an
+OpenAI-compatible AI gateway that routes many providers behind one endpoint. Select it with
+`-llm-provider orcarouter`; inference and model discovery then use
+`https://api.orcarouter.ai/v1`.
+
+There are two ways to authenticate, and both are usable on their own:
+
+```sh
+# 1. An existing API key, pasted or exported.
+nuclei -u https://example.com -t llm-template.yaml -llm -llm-provider orcarouter \
+       -llm-api-key sk-orca-... -llm-model orcarouter/auto
+
+# 2. Sign in with an OrcaRouter account (OAuth 2.0 + PKCE). No client secret and no
+#    pre-registered redirect URI; the issued key is stored owner-only and reused.
+nuclei -llm-login
+```
+
+`ORCAROUTER_API_KEY` (or `LLM_API_KEY`) is read when `-llm-api-key` is not given.
+`-llm-login` opens `https://www.orcarouter.ai/auth`, falls back to a displayed code when no
+loopback callback can be bound, and writes the key to `nuclei`'s own config directory under
+`keys/orcarouter.json` (mode `0600`). Use `-llm-status` to see which key is in use without
+printing it, `-llm-models` to list the models the key can actually call, and `-llm-logout` to
+remove it. Keys are revoked from
+[the OrcaRouter console](https://www.orcarouter.ai/console/authorized-apps); a revoked key is
+reported as requiring a new login rather than retried.
+
+The model list comes from `GET /v1/models` on the inference origin, filtered per entry point:
+text chat requires a chat endpoint type, and a model must explicitly advertise image input
+before it is offered for multimodal input. A small verified list is kept for the case where the
+catalog endpoint is unavailable.
+
+Authentication uses `https://www.orcarouter.ai`; inference uses `https://api.orcarouter.ai/v1`.
+Self-hosted gateways can set `ORCA_BASE_URL` (shared) or the more specific
+`ORCA_AUTH_BASE_URL` and `ORCA_API_BASE_URL` (also available as
+`-llm-auth-base-url` / `-llm-api-base-url`), which take precedence over the shared value.
 
 <br>
 <br>

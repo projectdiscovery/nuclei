@@ -442,6 +442,8 @@ type Options struct {
 	LLMBaseURL string
 	// LLMModel is the model used for llm matching
 	LLMModel string
+	// LLMAPIKey is an explicit api key for the selected llm provider
+	LLMAPIKey string
 	// LLMTimeout bounds a single llm call, in seconds
 	LLMTimeout int
 	// LLMMaxCalls caps llm calls for the whole scan (0 = unlimited)
@@ -450,6 +452,20 @@ type Options struct {
 	LLMConcurrency int
 	// LLMCache enables caching of llm responses within a scan
 	LLMCache bool
+	// LLMLogin connects an orcarouter account with OAuth 2.0 + PKCE
+	LLMLogin bool
+	// LLMLoginFlow selects the orcarouter login delivery: auto, loopback or oob
+	LLMLoginFlow string
+	// LLMLogout removes the stored orcarouter credential
+	LLMLogout bool
+	// LLMStatus reports the stored orcarouter credential
+	LLMStatus bool
+	// LLMModels lists the orcarouter models available to the credential
+	LLMModels bool
+	// LLMAuthBaseURL overrides the orcarouter auth origin
+	LLMAuthBaseURL string
+	// LLMAPIBaseURL overrides the orcarouter inference origin
+	LLMAPIBaseURL string
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
