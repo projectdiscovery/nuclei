@@ -37,6 +37,8 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
 	{Path: "protocols/javascript/grpc-health.yaml", TestCase: &javascriptGRPCHealth{}},
 	{Path: "protocols/javascript/grpc-denied.yaml", TestCase: &javascriptGRPCDenied{}},
+	{Path: "protocols/javascript/websocket-echo.yaml", TestCase: &javascriptWebSocketEcho{}},
+	{Path: "protocols/javascript/websocket-denied.yaml", TestCase: &javascriptWebSocketDenied{}},
 	{Path: "protocols/javascript/http-get.yaml", TestCase: &javascriptHTTPGet{}},
 	{Path: "protocols/javascript/http-client-flow.yaml", TestCase: &javascriptHTTPClientFlow{}},
 	{Path: "protocols/javascript/http-denied.yaml", TestCase: &javascriptHTTPDenied{}},
