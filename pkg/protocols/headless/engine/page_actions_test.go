@@ -831,6 +831,28 @@ func TestActionWaitEventDuration(t *testing.T) {
 	})
 }
 
+func TestActionWaitEventSeesEventFiredBeforeWaiting(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	testHeadlessSimpleResponse(t, `<html><body>loaded</body></html>`, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+
+		wait, err := page.WaitEvent(&Action{
+			ActionType: ActionTypeHolder{ActionType: ActionWaitEvent},
+			Data:       map[string]string{"event": "Page.loadEventFired", "max-duration": "3s"},
+		}, out)
+		require.Nil(t, err)
+
+		// the load event fires before the wait starts, as it can for a fast
+		// page during the navigation that precedes the deferred wait
+		require.Nil(t, page.page.Reload())
+		require.Nil(t, page.page.WaitLoad())
+		require.Nil(t, wait(), "an event fired after the wait-event action must not be missed")
+	})
+}
+
 func TestActionWaitVisible(t *testing.T) {
 	// responseWithDelay renders a button that becomes visible after appearDelayMs.
 	// Each subtest uses its own delay so the page timing and the action timeout
