@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -728,6 +729,13 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
+	profiles := r.targetProfiles()
+	if profiles != nil {
+		if r.options.AutomaticScan {
+			return errors.New("per-target profiles cannot be combined with automatic scan")
+		}
+		loaderConfig.TargetFilter = profiles.LoadFilter()
+	}
 	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
 		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true
@@ -771,6 +779,10 @@ func (r *Runner) RunEnumeration() error {
 	}
 	if err := store.Load(); err != nil {
 		return err
+	}
+	if profiles != nil {
+		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
+		executorOpts.TargetScope = profiles
 	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)

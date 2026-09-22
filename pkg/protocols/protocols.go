@@ -160,6 +160,21 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
+	// TargetScope narrows the templates run on each target (per-target profiles)
+	TargetScope TargetScope
+}
+
+// TargetScope resolves the template selection that applies to a target.
+type TargetScope interface {
+	// For returns the selection for input, or nil when every template applies.
+	For(input *contextargs.MetaInput) TemplateSelection
+}
+
+// TemplateSelection decides which templates run on a target. Implementations
+// must be comparable, such as pointers, since targets are grouped by selection.
+type TemplateSelection interface {
+	// Allows reports whether the template loaded from templatePath is selected.
+	Allows(templatePath string) bool
 }
 
 // RegisterInteractshRequest attaches execution-local output dependencies before
@@ -356,6 +371,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ExportReqURLPattern:          e.ExportReqURLPattern,
 		GlobalMatchers:               e.GlobalMatchers,
 		Logger:                       e.Logger,
+		TargetScope:                  e.TargetScope,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
