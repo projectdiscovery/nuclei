@@ -58,7 +58,12 @@ type Client struct {
 	// determines if wait the cooldown period in case of generated URL
 	generated atomic.Bool
 	matched   atomic.Bool
+
+	onInteractionMu sync.RWMutex
+	onInteraction   func(i *server.Interaction, foundRequest *RequestData)
 }
+
+var _ IClient = &Client{}
 
 var interactshSNIAnnotationRegex = regexp.MustCompile(`(?m)^[\t ]*@tls-sni:[\t ]*(?:https?://)?interactsh-url[\t ]*$`)
 
@@ -162,6 +167,12 @@ func New(options *Options) (*Client, error) {
 	return interactClient, nil
 }
 
+func (c *Client) SetInteractionCallback(cb func(interaction *server.Interaction, foundRequest *RequestData)) {
+	c.onInteractionMu.Lock()
+	defer c.onInteractionMu.Unlock()
+	c.onInteraction = cb
+}
+
 func (c *Client) initializeCaches() {
 	c.cacheOnce.Do(func() {
 		requests := gcache.New[string, *RequestData](c.options.CacheSize).LRU().Build()
@@ -204,6 +215,14 @@ func (c *Client) poll() error {
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		c.requestLifecycleMu.RLock()
 		request, err := c.requests.Get(interaction.UniqueID)
+
+		c.onInteractionMu.RLock()
+		cb := c.onInteraction
+		c.onInteractionMu.RUnlock()
+		if cb != nil {
+			cb(interaction, request)
+		}
+
 		callbackAdmitted := request != nil && request.Scope.beginCallback()
 		c.requestLifecycleMu.RUnlock()
 		// for more context in github actions
@@ -390,9 +409,13 @@ func (c *Client) URL() (string, error) {
 
 // Close the interactsh clients after waiting for cooldown period.
 func (c *Client) Close() bool {
+	if c == nil {
+		return false
+	}
 	if c.cooldownDuration > 0 && c.generated.Load() {
 		time.Sleep(c.cooldownDuration)
 	}
+
 	if c.interactsh != nil {
 		_ = c.interactsh.StopPolling()
 		_ = c.interactsh.Close()
