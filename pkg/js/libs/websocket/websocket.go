@@ -217,6 +217,10 @@ func (c *Client) Close() {
 	}
 	_ = c.conn.SetWriteDeadline(time.Now().Add(c.timeout))
 	_ = ws.WriteFrame(c.conn, ws.MaskFrame(ws.NewCloseFrame(ws.NewCloseFrameBody(ws.StatusNormalClosure, ""))))
+	c.release()
+}
+
+func (c *Client) release() {
 	_ = c.conn.Close()
 	c.conn = nil
 	c.reader = nil
@@ -237,6 +241,8 @@ func (c *Client) read() []byte {
 		Source:       c.reader,
 		State:        ws.StateClientSide,
 		MaxFrameSize: maxMessageSize,
+		// control frames can also arrive between the fragments of a message
+		OnIntermediate: control,
 	}
 	for {
 		header, err := reader.NextFrame()
@@ -245,6 +251,8 @@ func (c *Client) read() []byte {
 			if err := control(header, &reader); err != nil {
 				var closed wsutil.ClosedError
 				if errors.As(err, &closed) {
+					// the control handler already answered the close frame
+					c.release()
 					c.nj.Throw("websocket closed by server: %d %s", closed.Code, closed.Reason)
 				}
 				c.nj.HandleError(err, "websocket receive failed")

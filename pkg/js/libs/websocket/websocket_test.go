@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
@@ -219,4 +220,41 @@ func TestHTTPProxy(t *testing.T) {
 
 	require.Equal(t, "welcome", client.Receive())
 	require.Equal(t, "CONNECT "+target+" HTTP/1.1", <-tunneled)
+}
+
+func TestPingInsideFragmentedMessageIsAnswered(t *testing.T) {
+	pong := make(chan bool, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, _, _, err := ws.UpgradeHTTP(r, w)
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		_ = ws.WriteFrame(conn, ws.NewFrame(ws.OpText, false, []byte("frag")))
+		_ = ws.WriteFrame(conn, ws.NewPingFrame([]byte("mid")))
+		_ = ws.WriteFrame(conn, ws.NewFrame(ws.OpContinuation, true, []byte("mented")))
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		frame, err := ws.ReadFrame(conn)
+		pong <- err == nil && frame.Header.OpCode == ws.OpPong
+	}))
+	defer server.Close()
+	executionID := initExec(t, &types.Options{})
+
+	client, err := newRuntimeClient(t, executionID, wsURL(server), Options{})
+	require.NoError(t, err)
+	require.Equal(t, "fragmented", client.Receive())
+	require.True(t, <-pong, "a ping between fragments must be answered")
+}
+
+func TestServerCloseReleasesConnection(t *testing.T) {
+	server := httptest.NewServer(echoHandler())
+	defer server.Close()
+	executionID := initExec(t, &types.Options{})
+
+	client, err := newRuntimeClient(t, executionID, wsURL(server), Options{})
+	require.NoError(t, err)
+	require.Equal(t, "welcome", client.Receive())
+	client.Send("close-me")
+	require.Contains(t, thrown(func() { client.Receive() }), "closed by server")
+	require.Nil(t, client.conn, "the closed connection must be released")
 }
