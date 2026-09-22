@@ -304,6 +304,14 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableSelfContainedTemplates, "enable-self-contained", "esc", false, "enable loading self-contained templates"),
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
+		flagSet.BoolVar(&options.EnableLLM, "llm", false, "enable llm matchers and extractors (semantic matching)"),
+		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together)"),
+		flagSet.StringVar(&options.LLMBaseURL, "llm-base-url", "", "openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)"),
+		flagSet.StringVar(&options.LLMModel, "llm-model", "", "model used for semantic matching"),
+		flagSet.IntVar(&options.LLMTimeout, "llm-timeout", 30, "time in seconds to wait for a single llm call"),
+		flagSet.IntVar(&options.LLMMaxCalls, "llm-max-calls", 5000, "maximum llm calls per scan (0 for unlimited)"),
+		flagSet.IntVar(&options.LLMConcurrency, "llm-concurrency", 4, "maximum concurrent llm calls"),
+		flagSet.BoolVar(&options.LLMCache, "llm-cache", true, "cache llm responses within a scan"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
