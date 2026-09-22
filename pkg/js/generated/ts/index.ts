@@ -28,4 +28,5 @@ export * as structs from './structs';
 export * as telnet from './telnet';
 export * as tsch from './tsch';
 export * as vnc from './vnc';
+export * as websocket from './websocket';
 export * as wmi from './wmi';
