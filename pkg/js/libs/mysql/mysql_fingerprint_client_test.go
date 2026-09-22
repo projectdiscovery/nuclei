@@ -2,7 +2,9 @@ package mysql
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -167,6 +169,81 @@ func TestFingerprintMySQLDeniedByNetworkPolicy(t *testing.T) {
 	_, err := (&MySQLClient{}).FingerprintMySQL(ctx, "127.0.0.1", 3306)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "127.0.0.1")
+}
+
+func TestConnectWithDSNDeniedByNetworkPolicy(t *testing.T) {
+	t.Parallel()
+
+	executionID := "mysql-dsn-deny-" + strings.NewReplacer("/", "-", " ", "-").Replace(t.Name())
+	require.NoError(t, protocolstate.Init(&types.Options{
+		ExecutionId:                executionID,
+		RestrictLocalNetworkAccess: true,
+	}))
+	t.Cleanup(func() { protocolstate.Close(executionID) })
+	ctx := context.WithValue(context.Background(), "executionId", executionID) //nolint:staticcheck
+
+	var accepted atomic.Int32
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			accepted.Add(1)
+			_ = conn.Close()
+		}
+	}()
+
+	port := ln.Addr().(*net.TCPAddr).Port
+	dsn := fmt.Sprintf("vuser:vpass@tcp(127.0.0.1:%d)/vdb", port)
+	ok, err := (&MySQLClient{}).ConnectWithDSN(ctx, dsn)
+	require.Error(t, err)
+	require.False(t, ok)
+	require.Contains(t, err.Error(), "127.0.0.1")
+	require.Zero(t, accepted.Load())
+}
+
+func TestConnectWithDSNUnixDeniedByNetworkPolicy(t *testing.T) {
+	t.Parallel()
+
+	executionID := "mysql-dsn-unix-deny-" + strings.NewReplacer("/", "-", " ", "-").Replace(t.Name())
+	require.NoError(t, protocolstate.Init(&types.Options{
+		ExecutionId:                executionID,
+		RestrictLocalNetworkAccess: true,
+	}))
+	t.Cleanup(func() { protocolstate.Close(executionID) })
+	ctx := context.WithValue(context.Background(), "executionId", executionID) //nolint:staticcheck
+
+	sock := "/tmp/nuclei-mysql-lna-" + strings.NewReplacer("/", "-", " ", "-").Replace(t.Name()) + ".sock"
+	_ = os.Remove(sock)
+	ln, err := net.Listen("unix", sock)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = ln.Close()
+		_ = os.Remove(sock)
+	})
+
+	var accepted atomic.Int32
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			accepted.Add(1)
+			_ = conn.Close()
+		}
+	}()
+
+	dsn := fmt.Sprintf("vuser:vpass@unix(%s)/vdb", sock)
+	ok, err := (&MySQLClient{}).ConnectWithDSN(ctx, dsn)
+	require.Error(t, err)
+	require.False(t, ok)
+	require.Contains(t, err.Error(), "127.0.0.1")
+	require.Zero(t, accepted.Load())
 }
 
 func TestFingerprintMySQLVersionNeverEmptyOnHandshakeFixtures(t *testing.T) {
