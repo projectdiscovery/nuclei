@@ -7,9 +7,11 @@ import (
 
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/kinds"
+	"github.com/graphql-go/graphql/language/lexer"
 	"github.com/graphql-go/graphql/language/parser"
 	"github.com/graphql-go/graphql/language/printer"
 	"github.com/graphql-go/graphql/language/source"
+	"github.com/graphql-go/graphql/language/visitor"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
@@ -18,6 +20,7 @@ const (
 	graphqlMetaQuery         = "#_query"
 	graphqlMetaOperationName = "#_operationName"
 	graphqlMetaHasVariables  = "#_hasVariables"
+	graphqlMetaExtensions    = "#_extensions"
 )
 
 // Graphql encodes and decodes GraphQL-over-HTTP JSON bodies
@@ -47,6 +50,7 @@ type graphQLHTTPBody struct {
 	Query         string          `json:"query,omitempty"`
 	OperationName string          `json:"operationName,omitempty"`
 	Variables     *map[string]any `json:"variables,omitempty"`
+	Extensions    json.Message    `json:"extensions,omitempty"`
 }
 
 func parseGraphQLHTTPBody(data string, validateQuery bool) (graphQLHTTPBody, bool) {
@@ -72,9 +76,75 @@ func parseGraphQLHTTPBody(data string, validateQuery bool) (graphQLHTTPBody, boo
 }
 
 func parseQueryAST(query string) (*ast.Document, error) {
-	return parser.Parse(parser.ParseParams{
+	doc, err := parser.Parse(parser.ParseParams{
 		Source: &source.Source{Body: []byte(query)},
 	})
+	if err == nil {
+		return doc, nil
+	}
+
+	// graphql-go v0.8.1 predates GraphQL null literal support. Replace null
+	// name tokens with an enum sentinel for parsing, then restore the AST.
+	rewritten, sentinel, replaced, rewriteErr := rewriteGraphQLNullTokens(query)
+	if rewriteErr != nil || !replaced {
+		return nil, err
+	}
+	doc, rewriteErr = parser.Parse(parser.ParseParams{
+		Source: &source.Source{Body: []byte(rewritten)},
+	})
+	if rewriteErr != nil {
+		return nil, err
+	}
+	visitor.Visit(doc, &visitor.VisitorOptions{
+		Enter: func(params visitor.VisitFuncParams) (string, interface{}) {
+			switch node := params.Node.(type) {
+			case *ast.Name:
+				if node.Value == sentinel {
+					node.Value = "null"
+				}
+			case *ast.EnumValue:
+				if node.Value == sentinel {
+					node.Value = "null"
+				}
+			}
+			return visitor.ActionNoChange, nil
+		},
+	}, nil)
+	return doc, nil
+}
+
+func rewriteGraphQLNullTokens(query string) (string, string, bool, error) {
+	sentinel := "__NUCLEI_GRAPHQL_NULL__"
+	for strings.Contains(query, sentinel) {
+		sentinel += "_"
+	}
+
+	src := &source.Source{Body: []byte(query)}
+	next := lexer.Lex(src)
+	var out strings.Builder
+	last := 0
+	replaced := false
+	for {
+		token, err := next(0)
+		if err != nil {
+			return "", "", false, err
+		}
+		if token.Kind == lexer.EOF {
+			break
+		}
+		if token.Kind != lexer.NAME || token.Value != "null" {
+			continue
+		}
+		out.WriteString(query[last:token.Start])
+		out.WriteString(sentinel)
+		last = token.End
+		replaced = true
+	}
+	if !replaced {
+		return query, sentinel, false, nil
+	}
+	out.WriteString(query[last:])
+	return out.String(), sentinel, true, nil
 }
 
 // Decode extracts fuzzable GraphQL variables / inline arguments.
@@ -92,6 +162,9 @@ func (g *Graphql) Decode(data string) (KV, error) {
 	kv.Set(graphqlMetaQuery, body.Query)
 	if body.OperationName != "" {
 		kv.Set(graphqlMetaOperationName, body.OperationName)
+	}
+	if body.Extensions != nil {
+		kv.Set(graphqlMetaExtensions, body.Extensions)
 	}
 
 	hasVariables := body.Variables != nil
@@ -126,6 +199,9 @@ func (g *Graphql) Encode(data KV) (string, error) {
 	body := graphQLHTTPBody{Query: query}
 	if op := data.Get(graphqlMetaOperationName); op != nil {
 		body.OperationName = types.ToString(op)
+	}
+	if extensions, ok := data.Get(graphqlMetaExtensions).(json.Message); ok {
+		body.Extensions = extensions
 	}
 
 	hasVariables, _ := data.Get(graphqlMetaHasVariables).(bool)
@@ -164,6 +240,9 @@ func (g *Graphql) Encode(data KV) (string, error) {
 func collectInlineArguments(doc *ast.Document) map[string]any {
 	args := make(map[string]any)
 	for _, ref := range inlineArgumentRefs(doc) {
+		if containsVariable(ref.argument.Value) {
+			continue
+		}
 		args[ref.key] = astValueToGo(ref.argument.Value)
 	}
 	return args
@@ -171,11 +250,31 @@ func collectInlineArguments(doc *ast.Document) map[string]any {
 
 func applyInlineArgument(doc *ast.Document, key string, value any) {
 	for _, ref := range inlineArgumentRefs(doc) {
-		if ref.key == key {
+		if ref.key == key && !containsVariable(ref.argument.Value) {
 			ref.argument.Value = goValueToAST(value, ref.argument.Value)
 			return
 		}
 	}
+}
+
+func containsVariable(value ast.Value) bool {
+	switch typed := value.(type) {
+	case *ast.Variable:
+		return true
+	case *ast.ListValue:
+		for _, item := range typed.Values {
+			if containsVariable(item) {
+				return true
+			}
+		}
+	case *ast.ObjectValue:
+		for _, field := range typed.Fields {
+			if containsVariable(field.Value) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type inlineArgumentRef struct {
@@ -291,6 +390,10 @@ func fieldResponseName(field *ast.Field) string {
 }
 
 func goValueToAST(value any, original ast.Value) ast.Value {
+	if enum, ok := original.(*ast.EnumValue); ok && enum.Value == "null" && value == nil {
+		return &ast.EnumValue{Kind: kinds.EnumValue, Value: "null"}
+	}
+
 	switch original.(type) {
 	case *ast.IntValue:
 		return &ast.IntValue{Kind: kinds.IntValue, Value: types.ToString(value)}
@@ -387,6 +490,9 @@ func astValueToGo(value ast.Value) any {
 	case *ast.BooleanValue:
 		return v.Value
 	case *ast.EnumValue:
+		if v.Value == "null" {
+			return nil
+		}
 		return v.Value
 	case *ast.ListValue:
 		out := make([]any, 0, len(v.Values))

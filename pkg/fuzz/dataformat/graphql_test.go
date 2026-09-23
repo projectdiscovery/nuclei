@@ -1,6 +1,7 @@
 package dataformat
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -123,6 +124,66 @@ func TestGraphqlDecodeEncodeInlineArgs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{"jobType": "canary-payload"}, fuzzableKV(t, roundTrip))
 	require.Contains(t, encoded, "canary-payload")
+}
+
+func TestGraphqlDecodeEncodeNullLiteral(t *testing.T) {
+	g := NewGraphql()
+	body := `{"query":"query { jobs(filter: null, nested: {value: null}) { id } }"}`
+
+	decoded, err := g.Decode(body)
+	require.NoError(t, err)
+	require.Contains(t, fuzzableKV(t, decoded), "filter")
+	require.Nil(t, decoded.Get("filter"))
+
+	encoded, err := g.Encode(decoded)
+	require.NoError(t, err)
+	require.Contains(t, encoded, "filter: null")
+	require.Contains(t, encoded, "nested: {value: null}")
+
+	roundTrip, err := g.Decode(encoded)
+	require.NoError(t, err)
+	require.Contains(t, fuzzableKV(t, roundTrip), "filter")
+	require.Nil(t, roundTrip.Get("filter"))
+}
+
+func TestGraphqlInlineArgsPreserveDefaultedVariable(t *testing.T) {
+	g := NewGraphql()
+	body := `{"query":"query Jobs($limit: Int = 10) { jobs(limit: $limit, status: ACTIVE) { id } }"}`
+
+	decoded, err := g.Decode(body)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"status": "ACTIVE"}, fuzzableKV(t, decoded))
+
+	decoded.Set("status", "PAUSED")
+	encoded, err := g.Encode(decoded)
+	require.NoError(t, err)
+	require.Contains(t, encoded, "$limit: Int = 10")
+	require.Contains(t, encoded, "limit: $limit")
+	require.Contains(t, encoded, "status: PAUSED")
+
+	roundTrip, err := g.Decode(encoded)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"status": "PAUSED"}, fuzzableKV(t, roundTrip))
+}
+
+func TestGraphqlDecodeEncodePreservesExtensions(t *testing.T) {
+	g := NewGraphql()
+	body := `{"query":"query { viewer { id } }","extensions":{"persistedQuery":{"version":1,"sha256Hash":"abc123"}}}`
+
+	decoded, err := g.Decode(body)
+	require.NoError(t, err)
+
+	encoded, err := g.Encode(decoded)
+	require.NoError(t, err)
+
+	var roundTrip map[string]any
+	require.NoError(t, json.Unmarshal([]byte(encoded), &roundTrip))
+	require.Equal(t, map[string]any{
+		"persistedQuery": map[string]any{
+			"version":    float64(1),
+			"sha256Hash": "abc123",
+		},
+	}, roundTrip["extensions"])
 }
 
 func TestGraphqlInlineArgumentKeysIdentifyLocations(t *testing.T) {
