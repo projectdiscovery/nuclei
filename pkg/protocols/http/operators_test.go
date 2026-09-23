@@ -510,3 +510,23 @@ func TestLLMPromptValuesIgnoreResponseCollisions(t *testing.T) {
 	require.Equal(t, "auditor for https://acme.test", values["role"], "declared strings still resolve against the target")
 	require.NotContains(t, values, "csrf_token")
 }
+
+func TestResolveLLMInputs(t *testing.T) {
+	data := map[string]interface{}{
+		"body_1": "user found",
+		"body_2": "user not found",
+	}
+
+	resolved, ok := resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, data)
+	require.True(t, ok)
+	require.Equal(t, []string{"user found", "user not found"}, resolved, "responses are resolved from the runtime values")
+
+	// before the last response the later values do not exist yet, and asking
+	// the model about a literal placeholder would waste a call
+	_, ok = resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, map[string]interface{}{"body_1": "only one"})
+	require.False(t, ok)
+
+	nilInputs, ok := resolveLLMInputs(nil, data)
+	require.True(t, ok)
+	require.Nil(t, nilInputs)
+}

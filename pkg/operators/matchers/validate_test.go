@@ -38,3 +38,13 @@ func TestValidateRequiresValues(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateLLMInputs(t *testing.T) {
+	compile := func(inputs []string) error {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: LLMMatcher}, Prompt: "compare", Inputs: inputs}
+		return m.CompileMatchers()
+	}
+
+	require.NoError(t, compile([]string{"{{body_1}}", "{{body_2}}"}))
+	require.ErrorContains(t, compile([]string{"{{body_1}}"}), "at least two entries")
+}

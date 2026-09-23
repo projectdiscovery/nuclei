@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -22,7 +23,8 @@ import (
 // TODO: Try to consolidate this in protocols.MakeDefaultMatchFunc to avoid any inconsistencies
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := request.getMatchPart(matcher.Part, data)
-	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
+	// an llm matcher with inputs compares whole responses instead of one part
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher && len(matcher.Inputs) == 0 {
 		return false, []string{}
 	}
 
@@ -46,7 +48,11 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.LLMMatcher:
-		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item, request.llmPromptValues(data))
+		inputs, ok := resolveLLMInputs(matcher.Inputs, data)
+		if !ok {
+			return false, []string{}
+		}
+		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item, inputs, request.llmPromptValues(data))
 		// The audit rides on the per-response event data until the result event
 		// is built; matchers are shared across concurrent requests, so it cannot
 		// be parked on the matcher itself.
@@ -56,6 +62,27 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.ResultWithMatchedSnippet(isMatch, snippets)
 	}
 	return false, []string{}
+}
+
+// resolveLLMInputs resolves the responses an inputs matcher compares. Unlike
+// the prompt, these are corpora: they are framed as data, so resolving them
+// from the whole event, response values included, is what the field is for.
+// It returns false when a placeholder has no value yet, which happens on the
+// responses before the last one: sending the literal placeholder would spend a
+// model call on a question that cannot be answered.
+func resolveLLMInputs(inputs []string, data map[string]interface{}) ([]string, bool) {
+	if len(inputs) == 0 {
+		return nil, true
+	}
+	resolved := make([]string, 0, len(inputs))
+	for _, input := range inputs {
+		value := replacer.Replace(input, data)
+		if strings.Contains(value, marker.ParenthesisOpen) || strings.Contains(value, marker.General) {
+			return nil, false
+		}
+		resolved = append(resolved, value)
+	}
+	return resolved, true
 }
 
 // targetValueKeys are the target-derived values an llm prompt may interpolate.
