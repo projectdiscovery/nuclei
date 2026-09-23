@@ -45,7 +45,7 @@ type Page struct {
 	// page, used to ignore late expiry signals from an older session.
 	authSessionGeneration uint64
 	authRefreshPending    bool
-	authMutex             sync.RWMutex
+	authMutex             *sync.RWMutex
 }
 
 // HistoryData contains the page request/response pairs
@@ -115,6 +115,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		ctx:       ctx,
 		instance:  i,
 		mutex:     &sync.RWMutex{},
+		authMutex: &sync.RWMutex{},
 		payloads:  payloads,
 		variables: variables,
 		inputURL:  input,

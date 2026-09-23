@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
@@ -87,8 +88,9 @@ func TestApplyAuthHeaders_OriginScoped(t *testing.T) {
 		authx.NewHeadersAuthStrategy(&authx.Secret{Headers: []authx.KV{{Key: "Authorization", Value: "Bearer secret"}}}),
 	}}
 	p := &Page{
-		options:  &Options{AuthProvider: provider},
-		inputURL: mustParseURL(t, "https://app.example.com:8443/start"),
+		options:   &Options{AuthProvider: provider},
+		inputURL:  mustParseURL(t, "https://app.example.com:8443/start"),
+		authMutex: &sync.RWMutex{},
 	}
 
 	t.Run("same origin receives auth", func(t *testing.T) {

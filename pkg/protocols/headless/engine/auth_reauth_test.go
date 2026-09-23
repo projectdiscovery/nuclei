@@ -64,8 +64,9 @@ func TestNotifyAuthResponse(t *testing.T) {
 	insp := &recordingInspector{reauthOn: 401}
 	target, _ := urlutil.Parse("https://app.example.com/")
 	p := &Page{
-		options:  &Options{AuthProvider: &inspectorProvider{insp: insp}},
-		inputURL: target,
+		options:   &Options{AuthProvider: &inspectorProvider{insp: insp}},
+		inputURL:  target,
+		authMutex: &sync.RWMutex{},
 	}
 	p.notifyAuthResponse(401)
 	p.notifyAuthResponse(200)
