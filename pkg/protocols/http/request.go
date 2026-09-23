@@ -1014,6 +1014,14 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		maxBodylimit = request.options.Options.ResponseReadSize
 	}
 
+	// Pre-decode zstd-encoded response bodies before handing to ResponseChain.
+	// The utils ResponseChain wraps *zstd.Decoder in io.NopCloser whose Close()
+	// is a no-op, so Decoder.Close() is never called and background goroutines
+	// leak. fixZstdResponseBody replaces resp.Body with a proper io.ReadCloser
+	// and strips Content-Encoding so the chain does not attempt a second decode.
+	// See pkg/protocols/http/zstd_decompressor.go and issue #7749.
+	resp = fixZstdResponseBody(resp)
+
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
 	respChain := httpUtils.NewResponseChain(resp, int64(maxBodylimit))
