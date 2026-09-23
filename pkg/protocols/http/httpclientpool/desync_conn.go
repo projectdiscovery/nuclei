@@ -15,7 +15,9 @@ import (
 // connection and PutIdleConn fires when it returns to the pool. Bytes in that
 // window are unsolicited by the same criterion net/http uses internally. The
 // check is one atomic load in Read, identical over plaintext and TLS because
-// the wrapper sits above the handshake.
+// the wrapper sits above the handshake: only decrypted application data
+// reaches it. Below the handshake a session ticket or a close_notify alert on
+// an idle connection would read as a leftover and quarantine a healthy host.
 //
 // net/http already closes a connection when it notices this, but only logs it.
 // Observing it here is what lets the pool stop reusing connections to that host.
@@ -63,13 +65,20 @@ func (c *desyncConn) Close() error {
 	return c.Conn.Close()
 }
 
-// ConnectionState preserves TLS metadata for net/http when DialTLSContext
-// returns a tracked connection instead of the underlying TLS connection.
-func (c *desyncConn) ConnectionState() tls.ConnectionState {
-	if state, ok := c.Conn.(interface{ ConnectionState() tls.ConnectionState }); ok {
-		return state.ConnectionState()
+// tlsState reports the handshake state of the wrapped connection when there is
+// one. Go 1.26 net/http only reads TLS metadata from a concrete *tls.Conn
+// returned by DialTLSContext, so a tracked connection leaves resp.TLS empty
+// and connTrackingTransport fills it from here.
+func (c *desyncConn) tlsState() (tls.ConnectionState, bool) {
+	handshaked, ok := c.Conn.(interface{ ConnectionState() tls.ConnectionState })
+	if !ok {
+		return tls.ConnectionState{}, false
 	}
-	return tls.ConnectionState{}
+	state := handshaked.ConnectionState()
+	if !state.HandshakeComplete {
+		return tls.ConnectionState{}, false
+	}
+	return state, true
 }
 
 func (c *desyncConn) poison() {

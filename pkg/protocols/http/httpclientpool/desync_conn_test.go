@@ -175,15 +175,76 @@ func TestDesyncConnPreservesTLSConnectionState(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	transport := &http.Transport{DialTLSContext: trackedTLSDialer(func(string) {})}
+	transport := &connTrackingTransport{
+		base: &http.Transport{DialTLSContext: trackedTLSDialer(func(string) {})},
+	}
 	t.Cleanup(transport.CloseIdleConnections)
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+	resp := roundTrip(t, transport, server.URL)
+	require.NotNil(t, resp.TLS, "tracked HTTPS connections must still report their handshake")
+	require.NotZero(t, resp.TLS.Version)
+	require.True(t, resp.TLS.HandshakeComplete)
+	require.NotEmpty(t, resp.TLS.PeerCertificates, "certificate metadata feeds the tls_* DSL fields")
+}
+
+// Go 1.26 reads handshake metadata only from a *tls.Conn, so an untracked
+// dialer keeps the state net/http filled in and the wrapper must not touch it.
+func TestConnTrackingTransportKeepsNativeTLSState(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "ok")
+	}))
+	t.Cleanup(server.Close)
+
+	transport := &connTrackingTransport{base: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}}
+	t.Cleanup(transport.CloseIdleConnections)
+	resp := roundTrip(t, transport, server.URL)
+	require.NotNil(t, resp.TLS)
+	require.NotZero(t, resp.TLS.Version)
+}
+
+func TestConnTrackingTransportLeavesPlaintextWithoutTLSState(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "ok")
+	}))
+	t.Cleanup(server.Close)
+
+	transport := &connTrackingTransport{
+		base: &http.Transport{DialContext: trackedDialer(func(string) {})},
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+	resp := roundTrip(t, transport, server.URL)
+	require.Nil(t, resp.TLS, "a plaintext exchange must not report a handshake")
+}
+
+func TestDesyncConnTLSStateOnlyAfterHandshake(t *testing.T) {
+	plain, _ := net.Pipe()
+	t.Cleanup(func() { _ = plain.Close() })
+
+	tracked := newDesyncConn(plain, "plain.test:80", nil).(*desyncConn)
+	_, ok := tracked.tlsState()
+	require.False(t, ok, "a plaintext connection has no handshake to report")
+
+	handshaked := newDesyncConn(stubTLSConn{
+		Conn:     plain,
+		protocol: "http/1.1",
+		state:    tls.ConnectionState{Version: tls.VersionTLS13, HandshakeComplete: true},
+	}, "tls.test:443", nil).(*desyncConn)
+	state, ok := handshaked.tlsState()
+	require.True(t, ok)
+	require.Equal(t, uint16(tls.VersionTLS13), state.Version)
+}
+
+func roundTrip(t *testing.T, transport http.RoundTripper, target string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
 	require.NoError(t, err)
 	resp, err := transport.RoundTrip(req)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = resp.Body.Close() })
-	require.NotNil(t, resp.TLS)
-	require.NotZero(t, resp.TLS.Version)
+	_, err = io.Copy(io.Discard, resp.Body)
+	require.NoError(t, err)
+	return resp
 }
 
 func TestDesyncConnAllowsHealthyKeepAliveTraffic(t *testing.T) {
@@ -278,10 +339,13 @@ func TestDesyncConnSkipsNegotiatedHTTP2(t *testing.T) {
 type stubTLSConn struct {
 	net.Conn
 	protocol string
+	state    tls.ConnectionState
 }
 
 func (s stubTLSConn) ConnectionState() tls.ConnectionState {
-	return tls.ConnectionState{NegotiatedProtocol: s.protocol}
+	state := s.state
+	state.NegotiatedProtocol = s.protocol
+	return state
 }
 
 func TestMarkHostDesyncedStopsReuse(t *testing.T) {
@@ -317,6 +381,30 @@ func TestMarkHostDesyncedStopsReuse(t *testing.T) {
 	conns.Store(0)
 	requestTwice(t, guarded, server.URL)
 	require.Equal(t, int64(2), conns.Load(), "a marked host must not reuse connections")
+}
+
+// The pooled client dials TLS through fastdialer and tracks the handshaked
+// connection, so this is the path that has to keep feeding resp.TLS.
+func TestPooledClientReportsTLSStateOverHTTPS(t *testing.T) {
+	opts := newTestOptions(t, "test-desync-tls-metadata")
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "ok")
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := Get(opts, &Configuration{}, hostOf(t, server.URL))
+	require.NoError(t, err)
+
+	resp, err := client.Get(server.URL)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	_, err = io.Copy(io.Discard, resp.Body)
+	require.NoError(t, err)
+
+	require.NotNil(t, resp.TLS, "HTTPS responses must carry handshake metadata")
+	require.NotZero(t, resp.TLS.Version)
+	require.NotEmpty(t, resp.TLS.PeerCertificates)
 }
 
 func TestIsHostDesyncedEmptyHost(t *testing.T) {

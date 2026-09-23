@@ -149,7 +149,19 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 		},
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-	return t.base.RoundTrip(req)
+	resp, err := t.base.RoundTrip(req)
+	// A tracked connection is not a *tls.Conn, and that is the only type
+	// net/http reads handshake metadata from, so it leaves resp.TLS nil over
+	// HTTPS. Restore it from the connection that served this exchange, which
+	// is what enrichEventWithTLSMetadata and the DSL fields depend on.
+	if err == nil && resp != nil && resp.TLS == nil {
+		if tracked := used.Load(); tracked != nil {
+			if state, ok := tracked.tlsState(); ok {
+				resp.TLS = &state
+			}
+		}
+	}
+	return resp, err
 }
 
 func (t *connTrackingTransport) CloseIdleConnections() {
