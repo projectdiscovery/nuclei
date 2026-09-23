@@ -59,7 +59,7 @@ func connectWithFastDialer(ctx context.Context, executionId string, host string,
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
-	return dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	return protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 }
 
 // IsRsync checks if a host is running a Rsync server.

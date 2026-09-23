@@ -1,0 +1,31 @@
+id: javascript-fs-read-deny
+
+info:
+  name: JavaScript FS Read Deny
+  author: pdteam
+  severity: info
+  description: attempts to read a file outside the sandbox allowlist
+
+javascript:
+  - code: |
+      const fs = require('nuclei/fs');
+      let ok = true;
+      let errMsg = "";
+      try {
+        fs.ReadFileAsString('/etc/passwd');
+      } catch (e) {
+        ok = false;
+        errMsg = String(e);
+      }
+      Export(to_json({ ok: ok, err: errMsg }));
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        words:
+          - '"ok": false'

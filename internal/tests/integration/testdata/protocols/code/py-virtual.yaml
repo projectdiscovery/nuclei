@@ -10,15 +10,12 @@ info:
 
 code:
   - engine:
-      - sh
-      - bash
+      - py
+      - python3
+      - python
     sandbox:
-      working-dir: /tmp
       image: python:3.14
     source: |
-      #!/usr/bin/env python3
-      
-      import sys
       print("hello from python virtual code")
     
     matchers:

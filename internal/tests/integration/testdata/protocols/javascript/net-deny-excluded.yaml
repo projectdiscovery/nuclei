@@ -1,0 +1,33 @@
+id: javascript-net-deny-excluded
+
+info:
+  name: JavaScript Net Deny Excluded Host
+  author: pdteam
+  severity: info
+  description: attempts to dial a host blocked by network policy
+
+javascript:
+  - code: |
+      const net = require('nuclei/net');
+      let ok = true;
+      let errMsg = "";
+      try {
+        net.Open('tcp', '203.0.113.10:445');
+      } catch (e) {
+        ok = false;
+        errMsg = String(e);
+      }
+      Export(to_json({ ok: ok, err: errMsg }));
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        condition: and
+        words:
+          - '"ok": false'
+          - "denied address found"

@@ -312,6 +312,10 @@ type Options struct {
 	ZTLS bool
 	// AllowLocalFileAccess allows local file access from templates payloads
 	AllowLocalFileAccess bool
+	// AllowedPaths grants additional filesystem roots when -lfa is enabled
+	AllowedPaths goflags.StringSlice
+	// DisableSandbox disables the OS-level filesystem sandbox
+	DisableSandbox bool
 	// RestrictLocalNetworkAccess restricts local network access from templates requests
 	RestrictLocalNetworkAccess bool
 	// ShowMatchLine enables display of match line number
@@ -714,6 +718,8 @@ func (options *Options) Copy() *Options {
 		ClientCAFile:                   options.ClientCAFile,
 		ZTLS:                           options.ZTLS,
 		AllowLocalFileAccess:           options.AllowLocalFileAccess,
+		AllowedPaths:                   options.AllowedPaths,
+		DisableSandbox:                 options.DisableSandbox,
 		RestrictLocalNetworkAccess:     options.RestrictLocalNetworkAccess,
 		ShowMatchLine:                  options.ShowMatchLine,
 		EnablePprof:                    options.EnablePprof,

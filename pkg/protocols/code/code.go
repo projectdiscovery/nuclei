@@ -14,7 +14,6 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
-	"github.com/projectdiscovery/gozero/sandbox"
 	gozerotypes "github.com/projectdiscovery/gozero/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -47,8 +46,11 @@ var (
 )
 
 type Sandbox struct {
+	// WorkingDir is kept for backwards-compatible template parsing, but it is
+	// intentionally ignored by the Docker-backed gozero sandbox. Letting
+	// templates choose host/container workdirs reintroduces path-policy footguns.
 	WorkingDir string `yaml:"working-dir,omitempty" json:"working-dir,omitempty" jsonschema:"title=working-dir,description=Working directory"`
-	Image      string `yaml:"image,omitempty" json:"image,omitempty" jsonschema:"title=image,description=Image"`
+	Image      string `yaml:"image,omitempty" json:"image,omitempty" jsonschema:"title=image,description=Docker image for sandboxed code execution"`
 }
 
 // Request is a request for the SSL protocol
@@ -263,18 +265,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
-		if request.useSandbox() {
-			return request.gozero.EvalWithVirtualEnv(
-				ctx, gozero.VirtualEnvDocker,
-				request.src,
-				metaSrc,
-				&sandbox.DockerConfiguration{
-					WorkingDir: request.Sandbox.WorkingDir,
-					Image:      request.Sandbox.Image,
-				},
-			)
-		}
-		return request.gozero.Eval(ctx, request.src, metaSrc)
+		return request.evalCode(ctx, metaSrc)
 	})
 	if gOutput == nil {
 		// write error to stderr buff
@@ -309,7 +300,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			sb.WriteString(interpretEnvVars(gOutput.Command, allvars))
 			sb.WriteString("\n")
 			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Output:", dashes)
-			sb.WriteString(gOutput.DebugData.String())
+			if gOutput.DebugData != nil {
+				sb.WriteString(gOutput.DebugData.String())
+			} else {
+				sb.WriteString(gOutput.Stdout.String())
+				sb.WriteString(gOutput.Stderr.String())
+			}
 			sb.WriteString("\n")
 			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are separate (use -v -svd flags for more details)")
 			return sb.String()
@@ -491,10 +487,6 @@ func prettyPrint(templateId string, buff string) {
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	r.options.ApplyNewEngineOptions(opts)
-}
-
-func (r *Request) useSandbox() bool {
-	return r.Sandbox != nil && r.Sandbox.Image != ""
 }
 
 // sanitizeEnvValue removes NUL bytes, which are invalid in a subprocess

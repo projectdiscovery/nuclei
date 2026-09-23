@@ -208,7 +208,7 @@ func (h *workflowCodeKeyValueShare) Execute(filePath string) error {
 	// provide the Certificate File that the code templates are signed with
 	certEnvVar := signer.CertEnvVarName + "=" + testCertFile
 
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, []string{certEnvVar}, "-workflows", filePath, "-target", "input", "-code")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, []string{certEnvVar}, "-workflows", filePath, "-target", "input", "-code", "-no-sandbox")
 	if err != nil {
 		return err
 	}

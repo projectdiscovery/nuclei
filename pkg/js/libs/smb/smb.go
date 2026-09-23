@@ -97,7 +97,7 @@ func connectSMBInfoMode(ctx context.Context, executionId string, host string, po
 	}
 	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	dialSMBInfo := func(ctx context.Context) (net.Conn, error) {
-		return dialer.Fastdialer.Dial(ctx, "tcp", address)
+		return protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", address)
 	}
 	conn, err := dialSMBInfo(ctx)
 	if err != nil {

@@ -211,7 +211,7 @@ func (c *Client) RpcDump(ctx context.Context) ([]Endpoint, error) {
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for execution %s", c.nj.ExecutionId())
 	}
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(c.Host, strconv.Itoa(135)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, c.nj.ExecutionId(), "tcp", net.JoinHostPort(c.Host, strconv.Itoa(135)))
 	if err != nil {
 		return nil, fmt.Errorf("dial epmapper: %w", err)
 	}

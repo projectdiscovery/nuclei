@@ -18,7 +18,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 )
 
 // TicketRequest mirrors gopacket's TicketConfig with json-friendly tags.
@@ -203,37 +202,14 @@ func normalizeOutputFile(executionID string, outputFile string) (string, error) 
 		return outputFile, nil
 	}
 
-	if protocolstate.IsLfaAllowed(&types.Options{ExecutionId: executionID}) {
-		// Preserve the existing relative-path behavior when
-		// -allow-local-file-access is enabled: avoid implicit CWD writes by
-		// placing relative ccache paths in temp.
-		if !filepath.IsAbs(outputFile) {
-			outputFile = filepath.Join(os.TempDir(), outputFile)
-		}
-
-		normalized, err := filepath.Abs(outputFile)
-		if err != nil {
-			return "", fmt.Errorf("normalize output file %q: %w", outputFile, err)
-		}
-
-		return normalized, nil
+	opts := &types.Options{ExecutionId: executionID}
+	if !filepath.IsAbs(outputFile) && protocolstate.IsLfaAllowed(opts) {
+		outputFile = filepath.Join(os.TempDir(), outputFile)
 	}
-
-	normalized := outputFile
-	if !filepath.IsAbs(normalized) {
-		normalized = filepath.Join(config.DefaultConfig.GetTemplateDir(), normalized)
+	if !filepath.IsAbs(outputFile) {
+		outputFile = filepath.Join(config.DefaultConfig.GetTemplateDir(), outputFile)
 	}
-
-	normalized, err := filepath.Abs(normalized)
-	if err != nil {
-		return "", fmt.Errorf("normalize output file %q: %w", outputFile, err)
-	}
-
-	if filepathutil.IsPathWithinDirectory(normalized, config.DefaultConfig.GetTemplateDir()) {
-		return normalized, nil
-	}
-
-	return "", fmt.Errorf("path %v is outside nuclei-template directory and -allow-local-file-access is not enabled", outputFile)
+	return protocolstate.NormalizePath(opts, outputFile)
 }
 
 func exportTicketRequest(vm *goja.Runtime, value goja.Value) (TicketRequest, error) {

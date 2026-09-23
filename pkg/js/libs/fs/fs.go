@@ -2,9 +2,11 @@ package fs
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // ListDir lists itemType values within a directory
@@ -29,7 +31,10 @@ import (
 // const items = fs.ListDir('/tmp');
 // ```
 func ListDir(ctx context.Context, path string, itemType string) ([]string, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return nil, fmt.Errorf("fs: missing executionId")
+	}
 	finalPath, err := protocolstate.NormalizePathWithExecutionId(executionId, path)
 	if err != nil {
 		return nil, err
@@ -60,13 +65,11 @@ func ListDir(ctx context.Context, path string, itemType string) ([]string, error
 // const content = fs.ReadFile('helpers/usernames.txt');
 // ```
 func ReadFile(ctx context.Context, path string) ([]byte, error) {
-	executionId := ctx.Value("executionId").(string)
-	finalPath, err := protocolstate.NormalizePathWithExecutionId(executionId, path)
-	if err != nil {
-		return nil, err
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return nil, fmt.Errorf("fs: missing executionId")
 	}
-	bin, err := os.ReadFile(finalPath)
-	return bin, err
+	return protocolstate.ReadFileAllowed(&types.Options{ExecutionId: executionId}, path)
 }
 
 // ReadFileAsString reads file contents within permitted paths
