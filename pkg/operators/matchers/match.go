@@ -145,11 +145,15 @@ func (matcher *Matcher) findRegexMatches(corpus string, regex *regexp.Regexp) ([
 		if offset < 0 || offset > len(corpus) {
 			return nil, false
 		}
-		loc := regex.FindStringIndex(corpus[offset:])
-		if loc == nil || loc[0] != 0 {
-			return nil, false
+		for _, loc := range regex.FindAllStringIndex(corpus, -1) {
+			if loc[0] == offset {
+				return []string{corpus[loc[0]:loc[1]]}, true
+			}
+			if loc[0] > offset {
+				break
+			}
 		}
-		return []string{corpus[offset : offset+loc[1]]}, true
+		return nil, false
 	}
 
 	// Literal prefix short-circuit

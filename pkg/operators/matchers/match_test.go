@@ -456,6 +456,8 @@ func TestMatchOffset(t *testing.T) {
 		require.True(t, ok)
 		ok, _ = m.MatchWords("ABxxxx", nil)
 		require.False(t, ok)
+		ok, _ = m.MatchWords("xx--AB", nil)
+		require.False(t, ok)
 	})
 
 	t.Run("binary at start", func(t *testing.T) {
@@ -467,6 +469,15 @@ func TestMatchOffset(t *testing.T) {
 		require.False(t, ok)
 	})
 
+	t.Run("binary at mid offset", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: BinaryMatcher}, Binary: []string{"4d5a"}, Offset: &offset2}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchBinary("xxMZ....")
+		require.True(t, ok)
+		ok, _ = m.MatchBinary("xx--MZ")
+		require.False(t, ok)
+	})
+
 	t.Run("regex must start at offset", func(t *testing.T) {
 		m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Regex: []string{"MZ"}, Offset: &offset0}
 		require.NoError(t, m.CompileMatchers())
@@ -474,6 +485,13 @@ func TestMatchOffset(t *testing.T) {
 		require.True(t, ok)
 		require.Equal(t, []string{"MZ"}, snippets)
 		ok, _ = m.MatchRegex("xxMZ")
+		require.False(t, ok)
+	})
+
+	t.Run("regex preserves assertion context", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Regex: []string{"^MZ"}, Offset: &offset2}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchRegex("xxMZ")
 		require.False(t, ok)
 	})
 
