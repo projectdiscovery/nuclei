@@ -1,10 +1,14 @@
 package authx
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/gologger"
@@ -48,6 +52,9 @@ type fetchState struct {
 	// live on the shared fetchState rather than the per-copy Dynamic.Secrets
 	// slice so every domain-scoped value-copy applies the same captured session.
 	autoLoginSecrets []*Secret
+	// owner is the goroutine running the fetch callback. Nested Fetch/GetStrategies
+	// on that goroutine must not wait on the write lock (it would deadlock).
+	owner atomic.Int64
 }
 
 var (
@@ -345,6 +352,11 @@ func (d *Dynamic) applyValuesToSecret(secret *Secret) error {
 
 // GetStrategies returns the auth strategies for the dynamic secret
 func (d *Dynamic) GetStrategies() []AuthStrategy {
+	// Nested lookup from inside the fetch callback (login template ApplyAuth)
+	// must not wait on Fetch and must not apply still-unresolved secrets.
+	if d.fetchingOnThisGoroutine() {
+		return nil
+	}
 	// Ensure fetch has completed before returning strategies.
 	// Fetch errors are treated as non-fatal here so a failed dynamic auth fetch
 	// does not terminate the entire scan process.
@@ -434,6 +446,10 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 			gologger.Fatal().Msgf("Could not fetch dynamic secret: Validate() must be called before Fetch()")
 		}
 		return errkit.New("dynamic secret not validated: call Validate() before Fetch()")
+	}
+
+	if d.fetchingOnThisGoroutine() {
+		return d.fetchState.err
 	}
 
 	d.fetchState.mu.Lock()
@@ -537,6 +553,8 @@ func (d *Dynamic) IsExpired() bool {
 
 // runFetchLocked runs the login callback. The caller must hold the write lock.
 func (d *Dynamic) runFetchLocked() {
+	d.fetchState.owner.Store(goroutineID())
+	defer d.fetchState.owner.Store(0)
 	if d.fetchCallback == nil {
 		d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
 		return
@@ -630,4 +648,32 @@ func wipeSecretSession(s *Secret) {
 	s.Token = ""
 	s.LocalStorage = nil
 	s.SessionStorage = nil
+}
+
+func (d *Dynamic) fetchingOnThisGoroutine() bool {
+	if d == nil || d.fetchState == nil {
+		return false
+	}
+	owner := d.fetchState.owner.Load()
+	return owner != 0 && owner == goroutineID()
+}
+
+func goroutineID() int64 {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	s := buf[:n]
+	const prefix = "goroutine "
+	if !bytes.HasPrefix(s, []byte(prefix)) {
+		return 0
+	}
+	s = s[len(prefix):]
+	i := bytes.IndexByte(s, ' ')
+	if i <= 0 {
+		return 0
+	}
+	id, err := strconv.ParseInt(string(s[:i]), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
 }

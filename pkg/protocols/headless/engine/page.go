@@ -64,11 +64,17 @@ type Options struct {
 
 // Run runs a list of actions by creating a new page in the browser.
 func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (ActionData, *Page, error) {
+	if err := ctx.Context().Err(); err != nil {
+		return nil, nil, err
+	}
+
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
 	}
-	page = page.Timeout(options.Timeout)
+	// A Rod page inherits the browser process context by default. Bind it to the
+	// request context so scan cancellation interrupts in-flight headless actions.
+	page = page.Context(ctx.Context()).Timeout(options.Timeout)
 
 	if err = i.browser.applyDefaultHeaders(page); err != nil {
 		_ = page.Close()

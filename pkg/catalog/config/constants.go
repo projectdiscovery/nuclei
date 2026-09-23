@@ -21,9 +21,15 @@ var (
 )
 
 const (
-	TemplateConfigFileName          = ".templates-config.json"
+	// TODO(dwisiswant0): do not use this in the future.
+	legacyTemplatesConfigFileName = ".templates-config.json"
+	// TemplateConfigFileName is the legacy templates-state filename.
+	//
+	// Deprecated: use TemplatesStateFileName for current templates state.
+	TemplateConfigFileName          = legacyTemplatesConfigFileName
+	TemplatesStateFileName          = "templates.json"
 	NucleiTemplatesDirName          = "nuclei-templates"
-	OfficialNucleiTemplatesRepoName = "nuclei-templates"
+	OfficialNucleiTemplatesRepoName = NucleiTemplatesDirName
 	NucleiIgnoreFileName            = ".nuclei-ignore"
 	NucleiTemplatesIndexFileName    = ".templates-index" // contains index of official nuclei templates
 	NucleiTemplatesCheckSumFileName = ".checksum"
