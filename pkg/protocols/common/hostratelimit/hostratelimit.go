@@ -148,6 +148,36 @@ func (p *Pool) Take(host string) {
 	e.inflight.Add(-1)
 }
 
+// TakeContext acquires one token from the per-host limiter for host, or
+// returns when ctx is canceled. The underlying limiter does not expose a
+// context-aware wait, so the acquisition finishes in the background after
+// cancellation and releases the entry's in-flight eviction guard.
+func (p *Pool) TakeContext(ctx context.Context, host string) error {
+	if p == nil || host == "" {
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	e := p.getOrCreate(host)
+	if e == nil {
+		return nil
+	}
+	acquired := make(chan struct{})
+	go func() {
+		e.limiter.Take()
+		e.lastAccess.Store(time.Now().UnixNano())
+		e.inflight.Add(-1)
+		close(acquired)
+	}()
+	select {
+	case <-acquired:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // Get returns the *ratelimit.Limiter associated with host, creating it on
 // first use. Returns nil if the pool is nil/disabled or host is empty.
 //

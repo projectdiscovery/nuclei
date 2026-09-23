@@ -243,6 +243,20 @@ func (e *ExecutorOptions) RateLimitTakeFor(host string) {
 	}
 }
 
+// RateLimitTakeForContext is the cancellable form of RateLimitTakeFor.
+func (e *ExecutorOptions) RateLimitTakeForContext(ctx context.Context, host string) error {
+	if e.HostRateLimiter != nil && host != "" {
+		return e.HostRateLimiter.TakeContext(ctx, host)
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if e.RateLimiter != nil {
+		e.RateLimiter.Take()
+	}
+	return ctx.Err()
+}
+
 // GetThreadsForNPayloadRequests returns the number of threads to use as default for
 // given max-request of payloads
 func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {

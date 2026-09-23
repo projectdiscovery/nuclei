@@ -28,6 +28,11 @@ import (
 	"github.com/projectdiscovery/rawhttp/clientpipeline"
 )
 
+func TestRateLimitHostKeyFromRawURLCanonicalizesCaseAndPreservesPort(t *testing.T) {
+	require.Equal(t, "example.com:8080", rateLimitHostKeyFromRawURL("http://EXAMPLE.COM:8080/path"))
+	require.Equal(t, "example.com", rateLimitHostKeyFromRawURL("http://EXAMPLE.COM/path"))
+}
+
 func TestHostRateLimiterSpecialExecutionPaths(t *testing.T) {
 	tests := []struct {
 		name    string

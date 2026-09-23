@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 )
 
 func TestNormalizeHost(t *testing.T) {
@@ -184,8 +185,9 @@ func TestRedirectCallback(t *testing.T) {
 	defer source.Close()
 
 	var gotHost string
-	ctx := WithRedirectCallback(context.Background(), func(host string) {
+	ctx := WithRedirectCallback(context.Background(), func(_ context.Context, host string) error {
 		gotHost = host
+		return nil
 	})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, source.URL, nil)
 	if err != nil {
@@ -202,8 +204,60 @@ func TestRedirectCallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gotHost != destinationURL.Host {
-		t.Fatalf("redirect callback host = %q, want %q", gotHost, destinationURL.Host)
+	if gotHost != RateLimitHostKey(destinationURL.Host) {
+		t.Fatalf("redirect callback host = %q, want %q", gotHost, RateLimitHostKey(destinationURL.Host))
+	}
+}
+
+func TestRedirectCallbackCanonicalizesHostAndPreservesPort(t *testing.T) {
+	oldReq, err := http.NewRequest(http.MethodGet, "http://source.example/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotHost string
+	ctx := WithRedirectCallback(context.Background(), func(_ context.Context, host string) error {
+		gotHost = host
+		return nil
+	})
+	newReq, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://EXAMPLE.COM:8080/final", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := makeCheckRedirectFunc(FollowAllRedirect, 10)(newReq, []*http.Request{oldReq}); err != nil {
+		t.Fatal(err)
+	}
+	if gotHost != "example.com:8080" {
+		t.Fatalf("redirect callback host = %q, want %q", gotHost, "example.com:8080")
+	}
+}
+
+func TestRedirectCallbackObservesRequestCancellation(t *testing.T) {
+	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer destination.Close()
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, destination.URL, http.StatusFound)
+	}))
+	defer source.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	ctx = WithRedirectCallback(ctx, func(ctx context.Context, _ string) error {
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, source.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	_, err = (&http.Client{CheckRedirect: makeCheckRedirectFunc(FollowAllRedirect, 10)}).Do(req)
+	if err == nil {
+		t.Fatal("expected canceled redirect")
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("redirect cancellation took %s", elapsed)
 	}
 }
 

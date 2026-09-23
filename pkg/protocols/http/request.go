@@ -86,7 +86,7 @@ func rateLimitHostKeyFromRawURL(raw string) string {
 	if err != nil || parsed == nil {
 		return ""
 	}
-	return parsed.Host
+	return httpclientpool.RateLimitHostKey(parsed.Host)
 }
 
 // rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
@@ -916,8 +916,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			executingClient = httpclient
 			if request.options.HostRateLimiter != nil {
 				generatedRequest.request = generatedRequest.request.WithContext(
-					httpclientpool.WithRedirectCallback(generatedRequest.request.Context(), func(host string) {
-						request.options.RateLimitTakeFor(host)
+					httpclientpool.WithRedirectCallback(generatedRequest.request.Context(), func(ctx context.Context, host string) error {
+						return request.options.RateLimitTakeForContext(ctx, host)
 					}),
 				)
 			}

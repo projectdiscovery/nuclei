@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -202,7 +203,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		// parseable URL, which would silently bypass the per-host limiter
 		var rateLimitKey string
 		if gr.Request != nil && gr.Request.URL != nil {
-			rateLimitKey = gr.Request.URL.Host
+			rateLimitKey = httpclientpool.RateLimitHostKey(gr.Request.URL.Host)
 		}
 		request.options.RateLimitTakeFor(rateLimitKey)
 	} else if err := request.rateLimitTake(hostname); err != nil {

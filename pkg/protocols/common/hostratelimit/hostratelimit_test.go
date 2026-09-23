@@ -43,6 +43,18 @@ func TestPool_NilIsNoOp(t *testing.T) {
 	})
 }
 
+func TestPool_TakeContextReturnsOnCancellation(t *testing.T) {
+	p := NewPool(context.Background(), Options{MaxCount: 1, Duration: time.Minute})
+	defer p.Stop()
+
+	p.Take("example.com")
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	require.ErrorIs(t, p.TakeContext(ctx, "example.com"), context.DeadlineExceeded)
+	require.Less(t, time.Since(start), time.Second)
+}
+
 // TestPool_SameHostReusesLimiter verifies the per-host cache: the second Get
 // for the same host must return the same *ratelimit.Limiter so requests
 // against one host share a single token bucket.
