@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/portutil"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -85,6 +86,32 @@ func TestCompileDeduplicatesPorts(t *testing.T) {
 	err := request.Compile(executerOpts)
 	require.NoError(t, err)
 	require.Equal(t, []string{"21", "22"}, request.ports)
+}
+
+func TestRequestsIncludesPayloadExecutions(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID:      "testing-network-payload-count",
+		Address: []string{"{{Host}}"},
+		Port:    "ftp,2121",
+		Inputs:  []*Input{{Data: "USER {{username}}\r\nPASS {{password}}\r\n"}},
+		AttackType: generators.AttackTypeHolder{
+			Value: generators.ClusterBombAttack,
+		},
+		Payloads: map[string]interface{}{
+			"username": []string{"admin", "root"},
+			"password": []string{"password", "toor", "guest"},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	require.NoError(t, request.Compile(executerOpts))
+	require.Equal(t, 12, request.Requests(), "two ports times six payload combinations")
 }
 
 func TestNetworkCompileMake(t *testing.T) {

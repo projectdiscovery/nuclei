@@ -674,9 +674,18 @@ func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.
 
 	dialers.Lock()
 	if dialers.PerHostRateLimitPool == nil {
+		poolSize := options.PerHostRateLimitPoolSize
+		if poolSize == 0 {
+			poolSize = 1024
+		} else if poolSize < 0 {
+			// expirable.LRU uses zero as its unbounded mode. This is useful for
+			// scan-persistent embedders that must never refresh a host budget
+			// merely because many other hosts were visited.
+			poolSize = 0
+		}
 		// Keep entries for the entire scan duration - no TTL-based eviction during scan
 		// so all hosts are tracked throughout the entire scan, even for very long scans
-		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(1024, 24*time.Hour, 24*time.Hour, options)
+		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(poolSize, 24*time.Hour, 24*time.Hour, options)
 	}
 	poolAny := dialers.PerHostRateLimitPool
 	dialers.Unlock()

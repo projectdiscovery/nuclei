@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -46,6 +47,7 @@ import (
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
@@ -109,6 +111,7 @@ type Runner struct {
 	httpApiEndpoint *httpapi.Server
 	fuzzStats       *fuzzStats.Tracker
 	dastServer      *server.DASTServer
+	llmClient       llmclient.Client
 }
 
 // New creates a new client for running the enumeration process.
@@ -121,6 +124,12 @@ func New(options *types.Options) (*Runner, error) {
 	if err := config.DefaultConfig.InitializationError(); err != nil && !options.HealthCheck {
 		return nil, fmt.Errorf("initialize nuclei configuration: %w", err)
 	}
+
+	llmClient, err := configureLLM(options)
+	if err != nil {
+		return nil, fmt.Errorf("configure llm: %w", err)
+	}
+	runner.llmClient = llmClient
 
 	if options.HealthCheck {
 		runner.Logger.Print().Msgf("%s\n", DoHealthCheck(options))
@@ -657,6 +666,7 @@ func (r *Runner) RunEnumeration() error {
 	executorOpts := &protocols.ExecutorOptions{
 		Output:              r.output,
 		Options:             r.options,
+		LLMClient:           r.llmClient,
 		Progress:            r.progress,
 		Catalog:             r.catalog,
 		IssuesClient:        r.issuesClient,
@@ -728,6 +738,13 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
+	profiles := r.targetProfiles()
+	if profiles != nil {
+		if r.options.AutomaticScan {
+			return errors.New("per-target profiles cannot be combined with automatic scan")
+		}
+		loaderConfig.TargetFilter = profiles.LoadFilter()
+	}
 	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
 		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true
@@ -771,6 +788,10 @@ func (r *Runner) RunEnumeration() error {
 	}
 	if err := store.Load(); err != nil {
 		return err
+	}
+	if profiles != nil {
+		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
+		executorOpts.TargetScope = profiles
 	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)

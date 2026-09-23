@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/nuclei/v3
 
-go 1.26.0
+go 1.26.8
 
 require (
 	github.com/andygrunwald/go-jira v1.16.1
@@ -17,12 +17,12 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.7
-	github.com/projectdiscovery/fastdialer v0.5.20
+	github.com/projectdiscovery/fastdialer v0.5.21
 	github.com/projectdiscovery/hmap v0.0.102
 	github.com/projectdiscovery/interactsh v1.3.1
 	github.com/projectdiscovery/rawhttp v0.1.92
 	github.com/projectdiscovery/retryabledns v1.0.116
-	github.com/projectdiscovery/retryablehttp-go v1.3.26
+	github.com/projectdiscovery/retryablehttp-go v1.3.27
 	github.com/projectdiscovery/yamldoc-go v1.0.7
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -95,7 +95,7 @@ require (
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/dsl v0.8.22
+	github.com/projectdiscovery/dsl v0.8.24
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/goflags v0.2.1
@@ -108,15 +108,15 @@ require (
 	github.com/projectdiscovery/httpx v1.12.0
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.50
-	github.com/projectdiscovery/ratelimit v0.0.89
+	github.com/projectdiscovery/networkpolicy v0.1.51
+	github.com/projectdiscovery/ratelimit v0.0.90
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.4.0
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
-	github.com/projectdiscovery/utils v0.11.4-0.20260914143159-3e1465cc1ad9
-	github.com/projectdiscovery/wappalyzergo v0.3.0
+	github.com/projectdiscovery/utils v0.11.6-0.20260921202603-8170b857f2c3
+	github.com/projectdiscovery/wappalyzergo v0.3.1
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/rs/zerolog v1.34.0
 	github.com/sandrolain/httpcache v1.4.0
@@ -130,7 +130,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.9
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/http2curl v1.0.0
 )
@@ -275,6 +275,7 @@ require (
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/certificate-transparency-go v1.3.3 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/go-github/v92 v92.0.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.11 // indirect
@@ -363,15 +364,15 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/blackrock v0.0.2 // indirect
-	github.com/projectdiscovery/cdncheck v1.3.0 // indirect
+	github.com/projectdiscovery/cdncheck v1.3.1 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
+	github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
-	github.com/sashabaranov/go-openai v1.37.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect

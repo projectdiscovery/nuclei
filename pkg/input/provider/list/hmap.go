@@ -20,6 +20,9 @@ import (
 	"github.com/projectdiscovery/hmap/filekv"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/nuclei/v3/internal/configuration"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/targetprofile"
 	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -48,6 +51,7 @@ type ListInputProvider struct {
 	excludedHosts     map[string]struct{}
 	hostMapStream     *filekv.FileDB
 	hostMapStreamOnce sync.Once
+	profiles          *targetprofile.Registry
 	sync.Once
 }
 
@@ -78,6 +82,7 @@ func New(opts *Options) (*ListInputProvider, error) {
 			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
 		},
 		excludedHosts: make(map[string]struct{}),
+		profiles:      targetprofile.NewRegistry(configuration.TemplatesDirectory(options, config.DefaultConfig)),
 	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
@@ -139,8 +144,18 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 	}
 }
 
+// TargetProfiles returns the per-target template selections read from input.
+func (i *ListInputProvider) TargetProfiles() *targetprofile.Registry {
+	return i.profiles
+}
+
 // Set normalizes and stores passed input values
 func (i *ListInputProvider) Set(executionId string, value string) {
+	i.set(executionId, value, nil)
+}
+
+// set stores value bound to selection; a nil selection runs every template.
+func (i *ListInputProvider) set(executionId string, value string, selection *targetprofile.Selection) {
 	URL := strings.TrimSpace(value)
 	if URL == "" {
 		return
@@ -156,7 +171,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		})
 		metaInput := contextargs.NewMetaInput()
 		metaInput.Input = URL
-		i.setItem(metaInput)
+		i.setItem(metaInput, selection)
 		return
 	}
 
@@ -164,7 +179,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	if iputil.IsIP(urlx.Hostname()) {
 		metaInput := contextargs.NewMetaInput()
 		metaInput.Input = URL
-		i.setItem(metaInput)
+		i.setItem(metaInput, selection)
 		return
 	}
 
@@ -192,7 +207,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 					metaInput := contextargs.NewMetaInput()
 					metaInput.Input = URL
 					metaInput.CustomIP = ip
-					i.setItem(metaInput)
+					i.setItem(metaInput, selection)
 				}
 				return
 			} else {
@@ -230,10 +245,10 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		if ip != "" {
 			metaInput.Input = URL
 			metaInput.CustomIP = ip
-			i.setItem(metaInput)
+			i.setItem(metaInput, selection)
 		} else {
 			metaInput.Input = URL
-			i.setItem(metaInput)
+			i.setItem(metaInput, selection)
 		}
 	}
 }
@@ -281,23 +296,18 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 
 	// Handle targets flags
 	for _, target := range options.Targets {
-		switch {
-		case iputil.IsCIDR(target):
-			ips := expand.CIDR(target)
-			i.addTargets(options.ExecutionId, ips)
-		case asn.IsASN(target):
-			ips := expand.ASN(target)
-			i.addTargets(options.ExecutionId, ips)
-		default:
-			i.Set(options.ExecutionId, target)
+		if err := i.addInput(options.ExecutionId, target); err != nil {
+			return err
 		}
 	}
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(
+		if err := i.scanInputFromReader(
 			options.ExecutionId,
-			readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
+			readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)}); err != nil {
+			return err
+		}
 	}
 
 	// Handle target file
@@ -310,8 +320,11 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 			}
 		}
 		if input != nil {
-			i.scanInputFromReader(options.ExecutionId, input)
+			err := i.scanInputFromReader(options.ExecutionId, input)
 			_ = input.Close()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if options.Uncover && options.UncoverQuery != nil {
@@ -356,21 +369,38 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 }
 
 // scanInputFromReader scans a line of input from reader and passes it for storage
-func (i *ListInputProvider) scanInputFromReader(executionId string, reader io.Reader) {
+func (i *ListInputProvider) scanInputFromReader(executionId string, reader io.Reader) error {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		item := scanner.Text()
-		switch {
-		case iputil.IsCIDR(item):
-			ips := expand.CIDR(item)
-			i.addTargets(executionId, ips)
-		case asn.IsASN(item):
-			ips := expand.ASN(item)
-			i.addTargets(executionId, ips)
-		default:
-			i.Set(executionId, item)
+		if err := i.addInput(executionId, scanner.Text()); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+// addInput stores a plain target or a target line, expanding CIDR and ASN
+// targets. An invalid target line fails the run: skipping it would drop the
+// target, and ignoring its selection would scan it with every template.
+func (i *ListInputProvider) addInput(executionId string, item string) error {
+	var selection *targetprofile.Selection
+	if targetprofile.IsLine(item) {
+		target, parsed, err := i.profiles.ParseLine(item)
+		if err != nil {
+			return errors.Wrap(err, "could not parse target line")
+		}
+		item, selection = target, parsed
+	}
+
+	switch {
+	case iputil.IsCIDR(item):
+		i.addTargets(executionId, expand.CIDR(item), selection)
+	case asn.IsASN(item):
+		i.addTargets(executionId, expand.ASN(item), selection)
+	default:
+		i.set(executionId, item, selection)
+	}
+	return nil
 }
 
 // isExcluded checks if a URL is in the exclusion list
@@ -486,7 +516,7 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 }
 
 // setItem in the kv store
-func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput) {
+func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput, selection *targetprofile.Selection) {
 	key, err := metaInput.MarshalString()
 	if err != nil {
 		gologger.Warning().Msgf("%s\n", err)
@@ -494,9 +524,15 @@ func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput) {
 	}
 	if _, ok := i.hostMap.Get(key); ok {
 		i.dupeCount++
+		if i.profiles != nil {
+			i.profiles.Merge(metaInput.Input, selection)
+		}
 		return
 	}
 
+	if i.profiles != nil {
+		i.profiles.Bind(metaInput.Input, selection)
+	}
 	i.inputCount++ // tracks target count
 	_ = i.hostMap.Set(key, nil)
 	if i.hostMapStream != nil {
@@ -565,9 +601,9 @@ func (i *ListInputProvider) setHostMapStream(data string) {
 	}
 }
 
-func (i *ListInputProvider) addTargets(executionId string, targets []string) {
+func (i *ListInputProvider) addTargets(executionId string, targets []string, selection *targetprofile.Selection) {
 	for _, target := range targets {
-		i.Set(executionId, target)
+		i.set(executionId, target, selection)
 	}
 }
 

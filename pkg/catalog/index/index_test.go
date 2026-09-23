@@ -905,6 +905,7 @@ func TestNewMetadataFromTemplate(t *testing.T) {
 			SeverityHolder: severity.Holder{
 				Severity: severity.Low,
 			},
+			Metadata: map[string]any{"product": " Tomcat "},
 		},
 		Verified:         true,
 		TemplateVerifier: "verifier",
@@ -922,4 +923,5 @@ func TestNewMetadataFromTemplate(t *testing.T) {
 	require.Equal(t, tmpl.Type().String(), metadata.ProtocolType)
 	require.Equal(t, tmpl.Verified, metadata.Verified)
 	require.Equal(t, tmpl.TemplateVerifier, metadata.TemplateVerifier)
+	require.Equal(t, "tomcat", metadata.Product)
 }
