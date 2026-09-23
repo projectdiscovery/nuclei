@@ -395,6 +395,12 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 // time while a concurrent re-authentication is rewriting it.
 // The returned generation identifies the session that was applied (0 if none).
 func (d *Dynamic) ApplyStrategies(apply func(AuthStrategy)) uint64 {
+	// A login callback can issue requests that pass through auth lookup again.
+	// Do not apply this still-unresolved dynamic secret or try to take its read
+	// lock while the same goroutine owns the fetch write lock.
+	if d.fetchingOnThisGoroutine() {
+		return 0
+	}
 	// Fetch (re)authenticates under the write lock if the session is missing or stale.
 	_ = d.Fetch(false)
 	if d.fetchState == nil {
