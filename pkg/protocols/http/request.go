@@ -74,19 +74,23 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
-func (request *Request) rateLimitTake(hostname string) {
+func (request *Request) rateLimitTake(hostname string) error {
 	if request.options.Options.PerHostRateLimit && hostname != "" {
 		// Use per-host rate limiter
-		if limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname); err == nil && limiter != nil {
+		limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname)
+		if err != nil {
+			return err
+		}
+		if limiter != nil {
 			limiter.Take()
 			// Record request for pps stats
 			httpclientpool.RecordPerHostRateLimitRequest(request.options.Options, hostname)
-			return
+			return nil
 		}
-		// Fallback to global if per-host fails
 	}
 	// Use global rate limiter (or unlimited if per-host is enabled but hostname is empty)
 	request.options.RateLimitTake()
+	return nil
 }
 
 // executeRaceRequest executes race condition request for a URL
@@ -278,7 +282,16 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					// Extract from request URL if available
 					hostname = t.req.request.Request.URL.String()
 				}
-				request.rateLimitTake(hostname)
+				if err := request.rateLimitTake(hostname); err != nil {
+					select {
+					case <-spmHandler.Done():
+						spmHandler.Release()
+						continue
+					case spmHandler.ResultChan <- err:
+						spmHandler.Release()
+						continue
+					}
+				}
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 				err := request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -292,7 +305,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						}
 						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
-						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+						request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
 					}
 					wrappedCallback(event)
 				}, 0)
@@ -569,7 +582,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			request.rateLimitTake(hostname)
+			if err := request.rateLimitTake(hostname); err != nil {
+				return true, err
+			}
 
 			if generatedHttpRequest.customCancelFunction != nil {
 				defer generatedHttpRequest.customCancelFunction()
@@ -598,7 +613,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 					}
 					allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
-					request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+					request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
 					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 				}
 				// Add the extracts to the dynamic values if any.
