@@ -27,6 +27,7 @@ extend-exclude = [
 OpenVAS = "OpenVAS"
 # Go identifiers that cannot be renamed without breaking API
 MisMatched = "MisMatched"
+IsMisMatchedCert = "IsMisMatchedCert" # tlsx clients API
 NoopWriter = "NoopWriter"
 AllowdTypes = "AllowdTypes"
 # Deprecated alias kept for backward compatibility

@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 )
 
@@ -20,6 +21,43 @@ func BenchmarkParse(b *testing.B) {
 		_, err := templates.Parse(filePath, nil, executerOpts)
 		if err != nil {
 			b.Fatalf("could not parse template: %s", err)
+		}
+	}
+}
+
+func BenchmarkParseAcrossEngineLocalCaches(b *testing.B) {
+	const engineCount = 5
+
+	filePath := "tests/match-1.yaml"
+	setup()
+
+	sharedParser := templates.NewParser()
+	_, err := sharedParser.ParseTemplate(filePath, executerOpts.Catalog)
+	if err != nil {
+		b.Fatalf("could not warm parsed template cache: %s", err)
+	}
+
+	engineOptions := make([]*protocols.ExecutorOptions, engineCount)
+	engineParsers := make([]*templates.Parser, engineCount)
+	for i := range engineCount {
+		engineParsers[i] = templates.NewParserWithParsedCache(sharedParser.Cache())
+		engineOptions[i] = executerOpts.Copy()
+		engineOptions[i].Parser = engineParsers[i]
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		for _, options := range engineOptions {
+			_, err := templates.Parse(filePath, nil, options)
+			if err != nil {
+				b.Fatalf("could not parse template: %s", err)
+			}
+		}
+
+		for _, parser := range engineParsers {
+			parser.CompiledCache().Purge()
 		}
 	}
 }

@@ -116,6 +116,46 @@ func TestNetwork(t *testing.T) {
 		}
 	})
 
+	t.Run("Duration", func(t *testing.T) {
+		errState := &capturedError{}
+		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
+			defer func() { _ = conn.Close() }()
+
+			data, err := reader.ConnReadNWithTimeout(conn, 5, 5*time.Second)
+			if err != nil {
+				errState.Set(err)
+				return
+			}
+			if string(data) == "FIRST" {
+				time.Sleep(integrationDurationObservationDelay)
+				_, _ = conn.Write([]byte("PING"))
+			}
+
+			data, err = reader.ConnReadNWithTimeout(conn, 6, 5*time.Second)
+			if err != nil {
+				errState.Set(err)
+				return
+			}
+			if string(data) == "SECOND" {
+				time.Sleep(integrationDurationObservationDelay)
+				_, _ = conn.Write([]byte("PONG"))
+			}
+			_, _ = conn.Write([]byte("NUCLEI"))
+		})
+		defer server.Close()
+
+		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/network/duration.yaml", server.URL, suite.debug)
+		if err != nil {
+			t.Fatalf("duration network request failed: %v", err)
+		}
+		if err := errState.Err(); err != nil {
+			t.Fatal(err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("SelfContained", func(t *testing.T) {
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
 			defer func() { _ = conn.Close() }()

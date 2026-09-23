@@ -44,3 +44,24 @@ func TestQueryComponent(t *testing.T) {
 	require.Equal(t, "foo=baz", rebuilt.RawQuery, "unexpected query string")
 	require.Equal(t, "https://example.com?foo=baz", rebuilt.String(), "unexpected url")
 }
+
+func TestQueryComponentDoesNotMergePrefixParameterNames(t *testing.T) {
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com?foo=a&foobar=b&foobar=c", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	query := NewQuery()
+	_, err = query.Parse(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rebuilt, err := query.Rebuild()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.Equal(t, "foo=a&foobar=b&foobar=c", rebuilt.RawQuery, "unexpected query string")
+	require.Equal(t, "https://example.com?foo=a&foobar=b&foobar=c", rebuilt.String(), "unexpected url")
+}

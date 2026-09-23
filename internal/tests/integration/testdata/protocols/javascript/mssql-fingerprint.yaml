@@ -1,0 +1,42 @@
+id: mssql-fingerprint
+
+info:
+  name: MSSQL Fingerprint Test
+  author: pdteam
+  severity: info
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host, Port)
+    code: |
+      const mssql = require('nuclei/mssql');
+      const client = new mssql.MSSQLClient();
+      const isMssql = client.IsMssql(Host, Port);
+      const info = client.FingerprintMssql(Host, Port);
+      const ok = isMssql && info && info.Version && info.Version.length > 0 && info.MajorVersion > 0 && info.EncryptionMode && info.EncryptionMode.length > 0 && info.Protocol === "mssql";
+      Export({
+        ok: ok,
+        isMssql: isMssql,
+        version: info.Version,
+        majorVersion: info.MajorVersion,
+        minorVersion: info.MinorVersion,
+        buildNumber: info.BuildNumber,
+        encryptionMode: info.EncryptionMode,
+        protocol: info.Protocol,
+        transport: info.Transport,
+      });
+    args:
+      Host: "{{Host}}"
+      Port: "1433"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+          - "ok == true"
+          - "isMssql == true"
+          - "len(version) > 0"
+          - "majorVersion > 0"
+          - 'protocol == "mssql"'
+          - 'transport == "tcp"'
+          - "len(encryptionMode) > 0"

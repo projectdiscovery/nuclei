@@ -1,0 +1,34 @@
+id: websocket-denied
+
+info:
+  name: WebSocket Network Policy Denial
+  author: pdteam
+  severity: info
+  description: |
+    Asserts the nuclei/websocket javascript library refuses a host on the
+    exclude list before connecting.
+
+javascript:
+  - code: |
+      const websocket = require('nuclei/websocket');
+      let out = "";
+      try {
+        const client = new websocket.Client('ws://203.0.113.10/socket');
+        client.Connect();
+      } catch (e) {
+        out = "" + e;
+      }
+      out;
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+      - type: word
+        part: response
+        words:
+          - "network policy"
+          - "203.0.113.10"
+        condition: and

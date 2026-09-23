@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -60,7 +59,7 @@ func (f *Form) Encode(data KV) (string, error) {
 		// here origKey is base key without _1, _2 etc.
 		if origKey != "" && !reNormalized.MatchString(origKey) {
 			params.Iterate(func(key string, value []string) bool {
-				if strings.HasPrefix(key, origKey) && reNormalized.MatchString(key) {
+				if baseKey, ok := normalizedKeyBase(key); ok && baseKey == origKey {
 					m := map[string]string{}
 					if normalized[origKey] != nil {
 						m = normalized[origKey]
@@ -126,6 +125,14 @@ func (f *Form) Encode(data KV) (string, error) {
 
 	encoded := params.Encode()
 	return encoded, nil
+}
+
+func normalizedKeyBase(key string) (string, bool) {
+	match := reNormalized.FindStringIndex(key)
+	if match == nil {
+		return "", false
+	}
+	return key[:match[0]], true
 }
 
 // Decode decodes the data from Form format
