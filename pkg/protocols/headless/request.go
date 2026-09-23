@@ -227,7 +227,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		request.options.Interactsh.RequestEvent(page.InteractshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(page.InteractshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,

@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,7 +53,7 @@ func TestFindInputPaths(t *testing.T) {
 	}
 	expected := []string{"config.yaml", "final.yaml", "test.js"}
 	got := []string{}
-	err = request.getInputPaths(tempDir+"/*", func(item string) {
+	err = request.getInputPaths(context.Background(), tempDir+"/*", func(item string) {
 		base := filepath.Base(item)
 		got = append(got, base)
 	})
@@ -60,7 +61,7 @@ func TestFindInputPaths(t *testing.T) {
 	require.ElementsMatch(t, expected, got, "could not get correct file matches for glob")
 
 	got = []string{}
-	err = request.getInputPaths(tempDir, func(item string) {
+	err = request.getInputPaths(context.Background(), tempDir, func(item string) {
 		base := filepath.Base(item)
 		got = append(got, base)
 	})

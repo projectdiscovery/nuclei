@@ -3,9 +3,9 @@ package list
 import (
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/hmap/store/hybrid"
@@ -36,7 +36,7 @@ func Test_expandCIDR(t *testing.T) {
 		input := &ListInputProvider{hostMap: hm}
 
 		ips := expand.CIDR(tt.cidr)
-		input.addTargets("", ips)
+		input.addTargets("", ips, nil)
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, _ []byte) error {
@@ -77,16 +77,36 @@ func (m *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
-	srv := &dns.Server{Addr: ":" + strconv.Itoa(61234), Net: "udp"}
-	srv.Handler = &mockDnsHandler{}
+	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(t, err)
+	resolverAddr := pc.LocalAddr().String()
 
+	started := make(chan struct{})
+	srv := &dns.Server{
+		PacketConn: pc,
+		Handler:    &mockDnsHandler{},
+		NotifyStartedFunc: func() {
+			close(started)
+		},
+	}
+	serveErr := make(chan error, 1)
 	go func() {
-		err := srv.ListenAndServe()
-		require.Nil(t, err)
+		serveErr <- srv.ActivateAndServe()
 	}()
+	t.Cleanup(func() {
+		_ = srv.Shutdown()
+	})
+
+	select {
+	case <-started:
+	case err := <-serveErr:
+		require.NoError(t, err, "dns mock server failed to start")
+	case <-time.After(5 * time.Second):
+		require.Fail(t, "timed out waiting for dns mock server")
+	}
 
 	defaultOpts := types.DefaultOptions()
-	defaultOpts.InternalResolversList = []string{"127.0.0.1:61234"}
+	defaultOpts.InternalResolversList = []string{resolverAddr}
 	_ = protocolstate.Init(defaultOpts)
 	type testcase struct {
 		hostname string
@@ -180,7 +200,7 @@ func Test_expandASNInputValue(t *testing.T) {
 		input := &ListInputProvider{hostMap: hm}
 		// get the IP addresses for ASN number
 		ips := expand.ASN(tt.asn)
-		input.addTargets("", ips)
+		input.addTargets("", ips, nil)
 		// scan the hmap
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {

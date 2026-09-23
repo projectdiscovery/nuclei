@@ -1009,6 +1009,26 @@ Part Definitions:
 - <code>all</code> - HTTP response body + headers
 - <code>cookies_from_response</code> - HTTP response cookies in name:value format
 - <code>headers_from_response</code> - HTTP response headers in name:value format
+- <code>tls_version</code> - TLS version negotiated for the HTTP connection
+- <code>cipher</code> - TLS cipher suite negotiated for the HTTP connection
+- <code>sni</code> - SNI value used in the TLS handshake
+- <code>subject_cn</code> - Leaf certificate subject common name
+- <code>subject_dn</code> - Leaf certificate subject distinguished name
+- <code>subject_an</code> - Leaf certificate subject alternative names
+- <code>subject_org</code> - Leaf certificate subject organization
+- <code>issuer_cn</code> - Leaf certificate issuer common name
+- <code>issuer_dn</code> - Leaf certificate issuer distinguished name
+- <code>issuer_org</code> - Leaf certificate issuer organization
+- <code>serial</code> - Leaf certificate serial number
+- <code>fingerprint_hash</code> - Leaf certificate fingerprint hashes (md5/sha1/sha256)
+- <code>not_before</code> - Leaf certificate not-before timestamp
+- <code>not_after</code> - Leaf certificate not-after timestamp
+- <code>expired</code> - Whether the leaf certificate has expired
+- <code>self_signed</code> - Whether the leaf certificate is self-signed
+- <code>mismatched</code> - Whether the leaf certificate does not match the SNI hostname
+- <code>domains</code> - Deduplicated domains from subject CN and SANs
+- <code>wildcard_certificate</code> - Whether the leaf certificate is a wildcard certificate
+- <code>emails</code> - Email addresses embedded in the leaf certificate
 
 <hr />
 
@@ -1450,6 +1470,19 @@ all requests defined in raw section.
 <div class="dt">
 
 DisableCookie is an optional setting that disables cookie reuse
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>disable-http-cache</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset.
 
 </div>
 
@@ -2448,6 +2481,102 @@ xpath:
 
 <div class="dd">
 
+<code>prompt</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Prompt is the natural-language question for an llm matcher. The model
+judges the selected response part and returns a verdict; the matcher
+fires when the verdict equals Expect with at least MinConfidence.
+
+
+
+Examples:
+
+
+```yaml
+prompt: Is this a working admin login form rather than a marketing page?
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>expect</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Expect is the verdict that counts as a match for an llm matcher.
+Defaults to "yes".
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>options</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Options restricts the model to a fixed set of verdicts for an llm
+matcher. Defaults to yes/no.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>min-confidence</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+MinConfidence is the minimum confidence (0-1) an llm verdict needs to
+count as a match. Defaults to 0.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>max-input-tokens</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+MaxInputTokens caps how much of the response part is sent to the model
+for an llm matcher, as an approximate token count.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>allow-sole</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+AllowSole permits an llm matcher to be the only matcher on a high or
+critical template. Without it such a template is rejected, so a model is
+never the sole arbiter of a severe finding by accident.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>encoding</code>  <i>string</i>
 
 </div>
@@ -2567,6 +2696,8 @@ Enum Values:
   - <code>dsl</code>
 
   - <code>xpath</code>
+
+  - <code>llm</code>
 </div>
 
 <hr />
@@ -3077,6 +3208,82 @@ enables mime types check
 <div class="dt">
 
 NoRecursive specifies whether to not do recursive checks if folders are provided.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-user</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBUser authenticates to remote SMB shares when the file input is a UNC
+or smb:// path (issue #6142). Guest/anon: empty password.
+
+
+
+Examples:
+
+
+```yaml
+smb-user: auditor
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-password</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBPassword is the password for SMB file targets.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-domain</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBDomain is the optional NTLM domain / workgroup.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-hash</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+SMBHash enables pass-the-hash (overrides smb-password when set).
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>smb-port</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+SMBPort overrides the default SMB port (445) for UNC targets.
 
 </div>
 
