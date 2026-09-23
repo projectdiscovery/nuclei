@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
@@ -1044,7 +1045,12 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 		return "", errkit.Wrapf(err, "argument %q, value: %q", arg, argValue)
 	}
 
+	var scanOptions *types.Options
+	if p.options != nil {
+		scanOptions = p.options.Options
+	}
 	result, err := render.Render(render.Input{
+		Options:      scanOptions,
 		Text:         argValue,
 		Values:       p.variables,
 		InteractURLs: prepared.InteractURLs,
