@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -78,6 +80,80 @@ func TestResolveAuthMaterial(t *testing.T) {
 		require.Len(t, cookies, 1)
 		require.Equal(t, "sid", cookies[0].Name)
 	})
+}
+
+func TestApplyAuthHeaders_OriginScoped(t *testing.T) {
+	provider := &mockAuthProvider{strategies: []authx.AuthStrategy{
+		authx.NewHeadersAuthStrategy(&authx.Secret{Headers: []authx.KV{{Key: "Authorization", Value: "Bearer secret"}}}),
+	}}
+	p := &Page{
+		options:  &Options{AuthProvider: provider},
+		inputURL: mustParseURL(t, "https://app.example.com:8443/start"),
+	}
+
+	t.Run("same origin receives auth", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "https://app.example.com:8443/api", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "browser-value")
+
+		p.applyAuthHeaders(req)
+
+		require.Equal(t, "Bearer secret", req.Header.Get("Authorization"))
+	})
+
+	t.Run("different host does not receive auth", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "https://cdn.example.com:8443/image.png", nil)
+		require.NoError(t, err)
+
+		p.applyAuthHeaders(req)
+
+		require.Empty(t, req.Header.Get("Authorization"))
+	})
+
+	t.Run("different port does not receive auth", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "https://app.example.com:9443/image.png", nil)
+		require.NoError(t, err)
+
+		p.applyAuthHeaders(req)
+
+		require.Empty(t, req.Header.Get("Authorization"))
+	})
+}
+
+func TestSameOrigin_DefaultPorts(t *testing.T) {
+	require.True(t, sameOrigin(
+		mustParseURL(t, "https://example.com/path").URL,
+		mustParseURL(t, "https://example.com:443/other").URL,
+	))
+	require.False(t, sameOrigin(
+		mustParseURL(t, "http://example.com/path").URL,
+		mustParseURL(t, "https://example.com/path").URL,
+	))
+}
+
+func TestAuthRedirectClient_StripsHeadersCrossOrigin(t *testing.T) {
+	received := make(chan string, 1)
+	crossOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received <- r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer crossOrigin.Close()
+
+	sameOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, crossOrigin.URL, http.StatusFound)
+	}))
+	defer sameOrigin.Close()
+
+	p := &Page{inputURL: mustParseURL(t, sameOrigin.URL)}
+	client := p.authRedirectClient(&http.Client{}, []string{"Authorization", "Bearer secret"})
+	req, err := http.NewRequest(http.MethodGet, sameOrigin.URL, nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer secret")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Empty(t, <-received)
 }
 
 // pairsToMap converts the flat [k1,v1,k2,v2,...] header slice into a map.

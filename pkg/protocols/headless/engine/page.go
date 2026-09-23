@@ -44,6 +44,8 @@ type Page struct {
 	// authSessionGeneration is the dynamic-session generation applied to this
 	// page, used to ignore late expiry signals from an older session.
 	authSessionGeneration uint64
+	authRefreshPending    bool
+	authMutex             sync.RWMutex
 }
 
 // HistoryData contains the page request/response pairs
@@ -143,7 +145,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		hijackRouter := NewHijack(page)
 		hijackRouter.SetPattern(&proto.FetchRequestPattern{
 			URLPattern:   "*",
-			RequestStage: proto.FetchRequestStageResponse,
+			RequestStage: proto.FetchRequestStageRequest,
 		})
 		createdPage.hijackNative = hijackRouter
 		hijackRouterHandler := hijackRouter.Start(createdPage.routingRuleHandlerNative)
@@ -196,9 +198,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
-	// inject authentication (headers/cookies) from the auth provider, if any,
-	// before any navigation occurs so authenticated areas are reachable.
-	createdPage.applyAuthStrategies()
+	// Seed domain-scoped authentication cookies before navigation. Headers are
+	// applied per request by the interception handlers so they cannot leak to a
+	// cross-origin request.
+	createdPage.prepareAuthForNavigation(input)
 	// seed any captured browser web storage (e.g. localStorage JWTs from a
 	// headless auto-login) before page scripts run on navigation.
 	createdPage.applyAuthWebStorage()

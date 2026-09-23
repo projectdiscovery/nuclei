@@ -197,39 +197,32 @@ func TestAuthReauth_RefreshThenNavigate(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	runNav := func(t *testing.T, inst *Instance) {
-		t.Helper()
-		input := contextargs.NewWithInput(context.Background(), ts.URL)
-		input.CookieJar, err = cookiejar.New(nil)
-		require.NoError(t, err)
-		actions := []*Action{
-			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
-			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-		}
-		_, p, runErr := inst.Run(input, actions, nil, &Options{
-			Timeout:      30 * time.Second,
-			Options:      opts,
-			AuthProvider: provider,
-		})
-		require.NoError(t, runErr)
-		if p != nil {
-			p.Close()
-		}
-	}
-
 	instance, err := browser.NewInstance()
 	require.NoError(t, err)
 	defer func() { _ = instance.Close() }()
 
+	input := contextargs.NewWithInput(context.Background(), ts.URL)
+	input.CookieJar, err = cookiejar.New(nil)
+	require.NoError(t, err)
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+
 	// First navigation: tok-1 is rejected with 401 → provider rotates to tok-2.
-	runNav(t, instance)
+	_, page, err := instance.Run(input, actions, nil, &Options{
+		Timeout:      30 * time.Second,
+		Options:      opts,
+		AuthProvider: provider,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, page)
+	defer page.Close()
 	require.True(t, provider.reauthed.Load(), "401 must trigger credential refresh")
 	require.Equal(t, int32(2), provider.token.Load())
 
-	// Second navigation must succeed with the refreshed cookie.
-	instance2, err := browser.NewInstance()
+	// The same Page must install tok-2 before its next navigation.
+	_, err = page.ExecuteActions(input, actions)
 	require.NoError(t, err)
-	defer func() { _ = instance2.Close() }()
-	runNav(t, instance2)
 	require.True(t, sawOK.Load(), "second navigation must succeed after refreshed credentials")
 }

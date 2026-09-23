@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-rod/rod/lib/proto"
@@ -13,63 +14,137 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-// applyAuthStrategies injects credentials from the configured auth provider into
-// the browser page, so authenticated headless scans work the same way the HTTP
-// protocol does (which previously was the only protocol wired to the secrets
-// file).
-//
-// It resolves the auth strategies for the page's input URL, materializes them
-// onto a synthetic request (reusing the exact same Apply logic as the HTTP
-// path), then pushes the resulting headers and cookies to the browser and seeds
-// the shared cookie jar used by the hijack HTTP client.
-//
-// NOTE: extra headers set via CDP are sent on every request the page makes,
-// including cross-origin subresources. Cookies remain domain-scoped by the
-// browser. Query-parameter auth is not applied globally in headless mode.
-func (p *Page) applyAuthStrategies() {
-	if p.options == nil || p.options.AuthProvider == nil || p.inputURL == nil {
+// prepareAuthForNavigation refreshes authentication material before a
+// same-origin navigation and installs cookies using the browser's native domain
+// semantics. Authentication headers are applied separately to each intercepted
+// request and are never installed as page-global extra headers.
+func (p *Page) prepareAuthForNavigation(target *urlutil.URL) {
+	if p.options == nil || p.options.AuthProvider == nil || target == nil || target.URL == nil || !p.authOriginMatches(target.URL) {
 		return
 	}
 
-	headers, cookies, gen := resolveAuthMaterial(p.options.AuthProvider, p.inputURL)
-	p.authSessionGeneration = gen
-	if len(headers) == 0 && len(cookies) == 0 {
-		return
-	}
-
-	if len(headers) > 0 {
-		if _, err := p.page.SetExtraHeaders(headers); err != nil {
-			gologger.Warning().Msgf("headless: could not set auth headers for %s: %s", p.inputURL.String(), err)
-		}
-	}
+	_, cookies, generation := resolveAuthMaterial(p.options.AuthProvider, target)
+	p.setAuthSessionGeneration(generation)
 
 	if len(cookies) == 0 {
+		if p.takeAuthRefreshPending() {
+			p.applyAuthWebStorage()
+		}
 		return
 	}
-	params := make([]*proto.NetworkCookieParam, 0, len(cookies))
-	for _, cookie := range cookies {
-		param := &proto.NetworkCookieParam{
-			Name:   cookie.Name,
-			Value:  cookie.Value,
-			URL:    p.inputURL.String(),
-			Secure: cookie.Secure,
+
+	if p.page != nil {
+		params := make([]*proto.NetworkCookieParam, 0, len(cookies))
+		for _, cookie := range cookies {
+			param := &proto.NetworkCookieParam{
+				Name:   cookie.Name,
+				Value:  cookie.Value,
+				URL:    target.String(),
+				Secure: cookie.Secure,
+			}
+			if cookie.Domain != "" {
+				param.Domain = cookie.Domain
+			}
+			if cookie.Path != "" {
+				param.Path = cookie.Path
+			}
+			params = append(params, param)
 		}
-		if cookie.Domain != "" {
-			param.Domain = cookie.Domain
+		if err := p.page.SetCookies(params); err != nil {
+			gologger.Warning().Msgf("headless: could not set auth cookies for %s: %s", target.String(), err)
 		}
-		if cookie.Path != "" {
-			param.Path = cookie.Path
-		}
-		params = append(params, param)
-	}
-	if err := p.page.SetCookies(params); err != nil {
-		gologger.Warning().Msgf("headless: could not set auth cookies for %s: %s", p.inputURL.String(), err)
 	}
 	if !p.options.DisableCookie && p.ctx != nil && p.ctx.CookieJar != nil {
-		if u := p.inputURL.URL; u != nil {
-			p.ctx.CookieJar.SetCookies(u, cookies)
-		}
+		p.ctx.CookieJar.SetCookies(target.URL, cookies)
 	}
+	if p.takeAuthRefreshPending() {
+		p.applyAuthWebStorage()
+	}
+}
+
+// applyAuthHeaders resolves and applies authentication headers to one request.
+// The explicit origin check is intentionally stricter than provider domain
+// matching: credentials selected for the page's target origin must never follow
+// a cross-origin subresource or navigation.
+func (p *Page) applyAuthHeaders(req *http.Request) []string {
+	if req == nil || req.URL == nil {
+		return nil
+	}
+	headers := p.authHeaders(req.URL)
+	for i := 0; i+1 < len(headers); i += 2 {
+		if i == 0 || !strings.EqualFold(headers[i], headers[i-2]) {
+			req.Header.Del(headers[i])
+		}
+		req.Header.Add(headers[i], headers[i+1])
+	}
+	return headers
+}
+
+func (p *Page) authHeaders(targetURL *url.URL) []string {
+	if targetURL == nil || p.options == nil || p.options.AuthProvider == nil || !p.authOriginMatches(targetURL) {
+		return nil
+	}
+	target, err := urlutil.Parse(targetURL.String())
+	if err != nil {
+		return nil
+	}
+	headers, _, generation := resolveAuthMaterial(p.options.AuthProvider, target)
+	p.setAuthSessionGeneration(generation)
+	return headers
+}
+
+func (p *Page) authOriginMatches(target *url.URL) bool {
+	if p == nil || p.inputURL == nil || p.inputURL.URL == nil {
+		return false
+	}
+	return sameOrigin(p.inputURL.URL, target)
+}
+
+func sameOrigin(left, right *url.URL) bool {
+	if left == nil || right == nil || !strings.EqualFold(left.Scheme, right.Scheme) || !strings.EqualFold(left.Hostname(), right.Hostname()) {
+		return false
+	}
+	return effectivePort(left) == effectivePort(right)
+}
+
+func effectivePort(value *url.URL) string {
+	if port := value.Port(); port != "" {
+		return port
+	}
+	switch strings.ToLower(value.Scheme) {
+	case "http":
+		return "80"
+	case "https":
+		return "443"
+	default:
+		return ""
+	}
+}
+
+func (p *Page) setAuthSessionGeneration(generation uint64) {
+	p.authMutex.Lock()
+	p.authSessionGeneration = generation
+	p.authMutex.Unlock()
+}
+
+func (p *Page) currentAuthSessionGeneration() uint64 {
+	p.authMutex.RLock()
+	defer p.authMutex.RUnlock()
+	return p.authSessionGeneration
+}
+
+func (p *Page) markAuthRefreshPending() {
+	p.authMutex.Lock()
+	p.authRefreshPending = true
+	p.authMutex.Unlock()
+}
+
+func (p *Page) takeAuthRefreshPending() bool {
+	p.authMutex.Lock()
+	defer p.authMutex.Unlock()
+	pending := p.authRefreshPending
+	p.authRefreshPending = false
+	return pending
 }
 
 // notifyAuthResponse forwards the main navigation response status to any auth
@@ -83,7 +158,8 @@ func (p *Page) notifyAuthResponse(statusCode int) {
 	}
 	for _, strategy := range p.options.AuthProvider.LookupURLX(p.inputURL) {
 		if inspector, ok := strategy.(authx.ResponseInspector); ok {
-			if inspector.OnResponse(statusCode, p.authSessionGeneration) {
+			if inspector.OnResponse(statusCode, p.currentAuthSessionGeneration()) {
+				p.markAuthRefreshPending()
 				gologger.Verbose().Msgf("[authprovider] Session expired (status %d) for %s, will re-authenticate", statusCode, p.inputURL.Host)
 			}
 		}

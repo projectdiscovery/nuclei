@@ -1,9 +1,11 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 
 	"github.com/go-rod/rod"
@@ -17,6 +19,9 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 	return func(ctx *rod.Hijack) {
 		// usually browsers don't use chunked transfer encoding, so we set the content-length nevertheless
 		ctx.Request.Req().ContentLength = int64(len(ctx.Request.Body()))
+		// Auth headers are request-local and origin-scoped. Apply them before
+		// user rules so explicit set/delete rules retain their existing priority.
+		authHeaders := p.applyAuthHeaders(ctx.Request.Req())
 		// snapshot the rules once: ExecuteActions may still be appending rules
 		// from another goroutine while this hijack handler runs.
 		rules := p.rulesSnapshot()
@@ -52,7 +57,7 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 		}
 
 		// perform the request
-		if err := ctx.LoadResponse(httpClient, true); err != nil {
+		if err := ctx.LoadResponse(p.authRedirectClient(httpClient, authHeaders), true); err != nil {
 			gologger.Verbose().Msgf("headless: failed to load response for %s: %s", ctx.Request.URL(), err)
 		}
 
@@ -119,6 +124,9 @@ func (p *Page) routingRuleHandlerNative(e *proto.FetchRequestPaused) error {
 	if err := protocolstate.ValidateNFailRequest(p.options.Options, p.page, e); err != nil {
 		return err
 	}
+	if e.ResponseStatusCode == nil && e.ResponseErrorReason == "" {
+		return p.continueNativeRequest(e)
+	}
 	body, _ := FetchGetResponseBody(p.page, e)
 	headers := make(map[string][]string)
 	for _, h := range e.ResponseHeaders {
@@ -157,4 +165,69 @@ func (p *Page) routingRuleHandlerNative(e *proto.FetchRequestPaused) error {
 	p.addToHistory(historyData)
 
 	return FetchContinueRequest(p.page, e)
+}
+
+// continueNativeRequest applies origin-scoped auth headers to one browser
+// request and asks CDP to pause the same request again at response stage so the
+// existing history capture remains intact.
+func (p *Page) continueNativeRequest(e *proto.FetchRequestPaused) error {
+	target, err := url.Parse(e.Request.URL)
+	if err != nil {
+		return (&proto.FetchContinueRequest{RequestID: e.RequestID, InterceptResponse: true}).Call(p.page)
+	}
+	authHeaders := p.authHeaders(target)
+	if len(authHeaders) == 0 {
+		return (&proto.FetchContinueRequest{RequestID: e.RequestID, InterceptResponse: true}).Call(p.page)
+	}
+
+	headers := make([]*proto.FetchHeaderEntry, 0, len(e.Request.Headers)+len(authHeaders)/2)
+	for name, value := range e.Request.Headers {
+		if headerPairsContain(authHeaders, name) {
+			continue
+		}
+		headers = append(headers, &proto.FetchHeaderEntry{Name: name, Value: value.Str()})
+	}
+	for i := 0; i+1 < len(authHeaders); i += 2 {
+		headers = append(headers, &proto.FetchHeaderEntry{Name: authHeaders[i], Value: authHeaders[i+1]})
+	}
+	return (&proto.FetchContinueRequest{
+		RequestID:         e.RequestID,
+		Headers:           headers,
+		InterceptResponse: true,
+	}).Call(p.page)
+}
+
+func headerPairsContain(headers []string, name string) bool {
+	for i := 0; i+1 < len(headers); i += 2 {
+		if strings.EqualFold(headers[i], name) {
+			return true
+		}
+	}
+	return false
+}
+
+// authRedirectClient preserves the configured client while preventing Go's
+// internal redirect handling from forwarding auth-derived headers across
+// origins, where browser request interception cannot observe the redirect hop.
+func (p *Page) authRedirectClient(client *http.Client, authHeaders []string) *http.Client {
+	if client == nil || len(authHeaders) == 0 {
+		return client
+	}
+	cloned := *client
+	previousCheck := client.CheckRedirect
+	cloned.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if !p.authOriginMatches(req.URL) {
+			for i := 0; i+1 < len(authHeaders); i += 2 {
+				req.Header.Del(authHeaders[i])
+			}
+		}
+		if previousCheck != nil {
+			return previousCheck(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &cloned
 }
