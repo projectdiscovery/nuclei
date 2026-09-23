@@ -20,22 +20,22 @@ import (
 // makeEvent returns a fully populated ResultEvent suitable for the integration tests.
 func makeEvent() *output.ResultEvent {
 	return &output.ResultEvent{
-		TemplateID:   "test-template",
-		TemplateURL:  "https://templates.example.com/test-template.yaml",
-		Template:     "/tmp/nuclei-templates/cves/test-template.yaml",
-		TemplatePath: "/tmp/nuclei-templates/cves/test-template.yaml",
-		Type:         "http",
-		Host:         "example.com",
-		URL:          "https://example.com",
-		Path:         "/admin",
-		Matched:      "https://example.com/admin",
-		IP:           "93.184.216.34",
-		MatcherName:  "status-200",
-		ExtractorName: "version",
+		TemplateID:       "test-template",
+		TemplateURL:      "https://templates.example.com/test-template.yaml",
+		Template:         "/tmp/nuclei-templates/cves/test-template.yaml",
+		TemplatePath:     "/tmp/nuclei-templates/cves/test-template.yaml",
+		Type:             "http",
+		Host:             "example.com",
+		URL:              "https://example.com",
+		Path:             "/admin",
+		Matched:          "https://example.com/admin",
+		IP:               "93.184.216.34",
+		MatcherName:      "status-200",
+		ExtractorName:    "version",
 		ExtractedResults: []string{"v1.2.3", "v1.2.4"},
-		CURLCommand:   "curl -X GET https://example.com/admin",
-		Lines:         []int{0, 42},
-		Timestamp:     time.Now(),
+		CURLCommand:      "curl -X GET https://example.com/admin",
+		Lines:            []int{0, 42},
+		Timestamp:        time.Now(),
 		Info: model.Info{
 			Name:           "Test Finding",
 			Authors:        stringslice.StringSlice{Value: "tester"},
@@ -502,4 +502,5 @@ func TestSarifExportIncludesConfidence(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(data), "confidence")
 	require.Contains(t, string(data), "confidence-score")
+	require.Contains(t, string(data), `"target"`)
 }

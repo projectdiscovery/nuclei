@@ -9,15 +9,15 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
-// confidenceColor colorizes the confidence tier for screen output.
-func (w *StandardWriter) confidenceColor(confidence string) string {
-	switch confidence {
+// confidenceColor colorizes confidence text using the tier color.
+func (w *StandardWriter) confidenceColor(text, tier string) string {
+	switch tier {
 	case "high":
-		return w.aurora.BrightGreen(confidence).String()
+		return w.aurora.BrightGreen(text).String()
 	case "medium":
-		return w.aurora.BrightYellow(confidence).String()
+		return w.aurora.BrightYellow(text).String()
 	default:
-		return w.aurora.BrightBlack(confidence).String()
+		return w.aurora.BrightBlack(text).String()
 	}
 }
 
@@ -65,8 +65,9 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString("] ")
 
 		if output.Confidence != "" {
+			label := output.Confidence + " (" + strconv.Itoa(output.ConfidenceScore) + ")"
 			builder.WriteString("[")
-			builder.WriteString(w.confidenceColor(output.Confidence))
+			builder.WriteString(w.confidenceColor(label, output.Confidence))
 			builder.WriteString("] ")
 		}
 	}

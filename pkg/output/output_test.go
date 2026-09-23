@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -49,6 +50,27 @@ func TestStandardWriterRequest(t *testing.T) {
 
 		require.Equal(t, `{"template":"misconfiguration/tcpconfig.yaml","type":"http","input":"https://example.com/tcpconfig.html","address":"example.com:443","error":"cause=\"context deadline exceeded (Client.Timeout exceeded while awaiting headers)\"","kind":"unknown-error"}`, errorWriter.String())
 	})
+}
+
+func TestFormatScreenIncludesConfidenceScore(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{NoColor: true})
+	require.NoError(t, err)
+	t.Cleanup(func() { w.Close() })
+
+	formatted := string(w.formatScreen(&ResultEvent{
+		TemplateID:      "test-template",
+		Type:            "http",
+		Host:            "example.com",
+		Confidence:      "low",
+		ConfidenceScore: 0,
+	}))
+	require.Contains(t, formatted, "[low (0)]")
+}
+
+func TestResultEventSerializesZeroConfidenceScore(t *testing.T) {
+	data, err := json.Marshal(&ResultEvent{Confidence: "low", ConfidenceScore: 0})
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"confidence-score":0`)
 }
 
 type testWriteCloser struct {

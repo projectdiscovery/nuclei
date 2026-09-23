@@ -218,7 +218,7 @@ type ResultEvent struct {
 	// independent of severity.
 	Confidence string `json:"confidence,omitempty"`
 	// ConfidenceScore is the 0-100 score (QoD-style) behind Confidence.
-	ConfidenceScore int `json:"confidence-score,omitempty"`
+	ConfidenceScore int `json:"confidence-score"`
 	// Lines is the line count for the specified match
 	Lines []int `json:"matched-line,omitempty"`
 	// GlobalMatchers identifies whether the matches was detected in the response
