@@ -275,7 +275,7 @@ func publicIP(options *types.Options, args ...interface{}) (interface{}, error) 
 	if err != nil {
 		return nil, fmt.Errorf("public_ip: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("public_ip: unexpected HTTP status %s", response.Status)

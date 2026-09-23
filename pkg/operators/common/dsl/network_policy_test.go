@@ -159,7 +159,7 @@ func (p *jarmTestProxy) Dial(network, address string) (net.Conn, error) {
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 		_ = server.SetDeadline(time.Now().Add(time.Second))
 		buffer := make([]byte, 4096)
 		_, _ = server.Read(buffer)
