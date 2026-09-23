@@ -202,6 +202,9 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 				return
 			}
 
+			if request.options.HostRateLimiter != nil {
+				request.options.RateLimitTakeFor(rateLimitHostKeyFromRawURL(httpRequest.URL()))
+			}
 			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
@@ -527,6 +530,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
 				// skip if first match is found
 				return
+			}
+			if request.options.HostRateLimiter != nil {
+				request.options.RateLimitTakeFor(rateLimitHostKeyFromRawURL(httpRequest.URL()))
 			}
 			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
@@ -908,6 +914,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				return errors.Wrap(clientErr, "could not get http client")
 			}
 			executingClient = httpclient
+			if request.options.HostRateLimiter != nil {
+				generatedRequest.request = generatedRequest.request.WithContext(
+					httpclientpool.WithRedirectCallback(generatedRequest.request.Context(), func(host string) {
+						request.options.RateLimitTakeFor(host)
+					}),
+				)
+			}
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a

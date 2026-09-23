@@ -21,8 +21,62 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 )
+
+func TestHostRateLimiterSpecialExecutionPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		request *Request
+	}{
+		{
+			name: "race",
+			request: &Request{
+				ID:                 "race-host-rate-limit",
+				Path:               []string{"{{BaseURL}}"},
+				Race:               true,
+				RaceNumberRequests: 2,
+			},
+		},
+		{
+			name: "pipeline",
+			request: &Request{
+				ID:       "pipeline-host-rate-limit",
+				Path:     []string{"{{BaseURL}}"},
+				Pipeline: true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := testutils.DefaultOptions
+			testutils.Init(options)
+			defer testutils.Cleanup(options)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer server.Close()
+
+			executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+				ID:   tt.request.ID,
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+			executerOpts.HostRateLimiter = hostratelimit.NewPool(context.Background(), hostratelimit.Options{
+				MaxCount: 100,
+				Duration: time.Second,
+			})
+			defer executerOpts.HostRateLimiter.Stop()
+
+			require.NoError(t, tt.request.Compile(executerOpts))
+			ctxArgs := contextargs.NewWithInput(context.Background(), server.URL)
+			require.NoError(t, tt.request.ExecuteWithResults(ctxArgs, output.InternalEvent{}, output.InternalEvent{}, func(*output.InternalWrappedEvent) {}))
+			require.Equal(t, 1, executerOpts.HostRateLimiter.Len())
+		})
+	}
+}
 
 func TestHTTPExtractMultipleReuse(t *testing.T) {
 	options := testutils.DefaultOptions
