@@ -11,7 +11,6 @@ import (
 	"github.com/maypok86/otter/v2"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 
 	// IndexVersion is the schema version for cache invalidation on breaking
 	// changes.
-	IndexVersion = 1
+	IndexVersion = 3
 
 	// DefaultMaxSize is the default maximum number of templates to cache.
 	DefaultMaxSize = 50000
@@ -47,10 +46,10 @@ type cacheSnapshot struct {
 // NewIndex creates a new template metadata cache with the given options.
 func NewIndex(cacheDir string) (*Index, error) {
 	if cacheDir == "" {
-		cacheDir = folderutil.AppCacheDirOrDefault(".nuclei-cache", config.BinaryName)
+		cacheDir = config.DefaultConfig.GetCacheDir()
 	}
 
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o700); err != nil {
 		return nil, err
 	}
 
@@ -71,7 +70,10 @@ func NewIndex(cacheDir string) (*Index, error) {
 			weight += len(value.Name)
 			weight += len(value.Severity)
 			weight += len(value.ProtocolType)
+			weight += len(value.Product)
 			weight += len(value.TemplateVerifier)
+			weight += len(value.VerifierFingerprint)
+			weight += len(value.ContentDigest)
 
 			for _, author := range value.Authors {
 				weight += len(author)
@@ -224,8 +226,14 @@ func (i *Index) Save() error {
 
 	// NOTE(dwisiswant0): write to temp for atomic op.
 	tmpFile := i.cacheFile + ".tmp"
-	file, err := os.Create(tmpFile)
+	file, err := os.OpenFile(tmpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
+		return err
+	}
+	if err := file.Chmod(0o600); err != nil {
+		_ = file.Close()
+		_ = os.Remove(tmpFile)
+
 		return err
 	}
 

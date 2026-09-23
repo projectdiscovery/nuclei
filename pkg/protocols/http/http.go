@@ -16,6 +16,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -23,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/schema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
@@ -138,7 +140,11 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
+	options *protocols.ExecutorOptions
+	// hasLLMOperators reports whether any matcher on this request is an llm
+	// matcher, so the audit map is only allocated for responses that can
+	// produce one.
+	hasLLMOperators   bool
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
@@ -173,6 +179,10 @@ type Request struct {
 	// description: |
 	//   DisableCookie is an optional setting that disables cookie reuse
 	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
+
+	// description: |
+	//   DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset.
+	DisableHTTPCache bool `yaml:"disable-http-cache,omitempty" json:"disable-http-cache,omitempty" jsonschema:"title=disable HTTP cache,description=Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"`
 
 	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring
@@ -352,10 +362,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:       request.Threads,
-		MaxRedirects:  request.MaxRedirects,
-		NoTimeout:     false,
-		DisableCookie: request.DisableCookie,
+		Threads:          request.Threads,
+		MaxRedirects:     request.MaxRedirects,
+		NoTimeout:        false,
+		DisableCookie:    request.DisableCookie,
+		DisableHTTPCache: request.DisableHTTPCache,
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: disableKeepAlive,
 		},
@@ -430,6 +441,19 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.TemplateID = options.TemplateID
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
+		}
+		// http is the only protocol that evaluates llm operators today; the
+		// template compiler rejects them elsewhere.
+		for _, matcher := range compiled.Matchers {
+			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+				matcher.SetLLMClient(options.LLMClient)
+				request.hasLLMOperators = true
+			}
+		}
+		for _, extractor := range compiled.Extractors {
+			if extractor != nil && extractor.GetType() == extractors.LLMExtractor {
+				extractor.SetLLMClient(options.LLMClient)
+			}
 		}
 		request.CompiledOperators = compiled
 	}
@@ -557,6 +581,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
 	}
+
+	// Avoid reusing client-side HTTP proxy connections for the legacy non-threaded spray path.
+	if shouldDisableKeepAliveForHTTPProxy(request, options) {
+		request.connConfiguration.Connection.DisableKeepAlive = true
+	}
 	return nil
 }
 
@@ -604,6 +633,15 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 // HasFuzzing indicates whether the request has fuzzing rules defined.
 func (request *Request) HasFuzzing() bool {
 	return len(request.Fuzzing) > 0
+}
+
+// shouldDisableKeepAliveForHTTPProxy preserves the pre-pooling behavior only for
+// standard HTTP proxies in non-threaded template/auto spray scans.
+func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.ExecutorOptions) bool {
+	if request == nil || options == nil || options.Options == nil || options.Options.AliveHttpProxy == "" {
+		return false
+	}
+	return request.Threads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
 }
 
 // AnalyzeConnectionReuse determines if a request can safely reuse connections.

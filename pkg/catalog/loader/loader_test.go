@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -57,6 +59,37 @@ func TestLoadTemplates(t *testing.T) {
 		require.Nil(t, err, "could not load templates")
 		require.Equal(t, []string{templatesDirectory}, store.finalTemplates, "could not get correct templates")
 	})
+}
+
+func TestLoadTemplatesWithTagsRejectsCorruptIgnoreFileInValidationMode(t *testing.T) {
+	root := t.TempDir()
+	ignoreFilePath := filepath.Join(root, config.NucleiIgnoreFileName)
+	require.NoError(t, os.WriteFile(ignoreFilePath, []byte("tags: ["), 0o600))
+
+	cfg := config.DefaultConfig
+	oldRoot := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(oldRoot) })
+	cfg.SetTemplatesDir(root)
+
+	options := testutils.DefaultOptions.Copy()
+	options.Validate = true
+	metadataIndex, err := metadataindex.NewIndex(t.TempDir())
+	require.NoError(t, err)
+
+	store, err := New(&Config{
+		Catalog: disk.NewCatalog(""),
+		ExecutorOptions: &protocols.ExecutorOptions{
+			Options: options,
+			Parser:  templates.NewParser(),
+		},
+		Logger:        options.Logger,
+		MetadataIndex: metadataIndex,
+	})
+	require.NoError(t, err)
+
+	_, err = store.LoadTemplatesWithTags(nil, nil)
+	require.ErrorContains(t, err, "error parsing")
+	require.ErrorContains(t, err, strconv.Quote(ignoreFilePath))
 }
 
 func TestNewUsesConfiguredMetadataIndex(t *testing.T) {
@@ -141,6 +174,60 @@ func TestLoadTemplatesOnlyMetadataLogsCachedTemplateParseErrors(t *testing.T) {
 	output.Reset()
 	require.NoError(t, store.LoadTemplatesOnlyMetadata())
 	require.Contains(t, output.String(), "Could not load template")
+}
+
+func TestValidateTemplatesRejectsRuntimeCompilationError(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "invalid-regex-group.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: invalid-regex-group
+
+info:
+  name: Invalid Regex Group
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    extractors:
+      - type: regex
+        group: -1
+        regex:
+          - "(a)(b)"
+`), 0o600))
+
+	options := testutils.DefaultOptions.Copy()
+	var output bytes.Buffer
+	logger := &gologger.Logger{}
+	logger.SetFormatter(formatter.NewCLI(false))
+	logger.SetWriter(&utils.CaptureWriter{Buffer: &output})
+	logger.SetMaxLevel(levels.LevelDebug)
+	options.Logger = logger
+	options.ExecutionId = "loader-invalid-regex-group"
+	options.Templates = []string{templatePath}
+	options.Validate = true
+	options.TemplateLoadingConcurrency = 1
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	parser := templates.NewParser()
+	parser.ShouldValidate = true
+	executerOpts.Parser = parser
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	store, err := New(NewConfig(options, catalog, executerOpts))
+	require.NoError(t, err)
+	require.Error(t, store.ValidateTemplates())
+	require.Contains(t, output.String(), "regex extractor group must be >= 0")
 }
 
 func TestRemoteTemplates(t *testing.T) {
@@ -444,6 +531,77 @@ javascript:
 	require.Empty(t, loaded)
 	require.Equal(t, initialUnverifiedJavascript+1, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
 	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
+}
+
+func TestLoadTemplatesReverifiesCachedJavascriptTemplate(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "cached-javascript.yaml")
+	verifiedModTime := time.Now().Add(-time.Hour)
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: cached-javascript
+
+info:
+  name: Cached Javascript
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "executed")
+    code: |
+      Export("cached-javascript")
+`), 0o600))
+	require.NoError(t, os.Chtimes(templatePath, verifiedModTime, verifiedModTime))
+	fileInfo, err := os.Stat(templatePath)
+	require.NoError(t, err)
+
+	metadataIndex, err := metadataindex.NewIndex(t.TempDir())
+	require.NoError(t, err)
+	metadataIndex.Set(templatePath, &metadataindex.Metadata{
+		ID:               "cached-javascript",
+		FilePath:         templatePath,
+		ModTime:          fileInfo.ModTime(),
+		Name:             "Cached Javascript",
+		Authors:          []string{"pdteam"},
+		Severity:         "info",
+		ProtocolType:     "javascript",
+		Verified:         true,
+		TemplateVerifier: "projectdiscovery/nuclei-templates",
+		ContentDigest:    [32]byte{1},
+		Validation:       metadataindex.ValidationStrict,
+	})
+
+	options := testutils.DefaultOptions.Copy()
+	options.Logger = &gologger.Logger{}
+	options.ExecutionId = "loader-cached-javascript"
+	options.DisableUnsignedTemplates = false
+	options.TemplateLoadingConcurrency = 1
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	executerOpts.Parser = templates.NewParser()
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	loaderConfig := NewConfig(options, catalog, executerOpts)
+	loaderConfig.MetadataIndex = metadataIndex
+	store, err := New(loaderConfig)
+	require.NoError(t, err)
+
+	loaded, err := store.LoadTemplates([]string{templatePath})
+	require.NoError(t, err)
+	require.Empty(t, loaded, "mtime-only metadata must not authorize javascript execution")
+
+	refreshedMetadata, found := metadataIndex.Get(templatePath)
+	require.True(t, found)
+	require.False(t, refreshedMetadata.Verified)
+	require.NotEqual(t, [32]byte{1}, refreshedMetadata.ContentDigest)
 }
 
 func TestLoadTemplatesTreatsMixedTemplateWithJavascriptAsJavascriptSensitive(t *testing.T) {
