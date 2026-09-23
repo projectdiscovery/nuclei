@@ -1060,6 +1060,11 @@
         },
         {
           "required": [
+            "fuzzing"
+          ]
+        },
+        {
+          "required": [
             "pre-condition",
             "payloads",
             "fuzzing"
@@ -1181,11 +1186,13 @@
         "headers": {
           "description": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
           "examples": [
-            "User-Agent: Mozilla/5.0",
-            "Authorization: Bearer {{token}}",
-            "X-Forwarded-For: {{Hostname}}",
-            "Origin: {{BaseURL}}",
-            "Referer: {{BaseURL}}/admin"
+            {
+              "Authorization": "Bearer {{token}}",
+              "Origin": "{{BaseURL}}",
+              "Referer": "{{BaseURL}}/admin",
+              "User-Agent": "Mozilla/5.0",
+              "X-Forwarded-For": "{{Hostname}}"
+            }
           ],
           "markdownDescription": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
           "patternProperties": {
@@ -2185,11 +2192,6 @@
         {
           "required": [
             "host"
-          ]
-        },
-        {
-          "required": [
-            "inputs"
           ]
         }
       ],
