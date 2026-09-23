@@ -755,7 +755,13 @@ func TestHTTPErrorMatcherOnConnectionFailure(t *testing.T) {
 	var matched bool
 	var event *output.InternalWrappedEvent
 	ctxArgs := contextargs.NewWithInput(context.Background(), "http://127.0.0.1:1")
-	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(e *output.InternalWrappedEvent) {
+	previous := output.InternalEvent{
+		"status_code_1": 200,
+		"error":         "stale",
+		"error_type":    "timeout",
+		"timeout":       true,
+	}
+	err = request.ExecuteWithResults(ctxArgs, nil, previous, func(e *output.InternalWrappedEvent) {
 		event = e
 		if e.OperatorsResult != nil && e.OperatorsResult.Matched {
 			matched = true
@@ -764,6 +770,8 @@ func TestHTTPErrorMatcherOnConnectionFailure(t *testing.T) {
 	require.Error(t, err)
 	require.NotNil(t, event)
 	require.True(t, matched, "connection error should match type: error matcher")
+	require.Equal(t, 200, event.InternalEvent["status_code_1"])
+	require.NotEqual(t, "stale", event.InternalEvent["error"])
 	require.Equal(t, "connection", event.InternalEvent["error_type"])
 	require.Equal(t, false, event.InternalEvent["timeout"])
 }
@@ -780,7 +788,7 @@ func TestHTTPErrorMatcherSubstring(t *testing.T) {
 		Operators: operators.Operators{
 			Matchers: []*matchers.Matcher{{
 				Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
-				Errors: []string{"connection refused"},
+				Errors: []string{"refused"},
 			}},
 		},
 	}

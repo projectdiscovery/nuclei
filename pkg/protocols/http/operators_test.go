@@ -7,13 +7,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -116,6 +116,29 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		isMatched, matched := request.Match(event, matcher)
 		require.False(t, isMatched, "could match invalid response matcher")
 		require.Equal(t, []string{}, matched)
+	})
+
+	t.Run("response error header is not a request error", func(t *testing.T) {
+		event["error"] = "unavailable"
+		errorMatcher := &matchers.Matcher{
+			Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+			Errors: []string{"any"},
+		}
+		require.NoError(t, errorMatcher.CompileMatchers())
+
+		isMatched, matched := request.Match(event, errorMatcher)
+		require.False(t, isMatched)
+		require.Empty(t, matched)
+
+		headerMatcher := &matchers.Matcher{
+			Part:  "error",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"unavailable"},
+		}
+		require.NoError(t, headerMatcher.CompileMatchers())
+		isMatched, matched = request.Match(event, headerMatcher)
+		require.True(t, isMatched)
+		require.Equal(t, []string{"unavailable"}, matched)
 	})
 
 	t.Run("caseInsensitive", func(t *testing.T) {

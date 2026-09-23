@@ -106,7 +106,7 @@ type Matcher struct {
 	// description: |
 	//   Errors are patterns matched against a failed request (no successful response).
 	//
-	//   Reserved kinds (matched via error classification): timeout, connection, any.
+	//   Reserved kinds (matched via error classification): timeout, connection, connect, any, *.
 	//   Any other value is treated as a substring of the error message.
 	//   When empty, any request error matches.
 	// examples:
@@ -116,7 +116,7 @@ type Matcher struct {
 	//   - name: Match a substring in the error message
 	//     value: >
 	//       []string{"connection refused"}
-	Errors []string `yaml:"errors,omitempty" json:"errors,omitempty" jsonschema:"title=error patterns to match,description=Error kinds (timeout, connection, any) or substrings of the error message"`
+	Errors []string `yaml:"errors,omitempty" json:"errors,omitempty" jsonschema:"title=error patterns to match,description=Error kinds (timeout, connection, connect, any, *) or substrings of the error message"`
 	// description: |
 	//   Prompt is the natural-language question for an llm matcher. The model
 	//   judges the selected response part and returns a verdict; the matcher

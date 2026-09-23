@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -274,6 +275,50 @@ func TestNetworkCompileDefersInteractshMarkerHelpersToRuntime(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for network request")
 	}
+}
+
+func TestEmitErrorEventPreservesHistoryAndAnnotations(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID:      "network-error-history",
+		Address: []string{"{{Hostname}}"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+				Errors: []string{"connection"},
+			}},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	previous := output.InternalEvent{
+		"banner_1":   "hello",
+		"error":      "stale",
+		"error_type": "timeout",
+		"timeout":    true,
+	}
+	payloads := map[string]interface{}{
+		"error":      "payload",
+		"error_type": "unknown",
+		"timeout":    true,
+	}
+	var event *output.InternalWrappedEvent
+	request.emitErrorEvent(func(got *output.InternalWrappedEvent) {
+		event = got
+	}, errors.New("dial tcp 127.0.0.1:1: connection refused"), "127.0.0.1:1", "127.0.0.1:1", payloads, previous, "", nil)
+
+	require.NotNil(t, event)
+	require.Equal(t, "hello", event.InternalEvent["banner_1"])
+	require.Equal(t, "connection", event.InternalEvent["error_type"])
+	require.Equal(t, false, event.InternalEvent["timeout"])
+	require.Contains(t, event.InternalEvent["error"], "connection refused")
+	require.True(t, event.OperatorsResult.Matched)
 }
 
 var exampleBody = `<!doctype html>

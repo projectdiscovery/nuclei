@@ -41,6 +41,7 @@ func TestClassifyConnection(t *testing.T) {
 		io.EOF,
 		&net.OpError{Op: "dial", Err: errors.New("connect: connection refused")},
 		errors.New("connection refused"),
+		errors.New("connectex: No connection could be made because the target machine actively refused it"),
 		errors.New("no such host"),
 		errors.New("network is unreachable"),
 	}
@@ -70,5 +71,5 @@ func TestAnnotate(t *testing.T) {
 	}
 
 	Annotate(nil, context.DeadlineExceeded, time.Second) // no panic
-	Annotate(map[string]interface{}{}, nil, time.Second)  // no fields
+	Annotate(map[string]interface{}{}, nil, time.Second) // no fields
 }

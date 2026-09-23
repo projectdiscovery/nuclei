@@ -336,7 +336,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		request.emitErrorEvent(callback, err, address, actualAddress, payloads, hostname)
+		request.emitErrorEvent(callback, err, address, actualAddress, payloads, previous, hostname, interactshURLs)
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
@@ -394,14 +394,14 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if _, err := conn.Write(dataInBytes); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
-			request.emitErrorEvent(callback, err, address, actualAddress, payloads, hostname)
+			request.emitErrorEvent(callback, err, address, actualAddress, payloads, previous, hostname, interactshURLs)
 			return errors.Wrap(err, "could not write request to server")
 		}
 
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
-				request.emitErrorEvent(callback, err, address, actualAddress, payloads, hostname)
+				request.emitErrorEvent(callback, err, address, actualAddress, payloads, previous, hostname, interactshURLs)
 				return errkit.Wrap(err, "could not read response from connection")
 			}
 			stepDurations = append(stepDurations, time.Since(timeStart))
@@ -460,9 +460,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	response := responseBuilder.String()
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final), response, input.MetaInput.Input, actualAddress)
-	if readErr != nil {
-		requesterr.Annotate(outputEvent, readErr, 0)
-	}
 	addDurationFields(outputEvent, stepDurations)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
@@ -478,6 +475,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	maps.Copy(outputEvent, inputEvents)
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
+	}
+	if readErr != nil {
+		requesterr.Annotate(outputEvent, readErr, 0)
 	}
 
 	var event *output.InternalWrappedEvent
@@ -581,18 +581,41 @@ func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte
 
 // emitErrorEvent creates a matcher event for a failed network I/O operation when
 // the template has error/timeout matchers.
-func (request *Request) emitErrorEvent(callback protocols.OutputEventCallback, err error, address, actualAddress string, payloads map[string]interface{}, hostname string) {
-	if request.CompiledOperators == nil || !request.CompiledOperators.HasErrorMatchers() {
+func (request *Request) emitErrorEvent(callback protocols.OutputEventCallback, err error, address, actualAddress string, payloads map[string]interface{}, previous output.InternalEvent, hostname string, interactshURLs []string) {
+	hasErrorMatchers := request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers()
+	if !hasErrorMatchers && len(interactshURLs) == 0 {
 		return
 	}
 	outputEvent := request.responseToDSLMap("", "", "", address, actualAddress)
-	requesterr.Annotate(outputEvent, err, 0)
+	maps.Copy(outputEvent, previous)
 	maps.Copy(outputEvent, payloads)
 	if hostname != "" {
-		outputEvent["ip"] = hostname
+		outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 	}
-	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-	callback(event)
+	if request.options.Interactsh != nil {
+		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
+	}
+	requesterr.Annotate(outputEvent, err, 0)
+
+	var event *output.InternalWrappedEvent
+	if hasErrorMatchers {
+		event = eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+	} else {
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
+	}
+	if len(interactshURLs) > 0 && request.options.Interactsh != nil {
+		event.UsesInteractsh = true
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
+			MakeResultFunc: request.MakeResultEvent,
+			Event:          event,
+			Operators:      request.CompiledOperators,
+			MatchFunc:      request.Match,
+			ExtractFunc:    request.Extract,
+		})
+	}
+	if hasErrorMatchers {
+		callback(event)
+	}
 }
 
 // markHostError checks if the error is a unreponsive host error and marks it

@@ -681,9 +681,6 @@ func (request *Request) executeRequestWithPayloads(
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
 	data := request.generateEventData(input, values, hostPort)
-	if err != nil {
-		requesterr.Annotate(data, err, 0)
-	}
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)
@@ -700,7 +697,11 @@ func (request *Request) executeRequestWithPayloads(
 	}
 
 	if _, ok := data["error"]; ok {
-		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(data, payloadValues), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+		eventData := generators.MergeMaps(data, payloadValues)
+		if err != nil {
+			requesterr.Annotate(eventData, err, 0)
+		}
+		event := eventcreator.CreateEventWithAdditionalOptions(request, eventData, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payload
 		})
 		callback(event)

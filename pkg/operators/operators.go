@@ -105,30 +105,67 @@ func (operators *Operators) HasErrorMatchers() bool {
 }
 
 func dslReferencesRequestError(expr string) bool {
-	lower := strings.ToLower(expr)
-	// word-ish checks so we don't treat unrelated identifiers as error matchers
-	for _, token := range []string{"timeout", "error_type", "error"} {
-		idx := 0
-		for {
-			i := strings.Index(lower[idx:], token)
-			if i < 0 {
+	for i := 0; i < len(expr); {
+		if expr[i] == '\'' || expr[i] == '"' || expr[i] == '`' {
+			quote := expr[i]
+			i++
+			for i < len(expr) {
+				if expr[i] == '\\' && quote != '`' {
+					i += 2
+					continue
+				}
+				if expr[i] == quote {
+					i++
+					break
+				}
+				i++
+			}
+			continue
+		}
+		if !isIdentByte(expr[i]) || (expr[i] >= '0' && expr[i] <= '9') {
+			i++
+			continue
+		}
+		start := i
+		for i < len(expr) && isIdentByte(expr[i]) {
+			i++
+		}
+		if isRequestErrorIdentifier(strings.ToLower(expr[start:i])) {
+			return true
+		}
+	}
+	return false
+}
+
+func isRequestErrorIdentifier(identifier string) bool {
+	for _, field := range []string{"timeout", "error_type", "error"} {
+		if identifier == field {
+			return true
+		}
+		prefix := field + "_"
+		if !strings.HasPrefix(identifier, prefix) {
+			continue
+		}
+		suffix := identifier[len(prefix):]
+		if suffix == "" {
+			continue
+		}
+		indexed := true
+		for i := 0; i < len(suffix); i++ {
+			if suffix[i] < '0' || suffix[i] > '9' {
+				indexed = false
 				break
 			}
-			i += idx
-			beforeOK := i == 0 || !isIdentByte(lower[i-1])
-			after := i + len(token)
-			afterOK := after >= len(lower) || !isIdentByte(lower[after])
-			if beforeOK && afterOK {
-				return true
-			}
-			idx = after
+		}
+		if indexed {
+			return true
 		}
 	}
 	return false
 }
 
 func isIdentByte(b byte) bool {
-	return (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9') || b == '_'
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '_'
 }
 
 // GetMatchersCondition returns the condition for the matchers

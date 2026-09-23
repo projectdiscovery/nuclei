@@ -977,6 +977,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
+		requestEvent := maps.Clone(outputEvent)
+		if previousEvent != nil {
+			outputEvent = maps.Clone(previousEvent)
+			maps.Copy(outputEvent, requestEvent)
+		}
+		if request.NeedsRequestCondition() {
+			for key, value := range requestEvent {
+				outputEvent[fmt.Sprintf("%s_%d", key, requestCount)] = value
+			}
+		}
 
 		hasErrorMatchers := request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers()
 		if hasErrorMatchers || len(generatedRequest.interactshURLs) > 0 {

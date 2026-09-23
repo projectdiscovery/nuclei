@@ -62,6 +62,36 @@ func TestHasErrorMatchers(t *testing.T) {
 		require.False(t, ops.HasErrorMatchers())
 	})
 
+	t.Run("dsl quoted error fields do not match", func(t *testing.T) {
+		for _, expression := range []string{
+			`contains(body, "timeout")`,
+			`contains(body, 'error')`,
+			`contains(body, "escaped \"timeout\"")`,
+		} {
+			ops := &Operators{Matchers: []*matchers.Matcher{{
+				Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+				DSL:  []string{expression},
+			}}}
+			require.NoError(t, ops.Compile())
+			require.False(t, ops.HasErrorMatchers(), expression)
+		}
+	})
+
+	t.Run("dsl indexed error fields match", func(t *testing.T) {
+		for _, expression := range []string{
+			"timeout_2 == true",
+			`error_type_10 == "connection"`,
+			`contains(error_3, "refused")`,
+		} {
+			ops := &Operators{Matchers: []*matchers.Matcher{{
+				Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+				DSL:  []string{expression},
+			}}}
+			require.NoError(t, ops.Compile())
+			require.True(t, ops.HasErrorMatchers(), expression)
+		}
+	})
+
 	t.Run("word matcher only", func(t *testing.T) {
 		ops := &Operators{Matchers: []*matchers.Matcher{{
 			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},

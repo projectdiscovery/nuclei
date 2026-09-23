@@ -45,6 +45,9 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.ErrorMatcher:
+		if _, ok := data["error_type"]; !ok {
+			return false, []string{}
+		}
 		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
 	case matchers.LLMMatcher:
 		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item)

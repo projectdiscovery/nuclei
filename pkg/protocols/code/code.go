@@ -334,9 +334,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if gOutput.Stderr.Len() > 0 {
 		data["stderr"] = fmtStdout(gOutput.Stderr.String())
 	}
-	if err != nil {
-		requesterr.Annotate(data, err, 0)
-	}
 
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
@@ -349,6 +346,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
+	}
+	if err != nil {
+		requesterr.Annotate(data, err, 0)
 	}
 
 	// todo #1: interactsh async callback should be eliminated as it lead to ton of code duplication
