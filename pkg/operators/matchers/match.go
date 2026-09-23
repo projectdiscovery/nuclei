@@ -4,6 +4,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
@@ -112,7 +113,7 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range matcher.regexCompiled {
-		currentMatches, matched := matcher.findRegexMatches(corpus, regex)
+		currentMatches, matched := matcher.findRegexMatches(corpus, i, regex)
 		if !matched {
 			switch matcher.condition {
 			case ANDCondition:
@@ -139,21 +140,9 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	return false, []string{}
 }
 
-func (matcher *Matcher) findRegexMatches(corpus string, regex *regexp.Regexp) ([]string, bool) {
+func (matcher *Matcher) findRegexMatches(corpus string, index int, regex *regexp.Regexp) ([]string, bool) {
 	if matcher.Offset != nil {
-		offset := *matcher.Offset
-		if offset < 0 || offset > len(corpus) {
-			return nil, false
-		}
-		for _, loc := range regex.FindAllStringIndex(corpus, -1) {
-			if loc[0] == offset {
-				return []string{corpus[loc[0]:loc[1]]}, true
-			}
-			if loc[0] > offset {
-				break
-			}
-		}
-		return nil, false
+		return matcher.findRegexMatchAtOffset(corpus, index, regex)
 	}
 
 	// Literal prefix short-circuit
@@ -179,6 +168,54 @@ func (matcher *Matcher) findRegexMatches(corpus string, regex *regexp.Regexp) ([
 		return nil, false
 	}
 	return currentMatches, true
+}
+
+// findRegexMatchAtOffset reports whether the regex has a match starting exactly
+// at matcher.Offset. Scanning the corpus for every match is both wasteful and
+// wrong here: leftmost matching hides overlapping candidates, so a regex like
+// `ab|b` against `ab` never reports the `b` starting at offset 1. Instead the
+// anchored variant of the regex is run once over the corpus suffix that starts
+// one rune before the offset, which keeps ^, \A and word boundaries evaluated
+// against the original surrounding bytes.
+func (matcher *Matcher) findRegexMatchAtOffset(corpus string, index int, regex *regexp.Regexp) ([]string, bool) {
+	offset := *matcher.Offset
+	if offset < 0 || offset > len(corpus) {
+		return nil, false
+	}
+	anchored := matcher.offsetRegex(index, regex, offset)
+	if anchored == nil {
+		return nil, false
+	}
+
+	start := offset
+	if offset > 0 {
+		_, backward := utf8.DecodeLastRuneInString(corpus[:offset])
+		start = offset - backward
+		// a match can only begin on a rune boundary, so an offset landing
+		// inside a multi byte rune never matches
+		if _, forward := utf8.DecodeRuneInString(corpus[start:]); forward != backward {
+			return nil, false
+		}
+	}
+
+	loc := anchored.FindStringIndex(corpus[start:])
+	if loc == nil {
+		return nil, false
+	}
+	return []string{corpus[offset : start+loc[1]]}, true
+}
+
+// offsetRegex returns the anchored variant of the regex at the given index,
+// compiling it on demand when the matcher was not compiled with an offset.
+func (matcher *Matcher) offsetRegex(index int, regex *regexp.Regexp, offset int) *regexp.Regexp {
+	if index >= 0 && index < len(matcher.offsetRegexCompiled) {
+		return matcher.offsetRegexCompiled[index]
+	}
+	compiled, err := compileOffsetRegex(regex.String(), offset)
+	if err != nil {
+		return nil
+	}
+	return compiled
 }
 
 // MatchBinary matches a binary check against a corpus

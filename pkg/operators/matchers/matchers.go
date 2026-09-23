@@ -172,8 +172,11 @@ type Matcher struct {
 	matcherType   MatcherType
 	binaryDecoded []string
 	regexCompiled []*regexp.Regexp
-	dslCompiled   []*govaluate.EvaluableExpression
-	llmClient     LLMClient
+	// offsetRegexCompiled holds the anchored variant of each regex used when
+	// Offset is set, in the same order as regexCompiled
+	offsetRegexCompiled []*regexp.Regexp
+	dslCompiled         []*govaluate.EvaluableExpression
+	llmClient           LLMClient
 }
 
 // ConditionType is the type of condition for matcher
