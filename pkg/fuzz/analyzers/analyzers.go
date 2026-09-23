@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -105,15 +106,19 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 		return nil, err
 	}
 	if gr.Request != nil {
+		if gr.Component.Name() == component.RequestCookieComponent {
+			// Done outside the header loop because the live request may no
+			// longer carry a Cookie header at all, and the rebuilt request must
+			// not resurrect the cookies it had at parse time.
+			mergeRequestCookies(rebuilt, gr.Request, gr.Key)
+		}
 		for k, vs := range gr.Request.Header {
 			// don't clobber the header we are actively fuzzing
-			if gr.Component.Name() == "header" && k == gr.Key {
+			if gr.Component.Name() == component.RequestHeaderComponent && k == gr.Key {
 				continue
 			}
 			if strings.EqualFold(k, "Cookie") {
-				if gr.Component.Name() == "cookie" {
-					mergeRequestCookies(rebuilt, gr.Request, gr.Key)
-				} else {
+				if gr.Component.Name() != component.RequestCookieComponent {
 					// Cookie may have been changed after the component was
 					// parsed (for example by an auth provider). The live
 					// request is authoritative when cookies are not the
@@ -135,34 +140,38 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 	return rebuilt, nil
 }
 
-// mergeRequestCookies keeps the rebuilt value of the actively fuzzed cookie
-// while refreshing every other cookie from the live request. This preserves
-// cookies injected after component parsing without losing the probe payload.
+// mergeRequestCookies rebuilds the probe's Cookie header from the live request,
+// substituting the fuzzed value for the cookie under test. The live request is
+// authoritative for every other cookie, including its order and any duplicate
+// names (Go allows repeated cookie names in a request), so cookies added after
+// the component was parsed survive and cookies removed since then are not
+// resurrected.
 func mergeRequestCookies(rebuilt, current *retryablehttp.Request, fuzzedKey string) {
-	currentByName := make(map[string]*http.Cookie)
-	currentCookies := current.Cookies()
-	for _, cookie := range currentCookies {
-		currentByName[cookie.Name] = cookie
+	var fuzzed *http.Cookie
+	for _, cookie := range rebuilt.Cookies() {
+		if cookie.Name == fuzzedKey {
+			fuzzed = cookie
+			break
+		}
 	}
 
-	merged := make([]*http.Cookie, 0, len(rebuilt.Cookies())+len(currentByName))
-	seen := make(map[string]struct{})
-	for _, cookie := range rebuilt.Cookies() {
-		if cookie.Name != fuzzedKey {
-			if live, ok := currentByName[cookie.Name]; ok {
-				cookie = live
-			}
-		}
-		merged = append(merged, cookie)
-		seen[cookie.Name] = struct{}{}
-	}
+	currentCookies := current.Cookies()
+	merged := make([]*http.Cookie, 0, len(currentCookies)+1)
+	var injected bool
 	for _, cookie := range currentCookies {
-		if cookie.Name == fuzzedKey {
+		if fuzzed != nil && cookie.Name == fuzzedKey {
+			// servers disagree on which duplicate wins, so every occurrence of
+			// the fuzzed name carries the payload to keep the probe meaningful
+			merged = append(merged, fuzzed)
+			injected = true
 			continue
 		}
-		if _, ok := seen[cookie.Name]; !ok {
-			merged = append(merged, cookie)
-		}
+		merged = append(merged, cookie)
+	}
+	if fuzzed != nil && !injected {
+		// the live request dropped the fuzzed cookie; send the payload anyway,
+		// otherwise the probe would be indistinguishable from the baseline
+		merged = append(merged, fuzzed)
 	}
 
 	rebuilt.Header.Del("Cookie")
