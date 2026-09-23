@@ -369,7 +369,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
-				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
+				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, request.Extract)
 				maps.Copy(inputEvents, values)
 			}
 		}

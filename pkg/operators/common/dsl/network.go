@@ -44,16 +44,43 @@ func EvalWithOptions(expression *govaluate.EvaluableExpression, values map[strin
 	return bound.Evaluate(values)
 }
 
-// This check only avoids rebinding pure expressions. The global registry denies
-// all network helpers, so an unrecognized spelling cannot bypass the gate.
+// networkHelperCall matches a helper invocation, not a substring in another
+// identifier or a quoted string. The global registry still denies every
+// network helper, so an unrecognized spelling cannot bypass the gate.
+var networkHelperCall = regexp.MustCompile(`\b(?:public_ip|publicip|resolve|jarm)\s*\(`)
+
 func hasNetworkHelper(expression string) bool {
-	for _, name := range []string{"resolve", "public_ip", "publicip", "jarm"} {
-		if strings.Contains(expression, name) {
-			return true
+	return networkHelperCall.MatchString(stripQuotedStrings(expression))
+}
+
+func stripQuotedStrings(expression string) string {
+	var builder strings.Builder
+	builder.Grow(len(expression))
+
+	for i := 0; i < len(expression); {
+		char := expression[i]
+		if char != '\'' && char != '"' {
+			builder.WriteByte(char)
+			i++
+			continue
+		}
+
+		quote := char
+		i++
+		for i < len(expression) {
+			if expression[i] == '\\' {
+				i += 2
+				continue
+			}
+			if expression[i] == quote {
+				i++
+				break
+			}
+			i++
 		}
 	}
 
-	return false
+	return builder.String()
 }
 
 func networkDialers(options *types.Options) (*protocolstate.Dialers, error) {
