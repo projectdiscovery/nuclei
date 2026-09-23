@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -62,7 +63,9 @@ var targetValueKeys = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port",
 
 // llmPromptValues returns the values an llm prompt may interpolate: the
 // template variables, -var and constants the operator declared, plus the
-// target. Each is read from the event data, so the value is the evaluated one.
+// target. Declared values come from those maps, not the merged response
+// event, so a colliding body, header, or extractor cannot overwrite them.
+// Placeholders inside declared strings are resolved against the target only.
 //
 // Response derived values (body, headers, extracted fields) are deliberately
 // excluded. They are attacker influenced, and putting them in the instruction
@@ -73,9 +76,18 @@ func (request *Request) llmPromptValues(data map[string]interface{}) map[string]
 		return values
 	}
 
-	declared := func(names map[string]interface{}) {
-		for name := range names {
-			if value, ok := data[name]; ok {
+	targets := make(map[string]interface{})
+	for _, key := range targetValueKeys {
+		if value, ok := data[key]; ok {
+			targets[key] = value
+		}
+	}
+
+	declared := func(src map[string]interface{}) {
+		for name, value := range src {
+			if str, ok := value.(string); ok {
+				values[name] = replacer.Replace(str, targets)
+			} else {
 				values[name] = value
 			}
 		}
@@ -85,12 +97,7 @@ func (request *Request) llmPromptValues(data map[string]interface{}) map[string]
 	if request.options.Options != nil {
 		declared(request.options.Options.Vars.AsMap())
 	}
-
-	for _, key := range targetValueKeys {
-		if value, ok := data[key]; ok {
-			values[key] = value
-		}
-	}
+	maps.Copy(values, targets)
 	return values
 }
 
