@@ -2,16 +2,17 @@ package network
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -60,6 +61,7 @@ func TestNetworkOperatorMatch(t *testing.T) {
 	req := "test-data\r\n"
 	resp := "resp-data\r\nSTAT \r\n"
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
+	addDurationFields(event, []time.Duration{time.Second, 2 * time.Second})
 
 	t.Run("valid", func(t *testing.T) {
 		matcher := &matchers.Matcher{
@@ -145,6 +147,7 @@ func TestNetworkOperatorExtract(t *testing.T) {
 	req := "test-data\r\n"
 	resp := "resp-data\r\nSTAT \r\n1.1.1.1\r\n"
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
+	addDurationFields(event, []time.Duration{time.Second, 2 * time.Second})
 
 	t.Run("extract", func(t *testing.T) {
 		extractor := &extractors.Extractor{
@@ -171,6 +174,18 @@ func TestNetworkOperatorExtract(t *testing.T) {
 		data := request.Extract(event, extractor)
 		require.Greater(t, len(data), 0, "could not extractor kval valid response")
 		require.Equal(t, map[string]struct{}{req: {}}, data, "could not extract correct kval data")
+	})
+
+	t.Run("duration dsl", func(t *testing.T) {
+		extractor := &extractors.Extractor{
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+			DSL:  []string{"duration_2"},
+		}
+		err = extractor.CompileExtractors()
+		require.Nil(t, err, "could not compile duration extractor")
+
+		data := request.Extract(event, extractor)
+		require.Equal(t, map[string]struct{}{"2": {}}, data, "could not extract duration")
 	})
 }
 
