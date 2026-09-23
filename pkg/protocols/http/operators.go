@@ -45,7 +45,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.LLMMatcher:
-		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item)
+		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item, request.llmPromptValues(data))
 		// The audit rides on the per-response event data until the result event
 		// is built; matchers are shared across concurrent requests, so it cannot
 		// be parked on the matcher itself.
@@ -55,6 +55,43 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.ResultWithMatchedSnippet(isMatch, snippets)
 	}
 	return false, []string{}
+}
+
+// targetValueKeys are the target-derived values an llm prompt may interpolate.
+var targetValueKeys = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port", "Scheme", "Path", "Input", "Type"}
+
+// llmPromptValues returns the values an llm prompt may interpolate: the
+// template variables, -var and constants the operator declared, plus the
+// target. Each is read from the event data, so the value is the evaluated one.
+//
+// Response derived values (body, headers, extracted fields) are deliberately
+// excluded. They are attacker influenced, and putting them in the instruction
+// is what framing the response keeps them out of.
+func (request *Request) llmPromptValues(data map[string]interface{}) map[string]interface{} {
+	values := make(map[string]interface{})
+	if request.options == nil {
+		return values
+	}
+
+	declared := func(names map[string]interface{}) {
+		for name := range names {
+			if value, ok := data[name]; ok {
+				values[name] = value
+			}
+		}
+	}
+	declared(request.options.Variables.GetAll())
+	declared(request.options.Constants)
+	if request.options.Options != nil {
+		declared(request.options.Options.Vars.AsMap())
+	}
+
+	for _, key := range targetValueKeys {
+		if value, ok := data[key]; ok {
+			values[key] = value
+		}
+	}
+	return values
 }
 
 func getStatusCode(data map[string]interface{}) (int, bool) {
@@ -87,7 +124,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
 	case extractors.LLMExtractor:
-		return extractor.ExtractLLM(item)
+		return extractor.ExtractLLM(item, request.llmPromptValues(data))
 	}
 	return nil
 }
