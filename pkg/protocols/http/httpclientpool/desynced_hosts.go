@@ -1,6 +1,7 @@
 package httpclientpool
 
 import (
+	"net"
 	"net/url"
 	"strings"
 	"sync/atomic"
@@ -79,8 +80,20 @@ func desyncedHostKey(target string) string {
 	}
 
 	if parsed, err := url.Parse(target); err == nil && parsed.Host != "" {
-		return strings.ToLower(parsed.Host)
+		return normalizeDesyncedHost(parsed.Host)
 	}
 
-	return strings.ToLower(strings.TrimSuffix(target, "/"))
+	return normalizeDesyncedHost(strings.TrimSuffix(target, "/"))
+}
+
+func normalizeDesyncedHost(host string) string {
+	host = strings.ToLower(host)
+	name, port, err := net.SplitHostPort(host)
+	if err != nil || (port != "80" && port != "443") {
+		return host
+	}
+	if strings.Contains(name, ":") {
+		return "[" + name + "]"
+	}
+	return name
 }

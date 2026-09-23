@@ -63,6 +63,15 @@ func (c *desyncConn) Close() error {
 	return c.Conn.Close()
 }
 
+// ConnectionState preserves TLS metadata for net/http when DialTLSContext
+// returns a tracked connection instead of the underlying TLS connection.
+func (c *desyncConn) ConnectionState() tls.ConnectionState {
+	if state, ok := c.Conn.(interface{ ConnectionState() tls.ConnectionState }); ok {
+		return state.ConnectionState()
+	}
+	return tls.ConnectionState{}
+}
+
 func (c *desyncConn) poison() {
 	if !c.poisoned.CompareAndSwap(false, true) {
 		return

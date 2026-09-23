@@ -169,6 +169,23 @@ func TestDesyncConnDetectsSurplusResponseOverHTTPS(t *testing.T) {
 	require.Equal(t, strings.TrimPrefix(server.URL, "https://"), recorder.await(t))
 }
 
+func TestDesyncConnPreservesTLSConnectionState(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "ok")
+	}))
+	t.Cleanup(server.Close)
+
+	transport := &http.Transport{DialTLSContext: trackedTLSDialer(func(string) {})}
+	t.Cleanup(transport.CloseIdleConnections)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	resp, err := transport.RoundTrip(req)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	require.NotNil(t, resp.TLS)
+	require.NotZero(t, resp.TLS.Version)
+}
+
 func TestDesyncConnAllowsHealthyKeepAliveTraffic(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "ok")
@@ -240,7 +257,7 @@ func TestDesyncConnPoisonsOnBytesWhileIdleAndClosesConnection(t *testing.T) {
 	buffer := make([]byte, 128)
 	_, err := tracked.Read(buffer)
 	require.NoError(t, err)
-	require.Equal(t, "idle.test:80", recorder.await(t))
+	require.Equal(t, "idle.test", recorder.await(t))
 	require.True(t, tracked.poisoned.Load())
 
 	_, err = tracked.Read(buffer)
@@ -330,15 +347,19 @@ func TestDesyncedHostKey(t *testing.T) {
 	for _, tc := range []struct{ in, want string }{
 		{"https://example.com:8443/admin?a=1", "example.com:8443"},
 		{"http://example.com/", "example.com"},
-		{"https://EXAMPLE.COM:443/", "example.com:443"},
+		{"https://EXAMPLE.COM:443/", "example.com"},
+		{"http://example.com:80/", "example.com"},
+		{"example.com:443", "example.com"},
+		{"example.com:80", "example.com"},
 		{"https://[2001:db8::1]:8443/", "[2001:db8::1]:8443"},
+		{"https://[2001:db8::1]:443/", "[2001:db8::1]"},
 		{"example.com:8443", "example.com:8443"},
 		{"  example.com  ", "example.com"},
 		{"", ""},
 	} {
 		require.Equal(t, tc.want, desyncedHostKey(tc.in), tc.in)
 	}
-	require.NotEqual(t, desyncedHostKey("example.com:80"), desyncedHostKey("example.com:8080"))
+	require.NotEqual(t, desyncedHostKey("example.com:443"), desyncedHostKey("example.com:8443"))
 }
 
 func TestDesyncTrackersAreExecutionScoped(t *testing.T) {
@@ -348,6 +369,6 @@ func TestDesyncTrackersAreExecutionScoped(t *testing.T) {
 	MarkHostDesynced(first, "example.com:443")
 	require.True(t, IsHostDesynced(first, "example.com:443"))
 	require.False(t, IsHostDesynced(second, "example.com:443"))
-	require.Equal(t, []string{"example.com:443"}, DesyncedHosts(first))
+	require.Equal(t, []string{"example.com"}, DesyncedHosts(first))
 	require.Empty(t, DesyncedHosts(second))
 }
