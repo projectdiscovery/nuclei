@@ -434,7 +434,11 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			results["error"] = outError.Error()
 
 			// generate and return failed event
-			data := request.generateEventData(input, results, hostPort)
+			data, err := request.generateEventData(input, results, hostPort)
+			if err != nil {
+				gologger.Error().Err(err).Msg("failed to generate event data for failed pre-condition")
+				data = make(map[string]interface{})
+			}
 			data = generators.MergeMaps(data, payloadValues)
 			event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 				allVars := argsCopy.Map()
@@ -679,7 +683,11 @@ func (request *Request) executeRequestWithPayloads(
 
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
-	data := request.generateEventData(input, values, hostPort)
+	data, err := request.generateEventData(input, values, hostPort)
+	if err != nil {
+		gologger.Error().Err(err).Msg("failed to generate event data")
+		data = make(map[string]interface{})
+	}
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)
@@ -727,10 +735,10 @@ func (request *Request) executeRequestWithPayloads(
 }
 
 // generateEventData generates event data for the request
-func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
+func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) (map[string]interface{}, error) {
 	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
 	if dialers == nil {
-		panic(fmt.Sprintf("dialers not initialized for %s", request.options.Options.ExecutionId))
+		return nil, fmt.Errorf("dialers not initialized for %s", request.options.Options.ExecutionId)
 	}
 
 	data := make(map[string]interface{})
