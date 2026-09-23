@@ -13,6 +13,7 @@ const (
 	ExcludedCodeTemplateStats           = "excluded-code-templates"
 	ExcludedDASTTemplateStats           = "excluded-dast-templates"
 	ExcludedFileTemplateStats           = "excluded-file-templates"
+	ExcludedLLMTemplateStats            = "excluded-llm-templates"
 	ExcludedGlobalMatchersTemplateStats = "excluded-global-matcher-templates"
 	ExcludedHeadlessTemplateStats       = "excluded-headless-templates"
 	ExcludedSelfContainedTemplateStats  = "excluded-self-contained-templates"

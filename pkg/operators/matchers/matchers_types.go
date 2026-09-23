@@ -29,6 +29,8 @@ const (
 	XPathMatcher
 	// name:error
 	ErrorMatcher
+	// name:llm
+	LLMMatcher
 	limit
 )
 
@@ -42,6 +44,7 @@ var MatcherTypes = map[MatcherType]string{
 	DSLMatcher:    "dsl",
 	XPathMatcher:  "xpath",
 	ErrorMatcher:  "error",
+	LLMMatcher:    "llm",
 }
 
 // GetType returns the type of the matcher

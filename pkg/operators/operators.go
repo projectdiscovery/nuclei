@@ -294,11 +294,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	// state variable to check if all extractors are internal
 	var allInternalExtractors = true
 
-	// Start with the extractors first and evaluate them.
-	for _, extractor := range operators.Extractors {
-		if !extractor.Internal && allInternalExtractors {
-			allInternalExtractors = false
-		}
+	runExtractor := func(extractor *extractors.Extractor) {
 		var extractorResults []string
 		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
@@ -325,6 +321,23 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		}
 	}
 
+	// An llm extractor costs a model round trip, so it waits until a matcher
+	// has confirmed the response is worth reading. An internal one still runs
+	// eagerly: it feeds dynamic values that the matchers themselves consume.
+	var deferredExtractors []*extractors.Extractor
+
+	// Start with the extractors first and evaluate them.
+	for _, extractor := range operators.Extractors {
+		if !extractor.Internal && allInternalExtractors {
+			allInternalExtractors = false
+		}
+		if extractor.GetType() == extractors.LLMExtractor && !extractor.Internal {
+			deferredExtractors = append(deferredExtractors, extractor)
+			continue
+		}
+		runExtractor(extractor)
+	}
+
 	// expose dynamic values to same request matchers
 	if len(result.DynamicValues) > 0 {
 		dataDynamicValues := make(map[string]interface{})
@@ -343,11 +356,13 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		data = generators.MergeMaps(data, dataDynamicValues)
 	}
 
-	for matcherIndex, matcher := range operators.Matchers {
+	// evaluate runs one matcher and reports whether an AND condition has already
+	// failed, which decides the result without running anything else.
+	evaluate := func(matcherIndex int, matcher *matchers.Matcher) (failedAND bool) {
 		// Skip matchers that are in the blocklist
 		if operators.ExcludeMatchers != nil {
 			if operators.ExcludeMatchers.Match(operators.TemplateID, matcher.Name) {
-				continue
+				return false
 			}
 		}
 		if isMatch, matched := match(data, matcher); isMatch {
@@ -360,11 +375,51 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 				}
 			}
 			matches = true
-		} else if matcherCondition == matchers.ANDCondition {
+			return false
+		}
+		return matcherCondition == matchers.ANDCondition
+	}
+
+	// Cheap matchers run first whatever order the author wrote them in, because
+	// an llm matcher costs a model round trip. The original index is carried
+	// through so unnamed matchers keep the names they had before.
+	var hasLLMMatcher bool
+	for matcherIndex, matcher := range operators.Matchers {
+		if matcher.GetType() == matchers.LLMMatcher {
+			hasLLMMatcher = true
+			continue
+		}
+		if evaluate(matcherIndex, matcher) {
 			if len(result.DynamicValues) > 0 {
 				return result, true
 			}
 			return result, false
+		}
+	}
+
+	if hasLLMMatcher {
+		for matcherIndex, matcher := range operators.Matchers {
+			if matcher.GetType() != matchers.LLMMatcher {
+				continue
+			}
+			// Under OR a cheap matcher has already decided this, and the model
+			// cannot change the outcome, so the call is not worth making.
+			if matcherCondition == matchers.ORCondition && matches {
+				break
+			}
+			if evaluate(matcherIndex, matcher) {
+				if len(result.DynamicValues) > 0 {
+					return result, true
+				}
+				return result, false
+			}
+		}
+	}
+
+	// The response is worth reading now, so the deferred llm extractors run.
+	if len(deferredExtractors) > 0 && (matches || len(operators.Matchers) == 0) {
+		for _, extractor := range deferredExtractors {
+			runExtractor(extractor)
 		}
 	}
 

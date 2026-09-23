@@ -147,7 +147,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	tlsxOptions := &clients.Options{
-		AllCiphers:        true,
 		ScanMode:          request.ScanMode,
 		Expired:           true,
 		SelfSigned:        true,

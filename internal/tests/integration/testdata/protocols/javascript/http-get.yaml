@@ -1,0 +1,29 @@
+id: js-http-get
+
+info:
+  name: nuclei/http GET
+  author: pdteam
+  severity: info
+  description: |
+    Exercises nuclei/http package Get and Client.Get/SetHeader against a local
+    HTTP server (status, body, response headers, default request header).
+
+javascript:
+  - code: |
+      const http = require('nuclei/http');
+      const a = http.Get(BaseURL + '/hello');
+      const client = new http.Client();
+      client.SetHeader('X-Token', 'nuclei');
+      const b = client.Get(BaseURL + '/echo-header');
+      a.StatusCode + '|' + a.Body + '|' + a.GetHeader('X-Test') + '|' + b.Body;
+    args:
+      BaseURL: "http://{{Host}}:{{Port}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+      - type: word
+        part: response
+        words:
+          - "200|hello|ok|nuclei"
