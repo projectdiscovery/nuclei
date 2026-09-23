@@ -2,6 +2,7 @@ package dataformat
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/graphql-go/graphql/language/ast"
@@ -43,9 +44,9 @@ func (g *Graphql) IsType(data string) bool {
 }
 
 type graphQLHTTPBody struct {
-	Query         string         `json:"query,omitempty"`
-	OperationName string         `json:"operationName,omitempty"`
-	Variables     map[string]any `json:"variables,omitempty"`
+	Query         string          `json:"query,omitempty"`
+	OperationName string          `json:"operationName,omitempty"`
+	Variables     *map[string]any `json:"variables,omitempty"`
 }
 
 func parseGraphQLHTTPBody(data string, validateQuery bool) (graphQLHTTPBody, bool) {
@@ -93,10 +94,10 @@ func (g *Graphql) Decode(data string) (KV, error) {
 		kv.Set(graphqlMetaOperationName, body.OperationName)
 	}
 
-	hasVariables := len(body.Variables) > 0
+	hasVariables := body.Variables != nil
 	if hasVariables {
 		kv.Set(graphqlMetaHasVariables, true)
-		for key, value := range body.Variables {
+		for key, value := range *body.Variables {
 			kv.Set(key, value)
 		}
 	}
@@ -122,21 +123,20 @@ func (g *Graphql) Encode(data KV) (string, error) {
 	}
 	query := types.ToString(queryVal)
 
-	body := graphQLHTTPBody{
-		Query:     query,
-		Variables: map[string]any{},
-	}
+	body := graphQLHTTPBody{Query: query}
 	if op := data.Get(graphqlMetaOperationName); op != nil {
 		body.OperationName = types.ToString(op)
 	}
 
 	hasVariables, _ := data.Get(graphqlMetaHasVariables).(bool)
 	if hasVariables {
+		variables := make(map[string]any)
+		body.Variables = &variables
 		data.Iterate(func(key string, value any) bool {
 			if strings.HasPrefix(key, "#_") {
 				return true
 			}
-			body.Variables[key] = value
+			variables[key] = value
 			return true
 		})
 	} else {
@@ -163,55 +163,145 @@ func (g *Graphql) Encode(data KV) (string, error) {
 
 func collectInlineArguments(doc *ast.Document) map[string]any {
 	args := make(map[string]any)
-	walkFields(doc, func(field *ast.Field) {
-		for _, arg := range field.Arguments {
-			if arg.Name == nil {
-				continue
-			}
-			args[arg.Name.Value] = astValueToGo(arg.Value)
-		}
-	})
+	for _, ref := range inlineArgumentRefs(doc) {
+		args[ref.key] = astValueToGo(ref.argument.Value)
+	}
 	return args
 }
 
 func applyInlineArgument(doc *ast.Document, key string, value any) {
-	walkFields(doc, func(field *ast.Field) {
-		for _, arg := range field.Arguments {
-			if arg.Name != nil && arg.Name.Value == key {
-				arg.Value = goValueToAST(value)
-			}
+	for _, ref := range inlineArgumentRefs(doc) {
+		if ref.key == key {
+			ref.argument.Value = goValueToAST(value, ref.argument.Value)
+			return
 		}
-	})
+	}
 }
 
-func walkFields(doc *ast.Document, fn func(*ast.Field)) {
+type inlineArgumentRef struct {
+	key      string
+	path     string
+	argument *ast.Argument
+}
+
+func inlineArgumentRefs(doc *ast.Document) []inlineArgumentRef {
+	var refs []inlineArgumentRef
+	walkFields(doc, func(path string, field *ast.Field) {
+		for _, argument := range field.Arguments {
+			if argument.Name == nil {
+				continue
+			}
+			refs = append(refs, inlineArgumentRef{
+				path:     path,
+				argument: argument,
+			})
+		}
+	})
+
+	counts := make(map[string]int)
+	for _, ref := range refs {
+		counts[ref.argument.Name.Value]++
+	}
+	for index := range refs {
+		name := refs[index].argument.Name.Value
+		refs[index].key = name
+		if counts[name] > 1 {
+			refs[index].key = refs[index].path + "." + name
+		}
+	}
+
+	keyCounts := make(map[string]int)
+	for _, ref := range refs {
+		keyCounts[ref.key]++
+	}
+	keyIndexes := make(map[string]int)
+	for index := range refs {
+		key := refs[index].key
+		keyIndexes[key]++
+		if keyCounts[key] > 1 {
+			refs[index].key = fmt.Sprintf("%s[%d]", key, keyIndexes[key])
+		}
+	}
+	return refs
+}
+
+func walkFields(doc *ast.Document, fn func(string, *ast.Field)) {
 	if doc == nil {
 		return
 	}
 	for _, def := range doc.Definitions {
-		op, ok := def.(*ast.OperationDefinition)
-		if !ok || op.SelectionSet == nil {
-			continue
+		switch typed := def.(type) {
+		case *ast.OperationDefinition:
+			prefix := ""
+			if typed.Name != nil {
+				prefix = typed.Name.Value
+			}
+			walkSelectionSet(typed.SelectionSet, prefix, fn)
+		case *ast.FragmentDefinition:
+			prefix := "fragment"
+			if typed.Name != nil {
+				prefix += "." + typed.Name.Value
+			}
+			walkSelectionSet(typed.SelectionSet, prefix, fn)
 		}
-		walkSelectionSet(op.SelectionSet, fn)
 	}
 }
 
-func walkSelectionSet(set *ast.SelectionSet, fn func(*ast.Field)) {
+func walkSelectionSet(set *ast.SelectionSet, parentPath string, fn func(string, *ast.Field)) {
 	if set == nil {
 		return
 	}
+
+	fieldCounts := make(map[string]int)
 	for _, selection := range set.Selections {
-		field, ok := selection.(*ast.Field)
-		if !ok {
-			continue
+		if field, ok := selection.(*ast.Field); ok {
+			fieldCounts[fieldResponseName(field)]++
 		}
-		fn(field)
-		walkSelectionSet(field.SelectionSet, fn)
+	}
+	fieldIndexes := make(map[string]int)
+
+	for _, selection := range set.Selections {
+		switch typed := selection.(type) {
+		case *ast.Field:
+			name := fieldResponseName(typed)
+			fieldIndexes[name]++
+			if fieldCounts[name] > 1 {
+				name = fmt.Sprintf("%s[%d]", name, fieldIndexes[name])
+			}
+			path := name
+			if parentPath != "" {
+				path = parentPath + "." + name
+			}
+			fn(path, typed)
+			walkSelectionSet(typed.SelectionSet, path, fn)
+		case *ast.InlineFragment:
+			walkSelectionSet(typed.SelectionSet, parentPath, fn)
+		}
 	}
 }
 
-func goValueToAST(value any) ast.Value {
+func fieldResponseName(field *ast.Field) string {
+	if field.Alias != nil {
+		return field.Alias.Value
+	}
+	if field.Name != nil {
+		return field.Name.Value
+	}
+	return "field"
+}
+
+func goValueToAST(value any, original ast.Value) ast.Value {
+	switch original.(type) {
+	case *ast.IntValue:
+		return &ast.IntValue{Kind: kinds.IntValue, Value: types.ToString(value)}
+	case *ast.FloatValue:
+		return &ast.FloatValue{Kind: kinds.FloatValue, Value: types.ToString(value)}
+	case *ast.EnumValue:
+		return &ast.EnumValue{Kind: kinds.EnumValue, Value: types.ToString(value)}
+	case *ast.StringValue:
+		return &ast.StringValue{Kind: kinds.StringValue, Value: types.ToString(value)}
+	}
+
 	switch v := value.(type) {
 	case string:
 		return &ast.StringValue{Kind: kinds.StringValue, Value: v}
@@ -231,6 +321,56 @@ func goValueToAST(value any) ast.Value {
 			return &ast.IntValue{Kind: kinds.IntValue, Value: fmt.Sprintf("%d", int64(v))}
 		}
 		return &ast.FloatValue{Kind: kinds.FloatValue, Value: fmt.Sprintf("%v", v)}
+	case []any:
+		originalList, _ := original.(*ast.ListValue)
+		values := make([]ast.Value, 0, len(v))
+		for index, item := range v {
+			var originalItem ast.Value
+			if originalList != nil && index < len(originalList.Values) {
+				originalItem = originalList.Values[index]
+			}
+			values = append(values, goValueToAST(item, originalItem))
+		}
+		return &ast.ListValue{Kind: kinds.ListValue, Values: values}
+	case map[string]any:
+		originalObject, _ := original.(*ast.ObjectValue)
+		fields := make([]*ast.ObjectField, 0, len(v))
+		used := make(map[string]struct{}, len(v))
+		if originalObject != nil {
+			for _, field := range originalObject.Fields {
+				if field.Name == nil {
+					continue
+				}
+				name := field.Name.Value
+				value, ok := v[name]
+				if !ok {
+					continue
+				}
+				fields = append(fields, &ast.ObjectField{
+					Kind:  kinds.ObjectField,
+					Name:  &ast.Name{Kind: kinds.Name, Value: name},
+					Value: goValueToAST(value, field.Value),
+				})
+				used[name] = struct{}{}
+			}
+		}
+
+		names := make([]string, 0, len(v)-len(used))
+		for name := range v {
+			if _, ok := used[name]; !ok {
+				names = append(names, name)
+			}
+		}
+		sort.Strings(names)
+
+		for _, name := range names {
+			fields = append(fields, &ast.ObjectField{
+				Kind:  kinds.ObjectField,
+				Name:  &ast.Name{Kind: kinds.Name, Value: name},
+				Value: goValueToAST(v[name], nil),
+			})
+		}
+		return &ast.ObjectValue{Kind: kinds.ObjectValue, Fields: fields}
 	default:
 		return &ast.StringValue{Kind: kinds.StringValue, Value: types.ToString(v)}
 	}

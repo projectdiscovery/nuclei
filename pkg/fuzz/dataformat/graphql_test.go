@@ -84,6 +84,30 @@ func TestGraphqlDecodeEncodeVariables(t *testing.T) {
 	require.NotContains(t, encoded, `path: "/robots.txt; cat /etc/passwd"`)
 }
 
+func TestGraphqlDecodeEncodeEmptyVariables(t *testing.T) {
+	g := NewGraphql()
+	body := `{
+		"query": "query Lookup($input: String) { lookup(input: $input) { id } }",
+		"variables": {}
+	}`
+
+	decoded, err := g.Decode(body)
+	require.NoError(t, err)
+	require.Empty(t, fuzzableKV(t, decoded))
+	require.Equal(t, true, decoded.Get(graphqlMetaHasVariables))
+
+	encoded, err := g.Encode(decoded)
+	require.NoError(t, err)
+	require.Contains(t, encoded, `"variables":{}`)
+	require.Contains(t, encoded, `input: $input`)
+	require.NotContains(t, encoded, `input: ""`)
+
+	roundTrip, err := g.Decode(encoded)
+	require.NoError(t, err)
+	require.Equal(t, true, roundTrip.Get(graphqlMetaHasVariables))
+	require.Empty(t, fuzzableKV(t, roundTrip))
+}
+
 func TestGraphqlDecodeEncodeInlineArgs(t *testing.T) {
 	g := NewGraphql()
 
@@ -99,6 +123,59 @@ func TestGraphqlDecodeEncodeInlineArgs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{"jobType": "canary-payload"}, fuzzableKV(t, roundTrip))
 	require.Contains(t, encoded, "canary-payload")
+}
+
+func TestGraphqlInlineArgumentKeysIdentifyLocations(t *testing.T) {
+	g := NewGraphql()
+	body := `{"query":"query { users(first: 10) { id } posts(first: 20) { id } }"}`
+
+	decoded, err := g.Decode(body)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"users.first": "10",
+		"posts.first": "20",
+	}, fuzzableKV(t, decoded))
+
+	decoded.Set("users.first", "99")
+	encoded, err := g.Encode(decoded)
+	require.NoError(t, err)
+	require.Contains(t, encoded, "users(first: 99)")
+	require.Contains(t, encoded, "posts(first: 20)")
+
+	roundTrip, err := g.Decode(encoded)
+	require.NoError(t, err)
+	require.Equal(t, "99", roundTrip.Get("users.first"))
+	require.Equal(t, "20", roundTrip.Get("posts.first"))
+}
+
+func TestGraphqlInlineArgumentsPreserveLiteralTypes(t *testing.T) {
+	g := NewGraphql()
+	body := `{"query":"query { jobs(name: \"example\", status: ACTIVE, limit: 10, ratio: 1.5, flags: [ACTIVE, PAUSED], filter: {retries: 3, state: READY}) { id } }"}`
+
+	decoded, err := g.Decode(body)
+	require.NoError(t, err)
+	decoded.Set("name", "canary")
+
+	flags, ok := decoded.Get("flags").([]any)
+	require.True(t, ok)
+	flags[0] = "DISABLED"
+	decoded.Set("flags", flags)
+
+	filter, ok := decoded.Get("filter").(map[string]any)
+	require.True(t, ok)
+	filter["retries"] = "4"
+	decoded.Set("filter", filter)
+
+	encoded, err := g.Encode(decoded)
+	require.NoError(t, err)
+	require.Contains(t, encoded, `name: \"canary\"`)
+	require.Contains(t, encoded, "status: ACTIVE")
+	require.Contains(t, encoded, "limit: 10")
+	require.Contains(t, encoded, "ratio: 1.5")
+	require.Contains(t, encoded, "flags: [DISABLED, PAUSED]")
+	require.Contains(t, encoded, "filter: {retries: 4, state: READY}")
+	require.NotContains(t, encoded, `status: \"ACTIVE\"`)
+	require.NotContains(t, encoded, `limit: \"10\"`)
 }
 
 func TestGraphqlDecodeEncodeNestedVariables(t *testing.T) {
