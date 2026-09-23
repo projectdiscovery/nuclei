@@ -352,7 +352,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Interactsh != nil {
 		event.UsesInteractsh = true
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,

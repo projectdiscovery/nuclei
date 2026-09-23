@@ -76,6 +76,10 @@ type Config struct {
 	// MetadataIndex is an optional shared index borrowed by the store. The
 	// caller remains responsible for persisting it.
 	MetadataIndex *index.Index
+
+	// TargetFilter narrows loading to the templates per-target profiles
+	// select for at least one target; nil loads every filtered template.
+	TargetFilter index.FilterFunc
 }
 
 // Store is a storage for loaded nuclei templates
@@ -385,6 +389,11 @@ func (store *Store) buildIndexFilter() *index.Filter {
 		ProtocolTypes:        []templateTypes.ProtocolType(store.config.Protocols),
 		ExcludeProtocolTypes: []templateTypes.ProtocolType(store.config.ExcludeProtocols),
 	}
+}
+
+// selectedByTargets reports whether some target's profile selects the template.
+func (store *Store) selectedByTargets(metadata *index.Metadata) bool {
+	return store.config.TargetFilter == nil || store.config.TargetFilter(metadata)
 }
 
 func (store *Store) loadTemplatesIndex() *index.Index {
@@ -823,7 +832,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 	// tags, so it must be matched against the ignore-file tags specifically:
 	// otherwise user-requested -exclude-tags drops would be mislabeled as
 	// .nuclei-ignore exclusions.
-	ignoreFileTags := config.ReadIgnoreFile().Tags
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		store.logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+	} else if err != nil {
+		return nil, err
+	}
+	ignoreFileTags := ignoreFile.Tags
+
 	noteExcludedByTag := func(templatePath string, metadata *index.Metadata) {
 		if len(ignoreFileTags) == 0 || !slices.ContainsFunc(ignoreFileTags, metadata.HasTag) {
 			return
@@ -875,6 +891,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 						return
 					}
 
+					if !store.selectedByTargets(metadata) {
+						return
+					}
+
 					if len(tags) > 0 && !slices.ContainsFunc(tags, metadata.HasTag) {
 						return
 					}
@@ -907,6 +927,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 
 					if metadata != nil && !indexFilter.Matches(metadata) {
 						noteExcludedByTag(templatePath, metadata)
+						return
+					}
+
+					if metadata != nil && !store.selectedByTargets(metadata) {
 						return
 					}
 				}

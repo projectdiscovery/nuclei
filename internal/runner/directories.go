@@ -10,26 +10,43 @@ import (
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 )
 
-// AppendDirectoryInfo writes nuclei config/cache/PDCP directory paths.
-func AppendDirectoryInfo(w io.Writer) {
-	_, _ = fmt.Fprintf(w, "Nuclei Config Directory: %s\n", config.DefaultConfig.GetConfigDir())
-	_, _ = fmt.Fprintf(w, "Nuclei Cache Directory: %s\n", config.DefaultConfig.GetCacheDir())
-	_, _ = fmt.Fprintf(w, "PDCP Directory: %s\n", pdcpauth.PDCPDir)
+type directoryRecord struct {
+	label string
+	path  string
 }
 
-// DirectoryInfo returns nuclei config/cache/PDCP directory paths as a string.
+func directoryRecords() []directoryRecord {
+	return []directoryRecord{
+		{label: "Nuclei Config Directory", path: config.DefaultConfig.GetConfigDir()},
+		{label: "Nuclei State Directory", path: config.DefaultConfig.GetStateDir()},
+		{label: "Nuclei Cache Directory", path: config.DefaultConfig.GetCacheDir()},
+		{label: "PDCP Directory", path: pdcpauth.PDCPDir},
+	}
+}
+
+// AppendDirectoryInfo writes nuclei config/state/cache/PDCP directory paths.
+func AppendDirectoryInfo(w io.Writer) {
+	for _, record := range directoryRecords() {
+		_, _ = fmt.Fprintf(w, "%s: %s\n", record.label, record.path)
+	}
+}
+
+// DirectoryInfo returns nuclei config/state/cache/PDCP directory paths as a string.
 func DirectoryInfo() string {
 	var b strings.Builder
+
 	AppendDirectoryInfo(&b)
+
 	return b.String()
 }
 
-// LogDirectoryInfo logs nuclei config/cache/PDCP directory paths at info level.
+// LogDirectoryInfo logs nuclei config/state/cache/PDCP directory paths at info level.
 func LogDirectoryInfo(logger *gologger.Logger) {
 	if logger == nil {
 		return
 	}
-	logger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
-	logger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir())
-	logger.Info().Msgf("PDCP Directory: %s", pdcpauth.PDCPDir)
+
+	for _, record := range directoryRecords() {
+		logger.Info().Msgf("%s: %s", record.label, record.path)
+	}
 }

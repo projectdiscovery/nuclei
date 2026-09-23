@@ -50,6 +50,9 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		// would otherwise route all findings to whichever call last won the race.
 		DoNotCache: true,
 	}
+	if base.interactshClient != nil {
+		u.executerOpts.InteractshScope = base.interactshClient.NewRequestScope()
+	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
 	}
@@ -62,6 +65,32 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 	}
 	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
 	return u, nil
+}
+
+// restoreBaseExcludeTags re-adds any of the engine's baseline excluded tags that
+// a per-execution option dropped, appending only what is missing so the result
+// is order-stable and repeated application is a no-op.
+//
+// The current ExcludeTags slice is cloned before merging so a caller-owned
+// backing array (e.g. a reused WithTemplateFilters ExcludeTags value with spare
+// capacity) is never mutated or shared across concurrent executions.
+func restoreBaseExcludeTags(base []string, opts *types.Options) {
+	if len(base) == 0 {
+		return
+	}
+	merged := append([]string(nil), opts.ExcludeTags...)
+	present := make(map[string]struct{}, len(merged)+len(base))
+	for _, tag := range merged {
+		present[tag] = struct{}{}
+	}
+	for _, tag := range base {
+		if _, ok := present[tag]; ok {
+			continue
+		}
+		merged = append(merged, tag)
+		present[tag] = struct{}{}
+	}
+	opts.ExcludeTags = merged
 }
 
 // resolveEphemeralOutput combines the base/global writer with any per-call result callbacks.
@@ -90,6 +119,9 @@ func resolveEphemeralOutput(base, call *NucleiEngine) output.Writer {
 
 // closeEphemeralObjects closes all resources used by ephemeral nuclei objects/instances/types
 func closeEphemeralObjects(u *unsafeOptions) {
+	if u.executerOpts.InteractshScope != nil {
+		u.executerOpts.InteractshScope.Close()
+	}
 	if u.executerOpts.RateLimiter != nil {
 		u.executerOpts.RateLimiter.Stop()
 	}
@@ -98,6 +130,7 @@ func closeEphemeralObjects(u *unsafeOptions) {
 	u.executerOpts.Output = nil
 	u.executerOpts.IssuesClient = nil
 	u.executerOpts.Interactsh = nil
+	u.executerOpts.InteractshScope = nil
 	u.executerOpts.HostErrorsCache = nil
 	u.executerOpts.Progress = nil
 	u.executerOpts.Catalog = nil
@@ -161,6 +194,18 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 			return err
 		}
 	}
+	// Per-execution options land on a COPY of the engine's options, so an option
+	// that assigns a whole filter set clears every field it does not name —
+	// WithTemplateFilters does exactly that. ExcludeTags is one of those fields,
+	// and it carries the .nuclei-ignore deny-list that applyRequiredDefaults
+	// installed at construction; nothing re-reads the ignore file afterwards, so
+	// the exclusions would be lost for this execution and templates tagged dos,
+	// bruteforce, fuzz, local or txt-service would run.
+	//
+	// Restore the engine's baseline exclusions so a per-execution filter can add
+	// to them but never silently discard them. IncludeTags remains the explicit
+	// per-tag override for callers who do want an ignored template to run.
+	restoreBaseExcludeTags(e.eng.opts.ExcludeTags, tmpEngine.opts)
 
 	// create ephemeral nuclei objects/instances/types using base nuclei engine
 	unsafeOpts, err := createEphemeralObjects(ctx, e.eng, tmpEngine.opts, resolveEphemeralOutput(e.eng, tmpEngine))
