@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/katana"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/raw"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/swagger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/yaml"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -147,6 +148,7 @@ var providersList = []formats.Format{
 	openapi.New(),
 	swagger.New(),
 	katana.New(),
+	raw.New(),
 }
 
 // SupportedFormats returns the list of supported formats in comma-separated

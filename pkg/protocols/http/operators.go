@@ -44,6 +44,15 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
+	case matchers.LLMMatcher:
+		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item)
+		// The audit rides on the per-response event data until the result event
+		// is built; matchers are shared across concurrent requests, so it cannot
+		// be parked on the matcher itself.
+		if audit != nil {
+			recordLLMAudit(data, matcher, audit)
+		}
+		return matcher.ResultWithMatchedSnippet(isMatch, snippets)
 	}
 	return false, []string{}
 }
@@ -77,6 +86,8 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 		return extractor.ExtractJSON(item)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
+	case extractors.LLMExtractor:
+		return extractor.ExtractLLM(item)
 	}
 	return nil
 }
@@ -120,6 +131,13 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["host"] = host
 	data["type"] = request.Type().String()
 	data["matched"] = matched
+	if request.hasLLMOperators {
+		// Seeded here rather than on first write: Execute replaces the data map
+		// with a merged copy when dynamic values exist, and only a reference
+		// that already existed is shared with the event the result is built
+		// from.
+		data[llmAuditKey] = make(map[string]*matchers.LLMAudit)
+	}
 	request.setHashOrDefault(data, "request", rawReq)
 	request.setHashOrDefault(data, "response", rawResp)
 	data["status_code"] = resp.StatusCode
@@ -136,6 +154,8 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
 		data["stop-at-first-match"] = true
 	}
+
+	enrichEventWithTLSMetadata(data, resp)
 	return data
 }
 
@@ -150,7 +170,15 @@ func (request *Request) setHashOrDefault(data output.InternalEvent, k string, v 
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	return protocols.MakeDefaultResultEvent(request, wrapped)
+	results := protocols.MakeDefaultResultEvent(request, wrapped)
+	// Done here, not in MakeResultEventItem: the matcher name each result
+	// belongs to is only assigned once the default builder has split them.
+	for _, result := range results {
+		if audit := llmAuditFor(wrapped.InternalEvent, result.MatcherName); audit != nil {
+			result.LLM = audit
+		}
+	}
+	return results
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
@@ -214,4 +242,34 @@ func (request *Request) truncateResponse(response interface{}) string {
 		return responseString[:request.options.Options.ResponseSaveSize]
 	}
 	return responseString
+}
+
+// llmAuditKey holds the per-response llm audits inside the event data. It is
+// read back when the result event is built and never copied into output.
+const llmAuditKey = "__llm_audit"
+
+// recordLLMAudit stores an audit under the matcher's name, so a response with
+// several llm matchers keeps them apart.
+func recordLLMAudit(data map[string]interface{}, matcher *matchers.Matcher, audit *matchers.LLMAudit) {
+	if audits, ok := data[llmAuditKey].(map[string]*matchers.LLMAudit); ok {
+		audits[matcher.Name] = audit
+	}
+}
+
+// llmAuditFor returns the audit belonging to the named matcher, falling back to
+// the only audit present when the event carries no matcher name.
+func llmAuditFor(data map[string]interface{}, matcherName string) *matchers.LLMAudit {
+	audits, ok := data[llmAuditKey].(map[string]*matchers.LLMAudit)
+	if !ok || len(audits) == 0 {
+		return nil
+	}
+	if audit, ok := audits[matcherName]; ok {
+		return audit
+	}
+	if len(audits) == 1 {
+		for _, audit := range audits {
+			return audit
+		}
+	}
+	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"maps"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
@@ -164,7 +165,9 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	request.options.RateLimitTake()
 
 	// Send the request to the target servers
+	timeStart := time.Now()
 	response, err := dnsClient.Do(compiledRequest)
+	duration := time.Since(timeStart)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -178,7 +181,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, question)
 
-	// perform trace if necessary
+	// perform trace if necessary (excluded from duration — only the query RTT is measured)
 	var traceData *retryabledns.TraceData
 	if request.Trace {
 		traceData, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
@@ -188,7 +191,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	}
 
 	// Create the output event
-	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData, duration)
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)

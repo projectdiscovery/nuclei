@@ -98,13 +98,15 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 			gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 		}
 
-		// Note: this is needed and is responsible for the tick event
-		p.stats.GetStatResponse(p.tickDuration, func(s string, err error) error {
-			if err != nil {
-				gologger.Warning().Msgf("Could not read statistics: %s\n", err)
-			}
-			return nil
-		})
+		if p.tickDuration > 0 {
+			// Note: this is needed and is responsible for the tick event
+			p.stats.GetStatResponse(p.tickDuration, func(s string, err error) error {
+				if err != nil {
+					gologger.Warning().Msgf("Could not read statistics: %s\n", err)
+				}
+				return nil
+			})
+		}
 	}
 }
 
@@ -196,8 +198,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 			builder.WriteString(clistats.String(total))
 			builder.WriteRune(' ')
 			builder.WriteRune('(')
-			//nolint:gomnd // this is not a magic number
-			builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
+			builder.WriteString(clistats.String(percentComplete(requests, total)))
 			builder.WriteRune('%')
 			builder.WriteRune(')')
 			builder.WriteRune('\n')
@@ -245,11 +246,16 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	errors, _ := stats.GetCounter("errors")
 	results["errors"] = clistats.String(errors)
 
-	// nolint:gomnd // this is not a magic number
-	percentData := (float64(requests) * float64(100)) / float64(total)
-	percent := clistats.String(uint64(percentData))
-	results["percent"] = percent
+	results["percent"] = clistats.String(percentComplete(requests, total))
 	return results
+}
+
+func percentComplete(requests, total uint64) uint64 {
+	if total == 0 {
+		return 0
+	}
+	// nolint:gomnd // this is not a magic number
+	return uint64((float64(requests) * float64(100)) / float64(total))
 }
 
 // fmtDuration formats the duration for the time elapsed

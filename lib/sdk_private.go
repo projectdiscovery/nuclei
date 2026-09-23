@@ -135,15 +135,37 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.opts.ExcludeTags = []string{}
 	}
 
-	// these templates are known to have weak matchers
-	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
-
 	e.inputProvider = provider.NewSimpleInputProvider()
+}
+
+func (e *NucleiEngine) loadIgnoreFile() error {
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		e.Logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// .nuclei-ignore blocks templates that should not run by default, by tag
+	// (dos, fuzz, ...) and by path (templates known to have weak matchers, which
+	// would otherwise generate false positives). Both sections are applied, as
+	// the CLI runner does — applying only the tags leaves the `files` section
+	// inert for every SDK consumer.
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
+	e.opts.ExcludedTemplates = append(e.opts.ExcludedTemplates, ignoreFile.Files...)
+
+	return nil
 }
 
 // init
 func (e *NucleiEngine) init(ctx context.Context) error {
+	if err := config.DefaultConfig.InitializationError(); err != nil {
+		return errors.Wrap(err, "initialize nuclei configuration")
+	}
 	// Update logger ref (if it was changed by [WithLogger])
 	// (Logger is already initialized)
 	if e.opts.Logger != e.Logger {
@@ -162,6 +184,10 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
+	if err := e.loadIgnoreFile(); err != nil {
+		return err
+	}
+
 	if e.opts.Parser != nil {
 		if op, ok := e.opts.Parser.(*templates.Parser); ok {
 			e.parser = op
@@ -171,6 +197,14 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.parser == nil {
 		e.parser = templates.NewParser()
 		e.ownsParser = true
+	}
+	e.compiledParser = e.parser
+	if !e.ownsParser {
+		// Compiled templates retain engine-local ExecutorOptions. Keep their
+		// cache private while the caller-owned parser provides the parsed cache.
+		e.compiledParser = templates.NewParserWithParsedCache(e.parser.Cache())
+		e.compiledParser.ShouldValidate = e.parser.ShouldValidate
+		e.compiledParser.NoStrictSyntax = e.parser.NoStrictSyntax
 	}
 
 	if protocolstate.ShouldInit(e.opts.ExecutionId) {
@@ -250,7 +284,8 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		Colorizer:          aurora.New(aurora.WithColors(true)),
 		ResumeCfg:          types.NewResumeCfg(),
 		Browser:            e.browserInstance,
-		Parser:             e.parser,
+		Parser:             e.compiledParser,
+		DoNotCache:         e.opts.DoNotCacheTemplates,
 		InputHelper:        input.NewHelper(),
 		TemporaryDirectory: e.tmpDir,
 		Logger:             e.opts.Logger,
@@ -306,8 +341,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		if cachedParser, ok := e.opts.Parser.(*templates.Parser); ok {
 			e.parser = cachedParser
 			e.opts.Parser = cachedParser
-			e.executerOpts.Parser = cachedParser
-			e.executerOpts.Options.Parser = cachedParser
 		}
 	}
 
@@ -332,14 +365,23 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.httpxClient = nucleiUtils.GetInputLivenessChecker(client)
 	}
 
-	// Only Happens once regardless how many times this function is called
-	// This will update ignore file to filter out templates with weak matchers to avoid false positives
-	// and also upgrade templates to latest version if available
-	installer.NucleiSDKVersionCheck()
-
 	if DefaultConfig.CanCheckForUpdates() {
-		return e.processUpdateCheckResults()
+		// Only Happens once regardless how many times this function is called
+		// This will update ignore file to filter out templates with weak matchers to avoid false positives
+		// and also upgrade templates to latest version if available
+		latestIgnoreHash, _ := installer.NucleiSDKVersionCheck()
+
+		if err := e.processUpdateCheckResults(); err != nil {
+			return err
+		}
+
+		if DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
+			if err := installer.UpdateIgnoreFile(); err != nil {
+				e.opts.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+			}
+		}
 	}
+
 	return nil
 }
 

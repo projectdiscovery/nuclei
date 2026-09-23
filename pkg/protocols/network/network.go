@@ -116,6 +116,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":       "Matched is the input which was matched upon",
 	"type":          "Type is the type of request made",
 	"request":       "Network request made from the client",
+	"duration":      "Latest measured operation duration in seconds",
 	"body,all,data": "Network response received from server (default)",
 	"raw":           "Full Network protocol data",
 }
@@ -207,7 +208,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// parse ports and validate
 	if request.Port != "" {
 		seen := make(map[string]struct{})
-		for _, port := range strings.Split(request.Port, ",") {
+		for port := range strings.SplitSeq(request.Port, ",") {
 			port = strings.TrimSpace(port)
 			if port == "" {
 				continue
@@ -278,7 +279,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
-	return len(request.Address)
+	requests := len(request.Address)
+	if len(request.ports) > 0 {
+		requests *= len(request.ports)
+	}
+	if request.generator != nil {
+		requests *= request.generator.NewIterator().Total()
+	}
+	return requests
 }
 
 func (request *Request) SetDialer(dialer *fastdialer.Dialer) {

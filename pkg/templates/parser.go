@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -20,10 +21,9 @@ type Parser struct {
 	ShouldValidate bool
 	NoStrictSyntax bool
 
-	// parsedTemplatesCache stores lightweight parsed template structures
-	// (without raw bytes).
-	// Used for validation and filtering. This cache can be copied safely
-	// between ephemeral instances.
+	// parsedTemplatesCache stores clean parsed template structures used for
+	// validation, filtering, and engine-local compilation. Entries also retain
+	// source bytes when they exactly match the parsed structure.
 	parsedTemplatesCache *Cache
 
 	// compiledTemplatesCache stores fully compiled templates with all protocol
@@ -51,6 +51,25 @@ func NewParserWithParsedCache(cache *Cache) *Parser {
 	}
 }
 
+// NewExecutionParser creates a parser for one engine execution. Parsed template
+// data is shared with the long-lived parent, while compiled templates remain
+// private because they retain execution-specific options and mutable state.
+func NewExecutionParser(parent *Parser) *Parser {
+	if parent == nil {
+		return NewParser()
+	}
+
+	parent.Lock()
+	defer parent.Unlock()
+
+	return &Parser{
+		ShouldValidate:         parent.ShouldValidate,
+		NoStrictSyntax:         parent.NoStrictSyntax,
+		parsedTemplatesCache:   parent.parsedTemplatesCache,
+		compiledTemplatesCache: NewCache(),
+	}
+}
+
 // Purge clears the parsed and compiled template caches. It should be called
 // when the parser is no longer needed (e.g. on engine Close) so a long-running
 // embedder does not retain every compiled template (a heap-heavy object) for
@@ -59,6 +78,14 @@ func (p *Parser) Purge() {
 	p.Lock()
 	defer p.Unlock()
 	p.parsedTemplatesCache.Purge()
+	p.compiledTemplatesCache.Purge()
+}
+
+// PurgeCompiled releases execution-specific compiled templates without
+// clearing parsed template data that may be shared by other executions.
+func (p *Parser) PurgeCompiled() {
+	p.Lock()
+	defer p.Unlock()
 	p.compiledTemplatesCache.Purge()
 }
 
@@ -141,6 +168,23 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return value, err
 	}
 
+	// Multiple engine executions can share the parsed cache. Coalesce their
+	// concurrent first access so an immutable template is read and parsed once.
+	// Recheck inside the flight because another caller may have populated the
+	// cache between the optimistic lookup above and becoming the flight leader.
+	key := fmt.Sprintf("%t:%s", p.NoStrictSyntax, templatePath)
+	loaded, loadErr, _ := p.parsedTemplatesCache.loads.Do(key, func() (any, error) {
+		cached, _, cachedErr := p.parsedTemplatesCache.Has(templatePath)
+		if cached != nil {
+			return cached, cachedErr
+		}
+		return p.parseTemplate(templatePath, catalog)
+	})
+	return loaded, loadErr
+}
+
+func (p *Parser) parseTemplate(templatePath string, catalog catalog.Catalog) (any, error) {
+
 	reader, err := utils.ReaderFromPathOrURL(templatePath, catalog)
 	if err != nil {
 		return nil, err
@@ -149,49 +193,38 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		_ = reader.Close()
 	}()
 
-	// For local YAML files, check if preprocessing is needed
-	var data []byte
+	sourceData, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	data := sourceData
+	cacheSource := true
+
+	// For local YAML files, check if preprocessing is needed.
 	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
-		data, err = io.ReadAll(reader)
-		if err != nil {
-			return nil, err
-		}
 		data, err = yamlutil.PreProcess(data, templatePath)
 		if err != nil {
 			return nil, err
 		}
+
+		cacheSource = bytes.Equal(data, sourceData)
 	}
 
 	template := &Template{}
 
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
-		if data == nil {
-			data, err = io.ReadAll(reader)
-			if err != nil {
-				return nil, err
-			}
-		}
 		if p.NoStrictSyntax {
 			err = json.Unmarshal(data, template)
 		} else {
 			err = template.unmarshalJSONStrict(data)
 		}
 	case config.YAML:
-		if data != nil {
-			// Already read and preprocessed
-			if p.NoStrictSyntax {
-				err = yamlutil.Unmarshal(data, template)
-			} else {
-				err = yamlutil.UnmarshalStrict(data, template)
-			}
+		if p.NoStrictSyntax {
+			err = yamlutil.Unmarshal(data, template)
 		} else {
-			// Stream directly from reader
-			decoder := yamlutil.NewDecoder(reader)
-			if !p.NoStrictSyntax {
-				decoder.SetStrict(true)
-			}
-			err = decoder.Decode(template)
+			err = yamlutil.UnmarshalStrict(data, template)
 		}
 	default:
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
@@ -200,7 +233,11 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 
-	p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+	if cacheSource {
+		p.parsedTemplatesCache.Store(templatePath, template, sourceData, nil)
+	} else {
+		p.parsedTemplatesCache.StoreWithoutRaw(templatePath, template, nil)
+	}
 
 	return template, nil
 }

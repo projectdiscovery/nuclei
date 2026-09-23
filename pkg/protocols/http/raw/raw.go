@@ -39,22 +39,39 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	}
 
 	// handle full URLs first (before checking unsafe flag) to extract relative path
-	if strings.HasPrefix(rawrequest.Path, "http://") || strings.HasPrefix(rawrequest.Path, "https://") {
-		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
+	lowerPath := strings.ToLower(rawrequest.Path)
+	hasAbsoluteRequestTarget := strings.HasPrefix(lowerPath, "http://") || strings.HasPrefix(lowerPath, "https://")
+	if hasAbsoluteRequestTarget {
+		var requestTarget string
+		if strings.HasPrefix(lowerPath, "http://") {
+			requestTarget = "http://" + rawrequest.Path[len("http://"):]
+		} else {
+			requestTarget = "https://" + rawrequest.Path[len("https://"):]
+		}
+
+		urlx, err := urlutil.ParseAbsoluteURL(requestTarget, true)
 		if err != nil {
 			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
 		}
-		prevPath := rawrequest.Path
 		relPath := urlx.GetRelativePath()
-
-		// NOTE(dwisiswant0): Use rel path instead if unsafe.
-		// See https://github.com/projectdiscovery/nuclei/issues/6558.
-		if unsafe {
-			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
-		}
 
 		// rotate full URL with rel path
 		rawrequest.Path = relPath
+		if unsafe {
+			cloned := inputURL.Clone()
+			cloned.Path = ""
+			cloned.Fragment = ""
+			cloned.Params = urlutil.NewOrderedParams()
+			cloned.Params.IncludeEquals = true
+
+			if err := cloned.MergePath(relPath, true); err != nil {
+				return nil, errkit.Wrapf(err, "failed to build request url for absolute target %v", requestTarget)
+			}
+
+			rawrequest.FullURL = cloned.String()
+
+			return rawrequest, nil
+		}
 	}
 
 	switch {
