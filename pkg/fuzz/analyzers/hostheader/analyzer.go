@@ -11,6 +11,7 @@ package hostheader
 
 import (
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
@@ -45,6 +46,8 @@ var overrideHeaders = []string{
 	"Forwarded",
 }
 
+var absoluteURLPattern = regexp.MustCompile(`(?i)(?:https?:)?//[^\s"'<>]+`)
+
 // ReflectsCanary reports whether the canary host appears as the host of the
 // Location header or of an absolute URL in the body. It is exported and pure so
 // it can be unit-tested without a network.
@@ -60,13 +63,12 @@ func ReflectsCanary(body, locationHeader, canaryHost string) bool {
 	if body == "" {
 		return false
 	}
-	// match the canary only when it appears as a URL host (scheme-relative or
-	// absolute), not as an arbitrary substring, to avoid accidental matches.
-	lc := strings.ToLower(body)
-	cl := strings.ToLower(canaryHost)
-	return strings.Contains(lc, "//"+cl) ||
-		strings.Contains(lc, "://"+cl) ||
-		strings.Contains(lc, "@"+cl)
+	for _, candidate := range absoluteURLPattern.FindAllString(body, -1) {
+		if u, err := url.Parse(candidate); err == nil && strings.EqualFold(u.Hostname(), canaryHost) {
+			return true
+		}
+	}
+	return false
 }
 
 // Analyze replays the request with canary host overrides and reports reflection.
@@ -91,13 +93,16 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		if header == "Host" {
 			rebuilt.Host = canary
 		} else {
-			rebuilt.Header.Set(header, canary)
+			rebuilt.Header.Set(header, overrideHeaderValue(header, canary))
 		}
 
 		options.RateLimit()
 		resp, body, err := analyzers.DoAndReadBody(options.HttpClient, rebuilt)
-		if err != nil {
+		if resp == nil {
 			continue
+		}
+		if err != nil && resp.Body != nil {
+			_ = resp.Body.Close()
 		}
 		location := resp.Header.Get("Location")
 		if ReflectsCanary(body, location, canary) {
@@ -105,6 +110,13 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 	}
 	return false, "", nil
+}
+
+func overrideHeaderValue(header, canary string) string {
+	if header == "Forwarded" {
+		return "host=" + canary
+	}
+	return canary
 }
 
 func randomCanaryHost() string {

@@ -65,8 +65,9 @@ func DetectInjection(h http.Header, headerName, value string) bool {
 	if strings.TrimSpace(h.Get(headerName)) == value {
 		return true
 	}
-	for _, c := range h.Values("Set-Cookie") {
-		if strings.Contains(c, value) {
+	resp := &http.Response{Header: h}
+	for _, cookie := range resp.Cookies() {
+		if cookie.Name == "crlf" && cookie.Value == value {
 			return true
 		}
 	}

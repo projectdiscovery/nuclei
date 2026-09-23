@@ -110,6 +110,18 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 			if gr.Component.Name() == "header" && k == gr.Key {
 				continue
 			}
+			if strings.EqualFold(k, "Cookie") {
+				if gr.Component.Name() == "cookie" {
+					mergeRequestCookies(rebuilt, gr.Request, gr.Key)
+				} else {
+					// Cookie may have been changed after the component was
+					// parsed (for example by an auth provider). The live
+					// request is authoritative when cookies are not the
+					// component being fuzzed.
+					rebuilt.Header[k] = append([]string(nil), vs...)
+				}
+				continue
+			}
 			// don't clobber headers the component itself manages on the rebuilt
 			// request (e.g. Cookie for the cookie component, Content-Type/Length
 			// for the body component); only restore headers that Rebuild dropped
@@ -123,6 +135,42 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 	return rebuilt, nil
 }
 
+// mergeRequestCookies keeps the rebuilt value of the actively fuzzed cookie
+// while refreshing every other cookie from the live request. This preserves
+// cookies injected after component parsing without losing the probe payload.
+func mergeRequestCookies(rebuilt, current *retryablehttp.Request, fuzzedKey string) {
+	currentByName := make(map[string]*http.Cookie)
+	currentCookies := current.Cookies()
+	for _, cookie := range currentCookies {
+		currentByName[cookie.Name] = cookie
+	}
+
+	merged := make([]*http.Cookie, 0, len(rebuilt.Cookies())+len(currentByName))
+	seen := make(map[string]struct{})
+	for _, cookie := range rebuilt.Cookies() {
+		if cookie.Name != fuzzedKey {
+			if live, ok := currentByName[cookie.Name]; ok {
+				cookie = live
+			}
+		}
+		merged = append(merged, cookie)
+		seen[cookie.Name] = struct{}{}
+	}
+	for _, cookie := range currentCookies {
+		if cookie.Name == fuzzedKey {
+			continue
+		}
+		if _, ok := seen[cookie.Name]; !ok {
+			merged = append(merged, cookie)
+		}
+	}
+
+	rebuilt.Header.Del("Cookie")
+	for _, cookie := range merged {
+		rebuilt.AddCookie(cookie)
+	}
+}
+
 // MaxResponseBodyBytes bounds how much of a response body an analyzer reads so a
 // hostile or oversized response cannot exhaust memory.
 const MaxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
@@ -134,7 +182,7 @@ const MaxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
 func DoAndReadBody(client *retryablehttp.Client, req *retryablehttp.Request) (*http.Response, string, error) {
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, "", err
+		return resp, "", err
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodyBytes))
 	_ = resp.Body.Close()
