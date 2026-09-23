@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -11,11 +12,28 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gobwas/ws"
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/utils/conversion"
 )
+
+// defaultCommandTimeout bounds a single nuclei process in integration tests.
+// The CI job is 50m; without this a hung scan leaves the suite nameless until
+// the runner kills the step. It must stay well above the slowest legitimate
+// case: raw-unsafe-path scans scanme.sh over the network and can take minutes.
+const defaultCommandTimeout = 10 * time.Minute
+
+// commandWaitDelay bounds the wait for output pipes after the process is
+// killed. A grandchild that inherited stdout/stderr keeps the pipe open, and
+// without this Output/CombinedOutput blocks forever despite the killed process.
+const commandWaitDelay = 10 * time.Second
+
+// ErrCommandTimeout reports that nuclei was killed by commandTimeout. Callers
+// treat it as fatal rather than flaky: retrying a hang only burns the budget
+// the whole suite shares.
+var ErrCommandTimeout = errors.New("nuclei timed out")
 
 type Runner struct {
 	BinaryPath                 string
@@ -26,6 +44,7 @@ type Runner struct {
 	AllowLocalFileAccess       bool
 	InteractionsPollDuration   string
 	InteractionsCooldownPeriod string
+	CommandTimeout             time.Duration
 }
 
 type RunnerOption func(*Runner)
@@ -38,6 +57,7 @@ func NewRunner(options ...RunnerOption) *Runner {
 		AllowLocalFileAccess:       true,
 		InteractionsPollDuration:   "1",
 		InteractionsCooldownPeriod: "10",
+		CommandTimeout:             defaultCommandTimeout,
 	}
 	for _, option := range options {
 		option(runner)
@@ -56,6 +76,7 @@ func (r *Runner) Clone(options ...RunnerOption) *Runner {
 		AllowLocalFileAccess:       r.AllowLocalFileAccess,
 		InteractionsPollDuration:   r.InteractionsPollDuration,
 		InteractionsCooldownPeriod: r.InteractionsCooldownPeriod,
+		CommandTimeout:             r.CommandTimeout,
 	}
 	for _, option := range options {
 		option(clone)
@@ -106,7 +127,14 @@ func SetDefaultRunner(runner *Runner) {
 	defaultRunner = runner.Clone()
 }
 
-func (r *Runner) command(binaryPath string, args ...string) *exec.Cmd {
+func (r *Runner) commandTimeout() time.Duration {
+	if r != nil && r.CommandTimeout > 0 {
+		return r.CommandTimeout
+	}
+	return defaultCommandTimeout
+}
+
+func (r *Runner) command(ctx context.Context, binaryPath string, args ...string) *exec.Cmd {
 	resolvedBinary := strings.TrimSpace(binaryPath)
 	if resolvedBinary == "" {
 		resolvedBinary = strings.TrimSpace(r.BinaryPath)
@@ -116,12 +144,35 @@ func (r *Runner) command(binaryPath string, args ...string) *exec.Cmd {
 		resolvedBinary = "nuclei"
 	}
 
-	cmd := exec.Command(resolvedBinary, args...)
+	cmd := exec.CommandContext(ctx, resolvedBinary, args...)
+	cmd.WaitDelay = commandWaitDelay
 	if r.WorkingDir != "" {
 		cmd.Dir = r.WorkingDir
 	}
 
 	return cmd
+}
+
+func (r *Runner) runCommand(combined bool, binaryPath string, setup func(cmd *exec.Cmd)) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.commandTimeout())
+	defer cancel()
+
+	cmd := r.command(ctx, binaryPath)
+	setup(cmd)
+
+	var (
+		output []byte
+		err    error
+	)
+	if combined {
+		output, err = cmd.CombinedOutput()
+	} else {
+		output, err = cmd.Output()
+	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return output, fmt.Errorf("%w after %s: %v", ErrCommandTimeout, r.commandTimeout(), err)
+	}
+	return output, err
 }
 
 func (r *Runner) buildArgs(args []string, pollDuration string) []string {
@@ -188,20 +239,17 @@ func (r *Runner) WorkflowResults(workflow, url string, debug bool, extra ...stri
 }
 
 func (r *Runner) BareResults(debug bool, env []string, args ...string) ([]string, error) {
-	cmd := r.command("")
-	cmd.Args = append(cmd.Args[:1], r.buildArgs(args, r.InteractionsPollDuration)...)
-
-	cmd.Env = r.buildEnv(env)
-
-	if debug {
-		cmd.Args = append(cmd.Args, "-debug")
-		cmd.Stderr = os.Stderr
-		fmt.Println(cmd.String())
-	} else {
-		cmd.Args = append(cmd.Args, "-silent")
-	}
-
-	output, err := cmd.Output()
+	output, err := r.runCommand(false, "", func(cmd *exec.Cmd) {
+		cmd.Args = append(cmd.Args[:1], r.buildArgs(args, r.InteractionsPollDuration)...)
+		cmd.Env = r.buildEnv(env)
+		if debug {
+			cmd.Args = append(cmd.Args, "-debug")
+			cmd.Stderr = os.Stderr
+			fmt.Println(cmd.String())
+		} else {
+			cmd.Args = append(cmd.Args, "-silent")
+		}
+	})
 	if debug && len(output) > 0 {
 		fmt.Println(strings.TrimSpace(conversion.String(output)))
 	}
@@ -210,19 +258,17 @@ func (r *Runner) BareResults(debug bool, env []string, args ...string) ([]string
 }
 
 func (r *Runner) ArgsResults(debug bool, args ...string) ([]string, error) {
-	cmd := r.command("", append(append([]string{}, args...), r.ExtraArgs...)...)
-
-	cmd.Env = r.buildEnv(nil)
-
-	if debug {
-		cmd.Args = append(cmd.Args, "-debug")
-		cmd.Stderr = os.Stderr
-		fmt.Println(cmd.String())
-	} else {
-		cmd.Args = append(cmd.Args, "-silent")
-	}
-
-	output, err := cmd.Output()
+	output, err := r.runCommand(false, "", func(cmd *exec.Cmd) {
+		cmd.Args = append(cmd.Args[:1], append(append([]string{}, args...), r.ExtraArgs...)...)
+		cmd.Env = r.buildEnv(nil)
+		if debug {
+			cmd.Args = append(cmd.Args, "-debug")
+			cmd.Stderr = os.Stderr
+			fmt.Println(cmd.String())
+		} else {
+			cmd.Args = append(cmd.Args, "-silent")
+		}
+	})
 	if debug && len(output) > 0 {
 		fmt.Println(strings.TrimSpace(conversion.String(output)))
 	}
@@ -231,12 +277,11 @@ func (r *Runner) ArgsResults(debug bool, args ...string) ([]string, error) {
 }
 
 func (r *Runner) ArgsErrors(debug bool, env []string, args ...string) ([]string, error) {
-	cmd := r.command("")
-	cmd.Args = append(cmd.Args[:1], r.buildArgs(args, r.InteractionsPollDuration)...)
-	cmd.Args = append(cmd.Args, "-nc")
-	cmd.Env = r.buildEnv(env)
-
-	output, err := cmd.CombinedOutput()
+	output, err := r.runCommand(true, "", func(cmd *exec.Cmd) {
+		cmd.Args = append(cmd.Args[:1], r.buildArgs(args, r.InteractionsPollDuration)...)
+		cmd.Args = append(cmd.Args, "-nc")
+		cmd.Env = r.buildEnv(env)
+	})
 	if debug && len(output) > 0 {
 		fmt.Println(string(output))
 	}
@@ -263,20 +308,17 @@ func (r *Runner) ArgsResultsWithEnv(debug bool, env []string, args ...string) ([
 }
 
 func (r *Runner) LoadedTemplates(binaryPath string, debug bool, args []string) (string, error) {
-	cmd := r.command(binaryPath, append(append([]string{}, args...), r.ExtraArgs...)...)
-
-	cmd.Env = r.buildEnv(nil)
-
-	if r.DisableAutoUpdate {
-		cmd.Args = append(cmd.Args, "-duc")
-	}
-
-	if debug {
-		cmd.Args = append(cmd.Args, "-debug")
-		fmt.Println(cmd.String())
-	}
-
-	data, err := cmd.CombinedOutput()
+	data, err := r.runCommand(true, binaryPath, func(cmd *exec.Cmd) {
+		cmd.Args = append(cmd.Args[:1], append(append([]string{}, args...), r.ExtraArgs...)...)
+		cmd.Env = r.buildEnv(nil)
+		if r.DisableAutoUpdate {
+			cmd.Args = append(cmd.Args, "-duc")
+		}
+		if debug {
+			cmd.Args = append(cmd.Args, "-debug")
+			fmt.Println(cmd.String())
+		}
+	})
 	if debug && len(data) > 0 {
 		fmt.Println(string(data))
 	}
@@ -295,16 +337,14 @@ func (r *Runner) LoadedTemplates(binaryPath string, debug bool, args []string) (
 
 func (r *Runner) CombinedOutput(debug bool, args []string) (string, error) {
 	builtArgs := r.buildArgs(args, r.InteractionsPollDuration)
-	cmd := r.command("", builtArgs...)
-
-	cmd.Env = r.buildEnv(nil)
-
-	if debug {
-		cmd.Args = append(cmd.Args, "-debug")
-		fmt.Println(cmd.String())
-	}
-
-	data, err := cmd.CombinedOutput()
+	data, err := r.runCommand(true, "", func(cmd *exec.Cmd) {
+		cmd.Args = append(cmd.Args[:1], builtArgs...)
+		cmd.Env = r.buildEnv(nil)
+		if debug {
+			cmd.Args = append(cmd.Args, "-debug")
+			fmt.Println(cmd.String())
+		}
+	})
 	if debug && len(data) > 0 {
 		fmt.Println(string(data))
 	}
