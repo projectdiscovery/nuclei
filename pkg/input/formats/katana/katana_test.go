@@ -104,6 +104,14 @@ func TestKatanaFormatCallbackStops(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
+func TestKatanaFormatLargeRecord(t *testing.T) {
+	largeBody := strings.Repeat("a", 10*1024*1024+1)
+	input := `{"request":{"method":"POST","endpoint":"https://example.com/upload","body":"` + largeBody + `"}}`
+
+	rr := parseSingle(t, input)
+	require.Equal(t, largeBody, rr.Request.Body)
+}
+
 func parseSingle(t *testing.T, line string) *types.RequestResponse {
 	t.Helper()
 	var got *types.RequestResponse

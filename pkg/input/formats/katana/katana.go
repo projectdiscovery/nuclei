@@ -8,6 +8,7 @@ package katana
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,11 +21,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
-
-// maxTokenSize is the maximum size of a single JSONL line. Crawled requests can
-// carry large bodies / raw dumps, so we raise the scanner buffer well above the
-// default 64KB.
-const maxTokenSize = 10 * 1024 * 1024
 
 // KatanaFormat is a parser for katana JSONL crawl output.
 type KatanaFormat struct {
@@ -67,52 +63,48 @@ func (k *KatanaFormat) SetOptions(options formats.InputFormatOptions) {
 // request it discovers. It is tolerant of mixed input: blank lines are skipped,
 // and a bare URL line (katana's default non-JSONL output) is treated as a GET.
 func (k *KatanaFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
-	scanner := bufio.NewScanner(input)
-	scanner.Buffer(make([]byte, 0, 64*1024), maxTokenSize)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+	reader := bufio.NewReader(input)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return fmt.Errorf("could not read katana jsonl input: %w", err)
 		}
 
-		// Bare URL line (katana default output without -jsonl): treat as GET.
-		if !strings.HasPrefix(line, "{") {
-			if isAbsoluteURL(line) {
-				rr, err := k.buildFromComponents(http.MethodGet, line, nil, "")
-				if err != nil {
-					gologger.Warning().Msgf("katana: could not parse url %s: %s\n", line, err)
-					continue
+		line = strings.TrimSpace(line)
+		if line != "" {
+			if !strings.HasPrefix(line, "{") {
+				// Bare URL line (katana default output without -jsonl): treat as GET.
+				if isAbsoluteURL(line) {
+					rr, err := k.buildFromComponents(http.MethodGet, line, nil, "")
+					if err != nil {
+						gologger.Warning().Msgf("katana: could not parse url %s: %s\n", line, err)
+					} else if resultsCb(rr) {
+						return nil
+					}
+				} else {
+					gologger.Warning().Msg("katana: could not parse line as a URL or JSON record\n")
 				}
-				if resultsCb(rr) {
-					return nil
+			} else {
+				var result katanaResult
+				if err := json.Unmarshal([]byte(line), &result); err != nil {
+					gologger.Warning().Msgf("katana: could not decode jsonl line: %s\n", err)
+				} else if result.Request == nil || result.Request.Endpoint == "" {
+					gologger.Warning().Msg("katana: invalid record with missing request or endpoint\n")
+				} else {
+					rr, err := k.toRequestResponse(result.Request)
+					if err != nil {
+						gologger.Warning().Msgf("katana: could not parse request %s: %s\n", result.Request.Endpoint, err)
+					} else if resultsCb(rr) {
+						return nil
+					}
 				}
 			}
-			continue
 		}
 
-		var result katanaResult
-		if err := json.Unmarshal([]byte(line), &result); err != nil {
-			gologger.Warning().Msgf("katana: could not decode jsonl line: %s\n", err)
-			continue
-		}
-		if result.Request == nil || result.Request.Endpoint == "" {
-			continue
-		}
-
-		rr, err := k.toRequestResponse(result.Request)
-		if err != nil {
-			gologger.Warning().Msgf("katana: could not parse request %s: %s\n", result.Request.Endpoint, err)
-			continue
-		}
-		if resultsCb(rr) {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("could not read katana jsonl input: %w", err)
-	}
-	return nil
 }
 
 // toRequestResponse converts a katana request into nuclei's standard
