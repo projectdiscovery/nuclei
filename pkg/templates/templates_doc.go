@@ -459,8 +459,88 @@ func init() {
 			Key:   "headers_from_response",
 			Value: "HTTP response headers in name:value format",
 		},
+		{
+			Key:   "tls_version",
+			Value: "TLS version negotiated for the HTTP connection",
+		},
+		{
+			Key:   "cipher",
+			Value: "TLS cipher suite negotiated for the HTTP connection",
+		},
+		{
+			Key:   "sni",
+			Value: "SNI value used in the TLS handshake",
+		},
+		{
+			Key:   "subject_cn",
+			Value: "Leaf certificate subject common name",
+		},
+		{
+			Key:   "subject_dn",
+			Value: "Leaf certificate subject distinguished name",
+		},
+		{
+			Key:   "subject_an",
+			Value: "Leaf certificate subject alternative names",
+		},
+		{
+			Key:   "subject_org",
+			Value: "Leaf certificate subject organization",
+		},
+		{
+			Key:   "issuer_cn",
+			Value: "Leaf certificate issuer common name",
+		},
+		{
+			Key:   "issuer_dn",
+			Value: "Leaf certificate issuer distinguished name",
+		},
+		{
+			Key:   "issuer_org",
+			Value: "Leaf certificate issuer organization",
+		},
+		{
+			Key:   "serial",
+			Value: "Leaf certificate serial number",
+		},
+		{
+			Key:   "fingerprint_hash",
+			Value: "Leaf certificate fingerprint hashes (md5/sha1/sha256)",
+		},
+		{
+			Key:   "not_before",
+			Value: "Leaf certificate not-before timestamp",
+		},
+		{
+			Key:   "not_after",
+			Value: "Leaf certificate not-after timestamp",
+		},
+		{
+			Key:   "expired",
+			Value: "Whether the leaf certificate has expired",
+		},
+		{
+			Key:   "self_signed",
+			Value: "Whether the leaf certificate is self-signed",
+		},
+		{
+			Key:   "mismatched",
+			Value: "Whether the leaf certificate does not match the SNI hostname",
+		},
+		{
+			Key:   "domains",
+			Value: "Deduplicated domains from subject CN and SANs",
+		},
+		{
+			Key:   "wildcard_certificate",
+			Value: "Whether the leaf certificate is a wildcard certificate",
+		},
+		{
+			Key:   "emails",
+			Value: "Email addresses embedded in the leaf certificate",
+		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 39)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 40)
 	HTTPRequestDoc.Fields[0].Name = "path"
 	HTTPRequestDoc.Fields[0].Type = "[]string"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -599,91 +679,96 @@ func init() {
 	HTTPRequestDoc.Fields[21].Note = ""
 	HTTPRequestDoc.Fields[21].Description = "DisableCookie is an optional setting that disables cookie reuse"
 	HTTPRequestDoc.Fields[21].Comments[encoder.LineComment] = "DisableCookie is an optional setting that disables cookie reuse"
-	HTTPRequestDoc.Fields[22].Name = "read-all"
+	HTTPRequestDoc.Fields[22].Name = "disable-http-cache"
 	HTTPRequestDoc.Fields[22].Type = "bool"
 	HTTPRequestDoc.Fields[22].Note = ""
-	HTTPRequestDoc.Fields[22].Description = "Enables force reading of the entire raw unsafe request body ignoring\nany specified content length headers."
-	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Enables force reading of the entire raw unsafe request body ignoring"
-	HTTPRequestDoc.Fields[23].Name = "redirects"
+	HTTPRequestDoc.Fields[22].Description = "DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset."
+	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset."
+	HTTPRequestDoc.Fields[23].Name = "read-all"
 	HTTPRequestDoc.Fields[23].Type = "bool"
 	HTTPRequestDoc.Fields[23].Note = ""
-	HTTPRequestDoc.Fields[23].Description = "Redirects specifies whether redirects should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
-	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "Redirects specifies whether redirects should be followed by the HTTP Client."
-	HTTPRequestDoc.Fields[24].Name = "host-redirects"
+	HTTPRequestDoc.Fields[23].Description = "Enables force reading of the entire raw unsafe request body ignoring\nany specified content length headers."
+	HTTPRequestDoc.Fields[23].Comments[encoder.LineComment] = "Enables force reading of the entire raw unsafe request body ignoring"
+	HTTPRequestDoc.Fields[24].Name = "redirects"
 	HTTPRequestDoc.Fields[24].Type = "bool"
 	HTTPRequestDoc.Fields[24].Note = ""
-	HTTPRequestDoc.Fields[24].Description = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
-	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client."
-	HTTPRequestDoc.Fields[25].Name = "protocol-redirects"
+	HTTPRequestDoc.Fields[24].Description = "Redirects specifies whether redirects should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
+	HTTPRequestDoc.Fields[24].Comments[encoder.LineComment] = "Redirects specifies whether redirects should be followed by the HTTP Client."
+	HTTPRequestDoc.Fields[25].Name = "host-redirects"
 	HTTPRequestDoc.Fields[25].Type = "bool"
 	HTTPRequestDoc.Fields[25].Note = ""
-	HTTPRequestDoc.Fields[25].Description = "ProtocolRedirects specifies whether only redirects within the same protocol should be followed.\n\nWhen set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked."
-	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "ProtocolRedirects specifies whether only redirects within the same protocol should be followed."
-	HTTPRequestDoc.Fields[26].Name = "pipeline"
+	HTTPRequestDoc.Fields[25].Description = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client.\n\nThis can be used in conjunction with `max-redirects` to control the HTTP request redirects."
+	HTTPRequestDoc.Fields[25].Comments[encoder.LineComment] = "Redirects specifies whether only redirects to the same host should be followed by the HTTP Client."
+	HTTPRequestDoc.Fields[26].Name = "protocol-redirects"
 	HTTPRequestDoc.Fields[26].Type = "bool"
 	HTTPRequestDoc.Fields[26].Note = ""
-	HTTPRequestDoc.Fields[26].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
-	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
-	HTTPRequestDoc.Fields[27].Name = "unsafe"
+	HTTPRequestDoc.Fields[26].Description = "ProtocolRedirects specifies whether only redirects within the same protocol should be followed.\n\nWhen set to true with redirects enabled, cross-protocol redirects (e.g. HTTP to HTTPS) will be blocked."
+	HTTPRequestDoc.Fields[26].Comments[encoder.LineComment] = "ProtocolRedirects specifies whether only redirects within the same protocol should be followed."
+	HTTPRequestDoc.Fields[27].Name = "pipeline"
 	HTTPRequestDoc.Fields[27].Type = "bool"
 	HTTPRequestDoc.Fields[27].Note = ""
-	HTTPRequestDoc.Fields[27].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
-	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
-	HTTPRequestDoc.Fields[28].Name = "race"
+	HTTPRequestDoc.Fields[27].Description = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\n\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests."
+	HTTPRequestDoc.Fields[27].Comments[encoder.LineComment] = "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining"
+	HTTPRequestDoc.Fields[28].Name = "unsafe"
 	HTTPRequestDoc.Fields[28].Type = "bool"
 	HTTPRequestDoc.Fields[28].Note = ""
-	HTTPRequestDoc.Fields[28].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
-	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
-	HTTPRequestDoc.Fields[29].Name = "req-condition"
+	HTTPRequestDoc.Fields[28].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
+	HTTPRequestDoc.Fields[28].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
+	HTTPRequestDoc.Fields[29].Name = "race"
 	HTTPRequestDoc.Fields[29].Type = "bool"
 	HTTPRequestDoc.Fields[29].Note = ""
-	HTTPRequestDoc.Fields[29].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
-	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
-	HTTPRequestDoc.Fields[30].Name = "stop-at-first-match"
+	HTTPRequestDoc.Fields[29].Description = "Race determines if all the request have to be attempted at the same time (Race Condition)\n\nThe actual number of requests that will be sent is determined by the `race_count`  field."
+	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "Race determines if all the request have to be attempted at the same time (Race Condition)"
+	HTTPRequestDoc.Fields[30].Name = "req-condition"
 	HTTPRequestDoc.Fields[30].Type = "bool"
 	HTTPRequestDoc.Fields[30].Note = ""
-	HTTPRequestDoc.Fields[30].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HTTPRequestDoc.Fields[31].Name = "skip-variables-check"
+	HTTPRequestDoc.Fields[30].Description = "ReqCondition automatically assigns numbers to requests and preserves their history.\n\nThis allows matching on them later for multi-request conditions."
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "ReqCondition automatically assigns numbers to requests and preserves their history."
+	HTTPRequestDoc.Fields[31].Name = "stop-at-first-match"
 	HTTPRequestDoc.Fields[31].Type = "bool"
 	HTTPRequestDoc.Fields[31].Note = ""
-	HTTPRequestDoc.Fields[31].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[31].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
-	HTTPRequestDoc.Fields[32].Name = "iterate-all"
+	HTTPRequestDoc.Fields[31].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[31].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HTTPRequestDoc.Fields[32].Name = "skip-variables-check"
 	HTTPRequestDoc.Fields[32].Type = "bool"
 	HTTPRequestDoc.Fields[32].Note = ""
-	HTTPRequestDoc.Fields[32].Description = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[32].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
-	HTTPRequestDoc.Fields[33].Name = "digest-username"
-	HTTPRequestDoc.Fields[33].Type = "string"
+	HTTPRequestDoc.Fields[32].Description = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[32].Comments[encoder.LineComment] = "SkipVariablesCheck skips the check for unresolved variables in request"
+	HTTPRequestDoc.Fields[33].Name = "iterate-all"
+	HTTPRequestDoc.Fields[33].Type = "bool"
 	HTTPRequestDoc.Fields[33].Note = ""
-	HTTPRequestDoc.Fields[33].Description = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[33].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
-	HTTPRequestDoc.Fields[34].Name = "digest-password"
+	HTTPRequestDoc.Fields[33].Description = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[33].Comments[encoder.LineComment] = "IterateAll iterates all the values extracted from internal extractors"
+	HTTPRequestDoc.Fields[34].Name = "digest-username"
 	HTTPRequestDoc.Fields[34].Type = "string"
 	HTTPRequestDoc.Fields[34].Note = ""
-	HTTPRequestDoc.Fields[34].Description = "DigestAuthPassword specifies the password for digest authentication"
-	HTTPRequestDoc.Fields[34].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
-	HTTPRequestDoc.Fields[35].Name = "disable-path-automerge"
-	HTTPRequestDoc.Fields[35].Type = "bool"
+	HTTPRequestDoc.Fields[34].Description = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[34].Comments[encoder.LineComment] = "DigestAuthUsername specifies the username for digest authentication"
+	HTTPRequestDoc.Fields[35].Name = "digest-password"
+	HTTPRequestDoc.Fields[35].Type = "string"
 	HTTPRequestDoc.Fields[35].Note = ""
-	HTTPRequestDoc.Fields[35].Description = "DisablePathAutomerge disables merging target url path with raw request path"
-	HTTPRequestDoc.Fields[35].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
-	HTTPRequestDoc.Fields[36].Name = "pre-condition"
-	HTTPRequestDoc.Fields[36].Type = "[]matchers.Matcher"
+	HTTPRequestDoc.Fields[35].Description = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[35].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[36].Name = "disable-path-automerge"
+	HTTPRequestDoc.Fields[36].Type = "bool"
 	HTTPRequestDoc.Fields[36].Note = ""
-	HTTPRequestDoc.Fields[36].Description = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
-	HTTPRequestDoc.Fields[36].Comments[encoder.LineComment] = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
-	HTTPRequestDoc.Fields[37].Name = "pre-condition-operator"
-	HTTPRequestDoc.Fields[37].Type = "string"
+	HTTPRequestDoc.Fields[36].Description = "DisablePathAutomerge disables merging target url path with raw request path"
+	HTTPRequestDoc.Fields[36].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
+	HTTPRequestDoc.Fields[37].Name = "pre-condition"
+	HTTPRequestDoc.Fields[37].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[37].Note = ""
-	HTTPRequestDoc.Fields[37].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
-	HTTPRequestDoc.Fields[37].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
-	HTTPRequestDoc.Fields[38].Name = "global-matchers"
-	HTTPRequestDoc.Fields[38].Type = "bool"
+	HTTPRequestDoc.Fields[37].Description = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[37].Comments[encoder.LineComment] = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[38].Name = "pre-condition-operator"
+	HTTPRequestDoc.Fields[38].Type = "string"
 	HTTPRequestDoc.Fields[38].Note = ""
-	HTTPRequestDoc.Fields[38].Description = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
-	HTTPRequestDoc.Fields[38].Comments[encoder.LineComment] = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
+	HTTPRequestDoc.Fields[38].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+	HTTPRequestDoc.Fields[38].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+	HTTPRequestDoc.Fields[39].Name = "global-matchers"
+	HTTPRequestDoc.Fields[39].Type = "bool"
+	HTTPRequestDoc.Fields[39].Note = ""
+	HTTPRequestDoc.Fields[39].Description = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
+	HTTPRequestDoc.Fields[39].Comments[encoder.LineComment] = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
@@ -903,7 +988,7 @@ func init() {
 			FieldName: "pre-condition",
 		},
 	}
-	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 16)
+	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 22)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
 	MATCHERSMatcherDoc.Fields[0].Type = "MatcherTypeHolder"
 	MATCHERSMatcherDoc.Fields[0].Note = ""
@@ -998,37 +1083,69 @@ func init() {
 	MATCHERSMatcherDoc.Fields[11].AddExample("XPath Matcher to check a title", []string{"/html/head/title[contains(text(), 'How to Find XPath')]"})
 
 	MATCHERSMatcherDoc.Fields[11].AddExample("XPath Matcher for finding links with target=\"_blank\"", []string{"//a[@target=\"_blank\"]"})
-	MATCHERSMatcherDoc.Fields[12].Name = "encoding"
+	MATCHERSMatcherDoc.Fields[12].Name = "prompt"
 	MATCHERSMatcherDoc.Fields[12].Type = "string"
 	MATCHERSMatcherDoc.Fields[12].Note = ""
-	MATCHERSMatcherDoc.Fields[12].Description = "Encoding specifies the encoding for the words field if any."
-	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "Encoding specifies the encoding for the words field if any."
-	MATCHERSMatcherDoc.Fields[12].Values = []string{
+	MATCHERSMatcherDoc.Fields[12].Description = "Prompt is the natural-language question for an llm matcher. The model\njudges the selected response part and returns a verdict; the matcher\nfires when the verdict equals Expect with at least MinConfidence."
+	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "Prompt is the natural-language question for an llm matcher. The model"
+
+	MATCHERSMatcherDoc.Fields[12].AddExample("", "Is this a working admin login form rather than a marketing page?")
+	MATCHERSMatcherDoc.Fields[13].Name = "expect"
+	MATCHERSMatcherDoc.Fields[13].Type = "string"
+	MATCHERSMatcherDoc.Fields[13].Note = ""
+	MATCHERSMatcherDoc.Fields[13].Description = "Expect is the verdict that counts as a match for an llm matcher.\nDefaults to \"yes\"."
+	MATCHERSMatcherDoc.Fields[13].Comments[encoder.LineComment] = "Expect is the verdict that counts as a match for an llm matcher."
+	MATCHERSMatcherDoc.Fields[14].Name = "options"
+	MATCHERSMatcherDoc.Fields[14].Type = "[]string"
+	MATCHERSMatcherDoc.Fields[14].Note = ""
+	MATCHERSMatcherDoc.Fields[14].Description = "Options restricts the model to a fixed set of verdicts for an llm\nmatcher. Defaults to yes/no."
+	MATCHERSMatcherDoc.Fields[14].Comments[encoder.LineComment] = "Options restricts the model to a fixed set of verdicts for an llm"
+	MATCHERSMatcherDoc.Fields[15].Name = "min-confidence"
+	MATCHERSMatcherDoc.Fields[15].Type = "float64"
+	MATCHERSMatcherDoc.Fields[15].Note = ""
+	MATCHERSMatcherDoc.Fields[15].Description = "MinConfidence is the minimum confidence (0-1) an llm verdict needs to\ncount as a match. Defaults to 0."
+	MATCHERSMatcherDoc.Fields[15].Comments[encoder.LineComment] = "MinConfidence is the minimum confidence (0-1) an llm verdict needs to"
+	MATCHERSMatcherDoc.Fields[16].Name = "max-input-tokens"
+	MATCHERSMatcherDoc.Fields[16].Type = "int"
+	MATCHERSMatcherDoc.Fields[16].Note = ""
+	MATCHERSMatcherDoc.Fields[16].Description = "MaxInputTokens caps how much of the response part is sent to the model\nfor an llm matcher, as an approximate token count."
+	MATCHERSMatcherDoc.Fields[16].Comments[encoder.LineComment] = "MaxInputTokens caps how much of the response part is sent to the model"
+	MATCHERSMatcherDoc.Fields[17].Name = "allow-sole"
+	MATCHERSMatcherDoc.Fields[17].Type = "bool"
+	MATCHERSMatcherDoc.Fields[17].Note = ""
+	MATCHERSMatcherDoc.Fields[17].Description = "AllowSole permits an llm matcher to be the only matcher on a high or\ncritical template. Without it such a template is rejected, so a model is\nnever the sole arbiter of a severe finding by accident."
+	MATCHERSMatcherDoc.Fields[17].Comments[encoder.LineComment] = "AllowSole permits an llm matcher to be the only matcher on a high or"
+	MATCHERSMatcherDoc.Fields[18].Name = "encoding"
+	MATCHERSMatcherDoc.Fields[18].Type = "string"
+	MATCHERSMatcherDoc.Fields[18].Note = ""
+	MATCHERSMatcherDoc.Fields[18].Description = "Encoding specifies the encoding for the words field if any."
+	MATCHERSMatcherDoc.Fields[18].Comments[encoder.LineComment] = "Encoding specifies the encoding for the words field if any."
+	MATCHERSMatcherDoc.Fields[18].Values = []string{
 		"hex",
 	}
-	MATCHERSMatcherDoc.Fields[13].Name = "case-insensitive"
-	MATCHERSMatcherDoc.Fields[13].Type = "bool"
-	MATCHERSMatcherDoc.Fields[13].Note = ""
-	MATCHERSMatcherDoc.Fields[13].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
-	MATCHERSMatcherDoc.Fields[13].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
-	MATCHERSMatcherDoc.Fields[13].Values = []string{
+	MATCHERSMatcherDoc.Fields[19].Name = "case-insensitive"
+	MATCHERSMatcherDoc.Fields[19].Type = "bool"
+	MATCHERSMatcherDoc.Fields[19].Note = ""
+	MATCHERSMatcherDoc.Fields[19].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[19].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[19].Values = []string{
 		"false",
 		"true",
 	}
-	MATCHERSMatcherDoc.Fields[14].Name = "match-all"
-	MATCHERSMatcherDoc.Fields[14].Type = "bool"
-	MATCHERSMatcherDoc.Fields[14].Note = ""
-	MATCHERSMatcherDoc.Fields[14].Description = "MatchAll enables matching for all matcher values. Default is false."
-	MATCHERSMatcherDoc.Fields[14].Comments[encoder.LineComment] = "MatchAll enables matching for all matcher values. Default is false."
-	MATCHERSMatcherDoc.Fields[14].Values = []string{
+	MATCHERSMatcherDoc.Fields[20].Name = "match-all"
+	MATCHERSMatcherDoc.Fields[20].Type = "bool"
+	MATCHERSMatcherDoc.Fields[20].Note = ""
+	MATCHERSMatcherDoc.Fields[20].Description = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[20].Comments[encoder.LineComment] = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[20].Values = []string{
 		"false",
 		"true",
 	}
-	MATCHERSMatcherDoc.Fields[15].Name = "internal"
-	MATCHERSMatcherDoc.Fields[15].Type = "bool"
-	MATCHERSMatcherDoc.Fields[15].Note = ""
-	MATCHERSMatcherDoc.Fields[15].Description = "description: |\n  Internal when true hides the matcher from output. Default is false.\n It is meant to be used in multiprotocol / flow templates to create internal matcher condition without printing it in output.\n or other similar use cases.\n values:\n   - false\n   - true"
-	MATCHERSMatcherDoc.Fields[15].Comments[encoder.LineComment] = " description: |"
+	MATCHERSMatcherDoc.Fields[21].Name = "internal"
+	MATCHERSMatcherDoc.Fields[21].Type = "bool"
+	MATCHERSMatcherDoc.Fields[21].Note = ""
+	MATCHERSMatcherDoc.Fields[21].Description = "description: |\n  Internal when true hides the matcher from output. Default is false.\n It is meant to be used in multiprotocol / flow templates to create internal matcher condition without printing it in output.\n or other similar use cases.\n values:\n   - false\n   - true"
+	MATCHERSMatcherDoc.Fields[21].Comments[encoder.LineComment] = " description: |"
 
 	MatcherTypeHolderDoc.Type = "MatcherTypeHolder"
 	MatcherTypeHolderDoc.Comments[encoder.LineComment] = " MatcherTypeHolder is used to hold internal type of the matcher"
@@ -1053,6 +1170,7 @@ func init() {
 		"size",
 		"dsl",
 		"xpath",
+		"llm",
 	}
 
 	DNSRequestDoc.Type = "dns.Request"
@@ -1235,6 +1353,11 @@ func init() {
 		"TLSA",
 		"ANY",
 		"SRV",
+		"RRSIG",
+		"NSEC",
+		"DNSKEY",
+		"NSEC3",
+		"NSEC3PARAM",
 	}
 
 	FILERequestDoc.Type = "file.Request"
@@ -1278,7 +1401,7 @@ func init() {
 			Value: "Raw contains the raw file contents",
 		},
 	}
-	FILERequestDoc.Fields = make([]encoder.Doc, 7)
+	FILERequestDoc.Fields = make([]encoder.Doc, 12)
 	FILERequestDoc.Fields[0].Name = "extensions"
 	FILERequestDoc.Fields[0].Type = "[]string"
 	FILERequestDoc.Fields[0].Note = ""
@@ -1320,6 +1443,33 @@ func init() {
 	FILERequestDoc.Fields[6].Note = ""
 	FILERequestDoc.Fields[6].Description = "NoRecursive specifies whether to not do recursive checks if folders are provided."
 	FILERequestDoc.Fields[6].Comments[encoder.LineComment] = "NoRecursive specifies whether to not do recursive checks if folders are provided."
+	FILERequestDoc.Fields[7].Name = "smb-user"
+	FILERequestDoc.Fields[7].Type = "string"
+	FILERequestDoc.Fields[7].Note = ""
+	FILERequestDoc.Fields[7].Description = "SMBUser authenticates to remote SMB shares when the file input is a UNC\nor smb:// path (issue #6142). Guest/anon: empty password."
+	FILERequestDoc.Fields[7].Comments[encoder.LineComment] = "SMBUser authenticates to remote SMB shares when the file input is a UNC"
+
+	FILERequestDoc.Fields[7].AddExample("", "auditor")
+	FILERequestDoc.Fields[8].Name = "smb-password"
+	FILERequestDoc.Fields[8].Type = "string"
+	FILERequestDoc.Fields[8].Note = ""
+	FILERequestDoc.Fields[8].Description = "SMBPassword is the password for SMB file targets."
+	FILERequestDoc.Fields[8].Comments[encoder.LineComment] = "SMBPassword is the password for SMB file targets."
+	FILERequestDoc.Fields[9].Name = "smb-domain"
+	FILERequestDoc.Fields[9].Type = "string"
+	FILERequestDoc.Fields[9].Note = ""
+	FILERequestDoc.Fields[9].Description = "SMBDomain is the optional NTLM domain / workgroup."
+	FILERequestDoc.Fields[9].Comments[encoder.LineComment] = "SMBDomain is the optional NTLM domain / workgroup."
+	FILERequestDoc.Fields[10].Name = "smb-hash"
+	FILERequestDoc.Fields[10].Type = "string"
+	FILERequestDoc.Fields[10].Note = ""
+	FILERequestDoc.Fields[10].Description = "SMBHash enables pass-the-hash (overrides smb-password when set)."
+	FILERequestDoc.Fields[10].Comments[encoder.LineComment] = "SMBHash enables pass-the-hash (overrides smb-password when set)."
+	FILERequestDoc.Fields[11].Name = "smb-port"
+	FILERequestDoc.Fields[11].Type = "int"
+	FILERequestDoc.Fields[11].Note = ""
+	FILERequestDoc.Fields[11].Description = "SMBPort overrides the default SMB port (445) for UNC targets."
+	FILERequestDoc.Fields[11].Comments[encoder.LineComment] = "SMBPort overrides the default SMB port (445) for UNC targets."
 
 	NETWORKRequestDoc.Type = "network.Request"
 	NETWORKRequestDoc.Comments[encoder.LineComment] = " Request contains a Network protocol request to be made from a template"
