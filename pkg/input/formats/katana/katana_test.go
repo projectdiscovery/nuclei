@@ -1,7 +1,9 @@
 package katana
 
 import (
+	"io"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -110,6 +112,96 @@ func TestKatanaFormatLargeRecord(t *testing.T) {
 
 	rr := parseSingle(t, input)
 	require.Equal(t, largeBody, rr.Request.Body)
+}
+
+func TestKatanaFormatRecordSizeLimit(t *testing.T) {
+	const (
+		prefix = `{"request":{"method":"POST","endpoint":"https://example.com/upload","body":"`
+		suffix = `"}}`
+	)
+	record := func(size int) string {
+		return prefix + strings.Repeat("a", size-len(prefix)-len(suffix)) + suffix
+	}
+
+	// A record right at the limit is parsed, one byte over it is dropped.
+	rr := parseSingle(t, record(MaxRecordSize))
+	require.Len(t, rr.Request.Body, MaxRecordSize-len(prefix)-len(suffix))
+
+	var got []*types.RequestResponse
+	err := New().Parse(strings.NewReader(record(MaxRecordSize+1)), func(rr *types.RequestResponse) bool {
+		got = append(got, rr)
+		return false
+	}, "test")
+	require.NoError(t, err)
+	require.Empty(t, got)
+}
+
+func TestKatanaFormatOversizedRecordSkipped(t *testing.T) {
+	// A record above the limit must be dropped while the rest of the file is
+	// still parsed.
+	input := io.MultiReader(
+		strings.NewReader(`{"request":{"method":"POST","endpoint":"https://example.com/upload","body":"`),
+		io.LimitReader(filler{}, MaxRecordSize),
+		strings.NewReader("\"}}\n"+`{"request":{"method":"GET","endpoint":"https://example.com/ok"}}`),
+	)
+
+	var got []*types.RequestResponse
+	err := New().Parse(input, func(rr *types.RequestResponse) bool {
+		got = append(got, rr)
+		return false
+	}, "test")
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "https://example.com/ok", got[0].URL.String())
+}
+
+func TestKatanaFormatUnterminatedRecordIsBounded(t *testing.T) {
+	// An unterminated record is drained rather than buffered, so what parsing
+	// costs must not grow with how long the record is: a record sixteen times
+	// over the limit may not cost measurably more than one just over it.
+	small := allocsForUnterminatedRecord(t, 2*MaxRecordSize)
+	large := allocsForUnterminatedRecord(t, 16*MaxRecordSize)
+
+	require.LessOrEqual(t, large, small+MaxRecordSize,
+		"draining a record 16x over the limit allocated %d bytes against %d for 2x", large, small)
+}
+
+// allocsForUnterminatedRecord reports the bytes allocated while parsing a
+// record of the given size that never terminates with a newline.
+func allocsForUnterminatedRecord(t *testing.T, size int64) uint64 {
+	t.Helper()
+
+	input := io.MultiReader(
+		strings.NewReader(`{"request":{"method":"POST","endpoint":"https://example.com/upload","body":"`),
+		io.LimitReader(filler{}, size),
+	)
+
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+
+	var got []*types.RequestResponse
+	err := New().Parse(input, func(rr *types.RequestResponse) bool {
+		got = append(got, rr)
+		return false
+	}, "test")
+	runtime.ReadMemStats(&after)
+
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	return after.TotalAlloc - before.TotalAlloc
+}
+
+// filler is an endless source of record payload bytes, used to feed oversized
+// records without materializing them in the test.
+type filler struct{}
+
+func (filler) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 'a'
+	}
+	return len(p), nil
 }
 
 func parseSingle(t *testing.T, line string) *types.RequestResponse {
