@@ -67,11 +67,13 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	resp := &http.Response{}
 	resp.Header = make(http.Header)
 	resp.Header.Set("Test", "Test-Response")
+	resp.Header.Set("Error", "unavailable")
+	resp.Header.Set("Error-Type", "timeout")
 	host := "http://example.com/test/"
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 16, "could not get correct number of items in dsl map")
+	require.Len(t, event, 18, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 
@@ -119,7 +121,6 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	})
 
 	t.Run("response error header is not a request error", func(t *testing.T) {
-		event["error"] = "unavailable"
 		errorMatcher := &matchers.Matcher{
 			Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
 			Errors: []string{"any"},

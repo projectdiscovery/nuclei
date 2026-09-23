@@ -20,6 +20,31 @@ const (
 	KindUnknown    Kind = "unknown"
 )
 
+const provenanceKey = "\x00nuclei-request-error"
+
+var provenanceToken = &struct{ internal byte }{}
+
+// Mark adds internal provenance that the error fields came from request execution.
+// The token uses pointer identity so response-controlled fields cannot forge it.
+func Mark(event map[string]interface{}) {
+	if event != nil {
+		event[provenanceKey] = provenanceToken
+	}
+}
+
+// IsMarked reports whether an event has request-error provenance.
+func IsMarked(event map[string]interface{}) bool {
+	if event == nil {
+		return false
+	}
+	return event[provenanceKey] == provenanceToken
+}
+
+// Unmark removes internal request-error provenance before an event is emitted.
+func Unmark(event map[string]interface{}) {
+	delete(event, provenanceKey)
+}
+
 // Classify returns the error kind and whether it is a timeout.
 func Classify(err error) (Kind, bool) {
 	if err == nil {

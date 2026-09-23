@@ -73,3 +73,22 @@ func TestAnnotate(t *testing.T) {
 	Annotate(nil, context.DeadlineExceeded, time.Second) // no panic
 	Annotate(map[string]interface{}{}, nil, time.Second) // no fields
 }
+
+func TestProvenanceMarker(t *testing.T) {
+	event := map[string]interface{}{
+		"error":      "server controlled",
+		"error_type": "timeout",
+	}
+	if IsMarked(event) {
+		t.Fatal("public error fields must not establish request-error provenance")
+	}
+
+	Mark(event)
+	if !IsMarked(event) {
+		t.Fatal("expected internally marked event")
+	}
+	Unmark(event)
+	if IsMarked(event) {
+		t.Fatal("expected provenance to be removed")
+	}
+}

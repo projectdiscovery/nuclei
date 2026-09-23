@@ -964,6 +964,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		duration := time.Since(timeStart)
 		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", duration, generatedRequest.meta)
 		requesterr.Annotate(outputEvent, err, duration)
+		requesterr.Mark(outputEvent)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -1000,6 +1001,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 					event.InternalEvent = outputEvent
 				}
 			}
+			requesterr.Unmark(outputEvent)
 			callback(event)
 		}
 		return err

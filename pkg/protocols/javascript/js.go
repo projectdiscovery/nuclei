@@ -681,6 +681,10 @@ func (request *Request) executeRequestWithPayloads(
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
 	data := request.generateEventData(input, values, hostPort)
+	if err != nil {
+		// Make classified failure fields available to later protocol steps.
+		requesterr.Annotate(data, err, 0)
+	}
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)
@@ -699,6 +703,8 @@ func (request *Request) executeRequestWithPayloads(
 	if _, ok := data["error"]; ok {
 		eventData := generators.MergeMaps(data, payloadValues)
 		if err != nil {
+			// Template context is merged above and may contain stale namespaced
+			// values, so ensure the emitted event retains the current failure.
 			requesterr.Annotate(eventData, err, 0)
 		}
 		event := eventcreator.CreateEventWithAdditionalOptions(request, eventData, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
