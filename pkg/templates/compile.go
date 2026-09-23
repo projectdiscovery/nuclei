@@ -586,6 +586,10 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 }
 
 func prepareTemplate(template *Template, srcOptions *protocols.ExecutorOptions) (*Template, error) {
+	if template.InteractshEviction < 0 {
+		return nil, errors.New("interactsh-eviction cannot be negative")
+	}
+
 	// Create a copy of the options specifically for this template.
 	options := srcOptions.Copy()
 

@@ -26,3 +26,10 @@ http:
 	require.NoError(t, yaml.Unmarshal([]byte(raw), &template))
 	require.Equal(t, 300, template.InteractshEviction)
 }
+
+func TestTemplateInteractshEvictionRejectsNegativeValue(t *testing.T) {
+	t.Parallel()
+
+	_, err := prepareTemplate(&Template{InteractshEviction: -1}, nil)
+	require.EqualError(t, err, "interactsh-eviction cannot be negative")
+}
