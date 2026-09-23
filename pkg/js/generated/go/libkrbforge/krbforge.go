@@ -3,7 +3,7 @@ package krbforge
 import (
 	lib_krbforge "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/krbforge"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

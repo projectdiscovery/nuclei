@@ -14,6 +14,7 @@ import (
 	"github.com/clbanning/mxj/v2"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fasttemplate"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
@@ -23,7 +24,6 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/projectdiscovery/utils/generic"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"github.com/valyala/fasttemplate"
 )
 
 const (

@@ -8,16 +8,15 @@ import (
 	"time"
 
 	"github.com/invopop/jsonschema"
-	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -25,10 +24,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
-	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
-	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -140,12 +139,15 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
+	options *protocols.ExecutorOptions
+	// hasLLMOperators reports whether any matcher on this request is an llm
+	// matcher, so the audit map is only allocated for responses that can
+	// produce one.
+	hasLLMOperators   bool
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
 	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	httpClient        *retryablehttp.Client
 	rawhttpClient     *rawhttp.Client
 	dialer            *fastdialer.Dialer
 
@@ -158,6 +160,10 @@ type Request struct {
 	// values:
 	//   - "AWS"
 	Signature SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+
+	// connectionReusePolicy stores the analyzed connection reuse policy
+	// This is set during Compile() based on template analysis
+	connectionReusePolicy ConnectionReusePolicy `yaml:"-" json:"-"`
 
 	// description: |
 	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
@@ -172,6 +178,10 @@ type Request struct {
 	// description: |
 	//   DisableCookie is an optional setting that disables cookie reuse
 	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
+
+	// description: |
+	//   DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset.
+	DisableHTTPCache bool `yaml:"disable-http-cache,omitempty" json:"disable-http-cache,omitempty" jsonschema:"title=disable HTTP cache,description=Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"`
 
 	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring
@@ -293,6 +303,26 @@ var RequestPartDefinitions = map[string]string{
 	"all":                   "HTTP response body + headers",
 	"cookies_from_response": "HTTP response cookies in name:value format",
 	"headers_from_response": "HTTP response headers in name:value format",
+	"tls_version":           "TLS version negotiated for the HTTP connection",
+	"cipher":                "TLS cipher suite negotiated for the HTTP connection",
+	"sni":                   "SNI value used in the TLS handshake",
+	"subject_cn":            "Leaf certificate subject common name",
+	"subject_dn":            "Leaf certificate subject distinguished name",
+	"subject_an":            "Leaf certificate subject alternative names",
+	"subject_org":           "Leaf certificate subject organization",
+	"issuer_cn":             "Leaf certificate issuer common name",
+	"issuer_dn":             "Leaf certificate issuer distinguished name",
+	"issuer_org":            "Leaf certificate issuer organization",
+	"serial":                "Leaf certificate serial number",
+	"fingerprint_hash":      "Leaf certificate fingerprint hashes (md5/sha1/sha256)",
+	"not_before":            "Leaf certificate not-before timestamp",
+	"not_after":             "Leaf certificate not-after timestamp",
+	"expired":               "Whether the leaf certificate has expired",
+	"self_signed":           "Whether the leaf certificate is self-signed",
+	"mismatched":            "Whether the leaf certificate does not match the SNI hostname",
+	"domains":               "Deduplicated domains from subject CN and SANs",
+	"wildcard_certificate":  "Whether the leaf certificate is a wildcard certificate",
+	"emails":                "Email addresses embedded in the leaf certificate",
 }
 
 // GetID returns the unique ID of the request if any.
@@ -310,13 +340,36 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		return errors.Wrap(err, "validation error")
 	}
 
+	// Analyze connection reuse policy to determine if we can safely reuse connections
+	forceHTTP2 := options.Options != nil && options.Options.ForceAttemptHTTP2
+	reusePolicy := request.AnalyzeConnectionReuse(forceHTTP2)
+	request.connectionReusePolicy = reusePolicy
+
+	// Determine if keep-alive should be disabled
+	// If policy is ReuseUnsafe, we must disable keep-alive to preserve existing behavior
+	// Otherwise, use the standard logic (which may enable keep-alive)
+	var disableKeepAlive bool
+	switch reusePolicy {
+	case ReuseUnsafe:
+		// Preserve existing behavior: disable keep-alive for unsafe requests
+		disableKeepAlive = true
+	case ReuseSafe:
+		// Enable keep-alive for safe requests to allow connection pooling
+		disableKeepAlive = false
+	default:
+		// ReuseUnknown: keep-alive stays enabled so the per-host client pool can
+		// reuse connections (matches the default pooling behavior)
+		disableKeepAlive = false
+	}
+
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:       request.Threads,
-		MaxRedirects:  request.MaxRedirects,
-		NoTimeout:     false,
-		DisableCookie: request.DisableCookie,
+		Threads:          request.Threads,
+		MaxRedirects:     request.MaxRedirects,
+		NoTimeout:        false,
+		DisableCookie:    request.DisableCookie,
+		DisableHTTPCache: request.DisableHTTPCache,
 		Connection: &httpclientpool.ConnectionConfiguration{
-			DisableKeepAlive: httputil.ShouldDisableKeepAlive(options.Options),
+			DisableKeepAlive: disableKeepAlive,
 		},
 		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
@@ -353,13 +406,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	request.connConfiguration = connectionConfiguration
-
-	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
-	if err != nil {
-		return errors.Wrap(err, "could not get dns client")
-	}
 	request.customHeaders = make(map[string]string)
-	request.httpClient = client
 
 	dialer, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
 		CustomDialer: options.CustomFastdialer,
@@ -395,6 +442,19 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.TemplateID = options.TemplateID
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
+		}
+		// http is the only protocol that evaluates llm operators today; the
+		// template compiler rejects them elsewhere.
+		for _, matcher := range compiled.Matchers {
+			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+				matcher.SetLLMClient(options.LLMClient)
+				request.hasLLMOperators = true
+			}
+		}
+		for _, extractor := range compiled.Extractors {
+			if extractor != nil && extractor.GetType() == extractors.LLMExtractor {
+				extractor.SetLLMClient(options.LLMClient)
+			}
 		}
 		request.CompiledOperators = compiled
 	}
@@ -522,6 +582,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
 	}
+
+	// Avoid reusing client-side HTTP proxy connections for the legacy non-threaded spray path.
+	if shouldDisableKeepAliveForHTTPProxy(request, options) {
+		request.connConfiguration.Connection.DisableKeepAlive = true
+	}
 	return nil
 }
 
@@ -545,6 +610,18 @@ const (
 	SetThreadToCountZero = "set-thread-count-to-zero"
 )
 
+// ConnectionReusePolicy determines whether a request can safely reuse connections
+type ConnectionReusePolicy int
+
+const (
+	// ReuseUnknown indicates the policy hasn't been analyzed yet
+	ReuseUnknown ConnectionReusePolicy = iota
+	// ReuseSafe indicates the request can safely reuse connections (enable connection pooling)
+	ReuseSafe
+	// ReuseUnsafe indicates the request must close connections (preserve existing behavior)
+	ReuseUnsafe
+)
+
 func init() {
 	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
 }
@@ -557,4 +634,91 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 // HasFuzzing indicates whether the request has fuzzing rules defined.
 func (request *Request) HasFuzzing() bool {
 	return len(request.Fuzzing) > 0
+}
+
+// shouldDisableKeepAliveForHTTPProxy preserves the pre-pooling behavior only for
+// standard HTTP proxies in non-threaded template/auto spray scans.
+func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.ExecutorOptions) bool {
+	if request == nil || options == nil || options.Options == nil || options.Options.AliveHttpProxy == "" {
+		return false
+	}
+	return request.Threads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
+}
+
+// AnalyzeConnectionReuse determines if a request can safely reuse connections.
+// Returns ReuseUnsafe if connection closure is required, ReuseSafe otherwise.
+// This analysis ensures backward compatibility by preserving connection-close behavior
+// when necessary while enabling connection pooling for other requests.
+//
+// forceHTTP2 reports whether HTTP/2 may be negotiated (only possible when the
+// user enables it, since the pooled transport sets custom dial hooks). It only
+// affects the time_delay analyzer decision below.
+func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
+	// Priority 0: race and pipeline requests need dedicated connections. Race
+	// uses a one-shot synced body gate that breaks if a connection is reused and
+	// the body is re-read, and reusing a single keep-alive connection would also
+	// serialize the requests and defeat the race.
+	if r.Race || r.Pipeline {
+		return ReuseUnsafe
+	}
+
+	// Priority 1: Check for explicit "Connection: close" header in raw requests
+	for _, raw := range r.Raw {
+		if hasConnectionCloseHeader(raw) {
+			return ReuseUnsafe
+		}
+	}
+
+	// Priority 2: Check for "Connection: close" in regular headers
+	for key, value := range r.Headers {
+		if strings.EqualFold(key, "Connection") && strings.Contains(strings.ToLower(value), "close") {
+			return ReuseUnsafe
+		}
+	}
+
+	// Priority 3: time-based analyzers. The time_delay analyzer measures only the
+	// server-side window (httptrace WroteHeaders -> GotFirstResponseByte), so
+	// connection setup is excluded from the timing. Under HTTP/1.1 net/http never
+	// shares an in-flight connection, so keep-alive reuse saves handshakes without
+	// affecting the measurement -> safe to reuse. Under HTTP/2 concurrent sleeping
+	// probes can multiplex onto one connection and add timing jitter, so force
+	// fresh connections only in that case to keep detection error-free.
+	if r.Analyzer != nil && r.Analyzer.Name == "time_delay" {
+		if forceHTTP2 {
+			return ReuseUnsafe
+		}
+		return ReuseSafe
+	}
+
+	// Default: Safe to reuse - enable connection pooling
+	return ReuseSafe
+}
+
+// hasConnectionCloseHeader checks if a raw HTTP request contains "Connection: close"
+// Case-insensitive check for both "Connection:" and "close"
+func hasConnectionCloseHeader(raw string) bool {
+	rawLower := strings.ToLower(raw)
+	// Check for "connection:" header
+	if !strings.Contains(rawLower, "connection:") {
+		return false
+	}
+	// Check for "close" value after "connection:"
+	// Handle various formats: "Connection: close", "Connection:Close", "Connection: close\r\n", etc.
+	connIdx := strings.Index(rawLower, "connection:")
+	if connIdx == -1 {
+		return false
+	}
+	// Extract the value after "connection:"
+	valueStart := connIdx + len("connection:")
+	// Skip whitespace
+	for valueStart < len(rawLower) && (rawLower[valueStart] == ' ' || rawLower[valueStart] == '\t') {
+		valueStart++
+	}
+	// Check if the value contains "close"
+	value := rawLower[valueStart:]
+	// Find end of line or end of string
+	if newlineIdx := strings.IndexAny(value, "\r\n"); newlineIdx != -1 {
+		value = value[:newlineIdx]
+	}
+	return strings.Contains(value, "close")
 }

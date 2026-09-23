@@ -87,6 +87,12 @@ func (t *Template) HasJavascriptRequest(n ...int) bool {
 	return HasRequest(t.RequestsJavascript, n...)
 }
 
+// IsUnsignedJavascriptTemplate returns true if the template has a Javascript
+// protocol request but no verified template signature.
+func (t *Template) IsUnsignedJavascriptTemplate() bool {
+	return t.HasJavascriptRequest() && !t.Verified
+}
+
 // HasQueueRequests returns true if the template has queued requests.
 //
 // Queued requests contain all template requests in order (both protocol &
@@ -109,7 +115,7 @@ func (t *Template) HasWorkflows() bool {
 func (t *Template) IsFuzzableRequest() bool {
 	if t.HasHTTPRequest() {
 		for _, request := range t.RequestsHTTP {
-			if request.HasFuzzing() {
+			if request != nil && request.HasFuzzing() {
 				return true
 			}
 		}
@@ -117,7 +123,7 @@ func (t *Template) IsFuzzableRequest() bool {
 
 	if t.HasHeadlessRequest() {
 		for _, request := range t.RequestsHeadless {
-			if request.HasFuzzing() {
+			if request != nil && request.HasFuzzing() {
 				return true
 			}
 		}

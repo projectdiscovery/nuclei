@@ -5,10 +5,7 @@ import (
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/rdap"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
@@ -17,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -24,8 +22,9 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/rdap"
 )
 
 // Request is a request for the WHOIS protocol
@@ -85,7 +84,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -94,9 +93,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defaultVars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatectx variables to varMap
-	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(input.MetaInput).GetAll()))
+	scope := request.options.NewVariablesScope(defaultVars, optionVars, dynamicValues, previous)
 
-	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+
+	vars := request.options.Variables.EvaluateScope(scope).Values
+	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, previous)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	variables = generators.MergeMaps(variables, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Whois Protocol request variables: %s\n", vardump.DumpVariables(variables))
@@ -104,10 +111,20 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// and replace placeholders
 	query := replacer.Replace(request.Query, variables)
+	// validate a template-specified server against the network policy.
+	if request.parsedServerURL != nil {
+		if host := request.parsedServerURL.Hostname(); host != "" {
+			if !protocolstate.IsHostAllowed(request.options.Options.ExecutionId, host) {
+				return errors.Errorf("whois server %s is blocked by network policy", host)
+			}
+		}
+	}
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
 	rdapReq.Server = request.parsedServerURL
+	timeStart := time.Now()
 	res, err := request.client.Do(rdapReq)
+	duration := time.Since(timeStart)
 	if err != nil {
 		return errors.Wrap(err, "could not make whois request")
 	}
@@ -129,12 +146,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	default:
 		response = res.Object
 	}
-	jsonData, _ := jsoniter.Marshal(response)
+	jsonData, _ := json.Marshal(response)
 	jsonDataString := string(jsonData)
 
 	data["type"] = request.Type().String()
 	data["host"] = query
 	data["response"] = jsonDataString
+	data["duration"] = duration.Seconds()
 
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
@@ -190,6 +208,16 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
 	return data
+}
+
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"type":     "Type is the type of request made",
+	"host":     "Host is the input to the template",
+	"response": "WHOIS response data",
+	"duration": "Protocol operation duration in seconds",
 }
 
 // Type returns the type of the protocol request

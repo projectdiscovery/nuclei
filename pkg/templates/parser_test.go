@@ -3,9 +3,14 @@ package templates
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -13,6 +18,103 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/stretchr/testify/require"
 )
+
+type countingCatalog struct {
+	reads atomic.Int32
+}
+
+func (c *countingCatalog) OpenFile(string) (io.ReadCloser, error) {
+	c.reads.Add(1)
+	time.Sleep(25 * time.Millisecond)
+	return io.NopCloser(strings.NewReader("id: concurrent-parse\ninfo:\n  name: Concurrent parse\n  author: pd\n  severity: info\n")), nil
+}
+
+func (*countingCatalog) GetTemplatePath(string) ([]string, error) { return nil, nil }
+func (*countingCatalog) GetTemplatesPath([]string) ([]string, map[string]error) {
+	return nil, nil
+}
+func (*countingCatalog) ResolvePath(string, string) (string, error) { return "", nil }
+
+func TestParserLifecycle(t *testing.T) {
+	t.Run("purge clears parsed and compiled caches", func(t *testing.T) {
+		parser := NewParser()
+		parser.Cache().Store("tpl-a", &Template{}, []byte("raw"), nil)
+		parser.CompiledCache().Store("tpl-a", &Template{}, []byte("raw"), nil)
+
+		require.Equal(t, 1, parser.ParsedCount())
+		require.Equal(t, 1, parser.CompiledCount())
+		parser.Purge()
+		require.Zero(t, parser.ParsedCount())
+		require.Zero(t, parser.CompiledCount())
+	})
+
+	t.Run("execution parser shares only parsed cache", func(t *testing.T) {
+		parent := NewParser()
+		parent.ShouldValidate = true
+		parent.NoStrictSyntax = true
+		parent.Cache().Store("parsed", &Template{}, []byte("raw"), nil)
+		parent.CompiledCache().StoreWithoutRaw("parent-compiled", &Template{}, nil)
+
+		execution := NewExecutionParser(parent)
+		sibling := NewExecutionParser(parent)
+
+		require.Same(t, parent.Cache(), execution.Cache())
+		require.Same(t, parent.Cache(), sibling.Cache())
+		require.NotSame(t, parent.CompiledCache(), execution.CompiledCache())
+		require.NotSame(t, execution.CompiledCache(), sibling.CompiledCache())
+		require.True(t, execution.ShouldValidate)
+		require.True(t, execution.NoStrictSyntax)
+		require.Equal(t, 1, execution.ParsedCount())
+		require.Zero(t, execution.CompiledCount())
+
+		execution.CompiledCache().StoreWithoutRaw("execution-compiled", &Template{}, nil)
+		require.Equal(t, 1, execution.CompiledCount())
+		require.Zero(t, sibling.CompiledCount())
+		require.Equal(t, 1, parent.CompiledCount())
+	})
+
+	t.Run("purge compiled preserves shared parsed cache", func(t *testing.T) {
+		parent := NewParser()
+		parent.Cache().Store("parsed", &Template{}, []byte("raw"), nil)
+		execution := NewExecutionParser(parent)
+		execution.CompiledCache().StoreWithoutRaw("compiled", &Template{}, nil)
+
+		execution.PurgeCompiled()
+
+		require.Zero(t, execution.CompiledCount())
+		require.Equal(t, 1, execution.ParsedCount())
+		require.Equal(t, 1, parent.ParsedCount())
+	})
+}
+
+func TestParseTemplateCoalescesConcurrentCacheMisses(t *testing.T) {
+	const callers = 20
+	cache := NewCache()
+	catalog := &countingCatalog{}
+	start := make(chan struct{})
+	errs := make(chan error, callers)
+	var wg sync.WaitGroup
+
+	for range callers {
+		parser := NewParserWithParsedCache(cache)
+		wg.Add(1)
+		go func(parser *Parser) {
+			defer wg.Done()
+			<-start
+			_, err := parser.ParseTemplate("concurrent.yaml", catalog)
+			errs <- err
+		}(parser)
+	}
+
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	require.EqualValues(t, 1, catalog.reads.Load(), "one shared cache miss should read and parse the template once")
+}
 
 func TestLoadTemplate(t *testing.T) {
 	catalog := disk.NewCatalog("")
@@ -226,6 +328,126 @@ func TestLoadTemplate(t *testing.T) {
 		require.Error(t, strictErr, "strict parser must reject unknown field")
 		require.Contains(t, strictErr.Error(), "unknown field")
 		require.NoError(t, laxErr, "lax parser must accept the same template")
+	})
+
+	t.Run("strictYAMLRejectsUnknownFields", func(t *testing.T) {
+		const tmpl = `id: yaml-unknown-field
+info:
+  name: strict yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    bogus_field: ignore me
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		strictPath := filepath.Join(dir, "tmpl-strict.yaml")
+		laxPath := filepath.Join(dir, "tmpl-lax.yaml")
+		require.NoError(t, os.WriteFile(strictPath, []byte(tmpl), 0o600))
+		require.NoError(t, os.WriteFile(laxPath, []byte(tmpl), 0o600))
+
+		_, strictErr := NewParser().ParseTemplate(strictPath, disk.NewCatalog(""))
+
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		_, laxErr := laxParser.ParseTemplate(laxPath, disk.NewCatalog(""))
+
+		require.Error(t, strictErr, "strict YAML decode must reject unknown fields")
+		require.Contains(t, strictErr.Error(), "bogus_field")
+		require.NoError(t, laxErr, "NoStrictSyntax should allow unknown YAML fields")
+	})
+
+	t.Run("strictYAMLRejectsDuplicateFields", func(t *testing.T) {
+		const tmpl = `id: yaml-duplicate-field
+id: yaml-duplicate-field-overwrite
+info:
+  name: duplicate yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		_, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.Error(t, err, "strict YAML decode must reject duplicate fields")
+		require.Contains(t, err.Error(), "already")
+	})
+
+	t.Run("laxYAMLAllowsDuplicateFields", func(t *testing.T) {
+		const tmpl = `id: yaml-duplicate-field
+id: yaml-duplicate-field-overwrite
+info:
+  name: duplicate yaml regression
+  author: anonymous
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		laxParser := NewParser()
+		laxParser.NoStrictSyntax = true
+		parsed, err := laxParser.ParseTemplate(path, disk.NewCatalog(""))
+		require.NoError(t, err, "NoStrictSyntax should preserve yaml.v2 duplicate-field behavior")
+
+		template, ok := parsed.(*Template)
+		require.True(t, ok)
+		require.Equal(t, "yaml-duplicate-field-overwrite", template.ID)
+	})
+
+	t.Run("YAMLPreservesMultiProtocolOrder", func(t *testing.T) {
+		const tmpl = `id: yaml-protocol-order
+info:
+  name: protocol order regression
+  author: anonymous
+  severity: info
+dns:
+  - name: "{{FQDN}}"
+    type: cname
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - HTTP
+`
+		dir := t.TempDir()
+		path := filepath.Join(dir, "tmpl.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+		parsed, err := NewParser().ParseTemplate(path, disk.NewCatalog(""))
+		require.NoError(t, err)
+
+		template, ok := parsed.(*Template)
+		require.True(t, ok)
+		require.Len(t, template.RequestsQueue, 2)
+		require.Equal(t, "dns", template.RequestsQueue[0].Type().String())
+		require.Equal(t, "http", template.RequestsQueue[1].Type().String())
 	})
 
 	t.Run("invalidTemplateID", func(t *testing.T) {

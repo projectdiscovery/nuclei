@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
@@ -44,6 +44,15 @@ type ExecuteOptions struct {
 	Source *string
 
 	TimeoutVariants *types.Timeouts
+
+	// ProxyURL is the HTTP(S) proxy URL for JS net dials via HTTP CONNECT.
+	// SOCKS proxies are handled by fastdialer and must not be set here.
+	ProxyURL string
+
+	// CustomHeaders contains global CLI headers for the nuclei/http module.
+	// Raw nuclei/net connections construct their own wire payloads and do not
+	// consume these headers.
+	CustomHeaders []string
 
 	// Manually exported objects
 	exports map[string]interface{}

@@ -106,8 +106,9 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 	}
 
 	np := dialers.NetworkPolicy
-	if !ok || np == nil {
-		return true
+	if np == nil {
+		// no policy present: deny rather than allow.
+		return false
 	}
 
 	urlx, err := urlutil.Parse(targetUrl)
@@ -128,8 +129,9 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 	}
 
 	np := dialers.NetworkPolicy
-	if !ok || np == nil {
-		return true
+	if np == nil {
+		// no policy present: deny rather than allow.
+		return false
 	}
 
 	sepCount := strings.Count(targetUrl, ":")

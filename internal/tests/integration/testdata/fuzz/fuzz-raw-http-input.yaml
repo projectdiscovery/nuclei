@@ -1,0 +1,34 @@
+id: raw-http-input-body-fuzz
+
+info:
+  name: fuzzing json body seeded from a raw http request file
+  author: pdteam
+  severity: info
+  description: |
+    This template fuzzes the json body of a base request seeded from a raw HTTP
+    request file (-im http), covering the shortest path from a single request to
+    a DAST scan.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - method == "POST"
+          - contains(content_type, "application/json")
+        condition: and
+
+    payloads:
+      injection:
+        - "'"
+
+    fuzzing:
+      - part: body
+        type: postfix
+        mode: single
+        fuzz:
+          - '{{injection}}'
+
+    matchers:
+      - type: word
+        words:
+          - "unrecognized token:"

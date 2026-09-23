@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	"gopkg.in/yaml.v2"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 )
 
 type InsertionOrderedStringMap struct {

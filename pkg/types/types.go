@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -210,6 +211,23 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
+	// before running templates. Disabled by default.
+	PreflightPortScan bool
+	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
+	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
+	// Disabled by default.
+	PerHostRateLimit bool
+	// PerHostRateLimitPoolSize bounds the number of remembered HTTP host
+	// limiters. Zero uses the default bounded pool. A negative value retains
+	// every host for the lifetime of the scan protocol state; embedders should
+	// use that mode only when they provide bounded scan-lifetime cleanup.
+	PerHostRateLimitPoolSize int
+	// EnableHTTPCache enables HTTP caching (RFC 9111) for requests
+	//
+	// NOTE(dwisiswant0): this is experimental and might be enabled by default
+	// in the future releases.
+	EnableHTTPCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -421,6 +439,22 @@ type Options struct {
 	EnableGlobalMatchersTemplates bool
 	// EnableFileTemplates enables file templates
 	EnableFileTemplates bool
+	// EnableLLM enables llm matchers and extractors (semantic matching)
+	EnableLLM bool
+	// LLMProvider selects a preset endpoint for llm matching
+	LLMProvider string
+	// LLMBaseURL is any OpenAI-compatible endpoint for llm matching, local included
+	LLMBaseURL string
+	// LLMModel is the model used for llm matching
+	LLMModel string
+	// LLMTimeout bounds a single llm call, in seconds
+	LLMTimeout int
+	// LLMMaxCalls caps llm calls for the whole scan (0 = unlimited)
+	LLMMaxCalls int
+	// LLMConcurrency caps in-flight llm calls
+	LLMConcurrency int
+	// LLMCache enables caching of llm responses within a scan
+	LLMCache bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
@@ -461,6 +495,12 @@ type Options struct {
 	DASTServerAddress string
 	// DASTReport enables dast report server & final report generation
 	DASTReport bool
+	// DASTProxy is the flag to start nuclei as an intercepting dast proxy
+	DASTProxy bool
+	// DASTProxyAddress is the listen address for the dast proxy
+	DASTProxyAddress string
+	// DASTProxyAuth is the user:pass credential pair required by the dast proxy
+	DASTProxyAuth string
 	// Scope contains a list of regexes for in-scope URLS
 	Scope goflags.StringSlice
 	// OutOfScope contains a list of regexes for out-scope URLS
@@ -489,6 +529,60 @@ type Options struct {
 	timeouts *Timeouts
 	// m is a mutex to protect timeouts from concurrent access
 	m sync.Mutex
+	// templateThreadsProvider is private so Options remains safe for integrations
+	// that serialize its exported configuration fields.
+	templateThreadsProvider func() int
+	// templateThreadAcquire and templateThreadRelease optionally enforce a
+	// concurrency budget shared by multiple embedded Nuclei engines.
+	templateThreadAcquire func(context.Context) error
+	templateThreadRelease func()
+}
+
+// SetTemplateThreadsProvider configures a dynamic template concurrency source.
+// The provider is consulted while an execution schedules templates, allowing an
+// embedding application to redistribute a fixed concurrency budget as peer
+// executions start and finish. It must be safe for concurrent use.
+func (options *Options) SetTemplateThreadsProvider(provider func() int) {
+	options.templateThreadsProvider = provider
+}
+
+// CurrentTemplateThreads returns the dynamic template concurrency when the
+// configured provider returns a positive value, or TemplateThreads otherwise.
+func (options *Options) CurrentTemplateThreads() int {
+	if options.templateThreadsProvider != nil {
+		if current := options.templateThreadsProvider(); current > 0 {
+			return current
+		}
+	}
+	return options.TemplateThreads
+}
+
+// SetTemplateThreadsLimiter configures an optional concurrency limiter shared
+// by embedding applications across multiple Nuclei engines. A successful
+// acquire must have a matching release. Both callbacks must be concurrency-safe.
+func (options *Options) SetTemplateThreadsLimiter(acquire func(context.Context) error, release func()) {
+	if acquire == nil || release == nil {
+		options.templateThreadAcquire = nil
+		options.templateThreadRelease = nil
+		return
+	}
+	options.templateThreadAcquire = acquire
+	options.templateThreadRelease = release
+}
+
+// AcquireTemplateThread reserves one shared template-execution slot.
+func (options *Options) AcquireTemplateThread(ctx context.Context) error {
+	if options.templateThreadAcquire == nil {
+		return nil
+	}
+	return options.templateThreadAcquire(ctx)
+}
+
+// ReleaseTemplateThread releases one shared template-execution slot.
+func (options *Options) ReleaseTemplateThread() {
+	if options.templateThreadRelease != nil {
+		options.templateThreadRelease()
+	}
 }
 
 func (options *Options) Copy() *Options {
@@ -544,6 +638,9 @@ func (options *Options) Copy() *Options {
 		NoHostErrors:                   options.NoHostErrors,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
+		templateThreadsProvider:        options.templateThreadsProvider,
+		templateThreadAcquire:          options.templateThreadAcquire,
+		templateThreadRelease:          options.templateThreadRelease,
 		HeadlessBulkSize:               options.HeadlessBulkSize,
 		HeadlessTemplateThreads:        options.HeadlessTemplateThreads,
 		Timeout:                        options.Timeout,
@@ -576,6 +673,10 @@ func (options *Options) Copy() *Options {
 		DebugRequests:                  options.DebugRequests,
 		DebugResponse:                  options.DebugResponse,
 		DisableHTTPProbe:               options.DisableHTTPProbe,
+		PreflightPortScan:              options.PreflightPortScan,
+		PerHostRateLimit:               options.PerHostRateLimit,
+		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
+		EnableHTTPCache:                options.EnableHTTPCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
@@ -698,6 +799,9 @@ func (options *Options) Copy() *Options {
 		DASTServerToken:                options.DASTServerToken,
 		DASTServerAddress:              options.DASTServerAddress,
 		DASTReport:                     options.DASTReport,
+		DASTProxy:                      options.DASTProxy,
+		DASTProxyAddress:               options.DASTProxyAddress,
+		DASTProxyAuth:                  options.DASTProxyAuth,
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
@@ -865,6 +969,11 @@ func (options *Options) defaultLoadHelperFile(helperFile, templatePath string, c
 		if err != nil {
 			return nil, err
 		}
+		// reject hard-linked regular files, whose inode can alias content
+		// outside the allowed directory.
+		if filepathutil.IsHardLinkedRegularFile(absPath) {
+			return nil, errkit.Newf("access to helper file %v denied (hard link)", helperFile)
+		}
 		helperFile = absPath
 	}
 	f, err := os.Open(helperFile)
@@ -914,9 +1023,11 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	}
 
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
-	// and both of them are present in user home directory, allow it
-	// Review: should we keep this rule ? add extra option to disable this ?
-	if isHomeDir(cleanedHelperPath) && isHomeDir(cleanedTemplatePath) && filepathutil.IsPathWithinDirectory(cleanedHelperPath, filepath.Dir(cleanedTemplatePath)) {
+	// and both of them are present in user home directory, allow it.
+	// The case where the template's own directory is the home directory root is
+	// refused so it does not expand the allowed directory to the whole home dir.
+	templateDir := filepath.Dir(cleanedTemplatePath)
+	if isHomeDir(cleanedHelperPath) && isHomeDir(cleanedTemplatePath) && !isHomeDirRoot(templateDir) && filepathutil.IsPathWithinDirectory(cleanedHelperPath, templateDir) {
 		return cleanedHelperPath, nil
 	}
 
@@ -945,4 +1056,28 @@ func isHomeDir(path string) bool {
 		return false
 	}
 	return filepathutil.IsPathWithinDirectory(path, homeDir)
+}
+
+// isHomeDirRoot reports whether path resolves to the user's home directory root
+// itself (as opposed to a subdirectory of it).
+func isHomeDirRoot(path string) bool {
+	homeDir := folderutil.HomeDirOrDefault("")
+	if homeDir == "" || path == "" {
+		return false
+	}
+	absHome, err := filepath.Abs(homeDir)
+	if err != nil {
+		return false
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	if resolved, err := filepath.EvalSymlinks(absPath); err == nil {
+		absPath = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(absHome); err == nil {
+		absHome = resolved
+	}
+	return filepath.Clean(absPath) == filepath.Clean(absHome)
 }

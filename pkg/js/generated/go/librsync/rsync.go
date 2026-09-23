@@ -3,7 +3,7 @@ package rsync
 import (
 	lib_rsync "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/rsync"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

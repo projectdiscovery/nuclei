@@ -18,7 +18,7 @@ import (
 	gpdrs "github.com/Mzack9999/goimpacket/pkg/dcerpc/drsuapi"
 	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
 	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"

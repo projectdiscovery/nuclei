@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -58,10 +58,19 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		}
 
 		var evaluated, originalEvaluated string
-		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
+		var err error
+
+		evaluated, input.InteractURLs, err = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
+		if err != nil {
+			return err
+		}
+
 		if input.ApplyPayloadInitialTransformation != nil {
 			evaluated = input.ApplyPayloadInitialTransformation(evaluated, input.AnalyzerParams)
-			originalEvaluated, _ = rule.executeEvaluate(input, key, valueStr, originalPayload, input.InteractURLs)
+			originalEvaluated, _, err = rule.executeEvaluate(input, key, valueStr, originalPayload, input.InteractURLs)
+			if err != nil {
+				return err
+			}
 		}
 
 		if err := ruleComponent.SetValue(key, evaluated); err != nil {
@@ -78,14 +87,16 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, valueStr, originalEvaluated, valueStr, key, evaluated); qerr != nil {
 				return qerr
 			}
-			// fmt.Printf("executed with value: %s\n", evaluated)
+
 			err = ruleComponent.SetValue(key, valueStr) // change back to previous value for temp
 			if err != nil {
 				return err
 			}
 		}
+
 		return nil
 	})
+
 	if finalErr != nil {
 		return finalErr
 	}
@@ -97,11 +108,13 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		if err != nil {
 			return err
 		}
+
 		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", ""); qerr != nil {
 			err = qerr
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -122,7 +135,11 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 	// iterate over given kv instead of component ones
 	return func(key, value string) error {
 		var evaluated string
-		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+		var err error
+		evaluated, input.InteractURLs, err = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+		if err != nil {
+			return err
+		}
 		if err := ruleComponent.SetValue(key, evaluated); err != nil {
 			return err
 		}
@@ -191,16 +208,24 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 // executeEvaluate executes evaluation of payload on a key and value and
 // returns completed values to be replaced and processed
 // for fuzzing.
-func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload string, interactshURLs []string) (string, []string) {
-	// TODO: Handle errors
+func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload string, interactshURLs []string) (string, []string, error) {
 	values := generators.MergeMaps(rule.options.Variables.GetAll(), map[string]interface{}{
 		"value": value,
 	}, rule.options.Options.Vars.AsMap(), input.Values)
-	firstpass, _ := expressions.Evaluate(payload, values)
-	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
-	evaluated, _ := expressions.Evaluate(interactData, values)
-	replaced := rule.executeRuleTypes(input, value, evaluated)
-	return replaced, interactshURLs
+
+	result, err := render.Render(render.Input{
+		Text:         payload,
+		Values:       values,
+		Interactsh:   rule.options.Interactsh,
+		InteractURLs: interactshURLs,
+	})
+	if err != nil {
+		return payload, result.InteractURLs, err
+	}
+
+	replaced := rule.executeRuleTypes(input, value, result.Text)
+
+	return replaced, result.InteractURLs, nil
 }
 
 // executeRuleTypes executes replacement for a key and value

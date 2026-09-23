@@ -15,6 +15,13 @@ import (
 func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
 
+	// A negative group index is meaningless and would index match[-1] below,
+	// which panics with "index out of range [-1]". Bail out early so a stray
+	// "group: -1" in a template can't crash the whole scan.
+	if e.RegexGroup < 0 {
+		return results
+	}
+
 	groupPlusOne := e.RegexGroup + 1
 	for _, regex := range e.regexCompiled {
 		// skip prefix short-circuit for case-insensitive patterns

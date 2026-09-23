@@ -2,6 +2,8 @@ package charts
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"sort"
 	"time"
@@ -9,7 +11,6 @@ import (
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
-	"github.com/labstack/echo/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
@@ -19,9 +20,9 @@ const (
 	SpacerHeight = "50px"
 )
 
-func (s *ScanEventsCharts) AllCharts(c echo.Context) error {
-	page := s.allCharts(c)
-	return page.Render(c.Response().Writer)
+func (s *ScanEventsCharts) AllCharts(w http.ResponseWriter, r *http.Request) {
+	page := s.allCharts(r)
+	renderChart(w, page)
 }
 
 func (s *ScanEventsCharts) GenerateHTML(filePath string) error {
@@ -37,16 +38,16 @@ func (s *ScanEventsCharts) GenerateHTML(filePath string) error {
 }
 
 // AllCharts generates all the charts for the scan events and returns a page component
-func (s *ScanEventsCharts) allCharts(c echo.Context) *components.Page {
+func (s *ScanEventsCharts) allCharts(r *http.Request) *components.Page {
 	page := components.NewPage()
 	page.PageTitle = "Nuclei Charts"
-	line1 := s.totalRequestsOverTime(c)
+	line1 := s.totalRequestsOverTime(r)
 	// line1.SetSpacerHeight(SpacerHeight)
-	kline := s.topSlowTemplates(c)
+	kline := s.topSlowTemplates(r)
 	// kline.SetSpacerHeight(SpacerHeight)
-	line2 := s.requestsVSInterval(c)
+	line2 := s.requestsVSInterval(r)
 	// line2.SetSpacerHeight(SpacerHeight)
-	line3 := s.concurrencyVsTime(c)
+	line3 := s.concurrencyVsTime(r)
 	// line3.SetSpacerHeight(SpacerHeight)
 	page.AddCharts(line1, kline, line2, line3)
 	page.SetLayout(components.PageCenterLayout)
@@ -56,13 +57,13 @@ func (s *ScanEventsCharts) allCharts(c echo.Context) *components.Page {
 	return page
 }
 
-func (s *ScanEventsCharts) TotalRequestsOverTime(c echo.Context) error {
-	line := s.totalRequestsOverTime(c)
-	return line.Render(c.Response().Writer)
+func (s *ScanEventsCharts) TotalRequestsOverTime(w http.ResponseWriter, r *http.Request) {
+	line := s.totalRequestsOverTime(r)
+	renderChart(w, line)
 }
 
 // totalRequestsOverTime generates a line chart showing total requests count over time
-func (s *ScanEventsCharts) totalRequestsOverTime(c echo.Context) *charts.Line {
+func (s *ScanEventsCharts) totalRequestsOverTime(_ *http.Request) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{
@@ -122,13 +123,13 @@ func (s *ScanEventsCharts) totalRequestsOverTime(c echo.Context) *charts.Line {
 	return line
 }
 
-func (s *ScanEventsCharts) TopSlowTemplates(c echo.Context) error {
-	kline := s.topSlowTemplates(c)
-	return kline.Render(c.Response().Writer)
+func (s *ScanEventsCharts) TopSlowTemplates(w http.ResponseWriter, r *http.Request) {
+	kline := s.topSlowTemplates(r)
+	renderChart(w, kline)
 }
 
 // topSlowTemplates generates a Kline chart showing the top slow templates by time taken
-func (s *ScanEventsCharts) topSlowTemplates(c echo.Context) *charts.Kline {
+func (s *ScanEventsCharts) topSlowTemplates(_ *http.Request) *charts.Kline {
 	kline := charts.NewKLine()
 	kline.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{
@@ -212,13 +213,13 @@ func (s *ScanEventsCharts) topSlowTemplates(c echo.Context) *charts.Kline {
 	return kline
 }
 
-func (s *ScanEventsCharts) RequestsVSInterval(c echo.Context) error {
-	line := s.requestsVSInterval(c)
-	return line.Render(c.Response().Writer)
+func (s *ScanEventsCharts) RequestsVSInterval(w http.ResponseWriter, r *http.Request) {
+	line := s.requestsVSInterval(r)
+	renderChart(w, line)
 }
 
 // requestsVSInterval generates a line chart showing requests per second over time
-func (s *ScanEventsCharts) requestsVSInterval(c echo.Context) *charts.Line {
+func (s *ScanEventsCharts) requestsVSInterval(r *http.Request) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{
@@ -233,8 +234,8 @@ func (s *ScanEventsCharts) requestsVSInterval(c echo.Context) *charts.Line {
 
 	var interval time.Duration
 
-	if c != nil {
-		interval, _ = time.ParseDuration(c.QueryParam("interval"))
+	if r != nil {
+		interval, _ = time.ParseDuration(r.URL.Query().Get("interval"))
 	}
 	if interval <= 3 {
 		interval = 5 * time.Second
@@ -284,13 +285,13 @@ func (s *ScanEventsCharts) requestsVSInterval(c echo.Context) *charts.Line {
 	return line
 }
 
-func (s *ScanEventsCharts) ConcurrencyVsTime(c echo.Context) error {
-	line := s.concurrencyVsTime(c)
-	return line.Render(c.Response().Writer)
+func (s *ScanEventsCharts) ConcurrencyVsTime(w http.ResponseWriter, r *http.Request) {
+	line := s.concurrencyVsTime(r)
+	renderChart(w, line)
 }
 
 // concurrencyVsTime generates a line chart showing concurrency (total workers) over time
-func (s *ScanEventsCharts) concurrencyVsTime(c echo.Context) *charts.Line {
+func (s *ScanEventsCharts) concurrencyVsTime(r *http.Request) *charts.Line {
 	line := charts.NewLine()
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{
@@ -306,8 +307,8 @@ func (s *ScanEventsCharts) concurrencyVsTime(c echo.Context) *charts.Line {
 	})
 
 	var interval time.Duration
-	if c != nil {
-		interval, _ = time.ParseDuration(c.QueryParam("interval"))
+	if r != nil {
+		interval, _ = time.ParseDuration(r.URL.Query().Get("interval"))
 	}
 	if interval <= 3 {
 		interval = 5 * time.Second
@@ -378,4 +379,14 @@ func getCategoryRequestCount(values []events.ScanEvent) map[string][]events.Scan
 		mx[event.TemplateType] = append(mx[event.TemplateType], event)
 	}
 	return mx
+}
+
+type chartRenderer interface {
+	Render(io.Writer) error
+}
+
+func renderChart(w http.ResponseWriter, chart chartRenderer) {
+	if err := chart.Render(w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

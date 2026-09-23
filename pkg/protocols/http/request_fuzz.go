@@ -131,6 +131,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 		default:
 		}
 
+		var callbackErr error
 		input := &fuzz.ExecuteRuleInput{
 			Input:             input,
 			DisplayFuzzPoints: request.options.Options.DisplayFuzzPoints,
@@ -142,7 +143,12 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 				}
 
 				// TODO: replace this after scanContext Refactor
-				return request.executeGeneratedFuzzingRequest(gr, input, callback)
+				keepGoing, err := request.executeGeneratedFuzzingRequest(gr, input, callback)
+				if err != nil {
+					callbackErr = err
+					return false
+				}
+				return keepGoing
 			},
 			Values:      values,
 			BaseRequest: baseRequest.Clone(context.TODO()),
@@ -153,6 +159,9 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 			input.AnalyzerParams = request.Analyzer.Parameters
 		}
 		err := rule.Execute(input)
+		if callbackErr != nil {
+			return callbackErr
+		}
 		if err == nil {
 			applicable = true
 			continue
@@ -175,20 +184,30 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 }
 
 // executeGeneratedFuzzingRequest executes a generated fuzzing request after building it using rules and payloads
-func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest, input *contextargs.Context, callback protocols.OutputEventCallback) bool {
+func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest, input *contextargs.Context, callback protocols.OutputEventCallback) (bool, error) {
 	hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 	hasInteractMarkers := len(gr.InteractURLs) > 0
 	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input) {
-		return false
+		return false, nil
 	}
-	// key on the concrete fuzzed request URL: input.MetaInput.Input may hold
-	// a raw HTTP request dump (fuzzing from request files) that is not a
-	// parseable URL, which would silently bypass the per-host limiter
-	var rateLimitKey string
-	if gr.Request != nil && gr.Request.URL != nil {
-		rateLimitKey = gr.Request.URL.Host
+	// Extract hostname for per-host rate limiting: prefer the concrete fuzzed
+	// request URL (rules may change host/port), fall back to the input target
+	hostname := input.MetaInput.Input
+	if gr.Request != nil && gr.Request.Request != nil && gr.Request.Request.URL != nil {
+		hostname = gr.Request.Request.URL.String()
 	}
-	request.options.RateLimitTakeFor(rateLimitKey)
+	if request.options.HostRateLimiter != nil {
+		// key on the concrete fuzzed request URL: input.MetaInput.Input may hold
+		// a raw HTTP request dump (fuzzing from request files) that is not a
+		// parseable URL, which would silently bypass the per-host limiter
+		var rateLimitKey string
+		if gr.Request != nil && gr.Request.URL != nil {
+			rateLimitKey = gr.Request.URL.Host
+		}
+		request.options.RateLimitTakeFor(rateLimitKey)
+	} else if err := request.rateLimitTake(hostname); err != nil {
+		return false, err
+	}
 	req := &generatedRequest{
 		request:              gr.Request,
 		dynamicValues:        gr.DynamicValues,
@@ -217,7 +236,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 				Request:        gr.Request,
 			}
 			setInteractshCallback = true
-			request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
+			request.options.RegisterInteractshRequest(gr.InteractURLs, requestData)
 			gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 		} else {
 			callback(event)
@@ -236,7 +255,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	}, 0)
 	// If a variable is unresolved, skip all further requests
 	if errors.Is(requestErr, ErrMissingVars) {
-		return false
+		return false, nil
 	}
 	if requestErr != nil {
 		gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
@@ -249,9 +268,9 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	// If this was a match, and we want to stop at first match, skip all further requests.
 	shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
 	if shouldStopAtFirstMatch && gotMatches {
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 // ShouldFuzzTarget checks if given target should be fuzzed or not using `filter` field in template

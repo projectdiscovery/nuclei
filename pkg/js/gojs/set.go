@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/utils/errkit"
 )
 

@@ -1,0 +1,4 @@
+method=GET
+path=/api/v1/users?id=1
+host=example.com
+header=Accept: application/json

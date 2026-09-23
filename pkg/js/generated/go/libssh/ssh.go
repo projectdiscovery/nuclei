@@ -3,7 +3,7 @@ package ssh
 import (
 	lib_ssh "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/ssh"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

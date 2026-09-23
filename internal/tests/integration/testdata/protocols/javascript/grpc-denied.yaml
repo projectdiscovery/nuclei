@@ -1,0 +1,37 @@
+id: grpc-network-policy-denied
+
+info:
+  name: gRPC Network Policy Denial
+  author: pdteam
+  severity: info
+  description: |
+    Hardening check for the nuclei/grpc javascript library: dialing a host on
+    the exclude list (RFC 5737 TEST-NET-3) must be rejected by the network
+    policy before any connection is made. The error is captured and asserted.
+
+javascript:
+  - code: |
+      const grpc = require('nuclei/grpc');
+      let out = "";
+      try {
+        const opts = new grpc.Options();
+        opts.Plaintext = true;
+        const client = new grpc.Client("203.0.113.10:50051", opts);
+        client.Invoke('grpc.health.v1.Health/Check', '{}');
+      } catch (e) {
+        out = "" + e;
+      }
+      out;
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+      - type: word
+        part: response
+        words:
+          - "network policy"
+          - "203.0.113.10"
+        condition: and

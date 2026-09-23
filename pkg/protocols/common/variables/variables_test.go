@@ -4,12 +4,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/govaluate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
+
+func withVariableTestHelperFunction(t *testing.T, name string, fn govaluate.ExpressionFunction) {
+	t.Helper()
+
+	originalFn, hadFn := dsl.HelperFunctions[name]
+	dsl.HelperFunctions[name] = fn
+	t.Cleanup(func() {
+		if hadFn {
+			dsl.HelperFunctions[name] = originalFn
+			return
+		}
+		delete(dsl.HelperFunctions, name)
+	})
+}
+
+type variableTestURLSource struct {
+	calls int
+}
+
+func (v *variableTestURLSource) NewURLWithData(string) (string, error) {
+	v.calls++
+	return "https://example.oast.fun", nil
+}
 
 func TestVariablesEvaluate(t *testing.T) {
 	data := `a2: "{{md5('test')}}"
@@ -239,6 +263,204 @@ func TestVariablesEvaluateChained(t *testing.T) {
 	})
 }
 
+func TestVariablesEvaluateDynamicOverrideValuesAreData(t *testing.T) {
+	var waitForCalls int
+	withVariableTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
+
+	items := []struct {
+		name     string
+		value    string
+		values   map[string]interface{}
+		expected string
+	}{
+		{
+			name:     "environment marker remains data",
+			value:    "{{HOME}}",
+			values:   map[string]interface{}{"HOME": "/home/scanner"},
+			expected: "{{HOME}}",
+		},
+		{
+			name:     "helper marker remains data",
+			value:    "{{wait_for(5)}}",
+			values:   map[string]interface{}{},
+			expected: "{{wait_for(5)}}",
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			variables := &Variable{
+				LazyEval:                  true,
+				InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+			}
+			variables.Set("token", "declared-token")
+
+			inputValues := map[string]interface{}{"token": item.value}
+			for key, value := range item.values {
+				inputValues[key] = value
+			}
+
+			result := variables.Evaluate(inputValues)
+			require.Equal(t, item.expected, result["token"])
+		})
+	}
+
+	require.Zero(t, waitForCalls, "dynamic override helpers must not execute")
+}
+
+func TestVariablesEvaluateMatchingDynamicHelperOverrideIsData(t *testing.T) {
+	var waitForCalls int
+	withVariableTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
+
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("token", "{{wait_for(5)}}")
+
+	result := variables.Evaluate(map[string]interface{}{
+		"token": "{{wait_for(5)}}",
+	})
+
+	require.Equal(t, "{{wait_for(5)}}", result["token"])
+	require.Zero(t, waitForCalls, "matching dynamic override helpers must not execute")
+}
+
+func TestVariablesEvaluateDataValueInsertedIntoVariableIsData(t *testing.T) {
+	var waitForCalls int
+	withVariableTestHelperFunction(t, "wait_for", func(args ...interface{}) (interface{}, error) {
+		waitForCalls++
+		return true, nil
+	})
+
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("header", "Bearer {{extracted_token}}")
+
+	result := variables.EvaluateScope(NewScope().AddData(map[string]interface{}{
+		"extracted_token": "{{wait_for(5)}}",
+	})).Values
+
+	require.Equal(t, "Bearer {{wait_for(5)}}", result["header"])
+	require.Zero(t, waitForCalls, "data inserted into template variables must not execute")
+}
+
+func TestVariablesEvaluateReevaluatesStoredDeclaredValue(t *testing.T) {
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("auth_header", "Bearer {{extracted_token}}")
+
+	result := variables.EvaluateScope(NewScope().AddTemplate(map[string]interface{}{
+		"auth_header": "Bearer {{extracted_token}}",
+	}).AddData(map[string]interface{}{
+		"extracted_token": "secret123",
+	})).Values
+
+	require.Equal(t, "Bearer secret123", result["auth_header"])
+}
+
+func TestVariablesEvaluateReevaluatesStoredDeclaredHelperValue(t *testing.T) {
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("cname_filtered", `{{trim_suffix(dns_cname,".vercel-dns.com")}}`)
+
+	result := variables.EvaluateScope(NewScope().AddTemplate(map[string]interface{}{
+		"cname_filtered": `{{trim_suffix(dns_cname,".vercel-dns.com")}}`,
+	}).AddData(map[string]interface{}{
+		"dns_cname": "cname.vercel-dns.com",
+	})).Values
+
+	require.Equal(t, "cname", result["cname_filtered"])
+}
+
+func TestVariablesEvaluateWithInteractshMatchingRuntimeOverrideIsData(t *testing.T) {
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("callback", "{{interactsh-url}}")
+
+	source := &variableTestURLSource{}
+	evaluation := variables.EvaluateWithInteractshScope(NewScope().AddData(map[string]interface{}{
+		"callback": "{{interactsh-url}}",
+	}), source)
+	result, urls := evaluation.Values, evaluation.InteractURLs
+
+	require.Empty(t, urls)
+	require.Zero(t, source.calls, "matching runtime override marker must not allocate interactsh URLs")
+	require.Equal(t, "{{interactsh-url}}", result["callback"])
+}
+
+func TestVariablesEvaluateWithInteractshDynamicOverrideIsData(t *testing.T) {
+	variables := &Variable{
+		LazyEval:                  true,
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	variables.Set("callback", "https://declared.{{interactsh-url}}/path")
+
+	result, urls := variables.EvaluateWithInteractsh(map[string]interface{}{
+		"callback": "https://dynamic.{{interactsh-url}}/path",
+	}, nil)
+
+	require.Empty(t, urls)
+	require.Equal(t, "https://dynamic.{{interactsh-url}}/path", result["callback"])
+}
+
+func TestRenderVariableValueWithInteractshKeepsURLsOnRenderError(t *testing.T) {
+	source := &variableTestURLSource{}
+
+	result, urls := renderVariableValueWithInteractsh("{{interactsh-url}} {{md5(missing)}}", nil, source, nil)
+
+	require.Equal(t, 1, source.calls)
+	require.Len(t, urls, 1)
+	require.Contains(t, result, "https://example.oast.fun")
+	require.NotContains(t, result, "{{interactsh-url}}")
+}
+
+func TestVariablesEvaluatePreservesDynamicShadowingCompatibility(t *testing.T) {
+	t.Run("login-token-replaces-declared-empty-token", func(t *testing.T) {
+		variables := &Variable{
+			LazyEval:                  true,
+			InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+		}
+		variables.Set("token", "")
+
+		result := variables.Evaluate(map[string]interface{}{
+			"token": "server-issued-token",
+		})
+
+		require.Equal(t, "server-issued-token", result["token"])
+	})
+
+	t.Run("edited-filename-replaces-initial-generated-filename", func(t *testing.T) {
+		variables := &Variable{
+			LazyEval:                  true,
+			InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+		}
+		variables.Set("image_filename", "initial-upload-name")
+
+		initial := variables.Evaluate(map[string]interface{}{})
+		require.Equal(t, "initial-upload-name", initial["image_filename"])
+
+		afterExtraction := variables.Evaluate(map[string]interface{}{
+			"image_filename": "server-edited-name-e1",
+		})
+		require.Equal(t, "server-edited-name-e1", afterExtraction["image_filename"])
+	})
+}
+
 func TestEvaluateWithInteractshOverrideOrder(t *testing.T) {
 	// This test demonstrates a bug where interactsh URL replacement is wasted
 	// when an input value exists for the same variable key.
@@ -252,40 +474,28 @@ func TestEvaluateWithInteractshOverrideOrder(t *testing.T) {
 	// Expected behavior: Input override should be checked FIRST, then interactsh
 	// replacement should happen on the final valueString.
 
-	t.Run("interactsh-replacement-with-input-override", func(t *testing.T) {
+	t.Run("input-override-is-data", func(t *testing.T) {
 		variables := &Variable{
 			LazyEval:                  true,
 			InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
 		}
 		variables.Set("callback", "{{interactsh-url}}")
 
-		// Input provides an override that also contains interactsh-url
+		// Input provides an override that also contains interactsh-url.
+		// Overrides are dynamic data, so the marker must not allocate an
+		// interactsh URL or get evaluated as template source.
 		inputValues := map[string]interface{}{
 			"callback": "https://custom.{{interactsh-url}}/path",
 		}
 
-		// Create a real interactsh client for testing
-		client, err := interactsh.New(&interactsh.Options{
-			ServerURL:           "oast.fun",
-			CacheSize:           100,
-			Eviction:            60 * time.Second,
-			CooldownPeriod:      5 * time.Second,
-			PollDuration:        5 * time.Second,
-			DisableHttpFallback: true,
-		})
-		require.NoError(t, err, "could not create interactsh client")
-		defer client.Close()
+		source := &variableTestURLSource{}
 
-		result, urls := variables.EvaluateWithInteractsh(inputValues, client)
+		evaluation := variables.EvaluateWithInteractshScope(NewScope().AddData(inputValues), source)
+		result, urls := evaluation.Values, evaluation.InteractURLs
 
-		// The input override contains interactsh-url, so it should be replaced
-		// and we should have exactly 1 URL from the input override
-		require.Len(t, urls, 1, "should have 1 interactsh URL from input override")
-
-		// The result should use the input override (with interactsh replaced)
-		require.Contains(t, result["callback"], "https://custom.", "should use input override pattern")
-		require.Contains(t, result["callback"], "/path", "should use input override pattern")
-		require.NotContains(t, result["callback"], "{{interactsh-url}}", "interactsh should be replaced")
+		require.Empty(t, urls, "dynamic override marker should not allocate interactsh URLs")
+		require.Zero(t, source.calls, "dynamic override marker should not allocate interactsh URLs")
+		require.Equal(t, "https://custom.{{interactsh-url}}/path", result["callback"])
 	})
 
 	t.Run("interactsh-replacement-without-input-override", func(t *testing.T) {
@@ -300,21 +510,14 @@ func TestEvaluateWithInteractshOverrideOrder(t *testing.T) {
 			"other_key": "other_value",
 		}
 
-		client, err := interactsh.New(&interactsh.Options{
-			ServerURL:           "oast.fun",
-			CacheSize:           100,
-			Eviction:            60 * time.Second,
-			CooldownPeriod:      5 * time.Second,
-			PollDuration:        5 * time.Second,
-			DisableHttpFallback: true,
-		})
-		require.NoError(t, err, "could not create interactsh client")
-		defer client.Close()
+		source := &variableTestURLSource{}
 
-		result, urls := variables.EvaluateWithInteractsh(inputValues, client)
+		evaluation := variables.EvaluateWithInteractshScope(NewScope().AddData(inputValues), source)
+		result, urls := evaluation.Values, evaluation.InteractURLs
 
 		// Should have 1 URL from the variable definition
 		require.Len(t, urls, 1, "should have 1 interactsh URL")
+		require.Equal(t, 1, source.calls, "should allocate from template variable source")
 
 		// The result should be the replaced interactsh URL
 		require.NotContains(t, result["callback"], "{{interactsh-url}}", "interactsh should be replaced")

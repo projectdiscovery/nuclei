@@ -3,7 +3,7 @@ package postgres
 import (
 	lib_postgres "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/postgres"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

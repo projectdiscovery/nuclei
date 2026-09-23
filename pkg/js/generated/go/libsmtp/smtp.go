@@ -3,7 +3,7 @@ package smtp
 import (
 	lib_smtp "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/smtp"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

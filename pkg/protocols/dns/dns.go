@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"net"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -10,6 +11,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/retryabledns"
@@ -33,7 +36,7 @@ type Request struct {
 	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
 	//   RequestType is the type of DNS request to make.
-	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA,enum=CAA,enum=TLSA,enum=ANY,enum=SRV,enum=RRSIG,enum=NSEC,enum=DNSKEY,enum=NSEC3,enum=NSEC3PARAM"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -108,6 +111,7 @@ var RequestPartDefinitions = map[string]string{
 	"host":          "Host is the input to the template",
 	"matched":       "Matched is the input which was matched upon",
 	"request":       "Request contains the DNS request in text format",
+	"duration":      "Protocol operation duration in seconds",
 	"type":          "Type is the type of request made",
 	"rcode":         "Rcode field returned for the DNS request",
 	"question":      "Question contains the DNS question field",
@@ -182,6 +186,22 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	return nil
 }
 
+// resolverHost extracts the host/IP from a retryabledns resolver entry, which
+// may carry a transport prefix (e.g. "udp:", "tcp:") and an optional port.
+func resolverHost(resolver string) string {
+	r := strings.TrimSpace(resolver)
+	// strip URL-form prefixes before their shorter counterparts so that, e.g.,
+	// "udp://1.1.1.1:53" is not partially trimmed to "//1.1.1.1:53" by "udp:".
+	for _, prefix := range []string{"udp://", "tcp://", "tls://", "doh://", "udp:", "tcp:", "tls:", "doh:"} {
+		r = strings.TrimPrefix(r, prefix)
+	}
+	// strip a trailing :port if present (handles bare host or host:port).
+	if host, _, err := net.SplitHostPort(r); err == nil {
+		return host
+	}
+	return r
+}
+
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
@@ -204,11 +224,17 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 					// Defer resolution to the per-request runtime path.
 					continue
 				}
-				evaluated, err := expressions.Evaluate(resolver, metadata)
+				result, err := render.Render(render.Input{Text: resolver, Values: metadata})
 				if err != nil {
 					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
 				}
-				resolver = evaluated
+				resolver = result.Text
+			}
+			// validate template-specified resolvers against the network policy.
+			if host := resolverHost(resolver); host != "" {
+				if !protocolstate.IsHostAllowed(options.Options.ExecutionId, host) {
+					return nil, errors.Errorf("dns resolver %s is blocked by network policy", resolver)
+				}
 			}
 			resolvers = append(resolvers, resolver)
 		}
@@ -284,6 +310,16 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeANY
 	case "SRV":
 		question = dns.TypeSRV
+	case "RRSIG":
+		question = dns.TypeRRSIG
+	case "NSEC":
+		question = dns.TypeNSEC
+	case "DNSKEY":
+		question = dns.TypeDNSKEY
+	case "NSEC3":
+		question = dns.TypeNSEC3
+	case "NSEC3PARAM":
+		question = dns.TypeNSEC3PARAM
 	}
 	return question
 }

@@ -6,22 +6,24 @@ package integration_test
 import (
 	"context"
 	"fmt"
-	"log"
+	"net"
 	"time"
 
+	"github.com/ory/dockertest/v3"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
-	"github.com/testcontainers/testcontainers-go"
-	mongocontainer "github.com/testcontainers/testcontainers-go/modules/mongodb"
-
 	osutil "github.com/projectdiscovery/utils/os"
 	mongoclient "go.mongodb.org/mongo-driver/mongo"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
-	dbName  = "test"
-	dbImage = "mongo:8"
+	dbName                    = "test"
+	dbRepository              = "mongo"
+	dbTag                     = "8"
+	dbPort                    = "27017/tcp"
+	mongoDatabaseReadyTimeout = 3 * time.Minute
+	mongoServerSelectionDelay = time.Second
 )
 
 var exportersTestCases = []integrationCase{
@@ -36,22 +38,43 @@ func (m *mongoExporter) Execute(filepath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	// Start a MongoDB container
-	mongodbContainer, err := mongocontainer.Run(ctx, dbImage)
-	defer func() {
-		if err := testcontainers.TerminateContainer(mongodbContainer); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-	}()
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		return fmt.Errorf("could not create docker pool: %w", err)
+	}
+	if err := pool.Client.Ping(); err != nil {
+		return fmt.Errorf("could not connect to Docker: %w", err)
+	}
+	pool.MaxWait = mongoDatabaseReadyTimeout
+
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository:   dbRepository,
+		Tag:          dbTag,
+		ExposedPorts: []string{dbPort},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to start container: %w", err)
 	}
+	defer purge(pool, resource)
 
-	connString, err := mongodbContainer.ConnectionString(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get connection string for MongoDB container: %s", err)
+	mappedPort := resource.GetPort(dbPort)
+	if mappedPort == "" {
+		return fmt.Errorf("missing mapped port for %s", dbPort)
 	}
-	connString = connString + dbName
+	connString := fmt.Sprintf("mongodb://%s/%s", net.JoinHostPort("127.0.0.1", mappedPort), dbName)
+
+	err = pool.Retry(func() error {
+		clientOptions := mongooptions.Client().ApplyURI(connString).SetServerSelectionTimeout(mongoServerSelectionDelay)
+		client, err := mongoclient.Connect(ctx, clientOptions)
+		if err != nil {
+			return err
+		}
+		defer client.Disconnect(ctx)
+		return client.Ping(ctx, nil)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for MongoDB container: %w", err)
+	}
 
 	// Create a MongoDB exporter and write a test result to the database
 	opts := mongo.Options{

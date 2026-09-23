@@ -572,8 +572,7 @@ func updateFuncWithConstructorSig(sig string, f Function) Function {
 	sig = strings.TrimPrefix(sig, "constructor(")
 	sig = strings.TrimSuffix(sig, ")")
 	// split by comma
-	args := strings.Split(sig, ",")
-	for _, arg := range args {
+	for arg := range strings.SplitSeq(sig, ",") {
 		arg = strings.TrimSpace(arg)
 		// check if it is optional
 		typeData := strings.Split(arg, ":")

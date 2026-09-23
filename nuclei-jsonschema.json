@@ -122,7 +122,12 @@
         "CAA",
         "TLSA",
         "ANY",
-        "SRV"
+        "SRV",
+        "RRSIG",
+        "NSEC",
+        "DNSKEY",
+        "NSEC3",
+        "NSEC3PARAM"
       ],
       "title": "type of DNS request to make",
       "description": "Type is the type of DNS request to make"
@@ -381,6 +386,21 @@
           "type": "boolean",
           "title": "use case insensitive extract",
           "description": "use case insensitive extract"
+        },
+        "prompt": {
+          "type": "string",
+          "title": "llm extraction prompt",
+          "description": "Natural language instruction describing what to extract"
+        },
+        "schema": {
+          "$ref": "#/$defs/map[string]string",
+          "title": "llm extraction schema",
+          "description": "Fields to extract mapped to their type"
+        },
+        "max-input-tokens": {
+          "type": "integer",
+          "title": "max llm input tokens",
+          "description": "Approximate cap on response tokens sent to the model"
         }
       },
       "additionalProperties": false,
@@ -396,7 +416,8 @@
         "kval",
         "xpath",
         "json",
-        "dsl"
+        "dsl",
+        "llm"
       ],
       "title": "type of the extractor",
       "description": "Type of the extractor"
@@ -468,6 +489,31 @@
           "type": "boolean",
           "title": "do not perform recursion",
           "description": "Specifies whether to not do recursive checks if folders are provided"
+        },
+        "smb-user": {
+          "type": "string",
+          "title": "SMB username",
+          "description": "Username for SMB file targets"
+        },
+        "smb-password": {
+          "type": "string",
+          "title": "SMB password",
+          "description": "Password for SMB file targets"
+        },
+        "smb-domain": {
+          "type": "string",
+          "title": "SMB domain",
+          "description": "Domain for SMB authentication"
+        },
+        "smb-hash": {
+          "type": "string",
+          "title": "SMB NT hash",
+          "description": "NT hash for SMB pass-the-hash"
+        },
+        "smb-port": {
+          "type": "integer",
+          "title": "SMB port",
+          "description": "TCP port for SMB (default 445)"
         }
       },
       "additionalProperties": false,
@@ -850,6 +896,11 @@
           "title": "optional disable cookie reuse",
           "description": "Optional setting that disables cookie reuse"
         },
+        "disable-http-cache": {
+          "type": "boolean",
+          "title": "disable HTTP cache",
+          "description": "Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"
+        },
         "read-all": {
           "type": "boolean",
           "title": "force read all body",
@@ -1124,6 +1175,39 @@
           "title": "xpath queries to match in response",
           "description": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"
         },
+        "prompt": {
+          "type": "string",
+          "title": "llm prompt",
+          "description": "Natural language question the model answers about the response part"
+        },
+        "expect": {
+          "type": "string",
+          "title": "expected llm verdict",
+          "description": "Verdict that counts as a match; defaults to yes"
+        },
+        "options": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "allowed llm verdicts",
+          "description": "Fixed set of verdicts the model may return; defaults to yes and no"
+        },
+        "min-confidence": {
+          "type": "number",
+          "title": "minimum llm confidence",
+          "description": "Minimum confidence between 0 and 1 for an llm verdict to match"
+        },
+        "max-input-tokens": {
+          "type": "integer",
+          "title": "max llm input tokens",
+          "description": "Approximate cap on response tokens sent to the model"
+        },
+        "allow-sole": {
+          "type": "boolean",
+          "title": "allow llm as sole matcher",
+          "description": "Permit an llm matcher to be the only matcher on a high or critical template"
+        },
         "encoding": {
           "type": "string",
           "enum": [
@@ -1163,7 +1247,8 @@
         "status",
         "size",
         "dsl",
-        "xpath"
+        "xpath",
+        "llm"
       ],
       "title": "type of the matcher",
       "description": "Type of the matcher"

@@ -1,0 +1,6 @@
+method=POST
+path=/submit?debug=true
+host=127.0.0.1:8080
+header=Origin: https://example.com
+header=Content-Type: application/x-www-form-urlencoded
+body=username=admin&password=login

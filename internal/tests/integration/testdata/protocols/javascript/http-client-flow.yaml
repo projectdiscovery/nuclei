@@ -1,0 +1,30 @@
+id: js-http-client-flow
+
+info:
+  name: nuclei/http client flow
+  author: pdteam
+  severity: info
+  description: |
+    Exercises nuclei/http Client for Post, cookie jar reuse, and redirect
+    following against a local HTTP server.
+
+javascript:
+  - code: |
+      const http = require('nuclei/http');
+      const client = new http.Client();
+      const post = client.Post(BaseURL + '/echo', 'payload');
+      client.Get(BaseURL + '/set-cookie');
+      const cookie = client.Get(BaseURL + '/echo-cookie');
+      const redir = client.Get(BaseURL + '/redir');
+      post.Body + '|' + cookie.Body + '|' + redir.StatusCode + '|' + redir.Body;
+    args:
+      BaseURL: "http://{{Host}}:{{Port}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+      - type: word
+        part: response
+        words:
+          - "payload|sid-ok|200|landed"
