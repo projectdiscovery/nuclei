@@ -29,7 +29,7 @@ func TestExtractLLMReturnsSchemaValues(t *testing.T) {
 	e := llmExtractor(map[string]string{"product": "string", "version": "string"})
 	e.SetLLMClient(&stubLLM{answer: `{"product":"Jenkins","version":"2.4"}`})
 
-	got := e.ExtractLLM("body")
+	got := e.ExtractLLM("body", nil)
 	require.Contains(t, got, "Jenkins")
 	require.Contains(t, got, "2.4")
 	require.Len(t, got, 2)
@@ -40,7 +40,7 @@ func TestExtractLLMSchemaReachesPromptInStableOrder(t *testing.T) {
 	stub := &stubLLM{answer: `{}`}
 	e.SetLLMClient(stub)
 
-	e.ExtractLLM("body")
+	e.ExtractLLM("body", nil)
 	// both fields must be present, then product must come before version,
 	// so an absent field (index -1) cannot make the order check pass falsely
 	pi, vi := indexOf(stub.lastGot, "product"), indexOf(stub.lastGot, "version")
@@ -64,7 +64,7 @@ func TestExtractLLMFailClosed(t *testing.T) {
 		}(),
 	}
 	for name, e := range cases {
-		require.Empty(t, e.ExtractLLM("body"), name)
+		require.Empty(t, e.ExtractLLM("body", nil), name)
 	}
 }
 
@@ -80,4 +80,15 @@ func indexOf(s, sub string) int {
 		}
 	}
 	return -1
+}
+
+func TestExtractLLMInterpolatesPromptValues(t *testing.T) {
+	e := &Extractor{Type: ExtractorTypeHolder{ExtractorType: LLMExtractor}, Prompt: "Extract the version of {{product}} from {{BaseURL}}.", Schema: map[string]string{"version": "string"}}
+	stub := &stubLLM{answer: `{"version":"1.2.3"}`}
+	e.SetLLMClient(stub)
+
+	results := e.ExtractLLM("body", map[string]interface{}{"product": "nginx", "BaseURL": "https://acme.test"})
+	require.Contains(t, results, "1.2.3")
+	require.Contains(t, stub.lastGot, "Extract the version of nginx from https://acme.test.")
+	require.NotContains(t, stub.lastGot, "{{product}}")
 }

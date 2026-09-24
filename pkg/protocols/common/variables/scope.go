@@ -1,12 +1,15 @@
 package variables
 
+import "github.com/projectdiscovery/nuclei/v3/pkg/types"
+
 // Scope contains values used while evaluating template variables.
 //
 // Data values are terminal values from runtime, options, constants, payloads,
 // or protocol context. Template values are produced from the template variables
 // section and may be re-rendered when later data becomes available.
 type Scope struct {
-	values map[string]scopeValue
+	values  map[string]scopeValue
+	options *types.Options
 }
 
 type scopeValueKind uint8
@@ -24,6 +27,12 @@ type scopeValue struct {
 // NewScope creates an empty variable evaluation scope.
 func NewScope() *Scope {
 	return &Scope{values: make(map[string]scopeValue)}
+}
+
+// WithOptions binds this scope to the current scan without adding template variables.
+func (s *Scope) WithOptions(options *types.Options) *Scope {
+	s.options = options
+	return s
 }
 
 // AddData adds terminal data values to the scope.
@@ -95,7 +104,7 @@ func (s *Scope) clone() *Scope {
 		return NewScope()
 	}
 
-	clone := NewScope()
+	clone := NewScope().WithOptions(s.options)
 	for key, value := range s.values {
 		clone.values[key] = value
 	}

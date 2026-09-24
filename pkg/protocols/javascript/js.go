@@ -470,6 +470,7 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         payloadValues,
 				Values:       generators.MergeMaps(value, payloadValues),
@@ -564,6 +565,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         payloadValues,
 				Values:       generators.MergeMaps(value, payloadValues),
@@ -826,6 +828,7 @@ mainLoop:
 	for k, v := range request.Args {
 		if vVal, ok := v.(string); ok && strings.Contains(vVal, "{") {
 			result, dataErr := render.Render(render.Input{
+				Options:      request.options.GetOptions(),
 				Text:         vVal,
 				Values:       payloadValues,
 				Interactsh:   request.options.Interactsh,
@@ -874,12 +877,12 @@ func getAddress(toTest string) (string, error) {
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithOptions(data, matcher, request.options.GetOptions())
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithOptions(data, matcher, request.options.GetOptions())
 }
 
 // MakeResultEvent creates a result event from internal wrapped event

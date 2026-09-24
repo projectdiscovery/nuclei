@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -36,13 +37,13 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, data))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(item, data, request.options.GetOptions()))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data)), []string{}
+		return matcher.Result(matcher.MatchDSLWithOptions(data, request.options.GetOptions())), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.ErrorMatcher:
@@ -51,7 +52,7 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		}
 		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
 	case matchers.LLMMatcher:
-		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item)
+		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item, request.llmPromptValues(data))
 		// The audit rides on the per-response event data until the result event
 		// is built; matchers are shared across concurrent requests, so it cannot
 		// be parked on the matcher itself.
@@ -61,6 +62,49 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.ResultWithMatchedSnippet(isMatch, snippets)
 	}
 	return false, []string{}
+}
+
+// targetValueKeys are the target-derived values an llm prompt may interpolate.
+var targetValueKeys = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port", "Scheme", "Path", "Input", "Type"}
+
+// llmPromptValues returns the values an llm prompt may interpolate: the
+// template variables, -var and constants the operator declared, plus the
+// target. Declared values come from those maps, not the merged response
+// event, so a colliding body, header, or extractor cannot overwrite them.
+// Placeholders inside declared strings are resolved against the target only.
+//
+// Response derived values (body, headers, extracted fields) are deliberately
+// excluded. They are attacker influenced, and putting them in the instruction
+// is what framing the response keeps them out of.
+func (request *Request) llmPromptValues(data map[string]interface{}) map[string]interface{} {
+	values := make(map[string]interface{})
+	if request.options == nil {
+		return values
+	}
+
+	targets := make(map[string]interface{})
+	for _, key := range targetValueKeys {
+		if value, ok := data[key]; ok {
+			targets[key] = value
+		}
+	}
+
+	declared := func(src map[string]interface{}) {
+		for name, value := range src {
+			if str, ok := value.(string); ok {
+				values[name] = replacer.Replace(str, targets)
+			} else {
+				values[name] = value
+			}
+		}
+	}
+	declared(request.options.Variables.GetAll())
+	declared(request.options.Constants)
+	if request.options.Options != nil {
+		declared(request.options.Options.Vars.AsMap())
+	}
+	maps.Copy(values, targets)
+	return values
 }
 
 func getStatusCode(data map[string]interface{}) (int, bool) {
@@ -91,9 +135,9 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.JSONExtractor:
 		return extractor.ExtractJSON(item)
 	case extractors.DSLExtractor:
-		return extractor.ExtractDSL(data)
+		return extractor.ExtractDSLWithOptions(data, request.options.GetOptions())
 	case extractors.LLMExtractor:
-		return extractor.ExtractLLM(item)
+		return extractor.ExtractLLM(item, request.llmPromptValues(data))
 	}
 	return nil
 }

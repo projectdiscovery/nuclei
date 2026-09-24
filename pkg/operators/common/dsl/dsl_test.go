@@ -1,60 +1,60 @@
 package dsl
 
 import (
-	"fmt"
+	"net"
 	"testing"
 
-	"github.com/projectdiscovery/govaluate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
+	"github.com/miekg/dns"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDslExpressions(t *testing.T) {
-	// Use Google DNS for more reliable testing
-	googleDNS := []string{"8.8.8.8:53", "8.8.4.4:53"}
-
-	dslExpressions := map[string]interface{}{
-		`resolve("scanme.sh")`:        "128.199.158.128",
-		`resolve("scanme.sh","a")`:    "128.199.158.128",
-		`resolve("scanme.sh","6")`:    "2400:6180:0:d0::91:1001",
-		`resolve("scanme.sh","aaaa")`: "2400:6180:0:d0::91:1001",
-		`resolve("scanme.sh","soa")`:  "ns69.domaincontrol.com",
-	}
-
-	testDslExpressionScenariosWithDNS(t, dslExpressions, googleDNS)
-}
-
-func evaluateExpression(t *testing.T, dslExpression string) interface{} {
-	compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, HelperFunctions)
-	require.NoError(t, err, "Error while compiling the %q expression", dslExpression)
-
-	actualResult, err := compiledExpression.Evaluate(make(map[string]interface{}))
-	require.NoError(t, err, "Error while evaluating the compiled %q expression", dslExpression)
-
-	for _, negativeTestWord := range []string{"panic", "invalid", "error"} {
-		require.NotContains(t, fmt.Sprintf("%v", actualResult), negativeTestWord)
-	}
-
-	return actualResult
-}
-
-func testDslExpressionScenariosWithDNS(t *testing.T, dslExpressions map[string]interface{}, resolvers []string) {
-	// Initialize DNS client pool with custom resolvers for testing
-	err := dnsclientpool.Init(&types.Options{
-		InternalResolversList: resolvers,
-	})
-	require.NoError(t, err, "Failed to initialize DNS client pool with custom resolvers")
-
-	for dslExpression, expectedResult := range dslExpressions {
-		t.Run(dslExpression, func(t *testing.T) {
-			actualResult := evaluateExpression(t, dslExpression)
-
-			if expectedResult != nil {
-				require.Equal(t, expectedResult, actualResult)
+	listener, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := &dns.Server{PacketConn: listener, Handler: dns.HandlerFunc(func(writer dns.ResponseWriter, request *dns.Msg) {
+		response := new(dns.Msg).SetReply(request)
+		question := request.Question[0]
+		var record string
+		switch question.Qtype {
+		case dns.TypeA:
+			record = "fixture.example. 60 IN A 128.199.158.128"
+		case dns.TypeAAAA:
+			record = "fixture.example. 60 IN AAAA 2400:6180:0:d0::91:1001"
+		case dns.TypeSOA:
+			record = "fixture.example. 60 IN SOA ns.example. admin.example. 1 60 60 60 60"
+		case dns.TypeSRV:
+			record = "_service._tcp.fixture.example. 60 IN SRV 0 0 443 server.example."
+		}
+		if record != "" {
+			answer, parseErr := dns.NewRR(record)
+			if parseErr == nil {
+				response.Answer = []dns.RR{answer}
 			}
-
-			fmt.Printf("%s: \t %v\n", dslExpression, actualResult)
+		}
+		_ = writer.WriteMsg(response)
+	})}
+	started := make(chan struct{})
+	server.NotifyStartedFunc = func() { close(started) }
+	done := make(chan error, 1)
+	go func() { done <- server.ActivateAndServe() }()
+	<-started
+	t.Cleanup(func() { require.NoError(t, server.Shutdown()); require.NoError(t, <-done) })
+	options := networkTestOptions(t, &types.Options{RestrictLocalNetworkAccess: true, InternalResolversList: []string{listener.LocalAddr().String()}})
+	for expression, expected := range map[string]string{
+		`resolve("fixture.example")`:                      "128.199.158.128",
+		`resolve("f\\105xture.example")`:                  "128.199.158.128",
+		`resolve("f\\ixture.example")`:                    "128.199.158.128",
+		`resolve("fixture.example", "a")`:                 "128.199.158.128",
+		`resolve("fixture.example", "6")`:                 "2400:6180:0:d0::91:1001",
+		`resolve("fixture.example", "aaaa")`:              "2400:6180:0:d0::91:1001",
+		`resolve("fixture.example", "soa")`:               "ns.example",
+		`resolve("_service._tcp.fixture.example", "srv")`: "server.example",
+	} {
+		t.Run(expression, func(t *testing.T) {
+			result, err := evalNetworkTest(t, expression, options)
+			require.NoError(t, err)
+			require.Equal(t, expected, result)
 		})
 	}
 }

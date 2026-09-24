@@ -93,6 +93,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         vars,
 				Values:       generators.MergeMaps(value, vars),

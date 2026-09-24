@@ -264,6 +264,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         payloads,
 				Values:       generators.MergeMaps(variables, value, payloads),
@@ -359,6 +360,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	for _, input := range request.Inputs {
 		result, err := render.Render(render.Input{
+			Options:      request.options.GetOptions(),
 			Text:         input.Data,
 			Values:       interimValues,
 			Interactsh:   request.options.Interactsh,

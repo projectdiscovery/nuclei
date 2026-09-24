@@ -269,7 +269,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 // NewVariablesScope creates a variable evaluation scope with terminal data
 // layers applied in order.
 func (e *ExecutorOptions) NewVariablesScope(values ...map[string]interface{}) *variables.Scope {
-	return variables.NewScope().AddData(values...)
+	return variables.NewScope().WithOptions(e.GetOptions()).AddData(values...)
 }
 
 // AddTemplateCtxToVariablesScope adds template context values to a variable
@@ -455,6 +455,11 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
 func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+	return MakeDefaultExtractFuncWithOptions(data, extractor, nil)
+}
+
+// MakeDefaultExtractFuncWithOptions extracts using the current scan's DSL policy.
+func MakeDefaultExtractFuncWithOptions(data map[string]interface{}, extractor *extractors.Extractor, options *types.Options) map[string]struct{} {
 	part := extractor.Part
 	if part == "" {
 		part = "response"
@@ -476,13 +481,18 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 	case extractors.XPathExtractor:
 		return extractor.ExtractXPath(itemStr)
 	case extractors.DSLExtractor:
-		return extractor.ExtractDSL(data)
+		return extractor.ExtractDSLWithOptions(data, options)
 	}
 	return nil
 }
 
 // MakeDefaultMatchFunc performs matching operation for a matcher on model and returns true or false.
 func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	return MakeDefaultMatchFuncWithOptions(data, matcher, nil)
+}
+
+// MakeDefaultMatchFuncWithOptions matches using the current scan's DSL policy.
+func MakeDefaultMatchFuncWithOptions(data map[string]interface{}, matcher *matchers.Matcher, options *types.Options) (bool, []string) {
 	part := matcher.Part
 	if part == "" {
 		part = "response"
@@ -499,13 +509,13 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		result := matcher.Result(matcher.MatchSize(len(item)))
 		return result, nil
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, nil))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(item, nil, options))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data)), nil
+		return matcher.Result(matcher.MatchDSLWithOptions(data, options)), nil
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.ErrorMatcher:
@@ -556,4 +566,12 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Logger = n.Logger
 	e.CustomFastdialer = n.CustomFastdialer
 	e.ClusterMappings = n.ClusterMappings.Copy()
+}
+
+// GetOptions returns scan options, or nil for an unbound executor.
+func (e *ExecutorOptions) GetOptions() *types.Options {
+	if e == nil {
+		return nil
+	}
+	return e.Options
 }

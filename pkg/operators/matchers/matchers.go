@@ -121,9 +121,13 @@ type Matcher struct {
 	//   Prompt is the natural-language question for an llm matcher. The model
 	//   judges the selected response part and returns a verdict; the matcher
 	//   fires when the verdict equals Expect with at least MinConfidence.
+	//
+	//   {{...}} placeholders are interpolated from the template variables,
+	//   -var and target. Response derived values are not interpolated, since
+	//   the response is attacker controlled.
 	// examples:
-	//   - value: ""Is this a working admin login form rather than a marketing page?""
-	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm prompt,description=Natural language question the model answers about the response part"`
+	//   - value: "\"Is this a working admin login form rather than a marketing page?\""
+	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm prompt,description=Natural language question the model answers about the response part; supports {{...}} interpolation of variables and target values"`
 	// description: |
 	//   Expect is the verdict that counts as a match for an llm matcher.
 	//   Defaults to "yes".
