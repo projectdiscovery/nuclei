@@ -461,6 +461,19 @@ func TestMatchOffset(t *testing.T) {
 		require.False(t, ok)
 	})
 
+	t.Run("case insensitive word preserves byte offset", func(t *testing.T) {
+		m := &Matcher{
+			Type:            MatcherTypeHolder{MatcherType: WordsMatcher},
+			Words:           []string{"mz"},
+			CaseInsensitive: true,
+			Offset:          &offset2,
+		}
+		require.NoError(t, m.CompileMatchers())
+		ok, snippets := m.MatchWords("İMZ", nil)
+		require.True(t, ok)
+		require.Equal(t, []string{"mz"}, snippets)
+	})
+
 	t.Run("binary at start", func(t *testing.T) {
 		m := &Matcher{Type: MatcherTypeHolder{MatcherType: BinaryMatcher}, Binary: []string{"4d5a"}, Offset: &offset0}
 		require.NoError(t, m.CompileMatchers())

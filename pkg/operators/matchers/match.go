@@ -62,7 +62,7 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 
 // MatchWordsWithOptions matches words with the current scan's DSL network policy.
 func (matcher *Matcher) MatchWordsWithOptions(corpus string, data map[string]interface{}, options *types.Options) (bool, []string) {
-	if matcher.CaseInsensitive {
+	if matcher.CaseInsensitive && matcher.Offset == nil {
 		corpus = strings.ToLower(corpus)
 	}
 
@@ -86,7 +86,11 @@ func (matcher *Matcher) MatchWordsWithOptions(corpus string, data map[string]int
 			}
 		}
 		// Continue if the word doesn't match
-		if !matcher.matchStringAt(corpus, word) {
+		matched := matcher.matchStringAt(corpus, word)
+		if matcher.CaseInsensitive && matcher.Offset != nil {
+			matched = matcher.matchFoldStringAt(corpus, word)
+		}
+		if !matched {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
@@ -266,6 +270,24 @@ func (matcher *Matcher) matchStringAt(corpus, needle string) bool {
 		return false
 	}
 	return corpus[offset:offset+len(needle)] == needle
+}
+
+// matchFoldStringAt compares the same number of Unicode code points at the
+// configured byte offset without lowercasing the corpus and shifting offsets.
+func (matcher *Matcher) matchFoldStringAt(corpus, needle string) bool {
+	offset := *matcher.Offset
+	if offset < 0 || offset > len(corpus) {
+		return false
+	}
+	end := offset
+	for range needle {
+		if end == len(corpus) {
+			return false
+		}
+		_, size := utf8.DecodeRuneInString(corpus[end:])
+		end += size
+	}
+	return strings.EqualFold(corpus[offset:end], needle)
 }
 
 // MatchDSL matches on a generic map result
