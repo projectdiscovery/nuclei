@@ -140,6 +140,11 @@ func (matcher *Matcher) validateLLM() error {
 		if len(matcher.Inputs) < 2 {
 			return fmt.Errorf("llm matcher inputs needs at least two entries, got %d", len(matcher.Inputs))
 		}
+		for index, input := range matcher.Inputs {
+			if strings.TrimSpace(input) == "" {
+				return fmt.Errorf("llm matcher inputs entry %d cannot be blank", index)
+			}
+		}
 	}
 	return nil
 }

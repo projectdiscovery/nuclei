@@ -76,13 +76,54 @@ func resolveLLMInputs(inputs []string, data map[string]interface{}) ([]string, b
 	}
 	resolved := make([]string, 0, len(inputs))
 	for _, input := range inputs {
-		value := replacer.Replace(input, data)
-		if strings.Contains(value, marker.ParenthesisOpen) || strings.Contains(value, marker.General) {
+		value, ok := resolveLLMInput(input, data)
+		if !ok {
 			return nil, false
 		}
 		resolved = append(resolved, value)
 	}
 	return resolved, true
+}
+
+// resolveLLMInput interpolates only the placeholders written in the input
+// template. Response text is left opaque, so a body that happens to contain
+// "{{" or "§" is not treated as an unresolved marker and is not scanned for
+// further substitutions.
+func resolveLLMInput(input string, data map[string]interface{}) (string, bool) {
+	values := make(map[string]interface{})
+	for _, key := range llmInputPlaceholders(input) {
+		value, ok := data[key]
+		if !ok {
+			return "", false
+		}
+		values[key] = value
+	}
+	return replacer.Replace(input, values), true
+}
+
+func llmInputPlaceholders(input string) []string {
+	keys := collectMarkers(input, marker.ParenthesisOpen, marker.ParenthesisClose)
+	return append(keys, collectMarkers(input, marker.General, marker.General)...)
+}
+
+func collectMarkers(input, open, close string) []string {
+	var keys []string
+	for start := 0; start < len(input); {
+		from := strings.Index(input[start:], open)
+		if from < 0 {
+			break
+		}
+		from += start + len(open)
+		to := strings.Index(input[from:], close)
+		if to < 0 {
+			break
+		}
+		if key := input[from : from+to]; key != "" {
+			keys = append(keys, key)
+		}
+		start = from + to + len(close)
+	}
+	return keys
 }
 
 // targetValueKeys are the target-derived values an llm prompt may interpolate.

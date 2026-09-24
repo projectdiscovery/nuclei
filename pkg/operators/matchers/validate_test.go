@@ -47,4 +47,5 @@ func TestValidateLLMInputs(t *testing.T) {
 
 	require.NoError(t, compile([]string{"{{body_1}}", "{{body_2}}"}))
 	require.ErrorContains(t, compile([]string{"{{body_1}}"}), "at least two entries")
+	require.ErrorContains(t, compile([]string{"{{body_1}}", "  "}), "cannot be blank")
 }
