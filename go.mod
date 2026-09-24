@@ -101,7 +101,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.4.0
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
-	github.com/projectdiscovery/utils v0.11.4
+	github.com/projectdiscovery/utils v0.11.6-0.20260921202125-27864e59be94
 	github.com/projectdiscovery/wappalyzergo v0.3.1
 	github.com/projectdiscovery/yamldoc-go v1.0.7
 	github.com/redis/go-redis/v9 v9.11.0
@@ -373,6 +373,7 @@ require (
 	github.com/projectdiscovery/blackrock v0.0.2 // indirect
 	github.com/projectdiscovery/cdncheck v1.3.1 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
+	github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
