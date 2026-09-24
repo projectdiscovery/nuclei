@@ -32,6 +32,51 @@ func TestSetValueAndRebuildRefreshesLiveCookies(t *testing.T) {
 	require.Equal(t, "abc123", cookieValue(t, rebuilt, "session"))
 }
 
+// TestSetValueAndRebuildDropsStaleCookiesOnQueryProbes pins that a query probe
+// does not resurrect parse-time cookies after the live request dropped Cookie.
+func TestSetValueAndRebuildDropsStaleCookiesOnQueryProbes(t *testing.T) {
+	raw, err := retryablehttp.NewRequest(http.MethodGet, "http://example.com/?q=x", nil)
+	require.NoError(t, err)
+	raw.Header.Set("Cookie", "session=old")
+
+	cloned := parsedQueryComponent(t, raw)
+
+	raw.Header.Del("Cookie")
+	rebuilt, err := SetValueAndRebuild(fuzz.GeneratedRequest{
+		Request:   raw,
+		Component: cloned,
+		Key:       "q",
+	}, "probe")
+	require.NoError(t, err)
+	require.Empty(t, rebuilt.Header.Get("Cookie"))
+	require.Equal(t, 0, len(rebuilt.Cookies()))
+}
+
+// TestSetValueAndRebuildPreservesFuzzedCookieHeader pins that fuzzing Cookie as
+// a header keeps the probe payload even when the live request no longer has it.
+func TestSetValueAndRebuildPreservesFuzzedCookieHeader(t *testing.T) {
+	raw, err := retryablehttp.NewRequest(http.MethodGet, "http://example.com/", nil)
+	require.NoError(t, err)
+	raw.Header.Set("Cookie", "session=old")
+	raw.Header.Set("X-Trace", "1")
+
+	headers := component.NewHeader()
+	parsed, err := headers.Parse(raw)
+	require.NoError(t, err)
+	require.True(t, parsed)
+	cloned := headers.Clone()
+
+	raw.Header.Del("Cookie")
+	rebuilt, err := SetValueAndRebuild(fuzz.GeneratedRequest{
+		Request:   raw,
+		Component: cloned,
+		Key:       "Cookie",
+	}, "session=probe")
+	require.NoError(t, err)
+	require.Equal(t, "session=probe", rebuilt.Header.Get("Cookie"))
+	require.Equal(t, "1", rebuilt.Header.Get("X-Trace"))
+}
+
 func TestSetValueAndRebuildMergesCookiesAroundFuzzedCookie(t *testing.T) {
 	raw, err := retryablehttp.NewRequest(http.MethodGet, "http://example.com/", nil)
 	require.NoError(t, err)
@@ -152,6 +197,15 @@ func TestSetValueAndRebuildKeepsPayloadWhenFuzzedCookieRemoved(t *testing.T) {
 	}, "fr")
 	require.NoError(t, err)
 	require.Equal(t, "session=zzz999; theme=fr", rebuilt.Header.Get("Cookie"))
+}
+
+func parsedQueryComponent(t *testing.T, req *retryablehttp.Request) component.Component {
+	t.Helper()
+	query := component.NewQuery()
+	parsed, err := query.Parse(req)
+	require.NoError(t, err)
+	require.True(t, parsed)
+	return query.Clone()
 }
 
 func parsedCookieComponent(t *testing.T, req *retryablehttp.Request) component.Component {

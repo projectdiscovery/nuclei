@@ -111,6 +111,13 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 			// longer carry a Cookie header at all, and the rebuilt request must
 			// not resurrect the cookies it had at parse time.
 			mergeRequestCookies(rebuilt, gr.Request, gr.Key)
+		} else if !fuzzingCookieHeader(gr) {
+			// Same absence problem for query/path/body/header probes: Rebuild
+			// clones the parse-time request, so a Cookie header dropped after
+			// parse would otherwise survive. The live request is authoritative,
+			// including when it has no cookies. Skip when the header component
+			// is itself fuzzing Cookie so the probe payload is not wiped.
+			syncLiveCookieHeader(rebuilt, gr.Request)
 		}
 		for k, vs := range gr.Request.Header {
 			// don't clobber the header we are actively fuzzing
@@ -118,13 +125,6 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 				continue
 			}
 			if strings.EqualFold(k, "Cookie") {
-				if gr.Component.Name() != component.RequestCookieComponent {
-					// Cookie may have been changed after the component was
-					// parsed (for example by an auth provider). The live
-					// request is authoritative when cookies are not the
-					// component being fuzzed.
-					rebuilt.Header[k] = append([]string(nil), vs...)
-				}
 				continue
 			}
 			// don't clobber headers the component itself manages on the rebuilt
@@ -138,6 +138,20 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 		}
 	}
 	return rebuilt, nil
+}
+
+func fuzzingCookieHeader(gr fuzz.GeneratedRequest) bool {
+	return gr.Component != nil && gr.Component.Name() == component.RequestHeaderComponent && strings.EqualFold(gr.Key, "Cookie")
+}
+
+// syncLiveCookieHeader copies Cookie from the live request onto the rebuilt
+// probe, or deletes it when the live request has none. Callers must not use
+// this when Cookie is the value under test.
+func syncLiveCookieHeader(rebuilt, current *retryablehttp.Request) {
+	rebuilt.Header.Del("Cookie")
+	if vs := current.Header.Values("Cookie"); len(vs) > 0 {
+		rebuilt.Header["Cookie"] = append([]string(nil), vs...)
+	}
 }
 
 // mergeRequestCookies rebuilds the probe's Cookie header from the live request,
