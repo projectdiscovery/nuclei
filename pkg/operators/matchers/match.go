@@ -9,6 +9,7 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 	"github.com/projectdiscovery/govaluate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
@@ -56,6 +57,11 @@ func (matcher *Matcher) MatchSize(length int) bool {
 
 // MatchWords matches a word check against a corpus.
 func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (bool, []string) {
+	return matcher.MatchWordsWithOptions(corpus, data, nil)
+}
+
+// MatchWordsWithOptions matches words with the current scan's DSL network policy.
+func (matcher *Matcher) MatchWordsWithOptions(corpus string, data map[string]interface{}, options *types.Options) (bool, []string) {
 	if matcher.CaseInsensitive {
 		corpus = strings.ToLower(corpus)
 	}
@@ -67,7 +73,7 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 			data = make(map[string]interface{})
 		}
 
-		result, err := render.Render(render.Input{Text: word, Values: data})
+		result, err := render.Render(render.Input{Text: word, Values: data, Options: options})
 		if err != nil {
 			gologger.Warning().Msgf("Error while evaluating word matcher: %q", word)
 			if matcher.condition == ANDCondition {
@@ -264,6 +270,11 @@ func (matcher *Matcher) matchStringAt(corpus, needle string) bool {
 
 // MatchDSL matches on a generic map result
 func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
+	return matcher.MatchDSLWithOptions(data, nil)
+}
+
+// MatchDSLWithOptions evaluates cached expressions with the current scan's policy.
+func (matcher *Matcher) MatchDSLWithOptions(data map[string]interface{}, options *types.Options) bool {
 	logExpressionEvaluationFailure := func(matcherName string, err error) {
 		gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", matcherName, err.Error())
 	}
@@ -271,7 +282,7 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 	// Iterate over all the expressions accepted as valid
 	for i, expression := range matcher.dslCompiled {
 		if varErr := expressions.ContainsUnresolvedVariables(expression.String()); varErr != nil {
-			resolvedExpression, err := resolveDSLStringMarkers(expression.String(), data)
+			resolvedExpression, err := resolveDSLStringMarkers(expression.String(), data, options)
 			if err != nil {
 				logExpressionEvaluationFailure(matcher.Name, err)
 				return false
@@ -283,7 +294,7 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 			}
 		}
 
-		result, err := expression.Evaluate(data)
+		result, err := dsl.EvalWithOptions(expression, data, options)
 		if err != nil {
 			if matcher.condition == ANDCondition {
 				return false

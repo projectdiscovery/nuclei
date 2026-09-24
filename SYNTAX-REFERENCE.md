@@ -2490,6 +2490,10 @@ Prompt is the natural-language question for an llm matcher. The model
 judges the selected response part and returns a verdict; the matcher
 fires when the verdict equals Expect with at least MinConfidence.
 
+{{...}} placeholders are interpolated from the template variables,
+-var and target. Response derived values are not interpolated, since
+the response is attacker controlled.
+
 
 
 Examples:

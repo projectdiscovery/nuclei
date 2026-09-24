@@ -181,7 +181,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.addresses = append(request.addresses, addressKV{address: address, tls: shouldUseTLS})
 	}
-	// Pre-compile any input dsl functions before executing the request.
+	// Pre-compile context-free input DSL functions before executing the request.
+	// Network helpers stay deferred so cached templates cannot retain scan results.
 	// Build a map with template variables and -var flag values for pre-compilation
 	preCompileVars := request.options.Variables.GetAll()
 	// Merge in -var flag values
