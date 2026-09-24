@@ -12,14 +12,17 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -342,6 +345,71 @@ func TestWebSocketDurationFields(t *testing.T) {
 	require.Equal(t, gotEvent["duration"], values["duration-ws_duration"])
 	require.Equal(t, gotEvent["duration_1"], values["duration-ws_duration_1"])
 	require.Equal(t, gotEvent["duration_2"], values["duration-ws_duration_2"])
+}
+
+func TestWebSocketInternalDSLExtractorHonorsScanOptions(t *testing.T) {
+	listener, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := &dns.Server{PacketConn: listener, Handler: dns.HandlerFunc(func(writer dns.ResponseWriter, request *dns.Msg) {
+		response := new(dns.Msg).SetReply(request)
+		for _, question := range request.Question {
+			if question.Qtype == dns.TypeA {
+				response.Answer = append(response.Answer, &dns.A{
+					Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET},
+					A:   net.ParseIP("8.8.8.8"),
+				})
+			}
+		}
+		_ = writer.WriteMsg(response)
+	})}
+	started := make(chan struct{})
+	server.NotifyStartedFunc = func() { close(started) }
+	done := make(chan error, 1)
+	go func() { done <- server.ActivateAndServe() }()
+	<-started
+	t.Cleanup(func() { require.NoError(t, server.Shutdown()); require.NoError(t, <-done) })
+
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.InternalResolversList = []string{listener.LocalAddr().String()}
+	testutils.Init(options)
+	t.Cleanup(func() { protocolstate.Close(options.ExecutionId) })
+
+	connHandler := func(conn net.Conn) {
+		msg, op, err := wsutil.ReadClientData(conn)
+		if err != nil {
+			return
+		}
+		_ = wsutil.WriteServerMessage(conn, op, msg)
+	}
+	wsServer := testutils.NewWebsocketServer("", connHandler, func(origin string) bool { return true })
+	defer wsServer.Close()
+
+	target := strings.ReplaceAll(wsServer.URL, "http", "ws")
+	request := &Request{
+		Address: target,
+		Inputs:  []*Input{{Data: "hello", Name: "first"}},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{{
+				Name:     "resolved",
+				Internal: true,
+				Type:     extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+				DSL:      []string{`resolve("fixture.example")`},
+			}},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-websocket-internal-dsl",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var gotEvent output.InternalEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), target)
+	require.NoError(t, request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	}))
+	require.Equal(t, "8.8.8.8", gotEvent["resolved"])
 }
 
 func TestWebSocketNoInputDuration(t *testing.T) {

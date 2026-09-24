@@ -7,13 +7,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -443,3 +446,67 @@ const exampleJSONResponseBody = `
   ]
 }
 `
+
+func TestLLMPromptValuesExcludeResponseDerivedValues(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{ID: "llm-values", Name: "testing", Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "llm-values",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOpts.Constants = map[string]interface{}{"focus_area": "Authentication"}
+	require.Nil(t, request.Compile(executerOpts))
+
+	data := map[string]interface{}{
+		"BaseURL":    "https://acme.test",
+		"Hostname":   "acme.test",
+		"focus_area": "Authentication",
+		"body":       "<html>attacker controlled</html>",
+		"csrf_token": "extracted-from-response",
+	}
+
+	values := request.llmPromptValues(data)
+	require.Equal(t, "https://acme.test", values["BaseURL"])
+	require.Equal(t, "acme.test", values["Hostname"])
+	require.Equal(t, "Authentication", values["focus_area"], "constants the operator declared are interpolated")
+	require.NotContains(t, values, "body", "the response body must never reach the instruction")
+	require.NotContains(t, values, "csrf_token", "response derived values must never reach the instruction")
+}
+
+func TestLLMPromptValuesIgnoreResponseCollisions(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.Vars = goflags.RuntimeMap{}
+	testutils.Init(options)
+
+	request := &Request{ID: "llm-values", Name: "testing", Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "llm-values",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	templateVars := variables.Variable{
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(2),
+	}
+	templateVars.Set("body", "operator-body")
+	templateVars.Set("role", "auditor for {{BaseURL}}")
+	executerOpts.Variables = templateVars
+	executerOpts.Constants = map[string]interface{}{"server": "operator-server"}
+	require.NoError(t, executerOpts.Options.Vars.Set("cli_role=from-var"))
+	require.Nil(t, request.Compile(executerOpts))
+
+	data := map[string]interface{}{
+		"BaseURL":    "https://acme.test",
+		"body":       "<html>attacker controlled</html>",
+		"server":     "nginx",
+		"cli_role":   "from-response",
+		"csrf_token": "extracted-from-response",
+	}
+
+	values := request.llmPromptValues(data)
+	require.Equal(t, "operator-body", values["body"], "a declared name must not take the response body")
+	require.Equal(t, "operator-server", values["server"], "a declared name must not take a response header")
+	require.Equal(t, "from-var", values["cli_role"], "a -var name must not take an extracted field")
+	require.Equal(t, "auditor for https://acme.test", values["role"], "declared strings still resolve against the target")
+	require.NotContains(t, values, "csrf_token")
+}
