@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // Values contains render values. Values are inserted as data; they are not
@@ -21,6 +22,8 @@ type URLSource interface {
 // Input describes a render operation. Text is template text, Values are data,
 // and Interactsh is optional source-level marker handling.
 type Input struct {
+	// Options supplies scan authority separately from template-controlled values.
+	Options      *types.Options
 	Text         string
 	Values       Values
 	Interactsh   URLSource
@@ -37,8 +40,9 @@ type Result struct {
 // MapInput describes a map render operation. Source values are template text.
 // Data values are terminal data that override Source and are not rendered.
 type MapInput struct {
-	Source Values
-	Data   Values
+	Options *types.Options
+	Source  Values
+	Data    Values
 	// Values is the evaluation context used while rendering Source.
 	Values Values
 	// Interactsh and InteractURLs carry source-level Interactsh allocations.
@@ -65,7 +69,7 @@ func Render(input Input) (Result, error) {
 		return prepared, err
 	}
 
-	result, err := expressions.Evaluate(prepared.Text, input.Values)
+	result, err := expressions.EvaluateWithOptions(prepared.Text, input.Values, input.Options)
 	if err != nil {
 		return prepared, err
 	}
@@ -89,6 +93,7 @@ func RenderMap(input MapInput) (MapResult, error) {
 		}
 
 		result, err := Render(Input{
+			Options:      input.Options,
 			Text:         fmt.Sprint(value),
 			Values:       input.Values,
 			Interactsh:   input.Interactsh,

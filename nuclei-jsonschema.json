@@ -561,8 +561,8 @@
           "type": "string"
         },
         "prompt": {
-          "description": "Natural language instruction describing what to extract",
-          "markdownDescription": "Natural language instruction describing what to extract",
+          "description": "Natural language instruction describing what to extract; supports {{...}} interpolation of variables and target values",
+          "markdownDescription": "Natural language instruction describing what to extract; supports {{...}} interpolation of variables and target values",
           "title": "llm extraction prompt",
           "type": "string"
         },
@@ -1821,8 +1821,8 @@
           "type": "string"
         },
         "prompt": {
-          "description": "Natural language question the model answers about the response part",
-          "markdownDescription": "Natural language question the model answers about the response part",
+          "description": "Natural language question the model answers about the response part; supports {{...}} interpolation of variables and target values",
+          "markdownDescription": "Natural language question the model answers about the response part; supports {{...}} interpolation of variables and target values",
           "title": "llm prompt",
           "type": "string"
         },

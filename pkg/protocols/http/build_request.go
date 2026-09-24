@@ -611,6 +611,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 func (r *requestGenerator) renderText(text string, values map[string]interface{}) (string, error) {
 	result, err := render.Render(render.Input{
+		Options:      r.options.GetOptions(),
 		Text:         text,
 		Values:       values,
 		Interactsh:   r.options.Interactsh,

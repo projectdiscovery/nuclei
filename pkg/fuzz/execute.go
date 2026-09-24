@@ -309,8 +309,9 @@ func (rule *Rule) evaluateVars(input string) (string, error) {
 	}
 
 	result, err := render.Render(render.Input{
-		Text:   input,
-		Values: data,
+		Options: rule.options.GetOptions(),
+		Text:    input,
+		Values:  data,
 	})
 	if err != nil {
 		return input, err
@@ -339,6 +340,7 @@ func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, intera
 			}
 
 			got, err := render.Render(render.Input{
+				Options:      rule.options.GetOptions(),
 				Text:         fmt.Sprint(v),
 				Values:       data,
 				Interactsh:   rule.options.Interactsh,
