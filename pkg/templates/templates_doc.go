@@ -1086,7 +1086,7 @@ func init() {
 	MATCHERSMatcherDoc.Fields[12].Name = "prompt"
 	MATCHERSMatcherDoc.Fields[12].Type = "string"
 	MATCHERSMatcherDoc.Fields[12].Note = ""
-	MATCHERSMatcherDoc.Fields[12].Description = "Prompt is the natural-language question for an llm matcher. The model\njudges the selected response part and returns a verdict; the matcher\nfires when the verdict equals Expect with at least MinConfidence."
+	MATCHERSMatcherDoc.Fields[12].Description = "Prompt is the natural-language question for an llm matcher. The model\njudges the selected response part and returns a verdict; the matcher\nfires when the verdict equals Expect with at least MinConfidence.\n\n{{...}} placeholders are interpolated from the template variables,\n-var and target. Response derived values are not interpolated, since\nthe response is attacker controlled."
 	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "Prompt is the natural-language question for an llm matcher. The model"
 
 	MATCHERSMatcherDoc.Fields[12].AddExample("", "Is this a working admin login form rather than a marketing page?")
