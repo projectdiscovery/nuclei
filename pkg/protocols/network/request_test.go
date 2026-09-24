@@ -319,6 +319,7 @@ func TestEmitErrorEventPreservesHistoryAndAnnotations(t *testing.T) {
 	require.Equal(t, false, event.InternalEvent["timeout"])
 	require.Contains(t, event.InternalEvent["error"], "connection refused")
 	require.True(t, event.OperatorsResult.Matched)
+	require.Equal(t, payloads, event.OperatorsResult.PayloadValues)
 }
 
 var exampleBody = `<!doctype html>

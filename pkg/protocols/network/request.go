@@ -601,7 +601,9 @@ func (request *Request) emitErrorEvent(callback protocols.OutputEventCallback, e
 
 	var event *output.InternalWrappedEvent
 	if hasErrorMatchers {
-		event = eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+			wrappedEvent.OperatorsResult.PayloadValues = payloads
+		})
 	} else {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
 	}

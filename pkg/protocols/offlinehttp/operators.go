@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -44,6 +45,9 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.ErrorMatcher:
+		if !requesterr.IsMarked(data) {
+			return false, []string{}
+		}
 		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
 	}
 	return false, []string{}
