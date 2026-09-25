@@ -664,6 +664,60 @@ http:
 	require.NotSame(t, cachedTemplate.RequestsHTTP[0], compiledTemplates[0].RequestsHTTP[0])
 }
 
+func TestParseCompiledCacheAfterMetadataLoad(t *testing.T) {
+	for _, word := range []string{"fixed-token", "{{randstr}}"} {
+		t.Run(word, func(t *testing.T) {
+			setup()
+			path := filepath.Join(t.TempDir(), "metadata-cache.yaml")
+			data := fmt.Sprintf(`id: metadata-cache
+info:
+  name: Metadata cache
+  author: pdteam
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words: ["%s"]
+`, word)
+			require.NoError(t, os.WriteFile(path, []byte(data), 0o600))
+			parser := templates.NewParser()
+			options := executerOpts.Copy()
+			options.Parser = parser
+			// The SDK loader reads metadata before requesting a compiled template.
+			metadata, err := parser.ParseTemplate(path, options.Catalog)
+			require.NoError(t, err)
+			require.Nil(t, metadata.(*templates.Template).Options)
+			first, err := templates.Parse(path, nil, options)
+			require.NoError(t, err)
+			cached, err := parser.CompiledCache().Get(path)
+			require.NoError(t, err)
+			require.NotNil(t, cached)
+			require.NotNil(t, cached.Options)
+			require.Nil(t, cached.Options.Output)
+			require.Nil(t, cached.Options.RateLimiter)
+			require.Nil(t, cached.Options.TemplateVerificationCallback)
+			require.Nil(t, metadata.(*templates.Template).Options, "preparing execution must not mutate metadata")
+
+			secondOptions := options.Copy()
+			secondOptions.Output = testutils.NewMockOutputWriter(false)
+			second, err := templates.Parse(path, nil, secondOptions)
+			require.NoError(t, err)
+			require.Same(t, secondOptions.Output, second.RequestsHTTP[0].Options().Output)
+			require.NotSame(t, first.RequestsHTTP[0], second.RequestsHTTP[0])
+			after, err := parser.CompiledCache().Get(path)
+			require.NoError(t, err)
+			require.Same(t, cached, after, "cache hit must not re-enter parseFromSource and replace the entry")
+			require.Equal(t, first.RequestsHTTP[0].Matchers[0].Words, second.RequestsHTTP[0].Matchers[0].Words)
+			if word == "{{randstr}}" {
+				require.NotEqual(t, word, first.RequestsHTTP[0].Matchers[0].Words[0])
+			}
+		})
+	}
+}
+
 func TestParseCompiledCacheDoesNotRetainExecutionOptions(t *testing.T) {
 	setup()
 

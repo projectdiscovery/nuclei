@@ -1,7 +1,6 @@
 package templates
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -177,8 +176,7 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 		}
 
 		if parsed != nil && len(raw) > 0 {
-			template, err = parseCachedTemplate(parsed, raw, preprocessor, options)
-			cacheableTemplate = cloneTemplate(parsed)
+			template, cacheableTemplate, err = parseCachedTemplate(parsed, raw, preprocessor, options)
 		}
 	}
 
@@ -348,23 +346,26 @@ func cloneWorkflowMatchers(items []*workflows.Matcher) []*workflows.Matcher {
 	return cloned
 }
 
-func parseCachedTemplate(cached *Template, data []byte, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, error) {
+func parseCachedTemplate(cached *Template, data []byte, preprocessor Preprocessor, options *protocols.ExecutorOptions) (*Template, *Template, error) {
 	if hasTemplatePreprocessor(data, preprocessor) {
-		return ParseTemplateFromReader(bytes.NewReader(data), preprocessor, options)
+		return parseTemplateFromData(data, preprocessor, options)
 	}
 
 	template, err := prepareTemplate(cloneTemplate(cached), options)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	// Metadata-cache entries have no executor options. Snapshot the prepared
+	// definition before compilation applies execution-specific request state.
+	cacheableTemplate := cloneTemplate(template)
 	if err := verifyAndCompileTemplate(template, data); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !template.Verified && len(template.Workflows) == 0 && config.DefaultConfig.LogAllEvents {
 		gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
 	}
-	return template, nil
+	return template, cacheableTemplate, nil
 }
 
 // getParser returns a cached parser instance
