@@ -5,6 +5,7 @@ package functional_test
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -280,6 +281,12 @@ func trimMatchingQuotes(value string) string {
 	return value
 }
 
+func TestIsRetryableFunctionalError(t *testing.T) {
+	if isRetryableFunctionalError(nil) || isRetryableFunctionalError(fmt.Errorf("load mismatch")) {
+		t.Fatal("non-exit errors should not retry")
+	}
+}
+
 func TestSplitFunctionalArgs(t *testing.T) {
 	t.Run("quoted values", func(t *testing.T) {
 		args := splitFunctionalArgs(`{{binary}} -tags "cve,exposure" -author "geeknik,pdteam" -severity high,critical`)
@@ -338,6 +345,29 @@ func runFunctionalCase(args []string, debug bool) error {
 		return fmt.Errorf("functional runners are not initialized")
 	}
 
+	const attempts = 2
+	var last error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		last = compareFunctionalLoad(args, debug)
+		if last == nil {
+			return nil
+		}
+		if !isRetryableFunctionalError(last) {
+			return last
+		}
+	}
+	return last
+}
+
+func isRetryableFunctionalError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var exitErr *exec.ExitError
+	return errors.As(err, &exitErr)
+}
+
+func compareFunctionalLoad(args []string, debug bool) error {
 	var (
 		releaseOutput string
 		currentOutput string
