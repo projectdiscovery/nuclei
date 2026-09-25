@@ -3,10 +3,10 @@ package dcerpc
 import (
 	"testing"
 
-	gpsrvsvc "github.com/Mzack9999/goimpacket/pkg/dcerpc/srvsvc"
-	gpsvcctl "github.com/Mzack9999/goimpacket/pkg/dcerpc/svcctl"
-	winstation "github.com/Mzack9999/goimpacket/pkg/dcerpc/tsts"
-	gpwkssvc "github.com/Mzack9999/goimpacket/pkg/dcerpc/wkssvc"
+	gpsrvsvc "github.com/projectdiscovery/goimpacket/pkg/dcerpc/srvsvc"
+	gpsvcctl "github.com/projectdiscovery/goimpacket/pkg/dcerpc/svcctl"
+	winstation "github.com/projectdiscovery/goimpacket/pkg/dcerpc/tsts"
+	gpwkssvc "github.com/projectdiscovery/goimpacket/pkg/dcerpc/wkssvc"
 	"github.com/stretchr/testify/require"
 )
 

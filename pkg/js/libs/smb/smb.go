@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/smbsession"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/zmap/zgrab2/lib/smb/smb"
 )
@@ -47,6 +48,15 @@ type (
 	// const client = new smb.SMBClient();
 	// ```
 	SMBClient struct{}
+
+	// AuthenticationResult describes a completed SMB session setup.
+	// Success also includes guest and null sessions. To validate credentials,
+	// require Success && !IsGuest && !IsNullSession.
+	AuthenticationResult struct {
+		Success       bool `json:"success"`
+		IsGuest       bool `json:"is_guest"`
+		IsNullSession bool `json:"is_null_session"`
+	}
 
 	// ProtocolInfo summarises dialects and capabilities discovered during
 	// SMB negotiation (nmap smb-protocols style).
@@ -144,6 +154,34 @@ func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	return memoizedcollectSMBv2Metadata(ctx, executionId, host, port, 5*time.Second)
+}
+
+// Authenticate performs SMB session setup with the supplied credentials without
+// accessing or enumerating shares. user may be "DOMAIN\\user" or "user@domain";
+// an empty user and password request a null session. Guest and null status come
+// from the server's completed session setup, not from the supplied username.
+// Each call opens and closes a new session. Rejected authentication, connection
+// failures, and policy denials return an error and no result (throw in JavaScript).
+// @example
+// ```javascript
+// const smb = require('nuclei/smb');
+// const client = new smb.SMBClient();
+// const result = client.Authenticate('acme.com', 445, 'username', 'password');
+// const validCredentials = result.Success && !result.IsGuest && !result.IsNullSession;
+// ```
+func (c *SMBClient) Authenticate(ctx context.Context, host string, port int, user, password string) (*AuthenticationResult, error) {
+	executionID := ctx.Value("executionId").(string)
+	sess, err := smbsession.Dial(ctx, executionID, host, port, smbsession.Creds{User: user, Password: password})
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Close()
+	setup := sess.Native().Session
+	return &AuthenticationResult{
+		Success:       true,
+		IsGuest:       setup.IsGuest(),
+		IsNullSession: setup.IsAnonymous(),
+	}, nil
 }
 
 // ListShares tries to connect to provided host and port

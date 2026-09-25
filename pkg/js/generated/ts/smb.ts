@@ -52,6 +52,25 @@ export class SMBClient {
     
 
     /**
+    * Authenticate performs SMB session setup with the supplied credentials without
+    * accessing or enumerating shares. user may be "DOMAIN\\user" or "user@domain";
+    * an empty user and password request a null session. Guest and null status come
+    * from the server's completed session setup, not from the supplied username.
+    * Each call opens and closes a new session. Rejected authentication, connection
+    * failures, and policy denials return an error and no result (throw in JavaScript).
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.SMBClient();
+    * const result = client.Authenticate('acme.com', 445, 'username', 'password');
+    * const validCredentials = result.Success && !result.IsGuest && !result.IsNullSession;
+    * ```
+    */
+    public Authenticate(host: string, port: number, user: string, password: string): AuthenticationResult | null {
+        return null;
+    }
+
+    /**
     * ListShares tries to connect to provided host and port
     * and list shares by using given credentials.
     * Credentials cannot be blank. guest or anonymous credentials
@@ -145,6 +164,17 @@ export class SMBClient {
     }
     
 
+}
+
+/**
+ * AuthenticationResult describes a completed SMB session setup.
+ * Success also includes guest and null sessions. To validate credentials,
+ * require Success && !IsGuest && !IsNullSession.
+ */
+export interface AuthenticationResult {
+    Success?: boolean,
+    IsGuest?: boolean,
+    IsNullSession?: boolean,
 }
 
 /**

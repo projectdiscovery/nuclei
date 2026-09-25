@@ -1,4 +1,4 @@
-// Package dcerpc exposes a small subset of the Mzack9999/goimpacket DCE/RPC
+// Package dcerpc exposes a small subset of the projectdiscovery/goimpacket DCE/RPC
 // stack to nuclei javascript templates. It is the entry point for AD attack
 // templates that need to talk EPMAPPER / SAMR / LSARPC / SVCCTL / TSCH / WINREG
 // / SRVSVC to a domain controller or member server.
@@ -33,16 +33,16 @@ import (
 	"strconv"
 	"time"
 
-	gpatexec "github.com/Mzack9999/goimpacket/pkg/atexec"
-	gprpc "github.com/Mzack9999/goimpacket/pkg/dcerpc"
-	gpepm "github.com/Mzack9999/goimpacket/pkg/dcerpc/epmapper"
-	gplsa "github.com/Mzack9999/goimpacket/pkg/dcerpc/lsarpc"
-	gpsamr "github.com/Mzack9999/goimpacket/pkg/dcerpc/samr"
-	gpsvcctl "github.com/Mzack9999/goimpacket/pkg/dcerpc/svcctl"
-	gptsch "github.com/Mzack9999/goimpacket/pkg/dcerpc/tsch"
-	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
-	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
-	gpsmbexec "github.com/Mzack9999/goimpacket/pkg/smbexec"
+	gpatexec "github.com/projectdiscovery/goimpacket/pkg/atexec"
+	gprpc "github.com/projectdiscovery/goimpacket/pkg/dcerpc"
+	gpepm "github.com/projectdiscovery/goimpacket/pkg/dcerpc/epmapper"
+	gplsa "github.com/projectdiscovery/goimpacket/pkg/dcerpc/lsarpc"
+	gpsamr "github.com/projectdiscovery/goimpacket/pkg/dcerpc/samr"
+	gpsvcctl "github.com/projectdiscovery/goimpacket/pkg/dcerpc/svcctl"
+	gptsch "github.com/projectdiscovery/goimpacket/pkg/dcerpc/tsch"
+	gpsession "github.com/projectdiscovery/goimpacket/pkg/session"
+	gpsmb "github.com/projectdiscovery/goimpacket/pkg/smb"
+	gpsmbexec "github.com/projectdiscovery/goimpacket/pkg/smbexec"
 	"github.com/projectdiscovery/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/smbsession"
@@ -60,7 +60,7 @@ type DomainUser = gpsamr.DomainUser
 type LookupResult = gplsa.LookupResult
 
 type (
-	// Client is a stateful DCE/RPC + SMB client backed by Mzack9999/goimpacket.
+	// Client is a stateful DCE/RPC + SMB client backed by projectdiscovery/goimpacket.
 	// One Client wraps one authenticated SMB session against the target host;
 	// individual RPC interfaces (SAMR, LSARPC, EPMAPPER, ...) are bound on
 	// demand by the corresponding helper methods.
