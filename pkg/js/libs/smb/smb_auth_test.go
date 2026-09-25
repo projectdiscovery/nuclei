@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/asn1"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -119,9 +120,9 @@ func serveAuthentication(t *testing.T, flags uint16, status uint32) (int, <-chan
 			done <- err
 			return
 		}
-		defer conn.Close()
 		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
-		done <- authenticationExchange(conn, flags, status)
+		err = authenticationExchange(conn, flags, status)
+		done <- errors.Join(err, conn.Close())
 	}()
 	return listener.Addr().(*net.TCPAddr).Port, done
 }
