@@ -104,6 +104,15 @@ type Matcher struct {
 	//       []string{"//a[@target=\"_blank\"]"}
 	XPath []string `yaml:"xpath,omitempty" json:"xpath,omitempty" jsonschema:"title=xpath queries to match in response,description=xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"`
 	// description: |
+	//   Offset is an optional byte index where the matcher must match.
+	//   When set, word/binary values must appear exactly at this offset, and
+	//   regex matches must start at this offset. When omitted, matching uses
+	//   the default anywhere-in-corpus behavior.
+	// examples:
+	//   - name: Match MZ magic at start of file
+	//     value: "0"
+	Offset *int `yaml:"offset,omitempty" json:"offset,omitempty" jsonschema:"title=byte offset to match at,description=Optional byte offset where the matcher must match"`
+	// description: |
 	//   Prompt is the natural-language question for an llm matcher. The model
 	//   judges the selected response part and returns a verdict; the matcher
 	//   fires when the verdict equals Expect with at least MinConfidence.
@@ -167,8 +176,11 @@ type Matcher struct {
 	matcherType   MatcherType
 	binaryDecoded []string
 	regexCompiled []*regexp.Regexp
-	dslCompiled   []*govaluate.EvaluableExpression
-	llmClient     LLMClient
+	// offsetRegexCompiled holds the anchored variant of each regex used when
+	// Offset is set, in the same order as regexCompiled
+	offsetRegexCompiled []*regexp.Regexp
+	dslCompiled         []*govaluate.EvaluableExpression
+	llmClient           LLMClient
 }
 
 // ConditionType is the type of condition for matcher

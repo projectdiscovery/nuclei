@@ -119,6 +119,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":           "Matched is the input which was matched upon",
 	"path":              "Path is the path of file on local filesystem",
 	"type":              "Type is the type of request made",
+	"filesize":          "Size of the file on disk in bytes",
 	"raw,body,all,data": "Raw contains the raw file contents",
 }
 
