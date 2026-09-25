@@ -324,6 +324,10 @@ func (r *Runner) LoadedTemplates(binaryPath string, debug bool, args []string) (
 	}
 
 	if err != nil {
+		out := strings.TrimSpace(string(data))
+		if out != "" {
+			return "", fmt.Errorf("%w: %s", err, out)
+		}
 		return "", err
 	}
 
