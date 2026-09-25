@@ -86,6 +86,27 @@ func TestAuthenticateSessionStatus(t *testing.T) {
 	}
 }
 
+func TestAuthenticateMissingExecutionID(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		executionID any
+	}{
+		{"missing", nil},
+		{"wrong type", 42},
+		{"empty", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.executionID != nil {
+				ctx = context.WithValue(ctx, "executionId", tc.executionID) //nolint:staticcheck
+			}
+			result, err := (&smb.SMBClient{}).Authenticate(ctx, "127.0.0.1", 445, "user", "password")
+			assert.EqualError(t, err, "smb: missing executionId in context")
+			assert.Nil(t, result)
+		})
+	}
+}
+
 func TestAuthenticateDeniedHost(t *testing.T) {
 	const executionID = "smb-auth-denied"
 	assert.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID, ExcludeTargets: []string{"127.0.0.1"}}))

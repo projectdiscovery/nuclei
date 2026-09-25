@@ -170,7 +170,10 @@ func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int
 // const validCredentials = result.Success && !result.IsGuest && !result.IsNullSession;
 // ```
 func (c *SMBClient) Authenticate(ctx context.Context, host string, port int, user, password string) (*AuthenticationResult, error) {
-	executionID := ctx.Value("executionId").(string)
+	executionID, ok := ctx.Value("executionId").(string)
+	if !ok || executionID == "" {
+		return nil, fmt.Errorf("smb: missing executionId in context")
+	}
 	sess, err := smbsession.Dial(ctx, executionID, host, port, smbsession.Creds{User: user, Password: password})
 	if err != nil {
 		return nil, err
