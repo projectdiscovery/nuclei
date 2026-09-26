@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -336,6 +337,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+		request.emitErrorEvent(callback, err, address, actualAddress, payloads, previous, hostname, interactshURLs)
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
@@ -394,12 +396,14 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if _, err := conn.Write(dataInBytes); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
+			request.emitErrorEvent(callback, err, address, actualAddress, payloads, previous, hostname, interactshURLs)
 			return errors.Wrap(err, "could not write request to server")
 		}
 
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
+				request.emitErrorEvent(callback, err, address, actualAddress, payloads, previous, hostname, interactshURLs)
 				return errkit.Wrap(err, "could not read response from connection")
 			}
 			stepDurations = append(stepDurations, time.Since(timeStart))
@@ -473,6 +477,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	maps.Copy(outputEvent, inputEvents)
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
+	}
+	if readErr != nil {
+		requesterr.Annotate(outputEvent, readErr, 0)
 	}
 
 	var event *output.InternalWrappedEvent
@@ -574,6 +581,47 @@ func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte
 	return b[:count], nil
 }
 
+// emitErrorEvent creates a matcher event for a failed network I/O operation when
+// the template has error/timeout matchers.
+func (request *Request) emitErrorEvent(callback protocols.OutputEventCallback, err error, address, actualAddress string, payloads map[string]interface{}, previous output.InternalEvent, hostname string, interactshURLs []string) {
+	hasErrorMatchers := request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers()
+	if !hasErrorMatchers && len(interactshURLs) == 0 {
+		return
+	}
+	outputEvent := request.responseToDSLMap("", "", "", address, actualAddress)
+	maps.Copy(outputEvent, previous)
+	maps.Copy(outputEvent, payloads)
+	if hostname != "" {
+		outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	}
+	if request.options.Interactsh != nil {
+		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
+	}
+	requesterr.Annotate(outputEvent, err, 0)
+
+	var event *output.InternalWrappedEvent
+	if hasErrorMatchers {
+		event = eventcreator.CreateEventWithAdditionalOptions(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+			wrappedEvent.OperatorsResult.PayloadValues = payloads
+		})
+	} else {
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
+	}
+	if len(interactshURLs) > 0 && request.options.Interactsh != nil {
+		event.UsesInteractsh = true
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
+			MakeResultFunc: request.MakeResultEvent,
+			Event:          event,
+			Operators:      request.CompiledOperators,
+			MatchFunc:      request.Match,
+			ExtractFunc:    request.Extract,
+		})
+	}
+	if hasErrorMatchers {
+		callback(event)
+	}
+}
+
 // markHostError checks if the error is a unreponsive host error and marks it
 func (request *Request) markHostError(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
@@ -581,8 +629,12 @@ func (request *Request) markHostError(input *contextargs.Context, err error) {
 	}
 }
 
-// isUnresponsiveAddress checks if the error is a unreponsive based on its execution history
+// isUnresponsiveAddress checks if the host is marked unresponsive based on
+// execution history. Templates with error/timeout matchers bypass this skip.
 func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
+	if request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers() {
+		return false
+	}
 	if request.options.HostErrorsCache != nil {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}

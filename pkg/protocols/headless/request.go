@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -166,6 +167,32 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+		hasErrorMatchers := request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers()
+		if hasErrorMatchers || len(interactshURLs) > 0 {
+			outputEvent := request.responseToDSLMap("", "", "", "", input.MetaInput.Input, input.MetaInput.Input, "")
+			outputEvent["duration"] = runDuration.Seconds()
+			maps.Copy(outputEvent, payloads)
+			requesterr.Annotate(outputEvent, err, runDuration)
+			var event *output.InternalWrappedEvent
+			if hasErrorMatchers {
+				event = eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+			} else {
+				event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
+			}
+			if len(interactshURLs) > 0 && request.options.Interactsh != nil {
+				event.UsesInteractsh = true
+				request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
+					MakeResultFunc: request.MakeResultEvent,
+					Event:          event,
+					Operators:      request.CompiledOperators,
+					MatchFunc:      request.Match,
+					ExtractFunc:    request.Extract,
+				})
+			}
+			if hasErrorMatchers {
+				callback(event)
+			}
+		}
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer page.Close()

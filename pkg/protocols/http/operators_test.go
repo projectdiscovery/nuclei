@@ -44,7 +44,7 @@ func TestResponseToDSLMap(t *testing.T) {
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 15, "could not get correct number of items in dsl map")
+	require.Len(t, event, 16, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 }
@@ -70,11 +70,13 @@ func TestHTTPOperatorMatch(t *testing.T) {
 	resp := &http.Response{}
 	resp.Header = make(http.Header)
 	resp.Header.Set("Test", "Test-Response")
+	resp.Header.Set("Error", "unavailable")
+	resp.Header.Set("Error-Type", "timeout")
 	host := "http://example.com/test/"
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 15, "could not get correct number of items in dsl map")
+	require.Len(t, event, 18, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 
@@ -121,6 +123,28 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		require.Equal(t, []string{}, matched)
 	})
 
+	t.Run("response error header is not a request error", func(t *testing.T) {
+		errorMatcher := &matchers.Matcher{
+			Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+			Errors: []string{"any"},
+		}
+		require.NoError(t, errorMatcher.CompileMatchers())
+
+		isMatched, matched := request.Match(event, errorMatcher)
+		require.False(t, isMatched)
+		require.Empty(t, matched)
+
+		headerMatcher := &matchers.Matcher{
+			Part:  "error",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"unavailable"},
+		}
+		require.NoError(t, headerMatcher.CompileMatchers())
+		isMatched, matched = request.Match(event, headerMatcher)
+		require.True(t, isMatched)
+		require.Equal(t, []string{"unavailable"}, matched)
+	})
+
 	t.Run("caseInsensitive", func(t *testing.T) {
 		matcher := &matchers.Matcher{
 			Part:            "body",
@@ -162,7 +186,7 @@ func TestHTTPOperatorExtract(t *testing.T) {
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 15, "could not get correct number of items in dsl map")
+	require.Len(t, event, 16, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test_header"], "could not get correct resp for header")
 
@@ -289,7 +313,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	matched := "http://example.com/test/?test=1"
 
 	event := request.responseToDSLMap(resp, host, matched, exampleRawRequest, exampleRawResponse, exampleResponseBody, exampleResponseHeader, 1*time.Second, map[string]interface{}{})
-	require.Len(t, event, 15, "could not get correct number of items in dsl map")
+	require.Len(t, event, 16, "could not get correct number of items in dsl map")
 	require.Equal(t, exampleRawResponse, event["response"], "could not get correct resp")
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 

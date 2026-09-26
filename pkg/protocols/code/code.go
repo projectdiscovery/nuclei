@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
@@ -345,6 +346,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
+	}
+	if err != nil {
+		requesterr.Annotate(data, err, 0)
 	}
 
 	// todo #1: interactsh async callback should be eliminated as it lead to ton of code duplication
