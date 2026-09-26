@@ -62,5 +62,26 @@ export class VNCClient {
     public Connect(host: string, port: number, password: string): boolean | null {
         return null;
     }
+
+    /**
+    * ConnectWithOptions connects to VNC using the supplied connection options.
+    */
+    public ConnectWithOptions(opts: VNCOptions): boolean | null {
+        return null;
+    }
+}
+
+/**
+ * VNCOptions defines the connection options for a VNC server.
+ */
+export interface VNCOptions {
+    
+    Host?: string,
+    
+    Port?: number,
+    
+    Password?: string,
+    
+    Timeout?: number,
 }
 

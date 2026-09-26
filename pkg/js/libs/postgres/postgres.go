@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/url"
@@ -25,6 +26,17 @@ type (
 	// const client = new postgres.PGClient;
 	// ```
 	PGClient struct{}
+
+	// PostgresOptions defines the connection options for a Postgres database.
+	PostgresOptions struct {
+		Host     string
+		Port     int
+		Username string
+		Password string
+		DbName   string
+		Timeout  int // Timeout is in seconds.
+		SSLMode  string
+	}
 )
 
 // IsPostgres checks if the given host and port are running Postgres database.
@@ -45,6 +57,9 @@ func (c *PGClient) IsPostgres(ctx context.Context, host string, port int) (bool,
 func isPostgres(ctx context.Context, executionId string, host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
@@ -72,6 +87,8 @@ func isPostgres(ctx context.Context, executionId string, host string, port int) 
 }
 
 // Connect connects to Postgres database using given credentials.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
 // The connection is closed after the function returns.
@@ -91,6 +108,25 @@ func (c *PGClient) Connect(ctx context.Context, host string, port int, username 
 	}
 	executionId := ctx.Value("executionId").(string)
 	return memoizedconnect(ctx, executionId, host, port, username, password, "postgres")
+}
+
+// ConnectWithOptions connects to Postgres using the supplied connection options.
+func (c *PGClient) ConnectWithOptions(ctx context.Context, opts PostgresOptions) (bool, error) {
+	if opts.Host == "" || opts.Port <= 0 {
+		return false, fmt.Errorf("invalid host or port")
+	}
+	if _, err := postgresTLSConfig(opts.SSLMode, opts.Host); err != nil {
+		return false, err
+	}
+	ok, err := c.IsPostgres(ctx, opts.Host, opts.Port)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("not a postgres service")
+	}
+	executionId := ctx.Value("executionId").(string)
+	return connectWithOptions(ctx, executionId, opts)
 }
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
@@ -147,19 +183,31 @@ func executeQuery(ctx context.Context, executionId string, host string, port int
 }
 
 func buildPostgresConnURL(username, password, target, dbName, executionId string) string {
+	return buildPostgresConnURLWithOptions(PostgresOptions{
+		Username: username, Password: password, DbName: dbName,
+	}, target, executionId)
+}
+
+func buildPostgresConnURLWithOptions(opts PostgresOptions, target, executionId string) string {
 	values := url.Values{}
-	values.Set("sslmode", "disable")
+	sslMode := opts.SSLMode
+	if sslMode == "" {
+		sslMode = "disable"
+	}
+	values.Set("sslmode", sslMode)
 	values.Set("executionId", executionId)
 
 	return fmt.Sprintf("postgres://%s@%s/%s?%s",
-		url.UserPassword(username, password).String(),
+		url.UserPassword(opts.Username, opts.Password).String(),
 		target,
-		url.PathEscape(dbName),
+		url.PathEscape(opts.DbName),
 		values.Encode(),
 	)
 }
 
 // ConnectWithDB connects to Postgres database using given credentials and database name.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
 // The connection is closed after the function returns.
@@ -185,16 +233,26 @@ func (c *PGClient) ConnectWithDB(ctx context.Context, host string, port int, use
 
 // @memo
 func connect(ctx context.Context, executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
-	if host == "" || port <= 0 {
+	return connectWithOptions(ctx, executionId, PostgresOptions{
+		Host: host, Port: port, Username: username, Password: password, DbName: dbName,
+	})
+}
+
+func connectWithOptions(ctx context.Context, executionId string, opts PostgresOptions) (bool, error) {
+	if opts.Host == "" || opts.Port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
 
-	if !protocolstate.IsHostAllowed(executionId, host) {
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
-	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
+	tlsConfig, err := postgresTLSConfig(opts.SSLMode, opts.Host)
+	if err != nil {
+		return false, err
+	}
 
 	execCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -205,21 +263,25 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 	}
 
 	db := pg.Connect(&pg.Options{
-		Addr:     target,
-		User:     username,
-		Password: password,
-		Database: dbName,
+		Addr:         target,
+		User:         opts.Username,
+		Password:     opts.Password,
+		Database:     opts.DbName,
+		TLSConfig:    tlsConfig,
+		DialTimeout:  postgresTimeout(opts.Timeout),
+		ReadTimeout:  postgresTimeout(opts.Timeout),
+		WriteTimeout: postgresTimeout(opts.Timeout),
 		Dialer: func(dialCtx context.Context, network, addr string) (net.Conn, error) {
 			return dialer.Fastdialer.Dial(dialCtx, network, addr)
 		},
 		IdleCheckFrequency: -1,
-	}).WithTimeout(10 * time.Second)
+	}).WithTimeout(postgresTimeout(opts.Timeout))
 
 	defer func() {
 		_ = db.Close()
 	}()
 
-	_, err := db.ExecContext(execCtx, "select 1")
+	_, err = db.ExecContext(execCtx, "select 1")
 	if err != nil {
 		switch true {
 		case strings.Contains(err.Error(), "connect: connection refused"):
@@ -236,4 +298,31 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 		return false, nil
 	}
 	return true, nil
+}
+
+func postgresTimeout(timeout int) time.Duration {
+	if timeout > 0 {
+		return time.Duration(timeout) * time.Second
+	}
+	return 10 * time.Second
+}
+
+func postgresTLSConfig(sslMode, host string) (*tls.Config, error) {
+	switch sslMode {
+	case "", "disable":
+		return nil, nil
+	case "allow", "prefer":
+		// go-pg cannot implement libpq's ordered plaintext/TLS fallback.
+		return nil, fmt.Errorf("postgres sslmode %q is unsupported: TLS fallback is unavailable", sslMode)
+	case "require", "verify-ca", "verify-full":
+		// Always verify both the certificate chain and hostname. This intentionally
+		// hardens require and verify-ca because the options API has no safe way to
+		// configure a custom CA-only verifier without disabling the standard check.
+		return &tls.Config{
+			ServerName: host,
+			MinVersion: tls.VersionTLS12,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported postgres sslmode %q", sslMode)
+	}
 }
