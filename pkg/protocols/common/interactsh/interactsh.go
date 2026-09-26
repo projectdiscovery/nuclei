@@ -483,6 +483,10 @@ type RequestData struct {
 	Parameter string
 	Request   *retryablehttp.Request
 
+	// Eviction overrides the client-wide Interactsh request cache TTL when > 0.
+	// Used for per-template interactsh-eviction.
+	Eviction time.Duration
+
 	// These fields route delayed results back to the execution that registered
 	// the request when the Interactsh client is shared concurrently.
 	Output              output.Writer
@@ -524,11 +528,29 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		} else {
 			c.requestLifecycleMu.RLock()
 			if data.Scope.track(id) {
-				_ = c.requests.SetWithExpire(id, data, c.eviction)
+				_ = c.requests.SetWithExpire(id, data, c.evictionFor(data))
 			}
 			c.requestLifecycleMu.RUnlock()
 		}
 	}
+}
+
+// evictionFor returns the request cache TTL for a RequestEvent.
+// Per-request Eviction overrides the client-wide default when set.
+func (c *Client) evictionFor(data *RequestData) time.Duration {
+	if data != nil && data.Eviction > 0 {
+		return data.Eviction
+	}
+	return c.eviction
+}
+
+// EvictionFromSeconds converts a template/CLI eviction value in seconds to a
+// duration. Non-positive values mean "use the client default".
+func EvictionFromSeconds(seconds int) time.Duration {
+	if seconds <= 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 // HasMatchers returns true if an operator has interactsh part
