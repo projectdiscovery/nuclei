@@ -48,7 +48,7 @@ require (
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/gobwas/ws v1.4.0
 	github.com/goccy/go-json v0.10.5
-	github.com/google/go-github/v30 v30.1.0
+	github.com/google/go-github/v92 v92.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/uuid v1.6.0
 	github.com/h2non/filetype v1.1.3
@@ -281,7 +281,6 @@ require (
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/certificate-transparency-go v1.3.3 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/go-github/v92 v92.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
