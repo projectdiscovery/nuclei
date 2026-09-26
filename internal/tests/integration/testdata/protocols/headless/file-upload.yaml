@@ -23,6 +23,9 @@ headless:
       args:
         by: x
         xpath: /html/body/form/input[2]
+    - action: sleep
+      args:
+        duration: 2
     matchers:
       - type: word
         words:
