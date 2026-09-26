@@ -1,0 +1,72 @@
+timestamp: 2024-02-20T19:24:13+05:30
+url: http://127.0.0.1:8082/analyzer/path/sqli/75
+request:
+  raw: |+
+    GET /analyzer/path/sqli/75 HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: nuclei-fuzz
+
+response:
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Connection: close
+
+---
+timestamp: 2024-02-20T19:24:13+05:30
+url: http://127.0.0.1:8082/analyzer/header/sqli
+request:
+  raw: |+
+    GET /analyzer/header/sqli HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    X-Search: en
+    User-Agent: nuclei-fuzz
+
+response:
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Connection: close
+
+---
+timestamp: 2024-02-20T19:24:13+05:30
+url: http://127.0.0.1:8082/analyzer/body/sqli
+request:
+  raw: |+
+    POST /analyzer/body/sqli HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/json
+    Content-Length: 13
+    User-Agent: nuclei-fuzz
+
+    {"name":"en"}
+
+response:
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Connection: close
+
+---
+timestamp: 2024-02-20T19:24:13+05:30
+url: http://127.0.0.1:8082/analyzer/cookie/ssti
+request:
+  raw: |+
+    GET /analyzer/cookie/ssti HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    Cookie: lang=en
+    User-Agent: nuclei-fuzz
+
+response:
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/html
+    Connection: close

@@ -1,0 +1,29 @@
+id: analyzer-ssrf
+
+info:
+  name: Server-Side Request Forgery via analyzer
+  author: pdteam
+  severity: high
+  description: |
+    Drives the built-in ssrf analyzer through the real fuzzing pipeline. The
+    analyzer points the parameter at cloud metadata endpoints and confirms when
+    metadata signatures are reflected in-band.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "https://example.com/a.png"
+    analyzer:
+      name: ssrf
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

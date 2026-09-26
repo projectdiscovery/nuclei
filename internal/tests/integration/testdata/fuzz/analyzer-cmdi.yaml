@@ -1,0 +1,29 @@
+id: analyzer-cmdi
+
+info:
+  name: OS Command Injection via analyzer
+  author: pdteam
+  severity: critical
+  description: |
+    Drives the built-in cmdi analyzer through the real fuzzing pipeline. The
+    analyzer injects shell separators followed by `id` and confirms when the
+    command output (uid=...gid=...) appears in the response.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "127.0.0.1"
+    analyzer:
+      name: cmdi
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

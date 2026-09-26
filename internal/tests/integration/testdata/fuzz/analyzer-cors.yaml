@@ -1,0 +1,29 @@
+id: analyzer-cors
+
+info:
+  name: CORS Misconfiguration via analyzer
+  author: pdteam
+  severity: medium
+  description: |
+    Drives the built-in cors analyzer through the real fuzzing pipeline. The
+    analyzer sends an attacker-controlled Origin and confirms when it is
+    reflected in Access-Control-Allow-Origin together with credentials.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "x"
+    analyzer:
+      name: cors
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"
