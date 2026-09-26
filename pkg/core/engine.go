@@ -4,6 +4,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -46,6 +47,10 @@ type Engine struct {
 	Callback                  func(*output.ResultEvent) // Executed on results
 	templateExecutionCallback TemplateExecutionCallback
 	Logger                    *gologger.Logger
+	// TemplateTargetFilter, when set, decides whether a template should run on a
+	// given target. Returning false skips that pair without dialing (used by
+	// strict-probe reachability). nil means always execute.
+	TemplateTargetFilter func(template *templates.Template, input *contextargs.MetaInput) bool
 }
 
 // New returns a new Engine instance
