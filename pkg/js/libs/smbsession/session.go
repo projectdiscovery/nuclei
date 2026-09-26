@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
-	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
+	gpsession "github.com/projectdiscovery/goimpacket/pkg/session"
+	gpsmb "github.com/projectdiscovery/goimpacket/pkg/smb"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/gptransport"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
