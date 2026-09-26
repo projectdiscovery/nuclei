@@ -55,18 +55,28 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 
 	b.value = NewValue(dataStr)
 	tmp := b.value.Parsed()
-	if !tmp.IsNIL() {
-		return true, nil
-	}
 
 	switch {
-	case strings.Contains(contentType, "application/json") && tmp.IsNIL():
+	case strings.Contains(contentType, "application/json"):
+		// GraphQL-over-HTTP uses application/json; prefer the GraphQL decoder
+		// so variables / inline args become fuzz points instead of raw JSON.
+		if graphql := dataformat.Get(dataformat.GraphqlDataFormat); graphql != nil && graphql.IsType(dataStr) {
+			return b.parseBody(dataformat.GraphqlDataFormat, req)
+		}
+		if !tmp.IsNIL() {
+			return true, nil
+		}
 		return b.parseBody(dataformat.JSONDataFormat, req)
 	case strings.Contains(contentType, "application/xml") && tmp.IsNIL():
 		return b.parseBody(dataformat.XMLDataFormat, req)
 	case strings.Contains(contentType, "multipart/form-data") && tmp.IsNIL():
 		return b.parseBody(dataformat.MultiPartFormDataFormat, req)
 	}
+
+	if !tmp.IsNIL() {
+		return true, nil
+	}
+
 	parsed, err := b.parseBody(dataformat.FormDataFormat, req)
 	if err != nil {
 		gologger.Warning().Msgf("Could not parse body as form data: %s\n", err)
