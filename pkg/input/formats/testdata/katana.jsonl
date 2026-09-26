@@ -1,0 +1,6 @@
+{"timestamp":"2024-01-01T00:00:00Z","request":{"method":"GET","endpoint":"https://ginandjuice.shop/catalog/product?productId=1","tag":"a","source":"https://ginandjuice.shop/","raw":"GET /catalog/product?productId=1 HTTP/1.1\r\nHost: ginandjuice.shop\r\nUser-Agent: katana\r\n\r\n"}}
+{"timestamp":"2024-01-01T00:00:01Z","request":{"method":"POST","endpoint":"https://ginandjuice.shop/catalog/subscribe","body":"email=test%40test.com","raw":"POST /catalog/subscribe HTTP/1.1\r\nHost: ginandjuice.shop\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 21\r\n\r\nemail=test%40test.com"}}
+{"timestamp":"2024-01-01T00:00:02Z","request":{"method":"POST","endpoint":"https://ginandjuice.shop/login","headers":{"Content-Type":"application/json"},"body":"{\"username\":\"admin\",\"password\":\"x\"}"}}
+
+not-json-should-be-skipped
+https://ginandjuice.shop/about
