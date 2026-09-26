@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/code"
@@ -24,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/schema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/utils/errkit"
@@ -169,6 +171,12 @@ type Template struct {
 	// importedFileContents contains the immutable contents loaded for ImportedFiles.
 	importedFileContents         [][]byte
 	importedFileContentsCaptured bool
+}
+
+// JSONSchemaExtend extends the Template JSON schema with richer docs, examples, and required combinations.
+func (template Template) JSONSchemaExtend(base *jsonschema.Schema) {
+	schema.ExtendSchema(templateMetadata, base)
+	schema.ApplyAnyOfRequired(templateAnyOfRequired, base)
 }
 
 // HasCodeProtocol returns true if the template has a code protocol section

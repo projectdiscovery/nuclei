@@ -62,6 +62,15 @@ func GetSupportedHTTPMethodTypes() []HTTPMethodType {
 	return result
 }
 
+// GetHTTPMethods returns supported HTTP method names for schema examples.
+func GetHTTPMethods() []interface{} {
+	result := make([]interface{}, 0, limit-1)
+	for _, method := range GetSupportedHTTPMethodTypes() {
+		result = append(result, method.String())
+	}
+	return result
+}
+
 func toHTTPMethodTypes(valueToMap string) (HTTPMethodType, error) {
 	normalizedValue := normalizeValue(valueToMap)
 	for key, currentValue := range HTTPMethodMapping {
