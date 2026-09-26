@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	orcallm "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm/orca"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -163,6 +164,23 @@ func main() {
 	options.ExecutionId = xid.New().String()
 
 	runner.ParseOptions(options)
+
+	// The orcarouter credential commands are terminal: they manage the stored
+	// key and exit without starting a scan.
+	if handled, code := orcallm.RunCredentialCommand(orcallm.CredentialCommandOptions{
+		Login:       options.LLMLogin,
+		Logout:      options.LLMLogout,
+		Status:      options.LLMStatus,
+		Models:      options.LLMModels,
+		Flow:        options.LLMLoginFlow,
+		APIKey:      options.LLMAPIKey,
+		Model:       options.LLMModel,
+		AuthBaseURL: options.LLMAuthBaseURL,
+		APIBaseURL:  options.LLMAPIBaseURL,
+	}); handled {
+		cleanupInlineSecretsDirs()
+		os.Exit(code)
+	}
 
 	if options.ScanUploadFile != "" {
 		if err := runner.UploadResultsToCloud(options); err != nil {
@@ -305,13 +323,21 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
 		flagSet.BoolVar(&options.EnableLLM, "llm", false, "enable llm matchers and extractors (semantic matching)"),
-		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together)"),
+		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching ("+strings.Join(orcallm.ProviderNames(), ", ")+")"),
 		flagSet.StringVar(&options.LLMBaseURL, "llm-base-url", "", "openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)"),
 		flagSet.StringVar(&options.LLMModel, "llm-model", "", "model used for semantic matching"),
+		flagSet.StringVar(&options.LLMAPIKey, "llm-api-key", "", "api key for the selected llm provider (orcarouter also reads ORCAROUTER_API_KEY)"),
 		flagSet.IntVar(&options.LLMTimeout, "llm-timeout", 30, "time in seconds to wait for a single llm call"),
 		flagSet.IntVar(&options.LLMMaxCalls, "llm-max-calls", 5000, "maximum llm calls per scan (0 for unlimited)"),
 		flagSet.IntVar(&options.LLMConcurrency, "llm-concurrency", 4, "maximum concurrent llm calls"),
 		flagSet.BoolVar(&options.LLMCache, "llm-cache", true, "cache llm responses within a scan"),
+		flagSet.BoolVar(&options.LLMLogin, "llm-login", false, "connect an orcarouter account with OAuth 2.0 + PKCE and store the issued api key"),
+		flagSet.StringVar(&options.LLMLoginFlow, "llm-login-flow", "auto", "orcarouter login delivery: auto, loopback (callback on 127.0.0.1) or oob (paste a displayed code)"),
+		flagSet.BoolVar(&options.LLMLogout, "llm-logout", false, "remove the stored orcarouter credential"),
+		flagSet.BoolVar(&options.LLMStatus, "llm-status", false, "show the stored orcarouter credential and where it lives"),
+		flagSet.BoolVar(&options.LLMModels, "llm-models", false, "list the orcarouter models available to this credential"),
+		flagSet.StringVar(&options.LLMAuthBaseURL, "llm-auth-base-url", "", "orcarouter auth origin override (default https://www.orcarouter.ai)"),
+		flagSet.StringVar(&options.LLMAPIBaseURL, "llm-api-base-url", "", "orcarouter inference origin override (default https://api.orcarouter.ai/v1)"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
