@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/unresolvedvars"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -134,7 +135,11 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		// to resolve. See https://github.com/projectdiscovery/nuclei/issues/7374.
 		resolverVars := generators.MergeMaps(vars, metadata)
 		if dnsClient, varErr = request.getDnsClient(request.options, resolverVars); varErr != nil {
-			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+			if unresolvedvars.Is(varErr) {
+				unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, domain, varErr)
+			} else {
+				gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+			}
 			return nil
 		}
 	}
@@ -148,7 +153,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
-		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, question, varErr)
+		unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, question, varErr)
 		return nil
 	}
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
