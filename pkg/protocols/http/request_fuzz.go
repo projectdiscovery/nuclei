@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -196,7 +197,16 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if gr.Request != nil && gr.Request.Request != nil && gr.Request.Request.URL != nil {
 		hostname = gr.Request.Request.URL.String()
 	}
-	if err := request.rateLimitTake(hostname); err != nil {
+	if request.options.HostRateLimiter != nil {
+		// key on the concrete fuzzed request URL: input.MetaInput.Input may hold
+		// a raw HTTP request dump (fuzzing from request files) that is not a
+		// parseable URL, which would silently bypass the per-host limiter
+		var rateLimitKey string
+		if gr.Request != nil && gr.Request.URL != nil {
+			rateLimitKey = httpclientpool.RateLimitHostKey(gr.Request.URL.Host)
+		}
+		request.options.RateLimitTakeFor(rateLimitKey)
+	} else if err := request.rateLimitTake(hostname); err != nil {
 		return false, err
 	}
 	req := &generatedRequest{

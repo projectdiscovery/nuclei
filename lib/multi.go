@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
@@ -64,6 +65,19 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		opts.RateLimitDuration = time.Second
 	}
 	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
+
+	// Per-call ephemeral host rate limiter; the goroutine cost is paid once
+	// per ExecuteNucleiWithOpts invocation and Stop()-ed in
+	// closeEphemeralObjects so we do not leak limiters across calls. The
+	// base engine's limiter is intentionally not inherited: each call owns
+	// its pool lifecycle so per-call cleanup can never stop shared state.
+	if opts.RateLimitHost > 0 {
+		u.executerOpts.HostRateLimiter = hostratelimit.NewPool(ctx, hostratelimit.Options{
+			MaxCount: uint(opts.RateLimitHost),
+			Duration: opts.RateLimitHostDuration,
+		})
+	}
+
 	return u, nil
 }
 
@@ -125,6 +139,7 @@ func closeEphemeralObjects(u *unsafeOptions) {
 	if u.executerOpts.RateLimiter != nil {
 		u.executerOpts.RateLimiter.Stop()
 	}
+	u.executerOpts.HostRateLimiter.Stop()
 	// dereference all objects that were inherited from base nuclei engine
 	// since these are meant to be closed globally by base nuclei engine
 	u.executerOpts.Output = nil

@@ -654,11 +654,19 @@ func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.Exe
 // user enables it, since the pooled transport sets custom dial hooks). It only
 // affects the time_delay analyzer decision below.
 func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
-	// Priority 0: race and pipeline requests need dedicated connections. Race
-	// uses a one-shot synced body gate that breaks if a connection is reused and
-	// the body is re-read, and reusing a single keep-alive connection would also
-	// serialize the requests and defeat the race.
-	if r.Race || r.Pipeline {
+	// Priority 0: race requests need dedicated connections. Race uses a one-shot
+	// synced body gate that breaks if a connection is reused and the body is
+	// re-read, and reusing a single keep-alive connection would also serialize
+	// the requests and defeat the race.
+	//
+	// Pipelined requests are deliberately not listed here: they never go through
+	// the pooled client, they are sent over rawhttp's pipeline client, which owns
+	// its connections. Marking them unsafe adds "Connection: close" to every
+	// pipelined request, so the server hangs up after the first response, the
+	// remaining pipelined requests fail and the pipeline client is left with
+	// goroutines that never retire. Templates that really want a close are still
+	// caught by the explicit header checks below.
+	if r.Race {
 		return ReuseUnsafe
 	}
 

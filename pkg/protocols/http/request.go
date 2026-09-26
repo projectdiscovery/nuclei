@@ -72,6 +72,23 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
 }
 
+// rateLimitHostKeyFromRawURL returns a stable per-host key for rate limiting
+// derived from a raw URL string. Returns an empty string if the URL cannot
+// be parsed; in that case the per-host limiter (if any) is skipped and
+// only the global rate limiter applies. The key uses URL.Host (host:port)
+// so different ports on the same hostname remain isolated buckets,
+// matching the per-host HTTP client pool keying.
+func rateLimitHostKeyFromRawURL(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	parsed, err := urlutil.ParseAbsoluteURL(raw, false)
+	if err != nil || parsed == nil {
+		return ""
+	}
+	return httpclientpool.RateLimitHostKey(parsed.Host)
+}
+
 // rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
 func (request *Request) rateLimitTake(hostname string) error {
 	if request.options.Options.PerHostRateLimit && hostname != "" {
@@ -185,6 +202,9 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 				return
 			}
 
+			if request.options.HostRateLimiter != nil {
+				request.options.RateLimitTakeFor(rateLimitHostKeyFromRawURL(httpRequest.URL()))
+			}
 			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
@@ -273,22 +293,26 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					spmHandler.Release()
 					continue
 				}
-				// Extract hostname for per-host rate limiting (use full URL - normalization happens in rateLimitTake)
-				hostname := t.updatedInput.MetaInput.Input
-				if t.req != nil && t.req.URL() != "" {
-					hostname = t.req.URL()
-				} else if t.req != nil && t.req.request != nil && t.req.request.Request != nil && t.req.request.Request.URL != nil {
-					// Extract from request URL if available
-					hostname = t.req.request.Request.URL.String()
-				}
-				if err := request.rateLimitTake(hostname); err != nil {
-					select {
-					case <-spmHandler.Done():
-						spmHandler.Release()
-						continue
-					case spmHandler.ResultChan <- err:
-						spmHandler.Release()
-						continue
+				// Prefer -rate-limit-host (HostRateLimiter) when set; otherwise
+				// -per-host-rate-limit / global via rateLimitTake.
+				if request.options.HostRateLimiter != nil {
+					request.options.RateLimitTakeFor(rateLimitHostKeyFromRawURL(t.req.URL()))
+				} else {
+					hostname := t.updatedInput.MetaInput.Input
+					if t.req != nil && t.req.URL() != "" {
+						hostname = t.req.URL()
+					} else if t.req != nil && t.req.request != nil && t.req.request.Request != nil && t.req.request.Request.URL != nil {
+						hostname = t.req.request.Request.URL.String()
+					}
+					if err := request.rateLimitTake(hostname); err != nil {
+						select {
+						case <-spmHandler.Done():
+							spmHandler.Release()
+							continue
+						case spmHandler.ResultChan <- err:
+							spmHandler.Release()
+							continue
+						}
 					}
 				}
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
@@ -507,6 +531,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 				// skip if first match is found
 				return
 			}
+			if request.options.HostRateLimiter != nil {
+				request.options.RateLimitTakeFor(rateLimitHostKeyFromRawURL(httpRequest.URL()))
+			}
 			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
@@ -581,8 +608,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			if err := request.rateLimitTake(hostname); err != nil {
-				return true, err
+			if request.options.HostRateLimiter == nil {
+				if err := request.rateLimitTake(hostname); err != nil {
+					return true, err
+				}
 			}
 
 			if generatedHttpRequest.customCancelFunction != nil {
@@ -597,6 +626,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if request.isUnresponsiveAddress(updatedInput) {
 				return true, nil
 			}
+
+			// -rate-limit-host token is taken once the final request URL is known
+			// so host/port rewrites bill the right bucket and skipped hosts
+			// (unresponsive) do not consume tokens.
+			if request.options.HostRateLimiter != nil {
+				request.options.RateLimitTakeFor(rateLimitHostKeyFromRawURL(generatedHttpRequest.URL()))
+			}
+
 			var gotMatches bool
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
@@ -877,6 +914,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				return errors.Wrap(clientErr, "could not get http client")
 			}
 			executingClient = httpclient
+			if request.options.HostRateLimiter != nil {
+				generatedRequest.request = generatedRequest.request.WithContext(
+					httpclientpool.WithRedirectCallback(generatedRequest.request.Context(), func(ctx context.Context, host string) error {
+						return request.options.RateLimitTakeForContext(ctx, host)
+					}),
+				)
+			}
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a
