@@ -2,12 +2,18 @@ package openapi
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/stretchr/testify/require"
@@ -140,31 +146,128 @@ func TestGenerateRequestsOAuthOperationOverride(t *testing.T) {
 }
 
 func TestGenerateRequestsOAuthRequiresToken(t *testing.T) {
-	for _, schemeType := range []string{"oauth2", "openIdConnect"} {
-		t.Run(schemeType, func(t *testing.T) {
-			param, err := GenerateParameterFromSecurityScheme(&openapi3.SecuritySchemeRef{
-				Value: &openapi3.SecurityScheme{Type: schemeType},
+	for _, skipValidation := range []bool{false, true} {
+		for _, schemeType := range []string{"oauth2", "openIdConnect"} {
+			t.Run(fmt.Sprintf("%s/skip-validation=%t", schemeType, skipValidation), func(t *testing.T) {
+				param, err := GenerateParameterFromSecurityScheme(&openapi3.SecuritySchemeRef{
+					Value: &openapi3.SecurityScheme{Type: schemeType},
+				})
+				require.NoError(t, err)
+				var missing []string
+				err = generateRequestsFromOp(&generateReqOptions{
+					method:       http.MethodGet,
+					pathURL:      "https://example.com",
+					requestPath:  "/protected",
+					op:           &openapi3.Operation{},
+					opts:         formats.InputFormatOptions{SkipFormatValidation: skipValidation},
+					globalParams: openapi3.Parameters{&openapi3.ParameterRef{Value: param}},
+					missingParamValueCallback: func(param *openapi3.Parameter, _ *generateReqOptions) {
+						missing = append(missing, param.Name)
+					},
+					callback: func(_ *httpTypes.RequestResponse) bool {
+						t.Fatal("must not generate an authenticated request without a token")
+						return false
+					},
+				})
+				require.NoError(t, err)
+				require.Equal(t, []string{"Authorization"}, missing)
 			})
-			require.NoError(t, err)
-			var missing []string
-			err = generateRequestsFromOp(&generateReqOptions{
-				method:       http.MethodGet,
-				pathURL:      "https://example.com",
-				requestPath:  "/protected",
-				op:           &openapi3.Operation{},
-				globalParams: openapi3.Parameters{&openapi3.ParameterRef{Value: param}},
-				missingParamValueCallback: func(param *openapi3.Parameter, _ *generateReqOptions) {
-					missing = append(missing, param.Name)
-				},
-				callback: func(_ *httpTypes.RequestResponse) bool {
-					t.Fatal("must not generate an authenticated request without a token")
-					return false
-				},
-			})
-			require.NoError(t, err)
-			require.Equal(t, []string{"Authorization"}, missing)
-		})
+		}
 	}
+}
+
+func oauthSecurityDocument(paths string) string {
+	return fmt.Sprintf(`{
+		"openapi":"3.0.3",
+		"info":{"title":"Authentication scope test","version":"1.0"},
+		"servers":[{"url":"https://example.com"}],
+		"components":{"securitySchemes":{
+			"oauth":{"type":"oauth2","flows":{"clientCredentials":{"tokenUrl":"https://example.com/token","scopes":{}}}},
+			"key":{"type":"apiKey","name":"X-API-Key","in":"header"}
+		}},
+		"security":[{"oauth":[]}],
+		"paths":{%s}
+	}`, paths)
+}
+
+func TestGenerateRequestsOAuthWithoutGlobalToken(t *testing.T) {
+	for _, skipValidation := range []bool{true, false} {
+		for _, test := range []struct {
+			name  string
+			paths string
+			want  []string
+		}{
+			{
+				name:  "public-only",
+				paths: `"/public":{"get":{"security":[],"responses":{"200":{"description":"OK"}}}}`,
+				want:  []string{"/public"},
+			},
+			{
+				name: "mixed-security",
+				paths: `
+					"/protected":{"get":{"responses":{"200":{"description":"OK"}}}},
+					"/public":{"get":{"security":[],"responses":{"200":{"description":"OK"}}}},
+					"/key":{"get":{"security":[{"key":[]}],"responses":{"200":{"description":"OK"}}}}
+				`,
+				want: []string{"/public", "/key"},
+			},
+		} {
+			t.Run(fmt.Sprintf("%s/skip-validation=%t", test.name, skipValidation), func(t *testing.T) {
+				parser := New()
+				parser.SetOptions(formats.InputFormatOptions{
+					SkipFormatValidation: skipValidation,
+					Variables:            map[string]interface{}{"X-API-Key": "supplied-key"},
+				})
+				var paths []string
+				err := parser.Parse(strings.NewReader(oauthSecurityDocument(test.paths)), func(rr *httpTypes.RequestResponse) bool {
+					paths = append(paths, rr.URL.Path)
+					auth, _ := rr.Request.Headers.Get("Authorization")
+					require.Empty(t, auth)
+					key, _ := rr.Request.Headers.Get("X-Api-Key")
+					if rr.URL.Path == "/key" {
+						require.Equal(t, "supplied-key", key)
+					} else {
+						require.Empty(t, key)
+					}
+					return false
+				}, "")
+				require.NoError(t, err)
+				require.ElementsMatch(t, test.want, paths)
+			})
+		}
+	}
+}
+
+func TestGenerateRequestsOAuthMissingTokenCLI(t *testing.T) {
+	const helperEnv = "NUCLEI_TEST_OPENAPI_MISSING_TOKEN"
+	if os.Getenv(helperEnv) == "1" {
+		config.CurrentAppMode = config.AppModeCLI
+		document := oauthSecurityDocument(`
+			"/protected":{"get":{"responses":{"200":{"description":"OK"}}}},
+			"/public":{"get":{"security":[],"responses":{"200":{"description":"OK"}}}}
+		`)
+		err := New().Parse(strings.NewReader(document), func(rr *httpTypes.RequestResponse) bool {
+			fmt.Println("generated:", rr.URL.Path)
+			return false
+		}, "")
+		require.NoError(t, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestGenerateRequestsOAuthMissingTokenCLI$")
+	cmd.Env = append(os.Environ(), helperEnv+"=1")
+	cmd.Dir = t.TempDir()
+	output, err := cmd.CombinedOutput()
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, 1, exitErr.ExitCode())
+	require.Contains(t, string(output), "generated: /public")
+	require.NotContains(t, string(output), "generated: /protected")
+	parameters, err := os.ReadFile(filepath.Join(cmd.Dir, formats.DefaultVarDumpFileName))
+	require.NoError(t, err)
+	require.Contains(t, string(parameters), "Authorization=")
 }
 
 func TestGenerateParameterUnsupportedSecurityScheme(t *testing.T) {

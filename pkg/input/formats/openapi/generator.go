@@ -48,22 +48,6 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 		globalParams = append(globalParams, params...)
 	}
 
-	// validate global param requirements
-	for _, param := range globalParams {
-		if val, ok := opts.Variables[param.Value.Name]; ok {
-			param.Value.Example = val
-		} else {
-			// if missing check for validation
-			if opts.SkipFormatValidation {
-				gologger.Verbose().Msgf("openapi: skipping all requests due to missing global auth parameter: %s\n", param.Value.Name)
-				return nil
-			} else {
-				// fatal error
-				gologger.Fatal().Msgf("openapi: missing global auth parameter: %s\n", param.Value.Name)
-			}
-		}
-	}
-
 	missingVarMap := make(map[string]struct{})
 	optionalVarMap := make(map[string]struct{})
 	missingParamValueCallback := func(param *openapi3.Parameter, opts *generateReqOptions) {
@@ -207,7 +191,9 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		} else if len(value.Schema.Value.Enum) > 0 {
 			paramValue = value.Schema.Value.Enum[0]
 		} else {
-			if !opts.opts.SkipFormatValidation {
+			// Missing credentials must skip the operation even when ordinary
+			// parameters may be generated without format validation.
+			if !opts.opts.SkipFormatValidation || value.Description == globalAuth {
 				if opts.missingParamValueCallback != nil {
 					opts.missingParamValueCallback(value, opts)
 				}
