@@ -271,7 +271,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			var val interface{}
 
 			if value.Schema == nil || value.Schema.Value == nil {
-				val = generateEmptySchemaValue(content)
+				val, _ = generateExampleFromSchema(generateEmptySchemaValue(content))
 			} else {
 				var err error
 
@@ -291,9 +291,18 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.Header.Set("Content-Type", "application/json")
 				}
 			case "application/xml":
-				values := mxj.Map(val.(map[string]interface{}))
+				var marshalled []byte
+				var err error
+				switch v := val.(type) {
+				case map[string]interface{}:
+					marshalled, err = mxj.Map(v).Xml()
+				case string:
+					marshalled = []byte(v)
+				default:
+					err = errors.Errorf("unsupported xml example type %T", val)
+				}
 
-				if marshalled, err := values.Xml(); err == nil {
+				if err == nil {
 					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))
