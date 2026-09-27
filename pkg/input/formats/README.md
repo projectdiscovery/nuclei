@@ -67,6 +67,8 @@ The same variable is used for HTTP bearer authentication. For basic authenticati
 
 Nuclei does not perform OAuth authorization flows, discover OpenID Connect providers, acquire tokens, or refresh them. Obtain an access token with the scopes required by the API before running the scan. The provided header value is used unchanged.
 
+Security requirement objects are alternatives. The generator selects the first supported alternative, in document order, for which all required credentials are supplied, and includes every scheme in that object. An empty object (`{}`) permits anonymous access. If no supported alternative has all its credentials, the first supported alternative is used to report missing values; credentials from different alternatives are not combined.
+
 Operations declaring `security: []` can be generated without the global token. Absent, nil or empty credential values cause affected requests to be skipped. Normal parameter validation reports missing credentials even when another required parameter is also missing. With `-skip-format-validation`, requests with missing credentials are silently skipped and the remaining operations are generated without inventing placeholder credentials.
 
 _Please note: Other OpenAPI features such as responses, links and callbacks are not currently handled by the module._
