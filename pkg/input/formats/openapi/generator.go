@@ -393,6 +393,10 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 
 // GetGlobalParamsForSecurityRequirement returns the global parameters for a security requirement
 func GetGlobalParamsForSecurityRequirement(schema *openapi3.T, requirement *openapi3.SecurityRequirements) ([]*openapi3.ParameterRef, error) {
+	// An empty operation security list explicitly removes global authentication.
+	if len(*requirement) == 0 {
+		return nil, nil
+	}
 	globalParams := openapi3.NewParameters()
 	if len(schema.Components.SecuritySchemes) == 0 {
 		return nil, errkit.Newf("security requirements (%+v) without any security schemes found in openapi file", schema.Security)
@@ -427,8 +431,16 @@ schemaLabel:
 
 // GenerateParameterFromSecurityScheme generates an example from a schema object
 func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*openapi3.Parameter, error) {
-	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey") {
+	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey", "oauth2", "openIdConnect") {
 		return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
+	}
+	if generic.EqualsAny(scheme.Value.Type, "oauth2", "openIdConnect") {
+		// Access tokens are supplied by the caller through the Authorization variable.
+		// Request generation does not acquire or refresh tokens from the provider.
+		h := openapi3.NewHeaderParameter(DEFAULT_HTTP_SCHEME_HEADER).WithSchema(openapi3.NewStringSchema())
+		h.Required = true
+		h.Description = globalAuth
+		return h, nil
 	}
 	if scheme.Value.Type == "http" {
 		// check scheme
@@ -443,12 +455,12 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 		// create parameters using the scheme
 		switch scheme.Value.Scheme {
 		case "basic":
-			h := openapi3.NewHeaderParameter(headerName)
+			h := openapi3.NewHeaderParameter(headerName).WithSchema(openapi3.NewStringSchema())
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
 		case "bearer":
-			h := openapi3.NewHeaderParameter(headerName)
+			h := openapi3.NewHeaderParameter(headerName).WithSchema(openapi3.NewStringSchema())
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
@@ -466,17 +478,17 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 		// create parameters using the scheme
 		switch scheme.Value.In {
 		case "query":
-			q := openapi3.NewQueryParameter(scheme.Value.Name)
+			q := openapi3.NewQueryParameter(scheme.Value.Name).WithSchema(openapi3.NewStringSchema())
 			q.Required = true
 			q.Description = globalAuth // differentiator for normal variables and global auth
 			return q, nil
 		case "header":
-			h := openapi3.NewHeaderParameter(scheme.Value.Name)
+			h := openapi3.NewHeaderParameter(scheme.Value.Name).WithSchema(openapi3.NewStringSchema())
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
 		case "cookie":
-			c := openapi3.NewCookieParameter(scheme.Value.Name)
+			c := openapi3.NewCookieParameter(scheme.Value.Name).WithSchema(openapi3.NewStringSchema())
 			c.Required = true
 			c.Description = globalAuth // differentiator for normal variables and global auth
 			return c, nil
