@@ -309,6 +309,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.Header.Set("Content-Type", "application/xml")
 				} else {
 					gologger.Warning().Msgf("openapi: could not encode xml")
+					continue
 				}
 			case "application/x-www-form-urlencoded":
 				if values, ok := val.(map[string]interface{}); ok {

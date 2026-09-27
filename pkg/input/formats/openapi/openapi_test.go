@@ -73,14 +73,14 @@ func TestOpenAPIRequestBodies(t *testing.T) {
 	tests := []struct {
 		name    string
 		content string
-		body    string
+		bodies  []string
 	}{
-		{name: "xml without schema", content: "application/xml: {}", body: `<?xml version="1.0"?><root/>`},
-		{name: "xml string schema", content: "application/xml: {schema: {type: string}}", body: "string"},
-		{name: "xml array schema", content: "application/xml: {schema: {type: array, items: {type: string}}}", body: ""},
-		{name: "json without schema", content: "application/json: {}", body: "{}"},
-		{name: "text without schema", content: "text/plain: {}", body: "string"},
-		{name: "octet-stream without schema", content: "application/octet-stream: {}", body: "string1\nstring2"},
+		{name: "xml without schema", content: "application/xml: {}", bodies: []string{`<?xml version="1.0"?><root/>`}},
+		{name: "xml string schema", content: "application/xml: {schema: {type: string}}", bodies: []string{"string"}},
+		{name: "xml array schema", content: "application/xml: {schema: {type: array, items: {type: string}}}", bodies: nil},
+		{name: "json without schema", content: "application/json: {}", bodies: []string{"{}"}},
+		{name: "text without schema", content: "text/plain: {}", bodies: []string{"string"}},
+		{name: "octet-stream without schema", content: "application/octet-stream: {}", bodies: []string{"string1\nstring2"}},
 	}
 
 	for _, tt := range tests {
@@ -103,7 +103,7 @@ paths:
 				return false
 			}, "spec.yaml")
 			require.NoError(t, err)
-			require.Equal(t, []string{tt.body}, bodies)
+			require.Equal(t, tt.bodies, bodies)
 		})
 	}
 }
