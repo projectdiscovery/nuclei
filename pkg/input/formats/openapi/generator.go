@@ -170,10 +170,27 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		reqParams = append(reqParams, opts.globalParams...)
 	}
 
+	// Collect missing credentials before ordinary parameter validation can return
+	// early. Still validate ordinary parameters so their diagnostics are retained.
+	missingAuth := false
+	for _, parameter := range reqParams {
+		value := parameter.Value
+		if value.Description != globalAuth || types.ToString(opts.opts.Variables[value.Name]) != "" {
+			continue
+		}
+		missingAuth = true
+		if opts.missingParamValueCallback != nil {
+			opts.missingParamValueCallback(value, opts)
+		}
+	}
+
 	query := url.Values{}
 	for _, parameter := range reqParams {
 		value := parameter.Value
 
+		if missingAuth && value.Description == globalAuth {
+			continue
+		}
 		if value.Schema == nil || value.Schema.Value == nil {
 			continue
 		}
@@ -191,9 +208,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		} else if len(value.Schema.Value.Enum) > 0 {
 			paramValue = value.Schema.Value.Enum[0]
 		} else {
-			// Missing credentials must skip the operation even when ordinary
-			// parameters may be generated without format validation.
-			if !opts.opts.SkipFormatValidation || value.Description == globalAuth {
+			if !opts.opts.SkipFormatValidation {
 				if opts.missingParamValueCallback != nil {
 					opts.missingParamValueCallback(value, opts)
 				}
@@ -246,6 +261,9 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		case "cookie":
 			req.AddCookie(&http.Cookie{Name: value.Name, Value: types.ToString(paramValue)})
 		}
+	}
+	if missingAuth {
+		return nil
 	}
 	req.URL.RawQuery = query.Encode()
 	req.URL.Path = opts.requestPath

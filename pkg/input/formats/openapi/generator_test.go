@@ -243,7 +243,10 @@ func TestGenerateRequestsOAuthMissingTokenCLI(t *testing.T) {
 	if os.Getenv(helperEnv) == "1" {
 		config.CurrentAppMode = config.AppModeCLI
 		document := oauthSecurityDocument(`
-			"/protected":{"get":{"responses":{"200":{"description":"OK"}}}},
+			"/protected/{id}":{"get":{
+				"parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
+				"responses":{"200":{"description":"OK"}}
+			}},
 			"/public":{"get":{"security":[],"responses":{"200":{"description":"OK"}}}}
 		`)
 		err := New().Parse(strings.NewReader(document), func(rr *httpTypes.RequestResponse) bool {
@@ -268,6 +271,75 @@ func TestGenerateRequestsOAuthMissingTokenCLI(t *testing.T) {
 	parameters, err := os.ReadFile(filepath.Join(cmd.Dir, formats.DefaultVarDumpFileName))
 	require.NoError(t, err)
 	require.Contains(t, string(parameters), "Authorization=")
+	require.Contains(t, string(parameters), "id=")
+}
+
+func TestGenerateRequestsCredentials(t *testing.T) {
+	for _, auth := range []struct {
+		scheme   string
+		variable string
+	}{
+		{scheme: "oauth", variable: "Authorization"},
+		{scheme: "key", variable: "X-API-Key"},
+	} {
+		for _, scope := range []string{"global", "operation"} {
+			for _, skipValidation := range []bool{false, true} {
+				for _, credential := range []struct {
+					name          string
+					present       bool
+					value         interface{}
+					wantProtected bool
+				}{
+					{name: "absent"},
+					{name: "nil", present: true},
+					{name: "empty", present: true, value: ""},
+					{name: "supplied", present: true, value: "opaque-token", wantProtected: true},
+				} {
+					t.Run(fmt.Sprintf("%s/%s/%s/skip-validation=%t", auth.scheme, scope, credential.name, skipValidation), func(t *testing.T) {
+						document := oauthSecurityDocument(`
+							"/protected":{"get":{"responses":{"200":{"description":"OK"}}}},
+							"/public":{"get":{"security":[],"responses":{"200":{"description":"OK"}}}}
+						`)
+						schema, err := openapi3.NewLoader().LoadFromData([]byte(document))
+						require.NoError(t, err)
+						security := openapi3.SecurityRequirements{{auth.scheme: []string{}}}
+						if scope == "global" {
+							schema.Security = security
+						} else {
+							schema.Security = nil
+							schema.Paths.Map()["/protected"].Get.Security = &security
+						}
+						variables := map[string]interface{}{}
+						if credential.present {
+							variables[auth.variable] = credential.value
+						}
+						var paths []string
+						err = GenerateRequestsFromSchema(schema, formats.InputFormatOptions{
+							Variables:            variables,
+							SkipFormatValidation: skipValidation,
+						}, func(rr *httpTypes.RequestResponse) bool {
+							paths = append(paths, rr.URL.Path)
+							for _, header := range []string{"Authorization", "X-API-Key"} {
+								value, _ := rr.Request.Headers.Get(http.CanonicalHeaderKey(header))
+								if rr.URL.Path == "/protected" && header == auth.variable && credential.wantProtected {
+									require.Equal(t, credential.value, value)
+								} else {
+									require.Empty(t, value)
+								}
+							}
+							return false
+						})
+						require.NoError(t, err)
+						wantPaths := []string{"/public"}
+						if credential.wantProtected {
+							wantPaths = append(wantPaths, "/protected")
+						}
+						require.ElementsMatch(t, wantPaths, paths)
+					})
+				}
+			}
+		}
+	}
 }
 
 func TestGenerateParameterUnsupportedSecurityScheme(t *testing.T) {
