@@ -510,3 +510,42 @@ func TestLLMPromptValuesIgnoreResponseCollisions(t *testing.T) {
 	require.Equal(t, "auditor for https://acme.test", values["role"], "declared strings still resolve against the target")
 	require.NotContains(t, values, "csrf_token")
 }
+
+func TestResolveLLMInputs(t *testing.T) {
+	data := map[string]interface{}{
+		"body_1": "user found",
+		"body_2": "user not found",
+	}
+
+	resolved, ok := resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, data)
+	require.True(t, ok)
+	require.Equal(t, []string{"user found", "user not found"}, resolved, "responses are resolved from the runtime values")
+
+	// before the last response the later values do not exist yet, and asking
+	// the model about a literal placeholder would waste a call
+	_, ok = resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, map[string]interface{}{"body_1": "only one"})
+	require.False(t, ok)
+
+	// a page that contains template-like text is still a resolved response
+	withMarkers := map[string]interface{}{
+		"body_1": "hello {{user}}",
+		"body_2": "no such user",
+		"user":   "must-not-leak",
+	}
+	resolved, ok = resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, withMarkers)
+	require.True(t, ok)
+	require.Equal(t, []string{"hello {{user}}", "no such user"}, resolved, "body text stays opaque")
+
+	withSection := map[string]interface{}{
+		"body_1":   "token §Hostname§ here",
+		"body_2":   "other",
+		"Hostname": "must-not-leak",
+	}
+	resolved, ok = resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, withSection)
+	require.True(t, ok)
+	require.Equal(t, []string{"token §Hostname§ here", "other"}, resolved)
+
+	nilInputs, ok := resolveLLMInputs(nil, data)
+	require.True(t, ok)
+	require.Nil(t, nilInputs)
+}

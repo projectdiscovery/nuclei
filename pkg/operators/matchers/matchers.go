@@ -127,6 +127,17 @@ type Matcher struct {
 	//   count as a match. Defaults to 0.
 	MinConfidence float64 `yaml:"min-confidence,omitempty" json:"min-confidence,omitempty" jsonschema:"title=minimum llm confidence,description=Minimum confidence between 0 and 1 for an llm verdict to match"`
 	// description: |
+	// description: |
+	//   Inputs compares several responses instead of a single part, for
+	//   checks that are about the difference between responses (blind
+	//   boolean injection, user enumeration, IDOR). Each entry is resolved
+	//   against the runtime values, so {{body_1}} and {{body_2}} work with
+	//   req-condition, and each response is framed separately for the model.
+	//   Part is ignored when Inputs is set.
+	// examples:
+	//   - value: "[]string{\"{{body_1}}\", \"{{body_2}}\"}"
+	Inputs []string `yaml:"inputs,omitempty" json:"inputs,omitempty" jsonschema:"title=llm inputs to compare,description=Responses to compare instead of a single part; each entry supports {{...}} interpolation"`
+
 	//   MaxInputTokens caps how much of the response part is sent to the model
 	//   for an llm matcher, as an approximate token count.
 	MaxInputTokens int `yaml:"max-input-tokens,omitempty" json:"max-input-tokens,omitempty" jsonschema:"title=max llm input tokens,description=Approximate cap on response tokens sent to the model"`

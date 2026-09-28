@@ -1198,6 +1198,14 @@
           "title": "minimum llm confidence",
           "description": "Minimum confidence between 0 and 1 for an llm verdict to match"
         },
+        "inputs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "llm inputs to compare",
+          "description": "Responses to compare instead of a single part; each entry supports {{...}} interpolation"
+        },
         "max-input-tokens": {
           "type": "integer",
           "title": "max llm input tokens",

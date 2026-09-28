@@ -3,6 +3,7 @@ package matchers
 import (
 	"context"
 	"errors"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,7 +32,7 @@ func TestMatchLLMFiresOnExpectedVerdictAboveConfidence(t *testing.T) {
 	m.MinConfidence = 0.8
 	m.SetLLMClient(&stubLLM{answer: `{"verdict":"yes","confidence":0.94,"evidence":"login form posting to /admin"}`})
 
-	ok, snips := m.MatchLLM("<form ...>", nil)
+	ok, snips := m.MatchLLM("<form ...>", nil, nil)
 	require.True(t, ok)
 	require.Equal(t, []string{"login form posting to /admin"}, snips)
 }
@@ -41,7 +42,7 @@ func TestMatchLLMDoesNotFireBelowConfidence(t *testing.T) {
 	m.MinConfidence = 0.8
 	m.SetLLMClient(&stubLLM{answer: `{"verdict":"yes","confidence":0.3}`})
 
-	ok, _ := m.MatchLLM("x", nil)
+	ok, _ := m.MatchLLM("x", nil, nil)
 	require.False(t, ok, "verdict below the confidence threshold must not match")
 }
 
@@ -49,7 +50,7 @@ func TestMatchLLMDoesNotFireOnWrongVerdict(t *testing.T) {
 	m := llmMatcher("q")
 	m.SetLLMClient(&stubLLM{answer: `{"verdict":"no","confidence":0.99}`})
 
-	ok, _ := m.MatchLLM("x", nil)
+	ok, _ := m.MatchLLM("x", nil, nil)
 	require.False(t, ok)
 }
 
@@ -60,7 +61,7 @@ func TestMatchLLMCustomExpectAndOptions(t *testing.T) {
 	stub := &stubLLM{answer: `{"verdict":"real","confidence":1}`}
 	m.SetLLMClient(stub)
 
-	ok, _ := m.MatchLLM("AKIA...", nil)
+	ok, _ := m.MatchLLM("AKIA...", nil, nil)
 	require.True(t, ok)
 	require.Contains(t, stub.lastGot, "real, example", "allowed verdicts must reach the prompt")
 }
@@ -74,7 +75,7 @@ func TestMatchLLMFailClosed(t *testing.T) {
 		"empty answer":   func() *Matcher { m := llmMatcher("q"); m.SetLLMClient(&stubLLM{answer: ""}); return m }(),
 	}
 	for name, m := range cases {
-		ok, _ := m.MatchLLM("x", nil)
+		ok, _ := m.MatchLLM("x", nil, nil)
 		require.False(t, ok, name)
 	}
 }
@@ -83,7 +84,7 @@ func TestMatchLLMDefaultsExpectToYes(t *testing.T) {
 	m := llmMatcher("q") // no Expect set
 	m.SetLLMClient(&stubLLM{answer: `{"verdict":"YES","confidence":0.5}`})
 
-	ok, _ := m.MatchLLM("x", nil)
+	ok, _ := m.MatchLLM("x", nil, nil)
 	require.True(t, ok, "expect defaults to yes and match is case-insensitive")
 }
 
@@ -93,7 +94,7 @@ func TestMatchLLMTruncatesInput(t *testing.T) {
 	stub := &stubLLM{answer: `{"verdict":"yes","confidence":1}`}
 	m.SetLLMClient(stub)
 
-	_, _ = m.MatchLLM("abcdefghijklmnop", nil)
+	_, _ = m.MatchLLM("abcdefghijklmnop", nil, nil)
 	require.NotContains(t, stub.lastGot, "efghijklmnop", "input beyond the token cap must be dropped")
 }
 
@@ -103,7 +104,7 @@ func TestMatchLLMRejectsVerdictWithoutConfidence(t *testing.T) {
 	m := llmMatcher("admin login form?")
 	m.SetLLMClient(&stubLLM{answer: `{"verdict":"yes"}`})
 
-	ok, _ := m.MatchLLM("<form ...>", nil)
+	ok, _ := m.MatchLLM("<form ...>", nil, nil)
 	require.False(t, ok)
 }
 
@@ -115,7 +116,7 @@ func TestMatchLLMRejectsConfidenceOutsideContract(t *testing.T) {
 		m := llmMatcher("admin login form?")
 		m.SetLLMClient(&stubLLM{answer: answer})
 
-		ok, _ := m.MatchLLM("<form ...>", nil)
+		ok, _ := m.MatchLLM("<form ...>", nil, nil)
 		require.False(t, ok, answer)
 	}
 }
@@ -123,7 +124,7 @@ func TestMatchLLMRejectsConfidenceOutsideContract(t *testing.T) {
 func TestMatchLLMFailsClosedWithoutClient(t *testing.T) {
 	m := llmMatcher("admin login form?")
 
-	ok, _ := m.MatchLLM("<form ...>", nil)
+	ok, _ := m.MatchLLM("<form ...>", nil, nil)
 	require.False(t, ok)
 }
 
@@ -169,7 +170,7 @@ func TestMatchLLMWithAuditRecordsVerdict(t *testing.T) {
 		model:   "qwen2.5:7b",
 	})
 
-	ok, _, audit := m.MatchLLMWithAudit("<form ...>", nil)
+	ok, _, audit := m.MatchLLMWithAudit("<form ...>", nil, nil)
 	require.True(t, ok)
 	require.NotNil(t, audit)
 	require.Equal(t, "qwen2.5:7b", audit.Model)
@@ -185,7 +186,7 @@ func TestMatchLLMWithAuditRecordsRejectedVerdict(t *testing.T) {
 	m.MinConfidence = 0.9
 	m.SetLLMClient(&stubLLM{answer: `{"verdict":"yes","confidence":0.4}`})
 
-	ok, _, audit := m.MatchLLMWithAudit("<form ...>", nil)
+	ok, _, audit := m.MatchLLMWithAudit("<form ...>", nil, nil)
 	require.False(t, ok)
 	require.NotNil(t, audit)
 	require.InDelta(t, 0.4, audit.Confidence, 0.0001)
@@ -199,7 +200,7 @@ func TestMatchLLMWithAuditReportsNothingOnFailure(t *testing.T) {
 		m := llmMatcher("admin login form?")
 		m.SetLLMClient(client)
 
-		ok, _, audit := m.MatchLLMWithAudit("<form ...>", nil)
+		ok, _, audit := m.MatchLLMWithAudit("<form ...>", nil, nil)
 		require.False(t, ok, name)
 		require.Nil(t, audit, name)
 	}
@@ -218,7 +219,7 @@ func TestMatchLLMInterpolatesPromptValues(t *testing.T) {
 	stub := &stubLLM{answer: `{"verdict":"yes","confidence":0.9,"evidence":"e"}`}
 	m.SetLLMClient(stub)
 
-	ok, _ := m.MatchLLM("body", map[string]interface{}{
+	ok, _ := m.MatchLLM("body", nil, map[string]interface{}{
 		"system_role": "Senior Application Security Auditor",
 		"BaseURL":     "https://acme.test",
 	})
@@ -232,8 +233,47 @@ func TestMatchLLMKeepsUnknownPlaceholdersLiteral(t *testing.T) {
 	stub := &stubLLM{answer: `{"verdict":"yes","confidence":0.9,"evidence":"e"}`}
 	m.SetLLMClient(stub)
 
-	_, _ = m.MatchLLM("body", map[string]interface{}{"BaseURL": "https://acme.test"})
+	_, _ = m.MatchLLM("body", nil, map[string]interface{}{"BaseURL": "https://acme.test"})
 	// values the caller does not supply, such as response-derived ones, stay
 	// literal instead of reaching the model
 	require.Contains(t, stub.lastGot, "{{extracted_token}}")
+}
+
+func TestMatchLLMComparesInputs(t *testing.T) {
+	m := llmMatcher("Does one response indicate the user exists and the other not?")
+	m.Inputs = []string{"{{body_1}}", "{{body_2}}"}
+	stub := &stubLLM{answer: `{"verdict":"yes","confidence":0.9,"evidence":"differs"}`}
+	m.SetLLMClient(stub)
+
+	ok, _ := m.MatchLLM("", []string{"user found", "user not found"}, nil)
+	require.True(t, ok)
+	require.Contains(t, stub.lastGot, "user found")
+	require.Contains(t, stub.lastGot, "user not found")
+	require.Contains(t, stub.lastGot, "Response 1")
+	require.Contains(t, stub.lastGot, "Response 2")
+}
+
+func TestMatchLLMFramesEachInputSeparately(t *testing.T) {
+	m := llmMatcher("compare")
+	m.Inputs = []string{"a", "b"}
+	stub := &stubLLM{answer: `{"verdict":"yes","confidence":0.9,"evidence":"e"}`}
+	m.SetLLMClient(stub)
+
+	_, _ = m.MatchLLM("", []string{"first", "second"}, nil)
+	// each response is wrapped in its own block, so neither can absorb the
+	// other; the marker itself is process stable by design, see boundaryMarker
+	markers := regexp.MustCompile(`<<([0-9a-f]{32})>>`).FindAllStringSubmatch(stub.lastGot, -1)
+	require.Len(t, markers, 4, "two responses, opening and closing marker each")
+	require.Regexp(t, `(?s)<<`+markers[0][1]+`>>\nfirst\n<<`+markers[0][1]+`>>.*<<`+markers[0][1]+`>>\nsecond\n<<`+markers[0][1]+`>>`, stub.lastGot)
+}
+
+func TestMatchLLMWithoutInputsUsesPart(t *testing.T) {
+	m := llmMatcher("question")
+	stub := &stubLLM{answer: `{"verdict":"yes","confidence":0.9,"evidence":"e"}`}
+	m.SetLLMClient(stub)
+
+	ok, _ := m.MatchLLM("the body", nil, nil)
+	require.True(t, ok)
+	require.Contains(t, stub.lastGot, "the body")
+	require.NotContains(t, stub.lastGot, "Response 1")
 }
