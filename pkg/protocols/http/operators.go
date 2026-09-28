@@ -125,13 +125,6 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["host"] = host
 	data["type"] = request.Type().String()
 	data["matched"] = matched
-	if request.hasLLMOperators {
-		// Seeded here rather than on first write: Execute replaces the data map
-		// with a merged copy when dynamic values exist, and only a reference
-		// that already existed is shared with the event the result is built
-		// from.
-		protocols.SeedLLMAudit(data)
-	}
 	request.setHashOrDefault(data, "request", rawReq)
 	request.setHashOrDefault(data, "response", rawResp)
 	data["status_code"] = resp.StatusCode
@@ -164,9 +157,7 @@ func (request *Request) setHashOrDefault(data output.InternalEvent, k string, v 
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	// Done here, not in MakeResultEventItem: the matcher name each result
-	// belongs to is only assigned once the default builder has split them.
-	return protocols.AttachLLMAudits(protocols.MakeDefaultResultEvent(request, wrapped), wrapped.InternalEvent)
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {

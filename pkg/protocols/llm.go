@@ -124,9 +124,7 @@ func collectMarkers(input, open, close string) []string {
 }
 
 // BindLLMOperators injects the scan's llm client into every llm matcher and
-// extractor of a compiled operator set, and reports whether it found any. A
-// protocol keeps that answer so it only seeds the audit map on events that can
-// carry one.
+// extractor of a compiled operator set, and reports whether it found any.
 //
 // Binding is what makes an llm operator run at all: without a client every llm
 // path returns a negative result rather than an error, so a protocol that skips
@@ -151,20 +149,20 @@ func BindLLMOperators(compiled *operators.Operators, e *ExecutorOptions) bool {
 	return found
 }
 
-// SeedLLMAudit prepares the event data to carry llm audits. It must run while
-// the map is still the one the result event is built from: Execute replaces the
-// data map with a merged copy when dynamic values exist, and only a reference
-// that already existed is shared with that event.
-func SeedLLMAudit(data map[string]interface{}) {
-	data[LLMAuditKey] = make(map[string]*matchers.LLMAudit)
-}
-
 // RecordLLMAudit stores an audit under the matcher's name, so a response with
-// several llm matchers keeps them apart.
+// several llm matchers keeps them apart. It creates the map on first use, which
+// is what lets every protocol carry audits without each one seeding its own
+// event: the matcher writes into the same event the result is later built from.
 func RecordLLMAudit(data map[string]interface{}, matcher *matchers.Matcher, audit *matchers.LLMAudit) {
-	if audits, ok := data[LLMAuditKey].(map[string]*matchers.LLMAudit); ok {
-		audits[matcher.Name] = audit
+	if data == nil {
+		return
 	}
+	audits, ok := data[LLMAuditKey].(map[string]*matchers.LLMAudit)
+	if !ok {
+		audits = make(map[string]*matchers.LLMAudit)
+		data[LLMAuditKey] = audits
+	}
+	audits[matcher.Name] = audit
 }
 
 // LLMAuditFor returns the audit belonging to the named matcher, falling back to

@@ -138,11 +138,7 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options *protocols.ExecutorOptions
-	// hasLLMOperators reports whether any matcher on this request is an llm
-	// matcher, so the audit map is only allocated for responses that can
-	// produce one.
-	hasLLMOperators   bool
+	options           *protocols.ExecutorOptions
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
@@ -444,7 +440,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		// llm operators only evaluate once they hold the scan's client; without
 		// it every llm path returns a negative result instead of an error.
-		request.hasLLMOperators = protocols.BindLLMOperators(compiled, options)
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 

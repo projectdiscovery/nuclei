@@ -43,12 +43,17 @@ func TestResultEventOmitsLLMWhenAbsent(t *testing.T) {
 	require.Nil(t, event.LLM)
 }
 
-func TestRecordLLMAuditIgnoresUnseededEvent(t *testing.T) {
+// Recording creates the map on first use, so a protocol carries audits without
+// having to seed its own event first.
+func TestRecordLLMAuditCreatesTheMapOnFirstUse(t *testing.T) {
 	data := map[string]interface{}{}
 	matcher := &matchers.Matcher{Name: "stack-trace"}
+	audit := &matchers.LLMAudit{Verdict: "yes"}
+
+	RecordLLMAudit(data, matcher, audit)
+	require.Same(t, audit, LLMAuditFor(data, "stack-trace"))
 
 	require.NotPanics(t, func() {
-		RecordLLMAudit(data, matcher, &matchers.LLMAudit{Verdict: "yes"})
+		RecordLLMAudit(nil, matcher, audit)
 	})
-	require.NotContains(t, data, LLMAuditKey)
 }
