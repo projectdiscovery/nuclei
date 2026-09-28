@@ -31,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -72,8 +73,27 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
 }
 
-// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
-func (request *Request) rateLimitTake(hostname string) error {
+// observeHostBackoff reports one request outcome to the per-host governor.
+func (request *Request) observeHostBackoff(hostname string, resp *http.Response, err error) {
+	if request.options.HostBackoff == nil {
+		return
+	}
+	statusCode := 0
+	var retryAfter time.Duration
+	if resp != nil {
+		statusCode = resp.StatusCode
+		retryAfter = hostbackoff.RetryAfter(resp.Header.Get("Retry-After"))
+	}
+	request.options.HostBackoff.Observe(httpclientpool.NormalizeHostPort(hostname), statusCode, retryAfter, err)
+}
+
+// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global.
+// It first honours any backoff the host earned by signalling it is overloaded,
+// so a blocking target is paced regardless of which limiter is in play.
+func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
+	if err := request.options.HostBackoff.Wait(ctx, httpclientpool.NormalizeHostPort(hostname)); err != nil {
+		return err
+	}
 	if request.options.Options.PerHostRateLimit && hostname != "" {
 		// Use per-host rate limiter
 		limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname)
@@ -281,7 +301,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					// Extract from request URL if available
 					hostname = t.req.request.Request.URL.String()
 				}
-				if err := request.rateLimitTake(hostname); err != nil {
+				if err := request.rateLimitTake(t.updatedInput.Context(), hostname); err != nil {
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
@@ -581,7 +601,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			if err := request.rateLimitTake(hostname); err != nil {
+			if err := request.rateLimitTake(input.Context(), hostname); err != nil {
 				return true, err
 			}
 
@@ -950,6 +970,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if dialers == nil {
 		return fmt.Errorf("dialers not found for execution id %s", request.options.Options.ExecutionId)
 	}
+
+	// Feed the outcome to the backoff governor before the error path rewrites
+	// hostname: a 429, a run of 403s or a transport failure is the host asking
+	// for less traffic, and the next request to it should be paced.
+	request.observeHostBackoff(hostname, resp, err)
 
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
