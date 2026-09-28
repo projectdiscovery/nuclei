@@ -1,4 +1,4 @@
-package http
+package protocols
 
 import (
 	"testing"
@@ -12,28 +12,28 @@ func TestLLMAuditForResolvesByMatcherName(t *testing.T) {
 	first := &matchers.LLMAudit{Verdict: "yes", Confidence: 0.9}
 	second := &matchers.LLMAudit{Verdict: "no", Confidence: 0.2}
 	data := map[string]interface{}{
-		llmAuditKey: map[string]*matchers.LLMAudit{"stack-trace": first, "debug-page": second},
+		LLMAuditKey: map[string]*matchers.LLMAudit{"stack-trace": first, "debug-page": second},
 	}
 
-	require.Same(t, first, llmAuditFor(data, "stack-trace"))
-	require.Same(t, second, llmAuditFor(data, "debug-page"))
+	require.Same(t, first, LLMAuditFor(data, "stack-trace"))
+	require.Same(t, second, LLMAuditFor(data, "debug-page"))
 	// Ambiguous rather than wrong: with several audits and no name to go on,
 	// attaching one of them would attribute a verdict to the wrong matcher.
-	require.Nil(t, llmAuditFor(data, ""))
+	require.Nil(t, LLMAuditFor(data, ""))
 }
 
 func TestLLMAuditForFallsBackToTheOnlyAudit(t *testing.T) {
 	only := &matchers.LLMAudit{Verdict: "yes", Confidence: 0.9}
 	data := map[string]interface{}{
-		llmAuditKey: map[string]*matchers.LLMAudit{"": only},
+		LLMAuditKey: map[string]*matchers.LLMAudit{"": only},
 	}
 
-	require.Same(t, only, llmAuditFor(data, "unnamed-matcher"))
+	require.Same(t, only, LLMAuditFor(data, "unnamed-matcher"))
 }
 
 func TestLLMAuditForWithoutAudits(t *testing.T) {
-	require.Nil(t, llmAuditFor(map[string]interface{}{}, "any"))
-	require.Nil(t, llmAuditFor(map[string]interface{}{llmAuditKey: map[string]*matchers.LLMAudit{}}, "any"))
+	require.Nil(t, LLMAuditFor(map[string]interface{}{}, "any"))
+	require.Nil(t, LLMAuditFor(map[string]interface{}{LLMAuditKey: map[string]*matchers.LLMAudit{}}, "any"))
 }
 
 // Only findings the model produced carry the block; everything else stays as it
@@ -48,7 +48,7 @@ func TestRecordLLMAuditIgnoresUnseededEvent(t *testing.T) {
 	matcher := &matchers.Matcher{Name: "stack-trace"}
 
 	require.NotPanics(t, func() {
-		recordLLMAudit(data, matcher, &matchers.LLMAudit{Verdict: "yes"})
+		RecordLLMAudit(data, matcher, &matchers.LLMAudit{Verdict: "yes"})
 	})
-	require.NotContains(t, data, llmAuditKey)
+	require.NotContains(t, data, LLMAuditKey)
 }

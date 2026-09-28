@@ -46,6 +46,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := operator.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(operator, options)
 		request.compiledOperators = append(request.compiledOperators, operator)
 	}
 	request.options = options

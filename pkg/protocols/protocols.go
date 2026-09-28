@@ -522,6 +522,38 @@ func MakeDefaultMatchFuncWithOptions(data map[string]interface{}, matcher *match
 	return false, nil
 }
 
+// MakeDefaultMatchFuncWithExecutorOptions matches using the current scan's DSL
+// policy. It is the entry point a protocol uses when it may carry llm
+// operators, which need the declared values that *types.Options alone does not
+// hold.
+func MakeDefaultMatchFuncWithExecutorOptions(data map[string]interface{}, matcher *matchers.Matcher, e *ExecutorOptions) (bool, []string) {
+	if matcher.GetType() == matchers.LLMMatcher {
+		return MatchLLM(data, matcher, defaultOperatorPart(data, matcher.Part), e)
+	}
+	return MakeDefaultMatchFuncWithOptions(data, matcher, e.GetOptions())
+}
+
+// MakeDefaultExtractFuncWithExecutorOptions is the extractor counterpart of
+// MakeDefaultMatchFuncWithExecutorOptions.
+func MakeDefaultExtractFuncWithExecutorOptions(data map[string]interface{}, extractor *extractors.Extractor, e *ExecutorOptions) map[string]struct{} {
+	if extractor.GetType() == extractors.LLMExtractor {
+		return ExtractLLM(data, extractor, defaultOperatorPart(data, extractor.Part), e)
+	}
+	return MakeDefaultExtractFuncWithOptions(data, extractor, e.GetOptions())
+}
+
+// defaultOperatorPart resolves an operator part against a protocol event whose
+// payload is named "response", matching the default builders above. An llm
+// operator is not rejected when the part is missing: with inputs it compares
+// whole responses instead, and without them an empty corpus is the honest
+// thing to ask about.
+func defaultOperatorPart(data map[string]interface{}, part string) string {
+	if part == "" {
+		part = "response"
+	}
+	return types.ToString(data[part])
+}
+
 func (e *ExecutorOptions) EncodeTemplate() string {
 	if !e.Options.OmitTemplate && len(e.RawTemplate) <= MaxTemplateFileSizeForEncoding {
 		return base64.StdEncoding.EncodeToString(e.RawTemplate)
