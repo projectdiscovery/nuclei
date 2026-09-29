@@ -13,6 +13,62 @@ import (
 
 const requestBlockIdentityVersion = "v1"
 
+var requestIdentityIgnoredFields = map[string]struct{}{
+	"analyzer":                         {},
+	"attack":                           {},
+	"cookie-reuse":                     {},
+	"custom_user_agent":                {},
+	"disable-cookie":                   {},
+	"disable-http-cache":               {},
+	"digest-password":                  {},
+	"digest-username":                  {},
+	"exclude-ports":                    {},
+	"fuzzing":                          {},
+	"host-redirects":                   {},
+	"iterate-all":                      {},
+	"matchers-condition":               {},
+	"max-redirects":                    {},
+	"max-size":                         {},
+	"no-recursive":                     {},
+	"pipeline":                         {},
+	"pipeline-concurrent-connections":  {},
+	"pipeline-requests-per-connection": {},
+	"pre-condition":                    {},
+	"pre-condition-operator":           {},
+	"protocol-redirects":               {},
+	"race":                             {},
+	"race_count":                       {},
+	"read-all":                         {},
+	"read-size":                        {},
+	"redirects":                        {},
+	"req-condition":                    {},
+	"resolvers":                        {},
+	"retries":                          {},
+	"scan_mode":                        {},
+	"skip-secret-file":                 {},
+	"skip-variables-check":             {},
+	"smb-domain":                       {},
+	"smb-hash":                         {},
+	"smb-password":                     {},
+	"smb-user":                         {},
+	"stop-at-first-match":              {},
+	"threads":                          {},
+	"trace-max-recursion":              {},
+	"unsafe":                           {},
+	"user_agent":                       {},
+}
+
+type requestIdentityOperatorRole struct {
+	Name     string `json:"name"`
+	Internal bool   `json:"internal"`
+}
+
+type requestIdentityOperatorRoles struct {
+	External bool                          `json:"external,omitempty"`
+	Internal bool                          `json:"internal,omitempty"`
+	Named    []requestIdentityOperatorRole `json:"named,omitempty"`
+}
+
 func normalizeRequestIdentityPreprocessors(data []byte, replacements map[string]interface{}) []byte {
 	expressions := make([]string, 0, len(replacements))
 	for expression := range replacements {
@@ -87,13 +143,29 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 			explicitIDCounts[id]++
 		}
 	}
+	identities := make([]string, len(sources))
+	unnamedIdentityCounts := make(map[string]int, len(sources))
 	for index, source := range sources {
 		identity, err := requestBlockID(source)
 		if explicitIDCounts[source.GetID()] > 1 {
-			identity, err = structuralRequestBlockID(source)
+			identity, err = fullStructuralRequestBlockID(source)
 		}
 		if err != nil {
 			return errors.Wrapf(err, "could not calculate %s request block identity", source.Type())
+		}
+		if source.GetID() == "" {
+			unnamedIdentityCounts[identity]++
+		}
+		identities[index] = identity
+	}
+	for index, source := range sources {
+		identity := identities[index]
+		if source.GetID() == "" && unnamedIdentityCounts[identity] > 1 {
+			var err error
+			identity, err = fullStructuralRequestBlockID(source)
+			if err != nil {
+				return errors.Wrapf(err, "could not disambiguate %s request block identity", source.Type())
+			}
 		}
 		targets[index].SetRequestBlockID(identity)
 	}
@@ -109,12 +181,95 @@ func requestBlockID(request protocols.Request) (string, error) {
 }
 
 func structuralRequestBlockID(request protocols.Request) (string, error) {
+	definition, err := requestIdentityDefinition(request)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(definition)
+	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest), nil
+}
+
+func fullStructuralRequestBlockID(request protocols.Request) (string, error) {
 	definition, err := json.Marshal(request)
 	if err != nil {
 		return "", err
 	}
 	digest := sha256.Sum256(definition)
 	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest), nil
+}
+
+func requestIdentityDefinition(request protocols.Request) ([]byte, error) {
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+
+	definition := make(map[string]interface{})
+	if err := json.Unmarshal(encoded, &definition); err != nil {
+		return nil, err
+	}
+	matcherRoles := requestIdentityRoles(definition["matchers"])
+	extractorRoles := requestIdentityRoles(definition["extractors"])
+	for field := range requestIdentityIgnoredFields {
+		delete(definition, field)
+	}
+	delete(definition, "matchers")
+	delete(definition, "extractors")
+
+	if payloads, ok := definition["payloads"].(map[string]interface{}); ok {
+		keys := make([]string, 0, len(payloads))
+		for key := range payloads {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		definition["payloads"] = keys
+	} else {
+		delete(definition, "payloads")
+	}
+	if matcherRoles != nil {
+		definition["matcher-roles"] = matcherRoles
+	}
+	if extractorRoles != nil {
+		definition["extractor-roles"] = extractorRoles
+	}
+	return json.Marshal(definition)
+}
+
+func requestIdentityRoles(value interface{}) *requestIdentityOperatorRoles {
+	entries, ok := value.([]interface{})
+	if !ok || len(entries) == 0 {
+		return nil
+	}
+
+	roles := &requestIdentityOperatorRoles{}
+	named := make(map[requestIdentityOperatorRole]struct{})
+	for _, value := range entries {
+		entry, ok := value.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		internal, _ := entry["internal"].(bool)
+		if internal {
+			roles.Internal = true
+		} else {
+			roles.External = true
+		}
+		name, _ := entry["name"].(string)
+		if name != "" {
+			named[requestIdentityOperatorRole{Name: name, Internal: internal}] = struct{}{}
+		}
+	}
+	roles.Named = make([]requestIdentityOperatorRole, 0, len(named))
+	for role := range named {
+		roles.Named = append(roles.Named, role)
+	}
+	sort.Slice(roles.Named, func(i, j int) bool {
+		if roles.Named[i].Name != roles.Named[j].Name {
+			return roles.Named[i].Name < roles.Named[j].Name
+		}
+		return !roles.Named[i].Internal && roles.Named[j].Internal
+	})
+	return roles
 }
 
 func (template *Template) protocolRequestGroups() [][]protocols.Request {
