@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 )
 
 const requestBlockIdentityVersion = "v1"
@@ -95,34 +96,124 @@ func (template *Template) assignRequestBlockIDs() error {
 }
 
 func (template *Template) assignRequestBlockIDsFrom(source *Template) error {
-	if err := assignRequestBlockIDsFor(template.RequestsDNS, source.RequestsDNS); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsDNS, source.RequestsDNS, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsFile, source.RequestsFile); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsFile, source.RequestsFile, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsNetwork, source.RequestsNetwork); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsNetwork, source.RequestsNetwork, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsHTTP, source.RequestsHTTP); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsHTTP, source.RequestsHTTP, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsHeadless, source.RequestsHeadless); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsHeadless, source.RequestsHeadless, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsSSL, source.RequestsSSL); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsSSL, source.RequestsSSL, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsWebsocket, source.RequestsWebsocket); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsWebsocket, source.RequestsWebsocket, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsWHOIS, source.RequestsWHOIS); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsWHOIS, source.RequestsWHOIS, nil); err != nil {
 		return err
 	}
-	if err := assignRequestBlockIDsFor(template.RequestsCode, source.RequestsCode); err != nil {
+	if err := assignRequestBlockIDsFor(template.RequestsCode, source.RequestsCode, nil); err != nil {
 		return err
 	}
-	return assignRequestBlockIDsFor(template.RequestsJavascript, source.RequestsJavascript)
+	return assignRequestBlockIDsFor(template.RequestsJavascript, source.RequestsJavascript, nil)
+}
+
+type requestIdentityDefinitionsByProtocol struct {
+	http       []map[string]interface{}
+	dns        []map[string]interface{}
+	file       []map[string]interface{}
+	network    []map[string]interface{}
+	headless   []map[string]interface{}
+	ssl        []map[string]interface{}
+	websocket  []map[string]interface{}
+	whois      []map[string]interface{}
+	code       []map[string]interface{}
+	javascript []map[string]interface{}
+}
+
+type rawRequestIdentitySource struct {
+	Requests   []map[string]interface{} `yaml:"requests"`
+	HTTP       []map[string]interface{} `yaml:"http"`
+	Network    []map[string]interface{} `yaml:"network"`
+	TCP        []map[string]interface{} `yaml:"tcp"`
+	DNS        []map[string]interface{} `yaml:"dns"`
+	File       []map[string]interface{} `yaml:"file"`
+	Headless   []map[string]interface{} `yaml:"headless"`
+	SSL        []map[string]interface{} `yaml:"ssl"`
+	Websocket  []map[string]interface{} `yaml:"websocket"`
+	WHOIS      []map[string]interface{} `yaml:"whois"`
+	Code       []map[string]interface{} `yaml:"code"`
+	Javascript []map[string]interface{} `yaml:"javascript"`
+}
+
+func parseRequestIdentityDefinitions(data []byte) (*requestIdentityDefinitionsByProtocol, error) {
+	var node yaml.Node
+	if err := yaml.NewDecoder(bytes.NewReader(data)).Decode(&node); err != nil {
+		return nil, err
+	}
+	var source rawRequestIdentitySource
+	if err := node.Decode(&source); err != nil {
+		return nil, err
+	}
+	httpDefinitions := source.Requests
+	if len(source.HTTP) > 0 {
+		httpDefinitions = source.HTTP
+	}
+	networkDefinitions := source.Network
+	if len(source.TCP) > 0 {
+		networkDefinitions = source.TCP
+	}
+	return &requestIdentityDefinitionsByProtocol{
+		http:       httpDefinitions,
+		dns:        source.DNS,
+		file:       source.File,
+		network:    networkDefinitions,
+		headless:   source.Headless,
+		ssl:        source.SSL,
+		websocket:  source.Websocket,
+		whois:      source.WHOIS,
+		code:       source.Code,
+		javascript: source.Javascript,
+	}, nil
+}
+
+func (template *Template) assignRequestBlockIDsFromDefinitions(source *requestIdentityDefinitionsByProtocol) error {
+	if err := assignRequestBlockIDsFor(template.RequestsDNS, template.RequestsDNS, source.dns); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsFile, template.RequestsFile, source.file); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsNetwork, template.RequestsNetwork, source.network); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsHTTP, template.RequestsHTTP, source.http); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsHeadless, template.RequestsHeadless, source.headless); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsSSL, template.RequestsSSL, source.ssl); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsWebsocket, template.RequestsWebsocket, source.websocket); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsWHOIS, template.RequestsWHOIS, source.whois); err != nil {
+		return err
+	}
+	if err := assignRequestBlockIDsFor(template.RequestsCode, template.RequestsCode, source.code); err != nil {
+		return err
+	}
+	return assignRequestBlockIDsFor(template.RequestsJavascript, template.RequestsJavascript, source.javascript)
 }
 
 type requestBlockIdentifiable interface {
@@ -131,13 +222,22 @@ type requestBlockIdentifiable interface {
 	SetRequestProbeIDs([]string)
 }
 
-func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) error {
+func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T, rawDefinitions []map[string]interface{}) error {
 	if len(targets) != len(sources) {
 		return errors.New("request identity source does not match parsed template")
 	}
+	if rawDefinitions != nil && len(rawDefinitions) != len(sources) {
+		return errors.New("request identity definitions do not match parsed template")
+	}
+	identityIDs := make([]string, len(sources))
 	var explicitIDCounts map[string]int
-	for _, source := range sources {
-		if id := source.GetID(); id != "" {
+	for index, source := range sources {
+		id := source.GetID()
+		if rawDefinitions != nil {
+			id, _ = rawDefinitions[index]["id"].(string)
+		}
+		identityIDs[index] = id
+		if id != "" {
 			if explicitIDCounts == nil {
 				explicitIDCounts = make(map[string]int, len(sources))
 			}
@@ -148,16 +248,23 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 	definitions := make([]*requestIdentityDefinitions, len(sources))
 	unnamedIdentityCounts := make(map[string]int, len(sources))
 	for index, source := range sources {
-		definition, err := newRequestIdentityDefinitions(source)
+		var definition *requestIdentityDefinitions
+		var err error
+		if rawDefinitions == nil {
+			definition, err = newRequestIdentityDefinitions(source)
+		} else {
+			definition, err = newRequestIdentityDefinitionsFromMap(rawDefinitions[index])
+		}
 		if err != nil {
 			return errors.Wrapf(err, "could not calculate %s request block identity", source.Type())
 		}
-		if source.GetID() == "" {
+		identityID := identityIDs[index]
+		if identityID == "" {
 			definitions[index] = definition
 		}
 
-		useFullDefinition := explicitIDCounts[source.GetID()] > 1
-		identity, err := requestBlockIDFromDefinitions(source, definition, useFullDefinition)
+		useFullDefinition := explicitIDCounts[identityID] > 1
+		identity, err := requestBlockIDFromDefinitions(source, identityID, definition, useFullDefinition)
 		if err != nil {
 			return errors.Wrapf(err, "could not calculate %s request block identity", source.Type())
 		}
@@ -170,14 +277,14 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 			return errors.Wrapf(err, "could not calculate %s request probe identities", source.Type())
 		}
 		targets[index].SetRequestProbeIDs(probeIDs)
-		if source.GetID() == "" {
+		if identityID == "" {
 			unnamedIdentityCounts[identity]++
 		}
 		identities[index] = identity
 	}
 	for index, source := range sources {
 		identity := identities[index]
-		if source.GetID() == "" && unnamedIdentityCounts[identity] > 1 {
+		if identityIDs[index] == "" && unnamedIdentityCounts[identity] > 1 {
 			identity = fullStructuralRequestBlockIDFromDefinitions(source, definitions[index])
 			probeIDs, err := requestProbeIDsFromDefinition(source, definitions[index].full)
 			if err != nil {
@@ -205,6 +312,18 @@ func newRequestIdentityDefinitions(request protocols.Request) (*requestIdentityD
 	if err := json.Unmarshal(encoded, &full); err != nil {
 		return nil, err
 	}
+	return newRequestIdentityDefinitionsFromEncodedMap(encoded, full)
+}
+
+func newRequestIdentityDefinitionsFromMap(full map[string]interface{}) (*requestIdentityDefinitions, error) {
+	encoded, err := json.Marshal(full)
+	if err != nil {
+		return nil, err
+	}
+	return newRequestIdentityDefinitionsFromEncodedMap(encoded, full)
+}
+
+func newRequestIdentityDefinitionsFromEncodedMap(encoded []byte, full map[string]interface{}) (*requestIdentityDefinitions, error) {
 	projected := make(map[string]interface{}, len(full))
 	for key, value := range full {
 		projected[key] = value
@@ -213,10 +332,10 @@ func newRequestIdentityDefinitions(request protocols.Request) (*requestIdentityD
 	return &requestIdentityDefinitions{fullEncoded: encoded, full: full, projected: projected}, nil
 }
 
-func requestBlockIDFromDefinitions(request protocols.Request, definitions *requestIdentityDefinitions, useFullDefinition bool) (string, error) {
+func requestBlockIDFromDefinitions(request protocols.Request, identityID string, definitions *requestIdentityDefinitions, useFullDefinition bool) (string, error) {
 	protocol := request.Type().String()
-	if id := request.GetID(); id != "" && !useFullDefinition {
-		return fmt.Sprintf("%s:%s:explicit:%s", requestBlockIdentityVersion, protocol, id), nil
+	if identityID != "" && !useFullDefinition {
+		return fmt.Sprintf("%s:%s:explicit:%s", requestBlockIdentityVersion, protocol, identityID), nil
 	}
 	if useFullDefinition {
 		return fullStructuralRequestBlockIDFromDefinitions(request, definitions), nil

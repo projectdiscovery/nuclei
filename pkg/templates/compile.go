@@ -607,14 +607,19 @@ func parseTemplateNoVerify(data, requestIdentityData []byte, srcOptions *protoco
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to parse %s", template.Path)
 	}
-	identityTemplate := template
+	var identityDefinitions *requestIdentityDefinitionsByProtocol
 	if !bytes.Equal(data, requestIdentityData) {
-		identityTemplate = &Template{}
-		if err := yaml.Unmarshal(requestIdentityData, identityTemplate); err != nil {
+		identityDefinitions, err = parseRequestIdentityDefinitions(requestIdentityData)
+		if err != nil {
 			return nil, errkit.Wrapf(err, "failed to parse request identity for %s", template.Path)
 		}
 	}
-	if err := template.assignRequestBlockIDsFrom(identityTemplate); err != nil {
+	if identityDefinitions != nil {
+		err = template.assignRequestBlockIDsFromDefinitions(identityDefinitions)
+	} else {
+		err = template.assignRequestBlockIDs()
+	}
+	if err != nil {
 		return nil, err
 	}
 

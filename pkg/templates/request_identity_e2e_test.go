@@ -2,6 +2,7 @@ package templates_test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -27,6 +28,26 @@ type resultIdentity struct {
 	path       string
 }
 
+type staticPreprocessor map[string]string
+
+func (preprocessor staticPreprocessor) ProcessNReturnData(data []byte) ([]byte, map[string]interface{}) {
+	replacements := make(map[string]interface{}, len(preprocessor))
+	for expression, value := range preprocessor {
+		data = bytes.ReplaceAll(data, []byte(expression), []byte(value))
+		replacements[expression] = value
+	}
+	return data, replacements
+}
+
+func (preprocessor staticPreprocessor) Exists(data []byte) bool {
+	for expression := range preprocessor {
+		if bytes.Contains(data, []byte(expression)) {
+			return true
+		}
+	}
+	return false
+}
+
 func executeTemplateSource(t *testing.T, source, input string) []*output.ResultEvent {
 	t.Helper()
 	testutils.Init(testutils.DefaultOptions)
@@ -42,6 +63,16 @@ func executeTemplateSource(t *testing.T, source, input string) []*output.ResultE
 	results, err := template.Executer.ExecuteWithResults(ctx)
 	require.NoError(t, err)
 	return results
+}
+
+func parseTemplateSourceWithPreprocessor(t *testing.T, source string, preprocessor templates.Preprocessor) *templates.Template {
+	t.Helper()
+	testutils.Init(testutils.DefaultOptions)
+	executor := testutils.NewMockExecuterOptions(testutils.DefaultOptions, nil)
+	t.Cleanup(executor.RateLimiter.Stop)
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(source), preprocessor, executor)
+	require.NoError(t, err)
+	return template
 }
 
 func identitiesOf(t *testing.T, results []*output.ResultEvent) []resultIdentity {
@@ -217,6 +248,148 @@ http:
 	require.Equal(t, first.RequestsHTTP[0].RequestProbeIDs, second.RequestsHTTP[0].RequestProbeIDs)
 	requireRuntimeStructuralRequestBlockID(t, "http", first.RequestsHTTP[0].RequestBlockID)
 	requireRuntimeStructuralRequestProbeID(t, "http", first.RequestsHTTP[0].RequestProbeIDs[0])
+}
+
+func TestTypedPreprocessorRequestIdentityParses(t *testing.T) {
+	const source = `id: request-identity-typed-preprocessor
+info:
+  name: Request identity typed preprocessor
+  author: test
+  severity: info
+http:
+  - method: "{{method}}"
+    path:
+      - "{{BaseURL}}/"
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+	parse := func(method string) *templates.Template {
+		return parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{method}}": method})
+	}
+
+	get := parse("GET")
+	post := parse("POST")
+	require.Equal(t, "GET", get.RequestsHTTP[0].Method.String())
+	require.Equal(t, "POST", post.RequestsHTTP[0].Method.String())
+	require.Equal(t, get.RequestsHTTP[0].RequestBlockID, post.RequestsHTTP[0].RequestBlockID)
+	require.Equal(t, get.RequestsHTTP[0].RequestProbeIDs, post.RequestsHTTP[0].RequestProbeIDs)
+	requireRuntimeStructuralRequestBlockID(t, "http", get.RequestsHTTP[0].RequestBlockID)
+	requireRuntimeStructuralRequestProbeID(t, "http", get.RequestsHTTP[0].RequestProbeIDs[0])
+}
+
+func TestPreprocessedExplicitRequestIDUsesStableSourceIdentity(t *testing.T) {
+	const source = `id: request-identity-explicit-preprocessor
+info:
+  name: Request identity explicit preprocessor
+  author: test
+  severity: info
+http:
+  - id: "{{request_id}}"
+    path:
+      - "{{BaseURL}}/"
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+	first := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{request_id}}": "first"})
+	second := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{request_id}}": "second"})
+
+	require.Equal(t, "first", first.RequestsHTTP[0].ID)
+	require.Equal(t, "second", second.RequestsHTTP[0].ID)
+	require.Equal(t, "first", first.RequestsHTTP[0].RequestID)
+	require.Equal(t, "second", second.RequestsHTTP[0].RequestID)
+	require.Equal(t, first.RequestsHTTP[0].RequestBlockID, second.RequestsHTTP[0].RequestBlockID)
+	require.Contains(t, first.RequestsHTTP[0].RequestBlockID, ":explicit:nuclei_request_identity_")
+	require.Equal(t, first.RequestsHTTP[0].RequestProbeIDs, second.RequestsHTTP[0].RequestProbeIDs)
+}
+
+func TestNestedPreprocessorRequestIdentityIsStable(t *testing.T) {
+	const source = `id: request-identity-nested-preprocessor
+info:
+  name: Request identity nested preprocessor
+  author: test
+  severity: info
+http:
+  - path:
+      - "{{BaseURL}}/"
+    headers:
+      X-Identity: "{{header_value}}"
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+	first := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{header_value}}": "first"})
+	second := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{header_value}}": "second"})
+
+	require.Equal(t, "first", first.RequestsHTTP[0].Headers["X-Identity"])
+	require.Equal(t, "second", second.RequestsHTTP[0].Headers["X-Identity"])
+	require.Equal(t, first.RequestsHTTP[0].RequestBlockID, second.RequestsHTTP[0].RequestBlockID)
+	require.Equal(t, first.RequestsHTTP[0].RequestProbeIDs, second.RequestsHTTP[0].RequestProbeIDs)
+}
+
+func TestPreprocessedRequestIdentitySupportsAliasesAndJSON(t *testing.T) {
+	t.Run("requests alias", func(t *testing.T) {
+		const source = `id: request-identity-requests-alias
+info:
+  name: Request identity requests alias
+  author: test
+  severity: info
+requests:
+  - method: "{{method}}"
+    path:
+      - "{{BaseURL}}/"
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+		first := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{method}}": "GET"})
+		second := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{method}}": "POST"})
+		require.Equal(t, first.RequestsHTTP[0].RequestBlockID, second.RequestsHTTP[0].RequestBlockID)
+		require.Equal(t, first.RequestsHTTP[0].RequestProbeIDs, second.RequestsHTTP[0].RequestProbeIDs)
+	})
+
+	t.Run("network alias", func(t *testing.T) {
+		const source = `id: request-identity-network-alias
+info:
+  name: Request identity network alias
+  author: test
+  severity: info
+network:
+  - host:
+      - "{{Hostname}}"
+    inputs:
+      - data: "{{input}}"
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+		first := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{input}}": "PING"})
+		second := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{input}}": "PONG"})
+		require.Equal(t, first.RequestsNetwork[0].RequestBlockID, second.RequestsNetwork[0].RequestBlockID)
+		require.Equal(t, first.RequestsNetwork[0].RequestProbeIDs, second.RequestsNetwork[0].RequestProbeIDs)
+	})
+
+	t.Run("json", func(t *testing.T) {
+		const source = `{
+  "id": "request-identity-json",
+  "info": {"name": "Request identity JSON", "author": "test", "severity": "info"},
+  "http": [{
+    "method": "{{method}}",
+    "path": ["{{BaseURL}}/"],
+    "matchers": [{"type": "word", "words": ["ok"]}]
+  }]
+}`
+		first := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{method}}": "GET"})
+		second := parseTemplateSourceWithPreprocessor(t, source, staticPreprocessor{"{{method}}": "POST"})
+		require.Equal(t, first.RequestsHTTP[0].RequestBlockID, second.RequestsHTTP[0].RequestBlockID)
+		require.Equal(t, first.RequestsHTTP[0].RequestProbeIDs, second.RequestsHTTP[0].RequestProbeIDs)
+	})
 }
 
 func TestFlowResultRequestIdentityKeepsFlowSemantics(t *testing.T) {
