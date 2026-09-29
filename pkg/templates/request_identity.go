@@ -262,22 +262,6 @@ func fullStructuralRequestBlockID(request protocols.Request) (string, error) {
 	return fullStructuralRequestBlockIDFromDefinitions(request, definitions), nil
 }
 
-func requestIdentityDefinition(request protocols.Request) ([]byte, error) {
-	definitions, err := newRequestIdentityDefinitions(request)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(definitions.projected)
-}
-
-func requestIdentityDefinitionMap(request protocols.Request) (map[string]interface{}, error) {
-	definitions, err := newRequestIdentityDefinitions(request)
-	if err != nil {
-		return nil, err
-	}
-	return definitions.projected, nil
-}
-
 func projectRequestIdentityDefinition(definition map[string]interface{}) {
 	matcherRoles := requestIdentityRoles(definition["matchers"])
 	extractorRoles := requestIdentityRoles(definition["extractors"])
@@ -303,22 +287,6 @@ func projectRequestIdentityDefinition(definition map[string]interface{}) {
 	if extractorRoles != nil {
 		definition["extractor-roles"] = extractorRoles
 	}
-}
-
-func requestProbeIDs(request protocols.Request) ([]string, error) {
-	definitions, err := newRequestIdentityDefinitions(request)
-	if err != nil {
-		return nil, err
-	}
-	return requestProbeIDsFromDefinition(request, definitions.projected)
-}
-
-func fullRequestProbeIDs(request protocols.Request) ([]string, error) {
-	definitions, err := newRequestIdentityDefinitions(request)
-	if err != nil {
-		return nil, err
-	}
-	return requestProbeIDsFromDefinition(request, definitions.full)
 }
 
 func requestProbeIDsFromDefinition(request protocols.Request, definition map[string]interface{}) ([]string, error) {
