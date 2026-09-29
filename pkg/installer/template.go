@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v92/github"
 	"github.com/olekukonko/tablewriter"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -268,14 +268,17 @@ func (t *TemplateManager) bootstrapTemplateOwnership(dir, version string, fetchA
 func fetchTemplateReleaseArchive(version string) (*bytes.Reader, error) {
 	ctx := context.Background()
 	httpClient := &http.Client{Timeout: updateutils.DownloadUpdateTimeout}
-	client := github.NewClient(httpClient)
+	client, err := github.NewClient(github.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create github client for prior template release %q: %w", version, err)
+	}
 	archiveURL, _, err := client.Repositories.GetArchiveLink(
 		ctx,
 		updateutils.Organization,
 		config.OfficialNucleiTemplatesRepoName,
 		github.Zipball,
 		&github.RepositoryContentGetOptions{Ref: version},
-		true,
+		1, // Follow one repository rename, as the previous client did.
 	)
 	if err != nil {
 		return nil, fmt.Errorf("resolve prior template release %q archive: %w", version, err)
@@ -287,7 +290,7 @@ func fetchTemplateReleaseArchive(version string) (*bytes.Reader, error) {
 	}
 
 	var contents bytes.Buffer
-	response, err := client.Do(ctx, request, &contents)
+	response, err := client.Do(request, &contents)
 	if err != nil {
 		return nil, fmt.Errorf("download prior template release %q: %w", version, err)
 	}

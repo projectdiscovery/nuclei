@@ -2,13 +2,12 @@ package customtemplates
 
 import (
 	"context"
-	httpclient "net/http"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v92/github"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -89,7 +88,10 @@ func (customTemplate *customTemplateGitHubRepo) logPullError(err error) {
 // NewGitHubProviders returns new instance of GitHub providers for downloading custom templates
 func NewGitHubProviders(options *types.Options) ([]*customTemplateGitHubRepo, error) {
 	providers := []*customTemplateGitHubRepo{}
-	gitHubClient := getGHClientIncognito()
+	gitHubClient, err := github.NewClient()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create github client")
+	}
 
 	if options.GitHubTemplateDisableDownload {
 		return providers, nil
@@ -150,9 +152,16 @@ getRepo:
 	repo, _, err := gitHubClient.Repositories.Get(context.Background(), repoOwner, repoName)
 	if err != nil {
 		// retry with authentication
-		if gitHubClient = getGHClientWithToken(githubToken); gitHubClient != nil && !retried {
-			retried = true
-			goto getRepo
+		if !retried {
+			authClient, authErr := getGHClientWithToken(githubToken)
+			if authErr != nil {
+				return nil, errors.Wrap(authErr, "could not create authenticated github client")
+			}
+			if authClient != nil {
+				gitHubClient = authClient
+				retried = true
+				goto getRepo
+			}
 		}
 		return nil, err
 	}
@@ -233,20 +242,15 @@ func getAuth(username, password string) *http.BasicAuth {
 	return nil
 }
 
-func getGHClientWithToken(token string) *github.Client {
+func getGHClientWithToken(token string) (*github.Client, error) {
 	if token != "" {
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)
 		oauthClient := oauth2.NewClient(ctx, ts)
-		return github.NewClient(oauthClient)
+		return github.NewClient(github.WithHTTPClient(oauthClient))
 
 	}
-	return nil
-}
-
-func getGHClientIncognito() *github.Client {
-	var tc *httpclient.Client
-	return github.NewClient(tc)
+	return nil, nil
 }
