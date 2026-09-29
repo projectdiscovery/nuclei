@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"maps"
@@ -94,6 +95,11 @@ func hostBackoffKey(req *generatedRequest, input *contextargs.Context) string {
 // observeHostBackoff reports one request outcome to the per-host governor.
 func (request *Request) observeHostBackoff(host string, resp *http.Response, err error) {
 	if request.options == nil || request.options.HostBackoff == nil {
+		return
+	}
+	// A cancelled sibling, or a scan that is stopping, is not the host asking
+	// for less traffic. A real status on the response is still worth recording.
+	if resp == nil && err != nil && stderrors.Is(err, context.Canceled) {
 		return
 	}
 	statusCode := 0

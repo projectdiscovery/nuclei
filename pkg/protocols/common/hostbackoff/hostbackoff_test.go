@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -121,6 +122,30 @@ func TestWaitSleepsAndRespectsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	require.ErrorIs(t, g.Wait(ctx, "stuck.test"), context.Canceled)
+}
+
+func TestWaitSpacesConcurrentCallers(t *testing.T) {
+	const step = 60 * time.Millisecond
+	g := New(Config{Step: step, Max: time.Second})
+	g.Observe("burst.test", http.StatusTooManyRequests, 0, nil)
+
+	start := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			require.NoError(t, g.Wait(context.Background(), "burst.test"))
+		}()
+	}
+	wg.Wait()
+	require.GreaterOrEqual(t, time.Since(start), 2*step-10*time.Millisecond)
+}
+
+func TestForbiddenRetryAfterBacksOffImmediately(t *testing.T) {
+	g := New(Config{Step: 100 * time.Millisecond, ForbiddenStreak: 5, Max: time.Minute})
+	g.Observe("acme.test", http.StatusForbidden, 2*time.Second, nil)
+	require.Equal(t, 2*time.Second, g.Delay("acme.test"))
 }
 
 func TestNilGovernorIsInert(t *testing.T) {

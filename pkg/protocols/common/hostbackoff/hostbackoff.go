@@ -85,6 +85,10 @@ func (c *Config) applyDefaults() {
 type hostState struct {
 	delay     time.Duration
 	forbidden int
+	// next is the earliest start time still free. Concurrent waits reserve
+	// successive slots so a delay paces the host instead of holding a burst
+	// and releasing it together.
+	next time.Time
 }
 
 // Governor holds the per-host delay for a scan.
@@ -113,14 +117,36 @@ func (g *Governor) Delay(host string) time.Duration {
 	return 0
 }
 
-// Wait pauses for the host's current delay. It returns the context error if the
-// scan is cancelled while waiting, so a stop is not held up by a long backoff.
+// Wait pauses until this caller’s slot on the host. Callers that arrive
+// together take successive slots of the current delay, so they do not all
+// wake at once. It returns the context error if the scan is cancelled while
+// waiting, so a stop is not held up by a long backoff.
 func (g *Governor) Wait(ctx context.Context, host string) error {
-	delay := g.Delay(host)
-	if delay <= 0 {
+	if g == nil || host == "" {
 		return nil
 	}
-	timer := time.NewTimer(delay)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	g.mu.Lock()
+	state, err := g.hosts.GetIFPresent(host)
+	if err != nil || state == nil || state.delay <= 0 {
+		g.mu.Unlock()
+		return nil
+	}
+	now := time.Now()
+	start := state.next
+	if start.Before(now) {
+		start = now.Add(state.delay)
+	}
+	state.next = start.Add(state.delay)
+	_ = g.hosts.Set(host, state)
+	wait := start.Sub(now)
+	g.mu.Unlock()
+	if wait <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(wait)
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():
@@ -150,6 +176,11 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 	} else if healthyStatus(statusCode) {
 		state.forbidden = 0
 	}
+	// A 403 that names Retry-After is the host asking for a wait. The streak
+	// is only for bare 403s, which are often just an unauthorised endpoint.
+	if statusCode == http.StatusForbidden && retryAfter > 0 && state.forbidden < g.cfg.ForbiddenStreak {
+		state.forbidden = g.cfg.ForbiddenStreak
+	}
 
 	if !g.isBlocking(statusCode, err, state) {
 		// Only a response that actually served (2xx/3xx) is evidence the host
@@ -159,6 +190,7 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 			state.delay = time.Duration(float64(state.delay) * g.cfg.Decay)
 			if state.delay < g.cfg.Step {
 				state.delay = 0
+				state.next = time.Time{}
 			}
 		}
 		return
