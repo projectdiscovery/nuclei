@@ -273,6 +273,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.BoolVarP(&options.DisableURLNormalization, "disable-url-normalization", "dun", false, "keep targets exactly as supplied instead of collapsing urls that address the same resource"),
+		flagSet.IntVarP(&options.MaxURLsPerPattern, "max-urls-per-pattern", "mup", 0, "scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)"),
 	)
 
 	flagSet.CreateGroup("target-format", "Target-Format",

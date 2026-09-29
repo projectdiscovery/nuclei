@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/nuclei/v3/internal/configuration"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/targetprofile"
 	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -52,6 +53,12 @@ type ListInputProvider struct {
 	hostMapStream     *filekv.FileDB
 	hostMapStreamOnce sync.Once
 	profiles          *targetprofile.Registry
+	// normalizeURLs collapses targets that address the same resource onto one
+	// form before they are deduplicated.
+	normalizeURLs bool
+	// patterns caps how many targets of one structural shape are kept. Nil or
+	// disabled keeps every target.
+	patterns *normalize.Fingerprinter
 	sync.Once
 }
 
@@ -75,7 +82,9 @@ func New(opts *Options) (*ListInputProvider, error) {
 	}
 
 	input := &ListInputProvider{
-		hostMap: hm,
+		hostMap:       hm,
+		normalizeURLs: !options.DisableURLNormalization,
+		patterns:      normalize.NewFingerprinter(options.MaxURLsPerPattern),
 		ipOptions: &ipOptions{
 			ScanAllIPs: options.ScanAllIPs,
 			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
@@ -127,9 +136,14 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 			}
 		})
 	}
-	callbackFunc := func(k, _ []byte) error {
+	callbackFunc := func(k, v []byte) error {
 		metaInput := contextargs.NewMetaInput()
-		if err := metaInput.Unmarshal(string(k)); err != nil {
+		// v holds the target as supplied when the key is a collapsed form
+		raw := string(k)
+		if len(v) > 0 {
+			raw = string(v)
+		}
+		if err := metaInput.Unmarshal(raw); err != nil {
 			return err
 		}
 		if !callback(metaInput) {
@@ -522,7 +536,24 @@ func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput, selection 
 		gologger.Warning().Msgf("%s\n", err)
 		return
 	}
-	if _, ok := i.hostMap.Get(key); ok {
+	// A crawled list routinely holds the same resource several times over,
+	// differing only by host case, a fragment, a default port, a trailing slash
+	// or a tracking parameter. Those collapse onto one entry, but the target
+	// that is scanned stays exactly as supplied: stripping a parameter from the
+	// request would shrink the attack surface, not just the duplicate count.
+	// Past the per-pattern cap the shape is already covered by the targets kept
+	// for it, so scanning another of the same shape buys nothing.
+	if !i.patterns.Accept(metaInput.Input) {
+		i.skippedCount++
+		return
+	}
+	dedupKey := key
+	if i.normalizeURLs {
+		if normalized := i.normalizedKey(metaInput); normalized != "" {
+			dedupKey = normalized
+		}
+	}
+	if _, ok := i.hostMap.Get(dedupKey); ok {
 		i.dupeCount++
 		if i.profiles != nil {
 			i.profiles.Merge(metaInput.Input, selection)
@@ -534,10 +565,28 @@ func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput, selection 
 		i.profiles.Bind(metaInput.Input, selection)
 	}
 	i.inputCount++ // tracks target count
-	_ = i.hostMap.Set(key, nil)
+	// the entry is keyed by the collapsed form and carries the original, which
+	// is what Iterate hands back to the engine
+	_ = i.hostMap.Set(dedupKey, []byte(key))
 	if i.hostMapStream != nil {
 		i.setHostMapStream(key)
 	}
+}
+
+// normalizedKey returns the deduplication key for a target, or "" when the
+// value is not a URL and has no collapsed form.
+func (i *ListInputProvider) normalizedKey(metaInput *contextargs.MetaInput) string {
+	collapsed := normalize.URL(metaInput.Input)
+	if collapsed == metaInput.Input {
+		return ""
+	}
+	clone := *metaInput
+	clone.Input = collapsed
+	key, err := clone.MarshalString()
+	if err != nil {
+		return ""
+	}
+	return key
 }
 
 const removeTargetsChunkSize = 5000

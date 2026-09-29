@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -287,6 +288,13 @@ func (e *Engine) inScope(template *templates.Template, input *contextargs.MetaIn
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error
 func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
+	// A template fixed to the target's origin makes the same requests for every
+	// target that shares one, which a crawled list produces by the hundred.
+	// Running it once per origin sends exactly the same traffic, minus the
+	// repeats.
+	if !e.originScopedFirstRun(template, value) {
+		return false, nil
+	}
 	finished := e.templateExecutionStarted(template, value.Input)
 	defer func() { finished(ctx.Err()) }()
 	ctxArgs := contextargs.New(ctx)
@@ -309,4 +317,19 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 		}
 		return template.Executer.Execute(scanCtx)
 	}
+}
+
+// originScopedFirstRun reports whether this is the first target of its origin
+// for an origin scoped template, and records it. Templates whose requests
+// depend on the target's path always run.
+func (e *Engine) originScopedFirstRun(template *templates.Template, value *contextargs.MetaInput) bool {
+	if template == nil || value == nil || !template.IsOriginScoped() {
+		return true
+	}
+	origin := normalize.Origin(value.Input)
+	if origin == "" {
+		return true
+	}
+	_, seen := e.originScoped.LoadOrStore(template.ID+"\x00"+origin, struct{}{})
+	return !seen
 }

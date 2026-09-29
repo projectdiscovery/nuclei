@@ -1,6 +1,8 @@
 package core
 
 import (
+	"sync"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -40,7 +42,10 @@ type TemplateExecutionCallback func(TemplateExecutionEvent)
 // templates to leading to the final execution by the work pool, it is
 // handled by the engine.
 type Engine struct {
-	workPool                  *WorkPool
+	workPool *WorkPool
+	// originScoped records the origins an origin scoped template has already run
+	// against, so a crawled list does not repeat identical requests per path.
+	originScoped              sync.Map
 	options                   *types.Options
 	executerOpts              *protocols.ExecutorOptions
 	Callback                  func(*output.ResultEvent) // Executed on results
