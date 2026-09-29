@@ -418,19 +418,7 @@ func filterOutCodeRequests(requests []protocols.Request) []protocols.Request {
 // the request-id of its results: the request id when set, otherwise the
 // protocol and its 1-based position, matching validateAllRequestIDs naming.
 func (template *Template) assignRequestOutputIDs() {
-	protocolRequests := [][]protocols.Request{
-		template.convertRequestToProtocolsRequest(template.RequestsDNS),
-		template.convertRequestToProtocolsRequest(template.RequestsFile),
-		template.convertRequestToProtocolsRequest(template.RequestsNetwork),
-		template.convertRequestToProtocolsRequest(template.RequestsHTTP),
-		template.convertRequestToProtocolsRequest(template.RequestsHeadless),
-		template.convertRequestToProtocolsRequest(template.RequestsSSL),
-		template.convertRequestToProtocolsRequest(template.RequestsWebsocket),
-		template.convertRequestToProtocolsRequest(template.RequestsWHOIS),
-		template.convertRequestToProtocolsRequest(template.RequestsCode),
-		template.convertRequestToProtocolsRequest(template.RequestsJavascript),
-	}
-	for _, requests := range protocolRequests {
+	for _, requests := range template.protocolRequestGroups() {
 		for position, request := range requests {
 			identifiable, ok := request.(interface{ SetRequestID(string) })
 			if !ok {
@@ -543,7 +531,8 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		generatedConstants = generators.MergeMaps(generatedConstants, replaced)
 	}
 
-	template, err := parseTemplateNoVerify(processedData, options)
+	requestIdentityData := normalizeRequestIdentityPreprocessors(data, generatedConstants)
+	template, err := parseTemplateNoVerify(processedData, requestIdentityData, options)
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +566,7 @@ func hasTemplatePreprocessor(data []byte, preprocessor Preprocessor) bool {
 
 // parseTemplate parses the template and applies verification.
 func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
-	template, err := parseTemplateNoVerify(data, srcOptions)
+	template, err := parseTemplateNoVerify(data, data, srcOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +587,7 @@ func verifyAndCompileTemplate(template *Template, data []byte) error {
 }
 
 // parseTemplateNoVerify parses the template without applying any verification.
-func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
+func parseTemplateNoVerify(data, requestIdentityData []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
 	template := &Template{}
 
 	var err error
@@ -617,6 +606,16 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to parse %s", template.Path)
+	}
+	identityTemplate := template
+	if !bytes.Equal(data, requestIdentityData) {
+		identityTemplate = &Template{}
+		if err := yaml.Unmarshal(requestIdentityData, identityTemplate); err != nil {
+			return nil, errkit.Wrapf(err, "failed to parse request identity for %s", template.Path)
+		}
+	}
+	if err := template.assignRequestBlockIDsFrom(identityTemplate); err != nil {
+		return nil, err
 	}
 
 	return prepareTemplate(template, srcOptions)

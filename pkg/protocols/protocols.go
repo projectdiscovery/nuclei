@@ -457,6 +457,7 @@ func makeIdentifiedResultEventItem(request Request, wrapped *output.InternalWrap
 	data := request.MakeResultEventItem(wrapped)
 	if wrapped.OperatorsResult.Operators != nil {
 		data.RequestID = wrapped.OperatorsResult.Operators.RequestID
+		data.RequestBlockID = wrapped.OperatorsResult.Operators.RequestBlockID
 	}
 	data.RequestProbeIndex = wrapped.RequestProbeIndex
 	return data

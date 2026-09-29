@@ -141,6 +141,40 @@ http:
 	require.Contains(t, string(encoded), `"template-id":"request-identity-http-single"`)
 }
 
+func TestPreprocessedRequestBlockIDStableAcrossParses(t *testing.T) {
+	testutils.Init(testutils.DefaultOptions)
+	const source = `id: request-identity-preprocessor
+info:
+  name: Request identity preprocessor
+  author: test
+  severity: info
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/{{randstr}}"
+    body: {{randstr}}
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+	parse := func() *templates.Template {
+		executor := testutils.NewMockExecuterOptions(testutils.DefaultOptions, nil)
+		t.Cleanup(executor.RateLimiter.Stop)
+		template, err := templates.ParseTemplateFromReader(strings.NewReader(source), nil, executor)
+		require.NoError(t, err)
+		return template
+	}
+
+	first := parse()
+	second := parse()
+
+	require.NotEqual(t, first.RequestsHTTP[0].Path, second.RequestsHTTP[0].Path)
+	require.NotEqual(t, first.RequestsHTTP[0].Body, second.RequestsHTTP[0].Body)
+	require.Equal(t, first.RequestsHTTP[0].RequestBlockID, second.RequestsHTTP[0].RequestBlockID)
+	requireRuntimeStructuralRequestBlockID(t, "http", first.RequestsHTTP[0].RequestBlockID)
+}
+
 func TestFlowResultRequestIdentityKeepsFlowSemantics(t *testing.T) {
 	server := newOKServer(t)
 	const source = `id: request-identity-flow
@@ -171,6 +205,9 @@ http:
 		{requestID: "http_1", probeIndex: 1, path: "/first"},
 		{requestID: "http_2", probeIndex: 1, path: "/second"},
 	}, identitiesOf(t, results))
+	requireRuntimeStructuralRequestBlockID(t, "http", results[0].RequestBlockID)
+	requireRuntimeStructuralRequestBlockID(t, "http", results[1].RequestBlockID)
+	require.NotEqual(t, results[0].RequestBlockID, results[1].RequestBlockID)
 }
 
 func startLineServer(t *testing.T, reply string) string {

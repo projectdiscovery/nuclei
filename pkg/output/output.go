@@ -182,8 +182,10 @@ type ResultEvent struct {
 	ExtractorName string `json:"extractor-name,omitempty"`
 	// RequestID identifies the template request block that produced the result:
 	// its explicit id, otherwise <protocol>_<1-based position within the protocol>.
-	// It is stable across runs and independent of the target and response.
+	// It is intended for diagnostics and can change when unnamed blocks are reordered.
 	RequestID string `json:"request-id,omitempty"`
+	// RequestBlockID is stable across runs and unnamed request block reordering.
+	RequestBlockID string `json:"request-block-id,omitempty"`
 	// RequestProbeIndex is the 1-based position of the template-defined probe
 	// (http path/raw request, network host) within the request block, if applicable.
 	RequestProbeIndex int `json:"request-probe-index,omitempty"`

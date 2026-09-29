@@ -40,9 +40,10 @@ type Operators struct {
 
 	// TemplateID is the ID of the template for matcher
 	TemplateID string `json:"-" yaml:"-" jsonschema:"-"`
-	// RequestID is the stable identity of the request block owning these operators,
-	// reported as the request-id of every result they produce.
+	// RequestID is the explicit or positional request label reported for diagnostics.
 	RequestID string `json:"-" yaml:"-" jsonschema:"-"`
+	// RequestBlockID is the stable identity of the request block owning these operators.
+	RequestBlockID string `json:"-" yaml:"-" jsonschema:"-"`
 	// ExcludeMatchers is a list of excludeMatchers items
 	ExcludeMatchers *excludematchers.ExcludeMatchers `json:"-" yaml:"-" jsonschema:"-"`
 }
@@ -50,6 +51,11 @@ type Operators struct {
 // SetRequestID sets the stable identity of the request block owning these operators.
 func (operators *Operators) SetRequestID(id string) {
 	operators.RequestID = id
+}
+
+// SetRequestBlockID sets the stable identity of the request block owning these operators.
+func (operators *Operators) SetRequestBlockID(id string) {
+	operators.RequestBlockID = id
 }
 
 // Compile compiles the operators as well as their corresponding matchers and extractors

@@ -121,7 +121,14 @@ http:
 		require.NoError(t, err)
 		require.Contains(t, string(encoded), `"template-id":"`+result.TemplateID+`"`)
 		require.Contains(t, string(encoded), `"request-id":"`+result.RequestID+`"`)
+		require.Contains(t, string(encoded), `"request-block-id":"`+result.RequestBlockID+`"`)
 		require.NotContains(t, string(encoded), `"template-id":"cluster-`, "cluster id must not leak into member results")
+		switch result.TemplateID {
+		case "member-identity-explicit":
+			require.Equal(t, "v1:http:explicit:probe", result.RequestBlockID)
+		case "member-identity-positional":
+			requireRuntimeStructuralRequestBlockID(t, "http", result.RequestBlockID)
+		}
 	}
 }
 
@@ -185,6 +192,11 @@ http:
 		require.Contains(t, string(encoded), `"request-id":"`+result.RequestID+`"`)
 		require.NotContains(t, string(encoded), "request-probe-index", "unset probe index must stay out of legacy-shaped output")
 		got = append(got, result.RequestID)
+		if result.RequestID == "home" {
+			require.Equal(t, "v1:http:explicit:home", result.RequestBlockID)
+		} else {
+			requireRuntimeStructuralRequestBlockID(t, "http", result.RequestBlockID)
+		}
 	}
 	sort.Strings(got)
 	require.Equal(t, []string{"home", "http_2"}, got)
@@ -303,7 +315,15 @@ http:
 	for _, result := range results {
 		require.Equal(t, "global-identity", result.TemplateID)
 		require.Equal(t, "passive", result.RequestID)
+		require.Equal(t, "v1:http:explicit:passive", result.RequestBlockID)
 		require.True(t, result.GlobalMatchers)
 		require.Equal(t, "/login", result.ReqURLPattern)
 	}
+}
+
+func requireRuntimeStructuralRequestBlockID(t *testing.T, protocol, identity string) {
+	t.Helper()
+	prefix := "v1:" + protocol + ":sha256:"
+	require.True(t, strings.HasPrefix(identity, prefix), identity)
+	require.Len(t, strings.TrimPrefix(identity, prefix), 64)
 }
