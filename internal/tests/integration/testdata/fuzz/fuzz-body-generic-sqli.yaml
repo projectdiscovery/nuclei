@@ -1,0 +1,39 @@
+id: fuzz-body-generic
+
+info:
+  name: fuzzing error sqli payloads in http req body
+  author: pdteam
+  severity: info
+  description: |
+    This template attempts to find SQL injection vulnerabilities by fuzzing http body
+    It automatically handles and parses json,xml,multipart form and x-www-form-urlencoded data
+    and performs fuzzing on the value of every key
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - method != "GET"
+          - method != "HEAD"
+          - contains(path, "/user") # for scope of integration test
+        condition: and
+    
+    payloads:
+      injection:
+        - "'"
+        - "\""
+        - ";"
+    
+    fuzzing:
+      - part: body
+        type: postfix
+        mode: single
+        fuzz:
+          - '{{injection}}'
+  
+    stop-at-first-match: true
+    matchers:
+      - type: word
+        words:
+          - "unrecognized token:"
+          - "null"

@@ -1,0 +1,21 @@
+id: py-nosig
+
+info:
+  name: py-nosig
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    Python code without signature
+
+code:
+  - engine:
+      - py
+      - python3
+    source: |
+      print("py unsigned code")
+    
+    matchers:
+      - type: word
+        words:
+          - "py unsigned code"

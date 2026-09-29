@@ -1,0 +1,22 @@
+id: code-template-1
+
+info:
+  name: code-template-1
+  author: tovask
+  severity: info
+  tags: code
+
+code:
+  - engine:
+      - py
+      - python3
+      - python
+    source: |
+      print("hello from first")
+    extractors:
+      - type: regex
+        name: extracted
+        regex:
+          - 'hello from (.*)'
+        group: 1
+# digest: 490a0046304402206b3648e8d393ac4df82c7d59b1a6ee3731c66c249dbd4d9bf31f0b7f176b37ec02203184d36373e516757c7d708b5799bc16edb1cebc0a64f3442d13ded4b33c42fb:4a3eb6b4988d95847d4203be25ed1d46

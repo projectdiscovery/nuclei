@@ -1,0 +1,15 @@
+id: basic-get
+
+info:
+  name: Basic GET Request
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "This is test matcher text"

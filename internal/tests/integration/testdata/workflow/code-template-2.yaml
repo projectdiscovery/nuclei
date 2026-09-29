@@ -1,0 +1,21 @@
+id: code-template-2
+
+info:
+  name: code-template-2
+  author: tovask
+  severity: info
+  tags: code
+
+code:
+  - engine:
+      - py
+      - python3
+      - python
+    source: |
+      import os
+      print("hello from " + os.getenv("extracted"))
+    matchers:
+      - type: word
+        words:
+          - "hello from first"
+# digest: 490a0046304402204cbb1bdf8370e49bb930b17460fb35e15f285a3b48b165736ac0e7ba2f9bc0fb022067c134790c4a2cf646b195aa4488e2c222266436e6bda47931908a28807bdb81:4a3eb6b4988d95847d4203be25ed1d46

@@ -1,0 +1,23 @@
+id: dns-template
+
+info:
+  name: basic dns template
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}"
+    type: CNAME
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "rcode == 0"
+
+    extractors:
+      - type: dsl
+        dsl:
+          - rcode
+          - cname
+          - a
+          - aaaa

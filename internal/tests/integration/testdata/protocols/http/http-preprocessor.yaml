@@ -1,0 +1,17 @@
+id: http-preprocessor
+
+info:
+  name: Test Http Preprocessor
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        GET /?test={{randstr}} HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers:
+      - type: status
+        status:
+          - 200

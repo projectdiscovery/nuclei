@@ -1,0 +1,17 @@
+id: basic-get-host-redirects
+
+info:
+  name: Basic GET Host Redirects Request
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    host-redirects: true
+    max-redirects: 3
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code==307"

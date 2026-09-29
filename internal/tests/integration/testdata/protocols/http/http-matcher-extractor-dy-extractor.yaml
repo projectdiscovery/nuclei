@@ -1,0 +1,36 @@
+id: http-matcher-extractor-dy-extractor
+info:
+  name: HTTP matcher and extractor & dynamic extractor
+  description: >
+    Edgecase to test for a combination of matchers , extractors and dynamic extractors
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        GET {{BaseURL}} HTTP/1.1
+      - |
+        GET {{absolutePath}} HTTP/1.1
+
+    req-condition: true
+    extractors:
+      - type: regex
+        internal: true
+        part: body_1
+        name: absolutePath
+        regex:
+          - '<a href="(/domains)">'
+        group: 1
+      - type: regex
+        internal: false
+        part: body_2
+        name: title
+        regex:
+          - '<title[^>]*>([^<]+)</title>'
+        group: 1
+    matchers:
+      - type: regex
+        part: body_2
+        regex:
+          - '<title[^>]*>([^<]+)</title>'

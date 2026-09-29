@@ -1,0 +1,15 @@
+id: raw-unsafe-path-single-slash
+
+info:
+  name: Test RAW Unsafe HTTP Template with single slash
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:
+      - |+
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+        Origin: {{BaseURL}}
+    
+    unsafe: true

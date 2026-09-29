@@ -1,0 +1,24 @@
+name: 🔀 Auto merge PR
+
+on:
+  # pull_request:
+  #   types: [opened, synchronize, reopened, ready_for_review]
+  # pull_request_review:
+  #   types: [submitted]
+  workflow_run:
+    workflows: ["♾️ Compatibility Checks"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge-dependabot:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: projectdiscovery/actions/pr/approve@v1
+      - uses: projectdiscovery/actions/pr/merge@v1
+        with:
+          auto: "true"

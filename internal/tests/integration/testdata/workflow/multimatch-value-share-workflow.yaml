@@ -1,0 +1,21 @@
+id: multimatch-value-share-workflow
+
+info:
+  name: MultiMatch Value Share Workflow
+  author: tovask
+  severity: info
+  description: Workflow to test value sharing when multiple matches occur in the extractor template
+
+workflows:
+  - template: workflow/multimatch-value-share-template.yaml
+    subtemplates:
+      - template: workflow/match-1.yaml
+        subtemplates:
+          - template: workflow/http-value-share-template-2.yaml
+  - template: workflow/multimatch-value-share-template.yaml
+    matchers:
+      - name: test-matcher
+        subtemplates:
+          - template: workflow/match-1.yaml
+            subtemplates:
+              - template: workflow/http-value-share-template-2.yaml

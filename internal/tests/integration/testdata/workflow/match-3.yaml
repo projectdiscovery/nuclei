@@ -1,0 +1,16 @@
+id: basic-get-third
+
+info:
+  name: Basic 3rd GET Request
+  author: tovask
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        name: test-matcher-3
+        words:
+          - "This is test matcher text"

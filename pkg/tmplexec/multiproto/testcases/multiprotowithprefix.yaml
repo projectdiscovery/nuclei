@@ -1,0 +1,26 @@
+id: dns-http-proto-prefix
+
+info:
+  name: multi protocol request with dynamic values
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}" # DNS Request
+    type: cname
+
+ssl:
+  - address: "{{Hostname}}" # ssl request
+
+http:
+  - method: GET # http request
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - contains(http_body, 'ProjectDiscovery') # check for http string
+          - dns_cname == 'cname.vercel-dns.com' # check for cname (extracted information from dns response)
+          - ssl_subject_cn == 'cloud.projectdiscovery.io'
+        condition: and

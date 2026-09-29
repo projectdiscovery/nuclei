@@ -1,0 +1,41 @@
+id: body-params-error-sqli
+
+info:
+  name: fuzzing error sqli payloads in body with params
+  author: pdteam
+  severity: info
+  description: |
+    This template attempts to find SQL injection vulnerabilities by fuzzing http body of x-www-form-urlencoded data
+    This is achieved by performing [ruleType](example: postfix) on value of body key
+    Note: this is example template, and payloads/matchers need to be modified appropriately.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - method != "GET"
+          - method != "HEAD"
+          - contains(content_type, "application/x-www-form-urlencoded")
+          - contains(path, "/user") # for scope of integration test
+        condition: and
+    
+    payloads:
+      injection:
+        - "'"
+        - "\""
+        - ";"
+    
+    fuzzing:
+      - part: body
+        type: postfix
+        mode: single
+        fuzz:
+          - '{{injection}}'
+  
+    stop-at-first-match: true
+    matchers:
+      - type: word
+        words:
+          - "unrecognized token:"
+          - "null"
+          - "SELECTs to the left and right of UNION do not have the same number of result columns"

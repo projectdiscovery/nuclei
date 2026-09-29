@@ -1,0 +1,329 @@
+package types
+
+import (
+	"bufio"
+	"bytes"
+	"crypto/sha256"
+	"fmt"
+	"io"
+	"net/textproto"
+	"strings"
+	"sync"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/useragent"
+	"github.com/projectdiscovery/utils/conversion"
+	mapsutil "github.com/projectdiscovery/utils/maps"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
+)
+
+var (
+	_ json.JSONCodec = &RequestResponse{}
+)
+
+// RequestResponse is a struct containing request and response
+// obtained from one of the input formats.
+// this struct can be considered as pd standard for request and response
+type RequestResponse struct {
+	// Timestamp is the timestamp of the request
+	// Timestamp string `json:"timestamp"`
+	// URL is the URL of the request
+	URL urlutil.URL `json:"url"`
+	// Request is the request of the request
+	Request *HttpRequest `json:"request"`
+	// Response is the response of the request
+	Response *HttpResponse `json:"response"`
+
+	// unexported / internal fields
+	// lazy build request
+	req    *retryablehttp.Request `json:"-"`
+	reqErr error                  `json:"-"`
+	once   sync.Once              `json:"-"`
+}
+
+// Clone clones the request response
+func (rr *RequestResponse) Clone() *RequestResponse {
+	cloned := &RequestResponse{
+		URL: *rr.URL.Clone(),
+	}
+	if rr.Request != nil {
+		cloned.Request = rr.Request.Clone()
+	}
+	if rr.Response != nil {
+		cloned.Response = rr.Response.Clone()
+	}
+	return cloned
+}
+
+// BuildRequest builds a retryablehttp request from the request response
+func (rr *RequestResponse) BuildRequest() (*retryablehttp.Request, error) {
+	rr.once.Do(func() {
+		// Request is optional: UnmarshalJSON only populates it when a "request"
+		// key is present, so an entry carrying just a "url" leaves it nil.
+		// Dereferencing it below would panic with a nil pointer instead of
+		// surfacing a usable error, taking the whole scan down.
+		if rr.Request == nil {
+			rr.reqErr = fmt.Errorf("could not create request: no request in request response")
+			return
+		}
+		urlx := rr.URL.Clone()
+		var body io.Reader = nil
+		if rr.Request.Body != "" {
+			body = strings.NewReader(rr.Request.Body)
+		}
+		req, err := retryablehttp.NewRequestFromURL(rr.Request.Method, urlx, body)
+		if err != nil {
+			rr.reqErr = fmt.Errorf("could not create request: %s", err)
+			return
+		}
+		rr.Request.Headers.Iterate(func(k, v string) bool {
+			req.Header.Add(k, v)
+			return true
+		})
+		if req.Header.Get("User-Agent") == "" {
+			userAgent := useragent.PickRandom()
+			req.Header.Set("User-Agent", userAgent.Raw)
+		}
+		rr.req = req
+	})
+	return rr.req, rr.reqErr
+}
+
+// To be implemented in the future
+// func (rr *RequestResponse) BuildUnsafeRequest()
+
+// ID returns a unique id/hash for request response
+func (rr *RequestResponse) ID() string {
+	var buff bytes.Buffer
+	buff.WriteString(rr.URL.String())
+	if rr.Request != nil {
+		buff.WriteString(rr.Request.ID())
+	}
+	if rr.Response != nil {
+		buff.WriteString(rr.Response.ID())
+	}
+	val := sha256.Sum256(buff.Bytes())
+	return string(val[:])
+}
+
+// MarshalJSON marshals the request response to json
+func (rr *RequestResponse) MarshalJSON() ([]byte, error) {
+	m := make(map[string]interface{})
+	m["url"] = rr.URL.String()
+	reqBin, err := json.Marshal(rr.Request)
+	if err != nil {
+		return nil, err
+	}
+	m["request"] = reqBin
+	respBin, err := json.Marshal(rr.Response)
+	if err != nil {
+		return nil, err
+	}
+	m["response"] = respBin
+	return json.Marshal(m)
+}
+
+// UnmarshalJSON unmarshals the request response from json
+func (rr *RequestResponse) UnmarshalJSON(data []byte) error {
+	var m map[string]json.Message
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	urlStrRaw, ok := m["url"]
+	if !ok {
+		return fmt.Errorf("missing url in request response")
+	}
+	var urlStr string
+	if err := json.Unmarshal(urlStrRaw, &urlStr); err != nil {
+		return err
+	}
+	parsed, err := urlutil.ParseAbsoluteURL(urlStr, false)
+	if err != nil {
+		return err
+	}
+	rr.URL = *parsed
+
+	reqBin, ok := m["request"]
+	if ok {
+		var req HttpRequest
+		if err := json.Unmarshal(reqBin, &req); err != nil {
+			return err
+		}
+		rr.Request = &req
+	}
+
+	respBin, ok := m["response"]
+	if ok {
+		var resp HttpResponse
+		if err := json.Unmarshal(respBin, &resp); err != nil {
+			return err
+		}
+		rr.Response = &resp
+	}
+	return nil
+}
+
+// HttpRequest is a struct containing the http request
+type HttpRequest struct {
+	// method of the request
+	Method string `json:"method"`
+	// headers of the request
+	Headers mapsutil.OrderedMap[string, string] `json:"headers"`
+	// body of the request
+	Body string `json:"body"`
+	// raw request (includes everything including method, headers, body, etc)
+	Raw string `json:"raw"`
+}
+
+// ID returns a unique id/hash for raw request
+func (hr *HttpRequest) ID() string {
+	val := sha256.Sum256([]byte(hr.Raw))
+	return string(val[:])
+}
+
+// Clone clones the request
+func (hr *HttpRequest) Clone() *HttpRequest {
+	return &HttpRequest{
+		Method:  hr.Method,
+		Headers: hr.Headers.Clone(),
+		Body:    hr.Body,
+		Raw:     hr.Raw,
+	}
+}
+
+type HttpResponse struct {
+	// status code of the response
+	StatusCode int `json:"status_code"`
+	// headers of the response
+	Headers mapsutil.OrderedMap[string, string] `json:"headers"`
+	// body of the response
+	Body string `json:"body"`
+	// raw response (includes everything including status code, headers, body, etc)
+	Raw string `json:"raw"`
+}
+
+// Id returns a unique id/hash for raw response
+func (hr *HttpResponse) ID() string {
+	val := sha256.Sum256([]byte(hr.Raw))
+	return string(val[:])
+}
+
+// Clone clones the response
+func (hr *HttpResponse) Clone() *HttpResponse {
+	return &HttpResponse{
+		StatusCode: hr.StatusCode,
+		Headers:    hr.Headers.Clone(),
+		Body:       hr.Body,
+		Raw:        hr.Raw,
+	}
+}
+
+// ParseRawRequest parses a raw request from a string
+// and returns the request and response object
+// Note: it currently does not parse response and is meant to be added manually since its a optional field
+func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
+	protoReader := textproto.NewReader(bufio.NewReader(strings.NewReader(raw)))
+	methodLine, err := protoReader.ReadLine()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read method line: %s", err)
+	}
+	rr = &RequestResponse{
+		Request: &HttpRequest{},
+	}
+	/// must contain at least 3 parts
+	parts := strings.Split(methodLine, " ")
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("invalid method line: %s", methodLine)
+	}
+	method := parts[0]
+	rr.Request.Method = method
+
+	// the request target is normally an origin-form path, but proxy captures and
+	// .http files use the absolute form, which already carries the authority
+	var urlx *urlutil.URL
+	target := parts[1]
+	if stringsutil.HasPrefixAnyI(target, urlutil.HTTP+urlutil.SchemeSeparator, urlutil.HTTPS+urlutil.SchemeSeparator) {
+		// urlutil.ParseAbsoluteURL only accepts lowercase schemes; preserve the
+		// remainder of the request target unchanged.
+		if scheme, rest, ok := strings.Cut(target, urlutil.SchemeSeparator); ok {
+			target = strings.ToLower(scheme) + urlutil.SchemeSeparator + rest
+		}
+		urlx, err = urlutil.ParseAbsoluteURL(target, true)
+	} else {
+		urlx, err = urlutil.ParseRawRelativePath(target, true)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse url: %s", err)
+	}
+	rr.URL = *urlx
+
+	// parse headers
+	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()
+	for {
+		line, err := protoReader.ReadLine()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read header line: %s", err)
+		}
+		if line == "" {
+			// end of headers next is body
+			break
+		}
+		key, value, found := strings.Cut(line, ":")
+		if !found || key == "" {
+			return nil, fmt.Errorf("invalid header line: %s", line)
+		}
+		value = strings.TrimSpace(value)
+		// Host carries the authority rather than request metadata, and callers
+		// read it off the URL: retryablehttp derives the wire Host from there,
+		// and keeping it in the header map would expose it to header fuzzing as
+		// if it were an ordinary header.
+		if strings.EqualFold(key, "Host") {
+			// an absolute request target takes precedence over the Host header
+			if rr.URL.Host == "" {
+				rr.URL.Host = value
+			}
+			continue
+		}
+		rr.Request.Headers.Set(key, value)
+	}
+
+	// parse body
+	rr.Request.Body = ""
+	var buff bytes.Buffer
+	_, err = buff.ReadFrom(protoReader.R)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to read body: %s", err)
+	}
+	if buff.Len() > 0 {
+		// yaml may include trailing newlines
+		// remove them if present
+		bin := buff.Bytes()
+		if len(bin) > 0 && bin[len(bin)-1] == '\n' {
+			bin = bin[:len(bin)-1]
+		}
+		if len(bin) > 0 && (bin[len(bin)-1] == '\r' || bin[len(bin)-1] == '\n') {
+			bin = bin[:len(bin)-1]
+		}
+		rr.Request.Body = conversion.String(bin)
+	}
+
+	// set raw request
+	rr.Request.Raw = raw
+	return rr, nil
+}
+
+// ParseRawRequestWithURL parses a raw request from a string with given url
+func ParseRawRequestWithURL(raw, url string) (rr *RequestResponse, err error) {
+	rr, err = ParseRawRequest(raw)
+	if err != nil {
+		return nil, err
+	}
+	urlx, err := urlutil.ParseAbsoluteURL(url, false)
+	if err != nil {
+		return nil, err
+	}
+	rr.URL = *urlx
+	return rr, nil
+}

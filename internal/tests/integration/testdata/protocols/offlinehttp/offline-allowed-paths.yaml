@@ -1,0 +1,18 @@
+id: offline-allowed-paths
+
+info:
+  name: offline-allowed-paths
+  author: pdteam
+  severity: info
+  description: offline-allowed-paths
+
+http:
+  - path:
+      - "{{BaseURL}}"
+      - "{{BaseURL}}/"
+      - "/"
+
+    matchers:
+      - type: status
+        status:
+          - 200

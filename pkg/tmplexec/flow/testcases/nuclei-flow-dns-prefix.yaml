@@ -1,0 +1,41 @@
+id: nuclei-flow-dns
+
+info:
+  name: Nuclei flow dns
+  author: pdteam
+  severity: info
+  description: Description of the Template
+  reference: https://example-reference-link
+
+flow: |
+  dns(1);
+  template["nameservers"].forEach(nameserver => {
+    set("nameserver",nameserver);
+    dns("probe-ns");
+  });
+
+dns:
+  - name: "{{FQDN}}"
+    type: NS
+    matchers:
+      - type: word
+        words:
+          - "IN\tNS"
+    extractors:
+      - type: regex
+        internal: true
+        name: "nameservers"
+        group: 1
+        regex:
+          - "IN\tNS\t(.+)"
+
+  - id: "probe-ns"
+    name: "{{nameserver}}"
+    type: A
+    class: inet
+    retries: 3
+    recursion: true
+    extractors:
+      - type: dsl
+        dsl:
+          - "a"

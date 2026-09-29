@@ -1,0 +1,11 @@
+id: multiprotocol-value-sharing-workflow
+
+info:
+  name: MultiProtocol Value Sharing Workflow
+  author: tovask
+  severity: info
+
+workflows:
+  - template: workflow/http-value-share-template-1.yaml
+    subtemplates:
+      - template: workflow/multiprotocol-value-share-template.yaml

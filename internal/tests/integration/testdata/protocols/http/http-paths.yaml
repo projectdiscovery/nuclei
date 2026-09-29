@@ -1,0 +1,91 @@
+id: http-paths
+
+info:
+  name: Test Http Path Edgecases
+  author: pd-team
+  severity: info
+  description: >
+    - https://github.com/projectdiscovery/nuclei/pull/3211
+    - https://github.com/projectdiscovery/nuclei/pull/3127
+  reference:
+    # adding expected results here for context and debugging
+    - "/1337?with=param"
+    - "/some%0A/%0D"
+    - "/%73%6f%6d%65%0A/%0D"
+    - "/%00test%20"
+    - "/text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d"
+    - "/test/..;/..;/"
+    - "/xyz/%25u2s/%25invalid"
+    - "//CFIDE/wizards/common/utils.cfc"
+    # duplicating here because same results are expected even if http request is written in different format
+    - "/1337?with=param"
+    - "/some%0A/%0D"
+    - "/%73%6f%6d%65%0A/%0D"
+    - "/%00test%20"
+    - "/text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d"
+    - "/test/..;/..;/"
+    - "/xyz/%25u2s/%25invalid"
+    - "//CFIDE/wizards/common/utils.cfc"
+
+# Test all templates with FullURLs
+http:
+  - raw:
+    # relative path without leading slash with param
+    # If relative path does not have `/` prefix it is autocorrected 
+      - |+
+        GET 1337?with=param HTTP/1.1 
+        Host: scanme.sh
+    # url encoded characters in path
+      - |+
+        GET /some%0A/%0D HTTP/1.1
+        Host: scanme.sh
+    # percent encoded characters in path
+    # In URL encoding only key characters are encoded 
+    # while in percent encoding all characters are url encoded (similar to burp decoder)
+      - |+
+        GET /%73%6f%6d%65%0A/%0D HTTP/1.1
+        Host: scanme.sh
+    # test null and % chars in path
+      - |+
+        GET /%00test%20 HTTP/1.1
+        Host: scanme.sh
+    # test payload integrity in parameter
+      - |+
+        GET /text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d HTTP/1.1
+        Host: scanme.sh
+    # test for missing trailing slash
+      - |+
+        GET /test/..;/..;/ HTTP/1.1
+        Host: scanme.sh
+        Origin: {{BaseURL}}
+    # test relative path with invalid/corrupted characters
+    # In such case instead of error or panic nuclei escaped unsupported character (i.e /xyz/%25u2s/%25invalid)
+    # if template requires this condition to not escape unsupported characters. It can only be done in unsafe raw requests
+      - |+
+        GET /xyz/%u2s/%invalid HTTP/1.1
+        Host: scanme.sh
+    # test relative path start with //
+      - |+
+        GET //CFIDE/wizards/common/utils.cfc HTTP/1.1
+        Host: scanme.sh
+
+    matchers:
+      - type: status
+        status:
+          - 200
+  # Same testcases as mentioned above but in path based request format
+  - method: GET
+    path:
+     - "{{BaseURL}}/1337?with=param"
+     - "{{BaseURL}}/some%0A/%0D"
+     - "{{BaseURL}}/%73%6f%6d%65%0A/%0D"
+     - "{{BaseURL}}/%00test%20"
+     - "{{BaseURL}}/text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d"
+     - "{{BaseURL}}/test/..;/..;/"
+     - "{{BaseURL}}/xyz/%u2s/%invalid"
+     - "{{BaseURL}}//CFIDE/wizards/common/utils.cfc"
+
+    matchers:
+    - type: status
+      status:
+        - 200

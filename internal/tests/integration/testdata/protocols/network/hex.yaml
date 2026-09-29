@@ -1,0 +1,21 @@
+id: hex-network-request
+
+info:
+  name: Hex Input Network Request
+  author: pdteam
+  severity: info
+
+network:
+  - host: 
+      - "{{Hostname}}"
+    inputs:
+      - data: "50494e47"
+        type: hex
+
+    read-size: 4
+    matchers:
+      - type: word
+        part: data
+        encoding: hex
+        words:
+          - "504f4e47"

@@ -1,0 +1,17 @@
+id: global-matcher-test
+
+info:
+  name: Global Matcher Test Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    global-matchers: true
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "test"

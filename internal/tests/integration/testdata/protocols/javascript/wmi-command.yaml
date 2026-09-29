@@ -1,0 +1,39 @@
+id: javascript-wmi-command
+
+info:
+  name: JavaScript WMI Helper Command
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      const wmi = require("nuclei/wmi");
+      const auth = wmi.Auth.password("CORP\\auditor", "wmi-command-secret");
+      const client = new wmi.Client("203.0.113.10", auth);
+      const result = client.command("whoami", { timeout: 1, output: false });
+      Export(to_json(result));
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        condition: and
+        words:
+          - "module"
+          - "wmi"
+          - "method"
+          - "command"
+          - "target"
+          - "203.0.113.10"
+          - "ok"
+          - "false"
+          - "network policy"
+      - type: word
+        part: response
+        negative: true
+        words:
+          - "wmi-command-secret"

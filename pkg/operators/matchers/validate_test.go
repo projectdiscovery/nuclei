@@ -1,0 +1,51 @@
+package matchers
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestValidate(t *testing.T) {
+	m := &Matcher{matcherType: DSLMatcher, DSL: []string{"anything"}}
+
+	err := m.Validate()
+	require.Nil(t, err, "Could not validate correct template")
+
+	m = &Matcher{matcherType: DSLMatcher, Part: "test"}
+	err = m.Validate()
+	require.NotNil(t, err, "Invalid template was correctly validated")
+
+	m = &Matcher{matcherType: XPathMatcher, XPath: []string{"//q[@id=\"foo\"]"}}
+
+	err = m.Validate()
+	require.Nil(t, err, "Could not validate correct XPath template")
+
+	m = &Matcher{matcherType: XPathMatcher, Status: []int{123}}
+	err = m.Validate()
+	require.NotNil(t, err, "Invalid XPath template was correctly validated")
+
+	m = &Matcher{matcherType: XPathMatcher, XPath: []string{"//a[@a==1]"}}
+	err = m.Validate()
+	require.NotNil(t, err, "Invalid XPath query was correctly validated")
+}
+
+func TestValidateRequiresValues(t *testing.T) {
+	for _, matcherType := range GetSupportedMatcherTypes() {
+		t.Run(matcherType.String(), func(t *testing.T) {
+			m := &Matcher{matcherType: matcherType}
+			require.ErrorContains(t, m.Validate(), "requires at least one")
+		})
+	}
+}
+
+func TestValidateLLMInputs(t *testing.T) {
+	compile := func(inputs []string) error {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: LLMMatcher}, Prompt: "compare", Inputs: inputs}
+		return m.CompileMatchers()
+	}
+
+	require.NoError(t, compile([]string{"{{body_1}}", "{{body_2}}"}))
+	require.ErrorContains(t, compile([]string{"{{body_1}}"}), "at least two entries")
+	require.ErrorContains(t, compile([]string{"{{body_1}}", "  "}), "cannot be blank")
+}

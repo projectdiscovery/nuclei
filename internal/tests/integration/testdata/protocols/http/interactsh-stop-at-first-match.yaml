@@ -1,0 +1,29 @@
+id: interactsh-stop-at-first-match-integration-test
+
+info:
+  name: Interactsh StopAtFirstMatch Integration Test
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?a=1"
+      - "{{BaseURL}}/?a=2"
+      - "{{BaseURL}}/?a=3"
+      - "{{BaseURL}}/?a=4"
+      - "{{BaseURL}}/?a=5"
+      - "{{BaseURL}}/?a=6"
+      - "{{BaseURL}}/?a=7"
+      - "{{BaseURL}}/?a=8"
+      - "{{BaseURL}}/?a=9"
+    headers:
+      url: 'http://{{interactsh-url}}'
+
+    stop-at-first-match: true
+
+    matchers:
+      - type: word
+        part: interactsh_protocol # Confirms DNS Interaction
+        words:
+          - "dns"

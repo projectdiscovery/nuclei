@@ -1,0 +1,38 @@
+id: vnc-password-test
+
+info:
+  name: VNC Password Authentication Test
+  author: pdteam
+  severity: high
+  description: |
+    Tests VNC authentication with correct and incorrect passwords.
+  metadata:
+    shodan-query: product:"vnc"
+  tags: js,network,vnc,authentication
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host,Port)
+
+    code: |
+      let vnc = require('nuclei/vnc');
+      let client = new vnc.VNCClient();
+      client.Connect(Host, Port, Password);
+
+    args:
+      Host: "{{Host}}"
+      Port: "5900"
+      Password: "{{passwords}}"
+    payloads:
+      passwords:
+        - ""
+        - root
+        - password
+        - admin
+        - mysecret
+    stop-at-first-match: true
+      
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"

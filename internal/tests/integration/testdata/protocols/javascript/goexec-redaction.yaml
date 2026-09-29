@@ -1,0 +1,39 @@
+id: javascript-goexec-redaction
+
+info:
+  name: JavaScript GoExec Helper Redaction
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      const wmi = require("nuclei/wmi");
+      const auth = wmi.Auth.ntHash("CORP\\auditor", "aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0");
+      const client = new wmi.Client(Host, auth);
+      const result = client.command("whoami", { timeout: 5, output: false, endpoint: RPCEndpoint });
+      Export(to_json(result));
+    args:
+      Host: "{{Host}}"
+      RPCEndpoint: "{{RPCEndpoint}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        condition: and
+        words:
+          - "module"
+          - "wmi"
+          - "method"
+          - "command"
+          - "ok"
+          - "false"
+          - "duration_ms"
+      - type: word
+        part: response
+        negative: true
+        words:
+          - "aad3b435b51404eeaad3b435b51404ee"
+          - "31d6cfe0d16ae931b73c59d7e0c089c0"

@@ -1,0 +1,15 @@
+id: basic-get-with-cert
+
+info:
+  name: Basic GET with Cert
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "Hello"

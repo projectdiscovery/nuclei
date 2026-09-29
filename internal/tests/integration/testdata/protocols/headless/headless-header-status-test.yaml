@@ -1,0 +1,24 @@
+id: headless-header-status-test
+
+info:
+  name: headless header + status test
+  author: pdteam
+  severity: info
+
+headless:
+  - steps:
+      - args:
+          url: "{{BaseURL}}"
+        action: navigate
+      - action: waitload
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: header
+        words:
+          - text/plain
+
+      - type: status
+        status:
+          - 200

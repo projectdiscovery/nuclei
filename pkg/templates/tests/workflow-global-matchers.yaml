@@ -1,0 +1,10 @@
+id: workflow-global-matchers
+
+info:
+  name: Workflow With Global Matchers
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: tests/match-1.yaml
+  - template: tests/global-matcher.yaml

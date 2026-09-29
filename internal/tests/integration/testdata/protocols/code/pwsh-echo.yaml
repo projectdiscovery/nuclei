@@ -1,0 +1,27 @@
+id: pw-echo
+
+info:
+  name: PowerShell Echo Test
+  author: pdteam
+  severity: info
+  description: Tests PowerShell execution with an echo-like operation.
+  tags: test,powershell,echo
+
+self-contained: true
+
+code:
+  - engine:
+      - pwsh
+      - powershell
+      - powershell.exe
+    args:
+      - -ExecutionPolicy
+      - Bypass
+    pattern: "*.ps1"
+    source: |
+      Write-Output "test-output-success"
+
+    matchers:
+      - type: word
+        words:
+          - "test-output-success"

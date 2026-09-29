@@ -1,0 +1,7 @@
+method=GET
+path=http://127.0.0.1/foo?id=123&name=test
+host={{Hostname}}
+input-url=http://httpbin.org/bar
+unsafe=true
+disable-automerge=true
+header=Connection: close

@@ -1,0 +1,10 @@
+id: race-context-share-workflow
+info:
+  name: Race Context Share Workflow
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: workflow/race-context-share-template-1.yaml
+    subtemplates:
+      - template: workflow/race-context-share-template-2.yaml

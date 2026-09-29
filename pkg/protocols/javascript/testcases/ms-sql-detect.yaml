@@ -1,0 +1,29 @@
+id: ms-sql-detect
+
+info:
+  name: microsoft sql server(mssql) detection
+  author: Ice3man543,tarunKoyalwar
+  severity: info
+  description: |
+    ms sql detection template
+  metadata:
+    shodan-query: "port:1433"
+  
+javascript:
+  - code: |
+      var m = require("nuclei/mssql");
+      var c = m.MSSQLClient();
+      c.IsMssql(Host, Port);
+
+    args:
+      Host: "{{Host}}"
+      Port: "1433"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "response == true"
+          - "success == true"
+        condition: and
+  
+

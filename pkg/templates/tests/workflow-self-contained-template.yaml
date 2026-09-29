@@ -1,0 +1,17 @@
+id: workflow-self-contained-template
+
+info:
+  name: Workflow Self Contained Template
+  author: pdteam
+  severity: info
+
+self-contained: true
+
+http:
+  - method: GET
+    path:
+      - "http://127.0.0.1:9999/"
+    matchers:
+      - type: dsl
+        dsl:
+          - "true"

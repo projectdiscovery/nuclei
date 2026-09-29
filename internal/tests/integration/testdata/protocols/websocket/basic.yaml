@@ -1,0 +1,16 @@
+id: basic-request
+
+info:
+  name: Basic Request
+  author: pdteam
+  severity: info
+
+websocket:
+  - address: '{{Scheme}}://{{Hostname}}'
+    inputs:
+      - data: hello
+    matchers:
+      - type: word
+        words:
+          - world
+        part: response

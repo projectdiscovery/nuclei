@@ -1,0 +1,30 @@
+id: dns-ssl-http-with-variables
+
+info:
+  name: multi protocol request with dynamic values
+  author: pdteam
+  severity: info
+
+
+variables:
+  cname_filtered: '{{trim_suffix(dns_cname,".vercel-dns.com")}}'
+
+dns:
+  - name: "{{FQDN}}" # DNS Request
+    type: cname
+
+ssl:
+  - address: "{{Hostname}}" # ssl request
+
+http:
+  - method: GET # http request
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - contains(http_body,'home') # check for http string
+          - cname_filtered == 'cname' # check for cname (extracted information from dns response)
+          - ssl_subject_cn == 'docs.projectdiscovery.io'
+        condition: and

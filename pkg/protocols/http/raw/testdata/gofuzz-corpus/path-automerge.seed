@@ -1,0 +1,8 @@
+method=POST
+path=/login
+host={{Hostname}}
+input-url=https://example.com/app
+unsafe=false
+disable-automerge=false
+header=Content-Type: application/x-www-form-urlencoded
+body=username=admin&password=login

@@ -1,0 +1,20 @@
+id: variables-example
+
+info:
+  name: Variables Example
+  author: pdteam
+  severity: info
+
+variables:
+  a1: "{{base64('hello')}}"
+
+headless:
+  - steps:
+      - args:
+          url: "{{BaseURL}}"
+        action: navigate
+      - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "{{a1}}"

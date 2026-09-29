@@ -1,0 +1,27 @@
+id: vercel-hosted-detection
+info:
+  name: Vercel-hosted detection
+  author: pdteam
+  severity: info
+
+
+flow: dns() && http()
+
+dns:
+  - name: "{{FQDN}}"
+    type: CNAME
+
+    matchers:
+      - type: word
+        words:
+          - "vercel-dns"
+
+http:
+  - method: GET
+    path:
+      - "{{dns_cname}}"
+
+    matchers:
+      - type: word
+        words:
+          - "DEPLOYMENT_NOT_FOUND"

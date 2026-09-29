@@ -1,0 +1,23 @@
+id: javascript-no-port-args
+
+info:
+  name: JavaScript Template Without Port Args
+  author: dwisiswant0
+  severity: info
+  description: |
+    Test backwards compatibility for JavaScript templates without Port in args.
+    Templates should execute even when Port arg is not explicitly specified.
+
+javascript:
+  - code: |
+      // Simple JavaScript code that does not require Port
+      let result = "executed";
+      Export(result);
+
+    args:
+      TestArg: "test-value"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true

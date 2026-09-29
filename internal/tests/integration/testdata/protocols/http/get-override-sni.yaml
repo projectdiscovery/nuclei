@@ -1,0 +1,18 @@
+id: basic-raw-http-example
+
+info:
+  name: Test RAW GET Template
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        @tls-sni:request.host
+        GET / HTTP/1.1
+        Host: test
+
+    matchers:
+      - type: word
+        words:
+          - "test-ok"

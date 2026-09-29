@@ -1,0 +1,22 @@
+id: caa-fingerprinting
+
+info:
+  name: CAA Fingerprint
+  author: pdteam
+  severity: info
+  tags: dns,caa
+
+dns:
+  - name: "{{FQDN}}"
+    type: CAA
+
+    matchers:
+      - type: word
+        words:
+          - "IN\tCAA"
+
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "IN\tCAA\t(.+)"

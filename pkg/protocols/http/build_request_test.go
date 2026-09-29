@@ -1,0 +1,434 @@
+package http
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	urlutil "github.com/projectdiscovery/utils/url"
+)
+
+func TestMakeRequestFromModal(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http"
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Path:   []string{"{{BaseURL}}/login.php"},
+		Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Body:   "username=test&password=pass",
+		Headers: map[string]string{
+			"Content-Type":   "application/x-www-form-urlencoded",
+			"Content-Length": "1",
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	if req.request.URL == nil {
+		t.Fatalf("url is nil in generator make")
+	}
+	bodyBytes, _ := req.request.BodyBytes()
+	require.Equal(t, "/login.php", req.request.Path, "could not get correct request path")
+	require.Equal(t, "username=test&password=pass", string(bodyBytes), "could not get correct request body")
+}
+
+func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http"
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Path:   []string{"{{BaseURL}}?query=example"},
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com/test.php"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	require.Equal(t, "https://example.com/test.php?query=example", req.request.String(), "could not get correct request path")
+
+	generator = request.newGenerator(false)
+	inputData, payloads, _ = generator.nextValue()
+	req, err = generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com/test/"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	require.Equal(t, "https://example.com/test/?query=example", req.request.String(), "could not get correct request path")
+}
+
+func TestMakeRequestFromRawWithPayloads(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http"
+	request := &Request{
+		ID:   templateID,
+		Name: "testing",
+		Payloads: map[string]interface{}{
+			"username": []string{"admin"},
+			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
+		},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
+		Raw: []string{`GET /manager/html HTTP/1.1
+Host: {{Hostname}}
+User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
+Connection: close
+Authorization: Basic {{username + ':' + password}}
+Accept-Encoding: gzip`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	authorization := req.request.Header.Get("Authorization")
+	require.Equal(t, "Basic admin:admin", authorization, "could not get correct authorization headers from raw")
+
+	inputData, payloads, _ = generator.nextValue()
+	req, err = generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	authorization = req.request.Header.Get("Authorization")
+	require.Equal(t, "Basic admin:guest", authorization, "could not get correct authorization headers from raw")
+}
+
+func TestMakeRequestFromRawPayloadExpressions(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http"
+	request := &Request{
+		ID:   templateID,
+		Name: "testing",
+		Payloads: map[string]interface{}{
+			"username": []string{"admin"},
+			"password": []string{"admin", "guest", "password", "test", "12345", "123456"},
+		},
+		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
+		Raw: []string{`GET /manager/html HTTP/1.1
+Host: {{Hostname}}
+User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
+Connection: close
+Authorization: Basic {{base64(username + ':' + password)}}
+Accept-Encoding: gzip`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	authorization := req.request.Header.Get("Authorization")
+	require.Equal(t, "Basic YWRtaW46YWRtaW4=", authorization, "could not get correct authorization headers from raw")
+
+	inputData, payloads, _ = generator.nextValue()
+	req, err = generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+	authorization = req.request.Header.Get("Authorization")
+	require.Equal(t, "Basic YWRtaW46Z3Vlc3Q=", authorization, "could not get correct authorization headers from raw")
+}
+
+func TestMakeUnsafeRequestFromRawWithHostAnnotation(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http-unsafe-annotations"
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Unsafe: true,
+		Raw: []string{`@Host: honey.scanme.sh
+GET /foo HTTP/1.1
+Host: {{Hostname}}`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile unsafe raw request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "http://scanme.sh"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make unsafe http request")
+	require.NotNil(t, req.rawRequest, "raw request should be present")
+	require.NotContains(t, string(req.rawRequest.UnsafeRawBytes), "@Host:", "unsafe raw request bytes should not contain annotation lines")
+
+	parsedURL, parseErr := urlutil.ParseAbsoluteURL(req.rawRequest.FullURL, true)
+	require.Nil(t, parseErr, "could not parse generated unsafe request URL")
+	require.Equal(t, "honey.scanme.sh", parsedURL.Host, "host should be overridden by @Host annotation in unsafe mode")
+	require.Equal(t, "http", parsedURL.Scheme, "scheme should inherit from input when annotation host has no scheme")
+}
+
+func TestUnsafeRawRequestPreservesAbsoluteRequestTarget(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	const requestLine = "GET http://intranet/foo?request=1 HTTP/1.1"
+	request := &Request{
+		ID:     "testing-http-unsafe-absolute-request-target",
+		Name:   "testing",
+		Unsafe: true,
+		Raw: []string{requestLine + `
+Host: {{Hostname}}`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts), "could not compile unsafe raw request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	generated, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "http://example.com/bar?input=1"), inputData, payloads, map[string]interface{}{})
+	require.NoError(t, err, "could not make unsafe raw request")
+	generatedURL, err := urlutil.ParseAbsoluteURL(generated.URL(), true)
+	require.NoError(t, err, "could not parse generated request URL")
+	require.Equal(t, "example.com", generatedURL.Host, "absolute request target must not override the scan target")
+	require.Equal(t, "/foo", generatedURL.Path, "absolute request target path must not merge with the scan target path")
+	require.Equal(t, "1", generatedURL.Params.Get("request"), "generated URL must include the absolute request target query")
+	require.Empty(t, generatedURL.Params.Get("input"), "generated URL must not include the scan target query")
+
+	requestBytes, err := dump(generated, generated.URL())
+	require.NoError(t, err, "could not dump unsafe raw request")
+	actualRequestLine := strings.TrimSuffix(strings.SplitN(string(requestBytes), "\n", 2)[0], "\r")
+	require.Equal(t, requestLine, actualRequestLine, "unsafe raw request line must remain unchanged")
+}
+
+func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
+
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-unique-interactsh"
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Path:   []string{"{{BaseURL}}/?u=http://{{interactsh-url}}/&href=http://{{interactsh-url}}/&action=http://{{interactsh-url}}/&host={{interactsh-url}}"},
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+
+	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
+		ServerURL:           options.InteractshURL,
+		CacheSize:           options.InteractionsCacheSize,
+		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
+		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
+		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,
+		DisableHttpFallback: true,
+	})
+	require.Nil(t, err, "could not create interactsh client")
+
+	inputData, payloads, _ := generator.nextValue()
+	got, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make http request")
+
+	// check if all the interactsh markers are replaced with unique urls
+	require.NotContains(t, got.request.String(), "{{interactsh-url}}", "could not get correct interactsh url")
+	// check the length of returned urls
+	require.Equal(t, len(got.interactshURLs), 4, "could not get correct interactsh url")
+	// check if the interactsh urls are unique
+	require.True(t, areUnique(got.interactshURLs), "interactsh urls are not unique")
+}
+
+func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-self-contained-payload-interactsh"
+	request := &Request{
+		ID:            templateID,
+		Name:          "testing",
+		SelfContained: true,
+		Path:          []string{"http://{{payload}}/callback"},
+		Method:        HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Payloads: map[string]interface{}{
+			"payload": []string{"{{interactsh-url}}"},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	client, err := interactsh.New(&interactsh.Options{
+		ServerURL:           options.InteractshURL,
+		CacheSize:           options.InteractionsCacheSize,
+		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
+		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
+		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,
+		DisableHttpFallback: true,
+	})
+	require.Nil(t, err, "could not create interactsh client")
+	t.Cleanup(func() {
+		client.Close()
+	})
+	executerOpts.Interactsh = client
+
+	err = request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	got, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), ""), inputData, payloads, map[string]interface{}{})
+	require.Nil(t, err, "could not make self-contained http request")
+
+	require.Len(t, got.interactshURLs, 1)
+	require.Equal(t, "http://"+got.interactshURLs[0]+"/callback", got.request.String())
+	require.NotContains(t, got.request.String(), "{{interactsh-url}}")
+}
+
+func TestMakeSelfContainedRequestDoesNotAllocateRuntimeInteractshMarkerFromPayload(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-self-contained-runtime-interactsh"
+	request := &Request{
+		ID:            templateID,
+		Name:          "testing",
+		SelfContained: true,
+		Path:          []string{"http://example.com/callback"},
+		Method:        HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Body:          "{{payload}}",
+		Payloads: map[string]interface{}{
+			"payload": []string{"{{server_value}}"},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	client, err := interactsh.New(&interactsh.Options{
+		ServerURL:           options.InteractshURL,
+		CacheSize:           options.InteractionsCacheSize,
+		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
+		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
+		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,
+		DisableHttpFallback: true,
+	})
+	require.Nil(t, err, "could not create interactsh client")
+	t.Cleanup(func() {
+		client.Close()
+	})
+	executerOpts.Interactsh = client
+
+	err = request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	got, err := generator.Make(
+		context.Background(),
+		contextargs.NewWithInput(context.Background(), ""),
+		inputData,
+		payloads,
+		map[string]interface{}{
+			"server_value": "{{interactsh-url}}",
+		},
+	)
+	require.Nil(t, err, "could not make self-contained http request")
+	body, err := got.request.BodyBytes()
+	require.Nil(t, err, "could not read request body")
+
+	require.Empty(t, got.interactshURLs)
+	require.Equal(t, "{{interactsh-url}}", string(body))
+}
+
+func TestExecuteRequestDoesNotReevaluateGeneratedPayloadMetadata(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http-payload-metadata-data"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	t.Cleanup(server.Close)
+
+	request := &Request{
+		ID:     templateID,
+		Name:   "testing",
+		Path:   []string{server.URL},
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile http request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	input := contextargs.NewWithInput(context.Background(), server.URL)
+	generated, err := generator.Make(context.Background(), input, inputData, payloads, map[string]interface{}{
+		"secret": "leaked-secret",
+	})
+	require.Nil(t, err, "could not make http request")
+	generated.meta = map[string]interface{}{
+		"payload": "{{secret}}",
+	}
+
+	err = request.executeRequest(input, generated, nil, false, func(*output.InternalWrappedEvent) {}, 0)
+
+	require.Nil(t, err, "could not execute http request")
+	require.Equal(t, "{{secret}}", generated.meta["payload"])
+}
+
+// areUnique checks if the elements of string slice are unique
+func areUnique(elements []string) bool {
+	encountered := map[string]bool{}
+	for v := range elements {
+		if encountered[elements[v]] {
+			return false
+		}
+		encountered[elements[v]] = true
+	}
+	return true
+}

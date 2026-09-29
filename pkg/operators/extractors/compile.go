@@ -1,0 +1,99 @@
+package extractors
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"github.com/itchyny/gojq"
+	"github.com/projectdiscovery/govaluate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+)
+
+// CompileExtractors performs the initial setup operation on an extractor
+func (e *Extractor) CompileExtractors() error {
+	// Set up the extractor type
+	computedType, err := toExtractorTypes(e.GetType().String())
+	if err != nil {
+		return fmt.Errorf("unknown extractor type specified: %s", e.Type)
+	}
+	e.extractorType = computedType
+
+	if e.extractorType == RegexExtractor && e.RegexGroup < 0 {
+		return fmt.Errorf("regex extractor group must be >= 0, got %d", e.RegexGroup)
+	}
+
+	var requiredField string
+	var valueCount int
+	switch e.extractorType {
+	case RegexExtractor:
+		requiredField, valueCount = "regex", len(e.Regex)
+	case KValExtractor:
+		requiredField, valueCount = "kval", len(e.KVal)
+	case JSONExtractor:
+		requiredField, valueCount = "json", len(e.JSON)
+	case XPathExtractor:
+		requiredField, valueCount = "xpath", len(e.XPath)
+	case DSLExtractor:
+		requiredField, valueCount = "dsl", len(e.DSL)
+	case LLMExtractor:
+		requiredField, valueCount = "schema", len(e.Schema)
+	}
+	if valueCount == 0 {
+		return fmt.Errorf("%s extractor requires at least one %s value", e.extractorType, requiredField)
+	}
+
+	// Compile the regexes
+	for _, regex := range e.Regex {
+		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
+			e.regexCompiled = append(e.regexCompiled, cached)
+			continue
+		}
+		compiled, err := regexp.Compile(regex)
+		if err != nil {
+			return fmt.Errorf("could not compile regex: %s", regex)
+		}
+		_ = cache.Regex().Set(regex, compiled)
+		e.regexCompiled = append(e.regexCompiled, compiled)
+	}
+	for i, kval := range e.KVal {
+		e.KVal[i] = strings.ToLower(kval)
+	}
+
+	for _, query := range e.JSON {
+		query, err := gojq.Parse(query)
+		if err != nil {
+			return fmt.Errorf("could not parse json: %s", query)
+		}
+		compiled, err := gojq.Compile(query)
+		if err != nil {
+			return fmt.Errorf("could not compile json: %s", query)
+		}
+		e.jsonCompiled = append(e.jsonCompiled, compiled)
+	}
+
+	for _, dslExp := range e.DSL {
+		if cached, err := cache.DSL().GetIFPresent(dslExp); err == nil && cached != nil {
+			e.dslCompiled = append(e.dslCompiled, cached)
+			continue
+		}
+		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(dslExp, dsl.HelperFunctions)
+		if err != nil {
+			return &dsl.CompilationError{DslSignature: dslExp, WrappedError: err}
+		}
+		_ = cache.DSL().Set(dslExp, compiled)
+		e.dslCompiled = append(e.dslCompiled, compiled)
+	}
+
+	if e.CaseInsensitive {
+		if e.GetType() != KValExtractor {
+			return fmt.Errorf("case-insensitive flag is supported only for 'kval' extractors (not '%s')", e.Type)
+		}
+		for i := range e.KVal {
+			e.KVal[i] = strings.ToLower(e.KVal[i])
+		}
+	}
+
+	return nil
+}

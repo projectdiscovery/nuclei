@@ -1,0 +1,23 @@
+id: dns-duration
+
+info:
+  name: DNS Duration
+  author: pdteam
+  severity: info
+
+flow: dns("duration_dns")
+
+dns:
+  - id: duration_dns
+    name: "{{FQDN}}"
+    type: A
+    class: inet
+    recursion: true
+    retries: 3
+    matchers:
+      - type: dsl
+        condition: and
+        dsl:
+          - "duration > 0 && duration < 60"
+          - "duration_dns_duration > 0 && duration_dns_duration < 60"
+          - "duration == duration_dns_duration"

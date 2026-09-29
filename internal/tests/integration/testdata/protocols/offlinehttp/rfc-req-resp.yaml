@@ -1,0 +1,15 @@
+id: rfc-req-resp
+
+info:
+  name: Basic GET Request
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "this is a line containing HTTP/1.1 FOO BAR"

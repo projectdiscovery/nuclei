@@ -1,0 +1,405 @@
+package nuclei
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+
+	"github.com/logrusorgru/aurora/v4"
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/httpx/common/httpx"
+	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
+	"github.com/projectdiscovery/nuclei/v3/internal/runner"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/ratelimit"
+	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
+)
+
+// applyRequiredDefaults to options
+func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
+	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
+	mockoutput.WriteCallback = func(event *output.ResultEvent) {
+		if len(e.resultCallbacks) > 0 {
+			for _, callback := range e.resultCallbacks {
+				if callback != nil {
+					callback(event)
+				}
+			}
+			return
+		}
+
+		sb := strings.Builder{}
+		fmt.Fprintf(&sb, "[%v] ", event.TemplateID)
+
+		if event.Matched != "" {
+			sb.WriteString(event.Matched)
+		} else {
+			sb.WriteString(event.Host)
+		}
+
+		fmt.Println(sb.String())
+	}
+
+	if e.onFailureCallback != nil {
+		mockoutput.FailureCallback = e.onFailureCallback
+	}
+
+	if e.customWriter != nil {
+		e.customWriter = output.NewMultiWriter(e.customWriter, mockoutput)
+	} else {
+		e.customWriter = mockoutput
+	}
+
+	// Inline PDCP upload wiring; mirrors the CLI's setupPDCPUpload without
+	// pulling it into the exported runner surface.
+	if e.opts.ScanID != "" {
+		e.opts.EnableCloudUpload = true
+	}
+	if e.opts.EnableCloudUpload {
+		creds, err := (&pdcpauth.PDCPCredHandler{}).GetCreds()
+		if err != nil {
+			if err != pdcpauth.ErrNoCreds {
+				e.Logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
+			}
+			e.Logger.Warning().Msgf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
+		} else if uploadWriter, err := pdcp.NewUploadWriter(ctx, e.Logger, creds); err != nil {
+			e.Logger.Warning().Msgf("PDCP (%v) Auto-Save Failed: %s", pdcpauth.DashBoardURL, err)
+		} else {
+			if e.opts.ScanID != "" {
+				_ = uploadWriter.SetScanID(e.opts.ScanID)
+			}
+			if e.opts.ScanName != "" {
+				uploadWriter.SetScanName(e.opts.ScanName)
+			}
+			if e.opts.TeamID != "" {
+				uploadWriter.SetTeamID(e.opts.TeamID)
+			}
+			e.customWriter = output.NewMultiWriter(e.customWriter, uploadWriter)
+		}
+	}
+
+	if e.customProgress == nil {
+		e.customProgress = &testutils.MockProgressClient{}
+	}
+
+	if e.hostErrCache == nil && e.opts.ShouldUseHostError() {
+		e.hostErrCache = hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
+	}
+
+	// setup interactsh
+	if e.interactshOpts != nil {
+		e.interactshOpts.Output = e.customWriter
+		e.interactshOpts.Progress = e.customProgress
+	} else {
+		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
+	}
+
+	if e.rateLimiter == nil {
+		if e.opts.RateLimitMinute > 0 {
+			e.opts.RateLimit = e.opts.RateLimitMinute
+			e.opts.RateLimitDuration = time.Minute
+		}
+
+		if e.opts.RateLimit > 0 && e.opts.RateLimitDuration == 0 {
+			e.opts.RateLimitDuration = time.Second
+		}
+		e.rateLimiter = nucleiUtils.GetRateLimiter(ctx, e.opts.RateLimit, e.opts.RateLimitDuration)
+	}
+
+	if e.opts.ExcludeTags == nil {
+		e.opts.ExcludeTags = []string{}
+	}
+
+	e.inputProvider = provider.NewSimpleInputProvider()
+}
+
+func (e *NucleiEngine) loadIgnoreFile() error {
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		e.Logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// .nuclei-ignore blocks templates that should not run by default, by tag
+	// (dos, fuzz, ...) and by path (templates known to have weak matchers, which
+	// would otherwise generate false positives). Both sections are applied, as
+	// the CLI runner does — applying only the tags leaves the `files` section
+	// inert for every SDK consumer.
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
+	e.opts.ExcludedTemplates = append(e.opts.ExcludedTemplates, ignoreFile.Files...)
+
+	return nil
+}
+
+// init
+func (e *NucleiEngine) init(ctx context.Context) error {
+	if err := config.DefaultConfig.InitializationError(); err != nil {
+		return errors.Wrap(err, "initialize nuclei configuration")
+	}
+	// Update logger ref (if it was changed by [WithLogger])
+	// (Logger is already initialized)
+	if e.opts.Logger != e.Logger {
+		e.Logger = e.opts.Logger
+	}
+
+	if e.opts.Verbose {
+		e.Logger.SetMaxLevel(levels.LevelVerbose)
+	} else if e.opts.Debug {
+		e.Logger.SetMaxLevel(levels.LevelDebug)
+	} else if e.opts.Silent {
+		e.Logger.SetMaxLevel(levels.LevelSilent)
+	}
+
+	if err := runner.ValidateOptions(e.opts); err != nil {
+		return err
+	}
+
+	if err := e.loadIgnoreFile(); err != nil {
+		return err
+	}
+
+	if e.opts.Parser != nil {
+		if op, ok := e.opts.Parser.(*templates.Parser); ok {
+			e.parser = op
+		}
+	}
+
+	if e.parser == nil {
+		e.parser = templates.NewParser()
+		e.ownsParser = true
+	}
+	e.compiledParser = e.parser
+	if !e.ownsParser {
+		// Compiled templates retain engine-local ExecutorOptions. Keep their
+		// cache private while the caller-owned parser provides the parsed cache.
+		e.compiledParser = templates.NewParserWithParsedCache(e.parser.Cache())
+		e.compiledParser.ShouldValidate = e.parser.ShouldValidate
+		e.compiledParser.NoStrictSyntax = e.parser.NoStrictSyntax
+	}
+
+	if protocolstate.ShouldInit(e.opts.ExecutionId) {
+		_ = protocolinit.Init(e.opts)
+	}
+
+	if e.opts.ProxyInternal && e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "" {
+		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{}, "")
+		if err != nil {
+			return err
+		}
+		e.httpClient = httpclient
+	}
+
+	e.applyRequiredDefaults(ctx)
+	var err error
+
+	// setup progressbar
+	if e.enableStats {
+		progressInstance, progressErr := progress.NewStatsTicker(e.opts.StatsInterval, e.enableStats, e.opts.StatsJSON, false, e.opts.MetricsPort)
+		if progressErr != nil {
+			return err
+		}
+		e.customProgress = progressInstance
+		e.interactshOpts.Progress = progressInstance
+	}
+
+	if err := reporting.CreateConfigIfNotExists(); err != nil {
+		return err
+	}
+	ropts := e.reportingOpts
+	if ropts == nil {
+		ropts = &reporting.Options{}
+	}
+	if e.rc, err = reporting.New(ropts, "", false); err != nil {
+		return err
+	}
+	e.interactshOpts.IssuesClient = e.rc
+	if e.httpClient != nil {
+		e.interactshOpts.HTTPClient = e.httpClient
+	}
+	if e.interactshClient, err = interactsh.New(e.interactshOpts); err != nil {
+		return err
+	}
+
+	if e.opts.Headless {
+		if engine.MustDisableSandbox() {
+			e.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
+		}
+		browser, err := engine.New(e.opts)
+		if err != nil {
+			return err
+		}
+		e.browserInstance = browser
+	}
+
+	if e.catalog == nil {
+		e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
+	}
+
+	if e.tmpDir == "" {
+		tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*")
+		if err != nil {
+			return err
+		}
+		e.tmpDir = tmpDir
+	}
+
+	e.executerOpts = &protocols.ExecutorOptions{
+		Output:             e.customWriter,
+		Options:            e.opts,
+		Progress:           e.customProgress,
+		Catalog:            e.catalog,
+		IssuesClient:       e.rc,
+		RateLimiter:        e.rateLimiter,
+		Interactsh:         e.interactshClient,
+		Colorizer:          aurora.New(aurora.WithColors(true)),
+		ResumeCfg:          types.NewResumeCfg(),
+		Browser:            e.browserInstance,
+		Parser:             e.compiledParser,
+		DoNotCache:         e.opts.DoNotCacheTemplates,
+		InputHelper:        input.NewHelper(),
+		TemporaryDirectory: e.tmpDir,
+		Logger:             e.opts.Logger,
+	}
+	if e.opts.ShouldUseHostError() && e.hostErrCache != nil {
+		e.executerOpts.HostErrorsCache = e.hostErrCache
+	}
+	if len(e.opts.SecretsFile) > 0 {
+		authTmplStore, err := runner.GetAuthTmplStore(e.opts, e.catalog, e.executerOpts)
+		if err != nil {
+			return errors.Wrap(err, "failed to load dynamic auth templates")
+		}
+		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: e.opts.SecretsFile}
+		authOpts.LazyFetchSecret = runner.GetLazyAuthFetchCallback(&runner.AuthLazyFetchOptions{
+			TemplateStore: authTmplStore,
+			ExecOpts:      e.executerOpts,
+		})
+		// initialize auth provider
+		provider, err := authprovider.NewAuthProvider(authOpts)
+		if err != nil {
+			return errors.Wrap(err, "could not create auth provider")
+		}
+		e.executerOpts.AuthProvider = provider
+	}
+	if e.authprovider != nil {
+		e.executerOpts.AuthProvider = e.authprovider
+	}
+
+	// prefetch secrets to ensure authentication completes before scanning starts
+	if e.executerOpts.AuthProvider != nil {
+		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
+			return errors.Wrap(err, "could not prefetch secrets")
+		}
+	}
+
+	if e.executerOpts.RateLimiter == nil {
+		if e.opts.RateLimitMinute > 0 {
+			e.opts.RateLimit = e.opts.RateLimitMinute
+			e.opts.RateLimitDuration = time.Minute
+		}
+		if e.opts.RateLimit > 0 && e.opts.RateLimitDuration == 0 {
+			e.opts.RateLimitDuration = time.Second
+		}
+		if e.opts.RateLimit == 0 && e.opts.RateLimitDuration == 0 {
+			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(ctx)
+		} else {
+			e.executerOpts.RateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		}
+	}
+
+	// Handle the case where the user passed an existing parser that we can use as a cache
+	if e.opts.Parser != nil {
+		if cachedParser, ok := e.opts.Parser.(*templates.Parser); ok {
+			e.parser = cachedParser
+			e.opts.Parser = cachedParser
+		}
+	}
+
+	// Create a new parser if necessary
+	if e.parser == nil {
+		op := templates.NewParser()
+		e.parser = op
+		e.ownsParser = true
+		e.opts.Parser = op
+		e.executerOpts.Parser = op
+		e.executerOpts.Options.Parser = op
+	}
+
+	e.engine = core.New(e.opts)
+	e.engine.SetExecuterOptions(e.executerOpts)
+
+	httpxOptions := httpx.DefaultOptions
+	httpxOptions.Timeout = 5 * time.Second
+	if client, err := httpx.New(&httpxOptions); err != nil {
+		return err
+	} else {
+		e.httpxClient = nucleiUtils.GetInputLivenessChecker(client)
+	}
+
+	if DefaultConfig.CanCheckForUpdates() {
+		// Only Happens once regardless how many times this function is called
+		// This will update ignore file to filter out templates with weak matchers to avoid false positives
+		// and also upgrade templates to latest version if available
+		latestIgnoreHash, _ := installer.NucleiSDKVersionCheck()
+
+		if err := e.processUpdateCheckResults(); err != nil {
+			return err
+		}
+
+		if DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
+			if err := installer.UpdateIgnoreFile(); err != nil {
+				e.opts.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+type syncOnce struct {
+	sync.Once
+}
+
+var updateCheckInstance = &syncOnce{}
+
+// processUpdateCheckResults processes update check results
+func (e *NucleiEngine) processUpdateCheckResults() error {
+	var err error
+	updateCheckInstance.Do(func() {
+		if e.onUpdateAvailableCallback != nil {
+			e.onUpdateAvailableCallback(config.DefaultConfig.LatestNucleiTemplatesVersion)
+		}
+		tm := installer.TemplateManager{}
+		err = tm.UpdateIfOutdated()
+	})
+	return err
+}

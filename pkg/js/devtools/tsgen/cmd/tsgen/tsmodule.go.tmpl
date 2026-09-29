@@ -1,0 +1,79 @@
+{{- range .}}
+
+{{ if eq .Type "const" -}}
+{{ if .Description }}/** {{ .Description }} */{{- end }}
+export const {{ .Name }} = {{ .Value }};
+{{- else if eq .Type "class" -}}
+/**
+{{- range (splitLines .Description) }}
+ * {{ . }}
+{{- end }}
+ */
+export class {{ .Name }} {
+    {{"\n"}}
+    {{- range $property := .Class.Properties }}
+    {{ if .Description }}
+    /**
+    {{- range (splitLines $property.Description) }}
+    * {{ . }}
+    {{- end }}
+    */
+    {{ end }}
+    public {{ $property.Name }}?: {{ $property.Type }};
+    {{"\n"}}
+    {{- end }}
+    // Constructor of {{ .Name}}
+    {{- if eq (len .Class.Constructor.Parameters) 0 }}
+    constructor() {}
+    {{- else }}
+    constructor(
+        {{- range $index, $param := .Class.Constructor.Parameters }}
+        {{- if $index }}, {{ end }}{{ $param.Name }}: {{ $param.Type }}
+        {{- end }} ) {}
+    {{"\n"}}
+    {{- end }}
+    
+    {{- range $method := .Class.Methods }}
+    /**
+    {{- range (splitLines $method.Description) }}
+    * {{ . }}
+    {{- end }}
+    */
+    public {{ $method.Name }}({{ range $index, $element := $method.Parameters }}{{ if $index }}, {{ end }}{{ $element.Name }}: {{ $element.Type }}{{ end }}): {{ $method.Returns }} {
+        {{ $method.ReturnStmt }}
+    }
+    {{"\n"}}
+    {{- end }}
+}
+
+{{ else if eq .Type "function" -}}
+/**
+{{- range (splitLines .Description) }}
+ * {{ . }}
+{{- end }}
+ */
+export function {{ .Name }}({{ range $index, $element := .Function.Parameters }}{{ if $index }}, {{ end }}{{ $element.Name }}: {{ $element.Type }}{{ end }}): {{ .Function.Returns }} {
+    {{ .Function.ReturnStmt }}
+}
+
+{{ else if eq .Type "interface" -}}
+/**
+{{- range (splitLines .Description) }}
+ * {{ . }}
+{{- end }}
+ */
+export interface {{ .Name }} {
+    {{- range $property := .Object.Properties }}
+    {{ if .Description }}
+    /**
+    {{- range (splitLines .Description) }}
+    * {{ . }}
+    {{- end }}
+    */
+    {{ end }}
+    {{ $property.Name }}?: {{ $property.Type }},
+    {{- end }}
+}
+
+{{ end }}
+{{- end }}

@@ -1,0 +1,4 @@
+scanme.sh
+scanme.sh?a=1
+scanme.sh?a=2
+scanme.sh?a=3

@@ -1,0 +1,45 @@
+id: mysql-fingerprint
+
+info:
+  name: MySQL Fingerprint Test
+  author: pdteam
+  severity: info
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host, Port)
+    code: |
+      const mysql = require('nuclei/mysql');
+      const client = new mysql.MySQLClient();
+      const isMySQL = client.IsMySQL(Host, Port);
+      const info = client.FingerprintMySQL(Host, Port);
+      const ok = isMySQL && info && info.ProtocolVersion === 10 && info.Version && info.Version.length > 0 && info.Salt && info.Salt.length > 0 && info.CapabilityFlags > 0 && info.Debug && info.Debug.PacketType === 'handshake';
+      Export({
+        ok: ok,
+        isMySQL: isMySQL,
+        packetType: info.Debug.PacketType,
+        protocolVersion: info.ProtocolVersion,
+        version: info.Version,
+        threadId: info.ThreadID,
+        authPluginName: info.AuthPluginName,
+        capabilityFlags: info.CapabilityFlags,
+        capabilities: info.Capabilities,
+        status: info.Status,
+        salt: info.Salt,
+      });
+    args:
+      Host: "{{Host}}"
+      Port: "3306"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+          - "ok == true"
+          - "isMySQL == true"
+          - 'packetType == "handshake"'
+          - "protocolVersion == 10"
+          - "len(version) > 0"
+          - "capabilityFlags > 0"
+          - "len(salt) > 0"
+          - "threadId > 0"

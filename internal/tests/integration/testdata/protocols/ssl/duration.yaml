@@ -1,0 +1,20 @@
+id: ssl-duration
+
+info:
+  name: SSL Duration
+  author: pdteam
+  severity: info
+
+flow: ssl("duration_ssl")
+
+ssl:
+  - id: duration_ssl
+    address: "{{Host}}:{{Port}}"
+    matchers:
+      - type: dsl
+        condition: and
+        dsl:
+          - "probe_status == true"
+          - "duration > 0 && duration < 60"
+          - "duration_ssl_duration > 0 && duration_ssl_duration < 60"
+          - "duration == duration_ssl_duration"

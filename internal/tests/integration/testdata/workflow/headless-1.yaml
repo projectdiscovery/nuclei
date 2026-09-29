@@ -1,0 +1,15 @@
+id: headless-1
+info:
+  name: Headless 1
+  author: pdteam
+  severity: info
+  tags: headless
+
+headless:
+    - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}/headless1"
+        
+      - action: waitload
+  

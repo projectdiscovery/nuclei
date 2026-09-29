@@ -1,0 +1,47 @@
+id: javascript-goexec-samba-ntlm
+
+info:
+  name: JavaScript GoExec NTLM Auth Roundtrip
+  author: pdteam
+  severity: info
+
+# This template exercises NTLM authentication end-to-end against a Samba
+# container. SMB negotiate, NTLMSSP session setup and tree connect to IPC$
+# all succeed (Samba accepts the credentials), then the SCMR CreateServiceW
+# call fails because Samba does not implement remote service creation. The
+# adapter must still return a structured Result with ok=false and the
+# password must NOT leak into the redacted output.
+javascript:
+  - code: |
+      const scmr = require("nuclei/scmr");
+      const auth = scmr.Auth.password("auditor", "samba-ntlm-secret");
+      const client = new scmr.Client(Host, auth);
+      const result = client.create("NucleiTestSvc", "C:\\Windows\\System32\\cmd.exe", "/c whoami", {
+        timeout: 15,
+        output: false,
+        endpoint: "ncacn_np:[svcctl]",
+      });
+      Export(to_json(result));
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - success == true
+      - type: word
+        part: response
+        condition: and
+        words:
+          - "module"
+          - "scmr"
+          - "method"
+          - "create"
+          - "ok"
+          - "false"
+          - "duration_ms"
+      - type: word
+        part: response
+        negative: true
+        words:
+          - "samba-ntlm-secret"

@@ -1,0 +1,26 @@
+GET / HTTP/1.1
+Host: pastebin.com
+User-Agent: curl/7.79.1
+Accept: */*
+Connection: close
+
+HTTP/1.1 200 OK
+Date: Tue, 21 Jun 2022 09:32:01 GMT
+Content-Type: text/plain; charset=utf-8
+Connection: close
+x-frame-options: DENY
+x-content-type-options: nosniff
+x-xss-protection: 1;mode=block
+cache-control: public, max-age=1801
+CF-Cache-Status: HIT
+Age: 1585
+Last-Modified: Tue, 21 Jun 2022 09:05:36 GMT
+Expect-CT: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+Server: cloudflare
+CF-RAY: 71ebbc0a7ea83b8b-CDG
+
+54
+line1
+this is a line containing HTTP/1.1 FOO BAR
+line3
+0

@@ -1,0 +1,28 @@
+id: multi-ports
+
+info:
+  name: Multi Ports - Detection
+  author: pdteam
+  severity: info
+  description: |
+    Multi Ports template for testing
+  metadata:
+    max-request: 1
+  tags: js,detect,multi-ports,enum,network
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host,Port);
+    code: |
+      var m = require("nuclei/ssh");
+      var c = m.SSHClient();
+      var response = c.ConnectSSHInfoMode(Host, Port);
+      Export(response);
+    args:
+      Host: "{{Host}}"
+      Port: "2222,22" # Port 22 should match
+
+    extractors:
+      - type: json
+        json:
+          - '.UserAuth'

@@ -1,0 +1,34 @@
+id: response-data-literal-reuse
+
+info:
+  name: Response data literal reuse
+  author: dwisiswant0
+  severity: info
+  description: |
+    Make sure response-derived {{...}} content stays literal when reused in a
+    later request.
+  tags: test,http
+
+http:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+    extractors:
+      - type: regex
+        name: extracted_body
+        part: body
+        regex:
+          - '(?s)(.*)'
+        internal: true
+
+  - raw:
+      - |
+        GET /echo?x={{extracted_body}} HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers:
+      - type: status
+        status:
+          - 200

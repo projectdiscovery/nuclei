@@ -1,0 +1,7 @@
+id=template-path-vars
+name=Template path vars
+author=nuclei-fuzzer
+severity=high
+method=PUT
+path=/admin/{{id}}
+matcher=Example Domain

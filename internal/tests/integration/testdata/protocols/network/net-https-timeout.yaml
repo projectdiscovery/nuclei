@@ -1,0 +1,25 @@
+id: net-https-timeout
+
+info:
+  name: Example Network template which times out
+  author: pdteam
+  severity: high
+  description: Example Network template to send HTTPS request which times out
+
+
+tcp:
+  - host: 
+      - "tls://{{Hostname}}"
+    port: 443
+    inputs:
+      # noticable difference between this and net-https.yaml is that here we don't send the Connection: close header
+      # and hence connection will remain open until server closes it. This can be a DOS vector in nuclei
+      # as it waits for server to close the connection. now we have set a default timeout of 5 seconds and if server responds but doesn't close the connection
+      # then nuclei will close connection but doesn't fail the request since we already have response data from server
+      # this feature is only required for `read-all: true` to work properly
+      - data: "GET / HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\n"
+    read-all: true
+    extractors:
+    - type: dsl
+      dsl:
+        - "len(data)"

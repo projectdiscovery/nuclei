@@ -1,0 +1,17 @@
+id: dns-value-sharing-template1
+
+info:
+  name: dns-value-sharing-template1
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}"
+    type: A
+
+    extractors:
+      - type: regex
+        name: extracted
+        group: 1
+        regex:
+          - "IN\tA\t(.+)"

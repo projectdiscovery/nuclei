@@ -1,0 +1,11 @@
+id: workflow-capability-gates
+
+info:
+  name: Workflow Capability Gates
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: tests/workflow-file-template.yaml
+    subtemplates:
+      - template: tests/workflow-self-contained-template.yaml

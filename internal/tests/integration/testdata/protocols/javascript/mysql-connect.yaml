@@ -1,0 +1,23 @@
+id: mysql-connect
+
+info:
+  name: MySQL Connect Test
+  author: pdteam
+  severity: high
+
+javascript:
+  - pre-condition: |
+      isPortOpen(Host, Port)
+    code: |
+      const mysql = require('nuclei/mysql');
+      const client = new mysql.MySQLClient;
+      success = client.Connect(Host, Port, User, Pass);
+    args:
+      Host: "{{Host}}"
+      Port: "3306"
+      User: "root"
+      Pass: "secret"
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
