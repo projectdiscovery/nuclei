@@ -43,8 +43,8 @@ func TestResultEventOmitsLLMWhenAbsent(t *testing.T) {
 	require.Nil(t, event.LLM)
 }
 
-// Recording creates the map on first use, so a protocol carries audits without
-// having to seed its own event first.
+// Recording creates the map on first use as a fallback when Execute did not
+// seed one. Prefer the Execute seed when dynamic extractors may MergeMaps.
 func TestRecordLLMAuditCreatesTheMapOnFirstUse(t *testing.T) {
 	data := map[string]interface{}{}
 	matcher := &matchers.Matcher{Name: "stack-trace"}
@@ -56,4 +56,18 @@ func TestRecordLLMAuditCreatesTheMapOnFirstUse(t *testing.T) {
 	require.NotPanics(t, func() {
 		RecordLLMAudit(nil, matcher, audit)
 	})
+}
+
+func TestAttachLLMAuditsReadsSeedSharedAcrossMerge(t *testing.T) {
+	audit := &matchers.LLMAudit{Verdict: "yes"}
+	event := map[string]interface{}{LLMAuditKey: make(map[string]*matchers.LLMAudit)}
+	merged := make(map[string]interface{}, len(event)+1)
+	for k, v := range event {
+		merged[k] = v
+	}
+	merged["token"] = "from-extractor"
+
+	RecordLLMAudit(merged, &matchers.Matcher{Name: "stack-trace"}, audit)
+	results := AttachLLMAudits([]*output.ResultEvent{{MatcherName: "stack-trace"}}, event)
+	require.Same(t, audit, results[0].LLM)
 }

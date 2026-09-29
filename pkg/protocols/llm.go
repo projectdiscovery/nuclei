@@ -14,7 +14,7 @@ import (
 
 // LLMAuditKey holds the per-response llm audits inside the event data. It is
 // read back when the result event is built and never copied into output.
-const LLMAuditKey = "__llm_audit"
+const LLMAuditKey = matchers.AuditEventKey
 
 // targetValueKeys are the target-derived values an llm prompt may interpolate.
 // They are the keys shared by every protocol's event map; a protocol that does
@@ -150,9 +150,9 @@ func BindLLMOperators(compiled *operators.Operators, e *ExecutorOptions) bool {
 }
 
 // RecordLLMAudit stores an audit under the matcher's name, so a response with
-// several llm matchers keeps them apart. It creates the map on first use, which
-// is what lets every protocol carry audits without each one seeding its own
-// event: the matcher writes into the same event the result is later built from.
+// several llm matchers keeps them apart. It creates the map on first use as a
+// fallback; operators.Execute seeds it before MergeMaps so the caller's
+// InternalEvent still sees audits when dynamic extractors ran.
 func RecordLLMAudit(data map[string]interface{}, matcher *matchers.Matcher, audit *matchers.LLMAudit) {
 	if data == nil {
 		return
