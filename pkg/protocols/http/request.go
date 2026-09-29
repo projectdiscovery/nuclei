@@ -73,9 +73,27 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
 }
 
+// hostBackoffKey is the identity shared by the pre-request wait and the
+// post-response observation. It keeps the scheme, or an explicit port, so
+// NormalizeHostPort does not record an https target under port 80.
+func hostBackoffKey(req *generatedRequest, input *contextargs.Context) string {
+	if req != nil {
+		if key := req.URL(); key != "" {
+			return key
+		}
+		if req.request != nil && req.request.Request != nil && req.request.Request.URL != nil {
+			return req.request.Request.URL.String()
+		}
+	}
+	if input != nil && input.MetaInput != nil {
+		return input.MetaInput.Input
+	}
+	return ""
+}
+
 // observeHostBackoff reports one request outcome to the per-host governor.
-func (request *Request) observeHostBackoff(hostname string, resp *http.Response, err error) {
-	if request.options.HostBackoff == nil {
+func (request *Request) observeHostBackoff(host string, resp *http.Response, err error) {
+	if request.options == nil || request.options.HostBackoff == nil {
 		return
 	}
 	statusCode := 0
@@ -84,14 +102,22 @@ func (request *Request) observeHostBackoff(hostname string, resp *http.Response,
 		statusCode = resp.StatusCode
 		retryAfter = hostbackoff.RetryAfter(resp.Header.Get("Retry-After"))
 	}
-	request.options.HostBackoff.Observe(httpclientpool.NormalizeHostPort(hostname), statusCode, retryAfter, err)
+	request.options.HostBackoff.Observe(httpclientpool.NormalizeHostPort(host), statusCode, retryAfter, err)
+}
+
+// waitHostBackoff pauses for the delay this host has already earned.
+func (request *Request) waitHostBackoff(ctx context.Context, host string) error {
+	if request.options == nil || request.options.HostBackoff == nil {
+		return nil
+	}
+	return request.options.HostBackoff.Wait(ctx, httpclientpool.NormalizeHostPort(host))
 }
 
 // rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global.
 // It first honours any backoff the host earned by signalling it is overloaded,
 // so a blocking target is paced regardless of which limiter is in play.
 func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
-	if err := request.options.HostBackoff.Wait(ctx, httpclientpool.NormalizeHostPort(hostname)); err != nil {
+	if err := request.waitHostBackoff(ctx, hostname); err != nil {
 		return err
 	}
 	if request.options.Options.PerHostRateLimit && hostname != "" {
@@ -204,6 +230,13 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 				// stop sending more requests condition is met
 				return
 			}
+			if err := request.waitHostBackoff(requestInput.Context(), hostBackoffKey(httpRequest, requestInput)); err != nil {
+				select {
+				case <-spmHandler.Done():
+				case spmHandler.ResultChan <- err:
+				}
+				return
+			}
 
 			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
@@ -293,15 +326,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					spmHandler.Release()
 					continue
 				}
-				// Extract hostname for per-host rate limiting (use full URL - normalization happens in rateLimitTake)
-				hostname := t.updatedInput.MetaInput.Input
-				if t.req != nil && t.req.URL() != "" {
-					hostname = t.req.URL()
-				} else if t.req != nil && t.req.request != nil && t.req.request.Request != nil && t.req.request.Request.URL != nil {
-					// Extract from request URL if available
-					hostname = t.req.request.Request.URL.String()
-				}
-				if err := request.rateLimitTake(t.updatedInput.Context(), hostname); err != nil {
+				// Full URL, so https and an explicit port stay on the same key the observation uses.
+				if err := request.rateLimitTake(t.updatedInput.Context(), hostBackoffKey(t.req, t.updatedInput)); err != nil {
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
@@ -527,6 +553,13 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 				// skip if first match is found
 				return
 			}
+			if err := request.waitHostBackoff(requestInput.Context(), hostBackoffKey(httpRequest, requestInput)); err != nil {
+				select {
+				case <-spmHandler.Done():
+				case spmHandler.ResultChan <- err:
+				}
+				return
+			}
 			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
@@ -595,13 +628,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
-			// Extract hostname for per-host rate limiting (use generated request URL - normalization happens in rateLimitTake)
-			hostname := input.MetaInput.Input
-			if generatedHttpRequest.URL() != "" {
-				// Use the generated URL directly - the normalization function will extract host:port correctly
-				hostname = generatedHttpRequest.URL()
-			}
-			if err := request.rateLimitTake(input.Context(), hostname); err != nil {
+			// Full URL, so https and an explicit port stay on the same key the observation uses.
+			if err := request.rateLimitTake(input.Context(), hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return true, err
 			}
 
@@ -724,6 +752,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		processEvent(event)
 	}
 
+	// Captured before auth, scheme correction, or the error path can rewrite
+	// the URL. The caller waited on this same key.
+	backoffKey := hostBackoffKey(generatedRequest, input)
+
 	request.setCustomHeaders(generatedRequest)
 
 	var (
@@ -800,6 +832,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var formedURL string
 	var hostname string
+	var sent bool
 	timeStart := time.Now()
 	if generatedRequest.original.Pipeline {
 		// if request is a pipeline request, use the pipelined client
@@ -809,8 +842,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				hostname = parsed.Host
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
+			sent = true
 		} else if generatedRequest.request != nil {
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
+			sent = true
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
 		// if request is a unsafe request, use the rawhttp client
@@ -854,6 +889,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			Body:    io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)),
 			Options: &options,
 		})
+		sent = true
 	} else {
 		//** For Normal requests **//
 		// Use the dial target (URL.Host) rather than the optional Host-header
@@ -923,6 +959,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 
 			resp, err = httpclient.Do(generatedRequest.request)
+			sent = true
 
 			// If we forced http->https from a previous detection and the corrected
 			// request failed (e.g. a false positive where the port actually speaks
@@ -936,6 +973,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				resp, err = httpclient.Do(generatedRequest.request)
 			}
 		}
+	}
+	// A project-file hit never sets sent, so a stored response cannot move the delay.
+	// Record before dump or the dialer lookup can return and drop the outcome.
+	if sent {
+		request.observeHostBackoff(backoffKey, resp, err)
 	}
 	// use request url as matched url if empty
 	if formedURL == "" {
@@ -970,11 +1012,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if dialers == nil {
 		return fmt.Errorf("dialers not found for execution id %s", request.options.Options.ExecutionId)
 	}
-
-	// Feed the outcome to the backoff governor before the error path rewrites
-	// hostname: a 429, a run of 403s or a transport failure is the host asking
-	// for less traffic, and the next request to it should be paced.
-	request.observeHostBackoff(hostname, resp, err)
 
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.

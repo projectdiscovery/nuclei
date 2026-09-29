@@ -20,6 +20,8 @@ import (
 	"context"
 	"math"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -145,16 +147,19 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 
 	if statusCode == http.StatusForbidden {
 		state.forbidden++
-	} else {
+	} else if healthyStatus(statusCode) {
 		state.forbidden = 0
 	}
 
 	if !g.isBlocking(statusCode, err, state) {
-		// Healthy: decay towards zero. Below the first step there is nothing
-		// left to wait for, so drop it entirely rather than trickle forever.
-		state.delay = time.Duration(float64(state.delay) * g.cfg.Decay)
-		if state.delay < g.cfg.Step {
-			state.delay = 0
+		// Only a response that actually served (2xx/3xx) is evidence the host
+		// recovered. A 404 or 500 is what most templates get back, and treating
+		// it as healthy would wipe the delay on the next probe.
+		if healthyStatus(statusCode) {
+			state.delay = time.Duration(float64(state.delay) * g.cfg.Decay)
+			if state.delay < g.cfg.Step {
+				state.delay = 0
+			}
 		}
 		return
 	}
@@ -190,17 +195,24 @@ func (g *Governor) isBlocking(statusCode int, err error, state *hostState) bool 
 	return false
 }
 
-// RetryAfter parses a Retry-After header, in either its seconds or HTTP-date
-// form. It returns zero when the header is absent or unparsable, and never a
-// negative wait for a date already in the past.
+// healthyStatus reports whether the host served a normal response. Template
+// misses and server errors are not recovery.
+func healthyStatus(statusCode int) bool {
+	return statusCode >= http.StatusOK && statusCode < http.StatusBadRequest
+}
+
+// RetryAfter parses a Retry-After header, in either its delay-seconds or
+// HTTP-date form. Delay-seconds is a non-negative decimal integer (RFC 9110);
+// fractional and compound duration strings are rejected. A digit string that
+// does not fit in a Duration saturates instead of being ignored. The result
+// is zero when the header is absent or unparsable, and never a negative wait
+// for a date already in the past.
 func RetryAfter(header string) time.Duration {
+	header = strings.TrimSpace(header)
 	if header == "" {
 		return 0
 	}
-	if seconds, err := time.ParseDuration(header + "s"); err == nil {
-		if seconds < 0 {
-			return 0
-		}
+	if seconds, ok := delaySeconds(header); ok {
 		return seconds
 	}
 	if when, err := http.ParseTime(header); err == nil {
@@ -209,4 +221,24 @@ func RetryAfter(header string) time.Duration {
 		}
 	}
 	return 0
+}
+
+// delaySeconds parses a Retry-After delay-seconds value. The boolean is false
+// when header is not a decimal integer.
+func delaySeconds(header string) (time.Duration, bool) {
+	if header == "" {
+		return 0, false
+	}
+	for i := 0; i < len(header); i++ {
+		if header[i] < '0' || header[i] > '9' {
+			return 0, false
+		}
+	}
+	const maxDuration = time.Duration(1<<63 - 1)
+	const maxSeconds = uint64(maxDuration / time.Second)
+	seconds, err := strconv.ParseUint(header, 10, 64)
+	if err != nil || seconds > maxSeconds {
+		return maxDuration, true
+	}
+	return time.Duration(seconds) * time.Second, true
 }

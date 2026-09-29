@@ -132,6 +132,7 @@ func TestNilGovernorIsInert(t *testing.T) {
 
 func TestRetryAfterParsing(t *testing.T) {
 	require.Equal(t, 5*time.Second, RetryAfter("5"))
+	require.Equal(t, 5*time.Second, RetryAfter(" 5 "))
 	require.Zero(t, RetryAfter(""))
 	require.Zero(t, RetryAfter("not-a-number"))
 	require.Zero(t, RetryAfter("-3"), "a negative wait is meaningless")
@@ -140,4 +141,47 @@ func TestRetryAfterParsing(t *testing.T) {
 	future := RetryAfter(time.Now().Add(30 * time.Second).UTC().Format(http.TimeFormat))
 	require.Greater(t, future, 25*time.Second)
 	require.LessOrEqual(t, future, 30*time.Second)
+}
+
+// The previous parser appended "s" and called time.ParseDuration, which accepts
+// fractional seconds and Go duration strings, and returns an error (then zero)
+// when the integer does not fit.
+func TestRetryAfterRejectsDurationSyntax(t *testing.T) {
+	fractional, err := time.ParseDuration("1.5s")
+	require.NoError(t, err)
+	require.Equal(t, 1500*time.Millisecond, fractional)
+	require.Zero(t, RetryAfter("1.5"))
+
+	compound, err := time.ParseDuration("1m3s")
+	require.NoError(t, err)
+	require.Equal(t, 63*time.Second, compound)
+	require.Zero(t, RetryAfter("1m3"))
+
+	_, err = time.ParseDuration("999999999999999999999s")
+	require.Error(t, err)
+	require.Equal(t, time.Duration(1<<63-1), RetryAfter("999999999999999999999"))
+}
+
+func TestNotFoundDoesNotClearBackoff(t *testing.T) {
+	g := New(Config{Step: 100 * time.Millisecond, Decay: 0.5})
+	g.Observe("acme.test", http.StatusTooManyRequests, 0, nil)
+	g.Observe("acme.test", http.StatusNotFound, 0, nil)
+	require.Equal(t, 100*time.Millisecond, g.Delay("acme.test"))
+
+	g.Observe("acme.test", http.StatusInternalServerError, 0, nil)
+	require.Equal(t, 100*time.Millisecond, g.Delay("acme.test"))
+
+	g.Observe("acme.test", http.StatusOK, 0, nil)
+	require.Zero(t, g.Delay("acme.test"))
+}
+
+func TestForbiddenStreakSurvivesAMiss(t *testing.T) {
+	g := New(Config{Step: 100 * time.Millisecond, ForbiddenStreak: 3})
+	g.Observe("acme.test", http.StatusForbidden, 0, nil)
+	g.Observe("acme.test", http.StatusForbidden, 0, nil)
+	g.Observe("acme.test", http.StatusNotFound, 0, nil)
+	require.Zero(t, g.Delay("acme.test"))
+
+	g.Observe("acme.test", http.StatusForbidden, 0, nil)
+	require.Equal(t, 100*time.Millisecond, g.Delay("acme.test"))
 }
