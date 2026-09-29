@@ -474,17 +474,20 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
 	}
+	probeID := request.GetRequestProbeID(probeIndex)
 
 	var event *output.InternalWrappedEvent
 	if len(interactshURLs) == 0 {
 		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(payloads, outputEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
 			wrappedEvent.RequestProbeIndex = probeIndex
+			wrappedEvent.RequestProbeID = probeID
 		})
 		event.RequestProbeIndex = probeIndex
+		event.RequestProbeID = probeID
 		callback(event)
 	} else if request.options.Interactsh != nil {
-		event = &output.InternalWrappedEvent{InternalEvent: outputEvent, RequestProbeIndex: probeIndex}
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent, RequestProbeIndex: probeIndex, RequestProbeID: probeID}
 		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,

@@ -115,6 +115,19 @@ http:
 
 	require.Equal(t, want, memberIdentitiesOf(first), "each member keeps its own request identity inside the cluster")
 	require.Equal(t, memberIdentitiesOf(first), memberIdentitiesOf(second), "clustered identity must be stable across runs")
+	probeIDs := func(results []*output.ResultEvent) map[string]string {
+		identities := make(map[string]string, len(results))
+		for _, result := range results {
+			parsed, err := urlutil.Parse(result.Matched)
+			require.NoError(t, err)
+			identities[result.TemplateID+"|"+parsed.Path] = result.RequestProbeID
+		}
+		return identities
+	}
+	firstProbeIDs := probeIDs(first)
+	require.Equal(t, firstProbeIDs, probeIDs(second))
+	require.NotEqual(t, firstProbeIDs["member-identity-explicit|/x"], firstProbeIDs["member-identity-explicit|/y"])
+	require.NotEqual(t, firstProbeIDs["member-identity-explicit|/x"], firstProbeIDs["member-identity-positional|/x"])
 
 	for _, result := range first {
 		encoded, err := json.Marshal(result)
@@ -122,6 +135,8 @@ http:
 		require.Contains(t, string(encoded), `"template-id":"`+result.TemplateID+`"`)
 		require.Contains(t, string(encoded), `"request-id":"`+result.RequestID+`"`)
 		require.Contains(t, string(encoded), `"request-block-id":"`+result.RequestBlockID+`"`)
+		require.Contains(t, string(encoded), `"request-probe-id":"`+result.RequestProbeID+`"`)
+		requireRuntimeStructuralRequestProbeID(t, "http", result.RequestProbeID)
 		require.NotContains(t, string(encoded), `"template-id":"cluster-`, "cluster id must not leak into member results")
 		switch result.TemplateID {
 		case "member-identity-explicit":
@@ -187,10 +202,12 @@ http:
 		require.Equal(t, "offline-identity", result.TemplateID)
 		require.Equal(t, "offline-http", result.Type)
 		require.Zero(t, result.RequestProbeIndex, "offline matching replays no template probe")
+		require.Empty(t, result.RequestProbeID, "offline matching replays no template probe")
 		encoded, err := json.Marshal(result)
 		require.NoError(t, err)
 		require.Contains(t, string(encoded), `"request-id":"`+result.RequestID+`"`)
 		require.NotContains(t, string(encoded), "request-probe-index", "unset probe index must stay out of legacy-shaped output")
+		require.NotContains(t, string(encoded), "request-probe-id", "unset probe identity must stay out of legacy-shaped output")
 		got = append(got, result.RequestID)
 		if result.RequestID == "home" {
 			require.Equal(t, "v1:http:explicit:home", result.RequestBlockID)
@@ -202,7 +219,7 @@ http:
 	require.Equal(t, []string{"home", "http_2"}, got)
 }
 
-func TestRawRequestsSharingRequestLineNeedProbeIndex(t *testing.T) {
+func TestRawRequestsSharingRequestLineHaveStableProbeIdentity(t *testing.T) {
 	server := newOKServer(t)
 	const source = `id: raw-identity
 info:
@@ -246,9 +263,11 @@ http:
 	require.Equal(t, results[0].Matched, results[1].Matched, "matched url cannot tell the raw probes apart")
 	probes := []int{results[0].RequestProbeIndex, results[1].RequestProbeIndex}
 	sort.Ints(probes)
-	require.Equal(t, []int{1, 2}, probes, "probe index is the only field separating the raw probes")
+	require.Equal(t, []int{1, 2}, probes)
+	require.NotEqual(t, results[0].RequestProbeID, results[1].RequestProbeID, "the full raw probe definition must separate requests sharing a URL")
 	for _, result := range results {
 		require.Equal(t, "http_1", result.RequestID)
+		requireRuntimeStructuralRequestProbeID(t, "http", result.RequestProbeID)
 	}
 }
 
@@ -312,12 +331,15 @@ http:
 	probes := []int{results[0].RequestProbeIndex, results[1].RequestProbeIndex}
 	sort.Ints(probes)
 	require.Equal(t, []int{1, 2}, probes)
+	probeIDs := []string{results[0].RequestProbeID, results[1].RequestProbeID}
+	require.NotEqual(t, probeIDs[0], probeIDs[1])
 	for _, result := range results {
 		require.Equal(t, "global-identity", result.TemplateID)
 		require.Equal(t, "passive", result.RequestID)
 		require.Equal(t, "v1:http:explicit:passive", result.RequestBlockID)
 		require.True(t, result.GlobalMatchers)
 		require.Equal(t, "/login", result.ReqURLPattern)
+		requireRuntimeStructuralRequestProbeID(t, "http", result.RequestProbeID)
 	}
 }
 

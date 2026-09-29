@@ -112,6 +112,10 @@ http:
 	require.Equal(t, want, identitiesOf(t, first), "payload iteration must not change the static path ordinal")
 	require.Equal(t, identitiesOf(t, first), identitiesOf(t, second), "identity must be stable across runs")
 	require.NotEqual(t, first[0].Matched, second[0].Matched, "runtime nonce must vary while identity stays fixed")
+	firstProbeIDs := probeIDsByMatchedPath(t, first)
+	require.Equal(t, firstProbeIDs, probeIDsByMatchedPath(t, second))
+	require.NotEqual(t, firstProbeIDs["/a"], firstProbeIDs["/b"])
+	require.NotEmpty(t, firstProbeIDs["/c"])
 }
 
 func TestHTTPSingleBlockWithoutIDUsesPositionalIdentity(t *testing.T) {
@@ -138,7 +142,9 @@ http:
 	require.NoError(t, err)
 	require.Contains(t, string(encoded), `"request-id":"http_1"`)
 	require.Contains(t, string(encoded), `"request-probe-index":1`)
+	require.Contains(t, string(encoded), `"request-probe-id":"`+results[0].RequestProbeID+`"`)
 	require.Contains(t, string(encoded), `"template-id":"request-identity-http-single"`)
+	requireRuntimeStructuralRequestProbeID(t, "http", results[0].RequestProbeID)
 }
 
 func TestHTTPDuplicateExplicitIDsCompileWithStructuralIdentity(t *testing.T) {
@@ -174,6 +180,7 @@ http:
 	requireRuntimeStructuralRequestBlockID(t, "http", results[0].RequestBlockID)
 	requireRuntimeStructuralRequestBlockID(t, "http", results[1].RequestBlockID)
 	require.NotEqual(t, results[0].RequestBlockID, results[1].RequestBlockID)
+	require.NotEqual(t, results[0].RequestProbeID, results[1].RequestProbeID)
 }
 
 func TestPreprocessedRequestBlockIDStableAcrossParses(t *testing.T) {
@@ -207,7 +214,9 @@ http:
 	require.NotEqual(t, first.RequestsHTTP[0].Path, second.RequestsHTTP[0].Path)
 	require.NotEqual(t, first.RequestsHTTP[0].Body, second.RequestsHTTP[0].Body)
 	require.Equal(t, first.RequestsHTTP[0].RequestBlockID, second.RequestsHTTP[0].RequestBlockID)
+	require.Equal(t, first.RequestsHTTP[0].RequestProbeIDs, second.RequestsHTTP[0].RequestProbeIDs)
 	requireRuntimeStructuralRequestBlockID(t, "http", first.RequestsHTTP[0].RequestBlockID)
+	requireRuntimeStructuralRequestProbeID(t, "http", first.RequestsHTTP[0].RequestProbeIDs[0])
 }
 
 func TestFlowResultRequestIdentityKeepsFlowSemantics(t *testing.T) {
@@ -243,6 +252,9 @@ http:
 	requireRuntimeStructuralRequestBlockID(t, "http", results[0].RequestBlockID)
 	requireRuntimeStructuralRequestBlockID(t, "http", results[1].RequestBlockID)
 	require.NotEqual(t, results[0].RequestBlockID, results[1].RequestBlockID)
+	for _, result := range results {
+		requireRuntimeStructuralRequestProbeID(t, "http", result.RequestProbeID)
+	}
 }
 
 func startLineServer(t *testing.T, reply string) string {
@@ -301,8 +313,19 @@ tcp:
 		secondAddress: {requestID: "tcp_1", probeIndex: 2},
 	}
 
-	require.Equal(t, want, byHost(executeTemplateSource(t, source, firstAddress)))
-	require.Equal(t, want, byHost(executeTemplateSource(t, source, firstAddress)))
+	first := executeTemplateSource(t, source, firstAddress)
+	second := executeTemplateSource(t, source, firstAddress)
+	require.Equal(t, want, byHost(first))
+	require.Equal(t, want, byHost(second))
+	firstProbeIDs := map[string]string{}
+	for _, result := range first {
+		firstProbeIDs[result.Matched] = result.RequestProbeID
+		requireRuntimeStructuralRequestProbeID(t, "tcp", result.RequestProbeID)
+	}
+	for _, result := range second {
+		require.Equal(t, firstProbeIDs[result.Matched], result.RequestProbeID)
+	}
+	require.NotEqual(t, firstProbeIDs[firstAddress], firstProbeIDs[secondAddress])
 }
 
 func TestSSLSiblingRequestBlocksHaveDistinctIdentity(t *testing.T) {
@@ -371,4 +394,29 @@ tcp:
 		got[result.RequestID] = result.RequestProbeIndex
 	}
 	require.Equal(t, map[string]int{"http_1": 1, "tcp_1": 1}, got)
+	for _, result := range results {
+		require.NotEmpty(t, result.RequestProbeID)
+	}
+}
+
+func probeIDsByMatchedPath(t *testing.T, results []*output.ResultEvent) map[string]string {
+	t.Helper()
+	identities := make(map[string]string)
+	for _, result := range results {
+		parsed, err := url.Parse(result.Matched)
+		require.NoError(t, err)
+		if previous := identities[parsed.Path]; previous != "" {
+			require.Equal(t, previous, result.RequestProbeID)
+		}
+		identities[parsed.Path] = result.RequestProbeID
+		requireRuntimeStructuralRequestProbeID(t, result.Type, result.RequestProbeID)
+	}
+	return identities
+}
+
+func requireRuntimeStructuralRequestProbeID(t *testing.T, protocol, identity string) {
+	t.Helper()
+	prefix := "v1:" + protocol + ":probe-sha256:"
+	require.True(t, strings.HasPrefix(identity, prefix), identity)
+	require.Len(t, strings.TrimPrefix(identity, prefix), 64)
 }

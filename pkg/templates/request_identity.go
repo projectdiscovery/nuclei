@@ -128,6 +128,7 @@ func (template *Template) assignRequestBlockIDsFrom(source *Template) error {
 type requestBlockIdentifiable interface {
 	protocols.Request
 	SetRequestBlockID(string)
+	SetRequestProbeIDs([]string)
 }
 
 func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) error {
@@ -153,6 +154,11 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 		if err != nil {
 			return errors.Wrapf(err, "could not calculate %s request block identity", source.Type())
 		}
+		probeIDs, err := requestProbeIDs(source)
+		if err != nil {
+			return errors.Wrapf(err, "could not calculate %s request probe identities", source.Type())
+		}
+		targets[index].SetRequestProbeIDs(probeIDs)
 		if source.GetID() == "" {
 			unnamedIdentityCounts[identity]++
 		}
@@ -160,12 +166,20 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 	}
 	for index, source := range sources {
 		identity := identities[index]
-		if source.GetID() == "" && unnamedIdentityCounts[identity] > 1 {
+		needsFullIdentity := explicitIDCounts[source.GetID()] > 1 || (source.GetID() == "" && unnamedIdentityCounts[identity] > 1)
+		if needsFullIdentity {
 			var err error
-			identity, err = fullStructuralRequestBlockID(source)
+			if source.GetID() == "" {
+				identity, err = fullStructuralRequestBlockID(source)
+			}
 			if err != nil {
 				return errors.Wrapf(err, "could not disambiguate %s request block identity", source.Type())
 			}
+			probeIDs, err := fullRequestProbeIDs(source)
+			if err != nil {
+				return errors.Wrapf(err, "could not disambiguate %s request probe identities", source.Type())
+			}
+			targets[index].SetRequestProbeIDs(probeIDs)
 		}
 		targets[index].SetRequestBlockID(identity)
 	}
@@ -199,6 +213,14 @@ func fullStructuralRequestBlockID(request protocols.Request) (string, error) {
 }
 
 func requestIdentityDefinition(request protocols.Request) ([]byte, error) {
+	definition, err := requestIdentityDefinitionMap(request)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(definition)
+}
+
+func requestIdentityDefinitionMap(request protocols.Request) (map[string]interface{}, error) {
 	encoded, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
@@ -232,7 +254,61 @@ func requestIdentityDefinition(request protocols.Request) ([]byte, error) {
 	if extractorRoles != nil {
 		definition["extractor-roles"] = extractorRoles
 	}
-	return json.Marshal(definition)
+	return definition, nil
+}
+
+func requestProbeIDs(request protocols.Request) ([]string, error) {
+	definition, err := requestIdentityDefinitionMap(request)
+	if err != nil {
+		return nil, err
+	}
+	return requestProbeIDsFromDefinition(request, definition)
+}
+
+func fullRequestProbeIDs(request protocols.Request) ([]string, error) {
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	definition := make(map[string]interface{})
+	if err := json.Unmarshal(encoded, &definition); err != nil {
+		return nil, err
+	}
+	return requestProbeIDsFromDefinition(request, definition)
+}
+
+func requestProbeIDsFromDefinition(request protocols.Request, definition map[string]interface{}) ([]string, error) {
+	probeField := ""
+	switch request.Type().String() {
+	case "http":
+		if _, ok := definition["path"]; ok {
+			probeField = "path"
+		} else if _, ok := definition["raw"]; ok {
+			probeField = "raw"
+		}
+	case "tcp":
+		probeField = "host"
+	}
+	probes, ok := definition[probeField].([]interface{})
+	if !ok || len(probes) == 0 {
+		return nil, nil
+	}
+
+	identities := make([]string, 0, len(probes))
+	for _, probe := range probes {
+		probeDefinition := make(map[string]interface{}, len(definition))
+		for key, value := range definition {
+			probeDefinition[key] = value
+		}
+		probeDefinition[probeField] = []interface{}{probe}
+		encoded, err := json.Marshal(probeDefinition)
+		if err != nil {
+			return nil, err
+		}
+		digest := sha256.Sum256(encoded)
+		identities = append(identities, fmt.Sprintf("%s:%s:probe-sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest))
+	}
+	return identities, nil
 }
 
 func requestIdentityRoles(value interface{}) *requestIdentityOperatorRoles {
