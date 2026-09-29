@@ -78,18 +78,20 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 	if len(targets) != len(sources) {
 		return errors.New("request identity source does not match parsed template")
 	}
-	var explicitIDs map[string]struct{}
-	for index, source := range sources {
+	var explicitIDCounts map[string]int
+	for _, source := range sources {
 		if id := source.GetID(); id != "" {
-			if _, exists := explicitIDs[id]; exists {
-				return errors.Errorf("duplicate explicit %s request id %q", source.Type(), id)
+			if explicitIDCounts == nil {
+				explicitIDCounts = make(map[string]int, len(sources))
 			}
-			if explicitIDs == nil {
-				explicitIDs = make(map[string]struct{}, len(sources))
-			}
-			explicitIDs[id] = struct{}{}
+			explicitIDCounts[id]++
 		}
+	}
+	for index, source := range sources {
 		identity, err := requestBlockID(source)
+		if explicitIDCounts[source.GetID()] > 1 {
+			identity, err = structuralRequestBlockID(source)
+		}
 		if err != nil {
 			return errors.Wrapf(err, "could not calculate %s request block identity", source.Type())
 		}
@@ -103,13 +105,16 @@ func requestBlockID(request protocols.Request) (string, error) {
 	if id := request.GetID(); id != "" {
 		return fmt.Sprintf("%s:%s:explicit:%s", requestBlockIdentityVersion, protocol, id), nil
 	}
+	return structuralRequestBlockID(request)
+}
 
+func structuralRequestBlockID(request protocols.Request) (string, error) {
 	definition, err := json.Marshal(request)
 	if err != nil {
 		return "", err
 	}
 	digest := sha256.Sum256(definition)
-	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, protocol, digest), nil
+	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest), nil
 }
 
 func (template *Template) protocolRequestGroups() [][]protocols.Request {
