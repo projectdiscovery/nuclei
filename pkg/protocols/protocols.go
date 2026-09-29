@@ -433,9 +433,13 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 
 func makeIdentifiedResultEventItem(request Request, wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := request.MakeResultEventItem(wrapped)
+	data.RequestProbeID = wrapped.RequestProbeID
 	if wrapped.OperatorsResult.Operators != nil {
 		data.RequestID = wrapped.OperatorsResult.Operators.RequestID
 		data.RequestBlockID = wrapped.OperatorsResult.Operators.RequestBlockID
+		if probeID := wrapped.OperatorsResult.Operators.GetRequestProbeID(wrapped.RequestProbeIndex); probeID != "" {
+			data.RequestProbeID = probeID
+		}
 	}
 	data.RequestProbeIndex = wrapped.RequestProbeIndex
 	return data

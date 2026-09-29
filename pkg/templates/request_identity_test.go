@@ -83,6 +83,16 @@ func requireStructuralRequestBlockID(t *testing.T, protocol, identity string) {
 	require.NoError(t, err)
 }
 
+func requireStructuralRequestProbeID(t *testing.T, protocol, identity string) {
+	t.Helper()
+	prefix := "v1:" + protocol + ":probe-sha256:"
+	require.True(t, strings.HasPrefix(identity, prefix), identity)
+	digest := strings.TrimPrefix(identity, prefix)
+	require.Len(t, digest, 64)
+	_, err := hex.DecodeString(digest)
+	require.NoError(t, err)
+}
+
 func TestAssignRequestOutputIDsIsRepeatable(t *testing.T) {
 	template := &Template{RequestsHTTP: []*http.Request{{ID: "login"}, {}}}
 
@@ -157,6 +167,106 @@ func TestUnnamedRequestBlockIDIsStableAcrossReordering(t *testing.T) {
 	for _, request := range second.RequestsHTTP {
 		require.Equal(t, firstByPath[request.Path[0]], request.RequestBlockID)
 	}
+}
+
+func TestHTTPPathProbeIDsSurviveReorderAndInsertion(t *testing.T) {
+	first := &Template{RequestsHTTP: []*http.Request{{
+		Method: http.HTTPMethodTypeHolder{MethodType: http.HTTPGet},
+		Path:   []string{"{{BaseURL}}/a", "{{BaseURL}}/b"},
+	}}}
+	second := &Template{RequestsHTTP: []*http.Request{{
+		Method: http.HTTPMethodTypeHolder{MethodType: http.HTTPGet},
+		Path:   []string{"{{BaseURL}}/b", "{{BaseURL}}/new", "{{BaseURL}}/a"},
+	}}}
+
+	require.NoError(t, first.assignRequestBlockIDs())
+	require.NoError(t, second.assignRequestBlockIDs())
+
+	firstByPath := probeIDsByValue(first.RequestsHTTP[0].Path, first.RequestsHTTP[0].RequestProbeIDs)
+	secondByPath := probeIDsByValue(second.RequestsHTTP[0].Path, second.RequestsHTTP[0].RequestProbeIDs)
+	require.Equal(t, firstByPath["{{BaseURL}}/a"], secondByPath["{{BaseURL}}/a"])
+	require.Equal(t, firstByPath["{{BaseURL}}/b"], secondByPath["{{BaseURL}}/b"])
+	require.NotEqual(t, secondByPath["{{BaseURL}}/new"], secondByPath["{{BaseURL}}/a"])
+	require.NotEqual(t, first.RequestsHTTP[0].RequestBlockID, second.RequestsHTTP[0].RequestBlockID, "the per-probe identity must remain stable even when the block identity changes")
+	for _, identity := range second.RequestsHTTP[0].RequestProbeIDs {
+		requireStructuralRequestProbeID(t, "http", identity)
+	}
+}
+
+func TestHTTPRawProbeIDsSurviveReorderAndInsertion(t *testing.T) {
+	firstRaw := "POST /same HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\nfirst"
+	secondRaw := "POST /same HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\nsecond"
+	newRaw := "POST /same HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\nnew"
+	first := &Template{RequestsHTTP: []*http.Request{{Raw: []string{firstRaw, secondRaw}}}}
+	second := &Template{RequestsHTTP: []*http.Request{{Raw: []string{secondRaw, newRaw, firstRaw}}}}
+
+	require.NoError(t, first.assignRequestBlockIDs())
+	require.NoError(t, second.assignRequestBlockIDs())
+
+	firstByRaw := probeIDsByValue(first.RequestsHTTP[0].Raw, first.RequestsHTTP[0].RequestProbeIDs)
+	secondByRaw := probeIDsByValue(second.RequestsHTTP[0].Raw, second.RequestsHTTP[0].RequestProbeIDs)
+	require.Equal(t, firstByRaw[firstRaw], secondByRaw[firstRaw])
+	require.Equal(t, firstByRaw[secondRaw], secondByRaw[secondRaw])
+	require.NotEqual(t, secondByRaw[newRaw], secondByRaw[firstRaw])
+}
+
+func TestNetworkHostProbeIDsSurviveReorderAndInsertion(t *testing.T) {
+	first := &Template{RequestsNetwork: []*network.Request{{
+		Address: []string{"{{Hostname}}", "tls://{{Hostname}}"},
+		Inputs:  []*network.Input{{Data: "PING"}},
+	}}}
+	second := &Template{RequestsNetwork: []*network.Request{{
+		Address: []string{"tls://{{Hostname}}", "{{Hostname}}:9000", "{{Hostname}}"},
+		Inputs:  []*network.Input{{Data: "PING"}},
+	}}}
+
+	require.NoError(t, first.assignRequestBlockIDs())
+	require.NoError(t, second.assignRequestBlockIDs())
+
+	firstByHost := probeIDsByValue(first.RequestsNetwork[0].Address, first.RequestsNetwork[0].RequestProbeIDs)
+	secondByHost := probeIDsByValue(second.RequestsNetwork[0].Address, second.RequestsNetwork[0].RequestProbeIDs)
+	require.Equal(t, firstByHost["{{Hostname}}"], secondByHost["{{Hostname}}"])
+	require.Equal(t, firstByHost["tls://{{Hostname}}"], secondByHost["tls://{{Hostname}}"])
+	require.NotEqual(t, secondByHost["{{Hostname}}:9000"], secondByHost["{{Hostname}}"])
+	for _, identity := range second.RequestsNetwork[0].RequestProbeIDs {
+		requireStructuralRequestProbeID(t, "tcp", identity)
+	}
+}
+
+func TestRequestProbeIDUsesProjectedBlockDefinition(t *testing.T) {
+	first := &Template{RequestsHTTP: []*http.Request{{
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{Words: []string{"first"}}}},
+		Method:    http.HTTPMethodTypeHolder{MethodType: http.HTTPPost},
+		Path:      []string{"{{BaseURL}}/login"},
+		Body:      "username={{username}}",
+		Payloads:  map[string]interface{}{"username": []string{"alice"}},
+	}}}
+	changedEvidence := &Template{RequestsHTTP: []*http.Request{{
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{Regex: []string{"second"}}}},
+		Method:    http.HTTPMethodTypeHolder{MethodType: http.HTTPPost},
+		Path:      []string{"{{BaseURL}}/login"},
+		Body:      "username={{username}}",
+		Payloads:  map[string]interface{}{"username": []string{"bob"}},
+	}}}
+	changedCore := &Template{RequestsHTTP: []*http.Request{{
+		Method: http.HTTPMethodTypeHolder{MethodType: http.HTTPPost},
+		Path:   []string{"{{BaseURL}}/login"},
+		Body:   "account={{username}}",
+	}}}
+
+	require.NoError(t, first.assignRequestBlockIDs())
+	require.NoError(t, changedEvidence.assignRequestBlockIDs())
+	require.NoError(t, changedCore.assignRequestBlockIDs())
+	require.Equal(t, first.RequestsHTTP[0].RequestProbeIDs, changedEvidence.RequestsHTTP[0].RequestProbeIDs)
+	require.NotEqual(t, first.RequestsHTTP[0].RequestProbeIDs, changedCore.RequestsHTTP[0].RequestProbeIDs)
+}
+
+func probeIDsByValue(values, identities []string) map[string]string {
+	result := make(map[string]string, len(values))
+	for index, value := range values {
+		result[value] = identities[index]
+	}
+	return result
 }
 
 func TestUnnamedRequestBlockIDIgnoresMatcherExtractorPayloadAndExecutionEdits(t *testing.T) {
@@ -256,6 +366,7 @@ func TestProjectedUnnamedRequestBlockIDCollisionFallsBackToFullDefinition(t *tes
 	require.NotEqual(t, template.RequestsHTTP[0].RequestBlockID, template.RequestsHTTP[1].RequestBlockID)
 	require.Equal(t, fullRequestBlockIDForTest(t, template.RequestsHTTP[0]), template.RequestsHTTP[0].RequestBlockID)
 	require.Equal(t, fullRequestBlockIDForTest(t, template.RequestsHTTP[1]), template.RequestsHTTP[1].RequestBlockID)
+	require.NotEqual(t, template.RequestsHTTP[0].RequestProbeIDs, template.RequestsHTTP[1].RequestProbeIDs)
 }
 
 func TestIdenticalUnnamedRequestBlocksShareIdentity(t *testing.T) {
@@ -266,6 +377,7 @@ func TestIdenticalUnnamedRequestBlocksShareIdentity(t *testing.T) {
 
 	require.NoError(t, template.assignRequestBlockIDs())
 	require.Equal(t, template.RequestsHTTP[0].RequestBlockID, template.RequestsHTTP[1].RequestBlockID)
+	require.Equal(t, template.RequestsHTTP[0].RequestProbeIDs, template.RequestsHTTP[1].RequestProbeIDs)
 }
 
 func TestRequestBlockIDCrossProtocolStabilityAndProbeChanges(t *testing.T) {

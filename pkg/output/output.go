@@ -122,8 +122,11 @@ type InternalWrappedEvent struct {
 	OperatorsResult *operators.Result
 	UsesInteractsh  bool
 	// RequestProbeIndex is the 1-based position of the template-defined probe
-	// (http path/raw request, network host) within its request block, 0 if not applicable.
+	// (http path/raw request, network host) within its request block. It is diagnostic
+	// and can change when probes are reordered.
 	RequestProbeIndex int
+	// RequestProbeID is the stable identity of the template-defined probe.
+	RequestProbeID string
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
@@ -136,6 +139,7 @@ func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 		OperatorsResult:   nil,
 		UsesInteractsh:    iwe.UsesInteractsh,
 		RequestProbeIndex: iwe.RequestProbeIndex,
+		RequestProbeID:    iwe.RequestProbeID,
 	}
 }
 
@@ -186,8 +190,11 @@ type ResultEvent struct {
 	// RequestBlockID is stable across runs and unnamed request block reordering.
 	RequestBlockID string `json:"request-block-id,omitempty"`
 	// RequestProbeIndex is the 1-based position of the template-defined probe
-	// (http path/raw request, network host) within the request block, if applicable.
+	// (http path/raw request, network host) within the request block. It is diagnostic
+	// and can change when probes are reordered.
 	RequestProbeIndex int `json:"request-probe-index,omitempty"`
+	// RequestProbeID is stable when other probes are reordered, added, or removed.
+	RequestProbeID string `json:"request-probe-id,omitempty"`
 	// Type is the type of the result event.
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
