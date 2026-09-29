@@ -108,12 +108,19 @@ func TestRequestBlockIDSeparatesExplicitAndGeneratedRequestIDs(t *testing.T) {
 	require.NotEqual(t, template.RequestsHTTP[0].RequestBlockID, template.RequestsHTTP[1].RequestBlockID)
 }
 
-func TestRequestBlockIDRejectsDuplicateExplicitIDsWithinProtocol(t *testing.T) {
-	template := &Template{RequestsHTTP: []*http.Request{{ID: "login"}, {ID: "login"}}}
+func TestRequestBlockIDUsesStructuralIdentityForDuplicateExplicitIDs(t *testing.T) {
+	template := &Template{RequestsHTTP: []*http.Request{
+		{ID: "login", Path: []string{"{{BaseURL}}/first"}},
+		{ID: "login", Path: []string{"{{BaseURL}}/first"}},
+		{ID: "login", Path: []string{"{{BaseURL}}/second"}},
+		{ID: "status", Path: []string{"{{BaseURL}}/status"}},
+	}}
 
-	err := template.assignRequestBlockIDs()
-
-	require.EqualError(t, err, `duplicate explicit http request id "login"`)
+	require.NoError(t, template.assignRequestBlockIDs())
+	requireStructuralRequestBlockID(t, "http", template.RequestsHTTP[0].RequestBlockID)
+	require.Equal(t, template.RequestsHTTP[0].RequestBlockID, template.RequestsHTTP[1].RequestBlockID)
+	require.NotEqual(t, template.RequestsHTTP[0].RequestBlockID, template.RequestsHTTP[2].RequestBlockID)
+	require.Equal(t, "v1:http:explicit:status", template.RequestsHTTP[3].RequestBlockID)
 }
 
 func TestRequestBlockIDAllowsSameExplicitIDAcrossProtocols(t *testing.T) {

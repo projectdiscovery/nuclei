@@ -141,6 +141,41 @@ http:
 	require.Contains(t, string(encoded), `"template-id":"request-identity-http-single"`)
 }
 
+func TestHTTPDuplicateExplicitIDsCompileWithStructuralIdentity(t *testing.T) {
+	server := newOKServer(t)
+	const source = `id: request-identity-http-duplicate-explicit
+info:
+  name: Request identity http duplicate explicit
+  author: test
+  severity: info
+http:
+  - id: login
+    method: GET
+    path:
+      - "{{BaseURL}}/first"
+    matchers:
+      - type: word
+        words:
+          - ok
+  - id: login
+    method: GET
+    path:
+      - "{{BaseURL}}/second"
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+
+	results := executeTemplateSource(t, source, server.URL)
+	require.Len(t, results, 2)
+	require.Equal(t, "login", results[0].RequestID)
+	require.Equal(t, "login", results[1].RequestID)
+	requireRuntimeStructuralRequestBlockID(t, "http", results[0].RequestBlockID)
+	requireRuntimeStructuralRequestBlockID(t, "http", results[1].RequestBlockID)
+	require.NotEqual(t, results[0].RequestBlockID, results[1].RequestBlockID)
+}
+
 func TestPreprocessedRequestBlockIDStableAcrossParses(t *testing.T) {
 	testutils.Init(testutils.DefaultOptions)
 	const source = `id: request-identity-preprocessor
