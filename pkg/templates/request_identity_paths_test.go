@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -235,5 +236,73 @@ http:
 	require.Equal(t, []int{1, 2}, probes, "probe index is the only field separating the raw probes")
 	for _, result := range results {
 		require.Equal(t, "http_1", result.RequestID)
+	}
+}
+
+func TestGlobalMatcherResultsKeepOriginatingProbeIndex(t *testing.T) {
+	server := newOKServer(t)
+	const globalSource = `id: global-identity
+info:
+  name: Global identity
+  author: test
+  severity: info
+http:
+  - id: passive
+    global-matchers: true
+    matchers:
+      - type: word
+        words:
+          - ok
+`
+	const source = `id: global-identity-origin
+info:
+  name: Global identity origin
+  author: test
+  severity: info
+http:
+  - raw:
+      - |
+        POST /login HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        user=admin&pass=admin
+      - |
+        POST /login HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        user=admin&pass=password
+`
+	testutils.Init(testutils.DefaultOptions)
+	executor := testutils.NewMockExecuterOptions(testutils.DefaultOptions, nil)
+	executor.GlobalMatchers = globalmatchers.New()
+	executor.ExportReqURLPattern = true
+	t.Cleanup(executor.RateLimiter.Stop)
+
+	globalTemplate, err := templates.ParseTemplateFromReader(strings.NewReader(globalSource), nil, executor)
+	require.NoError(t, err)
+	executor.GlobalMatchers.AddOperator(&globalmatchers.Item{
+		TemplateID:   globalTemplate.ID,
+		TemplateInfo: globalTemplate.Info,
+		Operators:    globalTemplate.RequestsHTTP[0].GetCompiledOperators(),
+	})
+
+	template, err := templates.ParseTemplateFromReader(strings.NewReader(source), nil, executor)
+	require.NoError(t, err)
+	ctx := scan.NewScanContext(context.Background(), contextargs.NewWithInput(context.Background(), server.URL))
+	ctx.OnResult = func(*output.InternalWrappedEvent) {}
+	results, err := template.Executer.ExecuteWithResults(ctx)
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+
+	probes := []int{results[0].RequestProbeIndex, results[1].RequestProbeIndex}
+	sort.Ints(probes)
+	require.Equal(t, []int{1, 2}, probes)
+	for _, result := range results {
+		require.Equal(t, "global-identity", result.TemplateID)
+		require.Equal(t, "passive", result.RequestID)
+		require.True(t, result.GlobalMatchers)
+		require.Equal(t, "/login", result.ReqURLPattern)
 	}
 }

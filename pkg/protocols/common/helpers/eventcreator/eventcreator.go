@@ -50,8 +50,17 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 }
 
 func CreateEventWithOperatorResults(request protocols.Request, internalEvent output.InternalEvent, operatorResult *operators.Result) *output.InternalWrappedEvent {
+	return CreateEventWithOperatorResultsAndOptions(request, internalEvent, operatorResult, nil)
+}
+
+// CreateEventWithOperatorResultsAndOptions wraps an existing operator result and applies additional event attributes before results are created.
+func CreateEventWithOperatorResultsAndOptions(request protocols.Request, internalEvent output.InternalEvent, operatorResult *operators.Result,
+	addAdditionalOptions func(internalWrappedEvent *output.InternalWrappedEvent)) *output.InternalWrappedEvent {
 	event := &output.InternalWrappedEvent{InternalEvent: internalEvent}
 	event.OperatorsResult = operatorResult
+	if addAdditionalOptions != nil {
+		addAdditionalOptions(event)
+	}
 	event.Results = append(event.Results, request.MakeResultEvent(event)...)
 	return event
 }
