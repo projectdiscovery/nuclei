@@ -413,22 +413,31 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 	// If we have multiple matchers with names, write each of them separately.
 	if len(wrapped.OperatorsResult.Matches) > 0 {
 		for matcherNames := range wrapped.OperatorsResult.Matches {
-			data := request.MakeResultEventItem(wrapped)
+			data := makeIdentifiedResultEventItem(request, wrapped)
 			data.MatcherName = matcherNames
 			results = append(results, data)
 		}
 	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
 		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := request.MakeResultEventItem(wrapped)
+			data := makeIdentifiedResultEventItem(request, wrapped)
 			data.ExtractorName = k
 			data.ExtractedResults = v
 			results = append(results, data)
 		}
 	} else {
-		data := request.MakeResultEventItem(wrapped)
+		data := makeIdentifiedResultEventItem(request, wrapped)
 		results = append(results, data)
 	}
 	return results
+}
+
+func makeIdentifiedResultEventItem(request Request, wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	data := request.MakeResultEventItem(wrapped)
+	if wrapped.OperatorsResult.Operators != nil {
+		data.RequestID = wrapped.OperatorsResult.Operators.RequestID
+	}
+	data.RequestProbeIndex = wrapped.RequestProbeIndex
+	return data
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.

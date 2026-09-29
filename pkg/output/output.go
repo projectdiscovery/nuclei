@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -121,6 +122,9 @@ type InternalWrappedEvent struct {
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
 	UsesInteractsh  bool
+	// RequestProbeIndex is the 1-based position of the template-defined probe
+	// (http path/raw request, network host) within its request block, 0 if not applicable.
+	RequestProbeIndex int
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
@@ -128,10 +132,11 @@ type InternalWrappedEvent struct {
 
 func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 	return &InternalWrappedEvent{
-		InternalEvent:   maps.Clone(iwe.InternalEvent),
-		Results:         nil,
-		OperatorsResult: nil,
-		UsesInteractsh:  iwe.UsesInteractsh,
+		InternalEvent:     maps.Clone(iwe.InternalEvent),
+		Results:           nil,
+		OperatorsResult:   nil,
+		UsesInteractsh:    iwe.UsesInteractsh,
+		RequestProbeIndex: iwe.RequestProbeIndex,
 	}
 }
 
@@ -175,6 +180,13 @@ type ResultEvent struct {
 	MatcherName string `json:"matcher-name,omitempty"`
 	// ExtractorName is the name of the extractor matched if any.
 	ExtractorName string `json:"extractor-name,omitempty"`
+	// RequestID identifies the template request block that produced the result:
+	// its explicit id, otherwise <protocol>_<1-based position within the protocol>.
+	// It is stable across runs and independent of the target and response.
+	RequestID string `json:"request-id,omitempty"`
+	// RequestProbeIndex is the 1-based position of the template-defined probe
+	// (http path/raw request, network host) within the request block, if applicable.
+	RequestProbeIndex int `json:"request-probe-index,omitempty"`
 	// Type is the type of the result event.
 	Type string `json:"type"`
 	// Host is the host input on which match was found.

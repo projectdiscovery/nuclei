@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -341,6 +342,8 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 		return fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
+	template.assignRequestOutputIDs()
+
 	if options.Options.OfflineHTTP {
 		return template.compileOfflineHTTPRequest(options)
 	}
@@ -409,6 +412,40 @@ func filterOutCodeRequests(requests []protocols.Request) []protocols.Request {
 		filtered = append(filtered, req)
 	}
 	return filtered
+}
+
+// assignRequestOutputIDs gives every request block the identity reported as
+// the request-id of its results: the request id when set, otherwise the
+// protocol and its 1-based position, matching validateAllRequestIDs naming.
+func (template *Template) assignRequestOutputIDs() {
+	protocolRequests := [][]protocols.Request{
+		template.convertRequestToProtocolsRequest(template.RequestsDNS),
+		template.convertRequestToProtocolsRequest(template.RequestsFile),
+		template.convertRequestToProtocolsRequest(template.RequestsNetwork),
+		template.convertRequestToProtocolsRequest(template.RequestsHTTP),
+		template.convertRequestToProtocolsRequest(template.RequestsHeadless),
+		template.convertRequestToProtocolsRequest(template.RequestsSSL),
+		template.convertRequestToProtocolsRequest(template.RequestsWebsocket),
+		template.convertRequestToProtocolsRequest(template.RequestsWHOIS),
+		template.convertRequestToProtocolsRequest(template.RequestsCode),
+		template.convertRequestToProtocolsRequest(template.RequestsJavascript),
+	}
+	for _, requests := range protocolRequests {
+		for position, request := range requests {
+			identifiable, ok := request.(interface{ SetRequestID(string) })
+			if !ok {
+				continue
+			}
+			identifiable.SetRequestID(requestOutputID(request, position))
+		}
+	}
+}
+
+func requestOutputID(request protocols.Request, position int) string {
+	if id := request.GetID(); id != "" {
+		return id
+	}
+	return request.Type().String() + "_" + strconv.Itoa(position+1)
 }
 
 // convertRequestToProtocolsRequest is a convenience wrapper to convert

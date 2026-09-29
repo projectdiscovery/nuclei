@@ -1167,7 +1167,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+			internalWrappedEvent.RequestProbeIndex = generatedRequest.probeIndex
 		})
+		// interactsh results are made later from this same event
+		event.RequestProbeIndex = generatedRequest.probeIndex
 
 		if hasInteractMatchers {
 			event.UsesInteractsh = true
