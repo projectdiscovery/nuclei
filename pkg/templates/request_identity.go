@@ -145,16 +145,27 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 		}
 	}
 	identities := make([]string, len(sources))
+	definitions := make([]*requestIdentityDefinitions, len(sources))
 	unnamedIdentityCounts := make(map[string]int, len(sources))
 	for index, source := range sources {
-		identity, err := requestBlockID(source)
-		if explicitIDCounts[source.GetID()] > 1 {
-			identity, err = fullStructuralRequestBlockID(source)
-		}
+		definition, err := newRequestIdentityDefinitions(source)
 		if err != nil {
 			return errors.Wrapf(err, "could not calculate %s request block identity", source.Type())
 		}
-		probeIDs, err := requestProbeIDs(source)
+		if source.GetID() == "" {
+			definitions[index] = definition
+		}
+
+		useFullDefinition := explicitIDCounts[source.GetID()] > 1
+		identity, err := requestBlockIDFromDefinitions(source, definition, useFullDefinition)
+		if err != nil {
+			return errors.Wrapf(err, "could not calculate %s request block identity", source.Type())
+		}
+		probeDefinition := definition.projected
+		if useFullDefinition {
+			probeDefinition = definition.full
+		}
+		probeIDs, err := requestProbeIDsFromDefinition(source, probeDefinition)
 		if err != nil {
 			return errors.Wrapf(err, "could not calculate %s request probe identities", source.Type())
 		}
@@ -166,16 +177,9 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 	}
 	for index, source := range sources {
 		identity := identities[index]
-		needsFullIdentity := explicitIDCounts[source.GetID()] > 1 || (source.GetID() == "" && unnamedIdentityCounts[identity] > 1)
-		if needsFullIdentity {
-			var err error
-			if source.GetID() == "" {
-				identity, err = fullStructuralRequestBlockID(source)
-			}
-			if err != nil {
-				return errors.Wrapf(err, "could not disambiguate %s request block identity", source.Type())
-			}
-			probeIDs, err := fullRequestProbeIDs(source)
+		if source.GetID() == "" && unnamedIdentityCounts[identity] > 1 {
+			identity = fullStructuralRequestBlockIDFromDefinitions(source, definitions[index])
+			probeIDs, err := requestProbeIDsFromDefinition(source, definitions[index].full)
 			if err != nil {
 				return errors.Wrapf(err, "could not disambiguate %s request probe identities", source.Type())
 			}
@@ -184,6 +188,54 @@ func assignRequestBlockIDsFor[T requestBlockIdentifiable](targets, sources []T) 
 		targets[index].SetRequestBlockID(identity)
 	}
 	return nil
+}
+
+type requestIdentityDefinitions struct {
+	fullEncoded []byte
+	full        map[string]interface{}
+	projected   map[string]interface{}
+}
+
+func newRequestIdentityDefinitions(request protocols.Request) (*requestIdentityDefinitions, error) {
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	full := make(map[string]interface{})
+	if err := json.Unmarshal(encoded, &full); err != nil {
+		return nil, err
+	}
+	projected := make(map[string]interface{}, len(full))
+	for key, value := range full {
+		projected[key] = value
+	}
+	projectRequestIdentityDefinition(projected)
+	return &requestIdentityDefinitions{fullEncoded: encoded, full: full, projected: projected}, nil
+}
+
+func requestBlockIDFromDefinitions(request protocols.Request, definitions *requestIdentityDefinitions, useFullDefinition bool) (string, error) {
+	protocol := request.Type().String()
+	if id := request.GetID(); id != "" && !useFullDefinition {
+		return fmt.Sprintf("%s:%s:explicit:%s", requestBlockIdentityVersion, protocol, id), nil
+	}
+	if useFullDefinition {
+		return fullStructuralRequestBlockIDFromDefinitions(request, definitions), nil
+	}
+	return structuralRequestBlockIDFromDefinition(request, definitions.projected)
+}
+
+func structuralRequestBlockIDFromDefinition(request protocols.Request, definition map[string]interface{}) (string, error) {
+	encoded, err := json.Marshal(definition)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest), nil
+}
+
+func fullStructuralRequestBlockIDFromDefinitions(request protocols.Request, definitions *requestIdentityDefinitions) string {
+	digest := sha256.Sum256(definitions.fullEncoded)
+	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest)
 }
 
 func requestBlockID(request protocols.Request) (string, error) {
@@ -195,41 +247,38 @@ func requestBlockID(request protocols.Request) (string, error) {
 }
 
 func structuralRequestBlockID(request protocols.Request) (string, error) {
-	definition, err := requestIdentityDefinition(request)
+	definitions, err := newRequestIdentityDefinitions(request)
 	if err != nil {
 		return "", err
 	}
-	digest := sha256.Sum256(definition)
-	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest), nil
+	return structuralRequestBlockIDFromDefinition(request, definitions.projected)
 }
 
 func fullStructuralRequestBlockID(request protocols.Request) (string, error) {
-	definition, err := json.Marshal(request)
+	definitions, err := newRequestIdentityDefinitions(request)
 	if err != nil {
 		return "", err
 	}
-	digest := sha256.Sum256(definition)
-	return fmt.Sprintf("%s:%s:sha256:%x", requestBlockIdentityVersion, request.Type().String(), digest), nil
+	return fullStructuralRequestBlockIDFromDefinitions(request, definitions), nil
 }
 
 func requestIdentityDefinition(request protocols.Request) ([]byte, error) {
-	definition, err := requestIdentityDefinitionMap(request)
+	definitions, err := newRequestIdentityDefinitions(request)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(definition)
+	return json.Marshal(definitions.projected)
 }
 
 func requestIdentityDefinitionMap(request protocols.Request) (map[string]interface{}, error) {
-	encoded, err := json.Marshal(request)
+	definitions, err := newRequestIdentityDefinitions(request)
 	if err != nil {
 		return nil, err
 	}
+	return definitions.projected, nil
+}
 
-	definition := make(map[string]interface{})
-	if err := json.Unmarshal(encoded, &definition); err != nil {
-		return nil, err
-	}
+func projectRequestIdentityDefinition(definition map[string]interface{}) {
 	matcherRoles := requestIdentityRoles(definition["matchers"])
 	extractorRoles := requestIdentityRoles(definition["extractors"])
 	for field := range requestIdentityIgnoredFields {
@@ -254,27 +303,22 @@ func requestIdentityDefinitionMap(request protocols.Request) (map[string]interfa
 	if extractorRoles != nil {
 		definition["extractor-roles"] = extractorRoles
 	}
-	return definition, nil
 }
 
 func requestProbeIDs(request protocols.Request) ([]string, error) {
-	definition, err := requestIdentityDefinitionMap(request)
+	definitions, err := newRequestIdentityDefinitions(request)
 	if err != nil {
 		return nil, err
 	}
-	return requestProbeIDsFromDefinition(request, definition)
+	return requestProbeIDsFromDefinition(request, definitions.projected)
 }
 
 func fullRequestProbeIDs(request protocols.Request) ([]string, error) {
-	encoded, err := json.Marshal(request)
+	definitions, err := newRequestIdentityDefinitions(request)
 	if err != nil {
 		return nil, err
 	}
-	definition := make(map[string]interface{})
-	if err := json.Unmarshal(encoded, &definition); err != nil {
-		return nil, err
-	}
-	return requestProbeIDsFromDefinition(request, definition)
+	return requestProbeIDsFromDefinition(request, definitions.full)
 }
 
 func requestProbeIDsFromDefinition(request protocols.Request, definition map[string]interface{}) ([]string, error) {
