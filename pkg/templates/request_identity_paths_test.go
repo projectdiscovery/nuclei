@@ -178,6 +178,7 @@ http:
 	got := make([]string, 0, len(results))
 	for _, result := range results {
 		require.Equal(t, "offline-identity", result.TemplateID)
+		require.Equal(t, "offline-http", result.Type)
 		require.Zero(t, result.RequestProbeIndex, "offline matching replays no template probe")
 		encoded, err := json.Marshal(result)
 		require.NoError(t, err)

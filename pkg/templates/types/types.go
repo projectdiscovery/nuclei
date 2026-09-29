@@ -47,18 +47,19 @@ const (
 
 // ExtractorTypes is a table for conversion of extractor type from string.
 var protocolMappings = map[ProtocolType]string{
-	InvalidProtocol:    "invalid",
-	DNSProtocol:        "dns",
-	FileProtocol:       "file",
-	HTTPProtocol:       "http",
-	HeadlessProtocol:   "headless",
-	NetworkProtocol:    "tcp",
-	WorkflowProtocol:   "workflow",
-	SSLProtocol:        "ssl",
-	WebsocketProtocol:  "websocket",
-	WHOISProtocol:      "whois",
-	CodeProtocol:       "code",
-	JavascriptProtocol: "javascript",
+	InvalidProtocol:     "invalid",
+	DNSProtocol:         "dns",
+	FileProtocol:        "file",
+	HTTPProtocol:        "http",
+	OfflineHTTPProtocol: "offline-http",
+	HeadlessProtocol:    "headless",
+	NetworkProtocol:     "tcp",
+	WorkflowProtocol:    "workflow",
+	SSLProtocol:         "ssl",
+	WebsocketProtocol:   "websocket",
+	WHOISProtocol:       "whois",
+	CodeProtocol:        "code",
+	JavascriptProtocol:  "javascript",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {
