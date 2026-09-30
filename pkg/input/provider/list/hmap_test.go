@@ -21,13 +21,12 @@ import (
 func TestSetItemDedupDoesNotConsumePatternCap(t *testing.T) {
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	require.NoError(t, err)
-	t.Cleanup(func() { hm.Close() })
-
 	input := &ListInputProvider{
 		hostMap:       hm,
 		normalizeURLs: true,
 		patterns:      normalize.NewFingerprinter(1),
 	}
+	t.Cleanup(input.Close)
 	add := func(raw string) {
 		meta := contextargs.NewMetaInput()
 		meta.Input = raw
@@ -47,13 +46,12 @@ func TestSetItemDedupDoesNotConsumePatternCap(t *testing.T) {
 func TestSetItemKeepsTheSuppliedTarget(t *testing.T) {
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	require.NoError(t, err)
-	t.Cleanup(func() { hm.Close() })
-
 	input := &ListInputProvider{
 		hostMap:       hm,
 		normalizeURLs: true,
 		patterns:      normalize.NewFingerprinter(0),
 	}
+	t.Cleanup(input.Close)
 	add := func(raw string) {
 		meta := contextargs.NewMetaInput()
 		meta.Input = raw
@@ -75,13 +73,12 @@ func TestSetItemKeepsTheSuppliedTarget(t *testing.T) {
 func TestSetItemWithoutNormalizationKeepsCaseVariants(t *testing.T) {
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	require.NoError(t, err)
-	t.Cleanup(func() { hm.Close() })
-
 	input := &ListInputProvider{
 		hostMap:       hm,
 		normalizeURLs: false,
 		patterns:      normalize.NewFingerprinter(0),
 	}
+	t.Cleanup(input.Close)
 	for _, raw := range []string{"http://ACME.test/page", "http://acme.test/page"} {
 		meta := contextargs.NewMetaInput()
 		meta.Input = raw
