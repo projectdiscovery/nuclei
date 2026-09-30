@@ -1014,6 +1014,10 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	require.Nil(t, err, "could not create browser instance")
 	defer func() {
 		_ = instance.Close()
+		// A debug action sets these on the browser rather than the page, so with
+		// a shared browser they would leak into every later test.
+		sharedBrowser.engine.SlowMotion(0)
+		sharedBrowser.engine.Trace(false)
 	}()
 
 	ts := httptest.NewServer(http.HandlerFunc(handler))
