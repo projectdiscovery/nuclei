@@ -119,6 +119,18 @@ jobs:
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
+      # The suite launches one nuclei process per case, ~175 of them, and the
+      # binary is around 200MB. This job takes roughly four times longer on
+      # windows than on linux for the same work; Defender scanning an executable
+      # on every launch is the leading suspect for the difference.
+      - name: Exclude the workspace from Defender scanning
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+          Add-MpPreference -ExclusionPath "$env:USERPROFILE\go"
+          Add-MpPreference -ExclusionProcess "nuclei.exe"
+          Add-MpPreference -ExclusionProcess "go.exe"
       - run: make integration
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
