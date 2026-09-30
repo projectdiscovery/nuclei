@@ -66,6 +66,23 @@ func TestURLLeavesUnparsableInputAlone(t *testing.T) {
 	}
 }
 
+func TestOriginIgnoresPathQueryAndDefaultPort(t *testing.T) {
+	same := "https://example.com"
+	for _, raw := range []string{
+		"https://example.com/a",
+		"https://EXAMPLE.com/b?q=1#frag",
+		"https://example.com:443/c",
+	} {
+		require.Equal(t, same, Origin(raw), "%q is the same origin", raw)
+	}
+	require.NotEqual(t, Origin("https://example.com/a"), Origin("http://example.com/a"))
+	require.NotEqual(t, Origin("https://example.com/a"), Origin("https://other.test/a"))
+	require.NotEqual(t, Origin("https://example.com/a"), Origin("https://example.com:8443/a"))
+	require.Equal(t, "example.com", Origin("example.com"))
+	require.Empty(t, Origin(""))
+	require.Empty(t, Origin("not a url"))
+}
+
 func TestIsTrackingParam(t *testing.T) {
 	require.True(t, IsTrackingParam("utm_source"))
 	require.True(t, IsTrackingParam("UTM_SOURCE"))

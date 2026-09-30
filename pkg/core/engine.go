@@ -43,8 +43,9 @@ type TemplateExecutionCallback func(TemplateExecutionEvent)
 // handled by the engine.
 type Engine struct {
 	workPool *WorkPool
-	// originScoped records the origins an origin scoped template has already run
-	// against, so a crawled list does not repeat identical requests per path.
+	// originScoped tracks origin-scoped template attempts. A pair is finished
+	// only after a successful execution, so a failed first target does not
+	// suppress every later URL on that origin.
 	originScoped              sync.Map
 	options                   *types.Options
 	executerOpts              *protocols.ExecutorOptions

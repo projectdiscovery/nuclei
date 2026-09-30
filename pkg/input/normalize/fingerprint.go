@@ -126,7 +126,8 @@ func (f *Fingerprinter) pattern(rawURL string) (string, bool) {
 	segments := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	shaped := make([]string, 0, len(segments))
 	for index, segment := range segments {
-		shaped = append(shaped, f.shapeSegment(host, index, segment))
+		parent := strings.Join(segments[:index], "/")
+		shaped = append(shaped, f.shapeSegment(host, parent, index, segment))
 	}
 
 	var builder strings.Builder
@@ -143,8 +144,10 @@ func (f *Fingerprinter) pattern(rawURL string) (string, bool) {
 }
 
 // shapeSegment classifies a segment by shape, then by how many distinct values
-// the same position has already taken on this host.
-func (f *Fingerprinter) shapeSegment(host string, index int, segment string) string {
+// the same position has already taken under this parent path on this host.
+// The parent is part of the key so a busy /blog/<slug> does not also collapse
+// /admin/<name> just because both sit at the same index.
+func (f *Fingerprinter) shapeSegment(host, parent string, index int, segment string) string {
 	if shaped := classifySegment(segment); shaped != segment {
 		return shaped
 	}
@@ -152,7 +155,7 @@ func (f *Fingerprinter) shapeSegment(host string, index int, segment string) str
 		return segment
 	}
 
-	key := host + "\x00" + itoa(index)
+	key := host + "\x00" + parent + "\x00" + itoa(index)
 	f.mu.Lock()
 	values, ok := f.position[key]
 	if !ok {

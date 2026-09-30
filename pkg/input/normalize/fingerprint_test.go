@@ -58,6 +58,20 @@ func TestPatternCollapsesHighCardinalityPosition(t *testing.T) {
 	require.NotContains(t, f.Pattern("http://other.test/blog/zeta-post"), placeholderVar)
 }
 
+func TestCollapseStaysInsideTheParentPath(t *testing.T) {
+	f := NewFingerprinter(1)
+	f.CollapseAfter = 3
+	require.Equal(t, "acme.test/blog/one", f.Pattern("http://acme.test/blog/one"))
+	require.Equal(t, "acme.test/blog/two", f.Pattern("http://acme.test/blog/two"))
+	require.Equal(t, "acme.test/blog/{var}", f.Pattern("http://acme.test/blog/three"))
+
+	// same index, different parent: a busy /blog/<slug> must not collapse /admin/<name>
+	require.Equal(t, "acme.test/admin/a", f.Pattern("http://acme.test/admin/a"))
+	require.Equal(t, "acme.test/admin/b", f.Pattern("http://acme.test/admin/b"))
+	require.True(t, f.Accept("http://acme.test/admin/a"))
+	require.True(t, f.Accept("http://acme.test/admin/b"), "a different parent still has its own cap")
+}
+
 func TestAcceptKeepsUpToTheCap(t *testing.T) {
 	f := NewFingerprinter(2)
 	require.True(t, f.Accept("http://acme.test/user/1"))

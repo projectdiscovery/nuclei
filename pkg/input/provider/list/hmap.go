@@ -43,16 +43,17 @@ const DefaultMaxDedupeItemsCount = 10000
 // ListInputProvider is a hmap/filekv backed nuclei ListInputProvider provider
 // it supports list type of input ex: urls,file,stdin,uncover,etc. (i.e just url not complete request/response)
 type ListInputProvider struct {
-	ipOptions         *ipOptions
-	inputCount        int64
-	excludedCount     int64
-	dupeCount         int64
-	skippedCount      int64
-	hostMap           *hybrid.HybridMap
-	excludedHosts     map[string]struct{}
-	hostMapStream     *filekv.FileDB
-	hostMapStreamOnce sync.Once
-	profiles          *targetprofile.Registry
+	ipOptions           *ipOptions
+	inputCount          int64
+	excludedCount       int64
+	dupeCount           int64
+	skippedCount        int64
+	patternSkippedCount int64
+	hostMap             *hybrid.HybridMap
+	excludedHosts       map[string]struct{}
+	hostMapStream       *filekv.FileDB
+	hostMapStreamOnce   sync.Once
+	profiles            *targetprofile.Registry
 	// normalizeURLs collapses targets that address the same resource onto one
 	// form before they are deduplicated.
 	normalizeURLs bool
@@ -118,6 +119,9 @@ func New(opts *Options) (*ListInputProvider, error) {
 	}
 	if input.skippedCount > 0 {
 		gologger.Info().Msgf("Number of hosts skipped from input due to exclusion: %d", input.skippedCount)
+	}
+	if input.patternSkippedCount > 0 {
+		gologger.Info().Msgf("Supplied input was limited by max urls per pattern (%d removed).", input.patternSkippedCount)
 	}
 	return input, nil
 }
@@ -541,12 +545,8 @@ func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput, selection 
 	// or a tracking parameter. Those collapse onto one entry, but the target
 	// that is scanned stays exactly as supplied: stripping a parameter from the
 	// request would shrink the attack surface, not just the duplicate count.
-	// Past the per-pattern cap the shape is already covered by the targets kept
-	// for it, so scanning another of the same shape buys nothing.
-	if !i.patterns.Accept(metaInput.Input) {
-		i.skippedCount++
-		return
-	}
+	// Duplicates are removed before the pattern cap, so a repeated URL does not
+	// use up a slot that a later distinct URL still needs.
 	dedupKey := key
 	if i.normalizeURLs {
 		if normalized := i.normalizedKey(metaInput); normalized != "" {
@@ -558,6 +558,12 @@ func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput, selection 
 		if i.profiles != nil {
 			i.profiles.Merge(metaInput.Input, selection)
 		}
+		return
+	}
+	// Past the per-pattern cap the shape is already covered by the targets kept
+	// for it, so scanning another of the same shape buys nothing.
+	if i.patterns != nil && !i.patterns.Accept(metaInput.Input) {
+		i.patternSkippedCount++
 		return
 	}
 
