@@ -236,10 +236,15 @@ read_line:
 		line, readErr := reader.ReadString('\n')
 		line = strings.TrimSpace(line)
 
-		if readErr != nil || line == "" {
-			if readErr != io.EOF {
-				break
-			}
+		// An empty line ends the header block, whether it arrived with a read
+		// error or not. Falling through on io.EOF stored a header named "",
+		// which rawhttp serializes as a bare CRLF and so truncates the header
+		// block it is supposed to be part of.
+		if line == "" {
+			break
+		}
+		if readErr != nil && readErr != io.EOF {
+			break
 		}
 
 		// Declared per line on purpose. While these were reused across
