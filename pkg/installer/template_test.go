@@ -33,9 +33,8 @@ func TestTemplateInstallation(t *testing.T) {
 	for _, path := range templates {
 		release.files[path] = "id: " + filepath.Base(path)
 	}
-	useTemplateRelease(t, release)
 
-	tm := &TemplateManager{}
+	tm := &TemplateManager{fetchLatestRelease: release.fetch}
 	dir := t.TempDir()
 	cfgdir := t.TempDir()
 
