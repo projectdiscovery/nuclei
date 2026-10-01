@@ -19,15 +19,25 @@ func TestTemplateInstallation(t *testing.T) {
 	// along with necessary changes that are made
 	HideProgressBar = true
 
+	templates := []string{
+		"http/cves/2024/CVE-2024-0001.yaml",
+		"http/cves/2024/CVE-2024-0002.yaml",
+		"http/exposures/configs/git-config.yaml",
+		"dns/dns-saas-service-detection.yaml",
+		"network/detection/rdp-detect.yaml",
+	}
+	release := fakeTemplateRelease{version: "v9.9.9", files: map[string]string{
+		config.NucleiIgnoreFileName: "tags:\n  - fuzz\n",
+		"README.md":                 "# nuclei-templates",
+	}}
+	for _, path := range templates {
+		release.files[path] = "id: " + filepath.Base(path)
+	}
+	useTemplateRelease(t, release)
+
 	tm := &TemplateManager{}
-	dir, err := os.MkdirTemp("", "nuclei-templates-*")
-	require.Nil(t, err)
-	cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
-	require.Nil(t, err)
-	defer func() {
-		_ = os.RemoveAll(dir)
-		_ = os.RemoveAll(cfgdir)
-	}()
+	dir := t.TempDir()
+	cfgdir := t.TempDir()
 
 	// set the config directory to a temporary directory
 	config.DefaultConfig.SetConfigDir(cfgdir)
@@ -35,36 +45,17 @@ func TestTemplateInstallation(t *testing.T) {
 	templatesTempDir := filepath.Join(dir, "templates")
 	config.DefaultConfig.SetTemplatesDir(templatesTempDir)
 
-	err = tm.FreshInstallIfNotExists()
-	if err != nil {
-		if strings.Contains(err.Error(), "rate limit") {
-			t.Skip("Skipping test due to github rate limit")
-		}
-		require.Nil(t, err)
+	require.NoError(t, tm.FreshInstallIfNotExists())
+
+	for _, path := range templates {
+		require.FileExists(t, filepath.Join(templatesTempDir, filepath.FromSlash(path)))
 	}
-
-	// we should switch to more fine granular tests for template
-	// integrity, but for now, we just check that the templates are installed
-	counter := 0
-	err = filepath.Walk(templatesTempDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			counter++
-		}
-		return nil
-	})
-	require.Nil(t, err)
-
-	// we should have at least 1000 templates
-	require.Greater(t, counter, 1000)
+	require.NoFileExists(t, filepath.Join(templatesTempDir, "README.md"), "meta files are not installed as templates")
 	// every time we install templates, it should override the ignore file with latest one
 	require.FileExists(t, config.DefaultConfig.GetActiveIgnoreFilePath())
 	ownership, err := loadTemplateOwnership(templatesTempDir)
 	require.NoError(t, err)
-	require.NotEmpty(t, ownership.Files, "fresh installation should record official template ownership")
-	t.Logf("Installed %d templates", counter)
+	require.Len(t, ownership.Files, len(templates), "fresh installation should record ownership of every installed template")
 }
 
 func TestIsOutdatedVersion(t *testing.T) {
