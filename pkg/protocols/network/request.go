@@ -181,7 +181,7 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		callback(event)
 	}
 
-	for _, kv := range request.addresses {
+	for i, kv := range request.addresses {
 		select {
 		case <-input.Context().Done():
 			return input.Context().Err()
@@ -196,7 +196,7 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 		visited.Set(actualAddress, struct{}{})
 
-		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, interactshURLs, wrappedCallback); err != nil {
+		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, i+1, previous, interactshURLs, wrappedCallback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 
@@ -212,7 +212,7 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 }
 
 // executeAddress executes the request for an address
-func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
+func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, probeIndex int, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
 	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 
@@ -286,7 +286,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 					return
 				}
 
-				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, urls, callback); err != nil {
+				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, probeIndex, vars, previous, urls, callback); err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
 					m.Unlock()
@@ -301,7 +301,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		}
 	} else {
 		value := maps.Clone(payloads)
-		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, interactshURLs, callback); err != nil {
+		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, probeIndex, value, previous, interactshURLs, callback); err != nil {
 			return err
 		}
 	}
@@ -309,7 +309,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 	return nil
 }
 
-func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, probeIndex int, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
 	var (
 		hostname string
 		conn     net.Conn
@@ -474,15 +474,20 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
 	}
+	probeID := request.GetRequestProbeID(probeIndex)
 
 	var event *output.InternalWrappedEvent
 	if len(interactshURLs) == 0 {
 		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(payloads, outputEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
+			wrappedEvent.RequestProbeIndex = probeIndex
+			wrappedEvent.RequestProbeID = probeID
 		})
+		event.RequestProbeIndex = probeIndex
+		event.RequestProbeID = probeID
 		callback(event)
 	} else if request.options.Interactsh != nil {
-		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent, RequestProbeIndex: probeIndex, RequestProbeID: probeID}
 		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,

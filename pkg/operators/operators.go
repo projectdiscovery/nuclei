@@ -40,8 +40,37 @@ type Operators struct {
 
 	// TemplateID is the ID of the template for matcher
 	TemplateID string `json:"-" yaml:"-" jsonschema:"-"`
+	// RequestID is the explicit or positional request label reported for diagnostics.
+	RequestID string `json:"-" yaml:"-" jsonschema:"-"`
+	// RequestBlockID is the stable identity of the request block owning these operators.
+	RequestBlockID string `json:"-" yaml:"-" jsonschema:"-"`
+	// RequestProbeIDs contains stable identities for the static probes in this request block.
+	RequestProbeIDs []string `json:"-" yaml:"-" jsonschema:"-"`
 	// ExcludeMatchers is a list of excludeMatchers items
 	ExcludeMatchers *excludematchers.ExcludeMatchers `json:"-" yaml:"-" jsonschema:"-"`
+}
+
+// SetRequestID sets the stable identity of the request block owning these operators.
+func (operators *Operators) SetRequestID(id string) {
+	operators.RequestID = id
+}
+
+// SetRequestBlockID sets the stable identity of the request block owning these operators.
+func (operators *Operators) SetRequestBlockID(id string) {
+	operators.RequestBlockID = id
+}
+
+// SetRequestProbeIDs sets stable identities for the static probes in this request block.
+func (operators *Operators) SetRequestProbeIDs(ids []string) {
+	operators.RequestProbeIDs = ids
+}
+
+// GetRequestProbeID returns the stable identity for a 1-based static probe position.
+func (operators *Operators) GetRequestProbeID(position int) string {
+	if position < 1 || position > len(operators.RequestProbeIDs) {
+		return ""
+	}
+	return operators.RequestProbeIDs[position-1]
 }
 
 // Compile compiles the operators as well as their corresponding matchers and extractors

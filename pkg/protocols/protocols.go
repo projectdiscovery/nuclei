@@ -435,25 +435,39 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 	// If we have multiple matchers with names, write each of them separately.
 	if len(wrapped.OperatorsResult.Matches) > 0 {
 		for matcherNames := range wrapped.OperatorsResult.Matches {
-			data := request.MakeResultEventItem(wrapped)
+			data := makeIdentifiedResultEventItem(request, wrapped)
 			data.MatcherName = matcherNames
 			results = append(results, data)
 		}
 	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
 		for k, v := range wrapped.OperatorsResult.Extracts {
-			data := request.MakeResultEventItem(wrapped)
+			data := makeIdentifiedResultEventItem(request, wrapped)
 			data.ExtractorName = k
 			data.ExtractedResults = v
 			results = append(results, data)
 		}
 	} else {
-		data := request.MakeResultEventItem(wrapped)
+		data := makeIdentifiedResultEventItem(request, wrapped)
 		results = append(results, data)
 	}
 	// Every protocol builds its results here, so attaching the llm audit at this
 	// one point keeps the verdict on findings from all of them rather than only
 	// the protocol that remembers to ask. It is a no-op when no llm operator ran.
 	return AttachLLMAudits(results, wrapped.InternalEvent)
+}
+
+func makeIdentifiedResultEventItem(request Request, wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	data := request.MakeResultEventItem(wrapped)
+	data.RequestProbeID = wrapped.RequestProbeID
+	if wrapped.OperatorsResult.Operators != nil {
+		data.RequestID = wrapped.OperatorsResult.Operators.RequestID
+		data.RequestBlockID = wrapped.OperatorsResult.Operators.RequestBlockID
+		if probeID := wrapped.OperatorsResult.Operators.GetRequestProbeID(wrapped.RequestProbeIndex); probeID != "" {
+			data.RequestProbeID = probeID
+		}
+	}
+	data.RequestProbeIndex = wrapped.RequestProbeIndex
+	return data
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
