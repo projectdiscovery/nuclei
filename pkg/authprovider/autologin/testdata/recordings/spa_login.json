@@ -1,0 +1,41 @@
+{
+  "title": "playground spa login",
+  "steps": [
+    {
+      "type": "setViewport",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "type": "navigate",
+      "url": "__BASE__/auth/spa-login"
+    },
+    {
+      "type": "change",
+      "value": "tester@nuclei.test",
+      "selectors": [
+        ["xpath///input[@id='email']"]
+      ]
+    },
+    {
+      "type": "change",
+      "value": "nuclei-rocks",
+      "selectors": [
+        ["#password"],
+        ["aria/Password"]
+      ]
+    },
+    {
+      "type": "click",
+      "selectors": [
+        ["aria/Sign in"],
+        ["#submit"],
+        ["xpath///button[@id='submit']"]
+      ]
+    },
+    {
+      "type": "keyUp",
+      "key": "Enter"
+    }
+  ]
+}
