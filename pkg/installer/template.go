@@ -76,6 +76,17 @@ type TemplateManager struct {
 	CustomTemplates        *customtemplates.CustomTemplatesManager // optional if given tries to download custom templates
 	DisablePublicTemplates bool                                    // if true,
 	// public templates are not downloaded from the GitHub nuclei-templates repository
+
+	// fetchLatestRelease overrides where the official release comes from; nil
+	// means GitHub
+	fetchLatestRelease func() (templateRelease, error)
+}
+
+func (t *TemplateManager) latestRelease() (templateRelease, error) {
+	if t.fetchLatestRelease != nil {
+		return t.fetchLatestRelease()
+	}
+	return latestGitHubTemplateRelease()
 }
 
 // FreshInstallIfNotExists installs templates if they are not already installed
@@ -99,7 +110,7 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 
 // UpdateIfOutdated updates templates if they are outdated
 func (t *TemplateManager) UpdateIfOutdated() error {
-	return withTemplatesUpdateLock(t.updateIfOutdatedLocked)
+	return withTemplatesUpdateLock(config.DefaultConfig.TemplatesDirectory, t.updateIfOutdatedLocked)
 }
 
 func (t *TemplateManager) updateIfOutdatedLocked() error {
@@ -112,15 +123,21 @@ func (t *TemplateManager) updateIfOutdatedLocked() error {
 		return errkit.Wrapf(err, "failed to recover template ownership at %s", config.DefaultConfig.TemplatesDirectory)
 	}
 
+	// the version in memory predates the lock; a process that held it before
+	// this one may have already installed the latest release
+	if err := config.DefaultConfig.ReloadTemplateVersion(); err != nil {
+		gologger.Debug().Msgf("Could not reload templates version, using the one loaded at startup: %s", err)
+	}
+
 	needsUpdate := config.DefaultConfig.NeedsTemplateUpdate()
 
 	// NOTE(dwisiswant0): if PDTM API data is not available
 	// (LatestNucleiTemplatesVersion is empty) but we have a current template
 	// version, so we MUST verify against GitHub directly.
 	if !needsUpdate && config.DefaultConfig.LatestNucleiTemplatesVersion == "" && config.DefaultConfig.TemplateVersion != "" {
-		ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
+		release, err := t.latestRelease()
 		if err == nil {
-			latestVersion := ghrd.Latest.GetTagName()
+			latestVersion := release.Version()
 			if config.IsOutdatedVersion(config.DefaultConfig.TemplateVersion, latestVersion) {
 				needsUpdate = true
 				gologger.Debug().Msgf("PDTM API unavailable, verified update needed via GitHub API: %s -> %s", config.DefaultConfig.TemplateVersion, latestVersion)
@@ -151,14 +168,14 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 		return errkit.Wrapf(err, "failed to recover template ownership at %s", dir)
 	}
 
-	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
+	release, err := t.latestRelease()
 	if err != nil {
 		return errkit.Wrapf(err, "failed to install templates at %s", dir)
 	}
 
 	// write templates to disk
-	writtenOutputs, writeErr := t.writeTemplatesToDisk(ghrd, dir)
-	if _, finalizeErr := t.finalizeTemplateWrite(config.DefaultConfig, writtenOutputs, ghrd.Latest.GetTagName(), writeErr); finalizeErr != nil {
+	writtenOutputs, writeErr := t.writeTemplatesToDisk(release, dir)
+	if _, finalizeErr := t.finalizeTemplateWrite(config.DefaultConfig, writtenOutputs, release.Version(), writeErr); finalizeErr != nil {
 		return errkit.Wrapf(finalizeErr, "failed to finalize template installation at %s", dir)
 	}
 
@@ -375,12 +392,12 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 		oldchecksums = make(map[string]string)
 	}
 
-	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
+	release, err := t.latestRelease()
 	if err != nil {
 		return errkit.Wrapf(err, "failed to install templates at %s", dir)
 	}
 
-	latestVersion := ghrd.Latest.GetTagName()
+	latestVersion := release.Version()
 	currentVersion := config.DefaultConfig.TemplateVersion
 
 	if config.IsOutdatedVersion(currentVersion, latestVersion) {
@@ -390,7 +407,7 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	}
 
 	// write templates to disk
-	writtenOutputs, writeErr := t.writeTemplatesToDisk(ghrd, dir)
+	writtenOutputs, writeErr := t.writeTemplatesToDisk(release, dir)
 	newchecksums, finalizeErr := t.finalizeTemplateWrite(config.DefaultConfig, writtenOutputs, latestVersion, writeErr)
 	if finalizeErr != nil {
 		return errkit.Wrapf(finalizeErr, "failed to finalize template update at %s", dir)
@@ -401,14 +418,14 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 
 	// print summary
 	if results.totalCount > 0 {
-		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
+		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", latestVersion, dir)
 		if !HideUpdateChangesTable {
 			// print summary table
-			gologger.Print().Msgf("\nNuclei Templates %s Changelog\n", ghrd.Latest.GetTagName())
+			gologger.Print().Msgf("\nNuclei Templates %s Changelog\n", latestVersion)
 			gologger.Print().Msg(results.String())
 		}
 	} else {
-		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
+		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", latestVersion, dir)
 	}
 
 	return nil
@@ -502,7 +519,7 @@ func isActiveIgnoreFilePath(writePath string) bool {
 // writeTemplatesToDisk writes release outputs to disk and returns their digests.
 // The returned map includes every successfully written output; ownership
 // reconciliation filters it to official template paths.
-func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownloader, dir string) (map[string]string, error) {
+func (t *TemplateManager) writeTemplatesToDisk(release templateRelease, dir string) (map[string]string, error) {
 	writtenOutputs := make(map[string]string)
 	touchedDirectories := make(map[string]struct{})
 
@@ -539,7 +556,7 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 
 	var writeErr error
 
-	if err := ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc); err != nil {
+	if err := release.DownloadSource(!HideProgressBar, callbackFunc); err != nil {
 		writeErr = errkit.Wrap(err, "failed to download templates")
 	}
 
@@ -552,7 +569,7 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 	}
 
 	if !HideReleaseNotes {
-		output := ghrd.Latest.GetBody()
+		output := release.Changelog()
 		// adjust colors for both dark / light terminal themes
 		r, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
 		if err != nil {
