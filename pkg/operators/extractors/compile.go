@@ -24,6 +24,14 @@ func (e *Extractor) CompileExtractors() error {
 		return fmt.Errorf("regex extractor group must be >= 0, got %d", e.RegexGroup)
 	}
 
+	if e.RegexGroup != 0 && e.GetType() != RegexExtractor {
+		return fmt.Errorf("group is supported only for 'regex' extractors (not '%s')", e.Type)
+	}
+
+	if e.Attribute != "" && e.GetType() != XPathExtractor {
+		return fmt.Errorf("attribute is supported only for 'xpath' extractors (not '%s')", e.Type)
+	}
+
 	var requiredField string
 	var valueCount int
 	switch e.extractorType {
