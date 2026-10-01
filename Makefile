@@ -23,7 +23,7 @@ endif
 
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs fuzz fuzz-ci fuzz-tools
 .PHONY: devtools-tsgen docs docgen dsl-docs functional go-build lint lint-strict fuzzplayground syntax-docs
-.PHONY: integration integration-debug regression jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
+.PHONY: test-orcarouter integration integration-debug regression jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
 .PHONY: tidy ts verify download vet template-validate build-fuzz discover-fuzz-packages
 
 all: build
@@ -90,6 +90,15 @@ RACE ?= -race
 test: GOFLAGS = $(RACE) -v -timeout 1h -count 1
 test:
 	$(GOTEST) $(GOFLAGS) ./...
+
+# Focused run for the OrcaRouter provider package. PACKAGE overrides the target set
+# and RUN narrows it to one test, so the credential seam, the PKCE flow and the
+# catalog filters can be exercised without paying for the full suite; `make test`
+# remains the complete gate.
+PACKAGE ?= ./pkg/operators/common/llm/...
+RUN ?=
+test-orcarouter:
+	$(GOTEST) $(RACE) -v -timeout 10m -count 1 $(if $(RUN),-run $(RUN)) $(PACKAGE)
 
 # Keep this under the GitHub Actions step timeout (50m) so a hung nuclei process
 # is reported by go test instead of the runner killing the job with no test name.
