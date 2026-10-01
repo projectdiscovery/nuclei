@@ -49,3 +49,45 @@ func TestCompileExtractorsRequiresValuesForSelectedType(t *testing.T) {
 	}
 	require.ErrorContains(t, e.CompileExtractors(), "regex extractor requires at least one regex value")
 }
+
+func TestCompileExtractorsRejectsMisappliedGroup(t *testing.T) {
+	invalidTypes := []string{"kval", "json", "xpath", "dsl"}
+	for _, typ := range invalidTypes {
+		t.Run(typ, func(t *testing.T) {
+			rawYAML := fmt.Sprintf("type: %s\n%s:\n  - test\ngroup: 1\n", typ, typ)
+			var extractor Extractor
+			require.NoError(t, yaml.Unmarshal([]byte(rawYAML), &extractor))
+			err := extractor.CompileExtractors()
+			require.Error(t, err)
+			require.ErrorContains(t, err, fmt.Sprintf("group is supported only for 'regex' extractors (not '%s')", typ))
+		})
+	}
+
+	t.Run("valid regex group", func(t *testing.T) {
+		rawYAML := "type: regex\nregex:\n  - '([a-z]+)'\ngroup: 1\n"
+		var extractor Extractor
+		require.NoError(t, yaml.Unmarshal([]byte(rawYAML), &extractor))
+		require.NoError(t, extractor.CompileExtractors())
+	})
+}
+
+func TestCompileExtractorsRejectsMisappliedAttribute(t *testing.T) {
+	invalidTypes := []string{"regex", "kval", "json", "dsl"}
+	for _, typ := range invalidTypes {
+		t.Run(typ, func(t *testing.T) {
+			rawYAML := fmt.Sprintf("type: %s\n%s:\n  - test\nattribute: href\n", typ, typ)
+			var extractor Extractor
+			require.NoError(t, yaml.Unmarshal([]byte(rawYAML), &extractor))
+			err := extractor.CompileExtractors()
+			require.Error(t, err)
+			require.ErrorContains(t, err, fmt.Sprintf("attribute is supported only for 'xpath' extractors (not '%s')", typ))
+		})
+	}
+
+	t.Run("valid xpath attribute", func(t *testing.T) {
+		rawYAML := "type: xpath\nxpath:\n  - '//a'\nattribute: href\n"
+		var extractor Extractor
+		require.NoError(t, yaml.Unmarshal([]byte(rawYAML), &extractor))
+		require.NoError(t, extractor.CompileExtractors())
+	})
+}
