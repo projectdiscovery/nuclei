@@ -57,6 +57,32 @@ func TestTemplateInstallation(t *testing.T) {
 	require.Len(t, ownership.Files, len(templates), "fresh installation should record ownership of every installed template")
 }
 
+func TestUpdateIfOutdatedSkipsReleaseInstalledWhileWaiting(t *testing.T) {
+	templatesDir := t.TempDir()
+	stateDir := t.TempDir()
+
+	// another process held the update lock and installed the latest release
+	installer := &config.Config{TemplateVersion: "v2.0.0"}
+	installer.SetStateDir(stateDir)
+	installer.SetTemplatesDir(templatesDir)
+	require.NoError(t, installer.WriteTemplatesConfig())
+
+	// this process loaded its state before that install finished
+	cfg := &config.Config{LatestNucleiTemplatesVersion: "v2.0.0", Logger: gologger.DefaultLogger}
+	cfg.SetStateDir(stateDir)
+	cfg.SetTemplatesDir(templatesDir)
+	previousConfig := config.DefaultConfig
+	config.DefaultConfig = cfg
+	t.Cleanup(func() { config.DefaultConfig = previousConfig })
+
+	tm := &TemplateManager{fetchLatestRelease: func() (templateRelease, error) {
+		t.Fatal("downloaded a release another process already installed")
+		return nil, nil
+	}}
+	require.NoError(t, tm.UpdateIfOutdated())
+	require.Equal(t, "v2.0.0", cfg.TemplateVersion)
+}
+
 func TestIsOutdatedVersion(t *testing.T) {
 	testCases := []struct {
 		current  string

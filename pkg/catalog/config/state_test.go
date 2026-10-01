@@ -139,3 +139,58 @@ func writeTestFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 		t.Fatalf("write test file: %v", err)
 	}
 }
+
+func TestReloadTemplateVersion(t *testing.T) {
+	newConfig := func(t *testing.T, templatesDir string) *Config {
+		t.Helper()
+		cfg := &Config{stateDir: t.TempDir()}
+		cfg.setTemplatesDir(templatesDir)
+		return cfg
+	}
+
+	t.Run("adopts the version another process installed", func(t *testing.T) {
+		templatesDir := t.TempDir()
+		cfg := newConfig(t, templatesDir)
+		other := &Config{stateDir: cfg.stateDir, TemplateVersion: "v2.0.0"}
+		other.setTemplatesDir(templatesDir)
+		if err := other.WriteTemplatesConfig(); err != nil {
+			t.Fatalf("write templates state: %v", err)
+		}
+
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v2.0.0" {
+			t.Fatalf("template version = %q, want v2.0.0", cfg.TemplateVersion)
+		}
+	})
+
+	t.Run("ignores state of another templates directory", func(t *testing.T) {
+		cfg := newConfig(t, t.TempDir())
+		cfg.TemplateVersion = "v1.0.0"
+		other := &Config{stateDir: cfg.stateDir, TemplateVersion: "v2.0.0"}
+		other.setTemplatesDir(t.TempDir())
+		if err := other.WriteTemplatesConfig(); err != nil {
+			t.Fatalf("write templates state: %v", err)
+		}
+
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v1.0.0" {
+			t.Fatalf("template version = %q, want v1.0.0", cfg.TemplateVersion)
+		}
+	})
+
+	t.Run("keeps the loaded version without state", func(t *testing.T) {
+		cfg := newConfig(t, t.TempDir())
+		cfg.TemplateVersion = "v1.0.0"
+
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v1.0.0" {
+			t.Fatalf("template version = %q, want v1.0.0", cfg.TemplateVersion)
+		}
+	})
+}

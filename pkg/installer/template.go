@@ -123,6 +123,12 @@ func (t *TemplateManager) updateIfOutdatedLocked() error {
 		return errkit.Wrapf(err, "failed to recover template ownership at %s", config.DefaultConfig.TemplatesDirectory)
 	}
 
+	// the version in memory predates the lock; a process that held it before
+	// this one may have already installed the latest release
+	if err := config.DefaultConfig.ReloadTemplateVersion(); err != nil {
+		gologger.Debug().Msgf("Could not reload templates version, using the one loaded at startup: %s", err)
+	}
+
 	needsUpdate := config.DefaultConfig.NeedsTemplateUpdate()
 
 	// NOTE(dwisiswant0): if PDTM API data is not available
