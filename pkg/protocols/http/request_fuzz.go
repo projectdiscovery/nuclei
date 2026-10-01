@@ -190,21 +190,16 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input) {
 		return false, nil
 	}
-	// Extract hostname for per-host rate limiting: prefer the concrete fuzzed
-	// request URL (rules may change host/port), fall back to the input target
-	hostname := input.MetaInput.Input
-	if gr.Request != nil && gr.Request.Request != nil && gr.Request.Request.URL != nil {
-		hostname = gr.Request.Request.URL.String()
-	}
-	if err := request.rateLimitTake(hostname); err != nil {
-		return false, err
-	}
 	req := &generatedRequest{
 		request:              gr.Request,
 		dynamicValues:        gr.DynamicValues,
 		interactshURLs:       gr.InteractURLs,
 		original:             request,
 		fuzzGeneratedRequest: gr,
+	}
+	// Same key executeRequest will observe, including a host or port the fuzz rule rewrote.
+	if err := request.rateLimitTake(input.Context(), hostBackoffKey(req, input)); err != nil {
+		return false, err
 	}
 	var gotMatches bool
 	requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {

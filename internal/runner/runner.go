@@ -56,6 +56,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -725,6 +726,10 @@ func (r *Runner) RunEnumeration() error {
 
 		r.hostErrors = cache
 		executorOpts.HostErrorsCache = cache
+	}
+
+	if r.options.HostBackoff {
+		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: r.options.HostBackoffMax})
 	}
 
 	executorEngine := core.New(r.options)
