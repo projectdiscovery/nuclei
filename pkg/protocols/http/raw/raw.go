@@ -213,7 +213,10 @@ read_line:
 	parts := strings.Fields(s)
 	if len(parts) > 0 {
 		rawRequest.Method = parts[0]
-		if len(parts) == 2 && strings.Contains(parts[1], "HTTP") {
+		// Only a version token may stand in for the missing path. A substring
+		// test also matched any path containing "HTTP", e.g. "GET /HTTPProxy",
+		// and dropped the path.
+		if len(parts) == 2 && strings.HasPrefix(parts[1], "HTTP/") {
 			// When relative path is missing/ not specified it is considered that
 			// request is meant to be untampered at path
 			// Ex: GET HTTP/1.1
