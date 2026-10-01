@@ -68,3 +68,43 @@ func TestOpenAPIParser(t *testing.T) {
 		require.ElementsMatch(t, urls, methodToURLs[method], "invalid urls for method %s", method)
 	}
 }
+
+func TestOpenAPIBinaryOctetStreamContentType(t *testing.T) {
+	format := New()
+	spec := `openapi: 3.0.0
+info:
+  title: Test
+  version: "1.0.0"
+servers:
+  - url: "http://example.com"
+paths:
+  /upload:
+    post:
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: ok
+`
+	var requests []*types.RequestResponse
+	err := format.Parse(strings.NewReader(spec), func(rr *types.RequestResponse) bool {
+		requests = append(requests, rr)
+		return false
+	}, "spec.yaml")
+	require.NoError(t, err)
+	require.NotEmpty(t, requests)
+	found := false
+	for _, req := range requests {
+		if req.Request != nil {
+			ct, ok := req.Request.Headers.Get("Content-Type")
+			if ok && ct == "application/octet-stream" {
+				found = true
+			}
+		}
+	}
+	require.True(t, found, "expected Content-Type application/octet-stream for format: binary")
+}
