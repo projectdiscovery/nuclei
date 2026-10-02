@@ -17,6 +17,10 @@ import (
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
+// Minimum number of hosts that need httpx probing before we emit periodic
+// progress lines. Keeps small scans unchanged.
+const httpxProbeProgressMinTargets = 1000
+
 // initializeTemplatesHTTPInput initializes the http form of input
 // for any loaded http templates if input is in non-standard format.
 func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
@@ -55,7 +59,10 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create adaptive group")
 	}
-	var count atomic.Int32
+	var alive atomic.Int32
+	var probed atomic.Int32
+	var probeTotal int
+
 	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		if stringsutil.HasPrefixAny(value.Input, "http://", "https://") {
 			return true
@@ -67,19 +74,60 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 			}
 		}
 
+		probeTotal++
 		swg.Add()
 		go func(input *contextargs.MetaInput) {
 			defer swg.Done()
+			defer probed.Add(1)
 
 			if result := utils.ProbeURL(input.Input, httpxClient); result != "" {
-				count.Add(1)
+				alive.Add(1)
 				_ = hm.Set(input.Input, []byte(result))
 			}
 		}(value)
 		return true
 	})
+
+	// Start progress only after enqueue so we know the total; ticker runs during Wait.
+	if stop := r.startHTTPXProbeProgress(probeTotal, &probed, &alive); stop != nil {
+		defer stop()
+	}
+
 	swg.Wait()
 
-	r.Logger.Info().Msgf("Found %d URL from httpx", count.Load())
+	r.Logger.Info().Msgf("Found %d URL from httpx", alive.Load())
 	return hm, nil
+}
+
+// startHTTPXProbeProgress optionally logs probe progress for large input sets
+// when -stats is enabled. Returns a stop func, or nil when progress is inactive.
+func (r *Runner) startHTTPXProbeProgress(probeTotal int, probed, alive *atomic.Int32) func() {
+	if probeTotal < httpxProbeProgressMinTargets || !r.options.EnableProgressBar {
+		return nil
+	}
+
+	interval := time.Duration(r.options.StatsInterval) * time.Second
+	if interval <= 0 {
+		interval = 5 * time.Second
+	}
+
+	r.Logger.Info().Msgf("httpx probe progress enabled for %d hosts (interval %s)", probeTotal, interval)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ticker := time.NewTicker(interval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				r.Logger.Info().Msgf(
+					"[httpx] probe progress: %d/%d (alive: %d)",
+					probed.Load(), probeTotal, alive.Load(),
+				)
+			}
+		}
+	}()
+	return cancel
 }
