@@ -36,33 +36,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 	if len(schema.Servers) == 0 {
 		return errors.New("no servers found in openapi schema")
 	}
-
-	// new set of globalParams obtained from security schemes
-	globalParams := openapi3.NewParameters()
-
-	if len(schema.Security) > 0 {
-		params, err := GetGlobalParamsForSecurityRequirement(schema, &schema.Security)
-		if err != nil {
-			return err
-		}
-		globalParams = append(globalParams, params...)
-	}
-
-	// validate global param requirements
-	for _, param := range globalParams {
-		if val, ok := opts.Variables[param.Value.Name]; ok {
-			param.Value.Example = val
-		} else {
-			// if missing check for validation
-			if opts.SkipFormatValidation {
-				gologger.Verbose().Msgf("openapi: skipping all requests due to missing global auth parameter: %s\n", param.Value.Name)
-				return nil
-			} else {
-				// fatal error
-				gologger.Fatal().Msgf("openapi: missing global auth parameter: %s\n", param.Value.Name)
-			}
-		}
-	}
+	globalParams, globalSecurityErr := selectSecurityParameters(schema, &schema.Security, opts.Variables)
 
 	missingVarMap := make(map[string]struct{})
 	optionalVarMap := make(map[string]struct{})
@@ -92,6 +66,10 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 				requestPath = serverPath + path
 			}
 			for method, ov := range ops {
+				// An override need not use an unsupported global security scheme.
+				if ov.Security == nil && globalSecurityErr != nil {
+					return globalSecurityErr
+				}
 				if err := generateRequestsFromOp(&generateReqOptions{
 					requiredOnly:              opts.RequiredOnly,
 					method:                    method,
@@ -148,7 +126,7 @@ type generateReqOptions struct {
 	// post request generation callback
 	callback formats.ParseReqRespCallback
 
-	// global parameters
+	// Selected global authentication parameters, used only without an override.
 	globalParams openapi3.Parameters
 	// requestparams map
 	reqParams openapi3.Parameters
@@ -175,21 +153,42 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 	}
 	// add existing req params
 	reqParams = append(reqParams, opts.op.Parameters...)
-	// check for endpoint specific auth
+	// Select one complete requirement for this operation before adding its
+	// authentication parameters. Operation security overrides global security.
+	authParams := opts.globalParams
 	if opts.op.Security != nil {
-		params, err := GetGlobalParamsForSecurityRequirement(opts.schema, opts.op.Security)
+		authParams, err = selectSecurityParameters(opts.schema, opts.op.Security, opts.opts.Variables)
 		if err != nil {
 			return err
 		}
-		reqParams = append(reqParams, params...)
-	} else {
-		reqParams = append(reqParams, opts.globalParams...)
+	}
+	reqParams = append(reqParams, authParams...)
+	authParameters := make(map[*openapi3.Parameter]struct{}, len(authParams))
+	for _, parameter := range authParams {
+		authParameters[parameter.Value] = struct{}{}
+	}
+
+	// Collect missing credentials before ordinary parameter validation can return
+	// early. Still validate ordinary parameters so their diagnostics are retained.
+	missingAuth := false
+	for _, parameter := range authParams {
+		value := parameter.Value
+		if types.ToString(opts.opts.Variables[value.Name]) != "" {
+			continue
+		}
+		missingAuth = true
+		if opts.missingParamValueCallback != nil {
+			opts.missingParamValueCallback(value, opts)
+		}
 	}
 
 	query := url.Values{}
 	for _, parameter := range reqParams {
 		value := parameter.Value
 
+		if _, isAuth := authParameters[value]; missingAuth && isAuth {
+			continue
+		}
 		if value.Schema == nil || value.Schema.Value == nil {
 			continue
 		}
@@ -260,6 +259,9 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		case "cookie":
 			req.AddCookie(&http.Cookie{Name: value.Name, Value: types.ToString(paramValue)})
 		}
+	}
+	if missingAuth {
+		return nil
 	}
 	req.URL.RawQuery = query.Encode()
 	req.URL.Path = opts.requestPath
@@ -391,44 +393,78 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 	return nil
 }
 
-// GetGlobalParamsForSecurityRequirement returns the global parameters for a security requirement
+// GetGlobalParamsForSecurityRequirement returns parameters for the first supported
+// security alternative, or no parameters when anonymous access is permitted.
 func GetGlobalParamsForSecurityRequirement(schema *openapi3.T, requirement *openapi3.SecurityRequirements) ([]*openapi3.ParameterRef, error) {
-	globalParams := openapi3.NewParameters()
-	if len(schema.Components.SecuritySchemes) == 0 {
-		return nil, errkit.Newf("security requirements (%+v) without any security schemes found in openapi file", schema.Security)
+	return selectSecurityParameters(schema, requirement, nil)
+}
+
+// selectSecurityParameters chooses the first fully supplied alternative. If none
+// is supplied, return the first supported alternative for missing-value reporting.
+func selectSecurityParameters(schema *openapi3.T, requirement *openapi3.SecurityRequirements, variables map[string]interface{}) ([]*openapi3.ParameterRef, error) {
+	if requirement == nil || len(*requirement) == 0 {
+		return nil, nil
 	}
-	found := false
-	// this api is protected for each security scheme pull its corresponding scheme
-schemaLabel:
+	var fallback []*openapi3.ParameterRef
+	var firstError error
 	for _, security := range *requirement {
-		for name := range security {
-			if scheme, ok := schema.Components.SecuritySchemes[name]; ok {
-				found = true
-				param, err := GenerateParameterFromSecurityScheme(scheme)
-				if err != nil {
-					return nil, err
-
-				}
-				globalParams = append(globalParams, &openapi3.ParameterRef{Value: param})
-				continue schemaLabel
+		if len(security) == 0 {
+			return nil, nil
+		}
+		params := openapi3.NewParameters()
+		complete, supported := true, true
+		// Map order must not change which schemes are emitted or reported missing.
+		for _, name := range mapsutil.GetSortedKeys(security) {
+			var scheme *openapi3.SecuritySchemeRef
+			if schema.Components != nil {
+				scheme = schema.Components.SecuritySchemes[name]
 			}
+			if scheme == nil || scheme.Value == nil {
+				if firstError == nil {
+					firstError = errkit.Newf("security scheme (%s) not found in openapi file", name)
+				}
+				supported = false
+				break
+			}
+			param, err := GenerateParameterFromSecurityScheme(scheme)
+			if err != nil {
+				if firstError == nil {
+					firstError = err
+				}
+				supported = false
+				break
+			}
+			params = append(params, &openapi3.ParameterRef{Value: param})
+			complete = complete && types.ToString(variables[param.Name]) != ""
 		}
-		if !found && len(security) > 1 {
-			// if this is case then both security schemes are required
-			return nil, errkit.Newf("security requirement (%+v) not found in openapi file", security)
+		if !supported {
+			continue
+		}
+		if complete {
+			return params, nil
+		}
+		if fallback == nil {
+			fallback = params
 		}
 	}
-	if !found {
-		return nil, errkit.Newf("security requirement (%+v) not found in openapi file", requirement)
+	if fallback != nil {
+		return fallback, nil
 	}
-
-	return globalParams, nil
+	return nil, firstError
 }
 
 // GenerateParameterFromSecurityScheme generates an example from a schema object
 func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*openapi3.Parameter, error) {
-	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey") {
+	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey", "oauth2", "openIdConnect") {
 		return nil, errkit.Newf("unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
+	}
+	if generic.EqualsAny(scheme.Value.Type, "oauth2", "openIdConnect") {
+		// Access tokens are supplied by the caller through the Authorization variable.
+		// Request generation does not acquire or refresh tokens from the provider.
+		h := openapi3.NewHeaderParameter(DEFAULT_HTTP_SCHEME_HEADER).WithSchema(openapi3.NewStringSchema())
+		h.Required = true
+		h.Description = globalAuth
+		return h, nil
 	}
 	if scheme.Value.Type == "http" {
 		// check scheme
@@ -443,12 +479,12 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 		// create parameters using the scheme
 		switch scheme.Value.Scheme {
 		case "basic":
-			h := openapi3.NewHeaderParameter(headerName)
+			h := openapi3.NewHeaderParameter(headerName).WithSchema(openapi3.NewStringSchema())
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
 		case "bearer":
-			h := openapi3.NewHeaderParameter(headerName)
+			h := openapi3.NewHeaderParameter(headerName).WithSchema(openapi3.NewStringSchema())
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
@@ -466,17 +502,17 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 		// create parameters using the scheme
 		switch scheme.Value.In {
 		case "query":
-			q := openapi3.NewQueryParameter(scheme.Value.Name)
+			q := openapi3.NewQueryParameter(scheme.Value.Name).WithSchema(openapi3.NewStringSchema())
 			q.Required = true
 			q.Description = globalAuth // differentiator for normal variables and global auth
 			return q, nil
 		case "header":
-			h := openapi3.NewHeaderParameter(scheme.Value.Name)
+			h := openapi3.NewHeaderParameter(scheme.Value.Name).WithSchema(openapi3.NewStringSchema())
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
 		case "cookie":
-			c := openapi3.NewCookieParameter(scheme.Value.Name)
+			c := openapi3.NewCookieParameter(scheme.Value.Name).WithSchema(openapi3.NewStringSchema())
 			c.Required = true
 			c.Description = globalAuth // differentiator for normal variables and global auth
 			return c, nil
