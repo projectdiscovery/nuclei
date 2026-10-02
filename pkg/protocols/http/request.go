@@ -301,6 +301,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 							Operators:      request.CompiledOperators,
 							MatchFunc:      request.Match,
 							ExtractFunc:    request.Extract,
+							Eviction:       request.options.InteractshEvictionDuration(),
 						}
 						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
@@ -609,6 +610,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 						Operators:      request.CompiledOperators,
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
+						Eviction:       request.options.InteractshEvictionDuration(),
 					}
 					allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
