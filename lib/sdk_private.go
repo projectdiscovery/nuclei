@@ -184,10 +184,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
-	if err := e.loadIgnoreFile(); err != nil {
-		return err
-	}
-
 	if e.opts.Parser != nil {
 		if op, ok := e.opts.Parser.(*templates.Parser); ok {
 			e.parser = op
@@ -380,6 +376,27 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 				e.opts.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
 			}
 		}
+	}
+
+	// Read .nuclei-ignore LAST, once init has finished managing that file and
+	// the options it writes into.
+	//
+	// It must come after the update block above: init creates or replaces the
+	// ignore file there (UpdateIgnoreFile), so reading earlier reads a file this
+	// same call is about to write. On a host without a pre-existing ignore file
+	// — a fresh install, or any container whose filesystem was reset — the read
+	// found nothing, warned, and left the engine with an empty deny-list for its
+	// whole lifetime, because ExcludeTags is never re-read after init. Reading
+	// afterwards also makes the corrupt-file check recoverable rather than fatal:
+	// a malformed local file that IgnoreFileNeedsUpdate replaces no longer fails
+	// the scan.
+	//
+	// It must also come after GetAuthTmplStore above, which nils ExcludeTags and
+	// ExcludedTemplates on the shared options to scope its own template store and
+	// does not restore them. Loading here keeps the deny-list intact for callers
+	// that pass SecretsFile.
+	if err := e.loadIgnoreFile(); err != nil {
+		return err
 	}
 
 	return nil
