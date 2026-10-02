@@ -20,15 +20,15 @@ import (
 )
 
 func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
-	options := *testutils.DefaultOptions
+	options := testutils.DefaultOptions.Copy()
 	options.ExecutionId = t.Name()
 	options.PerHostRateLimit = true
 	options.PerHostRateLimitPoolSize = -1
 	options.RateLimit = 1
 	options.RateLimitDuration = 2 * time.Second
 	options.RestrictLocalNetworkAccess = false
-	testutils.Init(&options)
-	t.Cleanup(func() { testutils.Cleanup(&options) })
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(writer, "ok")
@@ -45,7 +45,7 @@ func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
 			Words: []string{"ok"},
 		}}},
 	}
-	executerOptions := testutils.NewMockExecuterOptions(&options, &testutils.TemplateInfo{
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   request.ID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
