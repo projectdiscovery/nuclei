@@ -44,6 +44,10 @@ func (e *Extractor) CompileExtractors() error {
 		return fmt.Errorf("%s extractor requires at least one %s value", e.extractorType, requiredField)
 	}
 
+	if err := e.validateTypeSpecificFields(); err != nil {
+		return err
+	}
+
 	// Compile the regexes
 	for _, regex := range e.Regex {
 		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
