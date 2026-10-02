@@ -10,8 +10,7 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
-	"github.com/projectdiscovery/ratelimit"
+	"golang.org/x/time/rate"
 )
 
 type PerHostRateLimitPool struct {
@@ -31,7 +30,7 @@ type PerHostRateLimitPool struct {
 const ppsWindowSize = 100
 
 type rateLimitEntry struct {
-	limiter        *ratelimit.Limiter
+	limiter        *PerHostRateLimiter
 	createdAt      time.Time
 	accessCount    atomic.Uint64
 	requestCount   atomic.Uint64
@@ -44,6 +43,63 @@ type rateLimitEntry struct {
 	tsHead            int // next write position
 	tsCount           int // number of valid entries (up to ppsWindowSize)
 	requestMu         sync.Mutex
+}
+
+type PerHostRateLimiter struct {
+	limiter   *rate.Limiter
+	ctx       context.Context
+	cancel    context.CancelFunc
+	unlimited bool
+}
+
+func (l *PerHostRateLimiter) Wait(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return context.Cause(ctx)
+	}
+	if err := l.ctx.Err(); err != nil {
+		return context.Cause(l.ctx)
+	}
+	if l.unlimited {
+		return nil
+	}
+
+	now := time.Now()
+	reservation := l.limiter.ReserveN(now, 1)
+	if !reservation.OK() {
+		return fmt.Errorf("per-host rate limiter rejected reservation")
+	}
+	delay := reservation.DelayFrom(now)
+	if delay <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		reservation.Cancel()
+		return context.Cause(ctx)
+	case <-l.ctx.Done():
+		reservation.Cancel()
+		return context.Cause(l.ctx)
+	}
+}
+
+func (l *PerHostRateLimiter) Take() {
+	_ = l.Wait(context.Background())
+}
+
+func (l *PerHostRateLimiter) CanTake() bool {
+	return l.unlimited || l.limiter.Tokens() > 0
+}
+
+func (l *PerHostRateLimiter) Stop() {
+	l.cancel()
 }
 
 func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, options *types.Options) *PerHostRateLimitPool {
@@ -88,7 +144,7 @@ func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, o
 
 func (p *PerHostRateLimitPool) GetOrCreate(
 	host string,
-) (*ratelimit.Limiter, error) {
+) (*PerHostRateLimiter, error) {
 	normalizedHost := normalizeHostPort(host)
 
 	// Try to get entry (this refreshes TTL in expirable LRU)
@@ -175,20 +231,28 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 // of starting one fixed-window timer goroutine per host. Apart from producing
 // steadier target pressure, this keeps a large host pool cheap and prevents
 // several concurrent engines from consuming the whole window at once.
-func newPerHostRateLimiter(options *types.Options) (*ratelimit.Limiter, error) {
+func newPerHostRateLimiter(options *types.Options) (*PerHostRateLimiter, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	if options == nil {
-		return utils.GetRateLimiter(context.Background(), 0, 0), nil
+		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true}, nil
 	}
 	if options.RateLimit < 0 {
+		cancel()
 		return nil, fmt.Errorf("rate limit must not be negative: %d", options.RateLimit)
 	}
 	if options.RateLimitDuration < 0 {
+		cancel()
 		return nil, fmt.Errorf("rate limit duration must not be negative: %s", options.RateLimitDuration)
 	}
 	if options.RateLimit == 0 || options.RateLimitDuration == 0 {
-		return utils.GetRateLimiter(context.Background(), 0, 0), nil
+		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true}, nil
 	}
-	return ratelimit.NewLeakyBucket(context.Background(), uint(options.RateLimit), options.RateLimitDuration), nil
+	requestsPerSecond := rate.Limit(float64(options.RateLimit) / options.RateLimitDuration.Seconds())
+	return &PerHostRateLimiter{
+		limiter: rate.NewLimiter(requestsPerSecond, options.RateLimit),
+		ctx:     ctx,
+		cancel:  cancel,
+	}, nil
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {
@@ -243,7 +307,7 @@ type RateLimitPoolStats struct {
 	Size      int
 }
 
-func (p *PerHostRateLimitPool) GetLimiterForHost(host string) (*ratelimit.Limiter, bool) {
+func (p *PerHostRateLimitPool) GetLimiterForHost(host string) (*PerHostRateLimiter, bool) {
 	normalizedHost := normalizeHostPort(host)
 
 	if entry, ok := p.cache.Peek(normalizedHost); ok {
