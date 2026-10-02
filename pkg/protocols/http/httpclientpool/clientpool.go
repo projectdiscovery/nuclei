@@ -576,8 +576,23 @@ const defaultMaxRedirects = 10
 
 type checkRedirectFunc func(req *http.Request, via []*http.Request) error
 
+type redirectCallbackContextKey struct{}
+
+// WithRedirectCallback returns a context that invokes callback with the
+// destination host immediately before each allowed redirect is followed.
+func WithRedirectCallback(ctx context.Context, callback func(context.Context, string) error) context.Context {
+	return context.WithValue(ctx, redirectCallbackContextKey{}, callback)
+}
+
+// RateLimitHostKey returns the case-insensitive host:port key used to scope
+// host rate limits. Explicit ports are preserved as separate buckets.
+func RateLimitHostKey(host string) string {
+	return strings.ToLower(host)
+}
+
 func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRedirectFunc {
 	return func(req *http.Request, via []*http.Request) error {
+		var err error
 		switch redirectType {
 		case DontFollowRedirect:
 			return http.ErrUseLastResponse
@@ -592,15 +607,23 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 			if newHost != oldHost {
 				return http.ErrUseLastResponse
 			}
-			return checkMaxRedirects(req, via, maxRedirects)
+			err = checkMaxRedirects(req, via, maxRedirects)
 		case FollowAllRedirect:
-			return checkMaxRedirects(req, via, maxRedirects)
+			err = checkMaxRedirects(req, via, maxRedirects)
 		case FollowSameSchemeRedirect:
 			previousScheme := via[len(via)-1].URL.Scheme
 			if req.URL.Scheme != previousScheme {
 				return http.ErrUseLastResponse
 			}
-			return checkMaxRedirects(req, via, maxRedirects)
+			err = checkMaxRedirects(req, via, maxRedirects)
+		}
+		if err != nil {
+			return err
+		}
+		if callback, ok := req.Context().Value(redirectCallbackContextKey{}).(func(context.Context, string) error); ok && callback != nil {
+			if err := callback(req.Context(), RateLimitHostKey(req.URL.Host)); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
