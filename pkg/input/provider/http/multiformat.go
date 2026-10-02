@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/dedupe"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/burp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/json"
@@ -39,6 +40,7 @@ type HttpInputProvider struct {
 	inputData []byte
 	inputFile string
 	count     int64
+	dupeCount int64
 }
 
 // NewHttpInputProvider creates a new input provider for nuclei from a file
@@ -60,6 +62,8 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 	// Do a first pass over the input to identify any errors
 	// and get the count of the input file as well
 	count := int64(0)
+	dupeCount := int64(0)
+	deduplicator := dedupe.NewRequestDeduplicator()
 	var inputFile *os.File
 	var inputReader io.Reader
 	if opts.InputFile != "" {
@@ -87,23 +91,34 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 	}
 
 	parseErr := format.Parse(bytes.NewReader(data), func(request *types.RequestResponse) bool {
+		if deduplicator.IsDuplicate(request) {
+			dupeCount++
+			return false
+		}
 		count++
 		return false
 	}, opts.InputFile)
 	if parseErr != nil {
 		return nil, errors.Wrap(parseErr, "could not parse input file")
 	}
-	return &HttpInputProvider{format: format, inputData: data, inputFile: opts.InputFile, count: count}, nil
+	if dupeCount > 0 {
+		gologger.Info().Msgf("Supplied %s input was automatically deduplicated (%d removed).", opts.InputMode, dupeCount)
+	}
+	return &HttpInputProvider{format: format, inputData: data, inputFile: opts.InputFile, count: count, dupeCount: dupeCount}, nil
 }
 
-// Count returns the number of items for input provider
+// Count returns the number of unique items for input provider
 func (i *HttpInputProvider) Count() int64 {
 	return i.count
 }
 
-// Iterate over all inputs in order
+// Iterate over all unique inputs in order
 func (i *HttpInputProvider) Iterate(callback func(value *contextargs.MetaInput) bool) {
+	deduplicator := dedupe.NewRequestDeduplicator()
 	err := i.format.Parse(bytes.NewReader(i.inputData), func(request *types.RequestResponse) bool {
+		if deduplicator.IsDuplicate(request) {
+			return false
+		}
 		metaInput := contextargs.NewMetaInput()
 		metaInput.ReqResp = request
 		metaInput.Input = request.URL.String()
