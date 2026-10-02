@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -52,6 +53,9 @@ func (c *Cookie) Parse(req *retryablehttp.Request) (bool, error) {
 // Iterate iterates through the component
 func (c *Cookie) Iterate(callback func(key string, value interface{}) error) (err error) {
 	c.value.parsed.Iterate(func(key string, value any) bool {
+		if isIgnoredCookieKey(key) {
+			return true
+		}
 		if errx := callback(key, value); errx != nil {
 			err = errx
 			return false
@@ -59,6 +63,18 @@ func (c *Cookie) Iterate(callback func(key string, value interface{}) error) (er
 		return true
 	})
 	return
+}
+
+func isIgnoredCookieKey(key string) bool {
+	if _, ok := defaultIgnoredCookieKeys[key]; ok {
+		return true
+	}
+	for _, prefix := range defaultIgnoredCookiePrefixes {
+		if strings.HasPrefix(key, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // SetValue sets a value in the component
