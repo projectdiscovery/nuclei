@@ -25,7 +25,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -662,7 +661,7 @@ func isURLEncoded(s string) bool {
 
 // GetPerHostRateLimiter gets or creates a rate limiter for a specific host
 // Returns nil if per-host rate limiting is not enabled
-func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.Limiter, error) {
+func GetPerHostRateLimiter(options *types.Options, hostname string) (*PerHostRateLimiter, error) {
 	if !options.PerHostRateLimit {
 		return nil, nil
 	}
