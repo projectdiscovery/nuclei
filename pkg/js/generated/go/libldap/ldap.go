@@ -53,12 +53,13 @@ func init() {
 			"FilterWorkstationTrustAccount":    lib_ldap.FilterWorkstationTrustAccount,
 
 			// Objects / Classes
-			"Client":         lib_ldap.NewClient,
-			"Config":         gojs.GetClassConstructor[lib_ldap.Config](&lib_ldap.Config{}),
-			"LdapAttributes": gojs.GetClassConstructor[lib_ldap.LdapAttributes](&lib_ldap.LdapAttributes{}),
-			"LdapEntry":      gojs.GetClassConstructor[lib_ldap.LdapEntry](&lib_ldap.LdapEntry{}),
-			"Metadata":       gojs.GetClassConstructor[lib_ldap.Metadata](&lib_ldap.Metadata{}),
-			"SearchResult":   gojs.GetClassConstructor[lib_ldap.SearchResult](&lib_ldap.SearchResult{}),
+			"AuthenticateOptions": gojs.GetClassConstructor[lib_ldap.AuthenticateOptions](&lib_ldap.AuthenticateOptions{}),
+			"Client":              lib_ldap.NewClient,
+			"Config":              gojs.GetClassConstructor[lib_ldap.Config](&lib_ldap.Config{}),
+			"LdapAttributes":      gojs.GetClassConstructor[lib_ldap.LdapAttributes](&lib_ldap.LdapAttributes{}),
+			"LdapEntry":           gojs.GetClassConstructor[lib_ldap.LdapEntry](&lib_ldap.LdapEntry{}),
+			"Metadata":            gojs.GetClassConstructor[lib_ldap.Metadata](&lib_ldap.Metadata{}),
+			"SearchResult":        gojs.GetClassConstructor[lib_ldap.SearchResult](&lib_ldap.SearchResult{}),
 		},
 	).Register()
 }
