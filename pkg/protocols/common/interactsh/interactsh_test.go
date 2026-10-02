@@ -349,3 +349,11 @@ func TestClientInitializesCachesOnceConcurrently(t *testing.T) {
 	require.NotNil(t, client.matchedTemplates)
 	require.NotNil(t, client.interactshURLs)
 }
+
+func TestClientNilReceiver(t *testing.T) {
+	var client *Client
+	var iClient IClient = client
+	if res := iClient.Close(); res != false {
+		t.Fatal("Close() on a nil receiver returned true, want false")
+	}
+}
