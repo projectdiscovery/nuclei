@@ -1,6 +1,7 @@
 package httpclientpool
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"testing"
@@ -46,6 +47,27 @@ func TestPerHostRateLimitPoolSmoothsLowRates(t *testing.T) {
 	}
 	require.Less(t, time.Since(started), 500*time.Millisecond,
 		"the first request beyond the initial bucket should be continuously refilled, not wait for a fixed window")
+}
+
+func TestPerHostRateLimitCancellationReleasesReservation(t *testing.T) {
+	opts := &types.Options{RateLimit: 1, RateLimitDuration: time.Second}
+	pool := NewPerHostRateLimitPool(1, time.Hour, time.Hour, opts)
+	t.Cleanup(pool.Close)
+
+	limiter, err := pool.GetOrCreate("https://cancel.example.com")
+	require.NoError(t, err)
+	require.NoError(t, limiter.Wait(context.Background()))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() { result <- limiter.Wait(ctx) }()
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	require.ErrorIs(t, <-result, context.Canceled)
+
+	started := time.Now()
+	require.NoError(t, limiter.Wait(context.Background()))
+	require.Less(t, time.Since(started), 1500*time.Millisecond)
 }
 
 func TestUnboundedPerHostRateLimitPoolRetainsBudgetsBeyondDefaultCapacity(t *testing.T) {

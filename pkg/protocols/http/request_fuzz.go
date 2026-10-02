@@ -196,7 +196,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if gr.Request != nil && gr.Request.Request != nil && gr.Request.Request.URL != nil {
 		hostname = gr.Request.Request.URL.String()
 	}
-	if err := request.rateLimitTake(hostname); err != nil {
+	if err := request.rateLimitTake(input.Context(), hostname); err != nil {
 		return false, err
 	}
 	req := &generatedRequest{
