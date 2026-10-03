@@ -16,6 +16,7 @@ type Dialers struct {
 	HTTPClientPool             *HTTPPool
 	PerHostRateLimitPool       any // *httpclientpool.PerHostRateLimitPool
 	HTTPToHTTPSPortTracker     any // *httpclientpool.HTTPToHTTPSPortTracker
+	HTTPDesyncHosts            *ExpiringSet
 	NetworkPolicy              *networkpolicy.NetworkPolicy
 	LocalFileAccessAllowed     bool
 	RestrictLocalNetworkAccess bool
