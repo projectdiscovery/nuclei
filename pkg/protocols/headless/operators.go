@@ -95,7 +95,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 		part = "data"
 	case "history":
 		part = "history"
-	case "header":
+	case "header", "all_headers":
 		part = "header"
 	}
 
@@ -116,6 +116,7 @@ func (request *Request) responseToDSLMap(resp, headers, status_code, req, host, 
 		"req":           req,
 		"data":          resp,
 		"header":        headers,
+		"all_headers":   headers,
 		"status_code":   status_code,
 		"history":       history,
 		"type":          request.Type().String(),

@@ -275,6 +275,11 @@ func TestRequest_getMatchPart(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "header content", part)
 
+	// Test "all_headers" part (alias of header)
+	part, ok = request.getMatchPart("all_headers", data)
+	require.True(t, ok)
+	require.Equal(t, "header content", part)
+
 	// Test "history" part
 	part, ok = request.getMatchPart("history", data)
 	require.True(t, ok)
