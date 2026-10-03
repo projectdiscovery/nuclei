@@ -156,7 +156,8 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			executionId := ctx.Value("executionId").(string)
 			dialer := protocolstate.GetDialersWithId(executionId)
 			if dialer == nil {
-				panic("dialers with executionId " + executionId + " not found")
+				gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+				return
 			}
 
 			conn, err := dialer.Fastdialer.Dial(ctx, "udp", net.JoinHostPort(host, port))

@@ -129,3 +129,31 @@ func TestExecuteWithResultsRejectsUnverifiedTemplate(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "refusing to execute unverified javascript template")
 }
+
+func TestGenerateEventDataHandlesMissingDialers(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executorOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "missing-dialers"})
+	executorOptions.Options.ExecutionId = "non-existent-id"
+
+	request := &javascript.Request{
+		Code: `module.exports = { success: true, response: "ok" }`,
+	}
+	require.NoError(t, request.Compile(executorOptions))
+
+	target := contextargs.NewWithInput(context.Background(), "https://example.com:443")
+
+	var err error
+	require.NotPanics(t, func() {
+		// This will trigger generateEventData internally
+		err = request.ExecuteWithResults(target, nil, nil, func(*output.InternalWrappedEvent) {
+			t.Fatal("unexpected callback")
+		})
+	})
+	// It should return an error because dialers are missing
+	require.Error(t, err)
+}
