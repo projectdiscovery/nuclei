@@ -259,7 +259,9 @@ func (p *Page) Close() {
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	_ = p.page.Close()
+	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	_ = p.page.Context(cleanupCtx).Close()
+	cancelCleanup()
 	if p.cancel != nil {
 		p.cancel()
 	}

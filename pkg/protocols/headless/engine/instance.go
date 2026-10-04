@@ -21,6 +21,8 @@ type Instance struct {
 	requestLog map[string]string // contains actual request that was sent
 }
 
+const browserCleanupTimeout = 5 * time.Second
+
 // NewInstance creates a new instance for the current browser.
 //
 // The login process is repeated only once for a browser, and the created
@@ -73,7 +75,9 @@ func (i *Instance) GetRequestLog() map[string]string {
 
 // Close closes all the tabs and pages for a browser instance
 func (i *Instance) Close() error {
-	return i.engine.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	defer cancel()
+	return i.engine.Context(ctx).Close()
 }
 
 // SetInteractsh client
