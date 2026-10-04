@@ -16,6 +16,14 @@ type WithCustomTimeout struct {
 	Timeout time.Duration
 }
 
+// WithCookieJarContext is a context key for carrying the active CookieJar to the transport.
+type WithCookieJarContext struct{}
+
+// WithFuzzedCookie is a context key for identifying a cookie currently being fuzzed.
+type WithFuzzedCookie struct {
+	CookieName string
+}
+
 // RawHttpRequestOpts is a configuration for raw http request
 type RawHttpRequestOpts struct {
 	// Method is the http method to use

@@ -878,6 +878,22 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			executingClient = httpclient
 
+			if executingClient != nil && executingClient.HTTPClient != nil && executingClient.HTTPClient.Jar != nil && generatedRequest.request != nil {
+				ctx := context.WithValue(generatedRequest.request.Context(), httpclientpool.WithCookieJarContext{}, executingClient.HTTPClient.Jar)
+				if generatedRequest.fuzzGeneratedRequest.Component != nil &&
+					generatedRequest.fuzzGeneratedRequest.Component.Name() == "cookie" {
+					fuzzedCookie := generatedRequest.fuzzGeneratedRequest.Parameter
+					if fuzzedCookie == "" {
+						fuzzedCookie = generatedRequest.fuzzGeneratedRequest.Key
+					}
+					if fuzzedCookie == "" {
+						fuzzedCookie = "*"
+					}
+					ctx = context.WithValue(ctx, httpclientpool.WithFuzzedCookie{}, httpclientpool.WithFuzzedCookie{CookieName: fuzzedCookie})
+				}
+				generatedRequest.request = generatedRequest.request.WithContext(ctx)
+			}
+
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a
 			// single wrong detection could otherwise silently break every later request

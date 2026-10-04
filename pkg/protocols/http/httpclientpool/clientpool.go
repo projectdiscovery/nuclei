@@ -122,6 +122,10 @@ type connTrackingTransport struct {
 }
 
 func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if jar, ok := req.Context().Value(WithCookieJarContext{}).(http.CookieJar); ok && jar != nil {
+		deduplicateCookies(req, jar)
+	}
+
 	// Compute the host key once (URL is already parsed) so the GotConn hook can
 	// update both the global counters and the per-host bucket from one trace.
 	host := normalizeHost(req.URL)
@@ -137,6 +141,111 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	return t.base.RoundTrip(req)
+}
+
+// deduplicateCookies reconciles same-name cookies in the request header when
+// the cookie jar holds an updated value for the same cookie.
+func deduplicateCookies(req *http.Request, jar http.CookieJar) {
+	if jar == nil || req == nil || req.URL == nil || len(req.Header["Cookie"]) == 0 {
+		return
+	}
+
+	jarCookies := jar.Cookies(req.URL)
+	if len(jarCookies) == 0 {
+		return
+	}
+
+	jarNames := make(map[string]struct{}, len(jarCookies))
+	for _, jc := range jarCookies {
+		jarNames[jc.Name] = struct{}{}
+	}
+
+	type cookieItem struct {
+		name string
+		raw  string
+	}
+
+	var allCookies []cookieItem
+	counts := make(map[string]int)
+
+	for _, headerVal := range req.Header["Cookie"] {
+		for _, part := range strings.Split(headerVal, ";") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			name, _, found := strings.Cut(part, "=")
+			if !found {
+				continue
+			}
+			trimmedName := strings.TrimSpace(name)
+			allCookies = append(allCookies, cookieItem{
+				name: trimmedName,
+				raw:  part,
+			})
+			counts[trimmedName]++
+		}
+	}
+
+	hasDuplicates := false
+	for name := range jarNames {
+		if counts[name] > 1 {
+			hasDuplicates = true
+			break
+		}
+	}
+
+	if !hasDuplicates {
+		return
+	}
+
+	var fuzzedTarget string
+	if fc, ok := req.Context().Value(WithFuzzedCookie{}).(WithFuzzedCookie); ok {
+		fuzzedTarget = fc.CookieName
+	}
+
+	isFuzzed := func(name string) bool {
+		if fuzzedTarget == "*" {
+			return true
+		}
+		return fuzzedTarget != "" && fuzzedTarget == name
+	}
+
+	remaining := make(map[string]int, len(counts))
+	for k, v := range counts {
+		remaining[k] = v
+	}
+	seenFirst := make(map[string]bool)
+
+	var deduplicated []string
+	for _, item := range allCookies {
+		remaining[item.name]--
+
+		if counts[item.name] > 1 {
+			if _, inJar := jarNames[item.name]; inJar {
+				if isFuzzed(item.name) {
+					// Fuzzed: keep only the first occurrence (the fuzzed payload)
+					if seenFirst[item.name] {
+						continue
+					}
+					seenFirst[item.name] = true
+					deduplicated = append(deduplicated, item.raw)
+					continue
+				} else {
+					// Not fuzzed: keep only the last occurrence (the jar-reissued value)
+					if remaining[item.name] > 0 {
+						continue
+					}
+					deduplicated = append(deduplicated, item.raw)
+					continue
+				}
+			}
+		}
+
+		deduplicated = append(deduplicated, item.raw)
+	}
+
+	req.Header.Set("Cookie", strings.Join(deduplicated, "; "))
 }
 
 func (t *connTrackingTransport) CloseIdleConnections() {

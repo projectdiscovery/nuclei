@@ -3,7 +3,7 @@ package component
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -81,18 +81,17 @@ func (c *Cookie) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
-	// TODO: Fix cookie duplication with auth-file
 	cloned := c.req.Clone(context.Background())
 
 	cloned.Header.Del("Cookie")
+	var cookieParts []string
 	c.value.parsed.Iterate(func(key string, value any) bool {
-		cookie := &http.Cookie{
-			Name:  key,
-			Value: fmt.Sprint(value), // Assume the value is always a string for cookies
-		}
-		cloned.AddCookie(cookie)
+		cookieParts = append(cookieParts, fmt.Sprintf("%s=%s", key, fmt.Sprint(value)))
 		return true
 	})
+	if len(cookieParts) > 0 {
+		cloned.Header.Set("Cookie", strings.Join(cookieParts, "; "))
+	}
 	return cloned, nil
 }
 
