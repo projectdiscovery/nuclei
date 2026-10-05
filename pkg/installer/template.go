@@ -523,12 +523,20 @@ func (t *TemplateManager) writeTemplatesToDisk(release templateRelease, dir stri
 	writtenOutputs := make(map[string]string)
 	touchedDirectories := make(map[string]struct{})
 
+	writer, err := newTemplateOutputWriter(dir)
+	if err != nil {
+		return writtenOutputs, err
+	}
+	defer func() { _ = writer.Close() }()
+
 	callbackFunc := func(uri string, f fs.FileInfo, r io.Reader) error {
 		if f.IsDir() {
 			return nil
 		}
 
-		rootDir, writePath := t.getTemplateOutputLocation(dir, uri, f)
+		// every output is under dir except the ignore file, which the writer
+		// routes to the config directory itself
+		_, writePath := t.getTemplateOutputLocation(dir, uri, f)
 		if writePath == "" {
 			// skip writing file
 			return nil
@@ -540,7 +548,7 @@ func (t *TemplateManager) writeTemplatesToDisk(release templateRelease, dir stri
 			return errkit.Wrapf(err, "failed to read file %s", uri)
 		}
 
-		outputResult, outputErr := writeTemplateOutput(rootDir, writePath, bin, f.Mode())
+		outputResult, outputErr := writer.write(writePath, bin, f.Mode())
 		for _, directory := range outputResult.touchedDirectories {
 			touchedDirectories[directory] = struct{}{}
 		}
@@ -617,15 +625,56 @@ type templateOutputWriteResult struct {
 	touchedDirectories []string
 }
 
-func writeTemplateOutput(rootDir, writePath string, contents []byte, mode fs.FileMode) (templateOutputWriteResult, error) {
-	var result templateOutputWriteResult
-	if isActiveIgnoreFilePath(writePath) {
-		if err := config.DefaultConfig.WriteActiveIgnoreFile(contents); err != nil {
-			return result, err
-		}
-		result.touchedDirectories = append(result.touchedDirectories, filepath.Dir(writePath))
-		return result, nil
+// templateOutputWriter writes the outputs of one release under rootDir. A
+// release has thousands of files in a few hundred directories, and on windows
+// every operation inside an os.Root reopens each path component, so the root
+// is opened once and each directory is created once rather than per file.
+type templateOutputWriter struct {
+	rootDir            string
+	root               *os.Root
+	createdDirectories map[string]struct{}
+}
+
+func newTemplateOutputWriter(rootDir string) (*templateOutputWriter, error) {
+	root, err := os.OpenRoot(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("open output root %q: %w", rootDir, err)
 	}
+	return &templateOutputWriter{rootDir: rootDir, root: root, createdDirectories: make(map[string]struct{})}, nil
+}
+
+func (w *templateOutputWriter) Close() error {
+	return w.root.Close()
+}
+
+// writeTemplateOutput writes a single output; installs write through one
+// templateOutputWriter instead.
+func writeTemplateOutput(rootDir, writePath string, contents []byte, mode fs.FileMode) (templateOutputWriteResult, error) {
+	if isActiveIgnoreFilePath(writePath) {
+		return writeActiveIgnoreFile(writePath, contents)
+	}
+	writer, err := newTemplateOutputWriter(rootDir)
+	if err != nil {
+		return templateOutputWriteResult{}, err
+	}
+	defer func() { _ = writer.Close() }()
+	return writer.write(writePath, contents, mode)
+}
+
+func writeActiveIgnoreFile(writePath string, contents []byte) (templateOutputWriteResult, error) {
+	if err := config.DefaultConfig.WriteActiveIgnoreFile(contents); err != nil {
+		return templateOutputWriteResult{}, err
+	}
+	return templateOutputWriteResult{touchedDirectories: []string{filepath.Dir(writePath)}}, nil
+}
+
+func (w *templateOutputWriter) write(writePath string, contents []byte, mode fs.FileMode) (templateOutputWriteResult, error) {
+	if isActiveIgnoreFilePath(writePath) {
+		return writeActiveIgnoreFile(writePath, contents)
+	}
+
+	var result templateOutputWriteResult
+	rootDir, root := w.rootDir, w.root
 
 	relativePath, err := filepath.Rel(rootDir, writePath)
 	if err != nil {
@@ -636,14 +685,8 @@ func writeTemplateOutput(rootDir, writePath string, contents []byte, mode fs.Fil
 		return result, fmt.Errorf("output path %q escapes root %q", writePath, rootDir)
 	}
 
-	root, err := os.OpenRoot(rootDir)
-	if err != nil {
-		return result, fmt.Errorf("open output root %q: %w", rootDir, err)
-	}
-	defer func() { _ = root.Close() }()
-
 	parent := filepath.Dir(relativePath)
-	if parent != "." {
+	if _, created := w.createdDirectories[parent]; !created && parent != "." {
 		parentsToSync, err := createTemplateDirectories(root, parent)
 		for _, parentToSync := range parentsToSync {
 			result.touchedDirectories = append(result.touchedDirectories, filepath.Clean(filepath.Join(rootDir, parentToSync)))
@@ -651,6 +694,7 @@ func writeTemplateOutput(rootDir, writePath string, contents []byte, mode fs.Fil
 		if err != nil {
 			return result, fmt.Errorf("create output parent %q: %w", parent, err)
 		}
+		w.createdDirectories[parent] = struct{}{}
 	}
 	result.touchedDirectories = append(result.touchedDirectories, filepath.Dir(writePath))
 
@@ -676,9 +720,12 @@ func writeTemplateOutput(rootDir, writePath string, contents []byte, mode fs.Fil
 		return result, fmt.Errorf("create temporary output %q: %w", temporaryPath, err)
 	}
 
+	renamed := false
 	defer func() {
 		_ = temporary.Close()
-		_ = root.Remove(temporaryPath)
+		if !renamed {
+			_ = root.Remove(temporaryPath)
+		}
 	}()
 
 	if _, err := temporary.Write(contents); err != nil {
@@ -702,6 +749,7 @@ func writeTemplateOutput(rootDir, writePath string, contents []byte, mode fs.Fil
 	if err := root.Rename(temporaryPath, relativePath); err != nil {
 		return result, fmt.Errorf("replace output %q: %w", relativePath, err)
 	}
+	renamed = true
 
 	return result, nil
 }

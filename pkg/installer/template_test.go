@@ -246,12 +246,18 @@ func benchmarkWriteTemplateOutputs(b *testing.B, syncEachOutput bool) {
 	rootDir := b.TempDir()
 	contents := []byte("id: benchmark\ninfo:\n  name: Benchmark\n  author: test\n  severity: info\n")
 	touchedDirectories := make(map[string]struct{})
+	writer, err := newTemplateOutputWriter(rootDir)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = writer.Close() }()
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for index := 0; index < b.N; index++ {
-		writePath := filepath.Join(rootDir, fmt.Sprintf("group-%d", index%16), fmt.Sprintf("template-%d.yaml", index))
-		outputResult, err := writeTemplateOutput(rootDir, writePath, contents, 0o644)
+		// releases nest templates a few directories deep, e.g. http/cves/2024
+		writePath := filepath.Join(rootDir, fmt.Sprintf("protocol-%d", index%4), fmt.Sprintf("category-%d", index%16), fmt.Sprintf("group-%d", index%64), fmt.Sprintf("template-%d.yaml", index))
+		outputResult, err := writer.write(writePath, contents, 0o644)
 		if err != nil {
 			b.Fatal(err)
 		}
