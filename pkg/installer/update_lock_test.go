@@ -19,9 +19,18 @@ func TestTemplatesUpdateLockPath(t *testing.T) {
 	})
 
 	t.Run("stable across a fresh install creating the directory", func(t *testing.T) {
-		dir := filepath.Join(t.TempDir(), "nuclei-templates")
+		dir := filepath.Join(t.TempDir(), "missing", "nuclei-templates")
 		before := templatesUpdateLockPath(dir)
-		require.NoError(t, os.Mkdir(dir, 0o755))
+		require.NoError(t, os.MkdirAll(dir, 0o755))
 		require.Equal(t, before, templatesUpdateLockPath(dir))
+	})
+
+	t.Run("symlink to a directory, same lock", func(t *testing.T) {
+		dir := t.TempDir()
+		link := filepath.Join(t.TempDir(), "templates-link")
+		if err := os.Symlink(dir, link); err != nil {
+			t.Skipf("symlinks are unavailable: %v", err)
+		}
+		require.Equal(t, templatesUpdateLockPath(dir), templatesUpdateLockPath(link))
 	})
 }
