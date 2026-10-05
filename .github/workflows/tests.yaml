@@ -17,6 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # lint gates every other job; none of them uses another's output, so they run
+  # in parallel once it passes instead of queueing behind the unit tests
   lint:
     name: "Lint"
     if: ${{ !endsWith(github.actor, '[bot]') }}
@@ -85,7 +87,7 @@ jobs:
 
   sdk:
     name: "Run example SDK"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: "${{ github.token }}"
@@ -106,7 +108,7 @@ jobs:
 
   integration:
     name: "Integration tests"
-    needs: ["tests"]
+    needs: ["lint"]
     env:
       GITHUB_TOKEN: "${{ github.token }}"
     strategy:
@@ -138,7 +140,7 @@ jobs:
 
   functional:
     name: "Functional tests"
-    needs: ["tests"]
+    needs: ["lint"]
     env:
       GITHUB_TOKEN: "${{ github.token }}"
     strategy:
@@ -159,7 +161,7 @@ jobs:
 
   validate:
     name: "Template validate"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: "${{ github.token }}"
@@ -171,7 +173,7 @@ jobs:
 
   codeql:
     name: "CodeQL analysis"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -213,8 +215,6 @@ jobs:
 
   release:
     name: "Release test"
-    # builds every release target and uses nothing from the unit tests, so it
-    # runs beside them instead of adding its ~20m after them
     needs: ["lint"]
     runs-on: ubuntu-latest
     steps:
@@ -224,7 +224,7 @@ jobs:
 
   flamegraph:
     name: "Flamegraph"
-    needs: ["tests"]
+    needs: ["lint"]
     uses: ./.github/workflows/flamegraph.yaml
 
   # perf-regression:
