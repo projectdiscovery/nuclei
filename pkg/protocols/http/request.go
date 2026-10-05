@@ -791,6 +791,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 		} else if generatedRequest.request != nil {
+			if generatedRequest.request.URL != nil {
+				hostname = generatedRequest.request.URL.Host
+			}
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
