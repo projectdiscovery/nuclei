@@ -473,3 +473,5 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
+
+replace github.com/projectdiscovery/goja => github.com/dogancanbakir/goja v0.0.0-20261005133245-e377d4121859
