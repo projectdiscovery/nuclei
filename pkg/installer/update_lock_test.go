@@ -33,4 +33,28 @@ func TestTemplatesUpdateLockPath(t *testing.T) {
 		}
 		require.Equal(t, templatesUpdateLockPath(dir), templatesUpdateLockPath(link))
 	})
+
+	t.Run("dangling symlink, same lock before and after creation", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, "nuclei-templates")
+		link := filepath.Join(parent, "templates-link")
+		if err := os.Symlink(target, link); err != nil {
+			t.Skipf("symlinks are unavailable: %v", err)
+		}
+		require.Equal(t, templatesUpdateLockPath(target), templatesUpdateLockPath(link))
+		require.Equal(t, templatesUpdateLockPath(filepath.Join(target, "nested")), templatesUpdateLockPath(filepath.Join(link, "nested")))
+
+		require.NoError(t, os.MkdirAll(target, 0o755))
+		require.Equal(t, templatesUpdateLockPath(target), templatesUpdateLockPath(link))
+	})
+
+	t.Run("relative dangling symlink, same lock", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, "nuclei-templates")
+		link := filepath.Join(parent, "templates-link")
+		if err := os.Symlink("nuclei-templates", link); err != nil {
+			t.Skipf("symlinks are unavailable: %v", err)
+		}
+		require.Equal(t, templatesUpdateLockPath(target), templatesUpdateLockPath(link))
+	})
 }

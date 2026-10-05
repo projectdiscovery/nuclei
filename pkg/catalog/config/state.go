@@ -80,7 +80,9 @@ func (c *Config) ReloadTemplateVersion() error {
 
 	c.m.Lock()
 	defer c.m.Unlock()
-	if filepath.Clean(state.TemplatesDirectory) == filepath.Clean(c.TemplatesDirectory) {
+	// compare the resolved directory, so state written through a symlink is
+	// visible to a process using the real path, and the other way around
+	if CanonicalTemplatesPath(state.TemplatesDirectory) == CanonicalTemplatesPath(c.TemplatesDirectory) {
 		c.TemplateVersion = state.TemplateVersion
 	}
 	return nil

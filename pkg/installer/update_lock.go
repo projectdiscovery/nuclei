@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/utils/errkit"
 )
 
@@ -42,31 +43,9 @@ func withTemplatesUpdateLock(templatesDir string, fn func() error) error {
 
 // templatesUpdateLockPath derives one lock per templates directory, so updates
 // of different directories do not wait on each other. Every alias of a
-// directory must map to the same lock, including before a fresh install
-// creates it, so the path is resolved through its deepest existing ancestor.
+// directory maps to the same lock, including a symlink whose target does not
+// exist yet.
 func templatesUpdateLockPath(templatesDir string) string {
-	sum := sha256.Sum256([]byte(resolveExistingPrefix(templatesDir)))
+	sum := sha256.Sum256([]byte(config.CanonicalTemplatesPath(templatesDir)))
 	return filepath.Join(os.TempDir(), fmt.Sprintf("nuclei-templates-update-%x.lock", sum[:8]))
-}
-
-// resolveExistingPrefix resolves symlinks in the longest existing prefix of
-// path and appends the components that do not exist yet.
-func resolveExistingPrefix(path string) string {
-	dir, err := filepath.Abs(path)
-	if err != nil {
-		dir = filepath.Clean(path)
-	}
-
-	var missing []string
-	for {
-		if resolved, err := filepath.EvalSymlinks(dir); err == nil {
-			return filepath.Join(append([]string{resolved}, missing...)...)
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return filepath.Join(append([]string{dir}, missing...)...)
-		}
-		missing = append([]string{filepath.Base(dir)}, missing...)
-		dir = parent
-	}
 }
