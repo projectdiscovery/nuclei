@@ -31,7 +31,13 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		if !ok {
 			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(data["response"].(string), statusCode)}
+		// The full response is omitted unless an operator reads it. The status
+		// line still lives in the header dump, which is always stored.
+		snippetSource := types.ToString(data["response"])
+		if snippetSource == "" {
+			snippetSource = types.ToString(data["all_headers"])
+		}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(snippetSource, statusCode)}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
@@ -200,7 +206,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
+		Response:         request.truncateResponse(storedResponse(wrapped.InternalEvent)),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
@@ -227,18 +233,44 @@ func (request *Request) truncateResponse(response interface{}) string {
 // so for the rest that allocation is pure waste and is retained for as long as
 // the event is (the interactsh cache holds events until their OAST callback).
 func (request *Request) needsFullResponse() bool {
-	for _, m := range request.Matchers {
-		if partNeedsFullResponse(m.Part) || dslNeedsFullResponse(m.DSL) {
-			return true
-		}
+	if operatorsNeedFullResponse(request.Matchers, request.Extractors) {
+		return true
 	}
-	for _, e := range request.Extractors {
-		if partNeedsFullResponse(e.Part) || dslNeedsFullResponse(e.DSL) {
-			return true
-		}
+	if request.CompiledOperators != nil && operatorsNeedFullResponse(request.CompiledOperators.Matchers, request.CompiledOperators.Extractors) {
+		return true
 	}
+	if request.options == nil || request.options.GlobalMatchers == nil {
+		return false
+	}
+	// Global matchers run against this request's event, so a response or
+	// part:all operator registered elsewhere still needs the concatenation.
+	return request.options.GlobalMatchers.Any(func(operator *operators.Operators) bool {
+		return operatorsNeedFullResponse(operator.Matchers, operator.Extractors)
+	})
+}
 
+func operatorsNeedFullResponse(matchers []*matchers.Matcher, extractors []*extractors.Extractor) bool {
+	for _, matcher := range matchers {
+		if matcher != nil && (partNeedsFullResponse(matcher.Part) || dslNeedsFullResponse(matcher.DSL)) {
+			return true
+		}
+	}
+	for _, extractor := range extractors {
+		if extractor != nil && (partNeedsFullResponse(extractor.Part) || dslNeedsFullResponse(extractor.DSL)) {
+			return true
+		}
+	}
 	return false
+}
+
+// storedResponse is the headers+body string written on a finding. Operators
+// that never read it leave the event key empty, and the finding is rebuilt
+// from the header and body copies that are already stored.
+func storedResponse(event output.InternalEvent) string {
+	if response := types.ToString(event["response"]); response != "" {
+		return response
+	}
+	return types.ToString(event["all_headers"]) + types.ToString(event["body"])
 }
 
 // partNeedsFullResponse covers "all" plus "response" and its req-condition
