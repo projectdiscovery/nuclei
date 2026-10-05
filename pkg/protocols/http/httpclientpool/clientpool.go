@@ -20,10 +20,12 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rawhttp"
@@ -521,6 +523,19 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 		if jar != nil {
 			client.HTTPClient.Jar = jar
+			// net/http appends jar cookies to the request header. Remove conflicts
+			// before each attempt so captured cookies cannot mask reissued values.
+			client.RequestLogHook = func(req *http.Request, _ int) {
+				removeJarCookieConflicts(req, client.HTTPClient.Jar)
+			}
+			checkRedirect := client.HTTPClient.CheckRedirect
+			client.HTTPClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				if err := checkRedirect(req, via); err != nil {
+					return err
+				}
+				removeJarCookieConflicts(req, client.HTTPClient.Jar)
+				return nil
+			}
 		}
 		client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 		return client, nil
@@ -536,6 +551,50 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	// Singleflight creation: concurrent first requests to the same host build
 	// exactly one client instead of racing Get/Set and orphaning transports.
 	return pool.GetOrCreateClient(clientKey, transportKey, createTransport, createClient)
+}
+
+func removeJarCookieConflicts(req *http.Request, jar http.CookieJar) {
+	headers := req.Header.Values("Cookie")
+	if len(headers) == 0 || req.URL == nil || jar == nil {
+		return
+	}
+	cookies := jar.Cookies(httputil.CookieURL(req))
+	if len(cookies) == 0 {
+		return
+	}
+	names := make(map[string]struct{}, len(cookies))
+	for _, cookie := range cookies {
+		names[cookie.Name] = struct{}{}
+	}
+	// AddCookie uses only the first header value. Combine multiple Cookie
+	// headers so unrelated captured cookies are retained when the jar is added.
+	changed := len(headers) > 1
+	var retainedHeaders []string
+	for _, header := range headers {
+		parts := httputil.SplitCookieHeader(header)
+		retained := parts[:0]
+		for _, part := range parts {
+			name, _, _ := strings.Cut(part, "=")
+			name = strings.TrimSpace(name)
+			if _, ok := names[name]; ok && !authx.IsAuthCookie(req.Context(), name) {
+				changed = true
+				continue
+			}
+			// Keep raw values: parsing and reserializing cookies would discard
+			// malformed values that can be intentional fuzzing payloads.
+			retained = append(retained, part)
+		}
+		if len(retained) > 0 {
+			retainedHeaders = append(retainedHeaders, strings.TrimLeft(strings.Join(retained, ";"), " \t"))
+		}
+	}
+	if changed {
+		if len(retainedHeaders) == 0 {
+			req.Header.Del("Cookie")
+		} else {
+			req.Header.Set("Cookie", strings.Join(retainedHeaders, "; "))
+		}
+	}
 }
 
 // sharedTLSSessionCache is shared by all pooled transports so TLS session
