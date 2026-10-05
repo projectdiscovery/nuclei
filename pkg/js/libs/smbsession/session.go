@@ -92,23 +92,13 @@ func Dial(ctx context.Context, executionID, host string, port int, creds Creds) 
 	target := gpsession.Target{Host: host, Port: port}
 	client := gpsmb.NewClientWithDialer(target, gpCreds, gptransport.NewExecDialer(executionID))
 
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- client.Connect()
-	}()
-	select {
-	case <-ctx.Done():
-		client.Close()
-		// Drain connect result so the goroutine can exit; ignore the outcome
-		// because cancellation already won the race.
-		<-errCh
-		return nil, ctx.Err()
-	case err := <-errCh:
-		if err != nil {
-			return nil, err
+	if err := client.ConnectContext(ctx); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
 		}
-		return &Session{client: client}, nil
+		return nil, err
 	}
+	return &Session{client: client}, nil
 }
 
 // FromClient wraps an already-connected goimpacket SMB client (e.g. dcerpc's).
