@@ -220,7 +220,7 @@ func TestCookieFuzzingRedirectReturnsToOriginalHost(t *testing.T) {
 	require.NoError(t, cookies.SetValue("session", `old"followup`))
 	followup, err := cookies.Rebuild()
 	require.NoError(t, err)
-	followup.URL.Path = "/followup"
+	followup.Path = "/followup"
 	require.NoError(t, sendCookieMutation(client, followup))
 	require.Equal(t, `session=old"followup; account=base; preference=dark`, <-received)
 }

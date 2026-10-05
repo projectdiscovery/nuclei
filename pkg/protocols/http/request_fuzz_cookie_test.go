@@ -292,9 +292,10 @@ func newCookieAuthProvider(t *testing.T, authType, domain, cookieName string) au
 	secretFile := filepath.Join(t.TempDir(), "secrets.yaml")
 	secret := "static:\n  - type: Cookie\n    domains: [\"" + domain + "\"]\n    cookies:\n      - key: " + cookieName + "\n        value: configured\n"
 	var fetchSecret authx.LazyFetchSecret
-	if authType == "Header" {
+	switch authType {
+	case "Header":
 		secret = "static:\n  - type: Header\n    domains: [\"" + domain + "\"]\n    headers:\n      - key: Cookie\n        value: " + cookieName + "=configured\n"
-	} else if authType == "Dynamic" {
+	case "Dynamic":
 		secret = "dynamic:\n  - template: login.yaml\n    variables:\n      - key: user\n        value: test\n    type: Cookie\n    domains: [\"" + domain + "\"]\n    cookies:\n      - key: " + cookieName + "\n        value: '{{credential}}'\n"
 		fetchSecret = func(dynamic *authx.Dynamic) error {
 			dynamic.Extracted = map[string]interface{}{"credential": "configured"}
