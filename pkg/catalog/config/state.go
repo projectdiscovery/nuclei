@@ -59,6 +59,35 @@ func (c *Config) ReadTemplatesConfig() error {
 	return nil
 }
 
+// ReloadTemplateVersion refreshes the installed templates version from disk.
+// Concurrent processes read the version once at startup, so one that waited on
+// another's install or update must reload it to see the result instead of
+// downloading the same release again. State recorded for a different templates
+// directory is ignored.
+func (c *Config) ReloadTemplateVersion() error {
+	statePath := c.getTemplatesConfigFilePath()
+	data, err := os.ReadFile(statePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("read templates state %q: %w", statePath, err)
+	}
+
+	var state templatesState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return fmt.Errorf("decode templates state %q: %w", statePath, err)
+	}
+
+	c.m.Lock()
+	defer c.m.Unlock()
+	// compare the resolved directory, so state written through a symlink is
+	// visible to a process using the real path, and the other way around
+	if CanonicalTemplatesPath(state.TemplatesDirectory) == CanonicalTemplatesPath(c.TemplatesDirectory) {
+		c.TemplateVersion = state.TemplateVersion
+	}
+	return nil
+}
+
 // WriteTemplatesConfig atomically writes restart-persistent templates state.
 func (c *Config) WriteTemplatesConfig() error {
 	state := templatesState{

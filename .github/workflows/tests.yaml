@@ -45,16 +45,6 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
-      - uses: projectdiscovery/actions/free-disk-space@v1
-        with:
-          llvm: 'false'
-          php: 'false'
-          mongodb: 'false'
-          mysql: 'false'
-          misc-packages: 'false'
-          docker-images: 'false'
-          tools-cache: 'false'
-      - run: make build
       # The data-race detector is OS-independent, so we only pay its ~2-3x cost
       # on ubuntu; windows/macOS run the same suite without instrumentation.
       - name: "Unit tests (race)"
