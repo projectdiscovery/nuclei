@@ -1030,9 +1030,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// It is a full-size copy of the response and is retained for as long as
 		// the event lives, while 0.7% of the template corpus ever looks at it.
 		var fullResponseStr string
-		if request.needsFullResponse() ||
-			request.options.Options.Debug || request.options.Options.DebugResponse ||
-			request.options.FuzzStatsDB != nil {
+		if request.shouldBuildFullResponse() {
 			fullResponseStr = respChain.FullResponseString()
 		}
 		bodyStr := respChain.BodyString()
@@ -1057,7 +1055,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(statusCode), fullResponseStr)
+		request.options.Output.RequestStatsLog(strconv.Itoa(statusCode), responseForStats(fullResponseStr, headersStr, bodyStr, request.options.Options.HTTPStats))
 
 		// save response to projectfile
 		onceFunc()

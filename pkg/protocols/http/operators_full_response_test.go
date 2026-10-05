@@ -5,12 +5,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 func TestNeedsFullResponse(t *testing.T) {
@@ -87,6 +89,29 @@ func TestNeedsFullResponse(t *testing.T) {
 		}
 		require.False(t, request.needsFullResponse())
 	})
+}
+
+func TestShouldBuildFullResponseForConsumers(t *testing.T) {
+	request := &Request{}
+	require.False(t, request.shouldBuildFullResponse())
+
+	request.options = &protocols.ExecutorOptions{Options: &types.Options{StoreResponse: true}}
+	require.True(t, request.shouldBuildFullResponse())
+
+	request.options = &protocols.ExecutorOptions{Options: &types.Options{DebugResponse: true}}
+	require.True(t, request.shouldBuildFullResponse())
+
+	request.options = &protocols.ExecutorOptions{FuzzStatsDB: &stats.Tracker{}}
+	require.True(t, request.shouldBuildFullResponse())
+
+	request.options = &protocols.ExecutorOptions{Options: &types.Options{HTTPStats: true}}
+	require.False(t, request.shouldBuildFullResponse())
+}
+
+func TestResponseForStats(t *testing.T) {
+	require.Equal(t, "", responseForStats("", "HTTP/1.1 200\r\n\r\n", "body", false))
+	require.Equal(t, "kept", responseForStats("kept", "HTTP/1.1 200\r\n\r\n", "body", true))
+	require.Equal(t, "HTTP/1.1 200\r\n\r\nbody", responseForStats("", "HTTP/1.1 200\r\n\r\n", "body", true))
 }
 
 func TestStoredResponseRebuildsFinding(t *testing.T) {

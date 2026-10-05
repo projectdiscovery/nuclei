@@ -232,6 +232,32 @@ func (request *Request) truncateResponse(response interface{}) string {
 // public template corpus only 81 of 11,634 http templates (0.7%) ever read it,
 // so for the rest that allocation is pure waste and is retained for as long as
 // the event is (the interactsh cache holds events until their OAST callback).
+// shouldBuildFullResponse is the full gate: operators that read the
+// concatenation, plus debug, store-response, and fuzz-stats, which write it
+// out. HTTP stats scan a temporary copy in responseForStats and do not retain it.
+func (request *Request) shouldBuildFullResponse() bool {
+	if request.needsFullResponse() {
+		return true
+	}
+	if request.options == nil {
+		return false
+	}
+	if request.options.FuzzStatsDB != nil {
+		return true
+	}
+	opts := request.options.Options
+	return opts != nil && (opts.Debug || opts.DebugResponse || opts.StoreResponse)
+}
+
+// responseForStats is the body handed to WAF detection. The retained event copy
+// stays empty unless something else already built it.
+func responseForStats(fullResponse, headers, body string, httpStats bool) string {
+	if fullResponse != "" || !httpStats {
+		return fullResponse
+	}
+	return headers + body
+}
+
 func (request *Request) needsFullResponse() bool {
 	if operatorsNeedFullResponse(request.Matchers, request.Extractors) {
 		return true
