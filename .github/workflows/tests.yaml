@@ -213,7 +213,9 @@ jobs:
 
   release:
     name: "Release test"
-    needs: ["tests"]
+    # builds every release target and uses nothing from the unit tests, so it
+    # runs beside them instead of adding its ~20m after them
+    needs: ["lint"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
