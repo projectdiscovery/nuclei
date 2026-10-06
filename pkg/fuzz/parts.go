@@ -50,6 +50,7 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrK
 // this supports both single and multiple [ruleType] modes
 // i.e if component has multiple values, they can be replaced once or all depending on mode
 func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadStr, originalPayload string, ruleComponent component.Component) error {
+	var fuzzedKeys []string
 	finalErr := ruleComponent.Iterate(func(key string, value interface{}) error {
 		valueStr := types.ToString(value)
 		if !rule.matchKeyOrValue(key, valueStr) {
@@ -76,6 +77,9 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		if err := ruleComponent.SetValue(key, evaluated); err != nil {
 			// gologger.Warning().Msgf("could not set value due to format restriction original(%s, %s[%T]) , new(%s,%s[%T])", key, valueStr, value, key, evaluated, evaluated)
 			return nil
+		}
+		if rule.modeType == multipleModeType {
+			fuzzedKeys = append(fuzzedKeys, key)
 		}
 
 		if rule.modeType == singleModeType {
@@ -109,7 +113,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 			return err
 		}
 
-		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", ""); qerr != nil {
+		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", "", fuzzedKeys...); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -149,7 +153,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value, "", "", "", ""); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value, "", "", "", "", key); qerr != nil {
 				return qerr
 			}
 
@@ -168,7 +172,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 }
 
 // execWithInput executes a rule with input via callback
-func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter, parameterValue, originalPayload, originalValue, key, value string) error {
+func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter, parameterValue, originalPayload, originalValue, key, value string, fuzzedKeys ...string) error {
 	// If the parameter is a number, replace it with the parameter value
 	// or if the parameter is empty and the parameter value is not empty
 	// replace it with the parameter value
@@ -188,6 +192,9 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 			return nil
 		}
 	}
+	if len(fuzzedKeys) == 0 && key != "" {
+		fuzzedKeys = []string{key}
+	}
 	request := GeneratedRequest{
 		Request:         httpReq,
 		InteractURLs:    interactURLs,
@@ -195,6 +202,7 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 		Component:       component,
 		Parameter:       actualParameter,
 		Key:             key,
+		FuzzedKeys:      append([]string(nil), fuzzedKeys...),
 		Value:           value,
 		OriginalValue:   originalValue,
 		OriginalPayload: originalPayload,
