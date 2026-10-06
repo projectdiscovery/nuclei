@@ -42,10 +42,10 @@ func TestClusterMarksFullResponseOnlyWhenNeeded(t *testing.T) {
 }
 
 func TestClusterTemplatesMarksSiblingResponse(t *testing.T) {
-	options := *testutils.DefaultOptions
+	options := testutils.DefaultOptions.Copy()
 	options.ResponseSaveSize = 1 << 20
-	testutils.Init(&options)
-	executerOpts := testutils.NewMockExecuterOptions(&options, &testutils.TemplateInfo{
+	testutils.Init(options)
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   "cluster-body",
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "cluster"},
 	})

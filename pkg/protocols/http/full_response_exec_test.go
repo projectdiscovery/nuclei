@@ -227,13 +227,13 @@ func TestExecuteGlobalMatcher(t *testing.T) {
 }
 
 func newExecOptions(mutate func(*types.Options)) *protocols.ExecutorOptions {
-	options := *testutils.DefaultOptions
+	options := testutils.DefaultOptions.Copy()
 	options.ResponseSaveSize = 1 << 20
 	if mutate != nil {
-		mutate(&options)
+		mutate(options)
 	}
-	testutils.Init(&options)
-	return testutils.NewMockExecuterOptions(&options, &testutils.TemplateInfo{
+	testutils.Init(options)
+	return testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   "full-response",
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "full response"},
 	})
