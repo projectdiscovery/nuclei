@@ -9,6 +9,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/hmap/store/hybrid"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -16,6 +17,76 @@ import (
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSetItemDedupDoesNotConsumePatternCap(t *testing.T) {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err)
+	input := &ListInputProvider{
+		hostMap:       hm,
+		normalizeURLs: true,
+		patterns:      normalize.NewFingerprinter(1),
+	}
+	t.Cleanup(input.Close)
+	add := func(raw string) {
+		meta := contextargs.NewMetaInput()
+		meta.Input = raw
+		input.setItem(meta, nil)
+	}
+	add("http://acme.test/user/1")
+	add("http://ACME.test/user/1")
+	add("http://acme.test/user/2")
+	add("http://acme.test/admin")
+
+	require.Equal(t, int64(1), input.dupeCount)
+	require.Equal(t, int64(1), input.patternSkippedCount)
+	require.Equal(t, int64(0), input.skippedCount)
+	require.Equal(t, int64(2), input.inputCount)
+}
+
+func TestSetItemKeepsTheSuppliedTarget(t *testing.T) {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err)
+	input := &ListInputProvider{
+		hostMap:       hm,
+		normalizeURLs: true,
+		patterns:      normalize.NewFingerprinter(0),
+	}
+	t.Cleanup(input.Close)
+	add := func(raw string) {
+		meta := contextargs.NewMetaInput()
+		meta.Input = raw
+		input.setItem(meta, nil)
+	}
+	add("http://ACME.test/page/")
+	add("http://acme.test/page?utm_source=news")
+
+	require.Equal(t, int64(1), input.dupeCount)
+	require.Equal(t, int64(1), input.inputCount)
+	var got []string
+	input.Iterate(func(value *contextargs.MetaInput) bool {
+		got = append(got, value.Input)
+		return true
+	})
+	require.Equal(t, []string{"http://ACME.test/page/"}, got)
+}
+
+func TestSetItemWithoutNormalizationKeepsCaseVariants(t *testing.T) {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err)
+	input := &ListInputProvider{
+		hostMap:       hm,
+		normalizeURLs: false,
+		patterns:      normalize.NewFingerprinter(0),
+	}
+	t.Cleanup(input.Close)
+	for _, raw := range []string{"http://ACME.test/page", "http://acme.test/page"} {
+		meta := contextargs.NewMetaInput()
+		meta.Input = raw
+		input.setItem(meta, nil)
+	}
+	require.Equal(t, int64(0), input.dupeCount)
+	require.Equal(t, int64(2), input.inputCount)
+}
 
 func Test_expandCIDR(t *testing.T) {
 	tests := []struct {
