@@ -224,7 +224,7 @@ func (s *session) cleanupCommon() {
 	}
 	s.config.runtime.RemoveContextValue("executionId")
 	s.config.runtime.RemoveContextValue("ctx")
-	s.config.runtime.SetContext(nil)
+	s.config.runtime.SetContext(context.TODO())
 	s.config.runtime.RemoveContextValue("timeoutVariants")
 	s.config.runtime.RemoveContextValue("proxyURL")
 	s.config.runtime.RemoveContextValue("customHeaders")
