@@ -224,29 +224,45 @@ func (request *Request) truncateResponse(response interface{}) string {
 	return responseString
 }
 
-// needsFullResponse reports whether any operator on this request reads the
-// headers+body concatenation, exposed as the "response" key and as part "all".
-//
-// Building it costs FullResponseBytes: a make() the size of the entire response
-// plus two copies, allocated for every response on every request. Across the
-// public template corpus only 81 of 11,634 http templates (0.7%) ever read it,
-// so for the rest that allocation is pure waste and is retained for as long as
-// the event is (the interactsh cache holds events until their OAST callback).
-// shouldBuildFullResponse is the full gate: operators that read the
-// concatenation, plus debug, store-response, and fuzz-stats, which write it
-// out. HTTP stats scan a temporary copy in responseForStats and do not retain it.
+// OperatorsNeedFullResponse reports whether an operator reads the headers+body
+// concatenation. part:all does not: it is body plus all_headers.
+func OperatorsNeedFullResponse(operator *operators.Operators) bool {
+	if operator == nil {
+		return false
+	}
+	return operatorsNeedFullResponse(operator.Matchers, operator.Extractors)
+}
+
+// RequireFullResponse keeps the headers+body copy for callers that match this
+// request's event after it has been built. Clustered templates do that with
+// operators this request does not own.
+func (request *Request) RequireFullResponse() {
+	if request == nil {
+		return
+	}
+	request.requireFullResponse = true
+}
+
+// FullResponseRequired reports whether RequireFullResponse has been set.
+func (request *Request) FullResponseRequired() bool {
+	return request != nil && request.requireFullResponse
+}
+
 func (request *Request) shouldBuildFullResponse() bool {
-	if request.needsFullResponse() {
+	if request.requireFullResponse || request.needsFullResponse() {
 		return true
 	}
 	if request.options == nil {
 		return false
 	}
-	if request.options.FuzzStatsDB != nil {
+	// Flow and multi-request templates copy this event into the shared context
+	// and the previous-request map. A later step can read http_response or
+	// <id>_response even when this request's own operators never do.
+	if request.options.Flow != "" || request.options.IsMultiProtocol || request.options.FuzzStatsDB != nil {
 		return true
 	}
 	opts := request.options.Options
-	return opts != nil && (opts.Debug || opts.DebugResponse || opts.StoreResponse)
+	return opts != nil && (opts.Debug || opts.DebugResponse || opts.StoreResponse || opts.ShowVarDump)
 }
 
 // responseForStats is the body handed to WAF detection. The retained event copy
@@ -258,6 +274,14 @@ func responseForStats(fullResponse, headers, body string, httpStats bool) string
 	return headers + body
 }
 
+// needsFullResponse reports whether any operator on this request reads the
+// headers+body concatenation, exposed as the "response" key.
+//
+// Building it costs FullResponseBytes: a make() the size of the entire response
+// plus two copies, allocated for every response on every request. Across the
+// public template corpus only 81 of 11,634 http templates (0.7%) ever read it,
+// so for the rest that allocation is pure waste and is retained for as long as
+// the event is (the interactsh cache holds events until their OAST callback).
 func (request *Request) needsFullResponse() bool {
 	if operatorsNeedFullResponse(request.Matchers, request.Extractors) {
 		return true
@@ -299,10 +323,10 @@ func storedResponse(event output.InternalEvent) string {
 	return types.ToString(event["all_headers"]) + types.ToString(event["body"])
 }
 
-// partNeedsFullResponse covers "all" plus "response" and its req-condition
-// variants (response_1, response_2, ...).
+// partNeedsFullResponse covers "response" and its req-condition variants
+// (response_1, response_2, ...). part:all is built from body and all_headers.
 func partNeedsFullResponse(part string) bool {
-	return part == "all" || strings.HasPrefix(part, "response")
+	return strings.HasPrefix(part, "response")
 }
 
 // dslNeedsFullResponse is deliberately a substring test: a dsl expression can

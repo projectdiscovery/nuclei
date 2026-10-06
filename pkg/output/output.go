@@ -599,7 +599,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		URL:           fields.URL,
 		IP:            fields.Ip,
 		Request:       types.ToString(event["request"]),
-		Response:      types.ToString(event["response"]),
+		Response:      responseFromEvent(event),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
@@ -607,6 +607,21 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		Error:           types.ToString(event["error"]),
 	}
 	return w.Write(data)
+}
+
+// responseFromEvent is the response written on a matcher-status failure.
+// HTTP leaves the response key empty unless something matched against it, and
+// rebuilds the same headers+body bytes from the copies already on the event.
+func responseFromEvent(event InternalEvent) string {
+	if response := types.ToString(event["response"]); response != "" {
+		return response
+	}
+	headers := types.ToString(event["all_headers"])
+	body := types.ToString(event["body"])
+	if headers == "" && body == "" {
+		return ""
+	}
+	return headers + body
 }
 
 var maxTemplateFileSizeForEncoding = unitutils.Mega

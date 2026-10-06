@@ -33,7 +33,7 @@ func TestNeedsFullResponse(t *testing.T) {
 		require.False(t, request.needsFullResponse())
 	})
 
-	for _, part := range []string{"response", "response_1", "all"} {
+	for _, part := range []string{"response", "response_1"} {
 		t.Run(part, func(t *testing.T) {
 			request := &Request{Operators: operators.Operators{
 				Matchers: []*matchers.Matcher{{Part: part}},
@@ -41,6 +41,16 @@ func TestNeedsFullResponse(t *testing.T) {
 			require.True(t, request.needsFullResponse())
 		})
 	}
+
+	t.Run("part all is body plus headers", func(t *testing.T) {
+		request := &Request{Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{Part: "all"}},
+		}}
+		require.False(t, request.needsFullResponse())
+		require.False(t, OperatorsNeedFullResponse(&operators.Operators{
+			Matchers: []*matchers.Matcher{{Part: "all"}},
+		}))
+	})
 
 	t.Run("dsl mentioning response", func(t *testing.T) {
 		request := &Request{Operators: operators.Operators{
@@ -106,6 +116,19 @@ func TestShouldBuildFullResponseForConsumers(t *testing.T) {
 
 	request.options = &protocols.ExecutorOptions{Options: &types.Options{HTTPStats: true}}
 	require.False(t, request.shouldBuildFullResponse())
+
+	request.options = &protocols.ExecutorOptions{Options: &types.Options{ShowVarDump: true}}
+	require.True(t, request.shouldBuildFullResponse())
+
+	request.options = &protocols.ExecutorOptions{Flow: "http()"}
+	require.True(t, request.shouldBuildFullResponse())
+
+	request.options = &protocols.ExecutorOptions{IsMultiProtocol: true}
+	require.True(t, request.shouldBuildFullResponse())
+
+	request.options = nil
+	request.RequireFullResponse()
+	require.True(t, request.shouldBuildFullResponse())
 }
 
 func TestResponseForStats(t *testing.T) {
