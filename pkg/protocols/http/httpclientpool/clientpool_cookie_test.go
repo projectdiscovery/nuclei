@@ -3,6 +3,7 @@ package httpclientpool
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -101,6 +102,12 @@ func TestGet_CookieMergeOnRedirect(t *testing.T) {
 			require.NoError(t, err)
 			client, err := Get(opts, &Configuration{RedirectFlow: FollowAllRedirect, MaxRedirects: 5}, parsed.Host)
 			require.NoError(t, err)
+			// Connect both host names to the test listener without DNS.
+			transport := &http.Transport{DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, server.Listener.Addr().String())
+			}}
+			defer transport.CloseIdleConnections()
+			client.HTTPClient.Transport = transport
 			if test.cookiePath != "" {
 				client.HTTPClient.Jar.SetCookies(parsed, []*http.Cookie{{Name: "session", Value: "stored", Path: test.cookiePath}})
 			}

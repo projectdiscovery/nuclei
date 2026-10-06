@@ -185,6 +185,12 @@ func TestCookieFuzzingCrossHostRedirect(t *testing.T) {
 	_, mutation := cookieMutation(t, server.URL+"/start", "session", `old"`)
 	client, err := request.preserveFuzzedCookies(cached, config, server.URL, mutation.Request, []string{"session"})
 	require.NoError(t, err)
+	// Connect both host names to the test listener without DNS.
+	transport := &http.Transport{DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, server.Listener.Addr().String())
+	}}
+	defer transport.CloseIdleConnections()
+	client.HTTPClient.Transport = transport
 	require.NoError(t, sendCookieMutation(client, mutation))
 	require.Len(t, received, 2)
 	require.Equal(t, `session=old"; account=base; preference=dark`, <-received)
@@ -210,6 +216,12 @@ func TestCookieFuzzingRedirectReturnsToOriginalHost(t *testing.T) {
 	cookies, mutation := cookieMutation(t, server.URL+"/start", "session", `old"`)
 	client, err := request.preserveFuzzedCookies(cached, config, server.URL, mutation.Request, []string{"session"})
 	require.NoError(t, err)
+	// Connect both host names to the test listener without DNS.
+	transport := &http.Transport{DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, server.Listener.Addr().String())
+	}}
+	defer transport.CloseIdleConnections()
+	client.HTTPClient.Transport = transport
 	require.NoError(t, sendCookieMutation(client, mutation))
 	require.Len(t, received, 3)
 	require.Equal(t, `session=old"; account=base; preference=dark`, <-received)
