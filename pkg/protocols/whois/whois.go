@@ -125,6 +125,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
 	rdapReq.Server = request.parsedServerURL
+	request.options.RateLimitTake()
 	timeStart := time.Now()
 	res, err := request.client.Do(rdapReq)
 	duration := time.Since(timeStart)

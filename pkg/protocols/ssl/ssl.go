@@ -256,6 +256,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = host
 	}
 
+	request.options.RateLimitTake()
+
 	timeStart := time.Now()
 	response, err := request.tlsx.Connect(host, hostIp, port)
 	duration := time.Since(timeStart)

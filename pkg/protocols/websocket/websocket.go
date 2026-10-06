@@ -255,6 +255,8 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	addressToDial = parsedAddress.String()
 
+	requestOptions.RateLimitTake()
+
 	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
 	handshakeDuration := time.Since(timeStart)

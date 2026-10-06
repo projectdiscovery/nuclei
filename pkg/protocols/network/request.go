@@ -326,6 +326,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return nil
 	}
 
+	request.options.RateLimitTake()
+
 	if shouldUseTLS {
 		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)
 	} else {
