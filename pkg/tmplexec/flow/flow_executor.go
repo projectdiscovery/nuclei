@@ -303,12 +303,16 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	return nil
 }
 
-// reconcileProgress adjusts the total, which assumed each request runs once,
-// to what the flow actually ran, so the request counter only reflects sent requests.
+// reconcileProgress settles progress, whose total assumed each request runs
+// once: requests the flow never ran count as processed, as protocols do for
+// skipped requests, and extra runs of a request are added to the total
 func (f *FlowExecutor) reconcileProgress() {
 	for req, executions := range f.executions {
-		if delta := (executions.Load() - 1) * int64(req.Requests()); delta != 0 {
-			f.options.Progress.AddToTotal(delta)
+		switch runs := executions.Load(); {
+		case runs == 0:
+			f.options.Progress.SetRequests(uint64(req.Requests()))
+		case runs > 1:
+			f.options.Progress.AddToTotal((runs - 1) * int64(req.Requests()))
 		}
 	}
 }

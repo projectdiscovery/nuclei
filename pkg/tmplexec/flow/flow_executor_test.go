@@ -350,9 +350,10 @@ func (p *countingProgress) IncrementRequests()                    { p.requests.A
 func (p *countingProgress) SetRequests(count uint64)              { p.requests.Add(int64(count)) }
 func (p *countingProgress) IncrementFailedRequestsBy(count int64) { p.requests.Add(count) }
 
-// TestFlowProgressCountsSentRequests checks that the request counter matches
-// the requests a flow actually sends and that the total converges to it.
-func TestFlowProgressCountsSentRequests(t *testing.T) {
+// TestFlowProgressEndsComplete checks that a flow ends with every request in
+// the total processed, counting skipped requests as processed and repeated
+// runs in the total, and that it sends exactly what the flow runs.
+func TestFlowProgressEndsComplete(t *testing.T) {
 	setup()
 	var hits atomic.Int64
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -362,15 +363,16 @@ func TestFlowProgressCountsSentRequests(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name string
-		flow string
-		sent int64
+		name  string
+		flow  string
+		sent  int64
+		total int64
 	}{
-		{name: "all requests", flow: "http(1); http(2); http(3);", sent: 3},
-		{name: "skipped requests", flow: "http(1);", sent: 1},
-		{name: "skipped and repeated", flow: `http(1); if (template["status_code"] == 999) { http(2); } http(3); http(3);`, sent: 3},
-		{name: "by id", flow: `http("a");`, sent: 1},
-		{name: "no arguments", flow: "http();", sent: 3},
+		{name: "all requests", flow: "http(1); http(2); http(3);", sent: 3, total: 3},
+		{name: "skipped requests", flow: "http(1);", sent: 1, total: 3},
+		{name: "skipped and repeated", flow: `http(1); if (template["status_code"] == 999) { http(2); } http(3); http(3);`, sent: 3, total: 4},
+		{name: "by id", flow: `http("a");`, sent: 1, total: 3},
+		{name: "no arguments", flow: "http();", sent: 3, total: 3},
 	}
 	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -407,8 +409,8 @@ http:
 			require.NoError(t, err, "could not execute template")
 
 			require.Equal(t, tc.sent, hits.Load(), "unexpected requests sent")
-			require.Equal(t, tc.sent, p.requests.Load(), "requests counter should match sent requests")
-			require.Equal(t, tc.sent, p.total.Load(), "total should match sent requests")
+			require.Equal(t, tc.total, p.total.Load(), "unexpected total")
+			require.Equal(t, tc.total, p.requests.Load(), "progress should end complete")
 		})
 	}
 }
