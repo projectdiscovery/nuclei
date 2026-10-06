@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -15,8 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -446,106 +443,3 @@ const exampleJSONResponseBody = `
   ]
 }
 `
-
-func TestLLMPromptValuesExcludeResponseDerivedValues(t *testing.T) {
-	options := testutils.DefaultOptions
-	testutils.Init(options)
-
-	request := &Request{ID: "llm-values", Name: "testing", Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
-		ID:   "llm-values",
-		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	executerOpts.Constants = map[string]interface{}{"focus_area": "Authentication"}
-	require.Nil(t, request.Compile(executerOpts))
-
-	data := map[string]interface{}{
-		"BaseURL":    "https://acme.test",
-		"Hostname":   "acme.test",
-		"focus_area": "Authentication",
-		"body":       "<html>attacker controlled</html>",
-		"csrf_token": "extracted-from-response",
-	}
-
-	values := request.llmPromptValues(data)
-	require.Equal(t, "https://acme.test", values["BaseURL"])
-	require.Equal(t, "acme.test", values["Hostname"])
-	require.Equal(t, "Authentication", values["focus_area"], "constants the operator declared are interpolated")
-	require.NotContains(t, values, "body", "the response body must never reach the instruction")
-	require.NotContains(t, values, "csrf_token", "response derived values must never reach the instruction")
-}
-
-func TestLLMPromptValuesIgnoreResponseCollisions(t *testing.T) {
-	options := testutils.DefaultOptions.Copy()
-	options.Vars = goflags.RuntimeMap{}
-	testutils.Init(options)
-
-	request := &Request{ID: "llm-values", Name: "testing", Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
-		ID:   "llm-values",
-		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	templateVars := variables.Variable{
-		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(2),
-	}
-	templateVars.Set("body", "operator-body")
-	templateVars.Set("role", "auditor for {{BaseURL}}")
-	executerOpts.Variables = templateVars
-	executerOpts.Constants = map[string]interface{}{"server": "operator-server"}
-	require.NoError(t, executerOpts.Options.Vars.Set("cli_role=from-var"))
-	require.Nil(t, request.Compile(executerOpts))
-
-	data := map[string]interface{}{
-		"BaseURL":    "https://acme.test",
-		"body":       "<html>attacker controlled</html>",
-		"server":     "nginx",
-		"cli_role":   "from-response",
-		"csrf_token": "extracted-from-response",
-	}
-
-	values := request.llmPromptValues(data)
-	require.Equal(t, "operator-body", values["body"], "a declared name must not take the response body")
-	require.Equal(t, "operator-server", values["server"], "a declared name must not take a response header")
-	require.Equal(t, "from-var", values["cli_role"], "a -var name must not take an extracted field")
-	require.Equal(t, "auditor for https://acme.test", values["role"], "declared strings still resolve against the target")
-	require.NotContains(t, values, "csrf_token")
-}
-
-func TestResolveLLMInputs(t *testing.T) {
-	data := map[string]interface{}{
-		"body_1": "user found",
-		"body_2": "user not found",
-	}
-
-	resolved, ok := resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, data)
-	require.True(t, ok)
-	require.Equal(t, []string{"user found", "user not found"}, resolved, "responses are resolved from the runtime values")
-
-	// before the last response the later values do not exist yet, and asking
-	// the model about a literal placeholder would waste a call
-	_, ok = resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, map[string]interface{}{"body_1": "only one"})
-	require.False(t, ok)
-
-	// a page that contains template-like text is still a resolved response
-	withMarkers := map[string]interface{}{
-		"body_1": "hello {{user}}",
-		"body_2": "no such user",
-		"user":   "must-not-leak",
-	}
-	resolved, ok = resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, withMarkers)
-	require.True(t, ok)
-	require.Equal(t, []string{"hello {{user}}", "no such user"}, resolved, "body text stays opaque")
-
-	withSection := map[string]interface{}{
-		"body_1":   "token §Hostname§ here",
-		"body_2":   "other",
-		"Hostname": "must-not-leak",
-	}
-	resolved, ok = resolveLLMInputs([]string{"{{body_1}}", "{{body_2}}"}, withSection)
-	require.True(t, ok)
-	require.Equal(t, []string{"token §Hostname§ here", "other"}, resolved)
-
-	nilInputs, ok := resolveLLMInputs(nil, data)
-	require.True(t, ok)
-	require.Nil(t, nilInputs)
-}

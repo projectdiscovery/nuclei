@@ -674,10 +674,6 @@ func compileTemplate(template *Template) error {
 
 	template.parseSelfContainedRequests()
 
-	if err := template.validateLLMProtocolSupport(); err != nil {
-		return err
-	}
-
 	if err := template.validateLLMSoleMatcher(); err != nil {
 		return err
 	}

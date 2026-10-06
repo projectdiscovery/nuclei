@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
-	"strings"
 
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v92/github"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
@@ -68,16 +66,13 @@ func New(options *Options) (*Integration, error) {
 		}
 	}
 
-	client := github.NewClient(tc)
+	clientOptions := []github.ClientOptionsFunc{github.WithHTTPClient(tc)}
 	if options.BaseURL != "" {
-		parsed, err := url.Parse(options.BaseURL)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not parse custom baseurl")
-		}
-		if !strings.HasSuffix(parsed.Path, "/") {
-			parsed.Path += "/"
-		}
-		client.BaseURL = parsed
+		clientOptions = append(clientOptions, github.WithURLs(&options.BaseURL, nil))
+	}
+	client, err := github.NewClient(clientOptions...)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create github client")
 	}
 	return &Integration{client: client, options: options}, nil
 }
@@ -107,11 +102,11 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 	}
 
 	if existingIssue == nil {
-		req := &github.IssueRequest{
-			Title:     &summary,
+		req := github.CreateIssueRequest{
+			Title:     summary,
 			Body:      &description,
-			Labels:    &labels,
-			Assignees: &[]string{i.options.Username},
+			Labels:    labels,
+			Assignees: []string{i.options.Username},
 		}
 		createdIssue, _, err := i.client.Issues.Create(ctx, i.options.Owner, i.options.ProjectName, req)
 		if err != nil {
@@ -124,15 +119,15 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 	} else {
 		if existingIssue.GetState() == "closed" {
 			stateOpen := "open"
-			if _, _, err := i.client.Issues.Edit(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, &github.IssueRequest{
+			if _, _, err := i.client.Issues.Update(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, github.UpdateIssueRequest{
 				State: &stateOpen,
 			}); err != nil {
 				return nil, fmt.Errorf("error reopening issue %d: %s", *existingIssue.Number, err)
 			}
 		}
 
-		req := &github.IssueComment{
-			Body: &description,
+		req := github.IssueCommentRequest{
+			Body: description,
 		}
 		_, _, err = i.client.Issues.CreateComment(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, req)
 		if err != nil {
@@ -158,7 +153,7 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 	}
 
 	stateClosed := "closed"
-	if _, _, err := i.client.Issues.Edit(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, &github.IssueRequest{
+	if _, _, err := i.client.Issues.Update(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, github.UpdateIssueRequest{
 		State: &stateClosed,
 	}); err != nil {
 		return fmt.Errorf("error closing issue %d: %s", *existingIssue.Number, err)

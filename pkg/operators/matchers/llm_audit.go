@@ -5,6 +5,10 @@ import (
 	"encoding/hex"
 )
 
+// AuditEventKey holds the per-response llm audits inside InternalEvent. It is
+// read back when the result event is built and never copied into output.
+const AuditEventKey = "__llm_audit"
+
 // LLMAudit records what the model was asked and what it answered.
 //
 // An llm verdict is not reproducible the way a regex match is: the same

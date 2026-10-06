@@ -17,6 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # lint gates every other job; none of them uses another's output, so they run
+  # in parallel once it passes instead of queueing behind the unit tests
   lint:
     name: "Lint"
     if: ${{ !endsWith(github.actor, '[bot]') }}
@@ -45,16 +47,6 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
-      - uses: projectdiscovery/actions/free-disk-space@v1
-        with:
-          llvm: 'false'
-          php: 'false'
-          mongodb: 'false'
-          mysql: 'false'
-          misc-packages: 'false'
-          docker-images: 'false'
-          tools-cache: 'false'
-      - run: make build
       # The data-race detector is OS-independent, so we only pay its ~2-3x cost
       # on ubuntu; windows/macOS run the same suite without instrumentation.
       - name: "Unit tests (race)"
@@ -85,7 +77,7 @@ jobs:
 
   sdk:
     name: "Run example SDK"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: "${{ github.token }}"
@@ -106,7 +98,7 @@ jobs:
 
   integration:
     name: "Integration tests"
-    needs: ["tests"]
+    needs: ["lint"]
     env:
       GITHUB_TOKEN: "${{ github.token }}"
     strategy:
@@ -119,6 +111,18 @@ jobs:
       - uses: projectdiscovery/actions/setup/python@v1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
+      # The suite launches one nuclei process per case, ~175 of them, and the
+      # binary is around 200MB. This job takes roughly four times longer on
+      # windows than on linux for the same work; Defender scanning an executable
+      # on every launch is the leading suspect for the difference.
+      - name: Exclude the workspace from Defender scanning
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+          Add-MpPreference -ExclusionPath "$env:USERPROFILE\go"
+          Add-MpPreference -ExclusionProcess "nuclei.exe"
+          Add-MpPreference -ExclusionProcess "go.exe"
       - run: make integration
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
@@ -126,7 +130,7 @@ jobs:
 
   functional:
     name: "Functional tests"
-    needs: ["tests"]
+    needs: ["lint"]
     env:
       GITHUB_TOKEN: "${{ github.token }}"
     strategy:
@@ -147,7 +151,7 @@ jobs:
 
   validate:
     name: "Template validate"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: "${{ github.token }}"
@@ -159,7 +163,7 @@ jobs:
 
   codeql:
     name: "CodeQL analysis"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -201,7 +205,7 @@ jobs:
 
   release:
     name: "Release test"
-    needs: ["tests"]
+    needs: ["lint"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -210,7 +214,7 @@ jobs:
 
   flamegraph:
     name: "Flamegraph"
-    needs: ["tests"]
+    needs: ["lint"]
     uses: ./.github/workflows/flamegraph.yaml
 
   # perf-regression:
