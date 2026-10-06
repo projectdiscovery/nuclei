@@ -232,6 +232,10 @@ func NewClusterExecuter(requests []*Template, options *protocols.ExecutorOptions
 			}
 		}
 	}
+	// Clustering runs after each template has already been compiled, and the
+	// engine executes this cluster without compiling it again. The shared
+	// request has to know about sibling operators before the first scan.
+	executer.markClusteredResponse()
 	return executer
 }
 

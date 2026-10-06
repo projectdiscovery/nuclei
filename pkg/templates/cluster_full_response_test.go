@@ -41,7 +41,7 @@ func TestClusterMarksFullResponseOnlyWhenNeeded(t *testing.T) {
 	require.True(t, withResponse.FullResponseRequired())
 }
 
-func TestClusterCompileMatchesSiblingOnFullResponse(t *testing.T) {
+func TestClusterTemplatesMarksSiblingResponse(t *testing.T) {
 	options := *testutils.DefaultOptions
 	options.ResponseSaveSize = 1 << 20
 	testutils.Init(&options)
@@ -56,7 +56,7 @@ func TestClusterCompileMatchesSiblingOnFullResponse(t *testing.T) {
 	}))
 	t.Cleanup(ts.Close)
 
-	request := &httpprotocol.Request{
+	bodyRequest := &httpprotocol.Request{
 		Method: httpprotocol.HTTPMethodTypeHolder{MethodType: httpprotocol.HTTPGet},
 		Path:   []string{"{{BaseURL}}"},
 		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
@@ -65,35 +65,50 @@ func TestClusterCompileMatchesSiblingOnFullResponse(t *testing.T) {
 			Words: []string{"hello-body"},
 		}}},
 	}
-	sibling := &operators.Operators{Matchers: []*matchers.Matcher{{
-		Part:  "response",
-		Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
-		Words: []string{"hello-body"},
-	}}}
-	require.NoError(t, sibling.Compile())
+	responseRequest := &httpprotocol.Request{
+		Method: httpprotocol.HTTPMethodTypeHolder{MethodType: httpprotocol.HTTPGet},
+		Path:   []string{"{{BaseURL}}"},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "response",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"hello-body"},
+		}}},
+	}
+	require.NoError(t, bodyRequest.Compile(executerOpts))
+	require.NoError(t, responseRequest.Compile(executerOpts))
+	require.False(t, bodyRequest.FullResponseRequired())
+
+	info := model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "cluster"}
+	bodyTemplate := &Template{ID: "body-template", Info: info, RequestsHTTP: []*httpprotocol.Request{bodyRequest}}
+	responseTemplate := &Template{ID: "response-template", Info: info, RequestsHTTP: []*httpprotocol.Request{responseRequest}}
+	bodyTemplate.Options = executerOpts
+	responseTemplate.Options = executerOpts
 
 	var written []*output.ResultEvent
 	executerOpts.Output.(*testutils.MockOutputWriter).WriteCallback = func(event *output.ResultEvent) {
 		written = append(written, event)
 	}
-	cluster := &ClusterExecuter{
-		options:  executerOpts,
-		requests: request,
-		operators: []*clusteredOperator{{
-			templateID:   "sibling",
-			templateInfo: executerOpts.TemplateInfo,
-			operator:     sibling,
-		}},
-	}
-	require.NoError(t, cluster.Compile())
-	require.True(t, request.FullResponseRequired())
+
+	// ClusterTemplates is what a scan calls after compilation. It must mark the
+	// shared request without a later Compile on the cluster.
+	final, count, _ := ClusterTemplates([]*Template{bodyTemplate, responseTemplate}, executerOpts)
+	require.Equal(t, 2, count)
+	require.Len(t, final, 1)
+	require.True(t, bodyRequest.FullResponseRequired())
 
 	input := contextargs.NewWithInput(context.Background(), ts.URL)
-	matched, err := cluster.Execute(scan.NewScanContext(context.Background(), input))
+	matched, err := final[0].Executer.Execute(scan.NewScanContext(context.Background(), input))
 	require.NoError(t, err)
 	require.True(t, matched)
-	require.NotEmpty(t, written)
-	require.Contains(t, written[0].Response, "hello-body")
-	require.Contains(t, written[0].Response, "HTTP/1.1")
-	require.Contains(t, written[0].Response, "header-marker")
+
+	var sibling *output.ResultEvent
+	for _, event := range written {
+		if event.TemplateID == "response-template" {
+			sibling = event
+		}
+	}
+	require.NotNil(t, sibling)
+	require.Contains(t, sibling.Response, "hello-body")
+	require.Contains(t, sibling.Response, "HTTP/1.1")
+	require.Contains(t, sibling.Response, "header-marker")
 }
