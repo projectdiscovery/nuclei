@@ -236,6 +236,27 @@ username=admin&password=login`, parseURL(t, "https://test.com"), false, false)
 	require.Equal(t, "username=admin&password=login", request.Data, "Could not parse request data correctly")
 }
 
+func TestParseRawRequestVersionlessRequestLine(t *testing.T) {
+	// A two-field request line omits the path, so the second field is the
+	// version. Testing it with a substring match also claimed any path that
+	// happens to contain "HTTP", and the path was dropped.
+	request, err := ParseRawRequest("GET /HTTPProxy\r\nHost: example.com\r\n\r\n", true)
+	require.Nil(t, err, "could not parse request")
+	require.Equal(t, "/HTTPProxy", request.Path, "a path containing HTTP is not a version token")
+
+	request, err = ParseRawRequest("GET /api/HTTPHandler\r\nHost: example.com\r\n\r\n", true)
+	require.Nil(t, err, "could not parse request")
+	require.Equal(t, "/api/HTTPHandler", request.Path, "a path containing HTTP is not a version token")
+
+	// The case the branch exists for still works. ParseRawRequest is for
+	// self-contained templates and rejects an empty path, so this one is read
+	// at the layer where the behaviour lives.
+	raw, err := readRawRequest("GET HTTP/1.1\r\nHost: example.com\r\n\r\n", true)
+	require.Nil(t, err, "could not read request")
+	require.Equal(t, "GET", raw.Method, "Could not parse method correctly")
+	require.Empty(t, raw.Path, "a request line carrying only a version leaves the path to the input URL")
+}
+
 func TestParseUnsafeRequestWithPath(t *testing.T) {
 	request, err := Parse(`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
