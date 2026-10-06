@@ -108,6 +108,9 @@ func TestShouldBuildFullResponseForConsumers(t *testing.T) {
 	request.options = &protocols.ExecutorOptions{Options: &types.Options{StoreResponse: true}}
 	require.True(t, request.shouldBuildFullResponse())
 
+	request.options = &protocols.ExecutorOptions{Options: &types.Options{Debug: true}}
+	require.True(t, request.shouldBuildFullResponse())
+
 	request.options = &protocols.ExecutorOptions{Options: &types.Options{DebugResponse: true}}
 	require.True(t, request.shouldBuildFullResponse())
 
