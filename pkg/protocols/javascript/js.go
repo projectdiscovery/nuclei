@@ -283,11 +283,12 @@ func (request *Request) Requests() int {
 	if request.PreCondition != "" {
 		pre_conditions = 1
 	}
+	perPort := 1 + pre_conditions
 	if request.generator != nil {
-		payloadRequests := request.generator.NewIterator().Total()
-		return payloadRequests + pre_conditions
+		perPort = request.generator.NewIterator().Total() + pre_conditions
 	}
-	return 1 + pre_conditions
+	// ExecuteWithResults runs the whole request once per port
+	return perPort * max(1, len(request.getPorts()))
 }
 
 // GetID returns the ID for the request if any.

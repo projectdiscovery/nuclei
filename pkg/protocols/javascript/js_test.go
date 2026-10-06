@@ -129,3 +129,42 @@ func TestExecuteWithResultsRejectsUnverifiedTemplate(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "refusing to execute unverified javascript template")
 }
+
+func TestRequestsCountsEveryPort(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	tests := []struct {
+		name         string
+		port         string
+		payloads     map[string]interface{}
+		preCondition string
+		want         int
+	}{
+		{name: "no port", want: 1},
+		{name: "single port", port: "80", want: 1},
+		{name: "multiple ports", port: "80, 443,8080", want: 3},
+		{name: "duplicate ports", port: "80,80", want: 1},
+		{name: "ports with payloads", port: "80,443", payloads: map[string]interface{}{"user": []interface{}{"a", "b", "c"}}, want: 6},
+		{name: "ports with pre-condition", port: "80,443", preCondition: "true", want: 4},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executorOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "requests-per-port"})
+			request := &javascript.Request{
+				Args:         map[string]interface{}{},
+				Payloads:     tt.payloads,
+				PreCondition: tt.preCondition,
+				Code:         `true`,
+			}
+			if tt.port != "" {
+				request.Args["Port"] = tt.port
+			}
+			require.NoError(t, request.Compile(executorOptions))
+			require.Equal(t, tt.want, request.Requests())
+		})
+	}
+}
