@@ -54,7 +54,8 @@ type FlowExecutor struct {
 	// a request ex: if dynamic extractor returns ["value"] it will be converted to "value"
 	flattenKeys []string
 
-	executed *mapsutil.SyncLockMap[string, struct{}]
+	// executions counts how many times the flow ran each request
+	executions map[protocols.Request]*atomic.Int64
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
@@ -62,7 +63,9 @@ type FlowExecutor struct {
 // unlike other engines where we compile once and execute multiple times
 func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, options *protocols.ExecutorOptions, results *atomic.Bool, program *goja.Program) (*FlowExecutor, error) {
 	allprotos := make(map[string][]protocols.Request)
+	executions := make(map[protocols.Request]*atomic.Int64, len(requests))
 	for _, req := range requests {
+		executions[req] = &atomic.Int64{}
 		switch req.Type() {
 		case templateTypes.DNSProtocol:
 			allprotos[templateTypes.DNSProtocol.String()] = append(allprotos[templateTypes.DNSProtocol.String()], req)
@@ -102,7 +105,7 @@ func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, option
 		results:        results,
 		ctx:            ctx,
 		program:        program,
-		executed:       mapsutil.NewSyncLockMap[string, struct{}](),
+		executions:     executions,
 	}
 	return f, nil
 }
@@ -300,14 +303,12 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	return nil
 }
 
+// reconcileProgress adjusts the total, which assumed each request runs once,
+// to what the flow actually ran, so the request counter only reflects sent requests.
 func (f *FlowExecutor) reconcileProgress() {
-	for proto, list := range f.allProtocols {
-		for idx, req := range list {
-			key := requestKey(proto, req, strconv.Itoa(idx+1))
-			if _, seen := f.executed.Get(key); !seen {
-				// never executed → pretend it finished so that stats match
-				f.options.Progress.SetRequests(uint64(req.Requests()))
-			}
+	for req, executions := range f.executions {
+		if delta := (executions.Load() - 1) * int64(req.Requests()); delta != 0 {
+			f.options.Progress.AddToTotal(delta)
 		}
 	}
 }

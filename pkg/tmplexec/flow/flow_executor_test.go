@@ -6,6 +6,9 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -335,4 +338,77 @@ func TestFlowRequestConditionWithPayloads(t *testing.T) {
 		require.Nil(t, err, "could not execute template")
 		require.True(t, gotresults, "expected match with flow + payloads (issue #5095)")
 	})
+}
+
+type countingProgress struct {
+	testutils.MockProgressClient
+	total, requests atomic.Int64
+}
+
+func (p *countingProgress) AddToTotal(delta int64)                { p.total.Add(delta) }
+func (p *countingProgress) IncrementRequests()                    { p.requests.Add(1) }
+func (p *countingProgress) SetRequests(count uint64)              { p.requests.Add(int64(count)) }
+func (p *countingProgress) IncrementFailedRequestsBy(count int64) { p.requests.Add(count) }
+
+// TestFlowProgressCountsSentRequests checks that the request counter matches
+// the requests a flow actually sends and that the total converges to it.
+func TestFlowProgressCountsSentRequests(t *testing.T) {
+	setup()
+	var hits atomic.Int64
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_, _ = fmt.Fprint(w, "ok")
+	}))
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		flow string
+		sent int64
+	}{
+		{name: "all requests", flow: "http(1); http(2); http(3);", sent: 3},
+		{name: "skipped requests", flow: "http(1);", sent: 1},
+		{name: "skipped and repeated", flow: `http(1); if (template["status_code"] == 999) { http(2); } http(3); http(3);`, sent: 3},
+		{name: "by id", flow: `http("a");`, sent: 1},
+		{name: "no arguments", flow: "http();", sent: 3},
+	}
+	for i, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			hits.Store(0)
+			p := &countingProgress{}
+			opts := *executerOpts
+			opts.Progress = p
+
+			path := filepath.Join(t.TempDir(), fmt.Sprintf("flow-progress-%d.yaml", i))
+			tmpl := fmt.Sprintf(`id: flow-progress-%d
+info: {name: flow-progress, author: pdteam, severity: info}
+flow: |
+  %s
+http:
+  - id: a
+    method: GET
+    path: ["{{BaseURL}}/a"]
+  - id: b
+    method: GET
+    path: ["{{BaseURL}}/b"]
+  - id: c
+    method: GET
+    path: ["{{BaseURL}}/c"]
+`, i, tc.flow)
+			require.NoError(t, os.WriteFile(path, []byte(tmpl), 0o600))
+
+			template, err := templates.Parse(path, nil, &opts)
+			require.NoError(t, err, "could not parse template")
+			require.NoError(t, template.Executer.Compile(), "could not compile template")
+			p.total.Store(int64(template.Executer.Requests()))
+
+			ctx := scan.NewScanContext(context.Background(), contextargs.NewWithInput(context.Background(), ts.URL))
+			_, err = template.Executer.Execute(ctx)
+			require.NoError(t, err, "could not execute template")
+
+			require.Equal(t, tc.sent, hits.Load(), "unexpected requests sent")
+			require.Equal(t, tc.sent, p.requests.Load(), "requests counter should match sent requests")
+			require.Equal(t, tc.sent, p.total.Load(), "total should match sent requests")
+		})
+	}
 }
