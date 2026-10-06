@@ -3,6 +3,7 @@ package javascript_test
 import (
 	"context"
 	"log"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -128,4 +129,61 @@ func TestExecuteWithResultsRejectsUnverifiedTemplate(t *testing.T) {
 		t.Fatal("unexpected callback for unverified javascript template")
 	})
 	require.ErrorContains(t, err, "refusing to execute unverified javascript template")
+}
+
+type countingProgress struct {
+	testutils.MockProgressClient
+	requests atomic.Int64
+	errors   atomic.Int64
+}
+
+func (p *countingProgress) IncrementRequests()        { p.requests.Add(1) }
+func (p *countingProgress) SetRequests(count uint64)  { p.requests.Add(int64(count)) }
+func (p *countingProgress) IncrementErrorsBy(n int64) { p.errors.Add(n) }
+func (p *countingProgress) IncrementFailedRequestsBy(n int64) {
+	p.requests.Add(n)
+	p.errors.Add(n)
+}
+
+func TestPreConditionRequestsAreCounted(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	tests := []struct {
+		name         string
+		preCondition string
+		payloads     map[string]interface{}
+		wantErrors   int64
+	}{
+		{name: "pass", preCondition: "true"},
+		{name: "pass with payloads", preCondition: "true", payloads: map[string]interface{}{"user": []interface{}{"a", "b", "c"}}},
+		{name: "fail", preCondition: "false"},
+		{name: "fail with payloads", preCondition: "false", payloads: map[string]interface{}{"user": []interface{}{"a", "b", "c"}}},
+		{name: "error with payloads", preCondition: "throw new Error('boom')", payloads: map[string]interface{}{"user": []interface{}{"a", "b", "c"}}, wantErrors: 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executorOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "pre-condition-count"})
+			executorOptions.JsCompiler = templates.GetJsCompiler()
+			executorOptions.Verified = true
+			progress := &countingProgress{}
+			executorOptions.Progress = progress
+
+			request := &javascript.Request{
+				PreCondition: tt.preCondition,
+				Payloads:     tt.payloads,
+				Code:         `true`,
+			}
+			require.NoError(t, request.Compile(executorOptions))
+
+			target := contextargs.NewWithInput(context.Background(), "127.0.0.1:1")
+			_ = request.ExecuteWithResults(target, nil, nil, func(*output.InternalWrappedEvent) {})
+
+			require.Equal(t, int64(request.Requests()), progress.requests.Load())
+			require.Equal(t, tt.wantErrors, progress.errors.Load())
+		})
+	}
 }
