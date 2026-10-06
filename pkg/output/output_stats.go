@@ -13,7 +13,7 @@ type StatsOutputWriter struct {
 
 var _ Writer = &StatsOutputWriter{}
 
-// NewStatsOutputWriter returns a new StatsOutputWriter instance.
+// NewTrackerWriter returns a new StatsOutputWriter instance.
 func NewTrackerWriter(t *stats.Tracker) *StatsOutputWriter {
 	return &StatsOutputWriter{
 		colorizer: aurora.New(aurora.WithColors(true)),
