@@ -12,6 +12,12 @@ import (
 // host[:port] string. Default ports (80/443) are derived from the scheme when
 // missing. It is shared by the per-host rate limit pool and the HTTP-to-HTTPS
 // port tracker so that both group entries by the same key.
+// NormalizeHostPort exposes the host key the per-host rate limiter uses, so
+// anything else pacing a host (the backoff governor) agrees on host identity.
+func NormalizeHostPort(rawURL string) string {
+	return normalizeHostPort(rawURL)
+}
+
 func normalizeHostPort(rawURL string) string {
 	if rawURL == "" {
 		return ""

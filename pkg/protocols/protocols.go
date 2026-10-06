@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -114,6 +115,9 @@ type ExecutorOptions struct {
 	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HostBackoff paces a host that signals it is being overloaded, so a scan
+	// slows down for it instead of being blocked outright. Nil disables it.
+	HostBackoff *hostbackoff.Governor
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -355,6 +359,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Interactsh:                   e.Interactsh,
 		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
+		HostBackoff:                  e.HostBackoff,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -583,6 +588,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Interactsh = n.Interactsh
 	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
+	e.HostBackoff = n.HostBackoff
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB
