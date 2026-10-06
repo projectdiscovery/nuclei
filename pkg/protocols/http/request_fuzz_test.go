@@ -54,3 +54,25 @@ func TestFuzzingRequestsAreCountedInProgressTotal(t *testing.T) {
 	require.EqualValues(t, 6, progress.requests.Load())
 	require.EqualValues(t, 6, progress.total.Load())
 }
+
+func TestFuzzingRequestWithRawAndPayloadsCountsNothingUpFront(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	options.DAST = true
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executorOptions := testutils.NewMockExecuterOptions(options, nil)
+	t.Cleanup(executorOptions.RateLimiter.Stop)
+
+	// like dast/vulnerabilities/sqli/time-based-sqli.yaml: execution takes the
+	// fuzzing branch, so the raw requests and payloads are never sent as such
+	request := &Request{
+		Raw:      []string{"GET /?q={{p}} HTTP/1.1\nHost: {{Hostname}}\n\n"},
+		Payloads: map[string]interface{}{"p": []string{"1", "2", "3"}},
+		Fuzzing: []*fuzz.Rule{
+			{Part: "query", Type: "postfix", Mode: "single", Fuzz: fuzz.SliceOrMapSlice{Value: []string{"{{p}}"}}},
+		},
+	}
+	require.NoError(t, request.Compile(executorOptions))
+	require.Zero(t, request.Requests())
+}
