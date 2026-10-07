@@ -417,13 +417,25 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			},
 		)
 
+		request.options.Progress.IncrementRequests()
+
 		// if precondition was successful
 		if err == nil && result.GetSuccess() {
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				request.options.Progress.IncrementRequests()
 				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
 			}
 		} else {
+			// Requests() already counted the requests this run now skips
+			skipped := 1
+			if request.generator != nil {
+				skipped = request.generator.NewIterator().Total()
+			}
+			if err != nil {
+				request.options.Progress.IncrementFailedRequestsBy(int64(skipped))
+			} else {
+				request.options.Progress.SetRequests(uint64(skipped))
+			}
+
 			var outError error
 
 			// if js code failed to execute
