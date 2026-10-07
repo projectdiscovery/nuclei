@@ -1,4 +1,4 @@
-package httpclientpool
+package hostratelimit
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-// normalizeHostPort extracts and normalizes "hostname:port" from a URL or
+// NormalizeHostPort extracts and normalizes "hostname:port" from a URL or
 // host[:port] string. Default ports (80/443) are derived from the scheme when
 // missing. It is shared by the per-host rate limit pool and the HTTP-to-HTTPS
 // port tracker so that both group entries by the same key.
-func normalizeHostPort(rawURL string) string {
+func NormalizeHostPort(rawURL string) string {
 	if rawURL == "" {
 		return ""
 	}

@@ -326,7 +326,11 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return nil
 	}
 
-	request.options.RateLimitTake()
+	if err := request.options.RateLimitTake(actualAddress); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not take rate limit")
+	}
 
 	if shouldUseTLS {
 		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)

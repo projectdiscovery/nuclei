@@ -125,7 +125,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
 	rdapReq.Server = request.parsedServerURL
-	request.options.RateLimitTake()
+	if err := request.options.RateLimitTake(query); err != nil {
+		return errors.Wrap(err, "could not take rate limit")
+	}
 	timeStart := time.Now()
 	res, err := request.client.Do(rdapReq)
 	duration := time.Since(timeStart)

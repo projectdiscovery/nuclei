@@ -73,26 +73,6 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
 }
 
-// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
-func (request *Request) rateLimitTake(hostname string) error {
-	if request.options.Options.PerHostRateLimit && hostname != "" {
-		// Use per-host rate limiter
-		limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname)
-		if err != nil {
-			return err
-		}
-		if limiter != nil {
-			limiter.Take()
-			// Record request for pps stats
-			httpclientpool.RecordPerHostRateLimitRequest(request.options.Options, hostname)
-			return nil
-		}
-	}
-	// Use global rate limiter (or unlimited if per-host is enabled but hostname is empty)
-	request.options.RateLimitTake()
-	return nil
-}
-
 // executeRaceRequest executes race condition request for a URL
 func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.MetaInput.Input
@@ -282,7 +262,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					// Extract from request URL if available
 					hostname = t.req.request.Request.URL.String()
 				}
-				if err := request.rateLimitTake(hostname); err != nil {
+				if err := request.options.RateLimitTake(hostname); err != nil {
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
@@ -582,7 +562,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			if err := request.rateLimitTake(hostname); err != nil {
+			if err := request.options.RateLimitTake(hostname); err != nil {
 				return true, err
 			}
 

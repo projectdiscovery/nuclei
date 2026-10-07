@@ -649,7 +649,9 @@ func (request *Request) executeRequestWithPayloads(
 
 	// a script's network calls are not visible here, so like progress it is
 	// limited as one request per execution
-	request.options.RateLimitTake()
+	if err := request.options.RateLimitTake(hostPort); err != nil {
+		return err
+	}
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
