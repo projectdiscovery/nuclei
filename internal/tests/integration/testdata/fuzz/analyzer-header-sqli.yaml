@@ -1,0 +1,35 @@
+id: analyzer-header-sqli
+
+info:
+  name: Header-position error-based SQLi via analyzer
+  author: pdteam
+  severity: high
+  description: |
+    Drives the sqli_error analyzer while fuzzing the X-Search request header,
+    proving the analyzer works on the header component through the real pipeline.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "GET"'
+        condition: and
+
+    payloads:
+      seed:
+        - "en"
+
+    fuzzing:
+      - part: header
+        type: replace
+        mode: single
+        keys:
+          - "X-Search"
+        fuzz:
+          - "{{seed}}"
+    analyzer:
+      name: sqli_error
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"

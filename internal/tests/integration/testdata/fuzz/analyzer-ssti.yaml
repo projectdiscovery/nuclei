@@ -1,0 +1,29 @@
+id: analyzer-ssti
+
+info:
+  name: Server-Side Template Injection via analyzer
+  author: pdteam
+  severity: critical
+  description: |
+    Drives the built-in ssti analyzer through the real fuzzing pipeline. The
+    analyzer injects an arithmetic oracle in multiple template syntaxes and only
+    reports when the engine evaluates the expression.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "1337"
+    analyzer:
+      name: ssti
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"
