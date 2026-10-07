@@ -689,6 +689,30 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 const drainReqSize = int64(8 * unitutils.Kilo)
 
+// httpToHTTPSMismatchSignature is the response text servers such as nginx/openresty
+// emit when a plaintext HTTP request lands on a TLS-only (https) port.
+const httpToHTTPSMismatchSignature = "The plain HTTP request was sent to HTTPS port"
+
+// looksLikeHTTPToHTTPSMismatch reports whether resp is the specific "plain HTTP
+// request sent to an HTTPS-only port" error page. It peeks a bounded prefix of
+// the body to check, and - when the signature does not match - restores that
+// prefix onto resp.Body so downstream readers (matchers, dumps, project cache)
+// still see the complete, untouched response.
+func looksLikeHTTPToHTTPSMismatch(resp *http.Response) bool {
+	if resp == nil || resp.StatusCode != 400 || resp.Body == nil {
+		return false
+	}
+	peeked, _ := io.ReadAll(io.LimitReader(resp.Body, drainReqSize))
+	if bytes.Contains(peeked, []byte(httpToHTTPSMismatchSignature)) {
+		return true
+	}
+	resp.Body = struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(bytes.NewReader(peeked), resp.Body), resp.Body}
+	return false
+}
+
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
 	// Check if hosts keep erroring
@@ -919,10 +943,40 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 			resp, err = executingClient.Do(generatedRequest.request)
 
-			// If we forced http->https from a previous detection and the corrected
-			// request failed (e.g. a false positive where the port actually speaks
-			// plain HTTP), revert to the original scheme, evict the bad entry so
-			// other templates hitting the same host:port are not affected, and retry
+			// Self-heal: if this is the request that *first* discovers the
+			// host:port is https-only (no prior detection, so the pre-emptive
+			// check above didn't already correct the scheme), retry it over
+			// https immediately instead of handing the guaranteed-wrong 400 to
+			// the matchers. Without this, whichever request happens to be the
+			// first (or one of several racing concurrently) to hit a given
+			// host:port is always sacrificed, even though the tracker now
+			// knows better for every other request.
+			if err == nil && httpsCorrectionTracker == nil &&
+				generatedRequest.request != nil && generatedRequest.request.Scheme == "http" &&
+				generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil &&
+				looksLikeHTTPToHTTPSMismatch(resp) {
+
+				_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
+				_ = resp.Body.Close()
+
+				requestURL := generatedRequest.request.Request.URL.String()
+				generatedRequest.request.Scheme = "https"
+
+				if tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options); tracker != nil {
+					tracker.RecordHTTPToHTTPSPort(requestURL)
+					tracker.RecordCorrection()
+					httpsCorrectionTracker = tracker
+					httpsCorrectionURL = requestURL
+				}
+
+				resp, err = executingClient.Do(generatedRequest.request)
+			}
+
+			// If we forced http->https (either from a previous detection or the
+			// immediate self-heal above) and the corrected request failed (e.g.
+			// a false positive where the port actually speaks plain HTTP),
+			// revert to the original scheme, evict the bad entry so other
+			// templates hitting the same host:port are not affected, and retry
 			// once. This keeps the optimization while preventing a single
 			// wrong detection from silently dropping findings at scale.
 			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
@@ -1063,8 +1117,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		statusCode := respChain.Response().StatusCode
 
 		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message) so
-		// later requests to the same host:port are auto-upgraded to https.
-		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
+		// later requests to the same host:port are auto-upgraded to https. For the
+		// standard net/http path this is normally already handled by the
+		// immediate self-heal above; this remains the only detection point for
+		// pipeline/unsafe (rawhttp) requests, which bypass that retry.
+		if statusCode == 400 && strings.Contains(bodyStr, httpToHTTPSMismatchSignature) {
 			var requestURL string
 			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 				requestURL = generatedRequest.request.Request.URL.String()
