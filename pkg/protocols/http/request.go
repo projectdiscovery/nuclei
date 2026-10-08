@@ -1056,7 +1056,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// Cache response strings once per Fill() to avoid repeated allocs.
 		// NOTE(dwisiswant0): These are valid until Previous() (which reloads
 		// the buffer).
-		fullResponseStr := respChain.FullResponseString()
+		// The headers+body concatenation is only built when something reads it.
+		// It is a full-size copy of the response and is retained for as long as
+		// the event lives, while 0.7% of the template corpus ever looks at it.
+		var fullResponseStr string
+		if request.shouldBuildFullResponse() {
+			fullResponseStr = respChain.FullResponseString()
+		}
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
@@ -1079,7 +1085,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		// log request stats
-		request.options.Output.RequestStatsLog(strconv.Itoa(statusCode), fullResponseStr)
+		request.options.Output.RequestStatsLog(strconv.Itoa(statusCode), responseForStats(fullResponseStr, headersStr, bodyStr, request.options.Options.HTTPStats))
 
 		// save response to projectfile
 		onceFunc()

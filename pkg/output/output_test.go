@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -9,6 +10,45 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
+
+func TestWriteFailureRebuildsEmptyHTTPResponse(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{MatcherStatus: true, JSONL: true})
+	require.NoError(t, err)
+	buf := &testWriteCloser{}
+	w.outputFile = buf
+	w.DisableStdout = true
+
+	err = w.WriteFailure(&InternalWrappedEvent{InternalEvent: InternalEvent{
+		"template-id":   "example",
+		"template-path": "example.yaml",
+		"host":          "http://example.com",
+		"type":          "http",
+		"response":      "",
+		"all_headers":   "HTTP/1.1 200 OK\r\n\r\n",
+		"body":          "hello",
+	}})
+	require.NoError(t, err)
+
+	var event map[string]any
+	require.NoError(t, json.Unmarshal([]byte(buf.String()), &event))
+	require.Equal(t, "HTTP/1.1 200 OK\r\n\r\nhello", event["response"])
+	require.Equal(t, false, event["matcher-status"])
+
+	buf.Reset()
+	err = w.WriteFailure(&InternalWrappedEvent{InternalEvent: InternalEvent{
+		"template-id":   "example",
+		"template-path": "example.yaml",
+		"host":          "http://example.com",
+		"type":          "http",
+		"response":      "kept",
+		"all_headers":   "HTTP/1.1 200 OK\r\n\r\n",
+		"body":          "hello",
+	}})
+	require.NoError(t, err)
+	event = map[string]any{}
+	require.NoError(t, json.Unmarshal([]byte(buf.String()), &event))
+	require.Equal(t, "kept", event["response"])
+}
 
 func TestStandardWriterRequest(t *testing.T) {
 	t.Run("WithoutTraceAndError", func(t *testing.T) {
