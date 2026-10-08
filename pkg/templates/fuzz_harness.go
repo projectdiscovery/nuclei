@@ -133,7 +133,7 @@ func parseFuzzJSONTemplate(data []byte) (*Template, error) {
 }
 
 func compileFuzzTemplate(data []byte) (*Template, error) {
-	template, err := parseTemplateNoVerify(data, newFuzzExecutorOptions())
+	template, err := parseTemplateNoVerify(data, data, newFuzzExecutorOptions())
 	if err != nil {
 		return nil, err
 	}

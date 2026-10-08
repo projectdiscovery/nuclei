@@ -1178,10 +1178,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ExportReqURLPattern {
 			interimEvent[ReqURLPatternKey] = generatedRequest.requestURLPattern
 		}
+		probeID := request.GetRequestProbeID(generatedRequest.probeIndex)
 		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+			internalWrappedEvent.RequestProbeIndex = generatedRequest.probeIndex
+			internalWrappedEvent.RequestProbeID = probeID
 		})
+		// interactsh results are made later from this same event
+		event.RequestProbeIndex = generatedRequest.probeIndex
+		event.RequestProbeID = probeID
 
 		if hasInteractMatchers {
 			event.UsesInteractsh = true
@@ -1189,7 +1195,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.options.GlobalMatchers.HasMatchers() {
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
-				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
+				callback(eventcreator.CreateEventWithOperatorResultsAndOptions(request, event, result, func(wrappedEvent *output.InternalWrappedEvent) {
+					wrappedEvent.RequestProbeIndex = generatedRequest.probeIndex
+					wrappedEvent.RequestProbeID = probeID
+				}))
 			})
 		}
 

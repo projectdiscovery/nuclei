@@ -122,6 +122,12 @@ type InternalWrappedEvent struct {
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
 	UsesInteractsh  bool
+	// RequestProbeIndex is the 1-based position of the template-defined probe
+	// (http path/raw request, network host) within its request block. It is diagnostic
+	// and can change when probes are reordered.
+	RequestProbeIndex int
+	// RequestProbeID is the stable identity of the template-defined probe.
+	RequestProbeID string
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
@@ -129,10 +135,12 @@ type InternalWrappedEvent struct {
 
 func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 	return &InternalWrappedEvent{
-		InternalEvent:   maps.Clone(iwe.InternalEvent),
-		Results:         nil,
-		OperatorsResult: nil,
-		UsesInteractsh:  iwe.UsesInteractsh,
+		InternalEvent:     maps.Clone(iwe.InternalEvent),
+		Results:           nil,
+		OperatorsResult:   nil,
+		UsesInteractsh:    iwe.UsesInteractsh,
+		RequestProbeIndex: iwe.RequestProbeIndex,
+		RequestProbeID:    iwe.RequestProbeID,
 	}
 }
 
@@ -176,6 +184,18 @@ type ResultEvent struct {
 	MatcherName string `json:"matcher-name,omitempty"`
 	// ExtractorName is the name of the extractor matched if any.
 	ExtractorName string `json:"extractor-name,omitempty"`
+	// RequestID identifies the template request block that produced the result:
+	// its explicit id, otherwise <protocol>_<1-based position within the protocol>.
+	// It is intended for diagnostics and can change when unnamed blocks are reordered.
+	RequestID string `json:"request-id,omitempty"`
+	// RequestBlockID is stable across runs and unnamed request block reordering.
+	RequestBlockID string `json:"request-block-id,omitempty"`
+	// RequestProbeIndex is the 1-based position of the template-defined probe
+	// (http path/raw request, network host) within the request block. It is diagnostic
+	// and can change when probes are reordered.
+	RequestProbeIndex int `json:"request-probe-index,omitempty"`
+	// RequestProbeID is stable when other probes are reordered, added, or removed.
+	RequestProbeID string `json:"request-probe-id,omitempty"`
 	// LLM records the model verdict behind this finding, present only when an
 	// llm matcher produced it. An llm verdict is not reproducible the way a
 	// pattern match is, so the finding carries what it takes to audit it.
