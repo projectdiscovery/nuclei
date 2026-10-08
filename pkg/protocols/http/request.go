@@ -1199,6 +1199,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		callback(event)
 
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			request.replayRequest(dumpedRequest, formedURL)
+		}
+
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
 			request.options.FuzzStatsDB.RecordResultEvent(fuzzStats.FuzzingEvent{
 				URL:           input.MetaInput.Target(),

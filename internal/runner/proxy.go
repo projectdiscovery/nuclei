@@ -65,3 +65,21 @@ func loadProxyServers(options *types.Options) error {
 	}
 	return nil
 }
+
+// validateReplayProxy rejects a -replay-proxy value the replay client cannot dial
+func validateReplayProxy(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	proxyURL, err := url.Parse(raw)
+	if err != nil {
+		return errkit.Wrapf(err, "invalid replay proxy %q", raw)
+	}
+	switch proxyURL.Scheme {
+	case proxyutils.HTTP, proxyutils.HTTPS, proxyutils.SOCKS5:
+		if proxyURL.Host != "" {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid replay proxy %q: want an http, https or socks5 URL", raw)
+}
