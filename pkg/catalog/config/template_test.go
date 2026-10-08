@@ -89,6 +89,24 @@ func TestIsTemplate(t *testing.T) {
 			rootDir: "",
 			want:    false,
 		},
+		{
+			name:    "excluded config file in subdirectory",
+			fpath:   "nuclei-templates/TEMPLATES-STATS.json",
+			rootDir: "",
+			want:    false,
+		},
+		{
+			name:    "template name containing config file name",
+			fpath:   "http/cves.json.yaml",
+			rootDir: "",
+			want:    true,
+		},
+		{
+			name:    "json template name containing config file name",
+			fpath:   "http/contributors.json.json",
+			rootDir: "",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -96,6 +114,27 @@ func TestIsTemplate(t *testing.T) {
 			got := IsTemplateWithRoot(tt.fpath, tt.rootDir)
 			require.Equal(t, tt.want, got, "IsTemplateWithRoot(%q, %q)", tt.fpath, tt.rootDir)
 		})
+	}
+}
+
+func TestIsKnownConfigFile(t *testing.T) {
+	for _, fpath := range []string{
+		"cves.json",
+		"contributors.json",
+		"TEMPLATES-STATS.json",
+		toAbs("/home/user/nuclei-templates/cves.json"),
+		"https://example.com/nuclei-templates/cves.json",
+	} {
+		require.True(t, IsKnownConfigFile(fpath), "IsKnownConfigFile(%q)", fpath)
+	}
+
+	for _, fpath := range []string{
+		"cves.json.yaml",
+		"http/cves.json.yaml",
+		"my-contributors.json",
+		toAbs("/home/user/cves.json/test.yaml"),
+	} {
+		require.False(t, IsKnownConfigFile(fpath), "IsKnownConfigFile(%q)", fpath)
 	}
 }
 

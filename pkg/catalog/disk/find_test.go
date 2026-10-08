@@ -1,9 +1,10 @@
 package disk
 
 import (
-	"testing/fstest"
+	"os"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/require"
 )
@@ -55,4 +56,43 @@ func TestFindGlobPathMatchesResolvesContainedPath(t *testing.T) {
 	matches, err := cat.findGlobPathMatches(filepath.Join(templatesDir, "http", "*.yaml"), map[string]struct{}{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"http/test.yaml"}, matches)
+}
+
+// TestGetTemplatesPathKnownConfigFiles ensures that only exact known config
+// file names are skipped, and templates whose names merely contain one (e.g.
+// cves.json.yaml) are still loaded.
+func TestGetTemplatesPathKnownConfigFiles(t *testing.T) {
+	templatesDir := t.TempDir()
+	httpDir := filepath.Join(templatesDir, "http")
+	require.NoError(t, os.MkdirAll(httpDir, 0755))
+
+	template := filepath.Join(httpDir, "cves.json.yaml")
+	for _, f := range []string{
+		template,
+		filepath.Join(templatesDir, "cves.json"),
+		filepath.Join(templatesDir, "contributors.json"),
+		filepath.Join(templatesDir, "TEMPLATES-STATS.json"),
+	} {
+		require.NoError(t, os.WriteFile(f, []byte("id: test"), 0644))
+	}
+
+	cat := NewCatalog(templatesDir)
+
+	t.Run("direct path", func(t *testing.T) {
+		paths, errs := cat.GetTemplatesPath([]string{template})
+		require.Empty(t, errs)
+		require.Equal(t, []string{template}, paths)
+	})
+
+	t.Run("directory traversal", func(t *testing.T) {
+		paths, errs := cat.GetTemplatesPath([]string{templatesDir})
+		require.Empty(t, errs)
+		require.Equal(t, []string{template}, paths)
+	})
+
+	t.Run("config file is skipped", func(t *testing.T) {
+		paths, errs := cat.GetTemplatesPath([]string{filepath.Join(templatesDir, "cves.json")})
+		require.Empty(t, errs)
+		require.Empty(t, paths)
+	})
 }

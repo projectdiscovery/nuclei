@@ -26,9 +26,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	erred := make(map[string]error)
 
 	for _, t := range definitions {
-		if stringsutil.ContainsAny(t, knownConfigFiles...) {
-			// TODO: this is a temporary fix to avoid treating these files as templates
-			// this should be replaced with more appropriate and robust logic
+		if config.IsKnownConfigFile(t) {
 			continue
 		}
 		if strings.Contains(t, urlutil.SchemeSeparator) && stringsutil.ContainsAny(t, config.GetSupportTemplateFileExtensions()...) {
@@ -52,9 +50,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	// purge all false positives
 	filteredTemplates := []string{}
 	for _, v := range allTemplates {
-		// TODO: this is a temporary fix to avoid treating these files as templates
-		// this should be replaced with more appropriate and robust logic
-		if !stringsutil.ContainsAny(v, knownConfigFiles...) {
+		if !config.IsKnownConfigFile(v) {
 			filteredTemplates = append(filteredTemplates, v)
 		}
 	}
