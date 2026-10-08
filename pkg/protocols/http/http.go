@@ -434,7 +434,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.rawhttpClient = httpclientpool.GetRawHTTP(options)
 	}
 	if options.Options != nil && options.Options.ReplayProxy != "" {
-		client, err := newReplayClient(options.Options.ReplayProxy, options.Options.GetTimeouts().HttpTimeout)
+		client, err := newReplayClient(options.Options)
 		if err != nil {
 			return err
 		}

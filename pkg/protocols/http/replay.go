@@ -3,28 +3,32 @@ package http
 import (
 	"bufio"
 	"bytes"
-	"crypto/tls"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
 )
 
-// newReplayClient builds the client that re-sends findings through proxy.
-func newReplayClient(proxy string, timeout time.Duration) (*http.Client, error) {
-	proxyURL, err := url.Parse(proxy)
+// newReplayClient builds the client that re-sends findings through proxy. It
+// uses the scan's TLS configuration so a replay reaches the target the same way.
+func newReplayClient(options *types.Options) (*http.Client, error) {
+	proxyURL, err := url.Parse(options.ReplayProxy)
 	if err != nil {
-		return nil, errkit.Wrapf(err, "invalid replay proxy %q", proxy)
+		return nil, errkit.Wrapf(err, "invalid replay proxy %q", options.ReplayProxy)
+	}
+	tlsConfig, err := httpclientpool.NewTLSConfig(options)
+	if err != nil {
+		return nil, err
 	}
 	return &http.Client{
-		Timeout: timeout,
+		Timeout: options.GetTimeouts().HttpTimeout,
 		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-			// scan targets and intercepting proxies present untrusted certificates
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+			Proxy:           http.ProxyURL(proxyURL),
+			TLSClientConfig: tlsConfig,
 		},
 		// the proxy must record the request that matched, not where it redirects
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },

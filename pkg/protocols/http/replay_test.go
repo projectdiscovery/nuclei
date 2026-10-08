@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -108,10 +107,10 @@ func TestReplayRequestKeepsBodyWithoutContentLength(t *testing.T) {
 	}))
 	defer proxy.Close()
 
-	client, err := newReplayClient(proxy.URL, 5*time.Second)
-	require.NoError(t, err)
 	options := testutils.DefaultOptions.Copy()
 	options.ReplayProxy = proxy.URL
+	client, err := newReplayClient(options)
+	require.NoError(t, err)
 	request := &Request{replayClient: client, options: &protocols.ExecutorOptions{Options: options}}
 
 	// unsafe raw requests are dumped as written, here without Content-Length
