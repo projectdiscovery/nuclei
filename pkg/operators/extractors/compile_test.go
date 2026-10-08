@@ -49,3 +49,34 @@ func TestCompileExtractorsRequiresValuesForSelectedType(t *testing.T) {
 	}
 	require.ErrorContains(t, e.CompileExtractors(), "regex extractor requires at least one regex value")
 }
+
+func TestCompileExtractorsRejectsInvalidXPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		xpath   string
+		wantErr string
+	}{
+		{
+			name:    "unclosed bracket",
+			xpath:   "//a[",
+			wantErr: `could not compile xpath "//a[":`,
+		},
+		{
+			name:    "undefined function",
+			xpath:   "unknown-function()",
+			wantErr: `could not compile xpath "unknown-function()":`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &Extractor{
+				Type:  ExtractorTypeHolder{ExtractorType: XPathExtractor},
+				XPath: []string{tt.xpath},
+			}
+			err := e.CompileExtractors()
+			require.Error(t, err)
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
