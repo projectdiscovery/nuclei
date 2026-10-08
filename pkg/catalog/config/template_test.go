@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// toAbs converts a slash separated absolute path into an OS specific absolute
+// path, prefixing it with the system volume on Windows.
 func toAbs(p string) string {
 	if osutils.IsWindows() {
 		// Infer the drive letter from the Windows system path
@@ -28,6 +30,8 @@ func toAbs(p string) string {
 	return filepath.FromSlash(p)
 }
 
+// TestIsTemplate checks template detection for supported extensions, excluded
+// directories and known config files.
 func TestIsTemplate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -117,6 +121,8 @@ func TestIsTemplate(t *testing.T) {
 	}
 }
 
+// TestIsKnownConfigFile ensures only exact config file base names match, and
+// names that merely contain one (e.g. cves.json.yaml) do not.
 func TestIsKnownConfigFile(t *testing.T) {
 	for _, fpath := range []string{
 		"cves.json",

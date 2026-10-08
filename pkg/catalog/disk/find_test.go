@@ -43,6 +43,8 @@ func TestFindGlobPathMatchesUsesCanonicalContainment(t *testing.T) {
 	}
 }
 
+// TestFindGlobPathMatchesResolvesContainedPath ensures a glob inside the
+// templates directory resolves against the embedded FS.
 func TestFindGlobPathMatchesResolvesContainedPath(t *testing.T) {
 	memFS := fstest.MapFS{
 		"http/test.yaml": {Data: []byte("legit")},
