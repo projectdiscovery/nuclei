@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// toAbs converts a slash separated absolute path into an OS specific absolute
+// path, prefixing it with the system volume on Windows.
 func toAbs(p string) string {
 	if osutils.IsWindows() {
 		// Infer the drive letter from the Windows system path
@@ -28,6 +30,8 @@ func toAbs(p string) string {
 	return filepath.FromSlash(p)
 }
 
+// TestIsTemplate checks template detection for supported extensions, excluded
+// directories and known config files.
 func TestIsTemplate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -89,6 +93,24 @@ func TestIsTemplate(t *testing.T) {
 			rootDir: "",
 			want:    false,
 		},
+		{
+			name:    "excluded config file in subdirectory",
+			fpath:   "nuclei-templates/TEMPLATES-STATS.json",
+			rootDir: "",
+			want:    false,
+		},
+		{
+			name:    "template name containing config file name",
+			fpath:   "http/cves.json.yaml",
+			rootDir: "",
+			want:    true,
+		},
+		{
+			name:    "json template name containing config file name",
+			fpath:   "http/contributors.json.json",
+			rootDir: "",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -96,6 +118,29 @@ func TestIsTemplate(t *testing.T) {
 			got := IsTemplateWithRoot(tt.fpath, tt.rootDir)
 			require.Equal(t, tt.want, got, "IsTemplateWithRoot(%q, %q)", tt.fpath, tt.rootDir)
 		})
+	}
+}
+
+// TestIsKnownConfigFile ensures only exact config file base names match, and
+// names that merely contain one (e.g. cves.json.yaml) do not.
+func TestIsKnownConfigFile(t *testing.T) {
+	for _, fpath := range []string{
+		"cves.json",
+		"contributors.json",
+		"TEMPLATES-STATS.json",
+		toAbs("/home/user/nuclei-templates/cves.json"),
+		"https://example.com/nuclei-templates/cves.json",
+	} {
+		require.True(t, IsKnownConfigFile(fpath), "IsKnownConfigFile(%q)", fpath)
+	}
+
+	for _, fpath := range []string{
+		"cves.json.yaml",
+		"http/cves.json.yaml",
+		"my-contributors.json",
+		toAbs("/home/user/cves.json/test.yaml"),
+	} {
+		require.False(t, IsKnownConfigFile(fpath), "IsKnownConfigFile(%q)", fpath)
 	}
 }
 
