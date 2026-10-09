@@ -174,13 +174,21 @@ TEMPLATES:
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
    -llm                                   enable llm matchers and extractors (semantic matching)
-   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-provider string                   llm provider for semantic matching (groq, llamacpp, lmstudio, ollama, openai, openrouter, orcarouter, together, vllm) (default "openai")
    -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
    -llm-model string                      model used for semantic matching
+   -llm-api-key string                    api key for the selected llm provider (orcarouter also reads ORCAROUTER_API_KEY)
    -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
    -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
    -llm-concurrency int                   maximum concurrent llm calls (default 4)
    -llm-cache                             cache llm responses within a scan (default true)
+   -llm-login                             connect an orcarouter account with OAuth 2.0 + PKCE and store the issued api key
+   -llm-login-flow string                 orcarouter login delivery: auto, loopback (callback on 127.0.0.1) or oob (paste a displayed code) (default "auto")
+   -llm-logout                            remove the stored orcarouter credential
+   -llm-status                            show the stored orcarouter credential and where it lives
+   -llm-models                            list the orcarouter models available to this credential
+   -llm-auth-base-url string              orcarouter auth origin override (default https://www.orcarouter.ai)
+   -llm-api-base-url string               orcarouter inference origin override (default https://api.orcarouter.ai/v1)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
