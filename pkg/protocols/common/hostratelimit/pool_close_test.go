@@ -1,4 +1,4 @@
-package httpclientpool
+package hostratelimit
 
 import (
 	"context"

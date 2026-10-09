@@ -976,6 +976,30 @@ func testHeadlessSimpleResponse(t *testing.T, response string, actions []*Action
 	}, assert)
 }
 
+// sharedBrowser is launched once for the package. Every test used to start and
+// tear down its own chromium, which dominated the suite: a launch also spawns a
+// second chromium to validate the binary, so 30-odd tests cost 60-odd cold
+// starts. NewInstance below is the real isolation boundary between tests, so
+// sharing the browser costs no coverage.
+var sharedBrowser *Browser
+
+func TestMain(m *testing.M) {
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create browser: %v\n", err)
+		os.Exit(1)
+	}
+	sharedBrowser = browser
+
+	code := m.Run()
+
+	browser.Close()
+	os.Exit(code)
+}
+
 func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handler func(w http.ResponseWriter, r *http.Request), assert func(page *Page, pageErr error, extractedData ActionData)) {
 	t.Helper()
 
@@ -986,17 +1010,14 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	_ = protocolstate.Init(opts)
 
-	browser, err := New(&types.Options{
-		ShowBrowser:        false,
-		UseInstalledChrome: testheadless.HeadlessLocal,
-	})
-	require.Nil(t, err, "could not create browser")
-	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	instance, err := sharedBrowser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
 	defer func() {
 		_ = instance.Close()
+		// A debug action sets these on the browser rather than the page, so with
+		// a shared browser they would leak into every later test.
+		sharedBrowser.engine.SlowMotion(0)
+		sharedBrowser.engine.Trace(false)
 	}()
 
 	ts := httptest.NewServer(http.HandlerFunc(handler))

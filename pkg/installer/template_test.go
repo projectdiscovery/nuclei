@@ -19,15 +19,24 @@ func TestTemplateInstallation(t *testing.T) {
 	// along with necessary changes that are made
 	HideProgressBar = true
 
-	tm := &TemplateManager{}
-	dir, err := os.MkdirTemp("", "nuclei-templates-*")
-	require.Nil(t, err)
-	cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
-	require.Nil(t, err)
-	defer func() {
-		_ = os.RemoveAll(dir)
-		_ = os.RemoveAll(cfgdir)
-	}()
+	templates := []string{
+		"http/cves/2024/CVE-2024-0001.yaml",
+		"http/cves/2024/CVE-2024-0002.yaml",
+		"http/exposures/configs/git-config.yaml",
+		"dns/dns-saas-service-detection.yaml",
+		"network/detection/rdp-detect.yaml",
+	}
+	release := fakeTemplateRelease{version: "v9.9.9", files: map[string]string{
+		config.NucleiIgnoreFileName: "tags:\n  - fuzz\n",
+		"README.md":                 "# nuclei-templates",
+	}}
+	for _, path := range templates {
+		release.files[path] = "id: " + filepath.Base(path)
+	}
+
+	tm := &TemplateManager{fetchLatestRelease: release.fetch}
+	dir := t.TempDir()
+	cfgdir := t.TempDir()
 
 	// set the config directory to a temporary directory
 	config.DefaultConfig.SetConfigDir(cfgdir)
@@ -35,36 +44,43 @@ func TestTemplateInstallation(t *testing.T) {
 	templatesTempDir := filepath.Join(dir, "templates")
 	config.DefaultConfig.SetTemplatesDir(templatesTempDir)
 
-	err = tm.FreshInstallIfNotExists()
-	if err != nil {
-		if strings.Contains(err.Error(), "rate limit") {
-			t.Skip("Skipping test due to github rate limit")
-		}
-		require.Nil(t, err)
+	require.NoError(t, tm.FreshInstallIfNotExists())
+
+	for _, path := range templates {
+		require.FileExists(t, filepath.Join(templatesTempDir, filepath.FromSlash(path)))
 	}
-
-	// we should switch to more fine granular tests for template
-	// integrity, but for now, we just check that the templates are installed
-	counter := 0
-	err = filepath.Walk(templatesTempDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			counter++
-		}
-		return nil
-	})
-	require.Nil(t, err)
-
-	// we should have at least 1000 templates
-	require.Greater(t, counter, 1000)
+	require.NoFileExists(t, filepath.Join(templatesTempDir, "README.md"), "meta files are not installed as templates")
 	// every time we install templates, it should override the ignore file with latest one
 	require.FileExists(t, config.DefaultConfig.GetActiveIgnoreFilePath())
 	ownership, err := loadTemplateOwnership(templatesTempDir)
 	require.NoError(t, err)
-	require.NotEmpty(t, ownership.Files, "fresh installation should record official template ownership")
-	t.Logf("Installed %d templates", counter)
+	require.Len(t, ownership.Files, len(templates), "fresh installation should record ownership of every installed template")
+}
+
+func TestUpdateIfOutdatedSkipsReleaseInstalledWhileWaiting(t *testing.T) {
+	templatesDir := t.TempDir()
+	stateDir := t.TempDir()
+
+	// another process held the update lock and installed the latest release
+	installer := &config.Config{TemplateVersion: "v2.0.0"}
+	installer.SetStateDir(stateDir)
+	installer.SetTemplatesDir(templatesDir)
+	require.NoError(t, installer.WriteTemplatesConfig())
+
+	// this process loaded its state before that install finished
+	cfg := &config.Config{LatestNucleiTemplatesVersion: "v2.0.0", Logger: gologger.DefaultLogger}
+	cfg.SetStateDir(stateDir)
+	cfg.SetTemplatesDir(templatesDir)
+	previousConfig := config.DefaultConfig
+	config.DefaultConfig = cfg
+	t.Cleanup(func() { config.DefaultConfig = previousConfig })
+
+	tm := &TemplateManager{fetchLatestRelease: func() (templateRelease, error) {
+		t.Fatal("downloaded a release another process already installed")
+		return nil, nil
+	}}
+	require.NoError(t, tm.UpdateIfOutdated())
+	require.Equal(t, "v2.0.0", cfg.TemplateVersion)
 }
 
 func TestIsOutdatedVersion(t *testing.T) {
@@ -230,12 +246,18 @@ func benchmarkWriteTemplateOutputs(b *testing.B, syncEachOutput bool) {
 	rootDir := b.TempDir()
 	contents := []byte("id: benchmark\ninfo:\n  name: Benchmark\n  author: test\n  severity: info\n")
 	touchedDirectories := make(map[string]struct{})
+	writer, err := newTemplateOutputWriter(rootDir)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = writer.Close() }()
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for index := 0; index < b.N; index++ {
-		writePath := filepath.Join(rootDir, fmt.Sprintf("group-%d", index%16), fmt.Sprintf("template-%d.yaml", index))
-		outputResult, err := writeTemplateOutput(rootDir, writePath, contents, 0o644)
+		// releases nest templates a few directories deep, e.g. http/cves/2024
+		writePath := filepath.Join(rootDir, fmt.Sprintf("protocol-%d", index%4), fmt.Sprintf("category-%d", index%16), fmt.Sprintf("group-%d", index%64), fmt.Sprintf("template-%d.yaml", index))
+		outputResult, err := writer.write(writePath, contents, 0o644)
 		if err != nil {
 			b.Fatal(err)
 		}

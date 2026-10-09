@@ -161,6 +161,13 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
+	// limited as one request per run of the steps, the unit progress counts
+	if err := request.options.RateLimitTakeContext(input.Context(), input.MetaInput.Input); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not take rate limit")
+	}
+
 	timeStart := time.Now()
 	out, page, err := instance.Run(input, request.Steps, payloads, options)
 	runDuration := time.Since(timeStart)

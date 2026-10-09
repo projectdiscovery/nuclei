@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	tmpltypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -138,6 +140,289 @@ func TestExecuteTemplateOnInputReportsCancellationOnFinish(t *testing.T) {
 	if finished.ContextErr != context.Canceled {
 		t.Fatalf("got finish context error %v, want context canceled", finished.ContextErr)
 	}
+}
+
+type scriptedExecuter struct {
+	calls int
+	errs  []error
+	miss  bool
+}
+
+func (s *scriptedExecuter) Compile() error { return nil }
+func (s *scriptedExecuter) Requests() int  { return 1 }
+func (s *scriptedExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+	s.calls++
+	if len(s.errs) == 0 {
+		return !s.miss, nil
+	}
+	err := s.errs[0]
+	s.errs = s.errs[1:]
+	return false, err
+}
+func (s *scriptedExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	_, err := s.Execute(ctx)
+	return nil, err
+}
+
+func originScopedTemplate(path string) *templates.Template {
+	return &templates.Template{
+		ID: "root-health",
+		RequestsHTTP: []*httpprotocol.Request{{
+			Path: []string{path},
+		}},
+	}
+}
+
+func TestOriginScopedRetriesAfterFailure(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{errs: []error{errors.New("timeout")}}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/a"})
+	if err == nil {
+		t.Fatal("expected the first attempt to fail")
+	}
+	ok, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/b"})
+	if err != nil || !ok {
+		t.Fatalf("later target should retry the origin, ok=%v err=%v", ok, err)
+	}
+	if exec.calls != 2 {
+		t.Fatalf("calls = %d, want 2", exec.calls)
+	}
+}
+
+func TestOriginScopedSkipsAfterSuccess(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/a"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/b?q=1"}); err != nil {
+		t.Fatal(err)
+	}
+	if exec.calls != 1 {
+		t.Fatalf("calls = %d, want 1", exec.calls)
+	}
+}
+
+func TestOriginScopedKeepsEachCustomIP(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	for _, ip := range []string{"203.0.113.1", "203.0.113.2"} {
+		_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{
+			Input:    "https://example.com/a",
+			CustomIP: ip,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if exec.calls != 2 {
+		t.Fatalf("calls = %d, want 2", exec.calls)
+	}
+}
+
+func TestBaseURLTemplateIsNotOriginScoped(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	tpl := originScopedTemplate("{{BaseURL}}/health")
+	tpl.Executer = exec
+
+	for _, raw := range []string{"https://example.com/a", "https://example.com/b"} {
+		if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: raw}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if exec.calls != 2 {
+		t.Fatalf("calls = %d, want 2", exec.calls)
+	}
+}
+
+func TestOriginScopedWaiterRetriesAfterFailedAttempt(t *testing.T) {
+	e := newTestEngine()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = &gatedExecuter{started: started, release: release, calls: &calls}
+
+	firstDone := make(chan error, 1)
+	go func() {
+		_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/a"})
+		firstDone <- err
+	}()
+	<-started
+	secondDone := make(chan error, 1)
+	go func() {
+		_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/b"})
+		secondDone <- err
+	}()
+	select {
+	case err := <-secondDone:
+		t.Fatalf("second target returned while the first attempt was still running: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	if err := <-firstDone; err == nil {
+		t.Fatal("expected the first attempt to fail")
+	}
+	if err := <-secondDone; err != nil {
+		t.Fatalf("waiter should run after the failed attempt: %v", err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("calls = %d, want 2", calls.Load())
+	}
+}
+
+func TestOriginScopedKeepsDistinctOriginsAndTemplates(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	first := originScopedTemplate("{{RootURL}}/health")
+	first.Executer = exec
+	second := originScopedTemplate("{{RootURL}}/health")
+	second.ID = "other-template"
+	second.Executer = exec
+
+	inputs := []*contextargs.MetaInput{
+		{Input: "https://example.com/a"},
+		{Input: "https://other.test/a"},
+		{Input: "http://example.com/a"},
+		{Input: "https://example.com:8443/a"},
+	}
+	for _, value := range inputs {
+		if _, err := e.executeTemplateOnInput(context.Background(), first, value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := e.executeTemplateOnInput(context.Background(), second, inputs[0]); err != nil {
+		t.Fatal(err)
+	}
+	if exec.calls != 5 {
+		t.Fatalf("calls = %d, want 5", exec.calls)
+	}
+}
+
+func TestOriginScopedFoldsDefaultPort(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	for _, raw := range []string{"https://example.com/a", "https://example.com:443/b"} {
+		if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: raw}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if exec.calls != 1 {
+		t.Fatalf("calls = %d, want 1", exec.calls)
+	}
+}
+
+func TestOriginScopedSameCustomIPSkips(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	for range 2 {
+		_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{
+			Input:    "https://example.com/a",
+			CustomIP: "203.0.113.1",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if exec.calls != 1 {
+		t.Fatalf("calls = %d, want 1", exec.calls)
+	}
+}
+
+func TestOriginScopedMissStillCounts(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{miss: true}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	for _, raw := range []string{"https://example.com/a", "https://example.com/b"} {
+		ok, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: raw})
+		if err != nil || ok {
+			t.Fatalf("non-match ok=%v err=%v", ok, err)
+		}
+	}
+	if exec.calls != 1 {
+		t.Fatalf("calls = %d, want 1", exec.calls)
+	}
+}
+
+func TestOriginScopedCallbackErrorRetries(t *testing.T) {
+	e := newTestEngine()
+	e.Callback = func(*output.ResultEvent) {}
+	exec := &scriptedExecuter{errs: []error{errors.New("timeout")}}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/a"}); err == nil {
+		t.Fatal("expected the callback path to fail")
+	}
+	if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "https://example.com/b"}); err != nil {
+		t.Fatal(err)
+	}
+	if exec.calls != 2 {
+		t.Fatalf("calls = %d, want 2", exec.calls)
+	}
+}
+
+func TestOriginScopedLeavesValuesWithoutAHost(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+
+	for range 2 {
+		if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "not a url"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, raw := range []string{"example.com", "other.test", "example.com"} {
+		if _, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: raw}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if exec.calls != 4 {
+		t.Fatalf("calls = %d, want 4", exec.calls)
+	}
+}
+
+type gatedExecuter struct {
+	started chan struct{}
+	release chan struct{}
+	calls   *atomic.Int32
+}
+
+func (g *gatedExecuter) Compile() error { return nil }
+func (g *gatedExecuter) Requests() int  { return 1 }
+func (g *gatedExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+	if g.calls.Add(1) == 1 {
+		close(g.started)
+		<-g.release
+		return false, errors.New("timeout")
+	}
+	return true, nil
+}
+func (g *gatedExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	ok, err := g.Execute(ctx)
+	if err != nil || !ok {
+		return nil, err
+	}
+	return []*output.ResultEvent{{}}, nil
 }
 
 type fakeTargetProvider struct {

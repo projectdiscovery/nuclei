@@ -587,6 +587,11 @@ func (request *Request) RebuildGenerator() error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
+	// fuzzing requests depend on each input's parameters and add themselves to
+	// the total as they are sent; any path or raw is not sent as such
+	if len(request.Fuzzing) > 0 {
+		return 0
+	}
 	generator := request.newGenerator(false)
 	return generator.Total()
 }
@@ -706,4 +711,37 @@ func hasConnectionCloseHeader(raw string) bool {
 		value = value[:newlineIdx]
 	}
 	return strings.Contains(value, "close")
+}
+
+// IsOriginScoped reports whether every request this block makes is fixed by the
+// target's origin, so two targets differing only by path or query produce byte
+// identical requests. Paths built from {{BaseURL}} or {{Path}} carry the
+// target's own path and are therefore not origin scoped, and raw requests,
+// payloads and fuzzing all vary the request independently of the origin.
+func (request *Request) IsOriginScoped() bool {
+	if len(request.Raw) > 0 || len(request.Path) == 0 {
+		return false
+	}
+	if len(request.Payloads) > 0 || request.Fuzzing != nil {
+		return false
+	}
+	for _, path := range request.Path {
+		if !strings.Contains(path, "{{RootURL}}") || carriesTargetPath(path) {
+			return false
+		}
+	}
+	if carriesTargetPath(request.Body) {
+		return false
+	}
+	for _, value := range request.Headers {
+		if carriesTargetPath(value) {
+			return false
+		}
+	}
+	return true
+}
+
+// carriesTargetPath reports whether a value interpolates the target's own path.
+func carriesTargetPath(value string) bool {
+	return strings.Contains(value, "{{BaseURL}}") || strings.Contains(value, "{{Path}}")
 }
