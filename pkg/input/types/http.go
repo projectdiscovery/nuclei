@@ -112,16 +112,27 @@ func (rr *RequestResponse) ID() string {
 func (rr *RequestResponse) MarshalJSON() ([]byte, error) {
 	m := make(map[string]interface{})
 	m["url"] = rr.URL.String()
-	reqBin, err := json.Marshal(rr.Request)
-	if err != nil {
-		return nil, err
+	// Request and Response are optional (UnmarshalJSON only reads the keys when
+	// present), so nil pointers omit their keys instead of emitting "null".
+	//
+	// The pre-marshaled bytes must be wrapped as json.Message: encoding/json
+	// (and sonic) encode a bare []byte as a base64 *string*, which this type's
+	// own UnmarshalJSON — expecting a JSON object — cannot decode, breaking the
+	// json.JSONCodec round-trip contract asserted above.
+	if rr.Request != nil {
+		reqBin, err := json.Marshal(rr.Request)
+		if err != nil {
+			return nil, err
+		}
+		m["request"] = json.Message(reqBin)
 	}
-	m["request"] = reqBin
-	respBin, err := json.Marshal(rr.Response)
-	if err != nil {
-		return nil, err
+	if rr.Response != nil {
+		respBin, err := json.Marshal(rr.Response)
+		if err != nil {
+			return nil, err
+		}
+		m["response"] = json.Message(respBin)
 	}
-	m["response"] = respBin
 	return json.Marshal(m)
 }
 
