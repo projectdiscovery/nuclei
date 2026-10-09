@@ -103,6 +103,8 @@ type Options struct {
 	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
+	// ReplayProxy re-sends the requests that produced a finding through this proxy
+	ReplayProxy string
 	// AliveProxy is the alive proxy to use
 	AliveHttpProxy string
 	// AliveSocksProxy is the alive socks proxy to use
@@ -621,6 +623,7 @@ func (options *Options) Copy() *Options {
 		Resume:                         options.Resume,
 		Output:                         options.Output,
 		ProxyInternal:                  options.ProxyInternal,
+		ReplayProxy:                    options.ReplayProxy,
 		ListDslSignatures:              options.ListDslSignatures,
 		Proxy:                          options.Proxy,
 		AliveHttpProxy:                 options.AliveHttpProxy,

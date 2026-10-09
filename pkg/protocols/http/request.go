@@ -1037,6 +1037,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// we only intend to log/save the final redirected response
 	// i.e why we have to use sync.Once to ensure it's only done once
 	var errx error
+	// Race skips the dumps above because the body is already waiting on the
+	// gate. executeRaceRequest stored those bytes for DSL use.
+	if generatedRequest.original != nil && generatedRequest.original.Race && len(dumpedRequest) == 0 {
+		if raw, ok := previousEvent["request"].(string); ok {
+			dumpedRequest = []byte(raw)
+		}
+	}
+	// One executed request is replayed once, even when several responses in
+	// the redirect chain match.
+	replayed := false
+
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
@@ -1198,6 +1209,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
+
+		if !replayed && event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			replayed = true
+			request.replayRequest(dumpedRequest, formedURL)
+		}
 
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
 			request.options.FuzzStatsDB.RecordResultEvent(fuzzStats.FuzzingEvent{

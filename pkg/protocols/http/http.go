@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -144,6 +145,7 @@ type Request struct {
 	customHeaders     map[string]string
 	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
 	rawhttpClient     *rawhttp.Client
+	replayClient      *http.Client // set when -replay-proxy is given
 	dialer            *fastdialer.Dialer
 
 	// description: |
@@ -430,6 +432,13 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			}
 		}
 		request.rawhttpClient = httpclientpool.GetRawHTTP(options)
+	}
+	if options.Options != nil && options.Options.ReplayProxy != "" {
+		client, err := newReplayClient(options.Options)
+		if err != nil {
+			return err
+		}
+		request.replayClient = client
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators

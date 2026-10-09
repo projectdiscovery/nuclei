@@ -395,21 +395,9 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	transportKey := transportHash(host, disableKeepAlives, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost, responseHeaderTimeout)
 
 	createTransport := func() (http.RoundTripper, error) {
-		// Set the base TLS configuration definition
-		tlsConfig := &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS10,
-			ClientSessionCache: sharedTLSSessionCache,
-		}
-
-		if options.SNI != "" {
-			tlsConfig.ServerName = options.SNI
-		}
-
-		tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+		tlsConfig, err := NewTLSConfig(options)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create client certificate")
+			return nil, err
 		}
 
 		transport := &http.Transport{
@@ -814,4 +802,27 @@ func RecordHTTPToHTTPSPortMismatch(options *types.Options, hostname string) {
 	}
 
 	tracker.RecordHTTPToHTTPSPort(hostname)
+}
+
+// NewTLSConfig returns the TLS configuration HTTP requests to scan targets use,
+// honoring -sni and client certificates.
+func NewTLSConfig(options *types.Options) (*tls.Config, error) {
+	tlsConfig := &tls.Config{
+		Renegotiation: tls.RenegotiateOnceAsClient,
+		// Scan targets present untrusted certificates. This is the same configuration the HTTP client used inline.
+		InsecureSkipVerify: true, // codeql[go/disabled-certificate-check]
+		// Keep the scan client's existing minimum so older targets still connect.
+		MinVersion:         tls.VersionTLS10, // codeql[go/insecure-tls]
+		ClientSessionCache: sharedTLSSessionCache,
+	}
+
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
+	}
+
+	tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create client certificate")
+	}
+	return tlsConfig, nil
 }
