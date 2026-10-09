@@ -587,6 +587,11 @@ func (request *Request) RebuildGenerator() error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
+	// fuzzing requests depend on each input's parameters and add themselves to
+	// the total as they are sent; any path or raw is not sent as such
+	if len(request.Fuzzing) > 0 {
+		return 0
+	}
 	generator := request.newGenerator(false)
 	return generator.Total()
 }
