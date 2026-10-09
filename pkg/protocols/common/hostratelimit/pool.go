@@ -2,6 +2,7 @@ package hostratelimit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -48,9 +49,12 @@ type rateLimitEntry struct {
 type PerHostRateLimiter struct {
 	limiter   *rate.Limiter
 	ctx       context.Context
-	cancel    context.CancelFunc
+	cancel    context.CancelCauseFunc
+	admission chan struct{}
 	unlimited bool
 }
+
+var errPerHostRateLimiterStopped = errors.New("per-host rate limiter stopped")
 
 func (l *PerHostRateLimiter) Wait(ctx context.Context) error {
 	if ctx == nil {
@@ -66,28 +70,31 @@ func (l *PerHostRateLimiter) Wait(ctx context.Context) error {
 		return nil
 	}
 
-	now := time.Now()
-	reservation := l.limiter.ReserveN(now, 1)
-	if !reservation.OK() {
-		return fmt.Errorf("per-host rate limiter rejected reservation")
-	}
-	delay := reservation.DelayFrom(now)
-	if delay <= 0 {
-		return nil
-	}
-
-	timer := time.NewTimer(delay)
-	defer timer.Stop()
 	select {
-	case <-timer.C:
-		return nil
+	case l.admission <- struct{}{}:
+		defer func() { <-l.admission }()
 	case <-ctx.Done():
-		reservation.Cancel()
 		return context.Cause(ctx)
 	case <-l.ctx.Done():
-		reservation.Cancel()
 		return context.Cause(l.ctx)
 	}
+
+	waitCtx, cancelWait := context.WithCancelCause(ctx)
+	stopWait := context.AfterFunc(l.ctx, func() {
+		cancelWait(errPerHostRateLimiterStopped)
+	})
+	defer func() {
+		stopWait()
+		cancelWait(nil)
+	}()
+
+	if err := l.limiter.Wait(waitCtx); err != nil {
+		if cause := context.Cause(waitCtx); cause != nil {
+			return cause
+		}
+		return err
+	}
+	return nil
 }
 
 func (l *PerHostRateLimiter) Take() {
@@ -95,11 +102,11 @@ func (l *PerHostRateLimiter) Take() {
 }
 
 func (l *PerHostRateLimiter) CanTake() bool {
-	return l.unlimited || l.limiter.Tokens() > 0
+	return l.ctx.Err() == nil && (l.unlimited || l.limiter.Tokens() > 0)
 }
 
 func (l *PerHostRateLimiter) Stop() {
-	l.cancel()
+	l.cancel(errPerHostRateLimiterStopped)
 }
 
 func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, options *types.Options) *PerHostRateLimitPool {
@@ -124,9 +131,6 @@ func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, o
 		cache: expirable.NewLRU[string, *rateLimitEntry](
 			size,
 			func(key string, value *rateLimitEntry) {
-				if value.limiter != nil {
-					value.limiter.Stop()
-				}
 				gologger.Debug().Msgf("[perhost-ratelimit-pool] Evicted rate limiter for %s (age: %v, accesses: %d)",
 					key, time.Since(value.createdAt), value.accessCount.Load())
 			},
@@ -158,9 +162,6 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 			if entry, ok := p.cache.Peek(normalizedHost); ok {
 				// Check maxLifetime again (entry might have been replaced)
 				if time.Since(entry.createdAt) > p.maxLifetime {
-					if entry.limiter != nil {
-						entry.limiter.Stop()
-					}
 					p.cache.Remove(normalizedHost)
 					p.evictions.Add(1)
 					// Fall through to create new entry
@@ -192,9 +193,6 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 		// Check maxLifetime
 		if p.maxLifetime > 0 && time.Since(entry.createdAt) > p.maxLifetime {
 			// Entry is too old, evict it
-			if entry.limiter != nil {
-				entry.limiter.Stop()
-			}
 			p.cache.Remove(normalizedHost)
 			p.evictions.Add(1)
 		} else {
@@ -232,16 +230,16 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 // steadier target pressure, this keeps a large host pool cheap and prevents
 // several concurrent engines from consuming the whole window at once.
 func newPerHostRateLimiter(options *types.Options) (*PerHostRateLimiter, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	if options == nil {
 		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true}, nil
 	}
 	if options.RateLimit < 0 {
-		cancel()
+		cancel(nil)
 		return nil, fmt.Errorf("rate limit must not be negative: %d", options.RateLimit)
 	}
 	if options.RateLimitDuration < 0 {
-		cancel()
+		cancel(nil)
 		return nil, fmt.Errorf("rate limit duration must not be negative: %s", options.RateLimitDuration)
 	}
 	if options.RateLimit == 0 || options.RateLimitDuration == 0 {
@@ -249,20 +247,15 @@ func newPerHostRateLimiter(options *types.Options) (*PerHostRateLimiter, error) 
 	}
 	requestsPerSecond := rate.Limit(float64(options.RateLimit) / options.RateLimitDuration.Seconds())
 	return &PerHostRateLimiter{
-		limiter: rate.NewLimiter(requestsPerSecond, options.RateLimit),
-		ctx:     ctx,
-		cancel:  cancel,
+		limiter:   rate.NewLimiter(requestsPerSecond, options.RateLimit),
+		ctx:       ctx,
+		cancel:    cancel,
+		admission: make(chan struct{}, 1),
 	}, nil
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {
 	normalizedHost := NormalizeHostPort(host)
-
-	// Get entry before removing to stop limiter
-	entry, ok := p.cache.Peek(normalizedHost)
-	if ok && entry != nil && entry.limiter != nil {
-		entry.limiter.Stop()
-	}
 
 	existed := p.cache.Remove(normalizedHost)
 	if existed {
