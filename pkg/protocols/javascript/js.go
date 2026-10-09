@@ -660,6 +660,12 @@ func (request *Request) executeRequestWithPayloads(
 		argsCopy.TemplateCtx = map[string]interface{}{}
 	}
 
+	// a script's network calls are not visible here, so like progress it is
+	// limited as one request per execution
+	if err := request.options.RateLimitTake(hostPort); err != nil {
+		return err
+	}
+
 	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,

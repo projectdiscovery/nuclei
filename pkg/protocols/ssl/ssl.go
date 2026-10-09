@@ -256,6 +256,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = host
 	}
 
+	if err := request.options.RateLimitTake(addressToDial); err != nil {
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		return errkit.Wrap(err, "could not take rate limit")
+	}
+
 	timeStart := time.Now()
 	response, err := request.tlsx.Connect(host, hostIp, port)
 	duration := time.Since(timeStart)

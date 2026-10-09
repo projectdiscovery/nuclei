@@ -1,4 +1,4 @@
-package httpclientpool
+package hostratelimit
 
 import (
 	"context"
@@ -89,7 +89,7 @@ func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, o
 func (p *PerHostRateLimitPool) GetOrCreate(
 	host string,
 ) (*ratelimit.Limiter, error) {
-	normalizedHost := normalizeHostPort(host)
+	normalizedHost := NormalizeHostPort(host)
 
 	// Try to get entry (this refreshes TTL in expirable LRU)
 	if entry, ok := p.cache.Get(normalizedHost); ok {
@@ -192,7 +192,7 @@ func newPerHostRateLimiter(options *types.Options) (*ratelimit.Limiter, error) {
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {
-	normalizedHost := normalizeHostPort(host)
+	normalizedHost := NormalizeHostPort(host)
 
 	// Get entry before removing to stop limiter
 	entry, ok := p.cache.Peek(normalizedHost)
@@ -244,7 +244,7 @@ type RateLimitPoolStats struct {
 }
 
 func (p *PerHostRateLimitPool) GetLimiterForHost(host string) (*ratelimit.Limiter, bool) {
-	normalizedHost := normalizeHostPort(host)
+	normalizedHost := NormalizeHostPort(host)
 
 	if entry, ok := p.cache.Peek(normalizedHost); ok {
 		return entry.limiter, true
@@ -264,7 +264,7 @@ type RateLimitInfo struct {
 }
 
 func (p *PerHostRateLimitPool) GetRateLimitInfo(host string) *RateLimitInfo {
-	normalizedHost := normalizeHostPort(host)
+	normalizedHost := NormalizeHostPort(host)
 
 	entry, ok := p.cache.Peek(normalizedHost)
 	if !ok {
@@ -303,7 +303,7 @@ func (p *PerHostRateLimitPool) Cap() int {
 
 // RecordRequest records a request timestamp for a host to calculate pps
 func (p *PerHostRateLimitPool) RecordRequest(host string) {
-	normalizedHost := normalizeHostPort(host)
+	normalizedHost := NormalizeHostPort(host)
 	entry, ok := p.cache.Peek(normalizedHost)
 	if !ok || entry == nil {
 		return
