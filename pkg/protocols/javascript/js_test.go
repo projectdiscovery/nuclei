@@ -129,3 +129,31 @@ func TestExecuteWithResultsRejectsUnverifiedTemplate(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "refusing to execute unverified javascript template")
 }
+
+func TestJavascriptRequestsTakeFromRateLimiter(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	executorOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "javascript-rate-limit"})
+	executorOptions.JsCompiler = templates.GetJsCompiler()
+	executorOptions.Verified = true
+	executorOptions.RateLimiter.Stop()
+	executorOptions.RateLimiter = ratelimit.New(context.Background(), 1, 300*time.Millisecond)
+	t.Cleanup(executorOptions.RateLimiter.Stop)
+
+	request := &javascript.Request{
+		ID:   "javascript-rate-limit",
+		Code: "function run() { return { success: true, response: \"ok\" }; }\nrun();",
+	}
+	require.NoError(t, request.Compile(executorOptions))
+
+	start := time.Now()
+	for range 4 {
+		target := contextargs.NewWithInput(context.Background(), "https://example.com:443")
+		require.NoError(t, request.ExecuteWithResults(target, nil, nil, func(*output.InternalWrappedEvent) {}))
+	}
+	// 4 executions at 1 per 300ms cannot finish in under ~900ms when limited
+	require.GreaterOrEqual(t, time.Since(start), 800*time.Millisecond)
+}
