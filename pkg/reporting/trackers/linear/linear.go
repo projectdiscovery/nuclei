@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
+	"sync"
 
 	"github.com/shurcooL/graphql"
 
@@ -26,6 +28,9 @@ type Integration struct {
 	url        string
 	httpclient *http.Client
 	options    *Options
+
+	closedStateMu sync.Mutex
+	closedStateID string
 }
 
 // Options contains the configuration options for linear issue tracker client
@@ -47,6 +52,8 @@ type Options struct {
 
 	// OpenStateID is the id of the open state for the project
 	OpenStateID string `yaml:"open-state-id"`
+	// ClosedStateID is the id of the closed state for the project, discovered from the team's completed workflow states when empty
+	ClosedStateID string `yaml:"closed-state-id"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 	OmitRaw    bool                  `yaml:"-"`
@@ -168,10 +175,8 @@ type createIssueMutation struct {
 			ID         graphql.ID
 			Title      graphql.String
 			Identifier graphql.String
-			State      struct {
-				Name graphql.String
-			}
-			URL graphql.String
+			State      linearState
+			URL        graphql.String
 		}
 	}
 }
@@ -185,6 +190,7 @@ const (
             identifier
             state {
                 name
+                type
             }
             url
         }
@@ -203,8 +209,19 @@ const (
       identifier
       state {
         name
+        type
       }
       url
+    }
+  }
+}
+`
+
+	completedWorkflowStatesQuery = `query ($teamID: ID) {
+  workflowStates(filter: { team: { id: { eq: $teamID } }, type: { eq: "completed" } }) {
+    nodes {
+      id
+      position
     }
   }
 }
@@ -252,12 +269,8 @@ func (i *Integration) createIssueLinear(ctx context.Context, title, description 
 		ID:         mutation.IssueCreate.Issue.ID,
 		Title:      mutation.IssueCreate.Issue.Title,
 		Identifier: mutation.IssueCreate.Issue.Identifier,
-		State: struct {
-			Name graphql.String
-		}{
-			Name: mutation.IssueCreate.Issue.State.Name,
-		},
-		URL: mutation.IssueCreate.Issue.URL,
+		State:      mutation.IssueCreate.Issue.State,
+		URL:        mutation.IssueCreate.Issue.URL,
 	}, nil
 }
 
@@ -289,10 +302,69 @@ func (i *Integration) Name() string {
 }
 
 func (i *Integration) CloseIssue(event *output.ResultEvent) error {
-	// TODO: Unimplemented for now as not used in many places
-	// and overhead of maintaining our own API for this.
-	// This is too much code as it is :(
+	ctx := context.Background()
+
+	existingIssue, err := i.findIssueByTitle(ctx, format.Summary(event))
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("could not find linear issue: %w", err)
+	}
+	if isClosedStateType(string(existingIssue.State.Type)) {
+		return nil
+	}
+
+	stateID, err := i.resolveClosedStateID(ctx)
+	if err != nil {
+		return fmt.Errorf("could not resolve linear closed state: %w", err)
+	}
+
+	variables := map[string]interface{}{
+		"issueUpdateInput": map[string]interface{}{"stateId": stateID},
+		"issueID":          types.ToString(existingIssue.ID),
+	}
+	var resp struct {
+		IssueUpdate struct {
+			LastSyncID int `json:"lastSyncId"`
+		}
+	}
+	if err := i.doGraphqlRequest(ctx, existingIssueUpdateStateMutation, &resp, variables, "IssueUpdate"); err != nil {
+		return fmt.Errorf("error closing issue %s: %w", existingIssue.ID, err)
+	}
 	return nil
+}
+
+func isClosedStateType(stateType string) bool {
+	return stateType == linearStateTypeCompleted || stateType == linearStateTypeCanceled
+}
+
+func (i *Integration) resolveClosedStateID(ctx context.Context) (string, error) {
+	if i.options.ClosedStateID != "" {
+		return i.options.ClosedStateID, nil
+	}
+
+	i.closedStateMu.Lock()
+	defer i.closedStateMu.Unlock()
+	if i.closedStateID != "" {
+		return i.closedStateID, nil
+	}
+	if i.options.TeamID == "" {
+		return "", errors.New("team-id or closed-state-id is required to close issues")
+	}
+
+	var result completedWorkflowStatesQueryResult
+	variables := map[string]interface{}{"teamID": graphql.ID(i.options.TeamID)}
+	if err := i.doGraphqlRequest(ctx, completedWorkflowStatesQuery, &result, variables, ""); err != nil {
+		return "", err
+	}
+	nodes := result.WorkflowStates.Nodes
+	if len(nodes) == 0 {
+		return "", fmt.Errorf("no completed workflow state found for team %s", i.options.TeamID)
+	}
+	sort.SliceStable(nodes, func(a, b int) bool { return nodes[a].Position < nodes[b].Position })
+	i.closedStateID = types.ToString(nodes[0].ID)
+	return i.closedStateID, nil
 }
 
 // ShouldFilter determines if an issue should be logged to this tracker
@@ -308,14 +380,26 @@ func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 	return true
 }
 
+type linearState struct {
+	Name graphql.String
+	Type graphql.String
+}
+
 type linearIssue struct {
 	ID         graphql.ID
 	Title      graphql.String
 	Identifier graphql.String
-	State      struct {
-		Name graphql.String
+	State      linearState
+	URL        graphql.String
+}
+
+type completedWorkflowStatesQueryResult struct {
+	WorkflowStates struct {
+		Nodes []struct {
+			ID       graphql.ID
+			Position graphql.Float
+		}
 	}
-	URL graphql.String
 }
 
 type findExistingIssuesSearch struct {
@@ -334,6 +418,11 @@ func (adt *addHeaderTransport) RoundTrip(req *http.Request) (*http.Response, err
 	req.Header.Add("Authorization", adt.Key)
 	return adt.T.RoundTrip(req)
 }
+
+const (
+	linearStateTypeCompleted = "completed"
+	linearStateTypeCanceled  = "canceled"
+)
 
 const (
 	linearPriorityNone     = float64(0)
