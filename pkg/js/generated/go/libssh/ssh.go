@@ -19,7 +19,8 @@ func init() {
 			// Var and consts
 
 			// Objects / Classes
-			"SSHClient": gojs.GetClassConstructor[lib_ssh.SSHClient](&lib_ssh.SSHClient{}),
+			"SSHClient":  gojs.GetClassConstructor[lib_ssh.SSHClient](&lib_ssh.SSHClient{}),
+			"SSHOptions": gojs.GetClassConstructor[lib_ssh.SSHOptions](&lib_ssh.SSHOptions{}),
 		},
 	).Register()
 }
