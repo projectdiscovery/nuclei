@@ -3,8 +3,10 @@ package http
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -725,5 +727,38 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
+	})
+}
+
+func TestLooksLikeHTTPToHTTPSMismatch(t *testing.T) {
+	t.Run("matches genuine nginx/openresty mismatch page", func(t *testing.T) {
+		body := `<html>
+<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>The plain HTTP request was sent to HTTPS port</center>
+<hr><center>nginx/1.31.6</center>
+</body>
+</html>`
+		resp := &http.Response{StatusCode: 400, Body: io.NopCloser(strings.NewReader(body))}
+		require.True(t, looksLikeHTTPToHTTPSMismatch(resp))
+	})
+
+	t.Run("does not match an unrelated 400 and leaves the body intact", func(t *testing.T) {
+		body := "<html><body>400 Bad Request - unrelated app error</body></html>"
+		resp := &http.Response{StatusCode: 400, Body: io.NopCloser(strings.NewReader(body))}
+		require.False(t, looksLikeHTTPToHTTPSMismatch(resp))
+
+		// downstream readers (matchers, dumps, project cache) must still see
+		// the full, untouched body after a non-matching peek
+		remaining, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, body, string(remaining))
+	})
+
+	t.Run("ignores non-400 status codes even if the text is present", func(t *testing.T) {
+		body := "The plain HTTP request was sent to HTTPS port"
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}
+		require.False(t, looksLikeHTTPToHTTPSMismatch(resp))
 	})
 }
