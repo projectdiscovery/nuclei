@@ -18,6 +18,7 @@ func init() {
 	dataformats = make(map[string]DataFormat)
 
 	// register the default data formats
+	RegisterDataFormat(NewGraphql())
 	RegisterDataFormat(NewJSON())
 	RegisterDataFormat(NewXML())
 	RegisterDataFormat(NewRaw())
@@ -26,6 +27,8 @@ func init() {
 }
 
 const (
+	// GraphqlDataFormat is the name of the GraphQL-over-HTTP JSON data format
+	GraphqlDataFormat = "graphql"
 	// JSONDataFormat is the name of the JSON data format
 	JSONDataFormat = "json"
 	// XMLDataFormat is the name of the XML data format
@@ -37,6 +40,17 @@ const (
 	// MultiPartFormDataFormat is the name of the MultiPartForm data format
 	MultiPartFormDataFormat = "multipart/form-data"
 )
+
+// decodePriority prefers more specific formats before generic ones (GraphQL
+// bodies are valid JSON, so GraphQL must win over JSON).
+var decodePriority = []string{
+	GraphqlDataFormat,
+	JSONDataFormat,
+	XMLDataFormat,
+	MultiPartFormDataFormat,
+	FormDataFormat,
+	RawDataFormat,
+}
 
 // Get returns the dataformat by name
 func Get(name string) DataFormat {
@@ -70,20 +84,51 @@ type Decoded struct {
 
 // Decode decodes the data from a format
 func Decode(data string) (*Decoded, error) {
-	for _, dataformat := range dataformats {
-		if dataformat.IsType(data) {
-			decoded, err := dataformat.Decode(data)
-			if err != nil {
-				return nil, err
-			}
-			value := &Decoded{
-				DataFormat: dataformat.Name(),
-				Data:       decoded,
-			}
-			return value, nil
+	tryDecode := func(dataformat DataFormat) (*Decoded, error) {
+		if dataformat == nil || !dataformat.IsType(data) {
+			return nil, nil
+		}
+		decoded, err := dataformat.Decode(data)
+		if err != nil {
+			return nil, err
+		}
+		return &Decoded{
+			DataFormat: dataformat.Name(),
+			Data:       decoded,
+		}, nil
+	}
+
+	for _, name := range decodePriority {
+		decoded, err := tryDecode(dataformats[name])
+		if err != nil {
+			return nil, err
+		}
+		if decoded != nil {
+			return decoded, nil
+		}
+	}
+	for name, dataformat := range dataformats {
+		if containsString(decodePriority, name) {
+			continue
+		}
+		decoded, err := tryDecode(dataformat)
+		if err != nil {
+			return nil, err
+		}
+		if decoded != nil {
+			return decoded, nil
 		}
 	}
 	return nil, nil
+}
+
+func containsString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
 }
 
 // Encode encodes the data into a format
