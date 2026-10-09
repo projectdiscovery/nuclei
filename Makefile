@@ -112,7 +112,7 @@ functional: build
 		exit 1; \
 	fi; \
 	RELEASE_BINARY="$$release_binary" DEV_BINARY="$(PWD)/bin/nuclei" \
-		$(GOTEST) -tags=functional -timeout 1h ./internal/tests/functional
+		$(GOTEST) -tags=functional -timeout 1h -v ./internal/tests/functional
 
 tidy:
 	$(GOMOD) tidy
