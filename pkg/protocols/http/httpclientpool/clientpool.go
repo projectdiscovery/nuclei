@@ -808,9 +808,11 @@ func RecordHTTPToHTTPSPortMismatch(options *types.Options, hostname string) {
 // honoring -sni and client certificates.
 func NewTLSConfig(options *types.Options) (*tls.Config, error) {
 	tlsConfig := &tls.Config{
-		Renegotiation:      tls.RenegotiateOnceAsClient,
-		InsecureSkipVerify: true,
-		MinVersion:         tls.VersionTLS10,
+		Renegotiation: tls.RenegotiateOnceAsClient,
+		// Scan targets present untrusted certificates. This is the same configuration the HTTP client used inline.
+		InsecureSkipVerify: true, // codeql[go/disabled-certificate-check]
+		// Keep the scan client's existing minimum so older targets still connect.
+		MinVersion:         tls.VersionTLS10, // codeql[go/insecure-tls]
 		ClientSessionCache: sharedTLSSessionCache,
 	}
 

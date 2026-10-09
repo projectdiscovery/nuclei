@@ -117,3 +117,105 @@ func TestReplayRequestKeepsBodyWithoutContentLength(t *testing.T) {
 	request.replayRequest([]byte("POST /hit HTTP/1.1\r\nHost: target.example\r\n\r\nx=1"), "http://target.example/hit")
 	require.Equal(t, replayedRequest{method: http.MethodPost, url: "http://target.example/hit", body: "x=1"}, got)
 }
+
+func TestReplayProxySendsRedirectChainOnce(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/start" {
+			w.Header().Set("Location", "/next")
+			w.WriteHeader(http.StatusFound)
+			_, _ = w.Write([]byte("match-me"))
+			return
+		}
+		_, _ = w.Write([]byte("match-me"))
+	}))
+	defer target.Close()
+
+	var mu sync.Mutex
+	var replayed []string
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		replayed = append(replayed, r.URL.String())
+		mu.Unlock()
+	}))
+	defer proxy.Close()
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	options.ReplayProxy = proxy.URL
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "replay-redirect",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	request := &Request{
+		ID:           "replay-redirect",
+		Method:       HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:         []string{"{{BaseURL}}/start"},
+		Redirects:    true,
+		MaxRedirects: 5,
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"match-me"},
+			}},
+		},
+	}
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), target.URL)
+	require.NoError(t, request.ExecuteWithResults(input, output.InternalEvent{}, output.InternalEvent{}, func(*output.InternalWrappedEvent) {}))
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Equal(t, []string{target.URL + "/start"}, replayed)
+}
+
+func TestReplayProxyReplaysRaceRequest(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("match-me"))
+	}))
+	defer target.Close()
+
+	var mu sync.Mutex
+	var replayed []replayedRequest
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		replayed = append(replayed, replayedRequest{method: r.Method, url: r.URL.String(), body: string(body)})
+		mu.Unlock()
+	}))
+	defer proxy.Close()
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	options.ReplayProxy = proxy.URL
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "replay-race",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	request := &Request{
+		ID:                 "replay-race",
+		Method:             HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Path:               []string{"{{BaseURL}}/race"},
+		Body:               "race=1",
+		Race:               true,
+		RaceNumberRequests: 1,
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"match-me"},
+			}},
+		},
+	}
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), target.URL)
+	require.NoError(t, request.ExecuteWithResults(input, output.InternalEvent{}, output.InternalEvent{}, func(*output.InternalWrappedEvent) {}))
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Equal(t, []replayedRequest{{method: http.MethodPost, url: target.URL + "/race", body: "race=1"}}, replayed)
+}
