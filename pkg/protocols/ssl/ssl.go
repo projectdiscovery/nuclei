@@ -256,7 +256,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = host
 	}
 
-	if err := request.options.RateLimitTake(addressToDial); err != nil {
+	if err := request.options.RateLimitTakeContext(input.Context(), addressToDial); err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errkit.Wrap(err, "could not take rate limit")

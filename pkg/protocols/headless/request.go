@@ -133,7 +133,8 @@ func extractBaseURLFromActions(steps []*engine.Action) (string, error) {
 }
 
 func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
-	instance, err := request.options.Browser.NewInstance()
+	pageTimeout := time.Duration(request.options.Options.PageTimeout) * time.Second
+	instance, err := request.options.Browser.NewInstanceWithContext(input.Context(), pageTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -151,7 +152,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	options := &engine.Options{
-		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
+		Timeout:       pageTimeout,
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
 	}
@@ -161,7 +162,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	}
 
 	// limited as one request per run of the steps, the unit progress counts
-	if err := request.options.RateLimitTake(input.MetaInput.Input); err != nil {
+	if err := request.options.RateLimitTakeContext(input.Context(), input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not take rate limit")

@@ -38,3 +38,28 @@ func TestRateLimitTakePerHost(t *testing.T) {
 	}
 	require.Less(t, time.Since(start), 250*time.Millisecond, "different hosts must not share a limiter")
 }
+
+func TestRateLimitTakeContextCancelsPerHostWait(t *testing.T) {
+	options := types.DefaultOptions()
+	options.SetExecutionID(t.Name())
+	options.PerHostRateLimit = true
+	options.RateLimit = 1
+	options.RateLimitDuration = time.Second
+	require.NoError(t, protocolstate.Init(options))
+	t.Cleanup(func() { protocolstate.Close(options.ExecutionId) })
+
+	global := utils.GetRateLimiter(context.Background(), 0, 0)
+	t.Cleanup(global.Stop)
+	executor := &protocols.ExecutorOptions{Options: options, RateLimiter: global}
+	require.NoError(t, executor.RateLimitTakeContext(context.Background(), "cancel.example:443"))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		result <- executor.RateLimitTakeContext(ctx, "cancel.example:443")
+	}()
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+
+	require.ErrorIs(t, <-result, context.Canceled)
+}

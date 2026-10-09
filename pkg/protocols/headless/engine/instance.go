@@ -21,6 +21,8 @@ type Instance struct {
 	requestLog map[string]string // contains actual request that was sent
 }
 
+const browserCleanupTimeout = 5 * time.Second
+
 // NewInstance creates a new instance for the current browser.
 //
 // The login process is repeated only once for a browser, and the created
@@ -29,7 +31,31 @@ type Instance struct {
 // Users can also choose to run the login->actions process again
 // which uses a new incognito browser instance to run actions.
 func (b *Browser) NewInstance() (*Instance, error) {
-	browser, err := b.engine.Incognito()
+	return b.newInstance(b.engine)
+}
+
+// NewInstanceWithContext bounds browser-context creation and all subsequent instance calls.
+func (b *Browser) NewInstanceWithContext(ctx context.Context, timeout time.Duration) (*Instance, error) {
+	operationCtx := ctx
+	cancel := func() {}
+	if timeout > 0 {
+		operationCtx, cancel = context.WithTimeout(ctx, timeout)
+	}
+	browser, err := b.newInstanceBrowser(b.engine.Context(operationCtx))
+	cancel()
+	if err != nil {
+		return nil, err
+	}
+	browser.engine = browser.engine.Context(ctx)
+	return browser, nil
+}
+
+func (b *Browser) newInstance(engine *rod.Browser) (*Instance, error) {
+	return b.newInstanceBrowser(engine)
+}
+
+func (b *Browser) newInstanceBrowser(engine *rod.Browser) (*Instance, error) {
+	browser, err := engine.Incognito()
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +75,9 @@ func (i *Instance) GetRequestLog() map[string]string {
 
 // Close closes all the tabs and pages for a browser instance
 func (i *Instance) Close() error {
-	return i.engine.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	defer cancel()
+	return i.engine.Context(ctx).Close()
 }
 
 // SetInteractsh client

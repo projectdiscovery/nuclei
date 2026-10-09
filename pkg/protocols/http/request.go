@@ -262,7 +262,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					// Extract from request URL if available
 					hostname = t.req.request.Request.URL.String()
 				}
-				if err := request.options.RateLimitTake(hostname); err != nil {
+				if err := request.options.RateLimitTakeContext(t.updatedInput.Context(), hostname); err != nil {
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
@@ -562,7 +562,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			if err := request.options.RateLimitTake(hostname); err != nil {
+			if err := request.options.RateLimitTakeContext(ctxWithTimeout, hostname); err != nil {
 				return true, err
 			}
 

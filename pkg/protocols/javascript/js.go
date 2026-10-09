@@ -662,7 +662,7 @@ func (request *Request) executeRequestWithPayloads(
 
 	// a script's network calls are not visible here, so like progress it is
 	// limited as one request per execution
-	if err := request.options.RateLimitTake(hostPort); err != nil {
+	if err := request.options.RateLimitTakeContext(input.Context(), hostPort); err != nil {
 		return err
 	}
 

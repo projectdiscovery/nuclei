@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,6 +41,7 @@ type Page struct {
 	payloads           map[string]interface{}
 	variables          map[string]interface{}
 	lastActionNavigate *Action
+	cancel             context.CancelFunc
 }
 
 // HistoryData contains the page request/response pairs
@@ -61,22 +63,33 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		return nil, nil, err
 	}
 
-	page, err := i.engine.Page(proto.TargetCreateTarget{})
+	pageContext := ctx.Context()
+	cancelPageCreation := func() {}
+	if options.Timeout > 0 {
+		pageContext, cancelPageCreation = context.WithTimeout(pageContext, options.Timeout)
+	}
+	page, err := i.engine.Context(pageContext).Page(proto.TargetCreateTarget{})
 	if err != nil {
+		cancelPageCreation()
 		return nil, nil, err
 	}
+	pageSetupComplete := false
+	defer func() {
+		if !pageSetupComplete {
+			_ = page.Close()
+			cancelPageCreation()
+		}
+	}()
 	// A Rod page inherits the browser process context by default. Bind it to the
 	// request context so scan cancellation interrupts in-flight headless actions.
-	page = page.Context(ctx.Context()).Timeout(options.Timeout)
+	page = page.Context(pageContext)
 
 	if err = i.browser.applyDefaultHeaders(page); err != nil {
-		_ = page.Close()
 		return nil, nil, err
 	}
 
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
-			_ = page.Close()
 			return nil, nil, userAgentErr
 		}
 	}
@@ -88,7 +101,6 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	target := ctx.MetaInput.Input
 	input, err := urlutil.Parse(target)
 	if err != nil {
-		_ = page.Close()
 		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
 	}
 
@@ -109,7 +121,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		payloads:  payloads,
 		variables: variables,
 		inputURL:  input,
+		cancel:    cancelPageCreation,
 	}
+	pageSetupComplete = true
 
 	successfulPageCreation := false
 	defer func() {
@@ -245,7 +259,12 @@ func (p *Page) Close() {
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	_ = p.page.Close()
+	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	_ = p.page.Context(cleanupCtx).Close()
+	cancelCleanup()
+	if p.cancel != nil {
+		p.cancel()
+	}
 }
 
 // Page returns the current page for the actions

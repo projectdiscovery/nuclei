@@ -163,7 +163,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	}
 
 	// per host means per queried domain: resolvers are shared by every target
-	if err := request.options.RateLimitTake(question); err != nil {
+	if err := request.options.RateLimitTakeContext(input.Context(), question); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not take rate limit")
