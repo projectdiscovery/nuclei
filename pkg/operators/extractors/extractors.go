@@ -2,6 +2,7 @@ package extractors
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/govaluate"
@@ -134,3 +135,36 @@ type Extractor struct {
 
 	llmClient LLMClient
 }
+
+// NeedsResponse returns true if the extractor requires the full response or "all" part.
+func (extractor *Extractor) NeedsResponse() bool {
+	if extractor == nil {
+		return false
+	}
+	part := strings.ToLower(extractor.Part)
+	if part == "response" || part == "all" {
+		return true
+	}
+	for _, k := range extractor.KVal {
+		kLower := strings.ToLower(k)
+		if kLower == "response" || kLower == "all" || strings.HasPrefix(kLower, "response_") {
+			return true
+		}
+	}
+	for _, expr := range extractor.dslCompiled {
+		for _, v := range expr.Vars() {
+			vLower := strings.ToLower(v)
+			if vLower == "response" || vLower == "all" || strings.HasPrefix(vLower, "response_") {
+				return true
+			}
+		}
+	}
+	for _, dsl := range extractor.DSL {
+		dLower := strings.ToLower(dsl)
+		if strings.Contains(dLower, "response") || strings.Contains(dLower, "all") {
+			return true
+		}
+	}
+	return false
+}
+
