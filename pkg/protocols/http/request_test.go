@@ -727,3 +727,34 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		require.Equal(t, context.Canceled, err)
 	})
 }
+
+func TestOutputIP(t *testing.T) {
+	history := func(entries map[string]string) func(string) string {
+		return func(hostname string) string { return entries[hostname] }
+	}
+	noHistory := history(nil)
+
+	tests := []struct {
+		name        string
+		customIP    string
+		host        string
+		hostname    string
+		getDialedIP func(string) string
+		want        string
+	}{
+		{name: "ipv4 literal without dial history", host: "192.0.2.1:8080", hostname: "192.0.2.1", getDialedIP: noHistory, want: "192.0.2.1"},
+		{name: "ipv4 literal with nil dialer", host: "192.0.2.1", hostname: "192.0.2.1", want: "192.0.2.1"},
+		{name: "bracketed ipv6 without dial history", host: "[2001:db8::1]", hostname: "[2001:db8:", getDialedIP: noHistory, want: "2001:db8::1"},
+		{name: "bracketed ipv6 with port without dial history", host: "[2001:db8::1]:443", hostname: "[2001:db8::1]", getDialedIP: noHistory, want: "2001:db8::1"},
+		{name: "bare ipv6 without dial history", host: "2001:db8::1", hostname: "2001:db8:", getDialedIP: noHistory, want: "2001:db8::1"},
+		{name: "hostname without dial history", host: "example.com:443", hostname: "example.com", getDialedIP: noHistory, want: ""},
+		{name: "dial history wins over ip literal", host: "192.0.2.1:80", hostname: "192.0.2.1", getDialedIP: history(map[string]string{"192.0.2.1": "198.51.100.7"}), want: "198.51.100.7"},
+		{name: "dial history for hostname", host: "example.com", hostname: "example.com", getDialedIP: history(map[string]string{"example.com": "198.51.100.7"}), want: "198.51.100.7"},
+		{name: "custom ip wins", customIP: "203.0.113.5", host: "192.0.2.1", hostname: "192.0.2.1", getDialedIP: history(map[string]string{"192.0.2.1": "198.51.100.7"}), want: "203.0.113.5"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, outputIP(tt.customIP, tt.host, tt.hostname, tt.getDialedIP))
+		})
+	}
+}
