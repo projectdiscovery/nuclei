@@ -86,6 +86,25 @@ func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition
 }
 
+// NeedsResponse returns true if any matcher or extractor requires the full response.
+func (operators *Operators) NeedsResponse() bool {
+	if operators == nil {
+		return false
+	}
+	for _, matcher := range operators.Matchers {
+		if matcher.NeedsResponse() {
+			return true
+		}
+	}
+	for _, extractor := range operators.Extractors {
+		if extractor.NeedsResponse() {
+			return true
+		}
+	}
+	return false
+}
+
+
 // Result is a result structure created from operators running on data.
 type Result struct {
 	// Matched is true if any matchers matched

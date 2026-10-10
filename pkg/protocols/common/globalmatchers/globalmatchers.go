@@ -54,6 +54,22 @@ func (s *Storage) HasMatchers() bool {
 	return len(s.requests) > 0
 }
 
+// NeedsResponse returns true if any global matcher operator requires the full response.
+func (s *Storage) NeedsResponse() bool {
+	if !s.hasStorage() {
+		return false
+	}
+	for _, item := range s.requests {
+		for _, operator := range item.Operators {
+			if operator.NeedsResponse() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+
 // Match matches the global matchers against the response
 func (s *Storage) Match(
 	event output.InternalEvent,
