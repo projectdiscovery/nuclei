@@ -92,7 +92,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.4.0
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.52
+	github.com/projectdiscovery/networkpolicy v0.1.53
 	github.com/projectdiscovery/ratelimit v0.0.91
 	github.com/projectdiscovery/rawhttp v0.1.92
 	github.com/projectdiscovery/rdap v0.9.0
@@ -252,7 +252,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/free5gc/util v1.0.5-0.20230511064842-2e120956883b // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
-	github.com/gaissmai/bart v0.29.1 // indirect
+	github.com/gaissmai/bart v0.30.0 // indirect
 	github.com/geoffgarside/ber v1.2.0 // indirect
 	github.com/getsops/gopgagent v0.0.0-20240527072608-0c14999532fe // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -474,3 +474,5 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
+
+replace github.com/projectdiscovery/fastdialer => github.com/mazzz3r/fastdialer v0.0.0-20261010115852-eced62301c6f

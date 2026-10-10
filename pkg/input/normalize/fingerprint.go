@@ -89,12 +89,21 @@ func (f *Fingerprinter) Enabled() bool {
 // pattern. A value that is not a URL is always accepted: it has no path to
 // group by, and guessing would lose targets.
 func (f *Fingerprinter) Accept(rawURL string) bool {
+	return f.AcceptOn(rawURL, "")
+}
+
+// AcceptOn is Accept for a target connected to through ip. Each ip of a host
+// is a server of its own, so it keeps its own count for every pattern.
+func (f *Fingerprinter) AcceptOn(rawURL, ip string) bool {
 	if !f.Enabled() {
 		return true
 	}
 	pattern, ok := f.pattern(rawURL)
 	if !ok {
 		return true
+	}
+	if ip != "" {
+		pattern += "@" + ip
 	}
 
 	f.mu.Lock()

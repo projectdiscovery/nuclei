@@ -80,6 +80,14 @@ func TestAcceptKeepsUpToTheCap(t *testing.T) {
 	require.True(t, f.Accept("http://acme.test/admin"), "a different pattern has its own budget")
 }
 
+func TestAcceptOnCountsEachIPApart(t *testing.T) {
+	f := NewFingerprinter(1)
+	require.True(t, f.AcceptOn("http://acme.test/user/1", "192.0.2.10"))
+	require.True(t, f.AcceptOn("http://acme.test/user/1", "192.0.2.11"), "another ip is another server")
+	require.False(t, f.AcceptOn("http://acme.test/user/2", "192.0.2.10"), "past the cap of its ip")
+	require.True(t, f.Accept("http://acme.test/user/2"), "the host without an ip has its own budget")
+}
+
 // Off by default: dropping a target means never scanning it, so it has to be
 // asked for.
 func TestDisabledFingerprinterKeepsEverything(t *testing.T) {
