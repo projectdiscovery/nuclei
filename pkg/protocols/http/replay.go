@@ -29,6 +29,8 @@ func newReplayClient(options *types.Options) (*http.Client, error) {
 		Transport: &http.Transport{
 			Proxy:           http.ProxyURL(proxyURL),
 			TLSClientConfig: tlsConfig,
+			// keep the request as sent, without an added Accept-Encoding
+			DisableCompression: true,
 		},
 		// the proxy must record the request that matched, not where it redirects
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },

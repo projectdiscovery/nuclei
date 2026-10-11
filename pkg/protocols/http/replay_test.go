@@ -219,3 +219,20 @@ func TestReplayProxyReplaysRaceRequest(t *testing.T) {
 	defer mu.Unlock()
 	require.Equal(t, []replayedRequest{{method: http.MethodPost, url: target.URL + "/race", body: "race=1"}}, replayed)
 }
+
+func TestReplayRequestAddsNoHeaders(t *testing.T) {
+	var got http.Header
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Clone()
+	}))
+	defer proxy.Close()
+
+	options := testutils.DefaultOptions.Copy()
+	options.ReplayProxy = proxy.URL
+	client, err := newReplayClient(options)
+	require.NoError(t, err)
+	request := &Request{replayClient: client, options: &protocols.ExecutorOptions{Options: options}}
+
+	request.replayRequest([]byte("GET /hit HTTP/1.1\r\nHost: target.example\r\nUser-Agent: nuclei\r\n\r\n"), "http://target.example/hit")
+	require.Empty(t, got.Get("Accept-Encoding"))
+}
