@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -530,12 +531,18 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	generator := request.newGenerator(false)
 
-	var gotDynamicValues map[string][]string
+	baseDynamicValues := generators.CopyMap(dynamicValues)
+	persistentDynamicValueContexts := []dynamicValueContext{{
+		values:           baseDynamicValues,
+		persistentValues: baseDynamicValues,
+	}}
+	dynamicValueContexts := persistentDynamicValueContexts
+	previousRequestIndex := 0
 	var requestErr error
 
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
-		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
+		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, map[string][]string, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := request.newContext(input)
@@ -545,9 +552,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
-					return true, nil
+					return true, nil, nil
 				}
-				return true, err
+				return true, nil, err
 			}
 			// ideally if http template used a custom port or hostname
 			// we would want to update it in input but currently templateCtx logic
@@ -563,7 +570,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				hostname = generatedHttpRequest.URL()
 			}
 			if err := request.options.RateLimitTake(hostname); err != nil {
-				return true, err
+				return true, nil, err
 			}
 
 			if generatedHttpRequest.customCancelFunction != nil {
@@ -576,9 +583,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			// Check if hosts keep erroring
 			if request.isUnresponsiveAddress(updatedInput) {
-				return true, nil
+				return true, nil, nil
 			}
 			var gotMatches bool
+			var extractedDynamicValues map[string][]string
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
@@ -599,7 +607,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Add the extracts to the dynamic values if any.
 				if event.OperatorsResult != nil {
 					gotMatches = event.OperatorsResult.Matched
-					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
+					extractedDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, extractedDynamicValues)
 				}
 				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
 				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
@@ -611,7 +619,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 			// If a variable is unresolved, skip all further requests
 			if errors.Is(execReqErr, ErrMissingVars) {
-				return true, nil
+				return true, nil, nil
 			}
 
 			request.recordHostResult(updatedInput, execReqErr)
@@ -628,9 +636,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
 			if shouldStopAtFirstMatch && gotMatches {
-				return true, nil
+				return true, extractedDynamicValues, nil
 			}
-			return false, nil
+			return false, extractedDynamicValues, nil
 		}
 
 		inputData, payloads, ok := generator.nextValue()
@@ -644,17 +652,22 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		default:
 		}
 
+		if previousRequestIndex > 0 && generator.currentIndex <= previousRequestIndex {
+			dynamicValueContexts = persistentDynamicValueContexts
+		}
+		previousRequestIndex = generator.currentIndex
+		isOnceRequest := generator.hasMarker(inputData, Once)
+
 		var gotErr error
 		var skip bool
-		if len(gotDynamicValues) > 0 {
-			operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAll, func(data map[string]interface{}) bool {
-				if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
-					return true
-				}
-				return false
-			})
-		} else {
-			skip, gotErr = executeFunc(inputData, payloads, dynamicValues)
+		nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
+		for _, branch := range dynamicValueContexts {
+			var extractedDynamicValues map[string][]string
+			skip, extractedDynamicValues, gotErr = executeFunc(inputData, payloads, branch.values)
+			if skip || gotErr != nil {
+				break
+			}
+			nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, extractedDynamicValues, request.IterateAll, isOnceRequest)...)
 		}
 		if gotErr != nil && requestErr == nil {
 			requestErr = gotErr
@@ -663,8 +676,91 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
 			break
 		}
+		dynamicValueContexts = nextDynamicValueContexts
+		if isOnceRequest {
+			persistentDynamicValueContexts = projectPersistentDynamicValueContexts(nextDynamicValueContexts)
+		}
 	}
 	return requestErr
+}
+
+type dynamicValueContext struct {
+	values                  map[string]interface{}
+	extractedKeys           map[string]struct{}
+	persistentValues        map[string]interface{}
+	persistentExtractedKeys map[string]struct{}
+}
+
+func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string][]string, iterateAll, persist bool) []dynamicValueContext {
+	if len(extracted) == 0 {
+		return []dynamicValueContext{parent}
+	}
+
+	newExtracted := make(map[string][]string)
+	for key, values := range extracted {
+		if _, exists := parent.extractedKeys[key]; !exists {
+			newExtracted[key] = values
+		}
+	}
+	if len(newExtracted) == 0 {
+		return []dynamicValueContext{parent}
+	}
+
+	extractedKeys := make(map[string]struct{}, len(parent.extractedKeys)+len(newExtracted))
+	for key := range parent.extractedKeys {
+		extractedKeys[key] = struct{}{}
+	}
+	for key := range newExtracted {
+		extractedKeys[key] = struct{}{}
+	}
+
+	var contexts []dynamicValueContext
+	operators.MakeDynamicValuesCallback(newExtracted, iterateAll, func(values map[string]interface{}) bool {
+		persistentValues := parent.persistentValues
+		persistentExtractedKeys := parent.persistentExtractedKeys
+		if persist {
+			persistentValues = generators.MergeMaps(parent.persistentValues, values)
+			persistentExtractedKeys = make(map[string]struct{}, len(parent.persistentExtractedKeys)+len(newExtracted))
+			maps.Copy(persistentExtractedKeys, parent.persistentExtractedKeys)
+			for key := range newExtracted {
+				persistentExtractedKeys[key] = struct{}{}
+			}
+		}
+		contexts = append(contexts, dynamicValueContext{
+			values:                  generators.MergeMaps(parent.values, values),
+			extractedKeys:           extractedKeys,
+			persistentValues:        persistentValues,
+			persistentExtractedKeys: persistentExtractedKeys,
+		})
+		return false
+	})
+	return contexts
+}
+
+func projectPersistentDynamicValueContexts(contexts []dynamicValueContext) []dynamicValueContext {
+	projected := make([]dynamicValueContext, 0, len(contexts))
+	for _, context := range contexts {
+		candidate := dynamicValueContext{
+			values:                  context.persistentValues,
+			extractedKeys:           context.persistentExtractedKeys,
+			persistentValues:        context.persistentValues,
+			persistentExtractedKeys: context.persistentExtractedKeys,
+		}
+		duplicate := false
+		for _, existing := range projected {
+			valuesEqual := maps.EqualFunc(existing.values, candidate.values, func(left, right interface{}) bool {
+				return reflect.DeepEqual(left, right)
+			})
+			if valuesEqual && maps.Equal(existing.extractedKeys, candidate.extractedKeys) {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			projected = append(projected, candidate)
+		}
+	}
+	return projected
 }
 
 const drainReqSize = int64(8 * unitutils.Kilo)

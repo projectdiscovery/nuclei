@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -99,6 +100,217 @@ Disallow: /c`)
 	})
 	require.NotNil(t, finalEvent, "could not get event output from request")
 	require.Equal(t, 3, matchCount, "could not get correct match count")
+}
+
+func TestHTTPExtractMultipleReusePreservesBranchValues(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-branch-values",
+		Raw: []string{
+			"GET /capabilities HTTP/1.1\nHost: {{Hostname}}",
+			"GET /metadata/{{name}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /probe/{{name}}/{{column}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{
+				{
+					Part:       "body_1",
+					Name:       "name",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`name=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+				{
+					Part:       "body_2",
+					Name:       "column",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`column=([a-z0-9]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+			},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	probes := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/capabilities":
+			_, _ = fmt.Fprint(w, "name=alpha name=beta")
+		case "/metadata/alpha":
+			_, _ = fmt.Fprint(w, "column=a1 column=a2")
+		case "/metadata/beta":
+			_, _ = fmt.Fprint(w, "column=b1")
+		default:
+			mutex.Lock()
+			probes[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/probe/alpha/a1": 1,
+		"/probe/alpha/a2": 1,
+		"/probe/beta/b1":  1,
+	}, probes)
+}
+
+func TestHTTPExtractMultipleReusePreservesOnceValuesAcrossPayloads(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-once-payload-values",
+		Raw: []string{
+			"@once\nGET /token HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{token}}/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Payloads: map[string]interface{}{
+			"item": []string{"first", "second"},
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{{
+				Part:       "body_1",
+				Name:       "token",
+				Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+				Regex:      []string{`token=([a-z]+)`},
+				RegexGroup: 1,
+				Internal:   true,
+			}},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	requests := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/token" {
+			_, _ = fmt.Fprint(w, "token=shared")
+			return
+		}
+		mutex.Lock()
+		requests[r.URL.Path]++
+		mutex.Unlock()
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/use/shared/first":  1,
+		"/use/shared/second": 1,
+	}, requests)
+}
+
+func TestHTTPExtractMultipleReuseDoesNotPersistPayloadValuesBeforeOnce(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-payload-values-before-once",
+		Raw: []string{
+			"GET /seed/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+			"@once\nGET /token HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{branch}}/{{token}}/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Payloads: map[string]interface{}{
+			"item": []string{"first", "second"},
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{
+				{
+					Part:       "body_1",
+					Name:       "branch",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`branch=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+				{
+					Part:       "body_2",
+					Name:       "token",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`token=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+			},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	requests := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/seed/"):
+			_, _ = fmt.Fprintf(w, "branch=%s", strings.TrimPrefix(r.URL.Path, "/seed/"))
+		case r.URL.Path == "/token":
+			_, _ = fmt.Fprint(w, "token=shared")
+		default:
+			mutex.Lock()
+			requests[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/use/first/shared/first":   1,
+		"/use/second/shared/second": 1,
+	}, requests)
 }
 
 func TestDisableTE(t *testing.T) {
