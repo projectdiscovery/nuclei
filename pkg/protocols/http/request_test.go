@@ -177,6 +177,96 @@ func TestHTTPExtractMultipleReusePreservesBranchValues(t *testing.T) {
 	}, probes)
 }
 
+func TestHTTPExtractMultipleReuseReplacesReextractedValue(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-reextracted-value",
+		Raw: []string{
+			"GET /session HTTP/1.1\nHost: {{Hostname}}",
+			"GET /refresh/{{token}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{token}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /final/{{token}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{
+				{
+					Part:       "body_1",
+					Name:       "token",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`token=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+				{
+					Part:       "body_2",
+					Name:       "token",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`token=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+			},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	requests := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mutex.Lock()
+		requests[r.URL.Path]++
+		mutex.Unlock()
+		switch r.URL.Path {
+		case "/session":
+			_, _ = fmt.Fprint(w, "token=old")
+		case "/refresh/old":
+			_, _ = fmt.Fprint(w, "token=new token=next")
+		}
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/session":     1,
+		"/refresh/old": 1,
+		"/use/new":     1,
+		"/use/next":    1,
+		"/final/new":   1,
+		"/final/next":  1,
+	}, requests)
+}
+
+func TestExpandDynamicValueContextsReplacesReextractedValueWithoutIteration(t *testing.T) {
+	parent := dynamicValueContext{
+		values:          map[string]interface{}{"token": "old"},
+		extractedKeys:   map[string]struct{}{"token": {}},
+		extractedValues: map[string][]string{"token": {"old"}},
+	}
+
+	contexts := expandDynamicValueContexts(parent, map[string][]string{"token": {"old", "new", "next"}}, false, false)
+
+	require.Len(t, contexts, 1)
+	require.Equal(t, "new", contexts[0].values["token"])
+	require.Equal(t, []string{"old", "new", "next"}, contexts[0].extractedValues["token"])
+}
+
 func TestHTTPExtractMultipleReusePreservesOnceValuesAcrossPayloads(t *testing.T) {
 	options := testutils.DefaultOptions
 	testutils.Init(options)

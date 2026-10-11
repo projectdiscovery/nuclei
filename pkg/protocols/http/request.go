@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -685,10 +686,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 }
 
 type dynamicValueContext struct {
-	values                  map[string]interface{}
-	extractedKeys           map[string]struct{}
-	persistentValues        map[string]interface{}
-	persistentExtractedKeys map[string]struct{}
+	values                    map[string]interface{}
+	extractedKeys             map[string]struct{}
+	extractedValues           map[string][]string
+	persistentValues          map[string]interface{}
+	persistentExtractedKeys   map[string]struct{}
+	persistentExtractedValues map[string][]string
 }
 
 func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string][]string, iterateAll, persist bool) []dynamicValueContext {
@@ -696,62 +699,89 @@ func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string
 		return []dynamicValueContext{parent}
 	}
 
-	newExtracted := make(map[string][]string)
+	changedExtracted := make(map[string][]string)
 	for key, values := range extracted {
 		if _, exists := parent.extractedKeys[key]; !exists {
-			newExtracted[key] = values
+			changedExtracted[key] = values
+			continue
+		}
+		for _, value := range values {
+			if !slices.Contains(parent.extractedValues[key], value) {
+				changedExtracted[key] = append(changedExtracted[key], value)
+			}
 		}
 	}
-	if len(newExtracted) == 0 {
+	if len(changedExtracted) == 0 {
 		return []dynamicValueContext{parent}
 	}
 
-	extractedKeys := make(map[string]struct{}, len(parent.extractedKeys)+len(newExtracted))
+	extractedKeys := make(map[string]struct{}, len(parent.extractedKeys)+len(changedExtracted))
 	for key := range parent.extractedKeys {
 		extractedKeys[key] = struct{}{}
 	}
-	for key := range newExtracted {
+	for key := range changedExtracted {
 		extractedKeys[key] = struct{}{}
 	}
+	extractedValues := mergeExtractedValueHistory(parent.extractedValues, extracted)
 
 	var contexts []dynamicValueContext
-	operators.MakeDynamicValuesCallback(newExtracted, iterateAll, func(values map[string]interface{}) bool {
+	operators.MakeDynamicValuesCallback(changedExtracted, iterateAll, func(values map[string]interface{}) bool {
 		persistentValues := parent.persistentValues
 		persistentExtractedKeys := parent.persistentExtractedKeys
+		persistentExtractedValues := parent.persistentExtractedValues
 		if persist {
 			persistentValues = generators.MergeMaps(parent.persistentValues, values)
-			persistentExtractedKeys = make(map[string]struct{}, len(parent.persistentExtractedKeys)+len(newExtracted))
+			persistentExtractedKeys = make(map[string]struct{}, len(parent.persistentExtractedKeys)+len(changedExtracted))
 			maps.Copy(persistentExtractedKeys, parent.persistentExtractedKeys)
-			for key := range newExtracted {
+			for key := range changedExtracted {
 				persistentExtractedKeys[key] = struct{}{}
 			}
+			persistentExtractedValues = mergeExtractedValueHistory(parent.persistentExtractedValues, extracted)
 		}
 		contexts = append(contexts, dynamicValueContext{
-			values:                  generators.MergeMaps(parent.values, values),
-			extractedKeys:           extractedKeys,
-			persistentValues:        persistentValues,
-			persistentExtractedKeys: persistentExtractedKeys,
+			values:                    generators.MergeMaps(parent.values, values),
+			extractedKeys:             extractedKeys,
+			extractedValues:           extractedValues,
+			persistentValues:          persistentValues,
+			persistentExtractedKeys:   persistentExtractedKeys,
+			persistentExtractedValues: persistentExtractedValues,
 		})
 		return false
 	})
 	return contexts
 }
 
+func mergeExtractedValueHistory(previous, current map[string][]string) map[string][]string {
+	merged := make(map[string][]string, len(previous)+len(current))
+	for key, values := range previous {
+		merged[key] = append([]string(nil), values...)
+	}
+	for key, values := range current {
+		merged[key] = sliceutil.Dedupe(append(merged[key], values...))
+	}
+	return merged
+}
+
 func projectPersistentDynamicValueContexts(contexts []dynamicValueContext) []dynamicValueContext {
 	projected := make([]dynamicValueContext, 0, len(contexts))
 	for _, context := range contexts {
 		candidate := dynamicValueContext{
-			values:                  context.persistentValues,
-			extractedKeys:           context.persistentExtractedKeys,
-			persistentValues:        context.persistentValues,
-			persistentExtractedKeys: context.persistentExtractedKeys,
+			values:                    context.persistentValues,
+			extractedKeys:             context.persistentExtractedKeys,
+			extractedValues:           context.persistentExtractedValues,
+			persistentValues:          context.persistentValues,
+			persistentExtractedKeys:   context.persistentExtractedKeys,
+			persistentExtractedValues: context.persistentExtractedValues,
 		}
 		duplicate := false
 		for _, existing := range projected {
 			valuesEqual := maps.EqualFunc(existing.values, candidate.values, func(left, right interface{}) bool {
 				return reflect.DeepEqual(left, right)
 			})
-			if valuesEqual && maps.Equal(existing.extractedKeys, candidate.extractedKeys) {
+			extractedValuesEqual := maps.EqualFunc(existing.extractedValues, candidate.extractedValues, func(left, right []string) bool {
+				return slices.Equal(left, right)
+			})
+			if valuesEqual && extractedValuesEqual && maps.Equal(existing.extractedKeys, candidate.extractedKeys) {
 				duplicate = true
 				break
 			}
