@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -233,12 +234,37 @@ func NewClusterExecuter(requests []*Template, options *protocols.ExecutorOptions
 			}
 		}
 	}
+	// Clustering runs after each template has already been compiled, and the
+	// engine executes this cluster without compiling it again. The shared
+	// request has to know about sibling operators before the first scan.
+	executer.markClusteredResponse()
 	return executer
+}
+
+// markClusteredResponse builds the full response when any clustered template
+// matches on it. Only the first template's operators live on the request.
+func (e *ClusterExecuter) markClusteredResponse() {
+	httpRequest, ok := e.requests.(*http.Request)
+	if !ok {
+		return
+	}
+	for _, operator := range e.operators {
+		if operator != nil && http.OperatorsNeedFullResponse(operator.operator) {
+			httpRequest.RequireFullResponse()
+			return
+		}
+	}
 }
 
 // Compile compiles the execution generators preparing any requests possible.
 func (e *ClusterExecuter) Compile() error {
-	return e.requests.Compile(e.options)
+	if err := e.requests.Compile(e.options); err != nil {
+		return err
+	}
+	// The compiled request is shared by every host worker. Mark it here, before
+	// any of those workers run, so the flag is not written during execution.
+	e.markClusteredResponse()
+	return nil
 }
 
 // Requests returns the total number of requests the rule will perform

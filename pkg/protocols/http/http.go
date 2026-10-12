@@ -138,13 +138,16 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
-	connConfiguration *httpclientpool.Configuration
-	totalRequests     int
-	customHeaders     map[string]string
-	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	rawhttpClient     *rawhttp.Client
-	dialer            *fastdialer.Dialer
+	options *protocols.ExecutorOptions
+	// requireFullResponse is set when another template in a cluster matches
+	// this request's event and reads the headers+body concatenation.
+	requireFullResponse bool
+	connConfiguration   *httpclientpool.Configuration
+	totalRequests       int
+	customHeaders       map[string]string
+	generator           *generators.PayloadGenerator // optional, only enabled when using payloads
+	rawhttpClient       *rawhttp.Client
+	dialer              *fastdialer.Dialer
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
