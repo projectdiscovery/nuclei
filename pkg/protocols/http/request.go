@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -70,26 +71,6 @@ var (
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
-}
-
-// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
-func (request *Request) rateLimitTake(hostname string) error {
-	if request.options.Options.PerHostRateLimit && hostname != "" {
-		// Use per-host rate limiter
-		limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname)
-		if err != nil {
-			return err
-		}
-		if limiter != nil {
-			limiter.Take()
-			// Record request for pps stats
-			httpclientpool.RecordPerHostRateLimitRequest(request.options.Options, hostname)
-			return nil
-		}
-	}
-	// Use global rate limiter (or unlimited if per-host is enabled but hostname is empty)
-	request.options.RateLimitTake()
-	return nil
 }
 
 // executeRaceRequest executes race condition request for a URL
@@ -281,7 +262,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					// Extract from request URL if available
 					hostname = t.req.request.Request.URL.String()
 				}
-				if err := request.rateLimitTake(hostname); err != nil {
+				if err := request.options.RateLimitTake(hostname); err != nil {
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
@@ -581,7 +562,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			if err := request.rateLimitTake(hostname); err != nil {
+			if err := request.options.RateLimitTake(hostname); err != nil {
 				return true, err
 			}
 
@@ -705,16 +686,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	request.setCustomHeaders(generatedRequest)
+	fuzzed := &generatedRequest.fuzzGeneratedRequest
+	cookieFuzzing := generatedRequest.request != nil && fuzzed.Component != nil && fuzzed.Component.Name() == component.RequestCookieComponent && len(fuzzed.FuzzedKeys) > 0
 
 	var (
 		resp            *http.Response
 		fromCache       bool
 		dumpedRequest   []byte
 		projectCacheKey []byte
-		// executingClient is the client that actually performed the HTTP
-		// request, preserving any per-request overrides (cookie jar,
-		// CustomMaxTimeout) applied via connConfig.Clone(). Reused below by
-		// the analyzer so follow-up requests share the same session/timeout.
+		// executingClient preserves the request's cookie jar, fuzz protection,
+		// and timeout for network execution and analyzer follow-up requests,
+		// including follow-ups when the initial response came from the cache.
 		executingClient *retryablehttp.Client
 	)
 
@@ -775,7 +757,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	// === apply auth strategies ===
 	if generatedRequest.request != nil && !request.SkipSecretFile {
+		if request.options.AuthProvider != nil && cookieFuzzing {
+			removeFuzzedCookieFields(generatedRequest.request.Request, fuzzed.FuzzedKeys)
+		}
 		generatedRequest.ApplyAuth(request.options.AuthProvider)
+	}
+	if cookieFuzzing {
+		restoreFuzzedCookieFields(generatedRequest.request.Request, fuzzed.FuzzedKeys)
 	}
 
 	var formedURL string
@@ -855,11 +843,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				fromCache = false
 			}
 		}
-		if resp == nil {
-			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
-				return errSignature
-			}
-
+		if resp == nil || (request.Analyzer != nil && cookieFuzzing) {
 			connConfig := request.connConfiguration
 			if input.CookieJar != nil && !request.DisableCookie {
 				connConfig = connConfig.Clone()
@@ -876,7 +860,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if clientErr != nil {
 				return errors.Wrap(clientErr, "could not get http client")
 			}
+			if cookieFuzzing {
+				httpclient, clientErr = request.preserveFuzzedCookies(httpclient, connConfig, hostname, generatedRequest.request.Request, fuzzed.FuzzedKeys)
+				if clientErr != nil {
+					return clientErr
+				}
+			}
 			executingClient = httpclient
+		}
+		if resp == nil {
+			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
+				return errSignature
+			}
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a
@@ -902,7 +897,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			resp, err = httpclient.Do(generatedRequest.request)
+			resp, err = executingClient.Do(generatedRequest.request)
 
 			// If we forced http->https from a previous detection and the corrected
 			// request failed (e.g. a false positive where the port actually speaks
@@ -913,7 +908,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
 				generatedRequest.request.Scheme = "http"
 				httpsCorrectionTracker.Evict(httpsCorrectionURL)
-				resp, err = httpclient.Do(generatedRequest.request)
+				resp, err = executingClient.Do(generatedRequest.request)
 			}
 		}
 	}
@@ -1090,10 +1085,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
-			// Prefer reusing the exact client that executed the request so
-			// the analyzer inherits any per-request cookie jar / timeout
-			// overrides; fall back to a per-host lookup for paths that did
-			// not go through the standard execution flow (pipeline/unsafe).
+			// Reuse the request's client so the analyzer inherits its cookie jar,
+			// fuzz protection, and timeout. Other execution paths (pipeline/unsafe)
+			// fall back to a per-host lookup.
 			analyzerClient := executingClient
 			if analyzerClient == nil {
 				analyzerClient = request.getHTTPClientForHost(hostname)

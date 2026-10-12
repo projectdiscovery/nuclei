@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -286,7 +287,17 @@ func (e *Engine) inScope(template *templates.Template, input *contextargs.MetaIn
 }
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error
-func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
+func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (matched bool, err error) {
+	// A template fixed to the target's origin makes the same requests for every
+	// target that shares one, which a crawled list produces by the hundred.
+	// Running it once per origin sends exactly the same traffic, minus the
+	// repeats. The reservation is kept only when execution succeeds, so a
+	// failed attempt leaves the origin free for a later target.
+	finish, run := e.claimOriginScoped(template, value)
+	if !run {
+		return false, nil
+	}
+	defer func() { finish(err == nil) }()
 	finished := e.templateExecutionStarted(template, value.Input)
 	defer func() { finished(ctx.Err()) }()
 	ctxArgs := contextargs.New(ctx)
@@ -298,9 +309,9 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 		return e.executeWorkflow(scanCtx, template.CompiledWorkflow), nil
 	default:
 		if e.Callback != nil {
-			results, err := template.Executer.ExecuteWithResults(scanCtx)
-			if err != nil {
-				return false, err
+			results, execErr := template.Executer.ExecuteWithResults(scanCtx)
+			if execErr != nil {
+				return false, execErr
 			}
 			for _, result := range results {
 				e.Callback(result)
@@ -308,5 +319,62 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 			return len(results) > 0, nil
 		}
 		return template.Executer.Execute(scanCtx)
+	}
+}
+
+// originAttempt is one origin-scoped execution. done is set only after a
+// successful run. While inflight is set, other callers wait, then retry if
+// that attempt failed.
+type originAttempt struct {
+	mu       sync.Mutex
+	cond     *sync.Cond
+	inflight bool
+	done     bool
+}
+
+func newOriginAttempt() *originAttempt {
+	attempt := &originAttempt{}
+	attempt.cond = sync.NewCond(&attempt.mu)
+	return attempt
+}
+
+// claimOriginScoped reports whether this caller should execute an origin-scoped
+// template. finish(true) records a successful run. finish(false) releases the
+// claim so a later target, including one that waited, can try again. Templates
+// whose requests depend on the target path always run. CustomIP is part of the
+// key so each address selected for one URL is tested on its own.
+func (e *Engine) claimOriginScoped(template *templates.Template, value *contextargs.MetaInput) (finish func(bool), run bool) {
+	noop := func(bool) {}
+	if template == nil || value == nil || !template.IsOriginScoped() {
+		return noop, true
+	}
+	origin := normalize.Origin(value.Input)
+	if origin == "" {
+		return noop, true
+	}
+	key := template.ID + "\x00" + origin + "\x00" + value.CustomIP
+	actual, _ := e.originScoped.LoadOrStore(key, newOriginAttempt())
+	slot := actual.(*originAttempt)
+
+	slot.mu.Lock()
+	for {
+		if slot.done {
+			slot.mu.Unlock()
+			return noop, false
+		}
+		if !slot.inflight {
+			slot.inflight = true
+			slot.mu.Unlock()
+			return func(success bool) {
+				slot.mu.Lock()
+				slot.inflight = false
+				if success {
+					slot.done = true
+				}
+				slot.cond.Broadcast()
+				slot.mu.Unlock()
+			}, true
+		}
+		slot.cond.Wait()
 	}
 }

@@ -196,7 +196,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if gr.Request != nil && gr.Request.Request != nil && gr.Request.Request.URL != nil {
 		hostname = gr.Request.Request.URL.String()
 	}
-	if err := request.rateLimitTake(hostname); err != nil {
+	if err := request.options.RateLimitTake(hostname); err != nil {
 		return false, err
 	}
 	req := &generatedRequest{
@@ -254,6 +254,9 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if request.options.HostErrorsCache != nil {
 		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, requestErr)
 	}
+	// Requests() cannot count fuzzing requests up front since they depend on the
+	// input's parameters, so the total grows with each request actually sent.
+	request.options.Progress.AddToTotal(1)
 	request.options.Progress.IncrementRequests()
 
 	// If this was a match, and we want to stop at first match, skip all further requests.

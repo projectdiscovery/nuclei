@@ -20,12 +20,13 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -521,6 +522,19 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 		if jar != nil {
 			client.HTTPClient.Jar = jar
+			// net/http appends jar cookies to the request header. Remove conflicts
+			// before each attempt so captured cookies cannot mask reissued values.
+			client.RequestLogHook = func(req *http.Request, _ int) {
+				removeJarCookieConflicts(req, client.HTTPClient.Jar)
+			}
+			checkRedirect := client.HTTPClient.CheckRedirect
+			client.HTTPClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				if err := checkRedirect(req, via); err != nil {
+					return err
+				}
+				removeJarCookieConflicts(req, client.HTTPClient.Jar)
+				return nil
+			}
 		}
 		client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 		return client, nil
@@ -536,6 +550,50 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	// Singleflight creation: concurrent first requests to the same host build
 	// exactly one client instead of racing Get/Set and orphaning transports.
 	return pool.GetOrCreateClient(clientKey, transportKey, createTransport, createClient)
+}
+
+func removeJarCookieConflicts(req *http.Request, jar http.CookieJar) {
+	headers := req.Header.Values("Cookie")
+	if len(headers) == 0 || req.URL == nil || jar == nil {
+		return
+	}
+	cookies := jar.Cookies(httputil.CookieURL(req))
+	if len(cookies) == 0 {
+		return
+	}
+	names := make(map[string]struct{}, len(cookies))
+	for _, cookie := range cookies {
+		names[cookie.Name] = struct{}{}
+	}
+	// AddCookie uses only the first header value. Combine multiple Cookie
+	// headers so unrelated captured cookies are retained when the jar is added.
+	changed := len(headers) > 1
+	var retainedHeaders []string
+	for _, header := range headers {
+		parts := httputil.SplitCookieHeader(header)
+		retained := parts[:0]
+		for _, part := range parts {
+			name, _, _ := strings.Cut(part, "=")
+			name = strings.TrimSpace(name)
+			if _, ok := names[name]; ok && !authx.IsAuthCookie(req.Context(), name) {
+				changed = true
+				continue
+			}
+			// Keep raw values: parsing and reserializing cookies would discard
+			// malformed values that can be intentional fuzzing payloads.
+			retained = append(retained, part)
+		}
+		if len(retained) > 0 {
+			retainedHeaders = append(retainedHeaders, strings.TrimLeft(strings.Join(retained, ";"), " \t"))
+		}
+	}
+	if changed {
+		if len(retainedHeaders) == 0 {
+			req.Header.Del("Cookie")
+		} else {
+			req.Header.Set("Cookie", strings.Join(retainedHeaders, "; "))
+		}
+	}
 }
 
 // sharedTLSSessionCache is shared by all pooled transports so TLS session
@@ -658,67 +716,6 @@ func isURLEncoded(s string) bool {
 	}
 
 	return decoded != s
-}
-
-// GetPerHostRateLimiter gets or creates a rate limiter for a specific host
-// Returns nil if per-host rate limiting is not enabled
-func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.Limiter, error) {
-	if !options.PerHostRateLimit {
-		return nil, nil
-	}
-
-	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
-	if dialers == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
-	}
-
-	dialers.Lock()
-	if dialers.PerHostRateLimitPool == nil {
-		poolSize := options.PerHostRateLimitPoolSize
-		if poolSize == 0 {
-			poolSize = 1024
-		} else if poolSize < 0 {
-			// expirable.LRU uses zero as its unbounded mode. This is useful for
-			// scan-persistent embedders that must never refresh a host budget
-			// merely because many other hosts were visited.
-			poolSize = 0
-		}
-		// Keep entries for the entire scan duration - no TTL-based eviction during scan
-		// so all hosts are tracked throughout the entire scan, even for very long scans
-		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(poolSize, 24*time.Hour, 24*time.Hour, options)
-	}
-	poolAny := dialers.PerHostRateLimitPool
-	dialers.Unlock()
-
-	pool, ok := poolAny.(*PerHostRateLimitPool)
-	if !ok || pool == nil {
-		return nil, nil
-	}
-
-	return pool.GetOrCreate(hostname)
-}
-
-// RecordPerHostRateLimitRequest records a request for pps stats calculation
-func RecordPerHostRateLimitRequest(options *types.Options, hostname string) {
-	if !options.PerHostRateLimit || hostname == "" {
-		return
-	}
-
-	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
-	if dialers == nil {
-		return
-	}
-
-	dialers.Lock()
-	poolAny := dialers.PerHostRateLimitPool
-	dialers.Unlock()
-
-	pool, ok := poolAny.(*PerHostRateLimitPool)
-	if !ok || pool == nil {
-		return
-	}
-
-	pool.RecordRequest(hostname)
 }
 
 // GetHTTPToHTTPSPortTracker gets or creates the HTTP-to-HTTPS port tracker
