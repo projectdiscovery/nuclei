@@ -34,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -109,7 +110,7 @@ func (request *Request) observeHostBackoff(host string, resp *http.Response, err
 		statusCode = resp.StatusCode
 		retryAfter = hostbackoff.RetryAfter(resp.Header.Get("Retry-After"))
 	}
-	request.options.HostBackoff.Observe(httpclientpool.NormalizeHostPort(host), statusCode, retryAfter, err)
+	request.options.HostBackoff.Observe(hostratelimit.NormalizeHostPort(host), statusCode, retryAfter, err)
 }
 
 // waitHostBackoff pauses for the delay this host has already earned.
@@ -117,32 +118,16 @@ func (request *Request) waitHostBackoff(ctx context.Context, host string) error 
 	if request.options == nil || request.options.HostBackoff == nil {
 		return nil
 	}
-	return request.options.HostBackoff.Wait(ctx, httpclientpool.NormalizeHostPort(host))
+	return request.options.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(host))
 }
 
-// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global.
-// It first honours any backoff the host earned by signalling it is overloaded,
-// so a blocking target is paced regardless of which limiter is in play.
+// rateLimitTake first honours any backoff the host earned by signalling it is
+// overloaded, so a blocking target is paced regardless of which limiter is in play.
 func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
 	if err := request.waitHostBackoff(ctx, hostname); err != nil {
 		return err
 	}
-	if request.options.Options.PerHostRateLimit && hostname != "" {
-		// Use per-host rate limiter
-		limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname)
-		if err != nil {
-			return err
-		}
-		if limiter != nil {
-			limiter.Take()
-			// Record request for pps stats
-			httpclientpool.RecordPerHostRateLimitRequest(request.options.Options, hostname)
-			return nil
-		}
-	}
-	// Use global rate limiter (or unlimited if per-host is enabled but hostname is empty)
-	request.options.RateLimitTake()
-	return nil
+	return request.options.RateLimitTake(hostname)
 }
 
 // executeRaceRequest executes race condition request for a URL

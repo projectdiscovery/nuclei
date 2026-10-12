@@ -215,6 +215,14 @@ type Options struct {
 	HostBackoff bool
 	// HostBackoffMax caps the per-host backoff delay.
 	HostBackoffMax time.Duration
+	// MaxURLsPerPattern caps how many targets sharing one structural shape
+	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
+	// target: dropping one means never scanning it.
+	MaxURLsPerPattern int
+	// DisableURLNormalization keeps every target exactly as supplied, instead of
+	// collapsing URLs that address the same resource (host case, fragment,
+	// default port, trailing slash, tracking parameters) before deduplication.
+	DisableURLNormalization bool
 	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.

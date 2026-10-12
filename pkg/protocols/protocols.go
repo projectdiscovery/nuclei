@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
@@ -203,7 +204,21 @@ func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interac
 // todo: centralizing components is not feasible with current clogged architecture
 // a possible approach could be an internal event bus with pub-subs? This would be less invasive than
 // reworking dep injection from scratch
-func (e *ExecutorOptions) RateLimitTake() {
+// RateLimitTake waits for the rate limit of a request to host: that host's own
+// limiter when per-host rate limiting is on, since the global limiter is then
+// unlimited, and the global limiter otherwise or when host is unknown.
+func (e *ExecutorOptions) RateLimitTake(host string) error {
+	if e.Options != nil && e.Options.PerHostRateLimit && host != "" {
+		limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, host)
+		if err != nil {
+			return err
+		}
+		if limiter != nil {
+			limiter.Take()
+			hostratelimit.RecordPerHostRateLimitRequest(e.Options, host)
+			return nil
+		}
+	}
 	// The code below can race and there isn't a great way to fix this without adding an idempotent
 	// function to the rate limiter implementation. For now, stick with whatever rate is already set.
 	/*
@@ -215,6 +230,7 @@ func (e *ExecutorOptions) RateLimitTake() {
 	if e.RateLimiter != nil {
 		e.RateLimiter.Take()
 	}
+	return nil
 }
 
 // GetThreadsForNPayloadRequests returns the number of threads to use as default for

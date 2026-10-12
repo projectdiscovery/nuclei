@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
@@ -21,18 +21,18 @@ func TestHostBackoffKeyKeepsHTTPSPort(t *testing.T) {
 	gr := &generatedRequest{request: raw}
 
 	key := hostBackoffKey(gr, nil)
-	require.Equal(t, "example.com:443", httpclientpool.NormalizeHostPort(key))
+	require.Equal(t, "example.com:443", hostratelimit.NormalizeHostPort(key))
 	// request.URL.Host drops the default port. That is what executeRequest used
 	// to observe, and it lands on port 80.
 	require.Equal(t, "example.com", raw.URL.Host)
-	require.Equal(t, "example.com:80", httpclientpool.NormalizeHostPort(raw.URL.Host))
+	require.Equal(t, "example.com:80", hostratelimit.NormalizeHostPort(raw.URL.Host))
 }
 
 func TestObserveIgnoresCanceledRequest(t *testing.T) {
 	g := hostbackoff.New(hostbackoff.Config{Step: 100 * time.Millisecond})
 	req := &Request{options: &protocols.ExecutorOptions{HostBackoff: g}}
 	target := "https://example.com/x"
-	key := httpclientpool.NormalizeHostPort(target)
+	key := hostratelimit.NormalizeHostPort(target)
 
 	req.observeHostBackoff(target, nil, context.Canceled)
 	require.Zero(t, g.Delay(key))
@@ -45,16 +45,16 @@ func TestObserveIgnoresCanceledRequest(t *testing.T) {
 func TestHostBackoffKeyKeepsIPv6OnHTTPS(t *testing.T) {
 	raw, err := retryablehttp.NewRequest(http.MethodGet, "https://[2001:db8::1]/secret", nil)
 	require.NoError(t, err)
-	key := httpclientpool.NormalizeHostPort(hostBackoffKey(&generatedRequest{request: raw}, nil))
+	key := hostratelimit.NormalizeHostPort(hostBackoffKey(&generatedRequest{request: raw}, nil))
 	// URL.Host has no port, so the old observation key took the http default.
-	require.NotEqual(t, key, httpclientpool.NormalizeHostPort(raw.URL.Host))
+	require.NotEqual(t, key, hostratelimit.NormalizeHostPort(raw.URL.Host))
 	require.Contains(t, key, "443")
 }
 
 func TestHostBackoffKeyFallsBackToInput(t *testing.T) {
 	input := contextargs.NewWithInput(context.Background(), "https://example.com/from-input")
 	require.Equal(t, "https://example.com/from-input", hostBackoffKey(nil, input))
-	require.Equal(t, "example.com:443", httpclientpool.NormalizeHostPort(hostBackoffKey(nil, input)))
+	require.Equal(t, "example.com:443", hostratelimit.NormalizeHostPort(hostBackoffKey(nil, input)))
 }
 
 // A pipeline or unsafe request stored parsed.Host, which is empty when ParseURL
@@ -66,5 +66,5 @@ func TestParsedHostCanMissTheWaitKey(t *testing.T) {
 	parsed, err := urlutil.ParseURL("http://intranet/admin", true)
 	require.NoError(t, err)
 	require.Empty(t, parsed.Host)
-	require.Equal(t, "intranet:80", httpclientpool.NormalizeHostPort("http://intranet/admin"))
+	require.Equal(t, "intranet:80", hostratelimit.NormalizeHostPort("http://intranet/admin"))
 }

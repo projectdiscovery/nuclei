@@ -1,4 +1,4 @@
-package httpclientpool
+package hostratelimit
 
 import (
 	"fmt"
@@ -8,17 +8,11 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-// normalizeHostPort extracts and normalizes "hostname:port" from a URL or
+// NormalizeHostPort extracts and normalizes "hostname:port" from a URL or
 // host[:port] string. Default ports (80/443) are derived from the scheme when
 // missing. It is shared by the per-host rate limit pool and the HTTP-to-HTTPS
 // port tracker so that both group entries by the same key.
-// NormalizeHostPort exposes the host key the per-host rate limiter uses, so
-// anything else pacing a host (the backoff governor) agrees on host identity.
 func NormalizeHostPort(rawURL string) string {
-	return normalizeHostPort(rawURL)
-}
-
-func normalizeHostPort(rawURL string) string {
 	if rawURL == "" {
 		return ""
 	}
@@ -55,12 +49,7 @@ func normalizeHostPort(rawURL string) string {
 
 	port := parsed.Port()
 	if port == "" {
-		// Use default ports based on scheme
-		if scheme == "https" {
-			port = "443"
-		} else {
-			port = "80"
-		}
+		port = defaultPort(scheme)
 	}
 
 	// Return just hostname:port (no scheme prefix)
@@ -73,12 +62,19 @@ func extractHostPort(s string) string {
 	scheme := "http"
 
 	// Remove scheme prefix if present
-	if strings.HasPrefix(s, "http://") {
-		s = strings.TrimPrefix(s, "http://")
-		scheme = "http"
-	} else if strings.HasPrefix(s, "https://") {
+	switch {
+	case strings.HasPrefix(s, "wss://"):
+		s = strings.TrimPrefix(s, "wss://")
+		scheme = "wss"
+	case strings.HasPrefix(s, "ws://"):
+		s = strings.TrimPrefix(s, "ws://")
+		scheme = "ws"
+	case strings.HasPrefix(s, "https://"):
 		s = strings.TrimPrefix(s, "https://")
 		scheme = "https"
+	case strings.HasPrefix(s, "http://"):
+		s = strings.TrimPrefix(s, "http://")
+		scheme = "http"
 	}
 
 	// Extract up to first /, ?, #, space, or newline (path/query/fragment separator)
@@ -95,20 +91,18 @@ func extractHostPort(s string) string {
 	if err == nil {
 		// Valid host:port format
 		if port == "" {
-			// Port is empty, use default
-			if scheme == "https" {
-				port = "443"
-			} else {
-				port = "80"
-			}
+			port = defaultPort(scheme)
 		}
 		// Return just host:port (no scheme prefix)
 		return fmt.Sprintf("%s:%s", host, port)
 	}
 
-	// No port in string, add default port
-	if scheme == "https" {
-		return fmt.Sprintf("%s:443", s)
+	return fmt.Sprintf("%s:%s", s, defaultPort(scheme))
+}
+
+func defaultPort(scheme string) string {
+	if scheme == "https" || scheme == "wss" {
+		return "443"
 	}
-	return fmt.Sprintf("%s:80", s)
+	return "80"
 }

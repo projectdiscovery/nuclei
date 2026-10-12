@@ -255,6 +255,13 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	addressToDial = parsedAddress.String()
 
+	if err := requestOptions.RateLimitTake(addressToDial); err != nil {
+		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
+		return errors.Wrap(err, "could not take rate limit")
+	}
+
 	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
 	handshakeDuration := time.Since(timeStart)

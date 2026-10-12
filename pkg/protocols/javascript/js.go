@@ -283,11 +283,12 @@ func (request *Request) Requests() int {
 	if request.PreCondition != "" {
 		pre_conditions = 1
 	}
+	perPort := 1 + pre_conditions
 	if request.generator != nil {
-		payloadRequests := request.generator.NewIterator().Total()
-		return payloadRequests + pre_conditions
+		perPort = request.generator.NewIterator().Total() + pre_conditions
 	}
-	return 1 + pre_conditions
+	// ExecuteWithResults runs the whole request once per port
+	return perPort * max(1, len(request.getPorts()))
 }
 
 // GetID returns the ID for the request if any.
@@ -416,13 +417,25 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			},
 		)
 
+		request.options.Progress.IncrementRequests()
+
 		// if precondition was successful
 		if err == nil && result.GetSuccess() {
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				request.options.Progress.IncrementRequests()
 				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
 			}
 		} else {
+			// Requests() already counted the requests this run now skips
+			skipped := 1
+			if request.generator != nil {
+				skipped = request.generator.NewIterator().Total()
+			}
+			if err != nil {
+				request.options.Progress.IncrementFailedRequestsBy(int64(skipped))
+			} else {
+				request.options.Progress.SetRequests(uint64(skipped))
+			}
+
 			var outError error
 
 			// if js code failed to execute
@@ -645,6 +658,12 @@ func (request *Request) executeRequestWithPayloads(
 		argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
 	} else {
 		argsCopy.TemplateCtx = map[string]interface{}{}
+	}
+
+	// a script's network calls are not visible here, so like progress it is
+	// limited as one request per execution
+	if err := request.options.RateLimitTake(hostPort); err != nil {
+		return err
 	}
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
