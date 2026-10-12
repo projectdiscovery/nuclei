@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -532,18 +532,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	generator := request.newGenerator(false)
 
-	baseDynamicValues := generators.CopyMap(dynamicValues)
-	persistentDynamicValueContexts := []dynamicValueContext{{
-		values:           baseDynamicValues,
-		persistentValues: baseDynamicValues,
+	dynamicValueContexts := []dynamicValueContext{{
+		values:   generators.CopyMap(dynamicValues),
+		previous: cloneInternalEvent(previous),
 	}}
-	dynamicValueContexts := persistentDynamicValueContexts
-	previousRequestIndex := 0
 	var requestErr error
 
+executionLoop:
 	for {
-		// returns two values, error and skip, which skips the execution for the request instance.
-		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, map[string][]string, error) {
+		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := request.newContext(input)
@@ -553,9 +550,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
-					return true, nil, nil
+					return false, true, nil, nil
 				}
-				return true, nil, err
+				return false, true, nil, err
 			}
 			// ideally if http template used a custom port or hostname
 			// we would want to update it in input but currently templateCtx logic
@@ -571,7 +568,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				hostname = generatedHttpRequest.URL()
 			}
 			if err := request.options.RateLimitTake(hostname); err != nil {
-				return true, nil, err
+				return false, true, nil, err
 			}
 
 			if generatedHttpRequest.customCancelFunction != nil {
@@ -584,11 +581,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			// Check if hosts keep erroring
 			if request.isUnresponsiveAddress(updatedInput) {
-				return true, nil, nil
+				return false, true, nil, nil
 			}
 			var gotMatches bool
 			var extractedDynamicValues map[string][]string
-			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+			execReqErr := request.executeRequest(input, generatedHttpRequest, previousEvent, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
 				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
@@ -608,7 +605,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Add the extracts to the dynamic values if any.
 				if event.OperatorsResult != nil {
 					gotMatches = event.OperatorsResult.Matched
-					extractedDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, extractedDynamicValues)
+					extractedDynamicValues = generators.MergeMapsMany(
+						request.extractCurrentDynamicValues(event, generator.currentIndex),
+						extractedDynamicValues,
+					)
 				}
 				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
 				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
@@ -618,9 +618,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				callback(event)
 			}, generator.currentIndex)
 
-			// If a variable is unresolved, skip all further requests
+			// A variable may be unresolved for one iterate-all branch while sibling
+			// branches remain executable.
 			if errors.Is(execReqErr, ErrMissingVars) {
-				return true, nil, nil
+				return true, false, nil, nil
 			}
 
 			request.recordHostResult(updatedInput, execReqErr)
@@ -637,9 +638,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
 			if shouldStopAtFirstMatch && gotMatches {
-				return true, extractedDynamicValues, nil
+				return false, true, nil, nil
 			}
-			return false, extractedDynamicValues, nil
+			return false, false, extractedDynamicValues, nil
 		}
 
 		inputData, payloads, ok := generator.nextValue()
@@ -653,144 +654,210 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		default:
 		}
 
-		if previousRequestIndex > 0 && generator.currentIndex <= previousRequestIndex {
-			dynamicValueContexts = persistentDynamicValueContexts
-		}
-		previousRequestIndex = generator.currentIndex
 		isOnceRequest := generator.hasMarker(inputData, Once)
 
-		var gotErr error
-		var skip bool
-		nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
-		for _, branch := range dynamicValueContexts {
-			var extractedDynamicValues map[string][]string
-			skip, extractedDynamicValues, gotErr = executeFunc(inputData, payloads, branch.values)
-			if skip || gotErr != nil {
+		if isOnceRequest {
+			var onceExtracted map[string][]string
+			var oncePreviousDelta output.InternalEvent
+			executed := false
+			for _, branch := range dynamicValueContexts {
+				before := cloneInternalEvent(branch.previous)
+				after := cloneInternalEvent(branch.previous)
+				skipBranch, stop, extracted, gotErr := executeFunc(inputData, generators.CopyMap(payloads), branch.values, after)
+				if gotErr != nil {
+					if requestErr == nil {
+						requestErr = gotErr
+					}
+					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+					break executionLoop
+				}
+				if stop {
+					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+					break executionLoop
+				}
+				if skipBranch {
+					continue
+				}
+				executed = true
+				onceExtracted = extracted
+				oncePreviousDelta = changedEventValues(before, after)
 				break
 			}
-			nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, extractedDynamicValues, request.IterateAll, isOnceRequest)...)
+			if !executed {
+				dynamicValueContexts = nil
+				continue
+			}
+
+			nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
+			for _, branch := range dynamicValueContexts {
+				maps.Copy(branch.previous, oncePreviousDelta)
+				nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, onceExtracted, request.IterateAll)...)
+			}
+			dynamicValueContexts = nextDynamicValueContexts
+			continue
 		}
-		if gotErr != nil && requestErr == nil {
-			requestErr = gotErr
-		}
-		if skip || gotErr != nil {
-			request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
-			break
+
+		nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
+		for _, branch := range dynamicValueContexts {
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
+			}
+
+			skipBranch, stop, extractedDynamicValues, gotErr := executeFunc(inputData, generators.CopyMap(payloads), branch.values, branch.previous)
+			if gotErr != nil {
+				if requestErr == nil {
+					requestErr = gotErr
+				}
+				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+				break executionLoop
+			}
+			if stop {
+				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+				break executionLoop
+			}
+			if skipBranch {
+				continue
+			}
+			nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, extractedDynamicValues, request.IterateAll)...)
 		}
 		dynamicValueContexts = nextDynamicValueContexts
-		if isOnceRequest {
-			persistentDynamicValueContexts = projectPersistentDynamicValueContexts(nextDynamicValueContexts)
-		}
 	}
 	return requestErr
 }
 
 type dynamicValueContext struct {
-	values                    map[string]interface{}
-	extractedKeys             map[string]struct{}
-	extractedValues           map[string][]string
-	persistentValues          map[string]interface{}
-	persistentExtractedKeys   map[string]struct{}
-	persistentExtractedValues map[string][]string
+	values   map[string]interface{}
+	seen     map[string]map[string]struct{}
+	previous output.InternalEvent
 }
 
-func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string][]string, iterateAll, persist bool) []dynamicValueContext {
+func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string][]string, iterateAll bool) []dynamicValueContext {
 	if len(extracted) == 0 {
 		return []dynamicValueContext{parent}
 	}
 
-	changedExtracted := make(map[string][]string)
+	nextValues := make(map[string][]string, len(extracted))
 	for key, values := range extracted {
-		if _, exists := parent.extractedKeys[key]; !exists {
-			changedExtracted[key] = values
+		values = sliceutil.Dedupe(values)
+		if len(values) == 0 {
 			continue
 		}
+
+		seen := parent.seen[key]
+		if len(seen) == 0 {
+			nextValues[key] = values
+			continue
+		}
+
+		current := types.ToString(parent.values[key])
 		for _, value := range values {
-			if !slices.Contains(parent.extractedValues[key], value) {
-				changedExtracted[key] = append(changedExtracted[key], value)
+			if value == current {
+				nextValues[key] = append(nextValues[key], value)
+				break
 			}
 		}
+		for _, value := range values {
+			if _, exists := seen[value]; !exists {
+				nextValues[key] = append(nextValues[key], value)
+			}
+		}
+		if len(nextValues[key]) == 0 {
+			nextValues[key] = values
+		}
 	}
-	if len(changedExtracted) == 0 {
+	if len(nextValues) == 0 {
 		return []dynamicValueContext{parent}
 	}
 
-	extractedKeys := make(map[string]struct{}, len(parent.extractedKeys)+len(changedExtracted))
-	for key := range parent.extractedKeys {
-		extractedKeys[key] = struct{}{}
+	seen := cloneSeenValues(parent.seen)
+	for key, extractedValues := range extracted {
+		if seen[key] == nil {
+			seen[key] = make(map[string]struct{}, len(extractedValues))
+		}
+		for _, value := range extractedValues {
+			seen[key][value] = struct{}{}
+		}
 	}
-	for key := range changedExtracted {
-		extractedKeys[key] = struct{}{}
-	}
-	extractedValues := mergeExtractedValueHistory(parent.extractedValues, extracted)
 
 	var contexts []dynamicValueContext
-	operators.MakeDynamicValuesCallback(changedExtracted, iterateAll, func(values map[string]interface{}) bool {
-		persistentValues := parent.persistentValues
-		persistentExtractedKeys := parent.persistentExtractedKeys
-		persistentExtractedValues := parent.persistentExtractedValues
-		if persist {
-			persistentValues = generators.MergeMaps(parent.persistentValues, values)
-			persistentExtractedKeys = make(map[string]struct{}, len(parent.persistentExtractedKeys)+len(changedExtracted))
-			maps.Copy(persistentExtractedKeys, parent.persistentExtractedKeys)
-			for key := range changedExtracted {
-				persistentExtractedKeys[key] = struct{}{}
-			}
-			persistentExtractedValues = mergeExtractedValueHistory(parent.persistentExtractedValues, extracted)
-		}
+	operators.MakeDynamicValuesCallback(nextValues, iterateAll, func(values map[string]interface{}) bool {
 		contexts = append(contexts, dynamicValueContext{
-			values:                    generators.MergeMaps(parent.values, values),
-			extractedKeys:             extractedKeys,
-			extractedValues:           extractedValues,
-			persistentValues:          persistentValues,
-			persistentExtractedKeys:   persistentExtractedKeys,
-			persistentExtractedValues: persistentExtractedValues,
+			values:   generators.MergeMaps(parent.values, values),
+			seen:     seen,
+			previous: cloneInternalEvent(parent.previous),
 		})
 		return false
 	})
 	return contexts
 }
 
-func mergeExtractedValueHistory(previous, current map[string][]string) map[string][]string {
-	merged := make(map[string][]string, len(previous)+len(current))
-	for key, values := range previous {
-		merged[key] = append([]string(nil), values...)
+func cloneSeenValues(source map[string]map[string]struct{}) map[string]map[string]struct{} {
+	cloned := make(map[string]map[string]struct{}, len(source))
+	for key, values := range source {
+		cloned[key] = maps.Clone(values)
 	}
-	for key, values := range current {
-		merged[key] = sliceutil.Dedupe(append(merged[key], values...))
-	}
-	return merged
+	return cloned
 }
 
-func projectPersistentDynamicValueContexts(contexts []dynamicValueContext) []dynamicValueContext {
-	projected := make([]dynamicValueContext, 0, len(contexts))
-	for _, context := range contexts {
-		candidate := dynamicValueContext{
-			values:                    context.persistentValues,
-			extractedKeys:             context.persistentExtractedKeys,
-			extractedValues:           context.persistentExtractedValues,
-			persistentValues:          context.persistentValues,
-			persistentExtractedKeys:   context.persistentExtractedKeys,
-			persistentExtractedValues: context.persistentExtractedValues,
-		}
-		duplicate := false
-		for _, existing := range projected {
-			valuesEqual := maps.EqualFunc(existing.values, candidate.values, func(left, right interface{}) bool {
-				return reflect.DeepEqual(left, right)
-			})
-			extractedValuesEqual := maps.EqualFunc(existing.extractedValues, candidate.extractedValues, func(left, right []string) bool {
-				return slices.Equal(left, right)
-			})
-			if valuesEqual && extractedValuesEqual && maps.Equal(existing.extractedKeys, candidate.extractedKeys) {
-				duplicate = true
-				break
-			}
-		}
-		if !duplicate {
-			projected = append(projected, candidate)
+func cloneInternalEvent(source output.InternalEvent) output.InternalEvent {
+	cloned := make(output.InternalEvent, len(source))
+	maps.Copy(cloned, source)
+	return cloned
+}
+
+func changedEventValues(before, after output.InternalEvent) output.InternalEvent {
+	changed := make(output.InternalEvent)
+	for key, value := range after {
+		if previousValue, ok := before[key]; !ok || !reflect.DeepEqual(previousValue, value) {
+			changed[key] = value
 		}
 	}
-	return projected
+	return changed
+}
+
+func (request *Request) extractCurrentDynamicValues(event *output.InternalWrappedEvent, requestIndex int) map[string][]string {
+	if request.CompiledOperators == nil {
+		return nil
+	}
+
+	values := make(map[string][]string)
+	for _, extractor := range request.CompiledOperators.Extractors {
+		if !extractor.Internal || extractor.Name == "" || !extractorAppliesToRequest(extractor.Part, requestIndex) {
+			continue
+		}
+		if extractor.GetType() == extractors.LLMExtractor {
+			if event.OperatorsResult != nil {
+				values[extractor.Name] = append(values[extractor.Name], event.OperatorsResult.DynamicValues[extractor.Name]...)
+			}
+			if len(values[extractor.Name]) == 0 {
+				switch extracted := event.InternalEvent[extractor.Name].(type) {
+				case []string:
+					values[extractor.Name] = append(values[extractor.Name], extracted...)
+				case string:
+					values[extractor.Name] = append(values[extractor.Name], extracted)
+				}
+			}
+			continue
+		}
+		for value := range request.Extract(event.InternalEvent, extractor) {
+			values[extractor.Name] = append(values[extractor.Name], value)
+		}
+	}
+	for key, extracted := range values {
+		values[key] = sliceutil.Dedupe(extracted)
+	}
+	return values
+}
+
+func extractorAppliesToRequest(part string, requestIndex int) bool {
+	separator := strings.LastIndexByte(part, '_')
+	if separator < 0 || separator == len(part)-1 {
+		return true
+	}
+	index, err := strconv.Atoi(part[separator+1:])
+	return err != nil || index == requestIndex
 }
 
 const drainReqSize = int64(8 * unitutils.Kilo)
