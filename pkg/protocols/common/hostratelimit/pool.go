@@ -2,8 +2,8 @@ package hostratelimit
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -46,16 +46,19 @@ type rateLimitEntry struct {
 	requestMu         sync.Mutex
 }
 
+// PerHostRateLimiter serializes admission for one normalized host.
 type PerHostRateLimiter struct {
 	limiter   *rate.Limiter
 	ctx       context.Context
-	cancel    context.CancelCauseFunc
+	cancel    context.CancelFunc
 	admission chan struct{}
 	unlimited bool
+	mu        sync.RWMutex
+	limit     uint
+	duration  time.Duration
 }
 
-var errPerHostRateLimiterStopped = errors.New("per-host rate limiter stopped")
-
+// Wait blocks until the host budget admits one request or ctx is canceled.
 func (l *PerHostRateLimiter) Wait(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -63,10 +66,13 @@ func (l *PerHostRateLimiter) Wait(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return context.Cause(ctx)
 	}
-	if err := l.ctx.Err(); err != nil {
-		return context.Cause(l.ctx)
+	if l == nil || l.ctx == nil || l.ctx.Err() != nil {
+		return nil
 	}
-	if l.unlimited {
+	l.mu.RLock()
+	unlimited := l.unlimited
+	l.mu.RUnlock()
+	if unlimited {
 		return nil
 	}
 
@@ -76,37 +82,116 @@ func (l *PerHostRateLimiter) Wait(ctx context.Context) error {
 	case <-ctx.Done():
 		return context.Cause(ctx)
 	case <-l.ctx.Done():
-		return context.Cause(l.ctx)
+		return nil
 	}
 
-	waitCtx, cancelWait := context.WithCancelCause(ctx)
-	stopWait := context.AfterFunc(l.ctx, func() {
-		cancelWait(errPerHostRateLimiterStopped)
-	})
-	defer func() {
-		stopWait()
-		cancelWait(nil)
-	}()
-
-	if err := l.limiter.Wait(waitCtx); err != nil {
-		if cause := context.Cause(waitCtx); cause != nil {
-			return cause
-		}
-		return err
+	l.mu.RLock()
+	if l.unlimited {
+		l.mu.RUnlock()
+		return nil
 	}
-	return nil
+	reservation := l.limiter.Reserve()
+	l.mu.RUnlock()
+	if !reservation.OK() {
+		return fmt.Errorf("host rate limiter cannot reserve one request")
+	}
+	delay := reservation.Delay()
+	if delay <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		reservation.Cancel()
+		return context.Cause(ctx)
+	case <-l.ctx.Done():
+		reservation.Cancel()
+		return nil
+	}
 }
 
+// Take waits for one request using a non-cancelable context.
 func (l *PerHostRateLimiter) Take() {
-	_ = l.Wait(context.Background())
+	if err := l.Wait(context.Background()); err != nil {
+		gologger.Warning().Msgf("Could not take per-host rate limit: %s", err)
+	}
 }
 
+// CanTake reports whether the limiter can admit a request immediately.
 func (l *PerHostRateLimiter) CanTake() bool {
-	return l.ctx.Err() == nil && (l.unlimited || l.limiter.Tokens() > 0)
+	if l == nil || l.ctx == nil {
+		return true
+	}
+	if l.ctx.Err() != nil {
+		return false
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.unlimited || (len(l.admission) == 0 && l.limiter.Tokens() > 0)
 }
 
+// GetLimit returns the current request budget for the configured duration.
+func (l *PerHostRateLimiter) GetLimit() uint {
+	if l == nil {
+		return 0
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.limit
+}
+
+// SetLimit changes the request budget while preserving the configured duration.
+func (l *PerHostRateLimiter) SetLimit(limit uint) {
+	if l == nil {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.limit = limit
+	l.configureLocked()
+}
+
+// SetDuration changes the duration over which the request budget is refilled.
+func (l *PerHostRateLimiter) SetDuration(duration time.Duration) {
+	if duration <= 0 {
+		panic("rate limit duration must be positive")
+	}
+	if l == nil {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.duration = duration
+	l.configureLocked()
+}
+
+func (l *PerHostRateLimiter) configureLocked() {
+	if l.duration == 0 {
+		l.unlimited = true
+		return
+	}
+	requestsPerSecond := rate.Limit(float64(l.limit) / l.duration.Seconds())
+	if l.limiter == nil {
+		l.limiter = rate.NewLimiter(requestsPerSecond, int(l.limit))
+	} else {
+		l.limiter.SetLimit(requestsPerSecond)
+		l.limiter.SetBurst(int(l.limit))
+	}
+	if l.admission == nil {
+		l.admission = make(chan struct{}, 1)
+	}
+	l.unlimited = false
+}
+
+// Stop releases current and future waiters without reporting a scan error.
 func (l *PerHostRateLimiter) Stop() {
-	l.cancel(errPerHostRateLimiterStopped)
+	if l != nil && l.cancel != nil {
+		l.cancel()
+	}
 }
 
 func NewPerHostRateLimitPool(size int, maxIdleTime, maxLifetime time.Duration, options *types.Options) *PerHostRateLimitPool {
@@ -230,20 +315,20 @@ func (p *PerHostRateLimitPool) GetOrCreate(
 // steadier target pressure, this keeps a large host pool cheap and prevents
 // several concurrent engines from consuming the whole window at once.
 func newPerHostRateLimiter(options *types.Options) (*PerHostRateLimiter, error) {
-	ctx, cancel := context.WithCancelCause(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	if options == nil {
-		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true}, nil
+		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true, limit: math.MaxUint32, duration: time.Millisecond}, nil
 	}
 	if options.RateLimit < 0 {
-		cancel(nil)
+		cancel()
 		return nil, fmt.Errorf("rate limit must not be negative: %d", options.RateLimit)
 	}
 	if options.RateLimitDuration < 0 {
-		cancel(nil)
+		cancel()
 		return nil, fmt.Errorf("rate limit duration must not be negative: %s", options.RateLimitDuration)
 	}
 	if options.RateLimit == 0 || options.RateLimitDuration == 0 {
-		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true}, nil
+		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true, limit: math.MaxUint32, duration: time.Millisecond}, nil
 	}
 	requestsPerSecond := rate.Limit(float64(options.RateLimit) / options.RateLimitDuration.Seconds())
 	return &PerHostRateLimiter{
@@ -251,6 +336,8 @@ func newPerHostRateLimiter(options *types.Options) (*PerHostRateLimiter, error) 
 		ctx:       ctx,
 		cancel:    cancel,
 		admission: make(chan struct{}, 1),
+		limit:     uint(options.RateLimit),
+		duration:  options.RateLimitDuration,
 	}, nil
 }
 

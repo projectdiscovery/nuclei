@@ -16,6 +16,30 @@ type cleanupCDPClient struct {
 	contextErrs chan error
 }
 
+type lateCreateCDPClient struct {
+	events   chan *cdp.Event
+	disposed chan struct{}
+	delay    time.Duration
+}
+
+func (c *lateCreateCDPClient) Event() <-chan *cdp.Event {
+	return c.events
+}
+
+func (c *lateCreateCDPClient) Call(_ context.Context, _ string, method string, _ interface{}) ([]byte, error) {
+	switch method {
+	case "Target.createBrowserContext":
+		time.Sleep(c.delay)
+		return []byte(`{"browserContextId":"context-id"}`), nil
+	case "Target.disposeBrowserContext":
+		select {
+		case c.disposed <- struct{}{}:
+		default:
+		}
+	}
+	return []byte("{}"), nil
+}
+
 func (c *cleanupCDPClient) Event() <-chan *cdp.Event {
 	return c.events
 }
@@ -38,6 +62,28 @@ func TestNewInstanceWithContextCancelsBlockedBrowserContextCreation(t *testing.T
 
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.Less(t, time.Since(started), 200*time.Millisecond)
+}
+
+func TestNewInstanceWithContextDisposesContextCreatedAfterCancellation(t *testing.T) {
+	client := &lateCreateCDPClient{
+		events:   make(chan *cdp.Event),
+		disposed: make(chan struct{}, 1),
+		delay:    50 * time.Millisecond,
+	}
+	browser := &Browser{engine: rod.New().Client(client)}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	started := time.Now()
+	_, err := browser.NewInstanceWithContext(ctx, time.Second)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(started), 100*time.Millisecond)
+
+	select {
+	case <-client.disposed:
+	case <-time.After(time.Second):
+		t.Fatal("browser context created after cancellation was not disposed")
+	}
 }
 
 func TestInstanceCloseUsesLiveCleanupContext(t *testing.T) {

@@ -134,18 +134,6 @@ func extractBaseURLFromActions(steps []*engine.Action) (string, error) {
 
 func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
 	pageTimeout := time.Duration(request.options.Options.PageTimeout) * time.Second
-	instance, err := request.options.Browser.NewInstanceWithContext(input.Context(), pageTimeout)
-	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldNotGetHtmlElement)
-	}
-	defer func() {
-		_ = instance.Close()
-	}()
-
-	instance.SetInteractsh(request.options.Interactsh)
-
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -168,15 +156,29 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, "could not take rate limit")
 	}
 
+	instance, err := request.options.Browser.NewInstanceWithContext(input.Context(), pageTimeout)
+	if err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
+	}
+	var page *engine.Page
+	defer func() {
+		if closeErr := instance.CloseWithPage(page); closeErr != nil {
+			gologger.Warning().Msgf("Could not close headless browser instance: %s", closeErr)
+		}
+	}()
+	instance.SetInteractsh(request.options.Interactsh)
+
 	timeStart := time.Now()
-	out, page, err := instance.Run(input, request.Steps, payloads, options)
+	out, createdPage, err := instance.Run(input, request.Steps, payloads, options)
 	runDuration := time.Since(timeStart)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
-	defer page.Close()
+	page = createdPage
 
 	page.InteractshURLs = append(interactshURLs, page.InteractshURLs...)
 

@@ -202,10 +202,10 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	workerCtx, cancelWorkers := context.WithCancel(input.Context())
+	defer cancelWorkers()
 
-	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
+	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
 	defer spmHandler.Cancel()
 
 	// wrappedCallback is a callback that wraps the original callback
@@ -223,6 +223,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if shouldStop {
 			// stop all running requests and exit
 			spmHandler.Trigger()
+			cancelWorkers()
 		}
 	}
 
@@ -262,15 +263,22 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					// Extract from request URL if available
 					hostname = t.req.request.Request.URL.String()
 				}
-				if err := request.options.RateLimitTakeContext(t.updatedInput.Context(), hostname); err != nil {
+				if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
 					select {
 					case <-spmHandler.Done():
+						spmHandler.Release()
+						continue
+					case <-ctx.Done():
 						spmHandler.Release()
 						continue
 					case spmHandler.ResultChan <- err:
 						spmHandler.Release()
 						continue
 					}
+				}
+				if ctx.Err() != nil || spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+					spmHandler.Release()
+					continue
 				}
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
@@ -301,7 +309,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}()
 	}
 	for i := 0; i < currentWorkers; i++ {
-		spawnWorker(ctx)
+		spawnWorker(workerCtx)
 	}
 
 	// iterate payloads and make requests
@@ -330,7 +338,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			// if payload concurrency increased, add more workers
 			if spmHandler.Size() > currentWorkers {
 				for i := 0; i < spmHandler.Size()-currentWorkers; i++ {
-					spawnWorker(ctx)
+					spawnWorker(workerCtx)
 				}
 				currentWorkers = spmHandler.Size()
 			}
@@ -373,6 +381,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return nil
 			}
 			return multierr.Combine(spmHandler.CombinedResults()...)
+		case <-workerCtx.Done():
+			close(tasks)
+			workersWg.Wait()
+			if spmHandler.FoundFirstMatch() {
+				return nil
+			}
+			return context.Cause(workerCtx)
 		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
 		}
 		request.options.Progress.IncrementRequests()
@@ -562,7 +577,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			if err := request.options.RateLimitTakeContext(ctxWithTimeout, hostname); err != nil {
+			if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
 				return true, err
 			}
 
