@@ -690,17 +690,21 @@ http:
 	require.NoError(t, err)
 
 	compiledPaths := make([]string, 2)
+	compiledBlockIDs := make([]string, 2)
 	for i := range compiledPaths {
 		engineOptions := executerOpts.Copy()
 		engineOptions.Parser = templates.NewParserWithParsedCache(sharedParser.Cache())
 		compiled, parseErr := templates.Parse(templatePath, nil, engineOptions)
 		require.NoError(t, parseErr)
 		compiledPaths[i] = compiled.RequestsHTTP[0].Path[0]
+		compiledBlockIDs[i] = compiled.RequestsHTTP[0].RequestBlockID
 		require.NotContains(t, compiledPaths[i], "{{randstr}}")
 	}
 
 	require.Equal(t, 1, sourceReads)
 	require.NotEqual(t, compiledPaths[0], compiledPaths[1])
+	require.Equal(t, compiledBlockIDs[0], compiledBlockIDs[1])
+	requireRuntimeStructuralRequestBlockID(t, "http", compiledBlockIDs[0])
 }
 
 func Test_WrongTemplate(t *testing.T) {

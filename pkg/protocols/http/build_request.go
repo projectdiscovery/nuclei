@@ -86,6 +86,8 @@ type generatedRequest struct {
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
+	// probeIndex is the 1-based position of the path or raw request within the template request block
+	probeIndex int
 
 	fuzzGeneratedRequest fuzz.GeneratedRequest
 }
@@ -157,9 +159,11 @@ func (g *generatedRequest) URL() string {
 func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context, reqData string, payloads, dynamicValues map[string]interface{}) (gr *generatedRequest, err error) {
 	origReqData := reqData
 	r.interactshURLs = nil
+	probeIndex := r.currentIndex
 	defer func() {
 		if gr != nil {
 			gr.setReqURLPattern(origReqData)
+			gr.probeIndex = probeIndex
 		}
 	}()
 	// value of `reqData` depends on the type of request specified in template

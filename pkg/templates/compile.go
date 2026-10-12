@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -341,6 +342,8 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 		return fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
+	template.assignRequestOutputIDs()
+
 	if options.Options.OfflineHTTP {
 		return template.compileOfflineHTTPRequest(options)
 	}
@@ -409,6 +412,28 @@ func filterOutCodeRequests(requests []protocols.Request) []protocols.Request {
 		filtered = append(filtered, req)
 	}
 	return filtered
+}
+
+// assignRequestOutputIDs gives every request block the identity reported as
+// the request-id of its results: the request id when set, otherwise the
+// protocol and its 1-based position, matching validateAllRequestIDs naming.
+func (template *Template) assignRequestOutputIDs() {
+	for _, requests := range template.protocolRequestGroups() {
+		for position, request := range requests {
+			identifiable, ok := request.(interface{ SetRequestID(string) })
+			if !ok {
+				continue
+			}
+			identifiable.SetRequestID(requestOutputID(request, position))
+		}
+	}
+}
+
+func requestOutputID(request protocols.Request, position int) string {
+	if id := request.GetID(); id != "" {
+		return id
+	}
+	return request.Type().String() + "_" + strconv.Itoa(position+1)
 }
 
 // convertRequestToProtocolsRequest is a convenience wrapper to convert
@@ -506,7 +531,8 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		generatedConstants = generators.MergeMaps(generatedConstants, replaced)
 	}
 
-	template, err := parseTemplateNoVerify(processedData, options)
+	requestIdentityData := normalizeRequestIdentityPreprocessors(data, generatedConstants)
+	template, err := parseTemplateNoVerify(processedData, requestIdentityData, options)
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +566,7 @@ func hasTemplatePreprocessor(data []byte, preprocessor Preprocessor) bool {
 
 // parseTemplate parses the template and applies verification.
 func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
-	template, err := parseTemplateNoVerify(data, srcOptions)
+	template, err := parseTemplateNoVerify(data, data, srcOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +587,7 @@ func verifyAndCompileTemplate(template *Template, data []byte) error {
 }
 
 // parseTemplateNoVerify parses the template without applying any verification.
-func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
+func parseTemplateNoVerify(data, requestIdentityData []byte, srcOptions *protocols.ExecutorOptions) (*Template, error) {
 	template := &Template{}
 
 	var err error
@@ -580,6 +606,21 @@ func parseTemplateNoVerify(data []byte, srcOptions *protocols.ExecutorOptions) (
 
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to parse %s", template.Path)
+	}
+	var identityDefinitions *requestIdentityDefinitionsByProtocol
+	if !bytes.Equal(data, requestIdentityData) {
+		identityDefinitions, err = parseRequestIdentityDefinitions(requestIdentityData)
+		if err != nil {
+			return nil, errkit.Wrapf(err, "failed to parse request identity for %s", template.Path)
+		}
+	}
+	if identityDefinitions != nil {
+		err = template.assignRequestBlockIDsFromDefinitions(identityDefinitions)
+	} else {
+		err = template.assignRequestBlockIDs()
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	return prepareTemplate(template, srcOptions)
