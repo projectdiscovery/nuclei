@@ -46,6 +46,7 @@ import (
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
+	iputil "github.com/projectdiscovery/utils/ip"
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -778,6 +779,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 		} else if generatedRequest.request != nil {
+			if generatedRequest.request.URL != nil {
+				hostname = generatedRequest.request.URL.Host
+			}
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
@@ -945,6 +949,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if dialers == nil {
 		return fmt.Errorf("dialers not found for execution id %s", request.options.Options.ExecutionId)
 	}
+	var getDialedIP func(string) string
+	if dialers.Fastdialer != nil {
+		getDialedIP = dialers.Fastdialer.GetDialedIP
+	}
+	targetHost := hostname
 
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
@@ -963,10 +972,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			hostname = hostname[:i]
 		}
 
-		if input.MetaInput.CustomIP != "" {
-			outputEvent["ip"] = input.MetaInput.CustomIP
-		} else {
-			outputEvent["ip"] = dialers.Fastdialer.GetDialedIP(hostname)
+		outputEvent["ip"] = outputIP(input.MetaInput.CustomIP, targetHost, hostname, getDialedIP)
+		if input.MetaInput.CustomIP == "" {
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -1121,14 +1128,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			hostname = hostname[:i]
 		}
 		outputEvent["curl-command"] = curlCommand
-		if input.MetaInput.CustomIP != "" {
-			outputEvent["ip"] = input.MetaInput.CustomIP
-		} else {
-			dialer := dialers.Fastdialer
-			if dialer != nil {
-				outputEvent["ip"] = dialer.GetDialedIP(hostname)
-			}
-
+		outputEvent["ip"] = outputIP(input.MetaInput.CustomIP, targetHost, hostname, getDialedIP)
+		if input.MetaInput.CustomIP == "" {
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -1248,6 +1249,28 @@ func (request *Request) getHTTPClientForHost(host string) *retryablehttp.Client 
 		client, _ = httpclientpool.Get(request.options.Options, request.connConfiguration, "")
 	}
 	return client
+}
+
+// outputIP returns the ip for the output event. host is the request host as
+// sent and hostname is host with the port stripped.
+func outputIP(customIP, host, hostname string, getDialedIP func(string) string) string {
+	if customIP != "" {
+		return customIP
+	}
+	if getDialedIP != nil {
+		if ip := getDialedIP(hostname); ip != "" {
+			return ip
+		}
+	}
+	// proxies bypass fastdialer's dial history, so fall back to an IP literal host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	if iputil.IsIP(host) {
+		return host
+	}
+	return ""
 }
 
 // addCNameIfAvailable adds the cname to the event if available
