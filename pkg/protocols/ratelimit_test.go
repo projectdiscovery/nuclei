@@ -63,3 +63,21 @@ func TestRateLimitTakeContextCancelsPerHostWait(t *testing.T) {
 
 	require.ErrorIs(t, <-result, context.Canceled)
 }
+
+func TestRateLimitTakeContextCancelsGlobalWait(t *testing.T) {
+	global := utils.GetRateLimiter(context.Background(), 1, time.Hour)
+	t.Cleanup(global.Stop)
+	executor := &protocols.ExecutorOptions{RateLimiter: global}
+	require.NoError(t, executor.RateLimitTakeContext(context.Background(), ""))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() { result <- executor.RateLimitTakeContext(ctx, "") }()
+	select {
+	case err := <-result:
+		t.Fatalf("RateLimitTakeContext returned before cancellation: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	cancel()
+	require.ErrorIs(t, <-result, context.Canceled)
+}

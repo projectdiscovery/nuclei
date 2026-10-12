@@ -207,8 +207,7 @@ func (e *ExecutorOptions) RateLimitTake(host string) error {
 	return e.RateLimitTakeContext(context.Background(), host)
 }
 
-// RateLimitTakeContext waits for admission. Per-host admission honors ctx; the
-// legacy global limiter does not expose a context-aware wait operation.
+// RateLimitTakeContext waits for admission or returns when ctx is canceled.
 func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string) error {
 	if e.Options != nil && e.Options.PerHostRateLimit && host != "" {
 		limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, host)
@@ -232,7 +231,7 @@ func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string)
 		}
 	*/
 	if e.RateLimiter != nil {
-		e.RateLimiter.Take()
+		return e.RateLimiter.TakeContext(ctx)
 	}
 	return nil
 }
