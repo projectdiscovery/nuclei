@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
@@ -67,4 +68,31 @@ func TestParsedHostCanMissTheWaitKey(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, parsed.Host)
 	require.Equal(t, "intranet:80", hostratelimit.NormalizeHostPort("http://intranet/admin"))
+}
+
+func TestWaitHostBackoffStopsWhenHandlerTriggers(t *testing.T) {
+	g := hostbackoff.New(hostbackoff.Config{Step: 2 * time.Second, Max: 2 * time.Second})
+	req := &Request{options: &protocols.ExecutorOptions{HostBackoff: g}}
+	target := "https://example.com/x"
+	req.observeHostBackoff(target, &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{}}, nil)
+
+	parent, cancelParent := context.WithCancel(context.Background())
+	defer cancelParent()
+	handler := httputils.NewNonBlockingSPMHandler[struct{}](parent, 1, true)
+	waitCtx, cancelWait := stopWithHandler(parent, handler)
+	defer cancelWait()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- req.waitHostBackoff(waitCtx, target)
+	}()
+	time.Sleep(20 * time.Millisecond)
+	handler.Trigger()
+
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("backoff wait outlived the handler")
+	}
 }

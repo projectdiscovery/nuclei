@@ -76,11 +76,11 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.15
 	github.com/projectdiscovery/clistats v0.1.7
 	github.com/projectdiscovery/dsl v0.8.24
-	github.com/projectdiscovery/fastdialer v0.5.22
+	github.com/projectdiscovery/fastdialer v0.5.25
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/goflags v0.2.1
-	github.com/projectdiscovery/goimpacket v0.1.0
+	github.com/projectdiscovery/goimpacket v0.1.1-0.20261007205806-6042a8213eeb
 	github.com/projectdiscovery/goja v0.0.0-20261012075649-9b78f2e05b9c
 	github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d
 	github.com/projectdiscovery/gologger v1.1.73
@@ -89,21 +89,21 @@ require (
 	github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76
 	github.com/projectdiscovery/hmap v0.0.102
 	github.com/projectdiscovery/httpx v1.12.0
-	github.com/projectdiscovery/interactsh v1.4.0
+	github.com/projectdiscovery/interactsh v1.4.1
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.52
-	github.com/projectdiscovery/ratelimit v0.0.91
+	github.com/projectdiscovery/networkpolicy v0.1.54
+	github.com/projectdiscovery/ratelimit v0.0.93
 	github.com/projectdiscovery/rawhttp v0.1.92
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/retryabledns v1.0.116
-	github.com/projectdiscovery/retryablehttp-go v1.3.28
+	github.com/projectdiscovery/retryablehttp-go v1.3.30
 	github.com/projectdiscovery/sarif v0.1.0
-	github.com/projectdiscovery/tlsx v1.4.0
+	github.com/projectdiscovery/tlsx v1.4.1
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
-	github.com/projectdiscovery/utils v0.11.6
-	github.com/projectdiscovery/wappalyzergo v0.3.2
+	github.com/projectdiscovery/utils v0.11.9
+	github.com/projectdiscovery/wappalyzergo v0.3.4
 	github.com/projectdiscovery/yamldoc-go v1.0.7
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -130,6 +130,7 @@ require (
 	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.41.0
+	golang.org/x/time v0.15.0
 	golang.org/x/tools v0.49.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
@@ -252,7 +253,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/free5gc/util v1.0.5-0.20230511064842-2e120956883b // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
-	github.com/gaissmai/bart v0.29.1 // indirect
+	github.com/gaissmai/bart v0.30.0 // indirect
 	github.com/geoffgarside/ber v1.2.0 // indirect
 	github.com/getsops/gopgagent v0.0.0-20240527072608-0c14999532fe // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -459,7 +460,6 @@ require (
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/mod v0.39.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/api v0.264.0 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect

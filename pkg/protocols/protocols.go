@@ -208,13 +208,20 @@ func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interac
 // limiter when per-host rate limiting is on, since the global limiter is then
 // unlimited, and the global limiter otherwise or when host is unknown.
 func (e *ExecutorOptions) RateLimitTake(host string) error {
+	return e.RateLimitTakeContext(context.Background(), host)
+}
+
+// RateLimitTakeContext waits for admission or returns when ctx is canceled.
+func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string) error {
 	if e.Options != nil && e.Options.PerHostRateLimit && host != "" {
 		limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, host)
 		if err != nil {
 			return err
 		}
 		if limiter != nil {
-			limiter.Take()
+			if err := limiter.Wait(ctx); err != nil {
+				return err
+			}
 			hostratelimit.RecordPerHostRateLimitRequest(e.Options, host)
 			return nil
 		}
@@ -228,7 +235,7 @@ func (e *ExecutorOptions) RateLimitTake(host string) error {
 		}
 	*/
 	if e.RateLimiter != nil {
-		e.RateLimiter.Take()
+		return e.RateLimiter.TakeContext(ctx)
 	}
 	return nil
 }
