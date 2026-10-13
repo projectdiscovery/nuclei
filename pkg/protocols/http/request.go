@@ -70,6 +70,21 @@ var (
 	ErrHttpEngineRequestDeadline = errkit.New("http request engine deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
+// bodyReadLimit is how many response body bytes to read.
+// A template max-size replaces the default and may raise it.
+// An explicit response read size replaces the default when the template sets
+// no max-size, and it only lowers a template max-size when it is smaller.
+func bodyReadLimit(templateMaxSize, responseReadSize int) int {
+	limit := MaxBodyRead
+	if templateMaxSize > 0 {
+		limit = templateMaxSize
+	}
+	if responseReadSize != 0 && (templateMaxSize <= 0 || responseReadSize < limit) {
+		limit = responseReadSize
+	}
+	return limit
+}
+
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
@@ -1219,17 +1234,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	duration := time.Since(timeStart)
 
 	// define max body read limit
-	maxBodylimit := MaxBodyRead // 10MB
-	if request.options.Options.ResponseReadSize != 0 {
-		maxBodylimit = request.options.Options.ResponseReadSize
-	}
-	// A template's own max-size is a further restriction on top of the global
-	// cap, not an alternative to it. A template that states it only needs the
-	// first few hundred bytes should not be handed the whole response because
-	// the scan happens to configure a larger ceiling.
-	if request.MaxSize > 0 && request.MaxSize < maxBodylimit {
-		maxBodylimit = request.MaxSize
-	}
+	maxBodylimit := bodyReadLimit(request.MaxSize, request.options.Options.ResponseReadSize)
 
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
