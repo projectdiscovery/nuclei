@@ -181,19 +181,6 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 				"wss://"+target+"/*",
 				"wss://"+target+":*/*",
 			)
-		} else {
-			parts := strings.Split(target, ".")
-			if len(parts) >= 2 {
-				prefix := strings.Join(parts[:2], ".") + ".*"
-				blockedPatterns = append(blockedPatterns,
-					"*://"+prefix+"/*",
-					"*://"+prefix+":*/*",
-					"ws://"+prefix+"/*",
-					"ws://"+prefix+":*/*",
-					"wss://"+prefix+"/*",
-					"wss://"+prefix+":*/*",
-				)
-			}
 		}
 	}
 

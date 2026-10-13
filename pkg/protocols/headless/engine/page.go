@@ -112,12 +112,6 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		inputURL:  input,
 	}
 
-	if options != nil && options.Options != nil {
-		if netErr := protocolstate.SetupHeadlessNetworkPolicy(options.Options, page); netErr != nil {
-			return nil, nil, netErr
-		}
-	}
-
 	successfulPageCreation := false
 	defer func() {
 		if !successfulPageCreation {
@@ -125,6 +119,12 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 			createdPage.Close()
 		}
 	}()
+
+	if options != nil && options.Options != nil {
+		if netErr := protocolstate.SetupHeadlessNetworkPolicy(options.Options, page); netErr != nil {
+			return nil, nil, netErr
+		}
+	}
 
 	httpclient, err := i.browser.getHTTPClient()
 	if err != nil {
