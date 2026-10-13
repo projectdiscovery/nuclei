@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
@@ -21,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/stretchr/testify/require"
 )
@@ -49,6 +49,79 @@ func setup() {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}
 	executerOpts.WorkflowLoader = workflowLoader
+}
+
+func TestFlowStopsWhenContextCanceled(t *testing.T) {
+	setup()
+
+	templatePath := filepath.Join(t.TempDir(), "infinite-flow.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: infinite-flow
+info:
+  name: Infinite Flow
+  author: pdteam
+  severity: info
+flow: while (true) {}
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600))
+
+	tmpl, err := templates.Parse(templatePath, nil, executerOpts)
+	require.NoError(t, err)
+	require.NoError(t, tmpl.Executer.Compile())
+
+	executionContext, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	input := contextargs.NewWithInput(executionContext, "https://example.com")
+	scanContext := scan.NewScanContext(executionContext, input)
+	result := make(chan error, 1)
+	go func() {
+		_, executeErr := tmpl.Executer.Execute(scanContext)
+		result <- executeErr
+	}()
+
+	select {
+	case executeErr := <-result:
+		require.ErrorIs(t, executeErr, context.DeadlineExceeded)
+	case <-time.After(time.Second):
+		t.Fatal("flow execution did not stop after context cancellation")
+	}
+}
+
+func TestFlowProtocolRequestLimit(t *testing.T) {
+	setup()
+	executerOpts.MaxFlowProtocolRequests = 2
+
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	templatePath := filepath.Join(t.TempDir(), "bounded-flow.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: bounded-flow
+info:
+  name: Bounded Flow
+  author: pdteam
+  severity: info
+flow: for (let i = 0; i < 3; i++) { http(); }
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600))
+
+	tmpl, err := templates.Parse(templatePath, nil, executerOpts)
+	require.NoError(t, err)
+	require.NoError(t, tmpl.Executer.Compile())
+
+	input := contextargs.NewWithInput(context.Background(), server.URL)
+	scanContext := scan.NewScanContext(context.Background(), input)
+	_, err = tmpl.Executer.Execute(scanContext)
+	require.ErrorContains(t, err, "flow protocol request limit exceeded")
+	require.Equal(t, int64(2), requests.Load())
 }
 
 func TestFlowTemplateWithIndex(t *testing.T) {
