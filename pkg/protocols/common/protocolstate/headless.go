@@ -228,18 +228,45 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 		}
 	}
 
-	var wsMap sync.Map
+	var (
+		mu              sync.Mutex
+		patternSet      = make(map[string]struct{})
+		dynamicPatterns = append([]string(nil), blockedPatterns...)
+		wsMap           sync.Map
+	)
+	for _, p := range blockedPatterns {
+		patternSet[p] = struct{}{}
+	}
+
+	addBlockedURL := func(urlStr string) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		newPatterns := []string{urlStr, "*://" + urlStr + "/*", "*://" + urlStr + ":*/*", "ws://" + urlStr + "/*", "ws://" + urlStr + ":*/*", "wss://" + urlStr + "/*", "wss://" + urlStr + ":*/*", "*" + urlStr + "*"}
+		updated := false
+		for _, p := range newPatterns {
+			if _, exists := patternSet[p]; !exists {
+				patternSet[p] = struct{}{}
+				dynamicPatterns = append(dynamicPatterns, p)
+				updated = true
+			}
+		}
+		if updated {
+			_ = (proto.NetworkSetBlockedURLs{Urls: dynamicPatterns}).Call(page)
+		}
+	}
+
 	waitWs := page.EachEvent(
 		func(e *proto.NetworkWebSocketCreated) {
 			wsMap.Store(e.RequestID, e.URL)
 			if !IsHostAllowed(options.ExecutionId, e.URL) {
-				_ = (proto.NetworkSetBlockedURLs{Urls: append(blockedPatterns, e.URL, "*"+e.URL+"*")}).Call(page)
+				addBlockedURL(e.URL)
 			}
 		},
 		func(e *proto.NetworkWebSocketWillSendHandshakeRequest) {
 			if val, ok := wsMap.Load(e.RequestID); ok {
 				if wsURL, ok := val.(string); ok && !IsHostAllowed(options.ExecutionId, wsURL) {
-					_ = (proto.NetworkSetBlockedURLs{Urls: append(blockedPatterns, wsURL, "*"+wsURL+"*")}).Call(page)
+					addBlockedURL(wsURL)
 				}
 			}
 		},
