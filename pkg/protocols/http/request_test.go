@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -22,7 +23,28 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/ratelimit"
 )
+
+func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
+	t.Helper()
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+	require.NoError(t, request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), target),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	))
+}
 
 func TestHTTPExtractMultipleReuse(t *testing.T) {
 	options := testutils.DefaultOptions
@@ -99,6 +121,714 @@ Disallow: /c`)
 	})
 	require.NotNil(t, finalEvent, "could not get event output from request")
 	require.Equal(t, 3, matchCount, "could not get correct match count")
+}
+
+func TestHTTPExtractMultipleReusePreservesBranchValues(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-branch-values",
+		Raw: []string{
+			"GET /capabilities HTTP/1.1\nHost: {{Hostname}}",
+			"GET /metadata/{{name}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /probe/{{name}}/{{column}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{
+				{
+					Part:       "body_1",
+					Name:       "name",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`name=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+				{
+					Part:       "body_2",
+					Name:       "column",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`column=([a-z0-9]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+			},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	probes := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/capabilities":
+			_, _ = fmt.Fprint(w, "name=alpha name=beta")
+		case "/metadata/alpha":
+			_, _ = fmt.Fprint(w, "column=a1 column=a2")
+		case "/metadata/beta":
+			_, _ = fmt.Fprint(w, "column=b1")
+		default:
+			mutex.Lock()
+			probes[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/probe/alpha/a1": 1,
+		"/probe/alpha/a2": 1,
+		"/probe/beta/b1":  1,
+	}, probes)
+}
+
+func TestHTTPExtractMultipleReuseReplacesReextractedValue(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-reextracted-value",
+		Raw: []string{
+			"GET /session HTTP/1.1\nHost: {{Hostname}}",
+			"GET /refresh/{{token}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{token}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /final/{{token}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{
+				{
+					Part:       "body_1",
+					Name:       "token",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`token=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+				{
+					Part:       "body_2",
+					Name:       "token",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`token=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+			},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	requests := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mutex.Lock()
+		requests[r.URL.Path]++
+		mutex.Unlock()
+		switch r.URL.Path {
+		case "/session":
+			_, _ = fmt.Fprint(w, "token=old")
+		case "/refresh/old":
+			_, _ = fmt.Fprint(w, "token=new token=next")
+		}
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/session":     1,
+		"/refresh/old": 1,
+		"/use/new":     1,
+		"/use/next":    1,
+		"/final/new":   1,
+		"/final/next":  1,
+	}, requests)
+}
+
+func TestExpandDynamicValueContextsReplacesReextractedValueWithoutIteration(t *testing.T) {
+	parent := dynamicValueContext{
+		values: map[string]interface{}{"token": "old"},
+	}
+
+	contexts := expandDynamicValueContexts(parent, map[string][]string{"token": {"new", "next"}}, false)
+
+	require.Len(t, contexts, 1)
+	require.Equal(t, "new", contexts[0].values["token"])
+}
+
+func TestHTTPExtractMultipleReusePreservesOnceValuesAcrossPayloads(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-once-payload-values",
+		Raw: []string{
+			"@once\nGET /token HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{token}}/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Payloads: map[string]interface{}{
+			"item": []string{"first", "second"},
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{{
+				Part:       "body_1",
+				Name:       "token",
+				Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+				Regex:      []string{`token=([a-z]+)`},
+				RegexGroup: 1,
+				Internal:   true,
+			}},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	requests := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/token" {
+			_, _ = fmt.Fprint(w, "token=shared")
+			return
+		}
+		mutex.Lock()
+		requests[r.URL.Path]++
+		mutex.Unlock()
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/use/shared/first":  1,
+		"/use/shared/second": 1,
+	}, requests)
+}
+
+func TestHTTPExtractMultipleReuseDoesNotPersistPayloadValuesBeforeOnce(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &Request{
+		ID: "testing-http-payload-values-before-once",
+		Raw: []string{
+			"GET /seed/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+			"@once\nGET /token HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{branch}}/{{token}}/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Payloads: map[string]interface{}{
+			"item": []string{"first", "second"},
+		},
+		Operators: operators.Operators{
+			Extractors: []*extractors.Extractor{
+				{
+					Part:       "body_1",
+					Name:       "branch",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`branch=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+				{
+					Part:       "body_2",
+					Name:       "token",
+					Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+					Regex:      []string{`token=([a-z]+)`},
+					RegexGroup: 1,
+					Internal:   true,
+				},
+			},
+		},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	requests := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/seed/"):
+			_, _ = fmt.Fprintf(w, "branch=%s", strings.TrimPrefix(r.URL.Path, "/seed/"))
+		case r.URL.Path == "/token":
+			_, _ = fmt.Fprint(w, "token=shared")
+		default:
+			mutex.Lock()
+			requests[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{
+		"/use/first/shared/first":   1,
+		"/use/second/shared/second": 1,
+	}, requests)
+}
+
+func TestHTTPExtractMultipleReuseSkipsOnlyMissingBranch(t *testing.T) {
+	request := &Request{
+		ID: "testing-http-missing-branch",
+		Raw: []string{
+			"GET /capabilities HTTP/1.1\nHost: {{Hostname}}",
+			"GET /metadata/{{name}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /probe/{{name}}/{{column}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{
+			{Part: "body_1", Name: "name", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`name=([a-z]+)`}, RegexGroup: 1, Internal: true},
+			{Part: "body_2", Name: "column", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`column=([a-z0-9]+)`}, RegexGroup: 1, Internal: true},
+		}},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	probes := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/capabilities":
+			_, _ = fmt.Fprint(w, "name=alpha name=beta name=gamma")
+		case "/metadata/beta":
+			_, _ = fmt.Fprint(w, "column=b1")
+		case "/metadata/gamma":
+			_, _ = fmt.Fprint(w, "column=g1")
+		case "/metadata/alpha":
+		default:
+			mutex.Lock()
+			probes[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.Equal(t, map[string]int{"/probe/beta/b1": 1, "/probe/gamma/g1": 1}, probes)
+}
+
+func TestHTTPExtractMultipleReuseKeepsPayloadFallback(t *testing.T) {
+	request := &Request{
+		ID: "testing-http-payload-fallback",
+		Raw: []string{
+			"GET /create HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{rid}}/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Payloads: map[string]interface{}{"item": []string{"p1", "p2", "p3"}},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{{
+			Part: "body", Name: "rid", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`rid=([a-z]+)`}, RegexGroup: 1, Internal: true,
+		}}},
+		IterateAll: true,
+	}
+
+	var createCount atomic.Int32
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/create" {
+			if createCount.Add(1) == 1 {
+				_, _ = fmt.Fprint(w, "rid=abc")
+			}
+			return
+		}
+		mutex.Lock()
+		uses[r.URL.Path]++
+		mutex.Unlock()
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.Equal(t, map[string]int{"/use/abc/p1": 1, "/use/abc/p2": 1, "/use/abc/p3": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseUsesLatestReextractedValue(t *testing.T) {
+	request := &Request{
+		ID: "testing-http-latest-reextracted-value",
+		Raw: []string{
+			"GET /one HTTP/1.1\nHost: {{Hostname}}",
+			"GET /two HTTP/1.1\nHost: {{Hostname}}",
+			"GET /three HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{csrf}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{{
+			Part: "body", Name: "csrf", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`csrf=([a-z]+)`}, RegexGroup: 1, Internal: true,
+		}}},
+	}
+
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/one":
+			_, _ = fmt.Fprint(w, "csrf=aaa")
+		case "/two":
+			_, _ = fmt.Fprint(w, "csrf=bbb")
+		case "/three":
+			_, _ = fmt.Fprint(w, "csrf=aaa")
+		default:
+			mutex.Lock()
+			uses[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.Equal(t, map[string]int{"/use/aaa": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseRetainsParentValueWhenReextracted(t *testing.T) {
+	request := &Request{
+		ID: "testing-http-parent-reextracted-value",
+		Raw: []string{
+			"GET /items HTTP/1.1\nHost: {{Hostname}}",
+			"GET /item/{{id}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /delete/{{id}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{{
+			Part: "body", Name: "id", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`id=([0-9]+)`}, RegexGroup: 1, Internal: true,
+		}}},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	deletes := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/items":
+			_, _ = fmt.Fprint(w, "id=1 id=2")
+		case "/item/1":
+			_, _ = fmt.Fprint(w, "id=1 id=9")
+		case "/item/2":
+			_, _ = fmt.Fprint(w, "id=2")
+		default:
+			mutex.Lock()
+			deletes[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.Equal(t, map[string]int{"/delete/1": 1, "/delete/2": 1, "/delete/9": 1}, deletes)
+}
+
+func TestHTTPExtractMultipleReuseRunsOnceRequestOnceAcrossBranches(t *testing.T) {
+	request := &Request{
+		ID: "testing-http-once-across-branches",
+		Raw: []string{
+			"GET /list HTTP/1.1\nHost: {{Hostname}}",
+			"@once\nGET /token HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{id}}/{{token}}/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Payloads: map[string]interface{}{"item": []string{"x", "y", "z"}},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{
+			{Part: "body_1", Name: "id", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`id=([a-z]+)`}, RegexGroup: 1, Internal: true},
+			{Part: "body_2", Name: "token", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`token=([a-z0-9]+)`}, RegexGroup: 1, Internal: true},
+		}},
+		IterateAll: true,
+	}
+
+	var tokenCount atomic.Int32
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/list":
+			_, _ = fmt.Fprint(w, "id=a id=b")
+		case "/token":
+			_, _ = fmt.Fprintf(w, "token=t%d", tokenCount.Add(1))
+		default:
+			mutex.Lock()
+			uses[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.EqualValues(t, 1, tokenCount.Load())
+	require.Equal(t, map[string]int{
+		"/use/a/t1/x": 1, "/use/b/t1/x": 1,
+		"/use/a/t1/y": 1, "/use/b/t1/y": 1,
+		"/use/a/t1/z": 1, "/use/b/t1/z": 1,
+	}, uses)
+}
+
+func TestHTTPExtractMultipleReuseKeepsResponseHistoryPerBranch(t *testing.T) {
+	request := &Request{
+		ID: "testing-http-branch-response-history",
+		Raw: []string{
+			"GET /items HTTP/1.1\nHost: {{Hostname}}",
+			"GET /item/{{id}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /noop/{{id}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /use/{{id}}/{{token}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{
+			{Part: "body_1", Name: "id", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`id=([a-z]+)`}, RegexGroup: 1, Internal: true},
+			{Part: "body_2", Name: "token", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`token=([a-z]+)`}, RegexGroup: 1, Internal: true},
+		}},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/items":
+			_, _ = fmt.Fprint(w, "id=a id=b")
+		case "/item/a":
+			_, _ = fmt.Fprint(w, "token=a")
+		case "/item/b":
+			_, _ = fmt.Fprint(w, "token=b")
+		case "/noop/a", "/noop/b":
+		default:
+			mutex.Lock()
+			uses[r.URL.Path]++
+			mutex.Unlock()
+		}
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.Equal(t, map[string]int{"/use/a/a": 1, "/use/b/b": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseCopiesRenderedPayloadPerBranch(t *testing.T) {
+	request := &Request{
+		ID: "testing-http-payload-per-branch",
+		Raw: []string{
+			"GET /names HTTP/1.1\nHost: {{Hostname}}",
+			"GET /x/{{item}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Payloads: map[string]interface{}{"item": []string{"{{name}}-p"}},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{{
+			Part: "body_1", Name: "name", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`name=([a-z]+)`}, RegexGroup: 1, Internal: true,
+		}}},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/names" {
+			_, _ = fmt.Fprint(w, "name=alpha name=beta")
+			return
+		}
+		mutex.Lock()
+		uses[r.URL.Path]++
+		mutex.Unlock()
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.Equal(t, map[string]int{"/x/alpha-p": 1, "/x/beta-p": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseDeduplicatesNewValues(t *testing.T) {
+	request := &Request{
+		ID:  "testing-http-deduplicate-values",
+		Raw: []string{"GET /seed HTTP/1.1\nHost: {{Hostname}}", "GET /use/{{v}} HTTP/1.1\nHost: {{Hostname}}"},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{
+			{Part: "body", Name: "v", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`value=([a-z]+)`}, RegexGroup: 1, Internal: true},
+			{Part: "header", Name: "v", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`X-Value: ([a-z]+)`}, RegexGroup: 1, Internal: true},
+		}},
+		IterateAll: true,
+	}
+
+	var useCount atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/seed" {
+			w.Header().Set("X-Value", "abc")
+			_, _ = fmt.Fprint(w, "value=abc")
+			return
+		}
+		useCount.Add(1)
+	}))
+	defer ts.Close()
+
+	executeDynamicHTTPTestRequest(t, request, ts.URL)
+	require.EqualValues(t, 1, useCount.Load())
+}
+
+func TestHTTPExtractMultipleReuseOverridesTemplateContextPerBranch(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:  "testing-http-template-context-branch",
+		Raw: []string{"GET /seed HTTP/1.1\nHost: {{Hostname}}", "GET /use/{{id}} HTTP/1.1\nHost: {{Hostname}}"},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{{
+			Part: "body_1", Name: "id", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`id=([a-z]+)`}, RegexGroup: 1, Internal: true,
+		}}},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/seed" {
+			_, _ = fmt.Fprint(w, "id=alpha id=beta")
+			return
+		}
+		mutex.Lock()
+		uses[r.URL.Path]++
+		mutex.Unlock()
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+	input := contextargs.NewWithInput(context.Background(), ts.URL)
+	executerOpts.GetTemplateCtx(input.MetaInput).Set("id", "stale")
+	require.NoError(t, request.ExecuteWithResults(
+		input,
+		output.InternalEvent(executerOpts.GetTemplateCtx(input.MetaInput).GetAll()),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	))
+	require.Equal(t, map[string]int{"/use/alpha": 1, "/use/beta": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseIteratesInitialDynamicValues(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:         "testing-http-initial-dynamic-values",
+		Raw:        []string{"GET /use/{{id}} HTTP/1.1\nHost: {{Hostname}}"},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mutex.Lock()
+		uses[r.URL.Path]++
+		mutex.Unlock()
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+	require.NoError(t, request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		output.InternalEvent{"id": []string{"alpha", "beta"}},
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	))
+	require.Equal(t, map[string]int{"/use/alpha": 1, "/use/beta": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseStopsOnceBranchesAfterCancellation(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID: "testing-http-once-branch-cancellation",
+		Raw: []string{
+			"GET /seed HTTP/1.1\nHost: {{Hostname}}",
+			"@once\nGET /token/{{missing}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{{
+			Part: "body_1", Name: "id", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`id=([a-z]+)`}, RegexGroup: 1, Internal: true,
+		}}},
+		IterateAll: true,
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, "id=alpha id=beta")
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	executerOpts.RateLimiter.Stop()
+	executerOpts.RateLimiter = ratelimit.New(context.Background(), 1, 500*time.Millisecond)
+	t.Cleanup(executerOpts.RateLimiter.Stop)
+	require.NoError(t, request.Compile(executerOpts))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancelTimer := time.AfterFunc(100*time.Millisecond, cancel)
+	t.Cleanup(func() {
+		cancelTimer.Stop()
+		cancel()
+	})
+	startedAt := time.Now()
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(ctx, ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Less(t, time.Since(startedAt), 750*time.Millisecond)
 }
 
 func TestDisableTE(t *testing.T) {
@@ -515,6 +1245,55 @@ func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
 	require.Equal(t, int32(1), atomic.LoadInt32(&matches), "expected only first match to be processed")
 }
 
+func TestExecuteParallelHTTP_StopAtFirstMatchCancelsQueuedRateLimitWaiters(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.PerHostRateLimit = true
+	options.PerHostRateLimitPoolSize = -1
+	options.RateLimit = 1
+	options.RateLimitDuration = time.Second
+	options.RestrictLocalNetworkAccess = false
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = fmt.Fprint(writer, "match")
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID:      "parallel-stop-first-rate-limit",
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 10,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"},
+		},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"match"},
+		}}},
+		StopAtFirstMatch: true,
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOptions))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), requests.Load())
+}
+
 func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
@@ -726,4 +1505,60 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
 	})
+}
+
+func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.PerHostRateLimit = true
+	options.PerHostRateLimitPoolSize = -1
+	options.RateLimit = 1
+	options.RateLimitDuration = 2 * time.Second
+	options.RestrictLocalNetworkAccess = false
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(writer, "ok")
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID:     "per-host-rate-limit-cancellation",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"ok"},
+		}}},
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOptions))
+
+	execute := func(ctx context.Context) error {
+		return request.ExecuteWithResults(
+			contextargs.NewWithInput(ctx, server.URL),
+			make(output.InternalEvent),
+			make(output.InternalEvent),
+			func(*output.InternalWrappedEvent) {},
+		)
+	}
+	require.NoError(t, execute(context.Background()))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() { result <- execute(ctx) }()
+	time.Sleep(100 * time.Millisecond)
+	cancelledAt := time.Now()
+	cancel()
+
+	err := <-result
+	cancellationDelay := time.Since(cancelledAt)
+	t.Logf("request returned %s after its context was cancelled", cancellationDelay.Round(time.Millisecond))
+	require.ErrorIs(t, err, context.Canceled)
+	require.Less(t, cancellationDelay, 250*time.Millisecond)
 }

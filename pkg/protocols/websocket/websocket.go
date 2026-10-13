@@ -255,7 +255,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	addressToDial = parsedAddress.String()
 
-	if err := requestOptions.RateLimitTake(addressToDial); err != nil {
+	if err := requestOptions.RateLimitTakeContext(target.Context(), addressToDial); err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 

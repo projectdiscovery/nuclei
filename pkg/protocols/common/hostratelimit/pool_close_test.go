@@ -1,6 +1,7 @@
 package hostratelimit
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"testing"
@@ -46,6 +47,124 @@ func TestPerHostRateLimitPoolSmoothsLowRates(t *testing.T) {
 	}
 	require.Less(t, time.Since(started), 500*time.Millisecond,
 		"the first request beyond the initial bucket should be continuously refilled, not wait for a fixed window")
+}
+
+func TestPerHostRateLimitCancellationReleasesReservation(t *testing.T) {
+	opts := &types.Options{RateLimit: 1, RateLimitDuration: 300 * time.Millisecond}
+	pool := NewPerHostRateLimitPool(1, time.Hour, time.Hour, opts)
+	t.Cleanup(pool.Close)
+
+	limiter, err := pool.GetOrCreate("https://cancel.example.com")
+	require.NoError(t, err)
+	require.NoError(t, limiter.Wait(context.Background()))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() { result <- limiter.Wait(ctx) }()
+	require.Eventually(t, func() bool { return len(limiter.admission) == 1 }, time.Second, time.Millisecond)
+	cancel()
+	require.ErrorIs(t, <-result, context.Canceled)
+
+	started := time.Now()
+	require.NoError(t, limiter.Wait(context.Background()))
+	require.Less(t, time.Since(started), 450*time.Millisecond)
+}
+
+func TestPerHostRateLimitCancellationAdvancesQueuedWaiter(t *testing.T) {
+	opts := &types.Options{RateLimit: 1, RateLimitDuration: 500 * time.Millisecond}
+	pool := NewPerHostRateLimitPool(1, time.Hour, time.Hour, opts)
+	t.Cleanup(pool.Close)
+
+	limiter, err := pool.GetOrCreate("https://queue.example.com")
+	require.NoError(t, err)
+	require.NoError(t, limiter.Wait(context.Background()))
+
+	firstCtx, cancelFirst := context.WithCancel(context.Background())
+	firstResult := make(chan error, 1)
+	go func() { firstResult <- limiter.Wait(firstCtx) }()
+	require.Eventually(t, func() bool { return len(limiter.admission) == 1 }, time.Second, time.Millisecond)
+
+	secondResult := make(chan error, 1)
+	started := time.Now()
+	go func() { secondResult <- limiter.Wait(context.Background()) }()
+	cancelFirst()
+
+	require.ErrorIs(t, <-firstResult, context.Canceled)
+	require.NoError(t, <-secondResult)
+	require.Less(t, time.Since(started), 850*time.Millisecond)
+}
+
+func TestPerHostRateLimitStopReleasesWaitersWithoutError(t *testing.T) {
+	opts := &types.Options{RateLimit: 1, RateLimitDuration: time.Second}
+	limiter, err := newPerHostRateLimiter(opts)
+	require.NoError(t, err)
+	require.NoError(t, limiter.Wait(context.Background()))
+
+	result := make(chan error, 1)
+	go func() { result <- limiter.Wait(context.Background()) }()
+	require.Eventually(t, func() bool { return len(limiter.admission) == 1 }, time.Second, time.Millisecond)
+	limiter.Stop()
+
+	require.NoError(t, <-result)
+	require.NoError(t, limiter.Wait(context.Background()))
+}
+
+func TestPerHostRateLimiterZeroValueIsUnlimited(t *testing.T) {
+	var limiter PerHostRateLimiter
+	require.NoError(t, limiter.Wait(context.Background()))
+	require.True(t, limiter.CanTake())
+	limiter.Stop()
+}
+
+func TestPerHostRateLimiterRetainsMutableLimitAPI(t *testing.T) {
+	limiter, err := newPerHostRateLimiter(&types.Options{RateLimit: 2, RateLimitDuration: time.Second})
+	require.NoError(t, err)
+	t.Cleanup(limiter.Stop)
+
+	require.Equal(t, uint(2), limiter.GetLimit())
+	limiter.SetLimit(4)
+	limiter.SetDuration(2 * time.Second)
+	require.Equal(t, uint(4), limiter.GetLimit())
+	require.NoError(t, limiter.Wait(context.Background()))
+
+	unlimited, err := newPerHostRateLimiter(nil)
+	require.NoError(t, err)
+	t.Cleanup(unlimited.Stop)
+	require.Equal(t, uint(^uint32(0)), unlimited.GetLimit())
+	unlimited.SetLimit(2)
+	require.Equal(t, uint(2), unlimited.GetLimit())
+	require.NoError(t, unlimited.Wait(context.Background()))
+}
+
+func TestPerHostRateLimiterImmediateWaitHasBoundedAllocations(t *testing.T) {
+	limiter, err := newPerHostRateLimiter(&types.Options{RateLimit: 100, RateLimitDuration: time.Second})
+	require.NoError(t, err)
+	t.Cleanup(limiter.Stop)
+
+	allocations := testing.AllocsPerRun(10, func() {
+		if waitErr := limiter.Wait(context.Background()); waitErr != nil {
+			t.Fatal(waitErr)
+		}
+	})
+	require.LessOrEqual(t, allocations, float64(1))
+}
+
+func TestPerHostRateLimitEvictionKeepsInflightWaitValid(t *testing.T) {
+	opts := &types.Options{RateLimit: 1, RateLimitDuration: 100 * time.Millisecond}
+	pool := NewPerHostRateLimitPool(1, time.Hour, time.Hour, opts)
+	t.Cleanup(pool.Close)
+
+	limiter, err := pool.GetOrCreate("https://first.example.com")
+	require.NoError(t, err)
+	require.NoError(t, limiter.Wait(context.Background()))
+
+	result := make(chan error, 1)
+	go func() { result <- limiter.Wait(context.Background()) }()
+	require.Eventually(t, func() bool { return len(limiter.admission) == 1 }, time.Second, time.Millisecond)
+
+	_, err = pool.GetOrCreate("https://second.example.com")
+	require.NoError(t, err)
+	require.NoError(t, <-result)
 }
 
 func TestUnboundedPerHostRateLimitPoolRetainsBudgetsBeyondDefaultCapacity(t *testing.T) {
