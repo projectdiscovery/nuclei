@@ -2,11 +2,13 @@ package flow
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
@@ -26,7 +28,17 @@ import (
 var (
 	// ErrInvalidRequestID is a request id error
 	ErrInvalidRequestID = errkit.New("invalid request id provided")
+	// ErrFlowRuntimeTerminationTimeout is returned when a flow VM does not stop after cancellation.
+	ErrFlowRuntimeTerminationTimeout = errkit.New("flow runtime failed to terminate after cancellation")
+	// ErrFlowProtocolRequestLimit is returned when Flow exceeds its configured protocol request budget.
+	ErrFlowProtocolRequestLimit = errkit.New("flow protocol request limit exceeded")
 )
+
+const flowRuntimeTerminationGrace = time.Second
+
+type flowRunResult struct {
+	err error
+}
 
 // ProtoOptions are options that can be passed to flow protocol callback
 // ex: dns(protoOptions) <- protoOptions are optional and can be anything
@@ -54,7 +66,8 @@ type FlowExecutor struct {
 	// a request ex: if dynamic extractor returns ["value"] it will be converted to "value"
 	flattenKeys []string
 
-	executed *mapsutil.SyncLockMap[string, struct{}]
+	executed             *mapsutil.SyncLockMap[string, struct{}]
+	protocolRequestCount atomic.Int64
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
@@ -229,12 +242,8 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// get a new runtime from pool
 	runtime := GetJSRuntime(f.options.Options)
-	defer func() {
-		// whether to reuse or not depends on the whether script modifies
-		// global scope or not,
-		PutJSRuntime(runtime, compiler.CanRunAsIIFE(f.options.Flow))
-	}()
-	defer func() {
+	cleanupRuntime := func() {
+		runtime.ClearInterrupt()
 		// remove set builtin
 		_ = runtime.GlobalObject().Delete("set")
 		_ = runtime.GlobalObject().Delete("template")
@@ -242,16 +251,14 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 			_ = runtime.GlobalObject().Delete(proto)
 		}
 		runtime.RemoveContextValue("executionId")
-	}()
-
-	// TODO(dwisiswant0): remove this once we get the RCA.
+		// whether to reuse or not depends on the whether script modifies
+		// global scope or not,
+		PutJSRuntime(runtime, compiler.CanRunAsIIFE(f.options.Flow))
+	}
+	cleanupOnReturn := true
 	defer func() {
-		if ci.IsCI() {
-			return
-		}
-
-		if r := recover(); r != nil {
-			f.ctx.LogError(fmt.Errorf("panic occurred while executing flow: %v", r))
+		if cleanupOnReturn {
+			cleanupRuntime()
 		}
 	}()
 
@@ -285,11 +292,19 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	runtime.SetContextValue("executionId", f.options.Options.ExecutionId)
 
 	// pass flow and execute the js vm and handle errors
-	_, err := runtime.RunProgram(f.program)
+	runResult, abandoned := runFlowProgram(ctx.Context(), runtime, f.program)
+	if abandoned != nil {
+		cleanupOnReturn = false
+		go func() {
+			<-abandoned
+			cleanupRuntime()
+		}()
+		return errkit.Wrapf(ErrFlowRuntimeTerminationTimeout, "%v", ctx.Context().Err())
+	}
 	f.reconcileProgress()
-	if err != nil {
-		ctx.LogError(err)
-		return errkit.Wrapf(err, "failed to execute flow\n%v\n", f.options.Flow)
+	if runResult.err != nil {
+		ctx.LogError(runResult.err)
+		return errkit.Wrapf(runResult.err, "failed to execute flow\n%v\n", f.options.Flow)
 	}
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
@@ -298,6 +313,38 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}
 
 	return nil
+}
+
+func runFlowProgram(ctx context.Context, runtime *goja.Runtime, program *goja.Program) (flowRunResult, <-chan flowRunResult) {
+	result := make(chan flowRunResult, 1)
+	go func() {
+		outcome := flowRunResult{}
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				if ci.IsCI() {
+					panic(recovered)
+				}
+				outcome.err = fmt.Errorf("panic occurred while executing flow: %v", recovered)
+			}
+			result <- outcome
+		}()
+		_, outcome.err = runtime.RunProgram(program)
+	}()
+
+	select {
+	case outcome := <-result:
+		return outcome, nil
+	case <-ctx.Done():
+		runtime.Interrupt(ctx.Err())
+		timer := time.NewTimer(flowRuntimeTerminationGrace)
+		defer timer.Stop()
+		select {
+		case outcome := <-result:
+			return outcome, nil
+		case <-timer.C:
+			return flowRunResult{}, result
+		}
+	}
 }
 
 func (f *FlowExecutor) reconcileProgress() {

@@ -34,6 +34,9 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		// execution logic for http()/dns() etc
 		for index := range f.allProtocols[opts.protoName] {
 			req := f.allProtocols[opts.protoName][index]
+			if !f.reserveProtocolRequests(runtime, req) {
+				return matcherStatus.Load()
+			}
 			// transform input if required
 			inputItem := f.ctx.Input.Clone()
 			if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
@@ -71,6 +74,9 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 			}
 			return matcherStatus.Load()
 		}
+		if !f.reserveProtocolRequests(runtime, req) {
+			return matcherStatus.Load()
+		}
 		// transform input if required
 		inputItem := f.ctx.Input.Clone()
 		if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
@@ -98,6 +104,32 @@ func requestKey(proto string, req protocols.Request, id string) string {
 		id = req.GetID()
 	}
 	return proto + ":" + id
+}
+
+func (f *FlowExecutor) reserveProtocolRequests(runtime *goja.Runtime, req protocols.Request) bool {
+	limit := f.options.MaxFlowProtocolRequests
+	if limit <= 0 {
+		return true
+	}
+
+	cost := int64(req.Requests())
+	if cost < 1 {
+		cost = 1
+	}
+	for {
+		current := f.protocolRequestCount.Load()
+		if cost > limit-current {
+			err := errkit.Wrapf(ErrFlowProtocolRequestLimit, "maximum is %d", limit)
+			if storeErr := f.allErrs.Set("flow:request-limit", err); storeErr != nil {
+				f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", storeErr))
+			}
+			runtime.Interrupt(err)
+			return false
+		}
+		if f.protocolRequestCount.CompareAndSwap(current, current+cost) {
+			return true
+		}
+	}
 }
 
 // protocolResultCallback returns a callback that is executed

@@ -137,6 +137,9 @@ type ExecutorOptions struct {
 	ProtocolType templateTypes.ProtocolType
 	// Flow is execution flow for the template (written in javascript)
 	Flow string
+	// MaxFlowProtocolRequests bounds protocol requests issued by one Flow execution.
+	// Zero leaves the execution unbounded for callers that trust their templates.
+	MaxFlowProtocolRequests int64
 	// IsMultiProtocol is true if template has more than one protocol
 	IsMultiProtocol bool
 	// templateStore is a map which contains template context for each scan  (i.e input * template-id pair)
@@ -348,6 +351,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ResumeCfg:                    e.ResumeCfg,
 		ProtocolType:                 e.ProtocolType,
 		Flow:                         e.Flow,
+		MaxFlowProtocolRequests:      e.MaxFlowProtocolRequests,
 		IsMultiProtocol:              e.IsMultiProtocol,
 		JsCompiler:                   e.JsCompiler,
 		AuthProvider:                 e.AuthProvider,
@@ -532,4 +536,5 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Logger = n.Logger
 	e.CustomFastdialer = n.CustomFastdialer
 	e.ClusterMappings = n.ClusterMappings.Copy()
+	e.MaxFlowProtocolRequests = n.MaxFlowProtocolRequests
 }

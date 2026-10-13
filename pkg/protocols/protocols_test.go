@@ -13,9 +13,10 @@ func TestExecutorOptionsCopyPreservesInteractshScope(t *testing.T) {
 	require.NoError(t, err)
 	scope := client.NewRequestScope()
 
-	copy := (&ExecutorOptions{Interactsh: client, InteractshScope: scope}).Copy()
+	copy := (&ExecutorOptions{Interactsh: client, InteractshScope: scope, MaxFlowProtocolRequests: 1000}).Copy()
 	require.Same(t, client, copy.Interactsh)
 	require.Same(t, scope, copy.InteractshScope)
+	require.Equal(t, int64(1000), copy.MaxFlowProtocolRequests)
 }
 
 func TestExecutorOptionsApplyNewEngineOptionsReplacesInteractshScope(t *testing.T) {
@@ -26,10 +27,12 @@ func TestExecutorOptionsApplyNewEngineOptionsReplacesInteractshScope(t *testing.
 
 	reused := &ExecutorOptions{Interactsh: client, InteractshScope: previous}
 	reused.ApplyNewEngineOptions(&ExecutorOptions{
-		Options:         &types.Options{},
-		Interactsh:      client,
-		InteractshScope: next,
+		Options:                 &types.Options{},
+		Interactsh:              client,
+		InteractshScope:         next,
+		MaxFlowProtocolRequests: 1000,
 	})
 
 	require.Same(t, next, reused.InteractshScope)
+	require.Equal(t, int64(1000), reused.MaxFlowProtocolRequests)
 }
