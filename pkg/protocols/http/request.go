@@ -112,6 +112,11 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		return err
 	}
 	request.setCustomHeaders(requestForDump)
+	// Auth is applied again on each raced request. The dump is what replay
+	// sends, so it has to include the same headers.
+	if !request.SkipSecretFile {
+		requestForDump.ApplyAuth(request.options.AuthProvider)
+	}
 	dumpedRequest, err := dump(requestForDump, reqURL)
 	if err != nil {
 		return err
@@ -1198,8 +1203,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			event.UsesInteractsh = true
 		}
 
+		globalMatched := false
 		if request.options.GlobalMatchers.HasMatchers() {
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
+				globalMatched = true
 				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
 			})
 		}
@@ -1210,7 +1217,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		callback(event)
 
-		if !replayed && event.OperatorsResult != nil && event.OperatorsResult.Matched {
+		localMatched := event.OperatorsResult != nil && event.OperatorsResult.Matched
+		if !replayed && (localMatched || globalMatched) {
 			replayed = true
 			request.replayRequest(dumpedRequest, formedURL)
 		}
