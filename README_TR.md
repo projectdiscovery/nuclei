@@ -147,7 +147,7 @@ TARGET:
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
 
 TARGET-FORMAT:
-   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger) (default "list")
+   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
    -ro, -required-only            use only required fields in input format when generating requests
    -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
    -vtt, -vars-text-templating    enable text templating for vars in input file (only for yaml input mode)
@@ -173,6 +173,14 @@ TEMPLATES:
    -esc, -enable-self-contained           enable loading self-contained templates
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
+   -llm                                   enable llm matchers and extractors (semantic matching)
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
+   -llm-model string                      model used for semantic matching
+   -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
+   -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
+   -llm-concurrency int                   maximum concurrent llm calls (default 4)
+   -llm-cache                             cache llm responses within a scan (default true)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -235,7 +243,7 @@ CONFIGURATIONS:
    -ztls                                 use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default
    -sni string                           tls sni hostname to use (default: input domain name)
    -dka, -dialer-keep-alive value        keep-alive duration for network requests.
-   -lfa, -allow-local-file-access        allows file (payload) access anywhere on the system
+   -lfa, -allow-local-file-access        allow all templates in the run to read any file on the system (not just payloads)
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
@@ -264,6 +272,9 @@ FUZZING:
    -dtr, -dast-report                  write dast scan report to file
    -dtst, -dast-server-token string    dast server token (optional)
    -dtsa, -dast-server-address string  dast server address (default "localhost:9055")
+   -dtp, -dast-proxy                   enable dast proxy mode (fuzz live traffic proxied through nuclei)
+   -dtpa, -dast-proxy-address string   dast proxy listen address (default "127.0.0.1:9056")
+   -dtpau, -dast-proxy-auth string     dast proxy basic auth in user:pass format (required for non-loopback address)
    -dfp, -display-fuzz-points          display fuzz points in the output for debugging
    -fuzz-param-frequency int           frequency of uninteresting parameters for fuzzing before skipping (default 10)
    -fa, -fuzz-aggression string        fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")

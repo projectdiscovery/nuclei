@@ -196,9 +196,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
-	scope := r.options.NewVariablesScope(dynamicValues)
+	scope := r.options.NewVariablesScope()
 	r.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
-	scope.AddData(defaultReqVars, optionVars, r.options.Constants)
+	scope.AddData(dynamicValues, defaultReqVars, optionVars, r.options.Constants)
 	evaluation := r.options.Variables.EvaluateWithInteractshScope(scope, r.options.Interactsh)
 
 	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
@@ -207,13 +207,12 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	}
 
 	// allVars contains all variables from all sources
-	allVars := generators.MergeMaps(dynamicValues)
-
+	allVars := make(map[string]interface{})
 	if r.request.options.HasTemplateCtx(input.MetaInput) {
-		allVars = generators.MergeMaps(allVars, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		allVars = generators.MergeMaps(r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
 
-	allVars = generators.MergeMaps(allVars, defaultReqVars, optionVars, variablesMap, r.options.Constants)
+	allVars = generators.MergeMaps(allVars, dynamicValues, defaultReqVars, optionVars, variablesMap, r.options.Constants)
 
 	// Evaluate payload variables
 	// eg: payload variables can be username: jon.doe@{{Hostname}}
@@ -275,24 +274,21 @@ func (r *requestGenerator) validateSelfContainedHost(host string) error {
 func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	isRawRequest := r.request.isRaw()
 
-	values := generators.MergeMaps(
-		generators.BuildPayloadFromOptions(r.request.options.Options),
-		dynamicValues,
-		payloads, // payloads should override other variables in case of duplicate vars
-	)
+	optionValues := generators.BuildPayloadFromOptions(r.request.options.Options)
+	values := generators.MergeMaps(optionValues)
+	if r.request.options.HasTemplateCtx(input.MetaInput) {
+		values = generators.MergeMaps(values, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	values = generators.MergeMaps(values, dynamicValues, payloads)
 	// adds all variables from `variables` section in template
-	scope := r.request.options.NewVariablesScope(generators.BuildPayloadFromOptions(r.request.options.Options), dynamicValues, payloads)
+	scope := r.request.options.NewVariablesScope(optionValues)
 	r.request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
-	scope.AddData(r.options.Constants)
+	scope.AddData(dynamicValues, payloads, r.options.Constants)
 	evaluation := r.request.options.Variables.EvaluateWithInteractshScope(scope, r.request.options.Interactsh)
 
 	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
-	}
-
-	if r.request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
 
 	values = generators.MergeMaps(variablesMap, values)
@@ -446,6 +442,9 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 				}
 
 				annotationOverrides, _ = r.request.parseAnnotations(rawRequest, annotationRequest)
+				if annotationOverrides.err != nil {
+					return nil, errkit.Wrap(annotationOverrides.err, "failed to apply raw request annotations")
+				}
 				if annotationOverrides.request != nil && annotationOverrides.request.URL != nil {
 					rawRequestData.FullURL = annotationOverrides.request.String()
 				}
@@ -515,6 +514,9 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	}
 
 	if reqWithOverrides, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
+		if reqWithOverrides.err != nil {
+			return nil, errkit.Wrap(reqWithOverrides.err, "failed to apply raw request annotations")
+		}
 		generatedRequest.request = reqWithOverrides.request
 		generatedRequest.customCancelFunction = reqWithOverrides.cancelFunc
 		generatedRequest.interactshURLs = append(generatedRequest.interactshURLs, reqWithOverrides.interactshURLs...)
@@ -605,6 +607,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 func (r *requestGenerator) renderText(text string, values map[string]interface{}) (string, error) {
 	result, err := render.Render(render.Input{
+		Options:      r.options.GetOptions(),
 		Text:         text,
 		Values:       values,
 		Interactsh:   r.options.Interactsh,

@@ -6,11 +6,13 @@ import (
 
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"golang.org/x/sync/singleflight"
 )
 
 // Templates is a cache for caching and storing templates for reuse.
 type Cache struct {
 	items *mapsutil.SyncLockMap[string, parsedTemplate]
+	loads singleflight.Group
 }
 
 // New returns a new templates cache

@@ -92,6 +92,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         vars,
 				Values:       generators.MergeMaps(value, vars),
@@ -132,25 +133,14 @@ func extractBaseURLFromActions(steps []*engine.Action) (string, error) {
 }
 
 func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
-	instance, err := request.options.Browser.NewInstance()
-	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldNotGetHtmlElement)
-	}
-	defer func() {
-		_ = instance.Close()
-	}()
-
-	instance.SetInteractsh(request.options.Interactsh)
-
+	pageTimeout := time.Duration(request.options.Options.PageTimeout) * time.Second
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	options := &engine.Options{
-		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
+		Timeout:       pageTimeout,
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
 	}
@@ -159,15 +149,36 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
+	// limited as one request per run of the steps, the unit progress counts
+	if err := request.options.RateLimitTakeContext(input.Context(), input.MetaInput.Input); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not take rate limit")
+	}
+
+	instance, err := request.options.Browser.NewInstanceWithContext(input.Context(), pageTimeout)
+	if err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
+	}
+	var page *engine.Page
+	defer func() {
+		if closeErr := instance.CloseWithPage(page); closeErr != nil {
+			gologger.Warning().Msgf("Could not close headless browser instance: %s", closeErr)
+		}
+	}()
+	instance.SetInteractsh(request.options.Interactsh)
+
 	timeStart := time.Now()
-	out, page, err := instance.Run(input, request.Steps, payloads, options)
+	out, createdPage, err := instance.Run(input, request.Steps, payloads, options)
 	runDuration := time.Since(timeStart)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
-	defer page.Close()
+	page = createdPage
 
 	page.InteractshURLs = append(interactshURLs, page.InteractshURLs...)
 
@@ -227,7 +238,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		request.options.Interactsh.RequestEvent(page.InteractshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(page.InteractshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,

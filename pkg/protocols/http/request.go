@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,8 +23,10 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -70,22 +73,6 @@ var (
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
-}
-
-// rateLimitTake handles rate limiting, using per-host rate limiter if enabled, otherwise global
-func (request *Request) rateLimitTake(hostname string) {
-	if request.options.Options.PerHostRateLimit && hostname != "" {
-		// Use per-host rate limiter
-		if limiter, err := httpclientpool.GetPerHostRateLimiter(request.options.Options, hostname); err == nil && limiter != nil {
-			limiter.Take()
-			// Record request for pps stats
-			httpclientpool.RecordPerHostRateLimitRequest(request.options.Options, hostname)
-			return
-		}
-		// Fallback to global if per-host fails
-	}
-	// Use global rate limiter (or unlimited if per-host is enabled but hostname is empty)
-	request.options.RateLimitTake()
 }
 
 // executeRaceRequest executes race condition request for a URL
@@ -217,10 +204,10 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	workerCtx, cancelWorkers := context.WithCancel(input.Context())
+	defer cancelWorkers()
 
-	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
+	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
 	defer spmHandler.Cancel()
 
 	// wrappedCallback is a callback that wraps the original callback
@@ -238,6 +225,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if shouldStop {
 			// stop all running requests and exit
 			spmHandler.Trigger()
+			cancelWorkers()
 		}
 	}
 
@@ -277,7 +265,23 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					// Extract from request URL if available
 					hostname = t.req.request.Request.URL.String()
 				}
-				request.rateLimitTake(hostname)
+				if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
+					select {
+					case <-spmHandler.Done():
+						spmHandler.Release()
+						continue
+					case <-ctx.Done():
+						spmHandler.Release()
+						continue
+					case spmHandler.ResultChan <- err:
+						spmHandler.Release()
+						continue
+					}
+				}
+				if ctx.Err() != nil || spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+					spmHandler.Release()
+					continue
+				}
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 				err := request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -291,7 +295,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						}
 						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
-						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+						request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
 					}
 					wrappedCallback(event)
 				}, 0)
@@ -307,7 +311,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}()
 	}
 	for i := 0; i < currentWorkers; i++ {
-		spawnWorker(ctx)
+		spawnWorker(workerCtx)
 	}
 
 	// iterate payloads and make requests
@@ -336,7 +340,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			// if payload concurrency increased, add more workers
 			if spmHandler.Size() > currentWorkers {
 				for i := 0; i < spmHandler.Size()-currentWorkers; i++ {
-					spawnWorker(ctx)
+					spawnWorker(workerCtx)
 				}
 				currentWorkers = spmHandler.Size()
 			}
@@ -379,6 +383,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return nil
 			}
 			return multierr.Combine(spmHandler.CombinedResults()...)
+		case <-workerCtx.Done():
+			close(tasks)
+			workersWg.Wait()
+			if spmHandler.FoundFirstMatch() {
+				return nil
+			}
+			return context.Cause(workerCtx)
 		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
 		}
 		request.options.Progress.IncrementRequests()
@@ -536,12 +547,19 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	generator := request.newGenerator(false)
 
-	var gotDynamicValues map[string][]string
+	initialContext := dynamicValueContext{
+		values:   generators.CopyMap(dynamicValues),
+		previous: cloneInternalEvent(previous),
+	}
+	dynamicValueContexts := []dynamicValueContext{initialContext}
+	if request.IterateAll {
+		dynamicValueContexts = expandDynamicValueContexts(initialContext, generators.MergeMapsMany(dynamicValues), true)
+	}
 	var requestErr error
 
+executionLoop:
 	for {
-		// returns two values, error and skip, which skips the execution for the request instance.
-		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
+		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := request.newContext(input)
@@ -551,9 +569,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
-					return true, nil
+					return false, true, nil, nil
 				}
-				return true, err
+				return false, true, nil, err
 			}
 			// ideally if http template used a custom port or hostname
 			// we would want to update it in input but currently templateCtx logic
@@ -568,7 +586,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				// Use the generated URL directly - the normalization function will extract host:port correctly
 				hostname = generatedHttpRequest.URL()
 			}
-			request.rateLimitTake(hostname)
+			if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
+				return false, true, nil, err
+			}
 
 			if generatedHttpRequest.customCancelFunction != nil {
 				defer generatedHttpRequest.customCancelFunction()
@@ -580,10 +600,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			// Check if hosts keep erroring
 			if request.isUnresponsiveAddress(updatedInput) {
-				return true, nil
+				return false, true, nil, nil
 			}
 			var gotMatches bool
-			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+			var extractedDynamicValues map[string][]string
+			execReqErr := request.executeRequest(input, generatedHttpRequest, previousEvent, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
 				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
@@ -597,13 +618,16 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 					}
 					allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
-					request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+					request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
 					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 				}
 				// Add the extracts to the dynamic values if any.
 				if event.OperatorsResult != nil {
 					gotMatches = event.OperatorsResult.Matched
-					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
+					extractedDynamicValues = generators.MergeMapsMany(
+						request.extractCurrentDynamicValues(event, generator.currentIndex),
+						extractedDynamicValues,
+					)
 				}
 				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
 				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
@@ -613,9 +637,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				callback(event)
 			}, generator.currentIndex)
 
-			// If a variable is unresolved, skip all further requests
+			// A variable may be unresolved for one iterate-all branch while sibling
+			// branches remain executable.
 			if errors.Is(execReqErr, ErrMissingVars) {
-				return true, nil
+				return true, false, nil, nil
 			}
 
 			request.recordHostResult(updatedInput, execReqErr)
@@ -632,9 +657,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
 			if shouldStopAtFirstMatch && gotMatches {
-				return true, nil
+				return false, true, nil, nil
 			}
-			return false, nil
+			return false, false, extractedDynamicValues, nil
 		}
 
 		inputData, payloads, ok := generator.nextValue()
@@ -648,27 +673,216 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		default:
 		}
 
-		var gotErr error
-		var skip bool
-		if len(gotDynamicValues) > 0 {
-			operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAll, func(data map[string]interface{}) bool {
-				if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
-					return true
+		isOnceRequest := generator.hasMarker(inputData, Once)
+
+		if isOnceRequest {
+			var onceExtracted map[string][]string
+			var oncePreviousDelta output.InternalEvent
+			executed := false
+			for _, branch := range dynamicValueContexts {
+				select {
+				case <-input.Context().Done():
+					return input.Context().Err()
+				default:
 				}
-				return false
-			})
-		} else {
-			skip, gotErr = executeFunc(inputData, payloads, dynamicValues)
+
+				before := cloneInternalEvent(branch.previous)
+				after := cloneInternalEvent(branch.previous)
+				skipBranch, stop, extracted, gotErr := executeFunc(inputData, generators.CopyMap(payloads), branch.values, after)
+				if gotErr != nil {
+					if requestErr == nil {
+						requestErr = gotErr
+					}
+					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+					break executionLoop
+				}
+				if stop {
+					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+					break executionLoop
+				}
+				if skipBranch {
+					continue
+				}
+				executed = true
+				onceExtracted = extracted
+				oncePreviousDelta = changedEventValues(before, after)
+				break
+			}
+			if !executed {
+				dynamicValueContexts = nil
+				continue
+			}
+
+			nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
+			for _, branch := range dynamicValueContexts {
+				maps.Copy(branch.previous, oncePreviousDelta)
+				nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, onceExtracted, request.IterateAll)...)
+			}
+			dynamicValueContexts = nextDynamicValueContexts
+			continue
 		}
-		if gotErr != nil && requestErr == nil {
-			requestErr = gotErr
+
+		nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
+		for _, branch := range dynamicValueContexts {
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
+			}
+
+			skipBranch, stop, extractedDynamicValues, gotErr := executeFunc(inputData, generators.CopyMap(payloads), branch.values, branch.previous)
+			if gotErr != nil {
+				if requestErr == nil {
+					requestErr = gotErr
+				}
+				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+				break executionLoop
+			}
+			if stop {
+				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+				break executionLoop
+			}
+			if skipBranch {
+				continue
+			}
+			nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, extractedDynamicValues, request.IterateAll)...)
 		}
-		if skip || gotErr != nil {
-			request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
-			break
-		}
+		dynamicValueContexts = nextDynamicValueContexts
 	}
 	return requestErr
+}
+
+type dynamicValueContext struct {
+	values   map[string]interface{}
+	seen     map[string]map[string]struct{}
+	previous output.InternalEvent
+}
+
+func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string][]string, iterateAll bool) []dynamicValueContext {
+	if len(extracted) == 0 {
+		return []dynamicValueContext{parent}
+	}
+
+	nextValues := make(map[string][]string, len(extracted))
+	for key, values := range extracted {
+		values = sliceutil.Dedupe(values)
+		if len(values) == 0 {
+			continue
+		}
+
+		seen := parent.seen[key]
+		if len(seen) == 0 {
+			nextValues[key] = values
+			continue
+		}
+
+		current := types.ToString(parent.values[key])
+		for _, value := range values {
+			if value == current {
+				nextValues[key] = append(nextValues[key], value)
+				break
+			}
+		}
+		for _, value := range values {
+			if _, exists := seen[value]; !exists {
+				nextValues[key] = append(nextValues[key], value)
+			}
+		}
+		if len(nextValues[key]) == 0 {
+			nextValues[key] = values
+		}
+	}
+	if len(nextValues) == 0 {
+		return []dynamicValueContext{parent}
+	}
+
+	seen := cloneSeenValues(parent.seen)
+	for key, extractedValues := range extracted {
+		if seen[key] == nil {
+			seen[key] = make(map[string]struct{}, len(extractedValues))
+		}
+		for _, value := range extractedValues {
+			seen[key][value] = struct{}{}
+		}
+	}
+
+	var contexts []dynamicValueContext
+	operators.MakeDynamicValuesCallback(nextValues, iterateAll, func(values map[string]interface{}) bool {
+		contexts = append(contexts, dynamicValueContext{
+			values:   generators.MergeMaps(parent.values, values),
+			seen:     seen,
+			previous: cloneInternalEvent(parent.previous),
+		})
+		return false
+	})
+	return contexts
+}
+
+func cloneSeenValues(source map[string]map[string]struct{}) map[string]map[string]struct{} {
+	cloned := make(map[string]map[string]struct{}, len(source))
+	for key, values := range source {
+		cloned[key] = maps.Clone(values)
+	}
+	return cloned
+}
+
+func cloneInternalEvent(source output.InternalEvent) output.InternalEvent {
+	cloned := make(output.InternalEvent, len(source))
+	maps.Copy(cloned, source)
+	return cloned
+}
+
+func changedEventValues(before, after output.InternalEvent) output.InternalEvent {
+	changed := make(output.InternalEvent)
+	for key, value := range after {
+		if previousValue, ok := before[key]; !ok || !reflect.DeepEqual(previousValue, value) {
+			changed[key] = value
+		}
+	}
+	return changed
+}
+
+func (request *Request) extractCurrentDynamicValues(event *output.InternalWrappedEvent, requestIndex int) map[string][]string {
+	if request.CompiledOperators == nil {
+		return nil
+	}
+
+	values := make(map[string][]string)
+	for _, extractor := range request.CompiledOperators.Extractors {
+		if !extractor.Internal || extractor.Name == "" || !extractorAppliesToRequest(extractor.Part, requestIndex) {
+			continue
+		}
+		if extractor.GetType() == extractors.LLMExtractor {
+			if event.OperatorsResult != nil {
+				values[extractor.Name] = append(values[extractor.Name], event.OperatorsResult.DynamicValues[extractor.Name]...)
+			}
+			if len(values[extractor.Name]) == 0 {
+				switch extracted := event.InternalEvent[extractor.Name].(type) {
+				case []string:
+					values[extractor.Name] = append(values[extractor.Name], extracted...)
+				case string:
+					values[extractor.Name] = append(values[extractor.Name], extracted)
+				}
+			}
+			continue
+		}
+		for value := range request.Extract(event.InternalEvent, extractor) {
+			values[extractor.Name] = append(values[extractor.Name], value)
+		}
+	}
+	for key, extracted := range values {
+		values[key] = sliceutil.Dedupe(extracted)
+	}
+	return values
+}
+
+func extractorAppliesToRequest(part string, requestIndex int) bool {
+	separator := strings.LastIndexByte(part, '_')
+	if separator < 0 || separator == len(part)-1 {
+		return true
+	}
+	index, err := strconv.Atoi(part[separator+1:])
+	return err != nil || index == requestIndex
 }
 
 const drainReqSize = int64(8 * unitutils.Kilo)
@@ -690,16 +904,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	request.setCustomHeaders(generatedRequest)
+	fuzzed := &generatedRequest.fuzzGeneratedRequest
+	cookieFuzzing := generatedRequest.request != nil && fuzzed.Component != nil && fuzzed.Component.Name() == component.RequestCookieComponent && len(fuzzed.FuzzedKeys) > 0
 
 	var (
 		resp            *http.Response
 		fromCache       bool
 		dumpedRequest   []byte
 		projectCacheKey []byte
-		// executingClient is the client that actually performed the HTTP
-		// request, preserving any per-request overrides (cookie jar,
-		// CustomMaxTimeout) applied via connConfig.Clone(). Reused below by
-		// the analyzer so follow-up requests share the same session/timeout.
+		// executingClient preserves the request's cookie jar, fuzz protection,
+		// and timeout for network execution and analyzer follow-up requests,
+		// including follow-ups when the initial response came from the cache.
 		executingClient *retryablehttp.Client
 	)
 
@@ -760,7 +975,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	// === apply auth strategies ===
 	if generatedRequest.request != nil && !request.SkipSecretFile {
+		if request.options.AuthProvider != nil && cookieFuzzing {
+			removeFuzzedCookieFields(generatedRequest.request.Request, fuzzed.FuzzedKeys)
+		}
 		generatedRequest.ApplyAuth(request.options.AuthProvider)
+	}
+	if cookieFuzzing {
+		restoreFuzzedCookieFields(generatedRequest.request.Request, fuzzed.FuzzedKeys)
 	}
 
 	var formedURL string
@@ -840,13 +1061,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				fromCache = false
 			}
 		}
-		if resp == nil {
-			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
-				return errSignature
-			}
-
+		if resp == nil || (request.Analyzer != nil && cookieFuzzing) {
 			connConfig := request.connConfiguration
-			if input.CookieJar != nil {
+			if input.CookieJar != nil && !request.DisableCookie {
 				connConfig = connConfig.Clone()
 				connConfig.Connection.SetCookieJar(input.CookieJar)
 			}
@@ -861,7 +1078,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if clientErr != nil {
 				return errors.Wrap(clientErr, "could not get http client")
 			}
+			if cookieFuzzing {
+				httpclient, clientErr = request.preserveFuzzedCookies(httpclient, connConfig, hostname, generatedRequest.request.Request, fuzzed.FuzzedKeys)
+				if clientErr != nil {
+					return clientErr
+				}
+			}
 			executingClient = httpclient
+		}
+		if resp == nil {
+			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
+				return errSignature
+			}
 
 			// Check if HTTP-to-HTTPS port correction is needed before sending request.
 			// The correction is keyed by host:port and shared across templates, so a
@@ -887,7 +1115,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			resp, err = httpclient.Do(generatedRequest.request)
+			resp, err = executingClient.Do(generatedRequest.request)
 
 			// If we forced http->https from a previous detection and the corrected
 			// request failed (e.g. a false positive where the port actually speaks
@@ -898,7 +1126,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
 				generatedRequest.request.Scheme = "http"
 				httpsCorrectionTracker.Evict(httpsCorrectionURL)
-				resp, err = httpclient.Do(generatedRequest.request)
+				resp, err = executingClient.Do(generatedRequest.request)
 			}
 		}
 	}
@@ -1079,10 +1307,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		if request.Analyzer != nil {
 			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
-			// Prefer reusing the exact client that executed the request so
-			// the analyzer inherits any per-request cookie jar / timeout
-			// overrides; fall back to a per-host lookup for paths that did
-			// not go through the standard execution flow (pipeline/unsafe).
+			// Reuse the request's client so the analyzer inherits its cookie jar,
+			// fuzz protection, and timeout. Other execution paths (pipeline/unsafe)
+			// fall back to a per-host lookup.
 			analyzerClient := executingClient
 			if analyzerClient == nil {
 				analyzerClient = request.getHTTPClientForHost(hostname)

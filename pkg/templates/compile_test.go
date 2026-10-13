@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -595,6 +597,110 @@ javascript:
 	require.NoError(t, err)
 	require.True(t, cached.Verified)
 	require.True(t, cached.Options.Verified)
+}
+
+func TestParseReusesSharedParsedTemplateAcrossEngineCaches(t *testing.T) {
+	var sourceReads atomic.Int32
+	templateSource := `id: shared-parsed-template
+
+info:
+  name: Shared parsed template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    body: |
+      first line
+      second line
+`
+	server := httptest.NewServer(netHttp.HandlerFunc(func(w netHttp.ResponseWriter, _ *netHttp.Request) {
+		sourceReads.Add(1)
+		_, _ = w.Write([]byte(templateSource))
+	}))
+	t.Cleanup(server.Close)
+
+	setup()
+	templatePath := server.URL + "/template.yaml"
+	sharedParser := templates.NewParser()
+	_, err := sharedParser.ParseTemplate(templatePath, executerOpts.Catalog)
+	require.NoError(t, err)
+
+	compiledTemplates := make([]*templates.Template, 5)
+	parseErrors := make([]error, len(compiledTemplates))
+	var waitGroup sync.WaitGroup
+	for i := range compiledTemplates {
+		engineOptions := executerOpts.Copy()
+		engineOptions.Parser = templates.NewParserWithParsedCache(sharedParser.Cache())
+		engineOptions.TemplateVerificationCallback = func(string) *protocols.TemplateVerification {
+			return trustedVerificationForTest(templateSource)
+		}
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+			compiledTemplates[i], parseErrors[i] = templates.Parse(templatePath, nil, engineOptions)
+		}()
+	}
+	waitGroup.Wait()
+
+	for i := range compiledTemplates {
+		require.NoError(t, parseErrors[i])
+		require.True(t, compiledTemplates[i].Verified)
+	}
+
+	require.Equal(t, int32(1), sourceReads.Load())
+	cachedTemplate, err := sharedParser.Cache().Get(templatePath)
+	require.NoError(t, err)
+	require.NotNil(t, cachedTemplate)
+	require.NotContains(t, cachedTemplate.RequestsHTTP[0].Body, "\r\n")
+	for i := 1; i < len(compiledTemplates); i++ {
+		require.NotSame(t, compiledTemplates[0], compiledTemplates[i])
+		require.NotSame(t, compiledTemplates[0].RequestsHTTP[0], compiledTemplates[i].RequestsHTTP[0])
+		require.NotSame(t, compiledTemplates[0].RequestsHTTP[0].Options(), compiledTemplates[i].RequestsHTTP[0].Options())
+	}
+	require.NotSame(t, cachedTemplate.RequestsHTTP[0], compiledTemplates[0].RequestsHTTP[0])
+}
+
+func TestParseSharedTemplatePreservesRuntimePreprocessing(t *testing.T) {
+	var sourceReads int
+	templateSource := `id: shared-preprocessed-template
+
+info:
+  name: Shared preprocessed template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{randstr}}"
+`
+	server := httptest.NewServer(netHttp.HandlerFunc(func(w netHttp.ResponseWriter, _ *netHttp.Request) {
+		sourceReads++
+		_, _ = w.Write([]byte(templateSource))
+	}))
+	t.Cleanup(server.Close)
+
+	setup()
+	templatePath := server.URL + "/template.yaml"
+	sharedParser := templates.NewParser()
+	_, err := sharedParser.ParseTemplate(templatePath, executerOpts.Catalog)
+	require.NoError(t, err)
+
+	compiledPaths := make([]string, 2)
+	for i := range compiledPaths {
+		engineOptions := executerOpts.Copy()
+		engineOptions.Parser = templates.NewParserWithParsedCache(sharedParser.Cache())
+		compiled, parseErr := templates.Parse(templatePath, nil, engineOptions)
+		require.NoError(t, parseErr)
+		compiledPaths[i] = compiled.RequestsHTTP[0].Path[0]
+		require.NotContains(t, compiledPaths[i], "{{randstr}}")
+	}
+
+	require.Equal(t, 1, sourceReads)
+	require.NotEqual(t, compiledPaths[0], compiledPaths[1])
 }
 
 func Test_WrongTemplate(t *testing.T) {
