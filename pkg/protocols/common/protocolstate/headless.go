@@ -172,6 +172,13 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 		if target == "" {
 			continue
 		}
+		if strings.Contains(target, "://") {
+			parsed, err := urlutil.Parse(target)
+			if err != nil || parsed.Hostname() == "" {
+				continue
+			}
+			target = parsed.Hostname()
+		}
 		if !strings.Contains(target, "/") {
 			blockedPatterns = append(blockedPatterns,
 				"*://"+target+"/*",
@@ -242,17 +249,37 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 		mu.Lock()
 		defer mu.Unlock()
 
-		newPatterns := []string{urlStr, "*://" + urlStr + "/*", "*://" + urlStr + ":*/*", "ws://" + urlStr + "/*", "ws://" + urlStr + ":*/*", "wss://" + urlStr + "/*", "wss://" + urlStr + ":*/*", "*" + urlStr + "*"}
-		updated := false
+		newPatterns := []string{urlStr}
+		if parsed, err := urlutil.Parse(urlStr); err == nil && parsed.Hostname() != "" {
+			host := parsed.Hostname()
+			if strings.Count(host, ":") > 1 && !strings.HasPrefix(host, "[") {
+				host = "[" + host + "]"
+			}
+			newPatterns = append(newPatterns,
+				"*://"+host+"/*",
+				"*://"+host+":*/*",
+				"ws://"+host+"/*",
+				"ws://"+host+":*/*",
+				"wss://"+host+"/*",
+				"wss://"+host+":*/*",
+			)
+		}
+
+		var pending []string
 		for _, p := range newPatterns {
 			if _, exists := patternSet[p]; !exists {
-				patternSet[p] = struct{}{}
-				dynamicPatterns = append(dynamicPatterns, p)
-				updated = true
+				pending = append(pending, p)
 			}
 		}
-		if updated {
-			_ = (proto.NetworkSetBlockedURLs{Urls: dynamicPatterns}).Call(page)
+
+		if len(pending) > 0 {
+			candidateList := append(dynamicPatterns, pending...)
+			if err := (proto.NetworkSetBlockedURLs{Urls: candidateList}).Call(page); err == nil {
+				for _, p := range pending {
+					patternSet[p] = struct{}{}
+				}
+				dynamicPatterns = candidateList
+			}
 		}
 	}
 
@@ -265,10 +292,14 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 		},
 		func(e *proto.NetworkWebSocketWillSendHandshakeRequest) {
 			if val, ok := wsMap.Load(e.RequestID); ok {
+				wsMap.Delete(e.RequestID)
 				if wsURL, ok := val.(string); ok && !IsHostAllowed(options.ExecutionId, wsURL) {
 					addBlockedURL(wsURL)
 				}
 			}
+		},
+		func(e *proto.NetworkWebSocketClosed) {
+			wsMap.Delete(e.RequestID)
 		},
 	)
 	go waitWs()
