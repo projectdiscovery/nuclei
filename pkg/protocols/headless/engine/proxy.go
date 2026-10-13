@@ -99,7 +99,13 @@ func (p *headlessProxy) handleConn(clientConn net.Conn) {
 		executionId = p.options.ExecutionId
 	}
 
-	if !protocolstate.IsHostAllowed(executionId, host) {
+	h := host
+	if splitH, _, err := net.SplitHostPort(host); err == nil {
+		h = splitH
+	}
+	canonH := protocolstate.CanonicalizeHost(h)
+
+	if !protocolstate.IsHostAllowed(executionId, host) || !protocolstate.IsHostAllowed(executionId, canonH) {
 		if req.Method == http.MethodConnect {
 			_, _ = clientConn.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\n"))
 		} else {
@@ -128,7 +134,38 @@ func (p *headlessProxy) handleConn(clientConn net.Conn) {
 }
 
 func (p *headlessProxy) dialTarget(target string) (net.Conn, error) {
-	// If upstream proxy is configured, route through it
+	host := target
+	port := "80"
+	if h, pt, err := net.SplitHostPort(target); err == nil {
+		host = h
+		port = pt
+	}
+	canonHost := protocolstate.CanonicalizeHost(host)
+
+	executionId := ""
+	if p.options != nil {
+		executionId = p.options.ExecutionId
+	}
+
+	if !protocolstate.IsHostAllowed(executionId, host) || !protocolstate.IsHostAllowed(executionId, canonHost) {
+		return nil, fmt.Errorf("target %s blocked by network policy", target)
+	}
+
+	// If hostname is a domain name (not an IP literal), resolve and validate all IPs
+	if ip := net.ParseIP(canonHost); ip == nil {
+		if ips, err := net.LookupIP(canonHost); err == nil {
+			for _, resolvedIP := range ips {
+				canonIP := protocolstate.CanonicalizeHost(resolvedIP.String())
+				if !protocolstate.IsHostAllowed(executionId, canonIP) {
+					return nil, fmt.Errorf("target %s resolves to blocked IP %s", target, canonIP)
+				}
+			}
+		}
+	}
+
+	dialAddr := net.JoinHostPort(canonHost, port)
+
+	// If upstream proxy is configured, route through it after validation
 	if p.options != nil && p.options.AliveHttpProxy != "" {
 		proxyURL, err := url.Parse(p.options.AliveHttpProxy)
 		if err == nil {
@@ -136,8 +173,8 @@ func (p *headlessProxy) dialTarget(target string) (net.Conn, error) {
 			if err != nil {
 				return nil, err
 			}
-			// CONNECT through upstream proxy
-			connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", target, target)
+			// CONNECT through upstream proxy with canonical address
+			connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", dialAddr, dialAddr)
 			if _, err := proxyConn.Write([]byte(connectReq)); err != nil {
 				proxyConn.Close()
 				return nil, err
@@ -155,17 +192,13 @@ func (p *headlessProxy) dialTarget(target string) (net.Conn, error) {
 	}
 
 	// Use fastdialer if available for network policy compliance and DNS caching
-	var executionId string
-	if p.options != nil {
-		executionId = p.options.ExecutionId
-	}
 	if dialer := protocolstate.GetDialersWithId(executionId); dialer != nil && dialer.Fastdialer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		return dialer.Fastdialer.Dial(ctx, "tcp", target)
+		return dialer.Fastdialer.Dial(ctx, "tcp", dialAddr)
 	}
 
-	return net.DialTimeout("tcp", target, 10*time.Second)
+	return net.DialTimeout("tcp", dialAddr, 10*time.Second)
 }
 
 func (p *headlessProxy) handleConnect(clientConn net.Conn, target string) {

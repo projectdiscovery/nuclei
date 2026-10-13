@@ -124,6 +124,22 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 	return ok
 }
 
+// CanonicalizeHost normalizes a hostname or IP string:
+// - strips surrounding whitespace and brackets (e.g. "[::1]" -> "::1")
+// - maps IPv4-mapped IPv6 literals (e.g. "::ffff:127.0.0.1" or "0:0:0:0:0:ffff:127.0.0.1") to canonical IPv4 ("127.0.0.1")
+func CanonicalizeHost(host string) string {
+	h := strings.TrimSpace(host)
+	h = strings.TrimPrefix(h, "[")
+	h = strings.TrimSuffix(h, "]")
+	if ip := net.ParseIP(h); ip != nil {
+		if ipv4 := ip.To4(); ipv4 != nil {
+			return ipv4.String()
+		}
+		return ip.String()
+	}
+	return h
+}
+
 // IsHostAllowed checks if the host is allowed by network policy
 func IsHostAllowed(executionId string, targetUrl string) bool {
 	dialers, ok := dialers.Get(executionId)
@@ -137,54 +153,51 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 		return false
 	}
 
-	targetUrlLower := strings.ToLower(strings.TrimSpace(targetUrl))
-	for _, excluded := range dialers.ExcludeTargets {
-		exLower := strings.ToLower(strings.TrimSpace(excluded))
-		if exLower != "" && (targetUrlLower == exLower || strings.TrimPrefix(targetUrlLower, "ws://") == exLower || strings.TrimPrefix(targetUrlLower, "wss://") == exLower || strings.TrimPrefix(targetUrlLower, "http://") == exLower || strings.TrimPrefix(targetUrlLower, "https://") == exLower) {
-			return false
-		}
-	}
+	rawTarget := strings.TrimSpace(targetUrl)
+	var host string
 
-	if urlx, err := urlutil.Parse(targetUrl); err == nil && urlx.Hostname() != "" {
-		host := urlx.Hostname()
-		for _, excluded := range dialers.ExcludeTargets {
-			exLower := strings.ToLower(strings.TrimSpace(excluded))
-			if exLower != "" && (strings.EqualFold(urlx.Host, exLower) || strings.EqualFold(host, exLower)) {
-				return false
-			}
-		}
-		_, ok = np.ValidateHost(host)
-		return ok
-	}
-
-	sepCount := strings.Count(targetUrl, ":")
-	if sepCount > 1 {
-		// most likely a ipv6 address (parse url and validate host)
-		return np.Validate(targetUrl)
-	}
-	if sepCount == 1 {
-		host, _, err := net.SplitHostPort(targetUrl)
-		if err == nil {
-			for _, excluded := range dialers.ExcludeTargets {
-				exLower := strings.ToLower(strings.TrimSpace(excluded))
-				if exLower != "" && (strings.EqualFold(targetUrl, exLower) || strings.EqualFold(host, exLower)) {
-					return false
+	if urlx, err := urlutil.Parse(rawTarget); err == nil && urlx.Hostname() != "" {
+		host = urlx.Hostname()
+	} else if h, _, err := net.SplitHostPort(rawTarget); err == nil {
+		host = h
+	} else {
+		host = rawTarget
+		for _, prefix := range []string{"ws://", "wss://", "http://", "https://"} {
+			if strings.HasPrefix(strings.ToLower(host), prefix) {
+				host = host[len(prefix):]
+				if idx := strings.Index(host, "/"); idx != -1 {
+					host = host[:idx]
 				}
+				if h, _, err := net.SplitHostPort(host); err == nil {
+					host = h
+				}
+				break
 			}
-			if _, ok := np.ValidateHost(host); !ok {
-				return false
-			}
-			return true
 		}
 	}
-	// just a hostname or ip without port
+
+	canonHost := CanonicalizeHost(host)
+
+	// Check explicit ExcludeTargets against raw, host, and canonical host
 	for _, excluded := range dialers.ExcludeTargets {
-		if strings.EqualFold(targetUrl, strings.TrimSpace(excluded)) {
+		ex := CanonicalizeHost(strings.TrimSpace(excluded))
+		if ex != "" {
+			if strings.EqualFold(canonHost, ex) || strings.EqualFold(host, ex) || strings.EqualFold(rawTarget, ex) {
+				return false
+			}
+		}
+	}
+
+	// Validate host against NetworkPolicy using both canonical and original host
+	if _, ok := np.ValidateHost(canonHost); !ok {
+		return false
+	}
+	if canonHost != host {
+		if _, ok := np.ValidateHost(host); !ok {
 			return false
 		}
 	}
-	_, ok = np.ValidateHost(targetUrl)
-	return ok
+	return true
 }
 
 // SetupHeadlessNetworkPolicy configures CDP Network blocking and WebSocket interception

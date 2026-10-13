@@ -235,3 +235,67 @@ func TestHeadlessProxy_RealChromeWebSocketEndToEnd(t *testing.T) {
 	require.Zero(t, blockedHits.Load(), "blocked WebSocket server must never receive connections from Chrome")
 }
 
+func TestHeadlessProxy_IPv4MappedIPv6WithUpstreamProxy(t *testing.T) {
+	// 1. Setup mock upstream HTTP proxy
+	upstreamLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer upstreamLn.Close()
+
+	var upstreamHits atomic.Int32
+	go func() {
+		for {
+			conn, err := upstreamLn.Accept()
+			if err != nil {
+				return
+			}
+			upstreamHits.Add(1)
+			conn.Close()
+		}
+	}()
+
+	// 2. Configure options with upstream proxy and restricted local network / excluded 127.0.0.1
+	execID := fmt.Sprintf("test-mapped-proxy-%d", time.Now().UnixNano())
+	opts := &types.Options{
+		ExecutionId:                execID,
+		AliveHttpProxy:             "http://" + upstreamLn.Addr().String(),
+		ExcludeTargets:             []string{"127.0.0.1"},
+		RestrictLocalNetworkAccess: true,
+	}
+
+	err = protocolstate.Init(opts)
+	require.NoError(t, err)
+
+	// 3. Start headless proxy
+	proxy, err := newHeadlessProxy(opts)
+	require.NoError(t, err)
+	defer proxy.Close()
+
+	// 4. Test mapped IPv6 variations
+	targets := []string{
+		"[::ffff:127.0.0.1]:9999",
+		"[0:0:0:0:0:ffff:127.0.0.1]:9999",
+		"[::ffff:169.254.169.254]:80",
+	}
+
+	for _, target := range targets {
+		t.Run(target, func(t *testing.T) {
+			conn, err := net.Dial("tcp", proxy.Addr())
+			require.NoError(t, err)
+			defer conn.Close()
+
+			connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", target, target)
+			_, err = conn.Write([]byte(connectReq))
+			require.NoError(t, err)
+
+			reader := bufio.NewReader(conn)
+			resp, err := http.ReadResponse(reader, nil)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		})
+	}
+
+	// Assert upstream proxy never received any connection for blocked mapped literals
+	require.Zero(t, upstreamHits.Load(), "upstream proxy must not be reached for denied mapped literals")
+}
+
+
