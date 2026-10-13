@@ -137,8 +137,23 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 		return false
 	}
 
+	targetUrlLower := strings.ToLower(strings.TrimSpace(targetUrl))
+	for _, excluded := range dialers.ExcludeTargets {
+		exLower := strings.ToLower(strings.TrimSpace(excluded))
+		if exLower != "" && (targetUrlLower == exLower || strings.TrimPrefix(targetUrlLower, "ws://") == exLower || strings.TrimPrefix(targetUrlLower, "wss://") == exLower || strings.TrimPrefix(targetUrlLower, "http://") == exLower || strings.TrimPrefix(targetUrlLower, "https://") == exLower) {
+			return false
+		}
+	}
+
 	if urlx, err := urlutil.Parse(targetUrl); err == nil && urlx.Hostname() != "" {
-		_, ok = np.ValidateHost(urlx.Hostname())
+		host := urlx.Hostname()
+		for _, excluded := range dialers.ExcludeTargets {
+			exLower := strings.ToLower(strings.TrimSpace(excluded))
+			if exLower != "" && (strings.EqualFold(urlx.Host, exLower) || strings.EqualFold(host, exLower)) {
+				return false
+			}
+		}
+		_, ok = np.ValidateHost(host)
 		return ok
 	}
 
@@ -148,13 +163,26 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 		return np.Validate(targetUrl)
 	}
 	if sepCount == 1 {
-		host, _, _ := net.SplitHostPort(targetUrl)
-		if _, ok := np.ValidateHost(host); !ok {
-			return false
+		host, _, err := net.SplitHostPort(targetUrl)
+		if err == nil {
+			for _, excluded := range dialers.ExcludeTargets {
+				exLower := strings.ToLower(strings.TrimSpace(excluded))
+				if exLower != "" && (strings.EqualFold(targetUrl, exLower) || strings.EqualFold(host, exLower)) {
+					return false
+				}
+			}
+			if _, ok := np.ValidateHost(host); !ok {
+				return false
+			}
+			return true
 		}
-		return true
 	}
 	// just a hostname or ip without port
+	for _, excluded := range dialers.ExcludeTargets {
+		if strings.EqualFold(targetUrl, strings.TrimSpace(excluded)) {
+			return false
+		}
+	}
 	_, ok = np.ValidateHost(targetUrl)
 	return ok
 }
