@@ -94,9 +94,10 @@ func IsRestrictLocalNetworkAccess(options *types.Options) bool {
 	return false
 }
 
-// isValidHost checks if the host is valid (only limited to http/https protocols)
+// isValidHost checks if the host is valid (for http/https and ws/wss protocols)
 func isValidHost(options *types.Options, targetUrl string) bool {
-	if !stringsutil.HasPrefixAny(targetUrl, "http:", "https:") {
+	normalized := strings.ToLower(strings.TrimSpace(targetUrl))
+	if !stringsutil.HasPrefixAny(normalized, "http:", "https:", "ws:", "wss:") {
 		return true
 	}
 
