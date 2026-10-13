@@ -219,7 +219,9 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 		blockedPatterns = append(blockedPatterns, localPatterns...)
 	}
 
-	_ = proto.NetworkEnable{}.Call(page)
+	if err := (proto.NetworkEnable{}).Call(page); err != nil {
+		return err
+	}
 	if len(blockedPatterns) > 0 {
 		if err := (proto.NetworkSetBlockedURLs{Urls: blockedPatterns}).Call(page); err != nil {
 			return err
