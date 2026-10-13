@@ -532,10 +532,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	generator := request.newGenerator(false)
 
-	dynamicValueContexts := []dynamicValueContext{{
+	initialContext := dynamicValueContext{
 		values:   generators.CopyMap(dynamicValues),
 		previous: cloneInternalEvent(previous),
-	}}
+	}
+	dynamicValueContexts := []dynamicValueContext{initialContext}
+	if request.IterateAll {
+		dynamicValueContexts = expandDynamicValueContexts(initialContext, generators.MergeMapsMany(dynamicValues), true)
+	}
 	var requestErr error
 
 executionLoop:
@@ -661,6 +665,12 @@ executionLoop:
 			var oncePreviousDelta output.InternalEvent
 			executed := false
 			for _, branch := range dynamicValueContexts {
+				select {
+				case <-input.Context().Done():
+					return input.Context().Err()
+				default:
+				}
+
 				before := cloneInternalEvent(branch.previous)
 				after := cloneInternalEvent(branch.previous)
 				skipBranch, stop, extracted, gotErr := executeFunc(inputData, generators.CopyMap(payloads), branch.values, after)

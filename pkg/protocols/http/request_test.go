@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/ratelimit"
 )
 
 func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
@@ -744,6 +745,90 @@ func TestHTTPExtractMultipleReuseOverridesTemplateContextPerBranch(t *testing.T)
 		func(*output.InternalWrappedEvent) {},
 	))
 	require.Equal(t, map[string]int{"/use/alpha": 1, "/use/beta": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseIteratesInitialDynamicValues(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:         "testing-http-initial-dynamic-values",
+		Raw:        []string{"GET /use/{{id}} HTTP/1.1\nHost: {{Hostname}}"},
+		IterateAll: true,
+	}
+
+	var mutex sync.Mutex
+	uses := make(map[string]int)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mutex.Lock()
+		uses[r.URL.Path]++
+		mutex.Unlock()
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+	require.NoError(t, request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), ts.URL),
+		output.InternalEvent{"id": []string{"alpha", "beta"}},
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	))
+	require.Equal(t, map[string]int{"/use/alpha": 1, "/use/beta": 1}, uses)
+}
+
+func TestHTTPExtractMultipleReuseStopsOnceBranchesAfterCancellation(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID: "testing-http-once-branch-cancellation",
+		Raw: []string{
+			"GET /seed HTTP/1.1\nHost: {{Hostname}}",
+			"@once\nGET /token/{{missing}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		Operators: operators.Operators{Extractors: []*extractors.Extractor{{
+			Part: "body_1", Name: "id", Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor}, Regex: []string{`id=([a-z]+)`}, RegexGroup: 1, Internal: true,
+		}}},
+		IterateAll: true,
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, "id=alpha id=beta")
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID: request.ID,
+		Info: model.Info{
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+			Name:           "test",
+		},
+	})
+	executerOpts.RateLimiter.Stop()
+	executerOpts.RateLimiter = ratelimit.New(context.Background(), 1, 500*time.Millisecond)
+	t.Cleanup(executerOpts.RateLimiter.Stop)
+	require.NoError(t, request.Compile(executerOpts))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancelTimer := time.AfterFunc(100*time.Millisecond, cancel)
+	t.Cleanup(func() {
+		cancelTimer.Stop()
+		cancel()
+	})
+	startedAt := time.Now()
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(ctx, ts.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Less(t, time.Since(startedAt), 750*time.Millisecond)
 }
 
 func TestDisableTE(t *testing.T) {
