@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
@@ -109,6 +110,12 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		payloads:  payloads,
 		variables: variables,
 		inputURL:  input,
+	}
+
+	if options != nil && options.Options != nil {
+		if netErr := protocolstate.SetupHeadlessNetworkPolicy(options.Options, page); netErr != nil {
+			return nil, nil, netErr
+		}
 	}
 
 	successfulPageCreation := false

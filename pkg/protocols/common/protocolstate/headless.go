@@ -2,8 +2,10 @@ package protocolstate
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
@@ -135,6 +137,11 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 		return false
 	}
 
+	if urlx, err := urlutil.Parse(targetUrl); err == nil && urlx.Hostname() != "" {
+		_, ok = np.ValidateHost(urlx.Hostname())
+		return ok
+	}
+
 	sepCount := strings.Count(targetUrl, ":")
 	if sepCount > 1 {
 		// most likely a ipv6 address (parse url and validate host)
@@ -150,4 +157,105 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 	// just a hostname or ip without port
 	_, ok = np.ValidateHost(targetUrl)
 	return ok
+}
+
+// SetupHeadlessNetworkPolicy configures CDP Network blocking and WebSocket interception
+// to enforce network policies on headless pages.
+func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
+	if options == nil || page == nil {
+		return nil
+	}
+
+	var blockedPatterns []string
+	for _, target := range options.ExcludeTargets {
+		target = strings.TrimSpace(target)
+		if target == "" {
+			continue
+		}
+		if !strings.Contains(target, "/") {
+			blockedPatterns = append(blockedPatterns,
+				"*://"+target+"/*",
+				"*://"+target+":*/*",
+				"ws://"+target+"/*",
+				"ws://"+target+":*/*",
+				"wss://"+target+"/*",
+				"wss://"+target+":*/*",
+			)
+		} else {
+			parts := strings.Split(target, ".")
+			if len(parts) >= 2 {
+				prefix := strings.Join(parts[:2], ".") + ".*"
+				blockedPatterns = append(blockedPatterns,
+					"*://"+prefix+"/*",
+					"*://"+prefix+":*/*",
+					"ws://"+prefix+"/*",
+					"ws://"+prefix+":*/*",
+					"wss://"+prefix+"/*",
+					"wss://"+prefix+":*/*",
+				)
+			}
+		}
+	}
+
+	if options.RestrictLocalNetworkAccess {
+		localPatterns := []string{
+			"*://localhost/*", "*://localhost:*/*",
+			"*://127.*/*", "*://127.*:*/*",
+			"*://0.0.0.0/*", "*://0.0.0.0:*/*",
+			"*://[::1]/*", "*://[::1]:*/*",
+			"*://10.*/*", "*://10.*:*/*",
+			"*://192.168.*/*", "*://192.168.*:*/*",
+			"*://169.254.*/*", "*://169.254.*:*/*",
+			"ws://localhost/*", "ws://localhost:*/*",
+			"ws://127.*/*", "ws://127.*:*/*",
+			"ws://0.0.0.0/*", "ws://0.0.0.0:*/*",
+			"ws://[::1]/*", "ws://[::1]:*/*",
+			"ws://10.*/*", "ws://10.*:*/*",
+			"ws://192.168.*/*", "ws://192.168.*:*/*",
+			"ws://169.254.*/*", "ws://169.254.*:*/*",
+			"wss://localhost/*", "wss://localhost:*/*",
+			"wss://127.*/*", "wss://127.*:*/*",
+			"wss://0.0.0.0/*", "wss://0.0.0.0:*/*",
+			"wss://[::1]/*", "wss://[::1]:*/*",
+			"wss://10.*/*", "wss://10.*:*/*",
+			"wss://192.168.*/*", "wss://192.168.*:*/*",
+			"wss://169.254.*/*", "wss://169.254.*:*/*",
+		}
+		for i := 16; i <= 31; i++ {
+			prefix := fmt.Sprintf("172.%d.*", i)
+			localPatterns = append(localPatterns,
+				"*://"+prefix+"/*", "*://"+prefix+":*/*",
+				"ws://"+prefix+"/*", "ws://"+prefix+":*/*",
+				"wss://"+prefix+"/*", "wss://"+prefix+":*/*",
+			)
+		}
+		blockedPatterns = append(blockedPatterns, localPatterns...)
+	}
+
+	_ = proto.NetworkEnable{}.Call(page)
+	if len(blockedPatterns) > 0 {
+		if err := (proto.NetworkSetBlockedURLs{Urls: blockedPatterns}).Call(page); err != nil {
+			return err
+		}
+	}
+
+	var wsMap sync.Map
+	waitWs := page.EachEvent(
+		func(e *proto.NetworkWebSocketCreated) {
+			wsMap.Store(e.RequestID, e.URL)
+			if !IsHostAllowed(options.ExecutionId, e.URL) {
+				_ = (proto.NetworkSetBlockedURLs{Urls: append(blockedPatterns, e.URL, "*"+e.URL+"*")}).Call(page)
+			}
+		},
+		func(e *proto.NetworkWebSocketWillSendHandshakeRequest) {
+			if val, ok := wsMap.Load(e.RequestID); ok {
+				if wsURL, ok := val.(string); ok && !IsHostAllowed(options.ExecutionId, wsURL) {
+					_ = (proto.NetworkSetBlockedURLs{Urls: append(blockedPatterns, wsURL, "*"+wsURL+"*")}).Call(page)
+				}
+			}
+		},
+	)
+	go waitWs()
+
+	return nil
 }

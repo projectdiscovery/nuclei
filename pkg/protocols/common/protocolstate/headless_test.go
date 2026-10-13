@@ -35,4 +35,13 @@ func TestIsValidHost(t *testing.T) {
 	require.False(t, isValidHost(opts, "https://127.0.0.1:8443"))
 	require.False(t, isValidHost(opts, "ws://127.0.0.1:9999"))
 	require.False(t, isValidHost(opts, "wss://127.0.0.1:9999"))
+
+	require.True(t, IsHostAllowed(opts.ExecutionId, "ws://example.com:9999"))
+	require.False(t, IsHostAllowed(opts.ExecutionId, "ws://127.0.0.1:9999"))
 }
+
+func TestSetupHeadlessNetworkPolicy_Nil(t *testing.T) {
+	require.NoError(t, SetupHeadlessNetworkPolicy(nil, nil))
+	require.NoError(t, SetupHeadlessNetworkPolicy(&types.Options{}, nil))
+}
+
