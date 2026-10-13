@@ -93,7 +93,7 @@ require (
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/networkpolicy v0.1.54
-	github.com/projectdiscovery/ratelimit v0.0.93-0.20261012191704-350c4558fa32
+	github.com/projectdiscovery/ratelimit v0.0.93
 	github.com/projectdiscovery/rawhttp v0.1.92
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/retryabledns v1.0.116
