@@ -725,3 +725,59 @@ func TestWrongWorkflow(t *testing.T) {
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "workflows cannot have other protocols")
 }
+
+// A cache hit rebuilds the executor options from the caller's, so every option
+// prepareTemplate derives from the template itself has to be carried back over.
+// Dropping Flow is the dangerous one: NewTemplateExecuter then builds a
+// multi-protocol engine, every step runs regardless of the flow expression, and
+// the last step's matcher alone decides whether the template reports.
+func TestParseCompiledCachePreservesTemplateDerivedOptions(t *testing.T) {
+	setup()
+
+	path := filepath.Join(t.TempDir(), "flow-cache.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(`id: flow-cache
+info:
+  name: Flow cache
+  author: pdteam
+  severity: info
+stop-at-first-match: true
+flow: http(1) && http(2)
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/precondition"
+    matchers:
+      - type: status
+        status: [200]
+        internal: true
+  - method: GET
+    path:
+      - "{{BaseURL}}/check"
+    matchers:
+      - type: status
+        status: [404]
+`), 0o600))
+
+	parser := templates.NewParser()
+	options := executerOpts.Copy()
+	options.Parser = parser
+
+	first, err := templates.Parse(path, nil, options)
+	require.NoError(t, err)
+	require.NotEmpty(t, first.Options.Flow)
+
+	cached, err := parser.CompiledCache().Get(path)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+
+	second, err := templates.Parse(path, nil, options.Copy())
+	require.NoError(t, err)
+	after, err := parser.CompiledCache().Get(path)
+	require.NoError(t, err)
+	require.Same(t, cached, after, "second parse must be served from the compiled cache")
+
+	require.Equal(t, first.Options.Flow, second.Options.Flow)
+	require.Equal(t, first.Options.StopAtFirstMatch, second.Options.StopAtFirstMatch)
+	require.True(t, second.Options.StopAtFirstMatch)
+	require.Equal(t, first.Options.ProtocolType, second.Options.ProtocolType)
+}

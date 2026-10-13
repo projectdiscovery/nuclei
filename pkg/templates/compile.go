@@ -216,6 +216,12 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			newBase.TemplateVerifier = tplCopy.Options.TemplateVerifier
 			newBase.Verified = tplCopy.Options.Verified
 			newBase.RawTemplate = tplCopy.Options.RawTemplate
+			// Template-derived options set by prepareTemplate that newBase, being the
+			// caller's copy, does not carry. Without Flow, NewTemplateExecuter builds a
+			// multi-protocol engine that runs every step regardless of the flow.
+			newBase.Flow = tplCopy.Options.Flow
+			newBase.StopAtFirstMatch = tplCopy.Options.StopAtFirstMatch
+			newBase.ProtocolType = tplCopy.Options.ProtocolType
 
 			if tplCopy.Options.Variables.Len() > 0 {
 				newBase.Variables = tplCopy.Options.Variables
