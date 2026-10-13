@@ -6,12 +6,11 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 )
 
 // GetPerHostRateLimiter gets or creates a rate limiter for a specific host
 // Returns nil if per-host rate limiting is not enabled
-func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.Limiter, error) {
+func GetPerHostRateLimiter(options *types.Options, hostname string) (*PerHostRateLimiter, error) {
 	if !options.PerHostRateLimit {
 		return nil, nil
 	}

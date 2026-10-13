@@ -1245,6 +1245,55 @@ func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
 	require.Equal(t, int32(1), atomic.LoadInt32(&matches), "expected only first match to be processed")
 }
 
+func TestExecuteParallelHTTP_StopAtFirstMatchCancelsQueuedRateLimitWaiters(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.PerHostRateLimit = true
+	options.PerHostRateLimitPoolSize = -1
+	options.RateLimit = 1
+	options.RateLimitDuration = time.Second
+	options.RestrictLocalNetworkAccess = false
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = fmt.Fprint(writer, "match")
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID:      "parallel-stop-first-rate-limit",
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads: 10,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"},
+		},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"match"},
+		}}},
+		StopAtFirstMatch: true,
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOptions))
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), requests.Load())
+}
+
 func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
@@ -1456,4 +1505,60 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
 	})
+}
+
+func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.PerHostRateLimit = true
+	options.PerHostRateLimitPoolSize = -1
+	options.RateLimit = 1
+	options.RateLimitDuration = 2 * time.Second
+	options.RestrictLocalNetworkAccess = false
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(writer, "ok")
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID:     "per-host-rate-limit-cancellation",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"ok"},
+		}}},
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOptions))
+
+	execute := func(ctx context.Context) error {
+		return request.ExecuteWithResults(
+			contextargs.NewWithInput(ctx, server.URL),
+			make(output.InternalEvent),
+			make(output.InternalEvent),
+			func(*output.InternalWrappedEvent) {},
+		)
+	}
+	require.NoError(t, execute(context.Background()))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() { result <- execute(ctx) }()
+	time.Sleep(100 * time.Millisecond)
+	cancelledAt := time.Now()
+	cancel()
+
+	err := <-result
+	cancellationDelay := time.Since(cancelledAt)
+	t.Logf("request returned %s after its context was cancelled", cancellationDelay.Round(time.Millisecond))
+	require.ErrorIs(t, err, context.Canceled)
+	require.Less(t, cancellationDelay, 250*time.Millisecond)
 }

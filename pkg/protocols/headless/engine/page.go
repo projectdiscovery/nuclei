@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,6 +41,7 @@ type Page struct {
 	payloads           map[string]interface{}
 	variables          map[string]interface{}
 	lastActionNavigate *Action
+	cancel             context.CancelFunc
 }
 
 // HistoryData contains the page request/response pairs
@@ -61,22 +63,38 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		return nil, nil, err
 	}
 
-	page, err := i.engine.Page(proto.TargetCreateTarget{})
+	pageContext := ctx.Context()
+	cancelPage := func() {}
+	if options.Timeout > 0 {
+		pageContext, cancelPage = context.WithTimeout(pageContext, options.Timeout)
+	}
+	page, err := i.engine.Context(pageContext).Page(proto.TargetCreateTarget{})
 	if err != nil {
+		cancelPage()
 		return nil, nil, err
 	}
-	// A Rod page inherits the browser process context by default. Bind it to the
-	// request context so scan cancellation interrupts in-flight headless actions.
-	page = page.Context(ctx.Context()).Timeout(options.Timeout)
+	page = page.Context(pageContext)
+	createdPage := &Page{
+		options:  options,
+		page:     page,
+		ctx:      ctx,
+		instance: i,
+		mutex:    &sync.RWMutex{},
+		cancel:   cancelPage,
+	}
+	successfulPageCreation := false
+	defer func() {
+		if !successfulPageCreation {
+			createdPage.Close()
+		}
+	}()
 
 	if err = i.browser.applyDefaultHeaders(page); err != nil {
-		_ = page.Close()
 		return nil, nil, err
 	}
 
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
-			_ = page.Close()
 			return nil, nil, userAgentErr
 		}
 	}
@@ -88,7 +106,6 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	target := ctx.MetaInput.Input
 	input, err := urlutil.Parse(target)
 	if err != nil {
-		_ = page.Close()
 		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
 	}
 
@@ -100,24 +117,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(variables))
 	}
 
-	createdPage := &Page{
-		options:   options,
-		page:      page,
-		ctx:       ctx,
-		instance:  i,
-		mutex:     &sync.RWMutex{},
-		payloads:  payloads,
-		variables: variables,
-		inputURL:  input,
-	}
-
-	successfulPageCreation := false
-	defer func() {
-		if !successfulPageCreation {
-			// to avoid leaking pages in case of errors
-			createdPage.Close()
-		}
-	}()
+	createdPage.payloads = payloads
+	createdPage.variables = variables
+	createdPage.inputURL = input
 
 	httpclient, err := i.browser.getHTTPClient()
 	if err != nil {
@@ -239,13 +241,26 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 
 // Close closes a browser page
 func (p *Page) Close() {
+	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	defer cancelCleanup()
+	p.close(cleanupCtx)
+}
+
+func (p *Page) close(cleanupCtx context.Context) {
 	if p.hijackRouter != nil {
 		_ = p.hijackRouter.Stop()
 	}
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	_ = p.page.Close()
+	if p.page.GetContext().Err() != nil {
+		_, _ = proto.TargetCloseTarget{TargetID: p.page.TargetID}.Call(p.page.Browser().Context(cleanupCtx))
+	} else {
+		_ = p.page.Context(cleanupCtx).Close()
+	}
+	if p.cancel != nil {
+		p.cancel()
+	}
 }
 
 // Page returns the current page for the actions
