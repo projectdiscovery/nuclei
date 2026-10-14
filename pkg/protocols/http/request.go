@@ -40,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
@@ -1165,6 +1166,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				fromCache = false
 			}
 		}
+		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
+		// over a network round-trip for identical safe GET/HEAD requests.
+		if resp == nil && request.options.HTTPResponseCache != nil && !request.followsRedirects() &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) {
+			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+				if cached := request.options.HTTPResponseCache.Get(key, generatedRequest.request.Request); cached != nil {
+					resp = cached
+					fromCache = true
+					err = nil
+				}
+			}
+		}
 		if resp == nil || (request.Analyzer != nil && cookieFuzzing) {
 			connConfig := request.connConfiguration
 			if input.CookieJar != nil && !request.DisableCookie {
@@ -1361,6 +1376,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.ProjectFile != nil && !fromCache {
 			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
+			}
+		}
+		if request.options.HTTPResponseCache != nil && !fromCache && !request.followsRedirects() &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) &&
+			!httprespcache.ResponseSetsCookie(resp) {
+			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+				request.options.HTTPResponseCache.Set(key, resp, respChain.BodyBytes())
 			}
 		}
 	})
@@ -1759,4 +1783,28 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
+}
+
+// followsRedirects reports whether this request's client follows redirects,
+// resolving the policy the same way httpclientpool does: the template setting,
+// overridden by the global follow flags, cancelled by -disable-redirects.
+//
+// The scan response cache must stay out of such requests. A redirect chain is
+// several responses, and a cache entry is one: serving it would hide the chain
+// from matchers that walk it. The cache key also does not carry the redirect
+// policy, so a followed and an unfollowed request for the same URL would
+// otherwise share one entry and each see the other's response.
+func (request *Request) followsRedirects() bool {
+	if request.options == nil || request.options.Options == nil {
+		return true // unknown policy: stay out of the cache
+	}
+	opts := request.options.Options
+	if opts.DisableRedirects {
+		return false
+	}
+	if opts.ShouldFollowHTTPRedirects() {
+		return true
+	}
+	return request.connConfiguration == nil ||
+		request.connConfiguration.RedirectFlow != httpclientpool.DontFollowRedirect
 }
