@@ -21,7 +21,8 @@ func TestIsValidHost(t *testing.T) {
 	d := &Dialers{
 		NetworkPolicy: np,
 	}
-	dialers.Set(opts.ExecutionId, d)
+	err = dialers.Set(opts.ExecutionId, d)
+	require.NoError(t, err)
 	defer dialers.Delete(opts.ExecutionId)
 
 	// Allowed remote hosts

@@ -22,7 +22,9 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 	// 1. Setup blocked TCP server
 	blockedLn, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer blockedLn.Close()
+	defer func() {
+		_ = blockedLn.Close()
+	}()
 
 	var blockedHits atomic.Int32
 	go func() {
@@ -32,7 +34,7 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 				return
 			}
 			blockedHits.Add(1)
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -41,7 +43,9 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 	// 2. Setup allowed TCP server
 	allowedLn, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer allowedLn.Close()
+	defer func() {
+		_ = allowedLn.Close()
+	}()
 
 	var allowedHits atomic.Int32
 	go func() {
@@ -52,7 +56,7 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 			}
 			allowedHits.Add(1)
 			_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"))
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -90,12 +94,16 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 	// 4. Start headless proxy
 	proxy, err := newHeadlessProxy(opts)
 	require.NoError(t, err)
-	defer proxy.Close()
+	defer func() {
+		_ = proxy.Close()
+	}()
 
 	// 5. Test CONNECT to blocked destination
 	clientConn, err := net.Dial("tcp", proxy.Addr())
 	require.NoError(t, err)
-	defer clientConn.Close()
+	defer func() {
+		_ = clientConn.Close()
+	}()
 
 	connectReq := fmt.Sprintf("CONNECT 127.0.0.1:%d HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n\r\n", blockedPort, blockedPort)
 	_, err = clientConn.Write([]byte(connectReq))
@@ -110,7 +118,9 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 	// 6. Test GET to blocked destination
 	clientConn2, err := net.Dial("tcp", proxy.Addr())
 	require.NoError(t, err)
-	defer clientConn2.Close()
+	defer func() {
+		_ = clientConn2.Close()
+	}()
 
 	getReq := fmt.Sprintf("GET http://127.0.0.1:%d/ HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n\r\n", blockedPort, blockedPort)
 	_, err = clientConn2.Write([]byte(getReq))
@@ -125,7 +135,9 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 	// 7. Test CONNECT to allowed destination
 	clientConn3, err := net.Dial("tcp", proxy.Addr())
 	require.NoError(t, err)
-	defer clientConn3.Close()
+	defer func() {
+		_ = clientConn3.Close()
+	}()
 
 	allowedReq := fmt.Sprintf("CONNECT 127.0.0.1:%d HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n\r\n", allowedPort, allowedPort)
 	_, err = clientConn3.Write([]byte(allowedReq))
@@ -150,7 +162,9 @@ func TestHeadlessProxy_RealChromeWebSocketEndToEnd(t *testing.T) {
 	// 1. Setup blocked WebSocket server
 	blockedLn, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer blockedLn.Close()
+	defer func() {
+		_ = blockedLn.Close()
+	}()
 
 	var blockedHits atomic.Int32
 	go func() {
@@ -160,7 +174,7 @@ func TestHeadlessProxy_RealChromeWebSocketEndToEnd(t *testing.T) {
 				return
 			}
 			blockedHits.Add(1)
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -191,7 +205,9 @@ func TestHeadlessProxy_RealChromeWebSocketEndToEnd(t *testing.T) {
 	// 3. Start headless proxy
 	proxy, err := newHeadlessProxy(opts)
 	require.NoError(t, err)
-	defer proxy.Close()
+	defer func() {
+		_ = proxy.Close()
+	}()
 
 	// 4. Launch Chrome with proxy and <-loopback>
 	chromeLauncher := launcher.New().
@@ -212,11 +228,15 @@ func TestHeadlessProxy_RealChromeWebSocketEndToEnd(t *testing.T) {
 	}
 
 	browser := rod.New().ControlURL(controlURL).MustConnect()
-	defer browser.Close()
+	defer func() {
+		_ = browser.Close()
+	}()
 
 	page, err := browser.Page(proto.TargetCreateTarget{URL: "about:blank"})
 	require.NoError(t, err)
-	defer page.Close()
+	defer func() {
+		_ = page.Close()
+	}()
 
 	script := fmt.Sprintf(`() => new Promise((resolve) => {
 		try {
@@ -239,7 +259,9 @@ func TestHeadlessProxy_IPv4MappedIPv6WithUpstreamProxy(t *testing.T) {
 	// 1. Setup mock upstream HTTP proxy
 	upstreamLn, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer upstreamLn.Close()
+	defer func() {
+		_ = upstreamLn.Close()
+	}()
 
 	var upstreamHits atomic.Int32
 	go func() {
@@ -249,7 +271,7 @@ func TestHeadlessProxy_IPv4MappedIPv6WithUpstreamProxy(t *testing.T) {
 				return
 			}
 			upstreamHits.Add(1)
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -268,7 +290,9 @@ func TestHeadlessProxy_IPv4MappedIPv6WithUpstreamProxy(t *testing.T) {
 	// 3. Start headless proxy
 	proxy, err := newHeadlessProxy(opts)
 	require.NoError(t, err)
-	defer proxy.Close()
+	defer func() {
+		_ = proxy.Close()
+	}()
 
 	// 4. Test mapped IPv6 variations
 	targets := []string{
@@ -281,7 +305,9 @@ func TestHeadlessProxy_IPv4MappedIPv6WithUpstreamProxy(t *testing.T) {
 		t.Run(target, func(t *testing.T) {
 			conn, err := net.Dial("tcp", proxy.Addr())
 			require.NoError(t, err)
-			defer conn.Close()
+			defer func() {
+				_ = conn.Close()
+			}()
 
 			connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", target, target)
 			_, err = conn.Write([]byte(connectReq))

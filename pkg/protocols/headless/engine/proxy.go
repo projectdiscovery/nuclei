@@ -80,7 +80,9 @@ func (p *headlessProxy) serve() {
 }
 
 func (p *headlessProxy) handleConn(clientConn net.Conn) {
-	defer clientConn.Close()
+	defer func() {
+		_ = clientConn.Close()
+	}()
 
 	reader := bufio.NewReader(clientConn)
 	req, err := http.ReadRequest(reader)
@@ -176,12 +178,12 @@ func (p *headlessProxy) dialTarget(target string) (net.Conn, error) {
 			// CONNECT through upstream proxy with canonical address
 			connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", dialAddr, dialAddr)
 			if _, err := proxyConn.Write([]byte(connectReq)); err != nil {
-				proxyConn.Close()
+				_ = proxyConn.Close()
 				return nil, err
 			}
 			resp, err := http.ReadResponse(bufio.NewReader(proxyConn), nil)
 			if err != nil || resp.StatusCode != http.StatusOK {
-				proxyConn.Close()
+				_ = proxyConn.Close()
 				if err != nil {
 					return nil, err
 				}
@@ -207,7 +209,9 @@ func (p *headlessProxy) handleConnect(clientConn net.Conn, target string) {
 		_, _ = clientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		return
 	}
-	defer destConn.Close()
+	defer func() {
+		_ = destConn.Close()
+	}()
 
 	if _, err := clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
 		return
@@ -223,7 +227,7 @@ func (p *headlessProxy) handleConnect(clientConn net.Conn, target string) {
 		_, err := io.Copy(clientConn, destConn)
 		errc <- err
 	}()
-	<-errc
+	_ = <-errc
 }
 
 func (p *headlessProxy) handleHTTP(clientConn net.Conn, clientReader *bufio.Reader, req *http.Request, host string) {
@@ -237,7 +241,9 @@ func (p *headlessProxy) handleHTTP(clientConn net.Conn, clientReader *bufio.Read
 		_, _ = clientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		return
 	}
-	defer destConn.Close()
+	defer func() {
+		_ = destConn.Close()
+	}()
 
 	if err := req.Write(destConn); err != nil {
 		return
@@ -252,5 +258,5 @@ func (p *headlessProxy) handleHTTP(clientConn net.Conn, clientReader *bufio.Read
 		_, err := io.Copy(clientConn, destConn)
 		errc <- err
 	}()
-	<-errc
+	_ = <-errc
 }
