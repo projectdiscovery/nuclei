@@ -94,6 +94,11 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		return err
 	}
 	request.setCustomHeaders(requestForDump)
+	// Auth is applied again on each raced request. The dump is what replay
+	// sends, so it has to include the same headers.
+	if !request.SkipSecretFile {
+		requestForDump.ApplyAuth(request.options.AuthProvider)
+	}
 	dumpedRequest, err := dump(requestForDump, reqURL)
 	if err != nil {
 		return err
@@ -1235,6 +1240,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// we only intend to log/save the final redirected response
 	// i.e why we have to use sync.Once to ensure it's only done once
 	var errx error
+	// Race skips the dumps above because the body is already waiting on the
+	// gate. executeRaceRequest stored those bytes for DSL use.
+	if generatedRequest.original != nil && generatedRequest.original.Race && len(dumpedRequest) == 0 {
+		if raw, ok := previousEvent["request"].(string); ok {
+			dumpedRequest = []byte(raw)
+		}
+	}
+	// One executed request is replayed once, even when several responses in
+	// the redirect chain match.
+	replayed := false
+
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
@@ -1385,8 +1401,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			event.UsesInteractsh = true
 		}
 
+		globalMatched := false
 		if request.options.GlobalMatchers.HasMatchers() {
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
+				globalMatched = true
 				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
 			})
 		}
@@ -1396,6 +1414,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
+
+		localMatched := event.OperatorsResult != nil && event.OperatorsResult.Matched
+		if !replayed && (localMatched || globalMatched) {
+			replayed = true
+			request.replayRequest(dumpedRequest, formedURL)
+		}
 
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
 			request.options.FuzzStatsDB.RecordResultEvent(fuzzStats.FuzzingEvent{

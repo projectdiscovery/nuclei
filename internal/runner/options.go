@@ -171,6 +171,9 @@ func ValidateOptions(options *types.Options) error {
 	if err := loadProxyServers(options); err != nil {
 		return err
 	}
+	if err := validateReplayProxy(options.ReplayProxy); err != nil {
+		return err
+	}
 	if options.Validate {
 		validateTemplatePaths(options.Logger, config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
 	}
