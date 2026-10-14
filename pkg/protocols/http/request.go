@@ -1334,7 +1334,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		maxBodylimit = request.MaxSize
 	}
 	if request.options.Options.ResponseReadSize != 0 {
-		maxBodylimit = request.options.Options.ResponseReadSize
+		if request.MaxSize > 0 {
+			maxBodylimit = min(request.MaxSize, request.options.Options.ResponseReadSize)
+		} else {
+			maxBodylimit = request.options.Options.ResponseReadSize
+		}
 	}
 
 	// respChain is http response chain that reads response body
@@ -1515,7 +1519,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
-		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
+		isResponseTruncated := (request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize) ||
+			(request.options.Options.ResponseReadSize > 0 && respChain.Body().Len() >= request.options.Options.ResponseReadSize)
 		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)

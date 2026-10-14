@@ -1562,3 +1562,80 @@ func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 	require.Less(t, cancellationDelay, 250*time.Millisecond)
 }
+
+func TestHTTPResponseReadSizeHonoursTemplateMaxSize(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte(strings.Repeat("A", 2000)))
+	}))
+	defer ts.Close()
+
+	tests := []struct {
+		name                   string
+		templateMaxSize        int
+		globalResponseReadSize int
+		expectedLen            int
+	}{
+		{
+			name:                   "template max-size smaller than global response-size-read",
+			templateMaxSize:        500,
+			globalResponseReadSize: 1000,
+			expectedLen:            500,
+		},
+		{
+			name:                   "global response-size-read acts as ceiling when smaller than template max-size",
+			templateMaxSize:        1500,
+			globalResponseReadSize: 800,
+			expectedLen:            800,
+		},
+		{
+			name:                   "only template max-size specified",
+			templateMaxSize:        500,
+			globalResponseReadSize: 0,
+			expectedLen:            500,
+		},
+		{
+			name:                   "only global response-size-read specified",
+			templateMaxSize:        0,
+			globalResponseReadSize: 600,
+			expectedLen:            600,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := testutils.DefaultOptions
+			opts.ResponseReadSize = tc.globalResponseReadSize
+			testutils.Init(opts)
+
+			request := &Request{
+				ID:      "test-max-size",
+				MaxSize: tc.templateMaxSize,
+				Raw: []string{
+					"GET / HTTP/1.1\nHost: {{Hostname}}\n\n",
+				},
+			}
+			executerOptions := testutils.NewMockExecuterOptions(opts, &testutils.TemplateInfo{
+				ID:   request.ID,
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+			require.NoError(t, request.Compile(executerOptions))
+
+			var receivedBodyLen int
+			err := request.ExecuteWithResults(
+				contextargs.NewWithInput(context.Background(), ts.URL),
+				make(output.InternalEvent),
+				make(output.InternalEvent),
+				func(event *output.InternalWrappedEvent) {
+					if event != nil && event.InternalEvent != nil {
+						if body, ok := event.InternalEvent["body"].(string); ok {
+							receivedBodyLen = len(body)
+						}
+					}
+				},
+			)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedLen, receivedBodyLen)
+		})
+	}
+}
