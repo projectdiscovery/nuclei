@@ -211,6 +211,12 @@ type Options struct {
 	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
 	// before running templates. Disabled by default.
 	PreflightPortScan bool
+	// HostBackoff slows a host down when it signals it is being overloaded
+	// (429, a run of 403s, or transport failures) instead of scanning it at full
+	// rate until it blocks the scanner. Opt-in, since it changes scan pacing.
+	HostBackoff bool
+	// HostBackoffMax caps the per-host backoff delay.
+	HostBackoffMax time.Duration
 	// MaxURLsPerPattern caps how many targets sharing one structural shape
 	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
 	// target: dropping one means never scanning it.

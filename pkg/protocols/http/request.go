@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"maps"
@@ -34,6 +35,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -73,6 +76,78 @@ var (
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
+}
+
+// hostBackoffKey is the identity shared by the pre-request wait and the
+// post-response observation. It keeps the scheme, or an explicit port, so
+// NormalizeHostPort does not record an https target under port 80.
+func hostBackoffKey(req *generatedRequest, input *contextargs.Context) string {
+	if req != nil {
+		if key := req.URL(); key != "" {
+			return key
+		}
+		if req.request != nil && req.request.Request != nil && req.request.Request.URL != nil {
+			return req.request.Request.URL.String()
+		}
+	}
+	if input != nil && input.MetaInput != nil {
+		return input.MetaInput.Input
+	}
+	return ""
+}
+
+// observeHostBackoff reports one request outcome to the per-host governor.
+func (request *Request) observeHostBackoff(host string, resp *http.Response, err error) {
+	if request.options == nil || request.options.HostBackoff == nil {
+		return
+	}
+	// A cancelled sibling, or a scan that is stopping, is not the host asking
+	// for less traffic. A real status on the response is still worth recording.
+	if resp == nil && err != nil && stderrors.Is(err, context.Canceled) {
+		return
+	}
+	statusCode := 0
+	var retryAfter time.Duration
+	if resp != nil {
+		statusCode = resp.StatusCode
+		retryAfter = hostbackoff.RetryAfter(resp.Header.Get("Retry-After"))
+	}
+	request.options.HostBackoff.Observe(hostratelimit.NormalizeHostPort(host), statusCode, retryAfter, err)
+}
+
+// waitHostBackoff pauses for the delay this host has already earned.
+func (request *Request) waitHostBackoff(ctx context.Context, host string) error {
+	if request.options == nil || request.options.HostBackoff == nil {
+		return nil
+	}
+	return request.options.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(host))
+}
+
+// rateLimitTake first honours any backoff the host earned by signalling it is
+// overloaded, so a blocking target is paced regardless of which limiter is in play.
+func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
+	if err := request.waitHostBackoff(ctx, hostname); err != nil {
+		return err
+	}
+	return request.options.RateLimitTakeContext(ctx, hostname)
+}
+
+// stopWithHandler ends when parent ends or the handler stops, so a backoff
+// wait does not outlive stop-at-first-match.
+func stopWithHandler[T comparable](parent context.Context, handler *httputils.StopAtFirstMatchHandler[T]) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(parent)
+	if handler == nil {
+		return ctx, cancel
+	}
+	if handler.Context().Err() != nil {
+		cancel()
+		return ctx, func() {}
+	}
+	stop := context.AfterFunc(handler.Context(), cancel)
+	return ctx, func() {
+		stop()
+		cancel()
+	}
 }
 
 // executeRaceRequest executes race condition request for a URL
@@ -172,8 +247,20 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 				// stop sending more requests condition is met
 				return
 			}
+			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
+			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			cancelWait()
+			if err != nil || spmHandler.FoundFirstMatch() || spmHandler.Cancelled() {
+				if err != nil {
+					select {
+					case <-spmHandler.Done():
+					case spmHandler.ResultChan <- err:
+					}
+				}
+				return
+			}
 
-			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
+			err = request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
@@ -262,15 +349,12 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					spmHandler.Release()
 					continue
 				}
-				// Extract hostname for per-host rate limiting (use full URL - normalization happens in rateLimitTake)
-				hostname := t.updatedInput.MetaInput.Input
-				if t.req != nil && t.req.URL() != "" {
-					hostname = t.req.URL()
-				} else if t.req != nil && t.req.request != nil && t.req.request.Request != nil && t.req.request.Request.URL != nil {
-					// Extract from request URL if available
-					hostname = t.req.request.Request.URL.String()
-				}
-				if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
+				// Full URL, so https and an explicit port stay on the same key the observation uses.
+				// The handler context ends the wait when stop-at-first-match fires.
+				waitCtx, cancelWait := stopWithHandler(ctx, spmHandler)
+				err := request.rateLimitTake(waitCtx, hostBackoffKey(t.req, t.updatedInput))
+				cancelWait()
+				if err != nil {
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
@@ -289,7 +373,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				}
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
-				err := request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+				err = request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 						requestData := &interactsh.RequestData{
 							MakeResultFunc: request.MakeResultEvent,
@@ -510,7 +594,19 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 				// skip if first match is found
 				return
 			}
-			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
+			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
+			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			cancelWait()
+			if err != nil || spmHandler.FoundFirstMatch() || spmHandler.Cancelled() {
+				if err != nil {
+					select {
+					case <-spmHandler.Done():
+					case spmHandler.ResultChan <- err:
+					}
+				}
+				return
+			}
+			err = request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
@@ -585,13 +681,8 @@ executionLoop:
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
-			// Extract hostname for per-host rate limiting (use generated request URL - normalization happens in rateLimitTake)
-			hostname := input.MetaInput.Input
-			if generatedHttpRequest.URL() != "" {
-				// Use the generated URL directly - the normalization function will extract host:port correctly
-				hostname = generatedHttpRequest.URL()
-			}
-			if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
+			// Full URL, so https and an explicit port stay on the same key the observation uses.
+			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
 			}
 
@@ -908,6 +999,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		processEvent(event)
 	}
 
+	// Captured before auth, scheme correction, or the error path can rewrite
+	// the URL. The caller waited on this same key.
+	backoffKey := hostBackoffKey(generatedRequest, input)
+
 	request.setCustomHeaders(generatedRequest)
 	fuzzed := &generatedRequest.fuzzGeneratedRequest
 	cookieFuzzing := generatedRequest.request != nil && fuzzed.Component != nil && fuzzed.Component.Name() == component.RequestCookieComponent && len(fuzzed.FuzzedKeys) > 0
@@ -991,6 +1086,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var formedURL string
 	var hostname string
+	var sent bool
 	timeStart := time.Now()
 	if generatedRequest.original.Pipeline {
 		// if request is a pipeline request, use the pipelined client
@@ -1000,8 +1096,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				hostname = parsed.Host
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
+			sent = true
 		} else if generatedRequest.request != nil {
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
+			sent = true
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
 		// if request is a unsafe request, use the rawhttp client
@@ -1045,6 +1143,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			Body:    io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)),
 			Options: &options,
 		})
+		sent = true
 	} else {
 		//** For Normal requests **//
 		// Use the dial target (URL.Host) rather than the optional Host-header
@@ -1121,6 +1220,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 
 			resp, err = executingClient.Do(generatedRequest.request)
+			sent = true
 
 			// If we forced http->https from a previous detection and the corrected
 			// request failed (e.g. a false positive where the port actually speaks
@@ -1134,6 +1234,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				resp, err = executingClient.Do(generatedRequest.request)
 			}
 		}
+	}
+	// A project-file hit never sets sent, so a stored response cannot move the delay.
+	// Record before dump or the dialer lookup can return and drop the outcome.
+	if sent {
+		request.observeHostBackoff(backoffKey, resp, err)
 	}
 	// use request url as matched url if empty
 	if formedURL == "" {
