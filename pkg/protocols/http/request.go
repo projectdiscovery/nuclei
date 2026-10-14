@@ -1053,10 +1053,14 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if dumpError != nil {
 			return dumpError
 		}
+		maxBodylimit := request.getEffectiveReadLimit()
 		if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
 		} else {
 			projectCacheKey = dumpedRequest
+		}
+		if maxBodylimit > 0 {
+			projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
 		}
 		dumpedRequestString := string(dumpedRequest)
 
@@ -1329,17 +1333,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	duration := time.Since(timeStart)
 
 	// define max body read limit
-	maxBodylimit := MaxBodyRead // 10MB
-	if request.MaxSize > 0 {
-		maxBodylimit = request.MaxSize
-	}
-	if request.options.Options.ResponseReadSize != 0 {
-		if request.MaxSize > 0 {
-			maxBodylimit = min(request.MaxSize, request.options.Options.ResponseReadSize)
-		} else {
-			maxBodylimit = request.options.Options.ResponseReadSize
-		}
-	}
+	maxBodylimit := request.getEffectiveReadLimit()
 
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
@@ -1765,3 +1759,20 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 	}
 	return false
 }
+
+// getEffectiveReadLimit returns the effective body read limit for this request.
+func (request *Request) getEffectiveReadLimit() int {
+	maxBodylimit := MaxBodyRead // 10MB
+	if request.MaxSize > 0 {
+		maxBodylimit = request.MaxSize
+	}
+	if request.options.Options.ResponseReadSize != 0 {
+		if request.MaxSize > 0 {
+			maxBodylimit = min(request.MaxSize, request.options.Options.ResponseReadSize)
+		} else {
+			maxBodylimit = request.options.Options.ResponseReadSize
+		}
+	}
+	return maxBodylimit
+}
+
