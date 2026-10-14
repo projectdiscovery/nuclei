@@ -28,6 +28,9 @@ var knownLeaks = []goleak.Option{
 	goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
 	goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
 	goleak.IgnoreAnyFunction("github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate.StartActiveMemGuardian.func1"),
+	// NOTE(dwisiswant0): This is an indirect call and not used anywhere, not
+	// even within SOPS (#5841). See `go mod why go.opencensus.io/stats/view`.
+	goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
 }
 
 func TestSimpleNuclei(t *testing.T) {

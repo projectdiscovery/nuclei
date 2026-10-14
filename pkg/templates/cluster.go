@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -247,9 +248,39 @@ func (e *ClusterExecuter) Requests() int {
 	return count
 }
 
+// SelectedBy reports whether selection selects the template. A cluster is
+// selected when any of its members is.
+func (template *Template) SelectedBy(selection protocols.TemplateSelection) bool {
+	if cluster, ok := template.Executer.(*ClusterExecuter); ok {
+		return slices.ContainsFunc(cluster.operators, func(operator *clusteredOperator) bool {
+			return selection.Allows(operator.templatePath)
+		})
+	}
+	return selection.Allows(template.Path)
+}
+
+// operatorsFor returns the members selected for input by per-target profiles.
+func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clusteredOperator {
+	if e.options.TargetScope == nil {
+		return e.operators
+	}
+	selection := e.options.TargetScope.For(input)
+	if selection == nil {
+		return e.operators
+	}
+	return slices.DeleteFunc(slices.Clone(e.operators), func(operator *clusteredOperator) bool {
+		return !selection.Allows(operator.templatePath)
+	})
+}
+
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	var results bool
+
+	clusterOperators := e.operatorsFor(ctx.Input.MetaInput)
+	if len(clusterOperators) == 0 {
+		return false, nil
+	}
 
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
@@ -341,14 +372,19 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	return results, err
 }
 
-// operatorsForInput returns cluster members allowed on input by ClusterMemberFilter.
-// When the filter is unset, all operators are returned.
+// operatorsForInput returns cluster members allowed on input by TargetScope
+// (per-target profiles) and ClusterMemberFilter (automatic-scan reachability).
+// When both filters are unset, all operators are returned.
 func (e *ClusterExecuter) operatorsForInput(mi *contextargs.MetaInput) []*clusteredOperator {
-	if e.options == nil || e.options.ClusterMemberFilter == nil {
-		return e.operators
+	base := e.operators
+	if e.options != nil {
+		base = e.operatorsFor(mi)
 	}
-	out := make([]*clusteredOperator, 0, len(e.operators))
-	for _, op := range e.operators {
+	if e.options == nil || e.options.ClusterMemberFilter == nil {
+		return base
+	}
+	out := make([]*clusteredOperator, 0, len(base))
+	for _, op := range base {
 		if e.options.ClusterMemberFilter(op.templateID, op.templateInfo, mi) {
 			out = append(out, op)
 		}
@@ -358,6 +394,10 @@ func (e *ClusterExecuter) operatorsForInput(mi *contextargs.MetaInput) []*cluste
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	clusterOperators := e.operatorsFor(ctx.Input.MetaInput)
+	if len(clusterOperators) == 0 {
+		return nil, nil
+	}
 	scanCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
 	dynamicValues := make(map[string]interface{})
 

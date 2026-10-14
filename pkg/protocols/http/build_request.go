@@ -447,6 +447,9 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 				}
 
 				annotationOverrides, _ = r.request.parseAnnotations(rawRequest, annotationRequest)
+				if annotationOverrides.err != nil {
+					return nil, errkit.Wrap(annotationOverrides.err, "failed to apply raw request annotations")
+				}
 				if annotationOverrides.request != nil && annotationOverrides.request.URL != nil {
 					rawRequestData.FullURL = annotationOverrides.request.String()
 				}
@@ -516,6 +519,9 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	}
 
 	if reqWithOverrides, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
+		if reqWithOverrides.err != nil {
+			return nil, errkit.Wrap(reqWithOverrides.err, "failed to apply raw request annotations")
+		}
 		generatedRequest.request = reqWithOverrides.request
 		generatedRequest.customCancelFunction = reqWithOverrides.cancelFunc
 		generatedRequest.interactshURLs = append(generatedRequest.interactshURLs, reqWithOverrides.interactshURLs...)

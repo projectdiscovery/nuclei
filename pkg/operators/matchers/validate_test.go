@@ -29,3 +29,12 @@ func TestValidate(t *testing.T) {
 	err = m.Validate()
 	require.NotNil(t, err, "Invalid XPath query was correctly validated")
 }
+
+func TestValidateRequiresValues(t *testing.T) {
+	for _, matcherType := range GetSupportedMatcherTypes() {
+		t.Run(matcherType.String(), func(t *testing.T) {
+			m := &Matcher{matcherType: matcherType}
+			require.ErrorContains(t, m.Validate(), "requires at least one")
+		})
+	}
+}
