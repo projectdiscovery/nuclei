@@ -307,7 +307,11 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	data["response"] = responseBuilder.String()
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["ip"] = request.dialer.GetDialedIP(hostname)
+	if target.MetaInput.CustomIP != "" {
+		data["ip"] = target.MetaInput.CustomIP
+	} else {
+		data["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	if len(stepDurations) > 0 {
 		addWebsocketDurationFields(data, stepDurations)
 	} else {
