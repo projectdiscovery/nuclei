@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
@@ -58,4 +59,11 @@ func TestParseHeadlessOptionalArguments(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestValidateOptionsUpdateTemplatesChannel(t *testing.T) {
+	for _, channel := range []string{"", installer.TemplatesChannelStable, installer.TemplatesChannelLatest} {
+		require.NoError(t, ValidateOptions(&types.Options{UpdateTemplatesChannel: channel}), "channel %q", channel)
+	}
+	require.ErrorContains(t, ValidateOptions(&types.Options{UpdateTemplatesChannel: "nightly"}), `invalid templates update channel "nightly"`)
 }

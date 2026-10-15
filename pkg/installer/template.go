@@ -77,6 +77,10 @@ type TemplateManager struct {
 	DisablePublicTemplates bool                                    // if true,
 	// public templates are not downloaded from the GitHub nuclei-templates repository
 
+	// Channel is the nuclei-templates update channel, TemplatesChannelStable
+	// (default) or TemplatesChannelLatest
+	Channel string
+
 	// fetchLatestRelease overrides where the official release comes from; nil
 	// means GitHub
 	fetchLatestRelease func() (templateRelease, error)
@@ -85,6 +89,9 @@ type TemplateManager struct {
 func (t *TemplateManager) latestRelease() (templateRelease, error) {
 	if t.fetchLatestRelease != nil {
 		return t.fetchLatestRelease()
+	}
+	if t.Channel == TemplatesChannelLatest {
+		return latestGitHubTemplateHead()
 	}
 	return latestGitHubTemplateRelease()
 }
@@ -129,6 +136,17 @@ func (t *TemplateManager) updateIfOutdatedLocked() error {
 		gologger.Debug().Msgf("Could not reload templates version, using the one loaded at startup: %s", err)
 	}
 
+	if t.Channel == TemplatesChannelLatest {
+		needsUpdate, err := t.latestCommitNeedsUpdate()
+		if err != nil {
+			return err
+		}
+		if needsUpdate {
+			return t.updateTemplatesAt(config.DefaultConfig.TemplatesDirectory)
+		}
+		return nil
+	}
+
 	needsUpdate := config.DefaultConfig.NeedsTemplateUpdate()
 
 	// NOTE(dwisiswant0): if PDTM API data is not available
@@ -149,6 +167,22 @@ func (t *TemplateManager) updateIfOutdatedLocked() error {
 		return t.updateTemplatesAt(config.DefaultConfig.TemplatesDirectory)
 	}
 	return nil
+}
+
+// latestCommitNeedsUpdate returns true if the head of the nuclei-templates
+// default branch differs from the installed templates. The version check only
+// knows about releases, so it can't tell when the head moves.
+func (t *TemplateManager) latestCommitNeedsUpdate() (bool, error) {
+	if t.DisablePublicTemplates || !config.DefaultConfig.CanCheckForUpdates() {
+		return false, nil
+	}
+
+	release, err := t.latestRelease()
+	if err != nil {
+		return false, errkit.Wrap(err, "failed to get latest nuclei-templates commit")
+	}
+
+	return release.Version() != config.DefaultConfig.TemplateVersion, nil
 }
 
 // installTemplatesAt installs templates at given directory
@@ -264,7 +298,7 @@ func (t *TemplateManager) bootstrapTemplateOwnership(dir, version string, fetchA
 		return nil
 	}
 
-	archive, err := fetchArchive(version)
+	archive, err := fetchArchive(templateVersionRef(version))
 	if err != nil {
 		gologger.Verbose().Msgf("Continuing template update without prior ownership for %q: %s", version, err)
 		return nil
@@ -282,37 +316,38 @@ func (t *TemplateManager) bootstrapTemplateOwnership(dir, version string, fetchA
 	return nil
 }
 
-func fetchTemplateReleaseArchive(version string) (*bytes.Reader, error) {
+// fetchTemplateArchive downloads the nuclei-templates zipball at ref, a release
+// tag or a commit.
+func fetchTemplateArchive(ref string) (*bytes.Reader, error) {
 	ctx := context.Background()
-	httpClient := &http.Client{Timeout: updateutils.DownloadUpdateTimeout}
-	client, err := github.NewClient(github.WithHTTPClient(httpClient))
+	client, err := newGitHubClient()
 	if err != nil {
-		return nil, fmt.Errorf("create github client for prior template release %q: %w", version, err)
+		return nil, err
 	}
 	archiveURL, _, err := client.Repositories.GetArchiveLink(
 		ctx,
 		updateutils.Organization,
 		config.OfficialNucleiTemplatesRepoName,
 		github.Zipball,
-		&github.RepositoryContentGetOptions{Ref: version},
+		&github.RepositoryContentGetOptions{Ref: ref},
 		1, // Follow one repository rename, as the previous client did.
 	)
 	if err != nil {
-		return nil, fmt.Errorf("resolve prior template release %q archive: %w", version, err)
+		return nil, fmt.Errorf("resolve nuclei-templates %q archive: %w", ref, err)
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, archiveURL.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("create prior template release %q archive request: %w", version, err)
+		return nil, fmt.Errorf("create nuclei-templates %q archive request: %w", ref, err)
 	}
 
 	var contents bytes.Buffer
 	response, err := client.Do(request, &contents)
 	if err != nil {
-		return nil, fmt.Errorf("download prior template release %q: %w", version, err)
+		return nil, fmt.Errorf("download nuclei-templates %q: %w", ref, err)
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download prior template release %q: unexpected HTTP status %s", version, response.Status)
+		return nil, fmt.Errorf("download nuclei-templates %q: unexpected HTTP status %s", ref, response.Status)
 	}
 
 	return bytes.NewReader(contents.Bytes()), nil
@@ -381,7 +416,7 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 		return nil
 	}
 
-	if err := t.bootstrapTemplateOwnership(dir, config.DefaultConfig.TemplateVersion, fetchTemplateReleaseArchive); err != nil {
+	if err := t.bootstrapTemplateOwnership(dir, config.DefaultConfig.TemplateVersion, fetchTemplateArchive); err != nil {
 		return errkit.Wrapf(err, "failed to migrate template ownership at %s", dir)
 	}
 
@@ -400,7 +435,9 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	latestVersion := release.Version()
 	currentVersion := config.DefaultConfig.TemplateVersion
 
-	if config.IsOutdatedVersion(currentVersion, latestVersion) {
+	// versions on the latest channel only differ in build metadata, which
+	// version comparison ignores
+	if t.Channel == TemplatesChannelLatest || config.IsOutdatedVersion(currentVersion, latestVersion) {
 		gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s\n", currentVersion, latestVersion)
 	} else {
 		gologger.Debug().Msgf("Updating nuclei-templates from %s to %s (forced update)\n", currentVersion, latestVersion)
