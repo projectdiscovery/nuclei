@@ -355,9 +355,10 @@ func (i *Integration) resolveClosedStateID(ctx context.Context) (string, error) 
 	}
 
 	i.closedStateMu.Lock()
-	defer i.closedStateMu.Unlock()
-	if i.closedStateID != "" {
-		return i.closedStateID, nil
+	cached := i.closedStateID
+	i.closedStateMu.Unlock()
+	if cached != "" {
+		return cached, nil
 	}
 	if i.options.TeamID == "" {
 		return "", errors.New("team-id or closed-state-id is required to close issues")
@@ -373,8 +374,12 @@ func (i *Integration) resolveClosedStateID(ctx context.Context) (string, error) 
 		return "", fmt.Errorf("no completed workflow state found for team %s", i.options.TeamID)
 	}
 	sort.SliceStable(nodes, func(a, b int) bool { return nodes[a].Position < nodes[b].Position })
-	i.closedStateID = types.ToString(nodes[0].ID)
-	return i.closedStateID, nil
+	stateID := types.ToString(nodes[0].ID)
+
+	i.closedStateMu.Lock()
+	i.closedStateID = stateID
+	i.closedStateMu.Unlock()
+	return stateID, nil
 }
 
 // ShouldFilter determines if an issue should be logged to this tracker

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -18,6 +19,7 @@ type fakeLinear struct {
 	mu            sync.Mutex
 	stateType     string
 	rejectUpdates bool
+	holdStates    chan struct{}
 	mutations     []map[string]any
 	searches      []map[string]any
 	stateQuery    int
@@ -36,6 +38,11 @@ func (f *fakeLinear) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.Contains(body.Query, "workflowStates"):
 		f.stateQuery++
+		if f.holdStates != nil {
+			f.mu.Unlock()
+			<-f.holdStates
+			f.mu.Lock()
+		}
 		_, _ = w.Write([]byte(`{"data":{"workflowStates":{"nodes":[{"id":"state-late","position":9},{"id":"state-done","position":2}]}}}`))
 	case strings.Contains(body.Query, "issueUpdate"):
 		f.mutations = append(f.mutations, body.Variables)
@@ -77,6 +84,30 @@ func TestCloseIssueMovesToDiscoveredCompletedState(t *testing.T) {
 	require.Equal(t, "team-1", fake.searches[0]["teamID"])
 	require.Equal(t, "issue-1", fake.mutations[0]["issueID"])
 	require.Equal(t, map[string]any{"stateId": "state-done"}, fake.mutations[0]["issueUpdateInput"])
+}
+
+func TestCloseIssueDoesNotHoldTheLockDuringTheStateLookup(t *testing.T) {
+	fake := &fakeLinear{stateType: "unstarted", holdStates: make(chan struct{})}
+	integration := newTestIntegration(t, fake)
+	release := sync.OnceFunc(func() { close(fake.holdStates) })
+	t.Cleanup(release)
+
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() { errs <- integration.CloseIssue(testEvent()) }()
+	}
+
+	require.Eventually(t, func() bool {
+		fake.mu.Lock()
+		defer fake.mu.Unlock()
+		return fake.stateQuery == 2
+	}, 2*time.Second, 10*time.Millisecond, "a second close waits on the first one's Linear request")
+	release()
+
+	require.NoError(t, <-errs)
+	require.NoError(t, <-errs)
+	require.Len(t, fake.mutations, 2)
+	require.Equal(t, map[string]any{"stateId": "state-done"}, fake.mutations[1]["issueUpdateInput"])
 }
 
 func TestCloseIssueUsesConfiguredClosedStateID(t *testing.T) {
