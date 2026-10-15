@@ -51,7 +51,6 @@ import (
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
-	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	unitutils "github.com/projectdiscovery/utils/unit"
@@ -1024,18 +1023,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		// change encoding type to content-length unless transfer-encoding header is manually set
 		if generatedRequest.request != nil && !stringsutil.EqualFoldAny(generatedRequest.request.Method, http.MethodGet, http.MethodHead) && generatedRequest.request.Body != nil && generatedRequest.request.Header.Get("Transfer-Encoding") != "chunked" {
-			var newReqBody *reader.ReusableReadCloser
-			newReqBody, ok := generatedRequest.request.Body.(*reader.ReusableReadCloser)
-			if !ok {
-				newReqBody, err = reader.NewReusableReadCloser(generatedRequest.request.Body)
-			}
+			var body []byte
+			body, err = io.ReadAll(generatedRequest.request.Body)
 			if err == nil {
-				// update the request body with the reusable reader
-				generatedRequest.request.SetBodyReader(newReqBody)
-				// get content length
-				length, _ := io.Copy(io.Discard, newReqBody)
-				generatedRequest.request.ContentLength = length
-			} else {
+				// SetBody also sets the content length, and its GetBody hands out
+				// independent copies: the request is dumped again after sending,
+				// while the transport may still be reading this body
+				err = generatedRequest.request.SetBody(body)
+			}
+			if err != nil {
 				// log error and continue
 				gologger.Verbose().Msgf("[%v] Could not read request body while forcing transfer encoding: %s\n", request.options.TemplateID, err)
 				err = nil
