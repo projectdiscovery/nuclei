@@ -59,3 +59,22 @@ func TestParseHeadlessOptionalArguments(t *testing.T) {
 		})
 	}
 }
+
+func TestReadsTargetsFromStdin(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		options     *types.Options
+		stdinIsPipe bool
+		want        bool
+	}{
+		{"piped stdin alone", &types.Options{}, true, true},
+		{"no pipe", &types.Options{}, false, false},
+		{"disabled", &types.Options{DisableStdin: true}, true, false},
+		{"targets given with -u", &types.Options{Targets: goflags.StringSlice{"example.com"}}, true, false},
+		{"targets given with -l", &types.Options{TargetsFilePath: "targets.txt"}, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, readsTargetsFromStdin(tc.options, tc.stdinIsPipe))
+		})
+	}
+}
