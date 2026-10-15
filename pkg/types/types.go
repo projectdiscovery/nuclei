@@ -260,6 +260,8 @@ type Options struct {
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
+	// UpdateTemplatesChannel is the nuclei-templates update channel (stable or latest)
+	UpdateTemplatesChannel string
 	// JSON writes json line output to files
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
@@ -596,6 +598,7 @@ func (options *Options) ReleaseTemplateThread() {
 	}
 }
 
+// Copy returns a copy of the options.
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
 		Tags:                           options.Tags,
@@ -698,6 +701,7 @@ func (options *Options) Copy() *Options {
 		VarDumpLimit:                   options.VarDumpLimit,
 		NoColor:                        options.NoColor,
 		UpdateTemplates:                options.UpdateTemplates,
+		UpdateTemplatesChannel:         options.UpdateTemplatesChannel,
 		JSONL:                          options.JSONL,
 		JSONRequests:                   options.JSONRequests,
 		OmitRawRequests:                options.OmitRawRequests,

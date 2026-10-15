@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -141,7 +142,7 @@ func ParseOptions(options *types.Options) {
 	}
 }
 
-// validateOptions validates the configuration options passed
+// ValidateOptions validates the configuration options passed
 func ValidateOptions(options *types.Options) error {
 	if err := validateOptions.Struct(options); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
@@ -166,6 +167,11 @@ func ValidateOptions(options *types.Options) error {
 	}
 	if options.ShouldFollowHTTPRedirects() && options.DisableRedirects {
 		return errors.New("both follow redirects and disable redirects specified")
+	}
+	switch options.UpdateTemplatesChannel {
+	case "", installer.TemplatesChannelStable, installer.TemplatesChannelLatest:
+	default:
+		return fmt.Errorf("invalid templates update channel %q, must be %q or %q", options.UpdateTemplatesChannel, installer.TemplatesChannelStable, installer.TemplatesChannelLatest)
 	}
 	// loading the proxy server list from file or cli and test the connectivity
 	if err := loadProxyServers(options); err != nil {
