@@ -122,7 +122,8 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 			}
 			var resp struct {
 				IssueUpdate struct {
-					LastSyncID int `json:"lastSyncId"`
+					LastSyncID int  `json:"lastSyncId"`
+					Success    bool `json:"success"`
 				}
 			}
 			err := i.doGraphqlRequest(ctx, existingIssueUpdateStateMutation, &resp, variables, "IssueUpdate")
@@ -230,6 +231,7 @@ const (
 	existingIssueUpdateStateMutation = `mutation IssueUpdate($issueUpdateInput: IssueUpdateInput!, $issueID: String!) {
   issueUpdate(input: $issueUpdateInput, id: $issueID) {
 	lastSyncId
+	success
   }
 }
 `
@@ -280,7 +282,7 @@ func (i *Integration) findIssueByTitle(ctx context.Context, title string) (*line
 		"title": graphql.String(title),
 	}
 	if i.options.TeamID != "" {
-		variables["teamId"] = graphql.ID(i.options.TeamID)
+		variables["teamID"] = graphql.ID(i.options.TeamID)
 	}
 	if i.options.ProjectID != "" {
 		variables["projectID"] = graphql.ID(i.options.ProjectID)
@@ -326,17 +328,25 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 	}
 	var resp struct {
 		IssueUpdate struct {
-			LastSyncID int `json:"lastSyncId"`
+			LastSyncID int  `json:"lastSyncId"`
+			Success    bool `json:"success"`
 		}
 	}
 	if err := i.doGraphqlRequest(ctx, existingIssueUpdateStateMutation, &resp, variables, "IssueUpdate"); err != nil {
 		return fmt.Errorf("error closing issue %s: %w", existingIssue.ID, err)
 	}
+	if !resp.IssueUpdate.Success {
+		return fmt.Errorf("error closing issue %s: Linear rejected the update", existingIssue.ID)
+	}
 	return nil
 }
 
 func isClosedStateType(stateType string) bool {
-	return stateType == linearStateTypeCompleted || stateType == linearStateTypeCanceled
+	switch stateType {
+	case linearStateTypeCompleted, linearStateTypeCanceled, linearStateTypeDuplicate:
+		return true
+	}
+	return false
 }
 
 func (i *Integration) resolveClosedStateID(ctx context.Context) (string, error) {
@@ -422,6 +432,7 @@ func (adt *addHeaderTransport) RoundTrip(req *http.Request) (*http.Response, err
 const (
 	linearStateTypeCompleted = "completed"
 	linearStateTypeCanceled  = "canceled"
+	linearStateTypeDuplicate = "duplicate"
 )
 
 const (

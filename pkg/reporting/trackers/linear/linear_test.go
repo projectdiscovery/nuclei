@@ -15,10 +15,12 @@ import (
 )
 
 type fakeLinear struct {
-	mu         sync.Mutex
-	stateType  string
-	mutations  []map[string]any
-	stateQuery int
+	mu            sync.Mutex
+	stateType     string
+	rejectUpdates bool
+	mutations     []map[string]any
+	searches      []map[string]any
+	stateQuery    int
 }
 
 func (f *fakeLinear) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -37,8 +39,13 @@ func (f *fakeLinear) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"data":{"workflowStates":{"nodes":[{"id":"state-late","position":9},{"id":"state-done","position":2}]}}}`))
 	case strings.Contains(body.Query, "issueUpdate"):
 		f.mutations = append(f.mutations, body.Variables)
-		_, _ = w.Write([]byte(`{"data":{"issueUpdate":{"lastSyncId":1}}}`))
+		success := "true"
+		if f.rejectUpdates {
+			success = "false"
+		}
+		_, _ = w.Write([]byte(`{"data":{"issueUpdate":{"lastSyncId":1,"success":` + success + `}}}`))
 	default:
+		f.searches = append(f.searches, body.Variables)
 		_, _ = w.Write([]byte(`{"data":{"issues":{"nodes":[{"id":"issue-1","title":"t","identifier":"ENG-1","state":{"name":"Todo","type":"` + f.stateType + `"},"url":"u"}]}}}`))
 	}
 }
@@ -67,6 +74,7 @@ func TestCloseIssueMovesToDiscoveredCompletedState(t *testing.T) {
 
 	require.Len(t, fake.mutations, 2)
 	require.Equal(t, 1, fake.stateQuery)
+	require.Equal(t, "team-1", fake.searches[0]["teamID"])
 	require.Equal(t, "issue-1", fake.mutations[0]["issueID"])
 	require.Equal(t, map[string]any{"stateId": "state-done"}, fake.mutations[0]["issueUpdateInput"])
 }
@@ -84,11 +92,18 @@ func TestCloseIssueUsesConfiguredClosedStateID(t *testing.T) {
 }
 
 func TestCloseIssueSkipsAlreadyClosedIssue(t *testing.T) {
-	for _, stateType := range []string{"completed", "canceled"} {
+	for _, stateType := range []string{"completed", "canceled", "duplicate"} {
 		fake := &fakeLinear{stateType: stateType}
 		integration := newTestIntegration(t, fake)
 
 		require.NoError(t, integration.CloseIssue(testEvent()))
 		require.Empty(t, fake.mutations, stateType)
 	}
+}
+
+func TestCloseIssueFailsWhenLinearRejectsTheUpdate(t *testing.T) {
+	fake := &fakeLinear{stateType: "started", rejectUpdates: true}
+	integration := newTestIntegration(t, fake)
+
+	require.ErrorContains(t, integration.CloseIssue(testEvent()), "Linear rejected the update")
 }
