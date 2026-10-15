@@ -29,6 +29,27 @@ export class SSHClient {
     
 
     /**
+    * ConnectWithOptions tries to connect using the provided SSHOptions.
+    * Prefer this over Connect/ConnectWithKey when setting timeout, client version,
+    * or combining password and private key auth.
+    * @example
+    * ```javascript
+    * const ssh = require('nuclei/ssh');
+    * const client = new ssh.SSHClient();
+    * const opts = new ssh.SSHOptions();
+    * opts.Host = 'acme.com';
+    * opts.Port = 22;
+    * opts.User = 'username';
+    * opts.Password = 'password';
+    * const connected = client.ConnectWithOptions(opts);
+    * ```
+    */
+    public ConnectWithOptions(opts: SSHOptions): boolean | null {
+        return null;
+    }
+    
+
+    /**
     * Connect tries to connect to provided host and port
     * with provided username and password with ssh.
     * Returns state of connection and error. If error is not nil,
@@ -120,6 +141,41 @@ export class SSHClient {
     }
     
 
+}
+
+
+
+/**
+ * SSHOptions represents configuration options for an SSH connection.
+ * Use ConnectWithOptions when you need protocol-specific knobs beyond
+ * username/password (timeout, client version, private key).
+ * @example
+ * ```javascript
+ * const ssh = require('nuclei/ssh');
+ * const opts = new ssh.SSHOptions();
+ * opts.Host = 'acme.com';
+ * opts.Port = 22;
+ * opts.User = 'username';
+ * opts.Password = 'password';
+ * opts.Timeout = 15;
+ * opts.ClientVersion = 'SSH-2.0-OpenSSH_8.9';
+ * ```
+ */
+export interface SSHOptions {
+    
+    Host?: string,
+    
+    Port?: number,
+    
+    User?: string,
+    
+    Password?: string,
+    
+    PrivateKey?: string,
+    
+    Timeout?: number,
+    
+    ClientVersion?: string,
 }
 
 

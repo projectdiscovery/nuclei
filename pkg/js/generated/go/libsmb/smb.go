@@ -19,7 +19,8 @@ func init() {
 			// Var and consts
 
 			// Objects / Classes
-			"SMBClient": gojs.GetClassConstructor[lib_smb.SMBClient](&lib_smb.SMBClient{}),
+			"SMBClient":  gojs.GetClassConstructor[lib_smb.SMBClient](&lib_smb.SMBClient{}),
+			"SMBOptions": gojs.GetClassConstructor[lib_smb.SMBOptions](&lib_smb.SMBOptions{}),
 		},
 	).Register()
 }

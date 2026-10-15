@@ -35,6 +35,7 @@ func init() {
 			"IsTelnetResponse":   gojs.GetClassConstructor[lib_telnet.IsTelnetResponse](&lib_telnet.IsTelnetResponse{}),
 			"TelnetClient":       gojs.GetClassConstructor[lib_telnet.TelnetClient](&lib_telnet.TelnetClient{}),
 			"TelnetInfoResponse": gojs.GetClassConstructor[lib_telnet.TelnetInfoResponse](&lib_telnet.TelnetInfoResponse{}),
+			"TelnetOptions":      gojs.GetClassConstructor[lib_telnet.TelnetOptions](&lib_telnet.TelnetOptions{}),
 		},
 	).Register()
 }

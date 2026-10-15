@@ -45,10 +45,84 @@ func (c *SSHClient) SetTimeout(sec int) {
 	c.timeout = time.Duration(sec) * time.Second
 }
 
+type (
+	// SSHOptions represents configuration options for an SSH connection.
+	// Use ConnectWithOptions when you need protocol-specific knobs beyond
+	// username/password (timeout, client version, private key).
+	// @example
+	// ```javascript
+	// const ssh = require('nuclei/ssh');
+	// const client = new ssh.SSHClient();
+	// const opts = new ssh.SSHOptions();
+	// opts.Host = 'acme.com';
+	// opts.Port = 22;
+	// opts.User = 'username';
+	// opts.Password = 'password';
+	// opts.Timeout = 15;
+	// opts.ClientVersion = 'SSH-2.0-OpenSSH_8.9';
+	// const connected = client.ConnectWithOptions(opts);
+	// ```
+	SSHOptions struct {
+		Host          string // Host is the hostname or IP of the SSH server.
+		Port          int    // Port is the port number of the SSH server.
+		User          string // User is the username for authentication.
+		Password      string // Password is the password for authentication.
+		PrivateKey    string // PrivateKey is an optional PEM-encoded private key.
+		Timeout       int    // Timeout is the connection timeout in seconds (default 10).
+		ClientVersion string // ClientVersion overrides the SSH client version string (e.g. "SSH-2.0-OpenSSH_8.9").
+	}
+)
+
+// ConnectWithOptions tries to connect using the provided SSHOptions.
+// Prefer this over Connect/ConnectWithKey when setting timeout, client version,
+// or combining password and private key auth.
+// @example
+// ```javascript
+// const ssh = require('nuclei/ssh');
+// const client = new ssh.SSHClient();
+// const opts = new ssh.SSHOptions();
+// opts.Host = 'acme.com';
+// opts.Port = 22;
+// opts.User = 'username';
+// opts.Password = 'password';
+// const connected = client.ConnectWithOptions(opts);
+// ```
+func (c *SSHClient) ConnectWithOptions(ctx context.Context, opts SSHOptions) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
+	copts := optionsToConnect(opts, executionId)
+	if c.timeout > 0 && copts.Timeout == 0 {
+		copts.Timeout = c.timeout
+	}
+	conn, err := connect(ctx, copts)
+	if err != nil {
+		return false, err
+	}
+	c.connection = conn
+	return true, nil
+}
+
+func optionsToConnect(opts SSHOptions, executionId string) *connectOptions {
+	copts := &connectOptions{
+		Host:          opts.Host,
+		Port:          opts.Port,
+		User:          opts.User,
+		Password:      opts.Password,
+		PrivateKey:    opts.PrivateKey,
+		ClientVersion: opts.ClientVersion,
+		ExecutionId:   executionId,
+	}
+	if opts.Timeout > 0 {
+		copts.Timeout = time.Duration(opts.Timeout) * time.Second
+	}
+	return copts
+}
+
 // Connect tries to connect to provided host and port
 // with provided username and password with ssh.
 // Returns state of connection and error. If error is not nil,
 // state will be false
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
@@ -56,26 +130,20 @@ func (c *SSHClient) SetTimeout(sec int) {
 // const connected = client.Connect('acme.com', 22, 'username', 'password');
 // ```
 func (c *SSHClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
-	conn, err := connect(&connectOptions{
-		Host:        host,
-		Port:        port,
-		User:        username,
-		Password:    password,
-		ExecutionId: executionId,
+	return c.ConnectWithOptions(ctx, SSHOptions{
+		Host:     host,
+		Port:     port,
+		User:     username,
+		Password: password,
 	})
-	if err != nil {
-		return false, err
-	}
-	c.connection = conn
-
-	return true, nil
 }
 
 // ConnectWithKey tries to connect to provided host and port
 // with provided username and private_key.
 // Returns state of connection and error. If error is not nil,
 // state will be false
+//
+// Deprecated: prefer ConnectWithOptions (set PrivateKey) for new templates.
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
@@ -84,21 +152,12 @@ func (c *SSHClient) Connect(ctx context.Context, host string, port int, username
 // const connected = client.ConnectWithKey('acme.com', 22, 'username', privateKey);
 // ```
 func (c *SSHClient) ConnectWithKey(ctx context.Context, host string, port int, username, key string) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
-	conn, err := connect(&connectOptions{
-		Host:        host,
-		Port:        port,
-		User:        username,
-		PrivateKey:  key,
-		ExecutionId: executionId,
+	return c.ConnectWithOptions(ctx, SSHOptions{
+		Host:       host,
+		Port:       port,
+		User:       username,
+		PrivateKey: key,
 	})
-
-	if err != nil {
-		return false, err
-	}
-	c.connection = conn
-
-	return true, nil
 }
 
 // ConnectSSHInfoMode tries to connect to provided host and port
@@ -116,7 +175,7 @@ func (c *SSHClient) ConnectWithKey(ctx context.Context, host string, port int, u
 // ```
 func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port int) (*ssh.HandshakeLog, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnectSSHInfoMode(&connectOptions{
+	return memoizedconnectSSHInfoMode(ctx, &connectOptions{
 		Host:        host,
 		Port:        port,
 		ExecutionId: executionId,
@@ -175,13 +234,14 @@ func (c *SSHClient) Close() (bool, error) {
 
 // unexported functions
 type connectOptions struct {
-	Host        string
-	Port        int
-	User        string
-	Password    string
-	PrivateKey  string
-	Timeout     time.Duration // default 10s
-	ExecutionId string
+	Host          string
+	Port          int
+	User          string
+	Password      string
+	PrivateKey    string
+	Timeout       time.Duration // default 10s
+	ClientVersion string
+	ExecutionId   string
 }
 
 func (c *connectOptions) validate() error {
@@ -202,7 +262,7 @@ func (c *connectOptions) validate() error {
 }
 
 // @memo
-func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
+func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -218,7 +278,7 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 		return nil
 	}
 	rhost := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
-	client, err := ssh.Dial("tcp", rhost, sshConfig)
+	client, err := dialSSH(ctx, opts.ExecutionId, rhost, sshConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -229,15 +289,16 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	return data, nil
 }
 
-func connect(opts *connectOptions) (*ssh.Client, error) {
+func connect(ctx context.Context, opts *connectOptions) (*ssh.Client, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
 
 	conf := &ssh.ClientConfig{
-		User:    opts.User,
-		Auth:    []ssh.AuthMethod{},
-		Timeout: opts.Timeout,
+		User:          opts.User,
+		Auth:          []ssh.AuthMethod{},
+		Timeout:       opts.Timeout,
+		ClientVersion: opts.ClientVersion,
 	}
 
 	if len(opts.Password) > 0 {
@@ -271,9 +332,36 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", opts.Host, opts.Port), conf)
+	client, err := dialSSH(ctx, opts.ExecutionId, fmt.Sprintf("%s:%d", opts.Host, opts.Port), conf)
 	if err != nil {
 		return nil, err
 	}
 	return client, nil
+}
+
+// dialSSH creates an SSH client over nuclei's policy-aware fastdialer.
+func dialSSH(ctx context.Context, executionId, address string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	if !protocolstate.IsHostAllowed(executionId, address) {
+		return nil, protocolstate.ErrHostDenied.Msgf(address)
+	}
+	dialers := protocolstate.GetDialersWithId(executionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+	conn, err := dialers.Fastdialer.Dial(ctx, "tcp", address)
+	if err != nil {
+		return nil, err
+	}
+	if config.Timeout != 0 {
+		_ = conn.SetDeadline(time.Now().Add(config.Timeout))
+	}
+	clientConn, chans, reqs, err := ssh.NewClientConn(conn, address, config)
+	if err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	// Clear the dial/handshake deadline so it doesn't leak into later
+	// reads/writes on the established connection.
+	_ = conn.SetDeadline(time.Time{})
+	return ssh.NewClient(clientConn, chans, reqs), nil
 }

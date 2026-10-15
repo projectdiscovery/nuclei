@@ -64,6 +64,15 @@ type (
 	// const client = new telnet.TelnetClient();
 	// ```
 	TelnetClient struct{}
+
+	// TelnetOptions defines the connection options for a Telnet server.
+	TelnetOptions struct {
+		Host     string
+		Port     int
+		Username string
+		Password string
+		Timeout  int // Timeout is in seconds.
+	}
 )
 
 // IsTelnet checks if a host is running a Telnet server.
@@ -83,6 +92,9 @@ func isTelnet(ctx context.Context, executionId string, host string, port int) (I
 	resp := IsTelnetResponse{}
 
 	timeout := 5 * time.Second
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return resp, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return IsTelnetResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
@@ -113,6 +125,8 @@ func isTelnet(ctx context.Context, executionId string, host string, port int) (I
 // Optionally provides username and password for authentication.
 // Returns state of connection. If the connection is successful,
 // the function will return true, otherwise false.
+//
+// Deprecated: prefer ConnectWithOptions for new templates.
 // @example
 // ```javascript
 // const telnet = require('nuclei/telnet');
@@ -120,6 +134,16 @@ func isTelnet(ctx context.Context, executionId string, host string, port int) (I
 // const connected = client.Connect('acme.com', 23, 'username', 'password');
 // ```
 func (c *TelnetClient) Connect(ctx context.Context, host string, port int, username string, password string) (bool, error) {
+	return c.ConnectWithOptions(ctx, TelnetOptions{
+		Host: host, Port: port, Username: username, Password: password,
+	})
+}
+
+// ConnectWithOptions connects to Telnet using the supplied connection options.
+func (c *TelnetClient) ConnectWithOptions(ctx context.Context, opts TelnetOptions) (bool, error) {
+	if opts.Host == "" || opts.Port <= 0 {
+		return false, fmt.Errorf("invalid host or port")
+	}
 	executionId := ctx.Value("executionId").(string)
 
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -127,12 +151,12 @@ func (c *TelnetClient) Connect(ctx context.Context, host string, port int, usern
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	if !protocolstate.IsHostAllowed(executionId, host) {
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+	if !protocolstate.IsHostAllowed(executionId, opts.Host) {
+		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
 	// Create TCP connection
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(opts.Host, strconv.Itoa(opts.Port)))
 	if err != nil {
 		return false, err
 	}
@@ -144,17 +168,24 @@ func (c *TelnetClient) Connect(ctx context.Context, host string, port int, usern
 	}()
 
 	// Handle authentication if credentials provided
-	if username != "" && password != "" {
+	if opts.Username != "" && opts.Password != "" {
 		// Set a timeout context for authentication
-		authCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		authCtx, cancel := context.WithTimeout(ctx, telnetTimeout(opts.Timeout))
 		defer cancel()
 
-		if err := client.Auth(authCtx, username, password); err != nil {
+		if err := client.Auth(authCtx, opts.Username, opts.Password); err != nil {
 			return false, err
 		}
 	}
 
 	return true, nil
+}
+
+func telnetTimeout(timeout int) time.Duration {
+	if timeout > 0 {
+		return time.Duration(timeout) * time.Second
+	}
+	return 10 * time.Second
 }
 
 // Info gathers information about the telnet server including encryption support.
