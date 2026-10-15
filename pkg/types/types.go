@@ -598,6 +598,7 @@ func (options *Options) ReleaseTemplateThread() {
 	}
 }
 
+// Copy returns a copy of the options.
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
 		Tags:                           options.Tags,

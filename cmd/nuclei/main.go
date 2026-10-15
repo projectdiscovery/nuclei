@@ -244,6 +244,8 @@ func main() {
 	}
 }
 
+// readConfig defines the cli flags and loads them from the command line and
+// config files.
 func readConfig() *goflags.FlagSet {
 	var selectedFiles configuration.Selection
 	// when true updates nuclei binary to latest version

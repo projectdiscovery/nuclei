@@ -86,6 +86,8 @@ type TemplateManager struct {
 	fetchLatestRelease func() (templateRelease, error)
 }
 
+// latestRelease returns the official templates to install for the configured
+// channel.
 func (t *TemplateManager) latestRelease() (templateRelease, error) {
 	if t.fetchLatestRelease != nil {
 		return t.fetchLatestRelease()
@@ -120,6 +122,8 @@ func (t *TemplateManager) UpdateIfOutdated() error {
 	return withTemplatesUpdateLock(config.DefaultConfig.TemplatesDirectory, t.updateIfOutdatedLocked)
 }
 
+// updateIfOutdatedLocked installs or updates the templates when they are
+// outdated. It must be called while holding the templates update lock.
 func (t *TemplateManager) updateIfOutdatedLocked() error {
 	// if the templates folder does not exist, it's a fresh installation and do not update
 	if !fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
@@ -268,6 +272,9 @@ func (t *TemplateManager) finalizeTemplateWrite(cfg *config.Config, writtenOutpu
 	return t.finalizeTemplateRelease(cfg, writtenOutputs, version)
 }
 
+// bootstrapTemplateOwnership builds the ownership manifest from the archive of
+// the installed version when it is missing, so an update can tell official
+// templates apart from local ones.
 func (t *TemplateManager) bootstrapTemplateOwnership(dir, version string, fetchArchive templateArchiveFetcher) error {
 	if _, err := loadTemplateOwnership(dir); err == nil {
 		return nil
