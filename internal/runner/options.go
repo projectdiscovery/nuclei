@@ -142,7 +142,7 @@ func ParseOptions(options *types.Options) {
 	}
 }
 
-// validateOptions validates the configuration options passed
+// ValidateOptions validates the configuration options passed
 func ValidateOptions(options *types.Options) error {
 	if err := validateOptions.Struct(options); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
