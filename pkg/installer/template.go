@@ -335,22 +335,35 @@ func fetchTemplateArchive(ref string) (*bytes.Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve nuclei-templates %q archive: %w", ref, err)
 	}
+	if archiveURL.Scheme != "https" {
+		return nil, fmt.Errorf("resolve nuclei-templates %q archive: unexpected archive url %q", ref, archiveURL)
+	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, archiveURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("create nuclei-templates %q archive request: %w", ref, err)
 	}
 
-	var contents bytes.Buffer
-	response, err := client.Do(request, &contents)
+	// the archive is public, so it is downloaded without the token the github
+	// client sends to every host
+	httpClient := &http.Client{Timeout: updateutils.DownloadUpdateTimeout}
+	response, err := httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("download nuclei-templates %q: %w", ref, err)
 	}
+	defer func() {
+		_ = response.Body.Close()
+	}()
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("download nuclei-templates %q: unexpected HTTP status %s", ref, response.Status)
 	}
 
-	return bytes.NewReader(contents.Bytes()), nil
+	contents, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read nuclei-templates %q archive: %w", ref, err)
+	}
+
+	return bytes.NewReader(contents), nil
 }
 
 func (t *TemplateManager) bootstrapTemplateOwnershipFromArchive(dir string, archive *bytes.Reader) error {

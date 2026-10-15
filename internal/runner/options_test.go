@@ -61,6 +61,8 @@ func TestParseHeadlessOptionalArguments(t *testing.T) {
 	}
 }
 
+// TestValidateOptionsUpdateTemplatesChannel checks that only known templates
+// update channels are accepted.
 func TestValidateOptionsUpdateTemplatesChannel(t *testing.T) {
 	for _, channel := range []string{"", installer.TemplatesChannelStable, installer.TemplatesChannelLatest} {
 		require.NoError(t, ValidateOptions(&types.Options{UpdateTemplatesChannel: channel}), "channel %q", channel)

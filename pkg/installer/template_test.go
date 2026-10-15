@@ -83,6 +83,8 @@ func TestUpdateIfOutdatedSkipsReleaseInstalledWhileWaiting(t *testing.T) {
 	require.Equal(t, "v2.0.0", cfg.TemplateVersion)
 }
 
+// TestUpdateIfOutdatedLatestChannel checks that the latest channel updates when
+// the head moves, even though the release stays the same.
 func TestUpdateIfOutdatedLatestChannel(t *testing.T) {
 	HideProgressBar = true
 

@@ -47,6 +47,7 @@ type installedTemplateRelease struct {
 	t *testing.T
 }
 
+// DownloadSource fails the test since the release is already installed.
 func (r installedTemplateRelease) DownloadSource(bool, updateutils.AssetFileCallback) error {
 	r.t.Fatalf("downloaded already installed templates %s", r.version)
 	return nil
@@ -64,6 +65,8 @@ func (f fakeFileInfo) ModTime() time.Time { return time.Time{} }
 func (f fakeFileInfo) IsDir() bool        { return false }
 func (f fakeFileInfo) Sys() any           { return nil }
 
+// TestGithubTemplateHead checks the version of the head and that it downloads
+// the exact head commit.
 func TestGithubTemplateHead(t *testing.T) {
 	commit := "3de629d823bb6eb00aa3769edc365b6525134fb1"
 	entry := "projectdiscovery-nuclei-templates-3de629d/http/head.yaml"
@@ -91,6 +94,8 @@ func TestGithubTemplateHead(t *testing.T) {
 	require.Equal(t, []string{entry}, entries)
 }
 
+// TestTemplateVersionRef checks the git ref of release and latest channel
+// versions.
 func TestTemplateVersionRef(t *testing.T) {
 	require.Equal(t, "v10.3.1", templateVersionRef("v10.3.1"))
 	require.Equal(t, "3de629d", templateVersionRef("v10.3.1+3de629d"))

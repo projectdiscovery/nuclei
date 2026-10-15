@@ -67,6 +67,8 @@ func (h githubTemplateHead) Version() string {
 // Changelog is empty since unreleased commits have no release notes.
 func (h githubTemplateHead) Changelog() string { return "" }
 
+// DownloadSource downloads the archive of the head commit and calls callback
+// for every file in it.
 func (h githubTemplateHead) DownloadSource(_ bool, callback updateutils.AssetFileCallback) error {
 	archive, err := h.fetchArchive(h.commit)
 	if err != nil {
@@ -75,6 +77,8 @@ func (h githubTemplateHead) DownloadSource(_ bool, callback updateutils.AssetFil
 	return updateutils.UnpackAssetWithCallback(updateutils.Zip, archive, callback)
 }
 
+// latestGitHubTemplateHead returns the current head of the nuclei-templates
+// default branch, based on the latest release.
 func latestGitHubTemplateHead() (templateRelease, error) {
 	release, err := latestGitHubTemplateRelease()
 	if err != nil {
