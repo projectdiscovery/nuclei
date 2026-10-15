@@ -1562,3 +1562,47 @@ func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 	require.Less(t, cancellationDelay, 250*time.Millisecond)
 }
+
+func TestDumpedRequestKeepsBodyServerDidNotRead(t *testing.T) {
+	// The server answers in full, then holds the connection without reading
+	// the body, so the transport is still writing it when the response arrives.
+	release := make(chan struct{})
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "2")
+		_, _ = w.Write([]byte("ok"))
+		w.(http.Flusher).Flush()
+		<-release
+	}))
+	defer target.Close()
+	defer close(release)
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "dump-body",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	body := strings.Repeat("A", 4<<20)
+	request := &Request{
+		ID:     "dump-body",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Path:   []string{"{{BaseURL}}/"},
+		Body:   body,
+	}
+	require.NoError(t, request.Compile(executerOpts))
+
+	// how much the transport has written when the response lands varies, so
+	// a few rounds make a lost body show up reliably
+	for range 3 {
+		var dumped string
+		input := contextargs.NewWithInput(context.Background(), target.URL)
+		err := request.ExecuteWithResults(input, output.InternalEvent{}, output.InternalEvent{}, func(event *output.InternalWrappedEvent) {
+			dumped, _ = event.InternalEvent["request"].(string)
+		})
+		require.NoError(t, err)
+		require.True(t, strings.HasSuffix(dumped, "\r\n\r\n"+body), "recorded request lost its body: %d of %d bytes", len(dumped), len(body))
+	}
+}
