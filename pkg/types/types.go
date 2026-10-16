@@ -541,6 +541,8 @@ type Options struct {
 	Exploit bool
 	// ExploitUDF forces MySQL UDF privilege escalation even when the webshell write succeeded
 	ExploitUDF bool
+	// WebShellClean removes deployed webshells (and UDF artifacts) after the exploit phase
+	WebShellClean bool
 	// WebShellPath is the path to a custom webshell file to deploy; defaults to the built-in file-manager shell
 	WebShellPath string
 	// ExploitMax limits how many matched vulnerabilities are exploited per scan
