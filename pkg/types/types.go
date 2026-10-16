@@ -539,6 +539,8 @@ type Options struct {
 	PortScanPorts goflags.StringSlice
 	// Exploit enables post-exploitation of matched vulnerabilities (e.g. SQLi -> webshell drop)
 	Exploit bool
+	// ExploitUDF forces MySQL UDF privilege escalation even when the webshell write succeeded
+	ExploitUDF bool
 	// WebShellPath is the path to a custom webshell file to deploy; defaults to the built-in file-manager shell
 	WebShellPath string
 	// ExploitMax limits how many matched vulnerabilities are exploited per scan
