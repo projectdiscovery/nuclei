@@ -405,7 +405,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.Exploit, "exploit", "ex", false, "enable post-exploitation of matched vulnerabilities (e.g. SQLi -> privilege check + webshell drop)"),
 		flagSet.StringVar(&options.WebShellPath, "webshell", "", "path to a custom webshell file to deploy (default: built-in file-manager shell)"),
 		flagSet.IntVar(&options.ExploitMax, "exploit-max", 10, "maximum number of vulnerabilities to exploit per scan"),
-		flagSet.StringSliceVar(&options.ExploitTags, "exploit-tags", []string{"sqli"}, "tags of templates whose matches should be exploited (comma-separated)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVar(&options.ExploitTags, "exploit-tags", []string{"sqli", "upload", "rce"}, "tags of templates whose matches should be exploited (comma-separated)", goflags.FileCommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
