@@ -49,6 +49,7 @@ import (
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/postexploit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -735,6 +736,18 @@ func (r *Runner) RunEnumeration() error {
 	executorEngine := core.New(r.options)
 	executorEngine.SetExecuterOptions(executorOpts)
 
+	// Post-exploitation: collect tagged matches during the scan and exploit
+	// them once the scan has finished.
+	var postExploit *postexploit.Manager
+	if r.options.Exploit {
+		pe, perr := postexploit.New(r.options, r.output, r.Logger)
+		if perr != nil {
+			return errors.Wrap(perr, "could not initialize post-exploit manager")
+		}
+		postExploit = pe
+		executorEngine.Callback = postExploit.Collect
+	}
+
 	workflowLoader, err := parsers.NewLoader(executorOpts)
 	if err != nil {
 		return errors.Wrap(err, "Could not create loader.")
@@ -888,6 +901,9 @@ func (r *Runner) RunEnumeration() error {
 		if matched {
 			results.CompareAndSwap(false, true)
 		}
+	}
+	if postExploit != nil {
+		postExploit.Run()
 	}
 	if executorOpts.InputHelper != nil {
 		_ = executorOpts.InputHelper.Close()
