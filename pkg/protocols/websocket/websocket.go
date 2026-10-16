@@ -123,6 +123,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 	return nil
@@ -196,7 +199,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	requestOptions := request.options
 	for key, value := range request.Headers {
-		result, dataErr := render.Render(render.Input{Text: value, Values: payloadValues})
+		result, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: value, Values: payloadValues})
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -228,7 +231,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		gologger.Debug().Msgf("WebSocket Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
-	addressResult, dataErr := render.Render(render.Input{Text: request.Address, Values: payloadValues})
+	addressResult, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: request.Address, Values: payloadValues})
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -251,6 +254,13 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	}
 
 	addressToDial = parsedAddress.String()
+
+	if err := requestOptions.RateLimitTakeContext(target.Context(), addressToDial); err != nil {
+		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
+		return errors.Wrap(err, "could not take rate limit")
+	}
 
 	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
@@ -333,7 +343,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 	for _, req := range request.Inputs {
 		reqBuilder.Grow(len(req.Data))
 
-		result, dataErr := render.Render(render.Input{Text: req.Data, Values: payloadValues})
+		result, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: req.Data, Values: payloadValues})
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -369,7 +379,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
-				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
+				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, request.Extract)
 				maps.Copy(inputEvents, values)
 			}
 		}
@@ -406,12 +416,12 @@ func getAddress(toTest string) (string, error) {
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event

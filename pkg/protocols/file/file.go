@@ -145,6 +145,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if err := compiled.Compile(); err != nil {
 		return errors.Wrap(err, "could not compile operators")
 	}
+	// llm operators only evaluate once they hold the scan's client; without
+	// it every llm path returns a negative result instead of an error.
+	protocols.BindLLMOperators(compiled, options)
 	request.CompiledOperators = compiled
 
 	// By default, use default max size if not defined

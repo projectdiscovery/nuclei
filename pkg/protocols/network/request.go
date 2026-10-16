@@ -263,6 +263,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         payloads,
 				Values:       generators.MergeMaps(variables, value, payloads),
@@ -325,6 +326,12 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return nil
 	}
 
+	if err := request.options.RateLimitTakeContext(input.Context(), actualAddress); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not take rate limit")
+	}
+
 	if shouldUseTLS {
 		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)
 	} else {
@@ -357,6 +364,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	for _, input := range request.Inputs {
 		result, err := render.Render(render.Input{
+			Options:      request.options.GetOptions(),
 			Text:         input.Data,
 			Values:       interimValues,
 			Interactsh:   request.options.Interactsh,
@@ -481,7 +489,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,

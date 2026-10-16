@@ -152,6 +152,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				extractor.Part = "response"
 			}
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 
@@ -352,7 +355,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Interactsh != nil {
 		event.UsesInteractsh = true
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,
@@ -393,12 +396,12 @@ var RequestPartDefinitions = map[string]string{
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event

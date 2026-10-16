@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
@@ -170,6 +171,9 @@ func ValidateOptions(options *types.Options) error {
 	if err := loadProxyServers(options); err != nil {
 		return err
 	}
+	if err := validateReplayProxy(options.ReplayProxy); err != nil {
+		return err
+	}
 	if options.Validate {
 		validateTemplatePaths(options.Logger, config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
 	}
@@ -295,6 +299,11 @@ func validateDASTOptions(options *types.Options) error {
 	// Ensure the DAST server token meets minimum length requirement
 	if len(options.DASTServerToken) > 0 && len(options.DASTServerToken) < 16 {
 		return fmt.Errorf("DAST server token must be at least 16 characters long")
+	}
+	if options.DASTProxy {
+		if _, _, err := proxy.ParseAuth(options.DASTProxyAuth); err != nil {
+			return err
+		}
 	}
 	return nil
 }
