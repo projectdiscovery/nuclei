@@ -533,13 +533,17 @@ type Options struct {
 	ExecutionId string
 	// Parser is a cached parser for the template store
 	Parser any
+	// PortScan enables TCP port scanning of bare host inputs before the scan
+	PortScan bool
+	// PortScanPorts overrides the default port set used by -pscan
+	PortScanPorts goflags.StringSlice
 	// Exploit enables post-exploitation of matched vulnerabilities (e.g. SQLi -> webshell drop)
 	Exploit bool
 	// WebShellPath is the path to a custom webshell file to deploy; defaults to the built-in file-manager shell
 	WebShellPath string
 	// ExploitMax limits how many matched vulnerabilities are exploited per scan
 	ExploitMax int
-	// ExploitTags restricts post-exploitation to results carrying these tags (default: sqli)
+	// ExploitTags restricts post-exploitation to results carrying these tags (default: sqli,upload,rce,redis)
 	ExploitTags goflags.StringSlice
 	// timeouts contains various types of timeouts used in nuclei
 	// these timeouts are derived from dial-timeout (-timeout) with known multipliers

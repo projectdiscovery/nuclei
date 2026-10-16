@@ -401,11 +401,16 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
 
+	flagSet.CreateGroup("portscan", "PortScan",
+		flagSet.BoolVarP(&options.PortScan, "port-scan", "pscan", false, "TCP scan common ports of bare host inputs and expand them into targets"),
+		flagSet.StringSliceVar(&options.PortScanPorts, "ps-ports", nil, "ports to scan with -pscan (comma-separated, default: top 36 service ports)", goflags.FileCommaSeparatedStringSliceOptions),
+	)
+
 	flagSet.CreateGroup("exploit", "Exploit",
 		flagSet.BoolVarP(&options.Exploit, "exploit", "ex", false, "enable post-exploitation of matched vulnerabilities (e.g. SQLi -> privilege check + webshell drop)"),
 		flagSet.StringVar(&options.WebShellPath, "webshell", "", "path to a custom webshell file to deploy (default: built-in file-manager shell)"),
 		flagSet.IntVar(&options.ExploitMax, "exploit-max", 10, "maximum number of vulnerabilities to exploit per scan"),
-		flagSet.StringSliceVar(&options.ExploitTags, "exploit-tags", []string{"sqli", "upload", "rce"}, "tags of templates whose matches should be exploited (comma-separated)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVar(&options.ExploitTags, "exploit-tags", []string{"sqli", "upload", "rce", "redis"}, "tags of templates whose matches should be exploited (comma-separated)", goflags.FileCommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
