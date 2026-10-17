@@ -1005,6 +1005,8 @@ github.com/projectdiscovery/useragent v0.0.109 h1:b86BPdZvmgbJousa04jAugDRY4Y+rA
 github.com/projectdiscovery/useragent v0.0.109/go.mod h1:sRyBqDAcD31RKYrO8fyXGowLd36fNwY1g0MNW9mp7zk=
 github.com/projectdiscovery/utils v0.11.9 h1:aKLje3zPcZuOGmopN51PasWxPX/CypPwzP2ke/Qa2bA=
 github.com/projectdiscovery/utils v0.11.9/go.mod h1:d3BcbsHhuxW9T3jpvrgzwshvqhaL9qPSkoi+3h/DY8E=
+github.com/projectdiscovery/utils v0.11.10-0.20261017183053-ac02d12acdf3 h1:TcGBnYp/RhcGGwNa6sP8/V/oJBDsbGnmBWU1yR0K/2U=
+github.com/projectdiscovery/utils v0.11.10-0.20261017183053-ac02d12acdf3/go.mod h1:d3BcbsHhuxW9T3jpvrgzwshvqhaL9qPSkoi+3h/DY8E=
 github.com/projectdiscovery/wappalyzergo v0.3.4 h1:yO+xel+C0d/vOFWcUKVZRpIDAfcEmsjpVDjQ0jifAUw=
 github.com/projectdiscovery/wappalyzergo v0.3.4/go.mod h1:6xTRCUQhX8m+L1eqJDQIALJlRv2Bnhrmku80YU9bBXE=
 github.com/projectdiscovery/yamldoc-go v1.0.7 h1:Odmjd1o4EkMff2F6QHi1dIYPIQPZUFy24YqmQCprmTk=
