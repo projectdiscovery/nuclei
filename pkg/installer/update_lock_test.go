@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -57,4 +58,44 @@ func TestTemplatesUpdateLockPath(t *testing.T) {
 		}
 		require.Equal(t, templatesUpdateLockPath(target), templatesUpdateLockPath(link))
 	})
+}
+
+func TestWithTemplatesUpdateLockStaleLockIsCleared(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := templatesUpdateLockPath(dir)
+	require.NoError(t, os.WriteFile(lockPath, []byte("1234\n"), 0o600))
+	stale := time.Now().Add(-1 * time.Hour)
+	require.NoError(t, os.Chtimes(lockPath, stale, stale))
+	t.Cleanup(func() { _ = os.Remove(lockPath) })
+
+	ran := false
+	require.NoError(t, withTemplatesUpdateLock(dir, func() error {
+		ran = true
+		return nil
+	}))
+	require.True(t, ran, "fn should run after the stale lock is cleared")
+}
+
+func TestWithTemplatesUpdateLockFreshLockTimesOutWithHelpfulMessage(t *testing.T) {
+	oldTimeout, oldStale, oldPoll := templatesUpdateLockTimeout, templatesUpdateLockStaleAfter, templatesUpdateLockPollInterval
+	templatesUpdateLockTimeout = 200 * time.Millisecond
+	templatesUpdateLockStaleAfter = time.Hour
+	templatesUpdateLockPollInterval = 10 * time.Millisecond
+	defer func() {
+		templatesUpdateLockTimeout, templatesUpdateLockStaleAfter, templatesUpdateLockPollInterval = oldTimeout, oldStale, oldPoll
+	}()
+
+	dir := t.TempDir()
+	lockPath := templatesUpdateLockPath(dir)
+	require.NoError(t, os.WriteFile(lockPath, []byte("99999\n"), 0o600))
+	t.Cleanup(func() { _ = os.Remove(lockPath) })
+
+	start := time.Now()
+	err := withTemplatesUpdateLock(dir, func() error { return nil })
+	elapsed := time.Since(start)
+	require.Error(t, err)
+	require.Less(t, elapsed, 10*time.Second, "must fail fast instead of hanging")
+	require.Contains(t, err.Error(), "timed out waiting for nuclei templates update lock")
+	require.Contains(t, err.Error(), lockPath)
+	require.Contains(t, err.Error(), "-duc")
 }
