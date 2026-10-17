@@ -79,6 +79,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if len(request.Fuzzing) > 0 {
 		return request.executeFuzzingRule(input, vars, previous, wrappedCallback)
 	}
+	timing := newHeadlessTimingTrace(request.options.TemplateID, input.MetaInput.Input)
+	if timing != nil {
+		defer timing.emit()
+	}
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {
@@ -103,13 +107,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return errors.Wrap(err, "could not evaluate payload helper expressions")
 			}
 
-			if err := request.executeRequestWithPayloads(input, renderedValue.Values, previous, renderedValue.InteractURLs, wrappedCallback); err != nil {
+			if err := request.executeRequestWithPayloads(input, renderedValue.Values, previous, renderedValue.InteractURLs, wrappedCallback, timing); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := maps.Clone(vars)
-		if err := request.executeRequestWithPayloads(input, value, previous, interactshURLs, wrappedCallback); err != nil {
+		if err := request.executeRequestWithPayloads(input, value, previous, interactshURLs, wrappedCallback, timing); err != nil {
 			return err
 		}
 	}
@@ -132,9 +136,15 @@ func extractBaseURLFromActions(steps []*engine.Action) (string, error) {
 	return "", errors.New("no navigation action found")
 }
 
-func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback, timing *headlessTimingTrace) error {
+	if timing != nil {
+		timing.attempts++
+	}
 	pageTimeout := time.Duration(request.options.Options.PageTimeout) * time.Second
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
+		if timing != nil {
+			timing.errors++
+		}
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
@@ -146,26 +156,57 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	}
 
 	if !options.DisableCookie && input.CookieJar == nil {
+		if timing != nil {
+			timing.errors++
+		}
 		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
 	// limited as one request per run of the steps, the unit progress counts
-	if err := request.options.RateLimitTakeContext(input.Context(), input.MetaInput.Input); err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+	var rateWaitStarted time.Time
+	if timing != nil {
+		rateWaitStarted = time.Now()
+	}
+	rateWaitErr := request.options.RateLimitTakeContext(input.Context(), input.MetaInput.Input)
+	if timing != nil {
+		timing.rateWait += time.Since(rateWaitStarted)
+	}
+	if rateWaitErr != nil {
+		if timing != nil {
+			timing.errors++
+		}
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), rateWaitErr)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not take rate limit")
+		return errors.Wrap(rateWaitErr, "could not take rate limit")
 	}
 
+	var createStarted time.Time
+	if timing != nil {
+		createStarted = time.Now()
+	}
 	instance, err := request.options.Browser.NewInstanceWithContext(input.Context(), pageTimeout)
+	if timing != nil {
+		timing.contextCreate += time.Since(createStarted)
+	}
 	if err != nil {
+		if timing != nil {
+			timing.errors++
+		}
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	var page *engine.Page
 	defer func() {
+		var cleanupStarted time.Time
+		if timing != nil {
+			cleanupStarted = time.Now()
+		}
 		if closeErr := instance.CloseWithPage(page); closeErr != nil {
 			gologger.Warning().Msgf("Could not close headless browser instance: %s", closeErr)
+		}
+		if timing != nil {
+			timing.cleanup += time.Since(cleanupStarted)
 		}
 	}()
 	instance.SetInteractsh(request.options.Interactsh)
@@ -173,6 +214,16 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	timeStart := time.Now()
 	out, createdPage, err := instance.Run(input, request.Steps, payloads, options)
 	runDuration := time.Since(timeStart)
+	if timing != nil {
+		if err != nil {
+			timing.errors++
+			timing.runOther += runDuration
+		} else if createdPage != nil {
+			timing.recordRun(request.Steps, createdPage.ActionDurations, runDuration)
+		} else {
+			timing.runOther += runDuration
+		}
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -294,7 +345,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 		newInput := input.Clone()
 		newInput.MetaInput.Input = gr.Request.String()
 
-		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, gr.InteractURLs, callback); err != nil {
+		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, gr.InteractURLs, callback, nil); err != nil {
 			return false
 		}
 

@@ -881,6 +881,25 @@ func TestActionWaitEventDuration(t *testing.T) {
 	})
 }
 
+func TestActionNavigateDurationIncludesResponseHeaderWait(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+
+	handler := func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(350 * time.Millisecond)
+		_, _ = fmt.Fprintln(w, `<html><body>loaded</body></html>`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, _ ActionData) {
+		require.NoError(t, err)
+		require.Len(t, page.ActionDurations, 2)
+		require.GreaterOrEqual(t, page.ActionDurations[0], 300*time.Millisecond)
+		require.Less(t, page.ActionDurations[1], time.Second)
+	})
+}
+
 func TestActionWaitEventSeesEventFiredBeforeWaiting(t *testing.T) {
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
