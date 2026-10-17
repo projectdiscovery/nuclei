@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v3/internal/configuration"
+	"github.com/projectdiscovery/nuclei/v3/internal/console"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -168,6 +169,12 @@ func main() {
 		if err := runner.UploadResultsToCloud(options); err != nil {
 			fatalf("Could not upload scan results to cloud dashboard: %s\n", err)
 		}
+		return
+	}
+
+	// interactive post-exploitation console mode
+	if options.Console {
+		console.New(options).Loop()
 		return
 	}
 
@@ -410,6 +417,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.Exploit, "exploit", "ex", false, "enable post-exploitation of matched vulnerabilities (e.g. SQLi -> privilege check + webshell drop)"),
 		flagSet.StringVar(&options.WebShellPath, "webshell", "", "path to a custom webshell file to deploy (default: built-in file-manager shell)"),
 		flagSet.BoolVar(&options.WebShellClean, "webshell-clean", false, "remove deployed webshells (and UDF artifacts) after the exploit phase"),
+		flagSet.BoolVar(&options.Console, "console", false, "interactive console: scan, manage webshells and run commands (scan/shells/use/exec/ls/rm/cleanup)"),
 		flagSet.IntVar(&options.ExploitMax, "exploit-max", 10, "maximum number of vulnerabilities to exploit per scan"),
 		flagSet.BoolVar(&options.ExploitUDF, "exploit-udf", false, "force MySQL UDF privilege escalation (sys_eval) even after a successful webshell write"),
 		flagSet.StringSliceVar(&options.ExploitTags, "exploit-tags", []string{"sqli", "upload", "rce", "redis"}, "tags of templates whose matches should be exploited (comma-separated)", goflags.FileCommaSeparatedStringSliceOptions),

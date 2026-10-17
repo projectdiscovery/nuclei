@@ -536,6 +536,12 @@ func (r *Runner) expandPortScan() error {
 }
 
 // Close releases all the resources and cleans up
+// PostExploit returns the post-exploitation manager, or nil when -exploit
+// is disabled. The interactive console uses it to list deployed shells.
+func (r *Runner) PostExploit() *postexploit.Manager {
+	return r.postExploit
+}
+
 func (r *Runner) Close() {
 	if r.dastServer != nil {
 		r.dastServer.Close()
