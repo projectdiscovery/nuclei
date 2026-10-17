@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -49,6 +50,8 @@ import (
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/portscan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/postexploit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -100,6 +103,7 @@ type Runner struct {
 	pprofServer        *pprofutil.PprofServer
 	pdcpUploadErrMsg   string
 	inputProvider      provider.InputProvider
+	postExploit        *postexploit.Manager
 	fuzzFrequencyCache *frequency.Tracker
 	httpStats          *outputstats.Tracker
 	Logger             *gologger.Logger
@@ -117,6 +121,14 @@ type Runner struct {
 
 // New creates a new client for running the enumeration process.
 func New(options *types.Options) (*Runner, error) {
+	return NewWithResultCallback(options, nil)
+}
+
+// NewWithResultCallback is New with an additional observer: every result
+// written during the scan (template matches and post-exploitation reports
+// alike) is also passed to onResult, without changing the regular output.
+// Used by the desktop app to feed a live UI.
+func NewWithResultCallback(options *types.Options, onResult func(*output.ResultEvent)) (*Runner, error) {
 	runner := &Runner{
 		options: options,
 		Logger:  options.Logger,
@@ -308,6 +320,13 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.inputProvider = inputProvider
 
+	// expand bare hosts into host:port targets via TCP port scanning
+	if options.PortScan {
+		if err := runner.expandPortScan(); err != nil {
+			return nil, errors.Wrap(err, "port scan failed")
+		}
+	}
+
 	// Create the output file if asked
 	outputWriter, err := output.NewStandardWriter(options)
 	if err != nil {
@@ -328,6 +347,24 @@ func New(options *types.Options) (*Runner, error) {
 
 	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
+	}
+
+	// Desktop/console mode: observe every result without touching the
+	// regular output. Wired before the post-exploit manager so its synthetic
+	// reports flow through the observer as well.
+	if onResult != nil {
+		runner.output = &observeWriter{Writer: runner.output, observe: onResult}
+	}
+
+	// Post-exploitation: collect tagged matches during the scan through a
+	// pass-through writer and exploit them once the scan has finished.
+	if options.Exploit {
+		pe, perr := postexploit.New(options, runner.output, runner.Logger)
+		if perr != nil {
+			return nil, errors.Wrap(perr, "could not initialize post-exploit manager")
+		}
+		runner.postExploit = pe
+		runner.output = postexploit.NewCollectWriter(runner.output, pe.Collect)
 	}
 
 	if options.StatsJSON {
@@ -470,7 +507,70 @@ func (r *Runner) runStandardEnumeration(executerOpts *protocols.ExecutorOptions,
 	return r.executeTemplatesInput(store, engine)
 }
 
+// expandPortScan scans bare host inputs for open TCP ports and replaces the
+// input provider with the expanded host:port targets. Inputs that already
+// carry an explicit port are kept untouched.
+func (r *Runner) expandPortScan() error {
+	var inputs []string
+	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
+		inputs = append(inputs, value.Input)
+		return true
+	})
+	ports := portscan.DefaultPorts
+	if len(r.options.PortScanPorts) > 0 {
+		ports = nil
+		for _, raw := range r.options.PortScanPorts {
+			n, err := strconv.Atoi(strings.TrimSpace(raw))
+			if err != nil {
+				return errors.Wrapf(err, "invalid port %q in -ps-ports", raw)
+			}
+			ports = append(ports, n)
+		}
+	}
+	r.Logger.Info().Msgf("[port-scan] scanning %d host(s) across %d port(s)", len(inputs), len(ports))
+	start := time.Now()
+	targets := portscan.New(ports).Expand(inputs)
+	for _, t := range targets {
+		note := ""
+		if t.TLS != "" {
+			note = " tls cn=" + t.TLS
+		}
+		r.Logger.Info().Msgf("[port-scan] %s:%d open%s", t.Host, t.Port, note)
+	}
+	if len(targets) == 0 {
+		return errors.New("no open ports found")
+	}
+	r.Logger.Info().Msgf("[port-scan] %d open port(s) in %s", len(targets), time.Since(start).Round(time.Millisecond))
+	var urls []string
+	for _, t := range targets {
+		urls = append(urls, t.URL)
+	}
+	r.inputProvider.Close()
+	r.inputProvider = provider.NewSimpleInputProviderWithUrls(r.options.ExecutionId, urls...)
+	return nil
+}
+
 // Close releases all the resources and cleans up
+// PostExploit returns the post-exploitation manager, or nil when -exploit
+// is disabled. The interactive console uses it to list deployed shells.
+func (r *Runner) PostExploit() *postexploit.Manager {
+	return r.postExploit
+}
+
+// observeWriter is a pass-through output.Writer with an observer hook.
+type observeWriter struct {
+	output.Writer
+	observe func(*output.ResultEvent)
+}
+
+func (w *observeWriter) Write(result *output.ResultEvent) error {
+	err := w.Writer.Write(result)
+	if err == nil && result != nil && w.observe != nil {
+		w.observe(result)
+	}
+	return err
+}
+
 func (r *Runner) Close() {
 	if r.dastServer != nil {
 		r.dastServer.Close()
@@ -735,6 +835,9 @@ func (r *Runner) RunEnumeration() error {
 	executorEngine := core.New(r.options)
 	executorEngine.SetExecuterOptions(executorOpts)
 
+	// Post-exploitation candidates were collected during the scan through the
+	// pass-through output writer; exploit them now that it has finished.
+
 	workflowLoader, err := parsers.NewLoader(executorOpts)
 	if err != nil {
 		return errors.Wrap(err, "Could not create loader.")
@@ -888,6 +991,9 @@ func (r *Runner) RunEnumeration() error {
 		if matched {
 			results.CompareAndSwap(false, true)
 		}
+	}
+	if r.postExploit != nil {
+		r.postExploit.Run()
 	}
 	if executorOpts.InputHelper != nil {
 		_ = executorOpts.InputHelper.Close()
