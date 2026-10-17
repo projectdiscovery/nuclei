@@ -239,19 +239,22 @@ http:
 		ne.LoadTargets([]string{ts.URL}, false)
 
 		var (
-			mu      sync.Mutex
-			matched []string
+			mu         sync.Mutex
+			matched    []string
+			violations []*output.ResultEvent
 		)
 		err = ne.ExecuteCallbackWithCtx(context.Background(), func(event *output.ResultEvent) {
 			mu.Lock()
 			defer mu.Unlock()
-			require.True(t, event.MatcherStatus, "ExecuteCallbackWithCtx must not emit non-matching or skip events when MatcherStatus is false")
-			require.Empty(t, event.Error, "ExecuteCallbackWithCtx must not emit error/skip events when MatcherStatus is false")
+			if !event.MatcherStatus || event.Error != "" {
+				violations = append(violations, event)
+			}
 			matched = append(matched, event.TemplateID)
 		})
 		ne.Close()
 
 		require.NoError(t, err, "run %d failed", run)
+		require.Empty(t, violations, "ExecuteCallbackWithCtx must not emit non-matching or skip events when MatcherStatus is false")
 		require.Equal(t, []string{"healthy-base-target-match"}, matched, "run %d should consistently match healthy base target after custom-port failure", run)
 	}
 }

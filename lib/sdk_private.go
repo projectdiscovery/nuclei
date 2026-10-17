@@ -392,7 +392,10 @@ type syncOnce struct {
 	sync.Once
 }
 
-var updateCheckInstance = &syncOnce{}
+var (
+	updateCheckInstance    = &syncOnce{}
+	templateUpdateInstance = &syncOnce{}
+)
 
 // processUpdateCheckResults processes update check results
 func (e *NucleiEngine) processUpdateCheckResults() error {
@@ -401,10 +404,12 @@ func (e *NucleiEngine) processUpdateCheckResults() error {
 		if e.onUpdateAvailableCallback != nil {
 			e.onUpdateAvailableCallback(config.DefaultConfig.LatestNucleiTemplatesVersion)
 		}
-		if !e.disableTemplatesAutoUpgrade {
+	})
+	if !e.disableTemplatesAutoUpgrade {
+		templateUpdateInstance.Do(func() {
 			tm := installer.TemplateManager{}
 			err = tm.UpdateIfOutdated()
-		}
-	})
+		})
+	}
 	return err
 }
