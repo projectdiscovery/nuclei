@@ -121,6 +121,14 @@ type Runner struct {
 
 // New creates a new client for running the enumeration process.
 func New(options *types.Options) (*Runner, error) {
+	return NewWithResultCallback(options, nil)
+}
+
+// NewWithResultCallback is New with an additional observer: every result
+// written during the scan (template matches and post-exploitation reports
+// alike) is also passed to onResult, without changing the regular output.
+// Used by the desktop app to feed a live UI.
+func NewWithResultCallback(options *types.Options, onResult func(*output.ResultEvent)) (*Runner, error) {
 	runner := &Runner{
 		options: options,
 		Logger:  options.Logger,
@@ -341,6 +349,13 @@ func New(options *types.Options) (*Runner, error) {
 		options.StatsJSON = true
 	}
 
+	// Desktop/console mode: observe every result without touching the
+	// regular output. Wired before the post-exploit manager so its synthetic
+	// reports flow through the observer as well.
+	if onResult != nil {
+		runner.output = &observeWriter{Writer: runner.output, observe: onResult}
+	}
+
 	// Post-exploitation: collect tagged matches during the scan through a
 	// pass-through writer and exploit them once the scan has finished.
 	if options.Exploit {
@@ -540,6 +555,20 @@ func (r *Runner) expandPortScan() error {
 // is disabled. The interactive console uses it to list deployed shells.
 func (r *Runner) PostExploit() *postexploit.Manager {
 	return r.postExploit
+}
+
+// observeWriter is a pass-through output.Writer with an observer hook.
+type observeWriter struct {
+	output.Writer
+	observe func(*output.ResultEvent)
+}
+
+func (w *observeWriter) Write(result *output.ResultEvent) error {
+	err := w.Writer.Write(result)
+	if err == nil && result != nil && w.observe != nil {
+		w.observe(result)
+	}
+	return err
 }
 
 func (r *Runner) Close() {

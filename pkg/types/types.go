@@ -545,6 +545,10 @@ type Options struct {
 	WebShellClean bool
 	// Console starts the interactive post-exploitation console
 	Console bool
+	// App launches the local desktop (browser) interface
+	App bool
+	// AppPort selects the port for the desktop interface HTTP server
+	AppPort int
 	// WebShellPath is the path to a custom webshell file to deploy; defaults to the built-in file-manager shell
 	WebShellPath string
 	// ExploitMax limits how many matched vulnerabilities are exploited per scan
