@@ -732,6 +732,18 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 
 // WaitPageLifecycleEvent waits for specified page lifecycle event name
 func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.PageLifecycleEventName) error {
+	if event == proto.PageLifecycleEventNameLoad {
+		dur, err := getTimeout(p, act)
+		if err != nil {
+			return err
+		}
+		if err := p.page.Timeout(dur).WaitLoad(); err != nil {
+			return err
+		}
+		p.updateLastNavigatedURL()
+		return nil
+	}
+
 	fn, err := getNavigationFunc(p, act, event)
 	if err != nil {
 		return err
