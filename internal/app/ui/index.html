@@ -186,7 +186,11 @@ function render(s) {
   // 结果表
   const res = $('#results');
   if (!s.scan.results || !s.scan.results.length) {
-    res.innerHTML = '<div class="empty">' + (s.scan.running ? '扫描进行中，等待结果…' : '暂无结果，填写目标后点击「开始扫描」') + '</div>';
+    let msg = '暂无结果，填写目标后点击「开始扫描」';
+    if (s.scan.running) msg = '扫描进行中，等待结果…';
+    else if (s.scan.error) msg = '上次扫描出错：' + s.scan.error;
+    else if (s.scan.elapsed) msg = '扫描完成，未发现匹配漏洞。真实站点请选「完整 nuclei-templates」并填写标签过滤。';
+    res.innerHTML = '<div class="empty">' + esc(msg) + '</div>';
   } else {
     let h = '<table><tr><th>严重性</th><th>模板</th><th>URL</th><th>证据</th></tr>';
     for (const r of s.scan.results) {

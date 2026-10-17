@@ -18,7 +18,9 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/postexploit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/rs/xid"
 )
 
 // Console is the interactive session state.
@@ -118,6 +120,9 @@ func (c *Console) help() {
 func (c *Console) scan(args []string) {
 	opts := *c.base
 	opts.Console = false
+	// fresh execution id per scan (protocolstate dialers are per-id and
+	// released on Close, see internal/app note)
+	opts.ExecutionId = xid.New().String()
 	target := ""
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -164,8 +169,13 @@ func (c *Console) scan(args []string) {
 	}
 	opts.Targets = goflags.StringSlice{target}
 
+	if ierr := protocolinit.Init(&opts); ierr != nil {
+		fmt.Fprintf(c.out, "scan: %v\n", ierr)
+		return
+	}
 	r, err := runner.New(&opts)
 	if err != nil {
+		protocolinit.Close(opts.ExecutionId)
 		fmt.Fprintf(c.out, "scan: %v\n", err)
 		return
 	}

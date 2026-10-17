@@ -23,7 +23,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/postexploit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/rs/xid"
 )
 
 //go:embed ui
@@ -243,11 +245,17 @@ func (a *App) runScan(req scanRequest) {
 		}
 	}
 
-	// per-scan copy of the startup options (the embedded mutex guards
-	// internal timeout bookkeeping only and is unused at this point)
 	opts := *a.base //nolint:govet // copylocks: intentional independent copy
 	opts.App = false
 	opts.Console = false
+	// fresh execution id per scan: protocolstate dialers are registered
+	// globally per id and torn down on Close, so consecutive scans in one
+	// process must not share it (mirrors the CLI, one id per process)
+	opts.ExecutionId = xid.New().String()
+	if ierr := protocolinit.Init(&opts); ierr != nil {
+		finish(ierr)
+		return
+	}
 	opts.Silent = true
 	opts.Targets = goflags.StringSlice{strings.TrimSpace(req.Target)}
 	switch req.Preset {
@@ -273,6 +281,7 @@ func (a *App) runScan(req scanRequest) {
 
 	r, err := runner.NewWithResultCallback(&opts, a.observe)
 	if err != nil {
+		protocolinit.Close(opts.ExecutionId)
 		finish(err)
 		return
 	}
