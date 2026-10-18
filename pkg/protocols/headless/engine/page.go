@@ -52,9 +52,10 @@ type HistoryData struct {
 
 // Options contains additional configuration options for the browser instance
 type Options struct {
-	Timeout       time.Duration
-	DisableCookie bool
-	Options       *types.Options
+	Timeout        time.Duration
+	DisableCookie  bool
+	Options        *types.Options
+	OnActionTiming func(ActionType, time.Duration)
 }
 
 // Run runs a list of actions by creating a new page in the browser.

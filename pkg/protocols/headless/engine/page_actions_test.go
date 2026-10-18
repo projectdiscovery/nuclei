@@ -1132,10 +1132,21 @@ func TestHeadlessRunHonorsParentCancellation(t *testing.T) {
 	}}
 
 	startedAt := time.Now()
-	_, page, err := instance.Run(input, actions, nil, &Options{Timeout: 5 * time.Second, Options: opts})
+	var timedAction ActionType
+	var timedDuration time.Duration
+	_, page, err := instance.Run(input, actions, nil, &Options{
+		Timeout: 5 * time.Second,
+		Options: opts,
+		OnActionTiming: func(action ActionType, duration time.Duration) {
+			timedAction = action
+			timedDuration = duration
+		},
+	})
 
 	require.ErrorIs(t, err, context.Canceled)
 	require.Nil(t, page)
+	require.Equal(t, ActionNavigate, timedAction)
+	require.Positive(t, timedDuration)
 	require.Less(t, time.Since(startedAt), 2*time.Second)
 }
 

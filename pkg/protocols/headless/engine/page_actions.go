@@ -52,6 +52,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 
 	type deferredWaitFunc struct {
 		actionIndex int
+		actionType  ActionType
 		run         func() error
 	}
 
@@ -76,6 +77,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 		actionIndex := len(p.ActionDurations)
 		timeStart := time.Now()
 		var deferredWaitDuration time.Duration
+		deferredWaitFailed := false
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
 			err = p.NavigateURL(act, outData)
@@ -84,18 +86,24 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 				for _, waitFunc := range waitFuncs {
 					if waitFunc.run != nil {
 						waitStart := time.Now()
-						if err := waitFunc.run(); err != nil {
-							waitDuration := time.Since(waitStart)
-							addActionDuration(p.ActionDurations, waitFunc.actionIndex, waitDuration)
-							return nil, errkit.Wrap(err, "error occurred while executing waitFunc")
-						}
+						waitErr := waitFunc.run()
 						waitDuration := time.Since(waitStart)
 						addActionDuration(p.ActionDurations, waitFunc.actionIndex, waitDuration)
+						if p.options.OnActionTiming != nil {
+							p.options.OnActionTiming(waitFunc.actionType, waitDuration)
+						}
 						deferredWaitDuration += waitDuration
+						if waitErr != nil {
+							err = waitErr
+							deferredWaitFailed = true
+							break
+						}
 					}
 				}
 
-				p.lastActionNavigate = act
+				if err == nil {
+					p.lastActionNavigate = act
+				}
 			}
 		case ActionScript:
 			err = p.RunScript(act, outData)
@@ -141,7 +149,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 			var waitFunc func() error
 			waitFunc, err = p.WaitEvent(act, outData)
 			if waitFunc != nil {
-				waitFuncs = append(waitFuncs, deferredWaitFunc{actionIndex: actionIndex, run: waitFunc})
+				waitFuncs = append(waitFuncs, deferredWaitFunc{actionIndex: actionIndex, actionType: act.ActionType.ActionType, run: waitFunc})
 			}
 		case ActionWaitDialog:
 			err = p.HandleDialog(act, outData)
@@ -177,11 +185,20 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 		default:
 			executed = false
 		}
-		if err != nil {
-			return nil, errors.Wrap(err, "error occurred executing action")
-		}
 		if executed {
-			p.ActionDurations = append(p.ActionDurations, max(time.Since(timeStart)-deferredWaitDuration, 0))
+			duration := max(time.Since(timeStart)-deferredWaitDuration, 0)
+			if p.options.OnActionTiming != nil {
+				p.options.OnActionTiming(act.ActionType.ActionType, duration)
+			}
+			if err == nil {
+				p.ActionDurations = append(p.ActionDurations, duration)
+			}
+		}
+		if err != nil {
+			if deferredWaitFailed {
+				return nil, errkit.Wrap(err, "error occurred while executing waitFunc")
+			}
+			return nil, errors.Wrap(err, "error occurred executing action")
 		}
 	}
 	return outData, nil

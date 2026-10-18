@@ -36,6 +36,11 @@ type headlessTimingTrace struct {
 	cleanup           time.Duration
 }
 
+type headlessActionTiming struct {
+	action   engine.ActionType
+	duration time.Duration
+}
+
 func newHeadlessTimingTrace(templateID, target string) *headlessTimingTrace {
 	selectedTemplates := os.Getenv(headlessTimingTemplatesEnv)
 	if selectedTemplates == "" {
@@ -51,7 +56,6 @@ func newHeadlessTimingTrace(templateID, target string) *headlessTimingTrace {
 	if !selected {
 		return nil
 	}
-
 	fingerprint := sha256.Sum256([]byte(target))
 	return &headlessTimingTrace{
 		templateID:        templateID,
@@ -95,6 +99,24 @@ func (t *headlessTimingTrace) recordRun(steps []*engine.Action, durations []time
 	}
 }
 
+func (t *headlessTimingTrace) recordFailedRun(actions []headlessActionTiming, elapsed time.Duration) {
+	measured := time.Duration(0)
+	for _, action := range actions {
+		measured += action.duration
+		switch action.action {
+		case engine.ActionNavigate:
+			t.navigate += action.duration
+		case engine.ActionWaitLoad:
+			t.waitLoad += action.duration
+		case engine.ActionWaitDialog:
+			t.waitDialog += action.duration
+		default:
+			t.otherActions += action.duration
+		}
+	}
+	t.runOther += max(elapsed-measured, 0)
+}
+
 func (t *headlessTimingTrace) summary(elapsed time.Duration) (string, bool) {
 	if elapsed < headlessTimingOutlierMin && (!t.sampled || elapsed < headlessTimingSampleMin) {
 		return "", false
@@ -109,8 +131,11 @@ func (t *headlessTimingTrace) summary(elapsed time.Duration) (string, bool) {
 	), true
 }
 
-func (t *headlessTimingTrace) emit() {
+func (t *headlessTimingTrace) emit(logger *gologger.Logger) {
 	if message, ok := t.summary(time.Since(t.started)); ok {
-		gologger.Info().Msg(message)
+		if logger == nil {
+			logger = gologger.DefaultLogger
+		}
+		logger.Info().Msg(message)
 	}
 }

@@ -1,13 +1,46 @@
 package headless
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/formatter"
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/stretchr/testify/require"
 )
+
+type timingCaptureWriter struct{ buffer *bytes.Buffer }
+
+func (w timingCaptureWriter) Write(data []byte, _ levels.Level) {
+	w.buffer.Write(data)
+}
+
+func TestHeadlessTimingTraceUsesExecutionLogger(t *testing.T) {
+	previous := gologger.DefaultLogger
+	t.Cleanup(func() { gologger.DefaultLogger = previous })
+	var output bytes.Buffer
+	silentLogger := &gologger.Logger{}
+	silentLogger.SetFormatter(formatter.NewCLI(false))
+	silentLogger.SetWriter(timingCaptureWriter{buffer: &output})
+	silentLogger.SetMaxLevel(levels.LevelSilent)
+	gologger.DefaultLogger = silentLogger
+	logger := &gologger.Logger{}
+	logger.SetFormatter(formatter.NewCLI(false))
+	logger.SetWriter(timingCaptureWriter{buffer: &output})
+	logger.SetMaxLevel(levels.LevelInfo)
+	trace := &headlessTimingTrace{templateID: "headless-open-redirect", sampled: true, started: time.Now().Add(-31 * time.Second)}
+
+	trace.emit(silentLogger)
+	trace.emit(nil)
+	require.Empty(t, output.String())
+
+	trace.emit(logger)
+	require.Contains(t, output.String(), "slow headless timing template_id=\"headless-open-redirect\"")
+}
 
 func TestHeadlessTimingTraceIsTemplateOptIn(t *testing.T) {
 	t.Setenv(headlessTimingTemplatesEnv, "")
@@ -78,4 +111,17 @@ func TestHeadlessTimingTraceDoesNotMisattributePartialActionDurations(t *testing
 	require.Zero(t, trace.waitLoad)
 	require.Equal(t, 2*time.Second, trace.otherActions)
 	require.Equal(t, time.Second, trace.runOther)
+}
+
+func TestHeadlessTimingTraceAttributesFailedActions(t *testing.T) {
+	trace := &headlessTimingTrace{sampled: true}
+	trace.recordFailedRun([]headlessActionTiming{
+		{action: engine.ActionNavigate, duration: 2 * time.Second},
+		{action: engine.ActionWaitLoad, duration: 500 * time.Millisecond},
+	}, 3*time.Second)
+
+	require.Equal(t, 2*time.Second, trace.navigate)
+	require.Equal(t, 500*time.Millisecond, trace.waitLoad)
+	require.Zero(t, trace.otherActions)
+	require.Equal(t, 500*time.Millisecond, trace.runOther)
 }

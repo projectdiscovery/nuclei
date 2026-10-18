@@ -81,7 +81,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	timing := newHeadlessTimingTrace(request.options.TemplateID, input.MetaInput.Input)
 	if timing != nil {
-		defer timing.emit()
+		defer timing.emit(request.options.Logger)
 	}
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -154,6 +154,12 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
 	}
+	var actionTimings []headlessActionTiming
+	if timing != nil {
+		options.OnActionTiming = func(action engine.ActionType, duration time.Duration) {
+			actionTimings = append(actionTimings, headlessActionTiming{action: action, duration: duration})
+		}
+	}
 
 	if !options.DisableCookie && input.CookieJar == nil {
 		if timing != nil {
@@ -217,7 +223,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if timing != nil {
 		if err != nil {
 			timing.errors++
-			timing.runOther += runDuration
+			timing.recordFailedRun(actionTimings, runDuration)
 		} else if createdPage != nil {
 			timing.recordRun(request.Steps, createdPage.ActionDurations, runDuration)
 		} else {
