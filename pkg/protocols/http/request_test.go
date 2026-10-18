@@ -24,6 +24,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"io"
 )
 
 func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
@@ -1586,23 +1588,74 @@ func TestDumpedRequestKeepsBodyServerDidNotRead(t *testing.T) {
 	})
 
 	body := strings.Repeat("A", 4<<20)
-	request := &Request{
-		ID:     "dump-body",
-		Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
-		Path:   []string{"{{BaseURL}}/"},
-		Body:   body,
+	requests := []*Request{
+		{
+			ID:     "post",
+			Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+			Path:   []string{"{{BaseURL}}/"},
+			Body:   body,
+		},
+		{
+			ID:  "get",
+			Raw: []string{"GET / HTTP/1.1\nHost: {{Hostname}}\n\n" + body},
+		},
+		{
+			ID:  "chunked",
+			Raw: []string{"POST / HTTP/1.1\nHost: {{Hostname}}\nTransfer-Encoding: chunked\n\n" + body},
+		},
 	}
-	require.NoError(t, request.Compile(executerOpts))
+	for _, request := range requests {
+		require.NoError(t, request.Compile(executerOpts))
+		// how much the transport has written when the response lands varies, so
+		// a few rounds make a lost body show up reliably
+		for range 3 {
+			var dumped string
+			input := contextargs.NewWithInput(context.Background(), target.URL)
+			err := request.ExecuteWithResults(input, output.InternalEvent{}, output.InternalEvent{}, func(event *output.InternalWrappedEvent) {
+				dumped, _ = event.InternalEvent["request"].(string)
+			})
+			require.NoError(t, err)
+			require.True(t, strings.HasSuffix(dumped, "\r\n\r\n"+body), "%s recorded request lost its body: %d of %d bytes", request.ID, len(dumped), len(body))
+		}
+	}
+}
 
-	// how much the transport has written when the response lands varies, so
-	// a few rounds make a lost body show up reliably
-	for range 3 {
-		var dumped string
-		input := contextargs.NewWithInput(context.Background(), target.URL)
-		err := request.ExecuteWithResults(input, output.InternalEvent{}, output.InternalEvent{}, func(event *output.InternalWrappedEvent) {
-			dumped, _ = event.InternalEvent["request"].(string)
+func TestReuseRequestBodyKeepsExcludedEncoding(t *testing.T) {
+	body := []byte("original")
+	for _, tc := range []struct {
+		name          string
+		method        string
+		header        string
+		contentLength int64
+		wantLength    int64
+	}{
+		{name: "post", method: http.MethodPost, contentLength: 1, wantLength: int64(len(body))},
+		{name: "get", method: http.MethodGet, contentLength: 3, wantLength: 3},
+		{name: "head", method: http.MethodHead, contentLength: 0, wantLength: 0},
+		{name: "chunked", method: http.MethodPost, header: "chunked", contentLength: -1, wantLength: -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := retryablehttp.NewRequest(tc.method, "https://example.com/", body)
+			require.NoError(t, err)
+			req.ContentLength = tc.contentLength
+			if tc.header != "" {
+				req.Header.Set("Transfer-Encoding", tc.header)
+			}
+
+			require.NoError(t, reuseRequestBody(req))
+			require.Equal(t, tc.wantLength, req.ContentLength)
+			if tc.header != "" {
+				require.Equal(t, tc.header, req.Header.Get("Transfer-Encoding"))
+			}
+
+			got, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			require.Equal(t, body, got)
+			fresh, err := req.GetBody()
+			require.NoError(t, err)
+			got, err = io.ReadAll(fresh)
+			require.NoError(t, err)
+			require.Equal(t, body, got)
 		})
-		require.NoError(t, err)
-		require.True(t, strings.HasSuffix(dumped, "\r\n\r\n"+body), "recorded request lost its body: %d of %d bytes", len(dumped), len(body))
 	}
 }
