@@ -244,6 +244,8 @@ func main() {
 	}
 }
 
+// readConfig defines the cli flags and loads them from the command line and
+// config files.
 func readConfig() *goflags.FlagSet {
 	var selectedFiles configuration.Selection
 	// when true updates nuclei binary to latest version
@@ -503,6 +505,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("update", "Update",
 		flagSet.BoolVarP(&updateNucleiBinary, "update", "up", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
+		flagSet.StringVarP(&options.UpdateTemplatesChannel, "update-templates-channel", "utc", installer.TemplatesChannelStable, "nuclei-templates update channel (stable, latest)"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.BoolVarP(&disableUpdateCheck, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)
