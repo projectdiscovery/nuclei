@@ -57,11 +57,12 @@ func ConfigureOptions() error {
 }
 
 // readsTargetsFromStdin reports whether targets are read from a stdin pipe.
-// Targets given with -u or -l take its place: under cron, CI or an agent stdin
-// is often a pipe nothing writes to or closes, and reading it would hold the
-// scan until it does.
+// Targets given with -u, -l, or uncover take its place: under cron, CI or an
+// agent stdin is often a pipe nothing writes to or closes, and reading it
+// would hold the scan until it does.
 func readsTargetsFromStdin(options *types.Options, stdinIsPipe bool) bool {
-	return stdinIsPipe && !options.DisableStdin && len(options.Targets) == 0 && options.TargetsFilePath == ""
+	hasOtherTargets := len(options.Targets) > 0 || options.TargetsFilePath != "" || options.Uncover || len(options.UncoverQuery) > 0
+	return stdinIsPipe && !options.DisableStdin && !hasOtherTargets
 }
 
 // ParseOptions parses the command line flags provided by a user
