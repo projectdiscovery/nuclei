@@ -715,8 +715,12 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.ShouldUseHostError() {
 		maxHostError := r.options.MaxHostError
 		if r.options.TemplateThreads > maxHostError {
-			r.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
-			r.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
+			// The automatic -c of adaptive concurrency is expected to exceed the
+			// default threshold; only an explicit value is worth a warning.
+			if !r.options.TemplateThreadsAuto {
+				r.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
+				r.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
+			}
 
 			maxHostError = r.options.TemplateThreads
 		}
@@ -727,6 +731,8 @@ func (r *Runner) RunEnumeration() error {
 		r.hostErrors = cache
 		executorOpts.HostErrorsCache = cache
 	}
+
+	executorOpts.AttachScanFeatures()
 
 	if r.options.HostBackoff {
 		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: r.options.HostBackoffMax})
@@ -913,6 +919,11 @@ func (r *Runner) RunEnumeration() error {
 		if tracker, ok := httpToHTTPSPortTracker.(interface{ PrintStats() }); ok {
 			tracker.PrintStats()
 		}
+	}
+
+	if opts := executorOpts; opts != nil && opts.HTTPResponseCache != nil {
+		hits, misses, stores := opts.HTTPResponseCache.Stats()
+		r.Logger.Info().Msgf("http-response-cache: hits=%d misses=%d stores=%d", hits, misses, stores)
 	}
 
 	// todo: error propagation without canonical straight error check is required by cloud?

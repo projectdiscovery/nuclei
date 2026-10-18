@@ -32,11 +32,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostlimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/httpservice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -119,6 +122,16 @@ type ExecutorOptions struct {
 	// HostBackoff paces a host that signals it is being overloaded, so a scan
 	// slows down for it instead of being blocked outright. Nil disables it.
 	HostBackoff *hostbackoff.Governor
+	// HTTPService answers whether an input port speaks HTTP, for service placement.
+	HTTPService *httpservice.Cache
+	// HostLimit adapts in-flight requests per endpoint to what it can take.
+	HostLimit *hostlimit.Limiter
+	// StreamLimit bounds concurrent raw connections (network, JS) per endpoint.
+	// It is separate from HostLimit so idle sockets that wait for a banner
+	// never hold the slots HTTP requests need.
+	StreamLimit *hostlimit.Limiter
+	// HTTPResponseCache reuses identical safe GET/HEAD responses inside one scan.
+	HTTPResponseCache *httprespcache.Cache
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -383,6 +396,10 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
 		HostBackoff:                  e.HostBackoff,
+		HTTPService:                  e.HTTPService,
+		HostLimit:                    e.HostLimit,
+		StreamLimit:                  e.StreamLimit,
+		HTTPResponseCache:            e.HTTPResponseCache,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -592,6 +609,41 @@ func (e *ExecutorOptions) EncodeTemplate() string {
 	return ""
 }
 
+// AttachScanFeatures gives the executor fresh per-scan state for service
+// placement, adaptive concurrency and the response cache, honouring the
+// Disable options. Call it once per scan: the response cache in particular must
+// not outlive the scan, or a later scan could be served an earlier response.
+func (e *ExecutorOptions) AttachScanFeatures() {
+	if e == nil || e.Options == nil {
+		return
+	}
+	o := e.Options
+	e.HTTPService, e.HostLimit, e.StreamLimit, e.HTTPResponseCache = nil, nil, nil, nil
+	if !o.DisableServicePlacement {
+		e.HTTPService = httpservice.New(o.ExecutionId)
+	}
+	if !o.DisableAdaptiveConcurrency {
+		e.HostLimit = hostlimit.New(hostlimit.Config{})
+		// Raw connections carry no latency signal, so this limit never grows:
+		// a fixed bound per endpoint, halved when dials start failing.
+		e.StreamLimit = hostlimit.New(hostlimit.Config{Initial: 64, Min: 8, Max: 64})
+	}
+	if !o.DisableResponseCache {
+		e.HTTPResponseCache = httprespcache.New()
+	}
+}
+
+// ResetScanState clears the per-scan content of the attached features in place.
+// Compiled templates may hold their own copy of these options, so a long-lived
+// engine must reset the shared instances rather than replace them.
+func (e *ExecutorOptions) ResetScanState() {
+	if e == nil {
+		return
+	}
+	e.HTTPResponseCache.Reset()
+	e.HTTPService.Reset()
+}
+
 // ApplyNewEngineOptions updates an existing ExecutorOptions with options from a new engine. This
 // handles things like the ExecutionID that need to be updated.
 func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
@@ -612,6 +664,10 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
 	e.HostBackoff = n.HostBackoff
+	e.HTTPService = n.HTTPService
+	e.HostLimit = n.HostLimit
+	e.StreamLimit = n.StreamLimit
+	e.HTTPResponseCache = n.HTTPResponseCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB

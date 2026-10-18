@@ -86,7 +86,7 @@ func New(options *Options) (*DASTServer, error) {
 	}
 	// Disable bulk mode and single threaded execution
 	// by auto adjusting in case of default values
-	if options.NucleiExecutorOptions.Options.BulkSize == 25 && options.NucleiExecutorOptions.Options.TemplateThreads == 25 {
+	if opts := options.NucleiExecutorOptions.Options; opts.BulkSize == 25 && (opts.TemplateThreads == 25 || opts.TemplateThreadsAuto) {
 		options.NucleiExecutorOptions.Options.BulkSize = 1
 		options.NucleiExecutorOptions.Options.TemplateThreads = 1
 	}

@@ -293,6 +293,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.opts.ShouldUseHostError() && e.hostErrCache != nil {
 		e.executerOpts.HostErrorsCache = e.hostErrCache
 	}
+	e.executerOpts.AttachScanFeatures()
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(e.opts, e.catalog, e.executerOpts)
 		if err != nil {
