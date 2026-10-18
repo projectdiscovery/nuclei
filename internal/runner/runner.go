@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -518,14 +517,11 @@ func (r *Runner) expandPortScan() error {
 	})
 	ports := portscan.DefaultPorts
 	if len(r.options.PortScanPorts) > 0 {
-		ports = nil
-		for _, raw := range r.options.PortScanPorts {
-			n, err := strconv.Atoi(strings.TrimSpace(raw))
-			if err != nil {
-				return errors.Wrapf(err, "invalid port %q in -ps-ports", raw)
-			}
-			ports = append(ports, n)
+		parsed, perr := portscan.ParsePorts(r.options.PortScanPorts)
+		if perr != nil {
+			return errors.Wrap(perr, "invalid -ps-ports")
 		}
+		ports = parsed
 	}
 	r.Logger.Info().Msgf("[port-scan] scanning %d host(s) across %d port(s)", len(inputs), len(ports))
 	start := time.Now()

@@ -29,6 +29,66 @@ var (
 	httpPorts = map[int]bool{80: true, 8000: true, 8008: true, 8080: true, 8081: true, 8888: true, 8880: true, 3000: true, 5000: true, 9000: true, 9090: true}
 )
 
+// maxPortRangeSize bounds a single range spec so typos such as "1-999999"
+// cannot allocate unreasonable port lists.
+const maxPortRangeSize = 65535
+
+// ParsePorts expands user supplied port specs ("8080", "8000-8090") into a
+// deduplicated ascending port list, as accepted by -ps-ports.
+func ParsePorts(specs []string) ([]int, error) {
+	seen := make(map[int]bool)
+	var out []int
+	add := func(port int) error {
+		if port < 1 || port > 65535 || seen[port] {
+			if port < 1 || port > 65535 {
+				return fmt.Errorf("port %d out of range 1-65535", port)
+			}
+			return nil
+		}
+		seen[port] = true
+		out = append(out, port)
+		return nil
+	}
+	for _, raw := range specs {
+		spec := strings.TrimSpace(raw)
+		if spec == "" {
+			continue
+		}
+		lo, hi, isRange := strings.Cut(spec, "-")
+		if !isRange {
+			n, err := strconv.Atoi(spec)
+			if err != nil {
+				return nil, fmt.Errorf("invalid port %q", spec)
+			}
+			if err := add(n); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		start, err := strconv.Atoi(strings.TrimSpace(lo))
+		if err != nil {
+			return nil, fmt.Errorf("invalid port range %q", spec)
+		}
+		end, err := strconv.Atoi(strings.TrimSpace(hi))
+		if err != nil {
+			return nil, fmt.Errorf("invalid port range %q", spec)
+		}
+		if start > end {
+			start, end = end, start
+		}
+		if end-start >= maxPortRangeSize {
+			return nil, fmt.Errorf("port range %q too large", spec)
+		}
+		for p := start; p <= end; p++ {
+			if err := add(p); err != nil {
+				return nil, err
+			}
+		}
+	}
+	sort.Ints(out)
+	return out, nil
+}
+
 // Scanner performs concurrent TCP connect scans.
 type Scanner struct {
 	Ports       []int
