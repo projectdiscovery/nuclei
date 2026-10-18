@@ -167,6 +167,14 @@ func Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid proxy URL %s: %w", redactProxyURL(proxyURL), err)
 		}
+		// Enforce the network policy on the tunneled target. Direct dials go
+		// through Fastdialer, which validates the destination itself, but the
+		// proxy path only dials the proxy through Fastdialer and tunnels the
+		// target inside an HTTP CONNECT, so the target would otherwise skip the
+		// deny-list (-exclude-hosts / -restrict-local-network-access) checks.
+		if !protocolstate.IsHostAllowed(executionId, address) {
+			return nil, fmt.Errorf("host %s is not allowed by network policy", address)
+		}
 		switch parsed.Scheme {
 		case "http", "https":
 			return dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, getTimeoutFromContext(ctx))
