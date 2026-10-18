@@ -2,6 +2,7 @@ package matchers
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/projectdiscovery/govaluate"
 )
@@ -213,3 +214,30 @@ func (matcher *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []str
 	}
 	return data, matchedSnippet
 }
+
+// NeedsResponse returns true if the matcher requires the full response or "all" part.
+func (matcher *Matcher) NeedsResponse() bool {
+	if matcher == nil {
+		return false
+	}
+	part := strings.ToLower(matcher.Part)
+	if part == "response" || part == "all" {
+		return true
+	}
+	for _, expr := range matcher.dslCompiled {
+		for _, v := range expr.Vars() {
+			vLower := strings.ToLower(v)
+			if vLower == "response" || vLower == "all" || strings.HasPrefix(vLower, "response_") {
+				return true
+			}
+		}
+	}
+	for _, dsl := range matcher.DSL {
+		dLower := strings.ToLower(dsl)
+		if strings.Contains(dLower, "response") || strings.Contains(dLower, "all") {
+			return true
+		}
+	}
+	return false
+}
+
