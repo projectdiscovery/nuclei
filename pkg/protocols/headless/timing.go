@@ -95,6 +95,29 @@ func (t *headlessTimingTrace) recordRun(steps []*engine.Action, durations []time
 	}
 }
 
+func (t *headlessTimingTrace) child() *headlessTimingTrace {
+	if t == nil {
+		return nil
+	}
+	return &headlessTimingTrace{}
+}
+
+func (t *headlessTimingTrace) merge(other *headlessTimingTrace) {
+	if t == nil || other == nil {
+		return
+	}
+	t.attempts += other.attempts
+	t.errors += other.errors
+	t.rateWait += other.rateWait
+	t.contextCreate += other.contextCreate
+	t.navigate += other.navigate
+	t.waitLoad += other.waitLoad
+	t.waitDialog += other.waitDialog
+	t.otherActions += other.otherActions
+	t.runOther += other.runOther
+	t.cleanup += other.cleanup
+}
+
 func (t *headlessTimingTrace) summary(elapsed time.Duration) (string, bool) {
 	if elapsed < headlessTimingOutlierMin && (!t.sampled || elapsed < headlessTimingSampleMin) {
 		return "", false

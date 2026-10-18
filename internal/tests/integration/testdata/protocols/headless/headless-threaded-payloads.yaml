@@ -1,0 +1,27 @@
+id: headless-threaded-payloads
+
+info:
+  name: headless threaded payloads
+  author: pdteam
+  severity: info
+  tags: headless
+
+headless:
+  - threads: 2
+    disable-cookie: true
+    attack: batteringram
+    payloads:
+      probe:
+        - one
+        - two
+        - three
+        - four
+    steps:
+      - args:
+          url: "{{BaseURL}}?probe={{probe}}"
+        action: navigate
+      - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "test"

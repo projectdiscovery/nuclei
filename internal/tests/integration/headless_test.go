@@ -8,6 +8,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -23,6 +26,8 @@ var headlessTestcases = []integrationCase{
 	{Path: "protocols/headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
 	{Path: "protocols/headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
 	{Path: "protocols/headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
+	{Path: "protocols/headless/headless-threaded-payloads.yaml", TestCase: &headlessThreadedPayloads{}},
+	{Path: "protocols/headless/headless-threaded-stop-first.yaml", TestCase: &headlessThreadedStopFirst{}},
 	{Path: "protocols/headless/variables.yaml", TestCase: &headlessVariables{}},
 	{Path: "protocols/headless/headless-local.yaml", TestCase: &headlessLocal{}},
 	{Path: "protocols/headless/file-upload.yaml", TestCase: &headlessFileUpload{}},
@@ -138,6 +143,108 @@ func (h *headlessPayloads) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 4)
+}
+
+type headlessThreadedPayloads struct{}
+
+func (h *headlessThreadedPayloads) Execute(filePath string) error {
+	type requestStats struct {
+		active, peak atomic.Int64
+		mu           sync.Mutex
+		arrivals     []time.Time
+	}
+	newServer := func(stats *requestStats) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			current := stats.active.Add(1)
+			defer stats.active.Add(-1)
+			stats.mu.Lock()
+			stats.arrivals = append(stats.arrivals, time.Now())
+			stats.mu.Unlock()
+			for {
+				previous := stats.peak.Load()
+				if current <= previous || stats.peak.CompareAndSwap(previous, current) {
+					break
+				}
+			}
+			time.Sleep(400 * time.Millisecond)
+			_, _ = w.Write([]byte("<html><body>test</body></html>"))
+		}))
+	}
+
+	firstStats := &requestStats{}
+	server := newServer(firstStats)
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, server.URL, debug, "-headless")
+	server.Close()
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(results, 4); err != nil {
+		return err
+	}
+	if got := firstStats.peak.Load(); got != 2 {
+		return fmt.Errorf("peak concurrent headless payloads = %d, want 2", got)
+	}
+
+	secondStats := &requestStats{}
+	server = newServer(secondStats)
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, server.URL, debug, "-headless", "-rl", "1", "-per-host-rate-limit")
+	server.Close()
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(results, 4); err != nil {
+		return err
+	}
+	if got := secondStats.peak.Load(); got != 1 {
+		return fmt.Errorf("peak rate-limited headless payloads = %d, want 1", got)
+	}
+	secondStats.mu.Lock()
+	arrivals := append([]time.Time(nil), secondStats.arrivals...)
+	secondStats.mu.Unlock()
+	if len(arrivals) != 4 {
+		return fmt.Errorf("rate-limited headless arrivals = %d, want 4", len(arrivals))
+	}
+	for i := 1; i < len(arrivals); i++ {
+		if gap := arrivals[i].Sub(arrivals[i-1]); gap < 750*time.Millisecond {
+			return fmt.Errorf("rate-limited headless arrival gap = %s, want at least 750ms", gap)
+		}
+	}
+	return nil
+}
+
+type headlessThreadedStopFirst struct{}
+
+func (h *headlessThreadedStopFirst) Execute(filePath string) error {
+	var requests atomic.Int64
+	var probesMu sync.Mutex
+	var probes []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		requests.Add(1)
+		probesMu.Lock()
+		probes = append(probes, r.URL.Query().Get("probe"))
+		probesMu.Unlock()
+		time.Sleep(400 * time.Millisecond)
+		_, _ = w.Write([]byte("<html><body>match</body></html>"))
+	}))
+	defer server.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, server.URL, debug, "-headless")
+	if err != nil {
+		return err
+	}
+	if got := requests.Load(); got != 2 {
+		return fmt.Errorf("stop-first headless requests = %d, want 2; probes = %v; results = %v", got, probes, results)
+	}
+	return expectResultsCount(results, 2)
 }
 
 type headlessVariables struct{}

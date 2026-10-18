@@ -5,6 +5,8 @@ import (
 	"maps"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -20,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -68,11 +71,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	vars = generators.MergeMaps(vars, metadata, optionVars, variablesMap, request.options.Constants)
 
 	// check for operator matches by wrapping callback
-	gotmatches := false
+	var gotmatches atomic.Bool
+	var callbackMu sync.Mutex
 	wrappedCallback := func(results *output.InternalWrappedEvent) {
+		callbackMu.Lock()
+		defer callbackMu.Unlock()
 		callback(results)
-		if results != nil && results.OperatorsResult != nil {
-			gotmatches = results.OperatorsResult.Matched
+		if results != nil && results.OperatorsResult != nil && results.OperatorsResult.Matched {
+			gotmatches.Store(true)
 		}
 	}
 	// verify if fuzz elaboration was requested
@@ -84,6 +90,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		defer timing.emit()
 	}
 	if request.generator != nil {
+		if request.Threads > 1 && !protocolstate.IsLowOnMemory() {
+			return request.executeConcurrentPayloads(input, vars, interactshURLs, previous, wrappedCallback, &gotmatches, timing)
+		}
 		iterator := request.generator.NewIterator()
 		for {
 			value, ok := iterator.Value()
@@ -91,7 +100,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				break
 			}
 
-			if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
+			if gotmatches.Load() && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
 				return nil
 			}
 
@@ -107,18 +116,78 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return errors.Wrap(err, "could not evaluate payload helper expressions")
 			}
 
-			if err := request.executeRequestWithPayloads(input, renderedValue.Values, previous, renderedValue.InteractURLs, wrappedCallback, timing); err != nil {
+			if err := request.executeRequestWithPayloads(input, renderedValue.Values, previous, renderedValue.InteractURLs, wrappedCallback, timing, nil); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := maps.Clone(vars)
-		if err := request.executeRequestWithPayloads(input, value, previous, interactshURLs, wrappedCallback, timing); err != nil {
+		if err := request.executeRequestWithPayloads(input, value, previous, interactshURLs, wrappedCallback, timing, nil); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (request *Request) executeConcurrentPayloads(input *contextargs.Context, vars map[string]interface{}, interactshURLs []string, previous output.InternalEvent, callback protocols.OutputEventCallback, gotmatches *atomic.Bool, timing *headlessTimingTrace) error {
+	var workers sync.WaitGroup
+	var stateMu, outputMu sync.Mutex
+	var firstErr error
+	var stop atomic.Bool
+	semaphore := make(chan struct{}, request.Threads)
+	stopAtFirstMatch := request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch
+
+	iterator := request.generator.NewIterator()
+	for {
+		value, ok := iterator.Value()
+		if !ok || stop.Load() || (stopAtFirstMatch && gotmatches.Load()) {
+			break
+		}
+		renderedValue, err := render.RenderMap(render.MapInput{
+			Options:      request.options.GetOptions(),
+			Source:       value,
+			Data:         vars,
+			Values:       generators.MergeMaps(value, vars),
+			Interactsh:   request.options.Interactsh,
+			InteractURLs: interactshURLs,
+		})
+		if err != nil {
+			stateMu.Lock()
+			if firstErr == nil {
+				firstErr = errors.Wrap(err, "could not evaluate payload helper expressions")
+			}
+			stateMu.Unlock()
+			break
+		}
+
+		select {
+		case semaphore <- struct{}{}:
+		case <-input.Context().Done():
+			workers.Wait()
+			return input.Context().Err()
+		}
+		if stop.Load() || (stopAtFirstMatch && gotmatches.Load()) {
+			<-semaphore
+			break
+		}
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			defer func() { <-semaphore }()
+			childTiming := timing.child()
+			err := request.executeRequestWithPayloads(input, renderedValue.Values, previous, renderedValue.InteractURLs, callback, childTiming, &outputMu)
+			stateMu.Lock()
+			timing.merge(childTiming)
+			if err != nil && firstErr == nil {
+				firstErr = err
+				stop.Store(true)
+			}
+			stateMu.Unlock()
+		}()
+	}
+	workers.Wait()
+	return firstErr
 }
 
 // This function extracts the base URL from actions.
@@ -136,7 +205,7 @@ func extractBaseURLFromActions(steps []*engine.Action) (string, error) {
 	return "", errors.New("no navigation action found")
 }
 
-func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback, timing *headlessTimingTrace) error {
+func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback, timing *headlessTimingTrace, outputMu *sync.Mutex) error {
 	if timing != nil {
 		timing.attempts++
 	}
@@ -274,6 +343,10 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 
 	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	addHeadlessDurationFields(outputEvent, page.ActionDurations, runDuration)
+	if outputMu != nil {
+		outputMu.Lock()
+		defer outputMu.Unlock()
+	}
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
@@ -345,7 +418,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 		newInput := input.Clone()
 		newInput.MetaInput.Input = gr.Request.String()
 
-		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, gr.InteractURLs, callback, nil); err != nil {
+		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, gr.InteractURLs, callback, nil, nil); err != nil {
 			return false
 		}
 

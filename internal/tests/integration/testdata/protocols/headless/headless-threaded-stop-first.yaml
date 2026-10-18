@@ -1,0 +1,28 @@
+id: headless-threaded-stop-first
+
+info:
+  name: headless threaded stop first
+  author: pdteam
+  severity: info
+  tags: headless
+
+headless:
+  - threads: 2
+    disable-cookie: true
+    stop-at-first-match: true
+    attack: batteringram
+    payloads:
+      probe:
+        - one
+        - two
+        - three
+        - four
+    steps:
+      - args:
+          url: "{{BaseURL}}?probe={{probe}}"
+        action: navigate
+      - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "match"

@@ -31,6 +31,7 @@ type Request struct {
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads,omitempty" json:"payloads,omitempty" jsonschema:"title=payloads for the headless request,description=Payloads contains any payloads for the current request"`
+	Threads  int                    `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=concurrent headless payloads,description=Opt-in concurrent independent payloads (maximum 2)"`
 
 	// description: |
 	//   Steps is the list of actions to run for headless request
@@ -113,6 +114,17 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				request.Payloads = make(map[string]interface{})
 			}
 			request.Payloads[name] = payloadStr
+		}
+	}
+	if request.Threads < 0 || request.Threads > 2 {
+		return errors.New("headless threads must be between 0 and 2")
+	}
+	if request.Threads > 1 {
+		if len(request.Payloads) == 0 || len(request.Fuzzing) > 0 {
+			return errors.New("headless threads require payloads without fuzzing")
+		}
+		if !request.DisableCookie || options.IsMultiProtocol || options.Flow != "" {
+			return errors.New("headless threads require isolated cookies and standalone templates")
 		}
 	}
 
