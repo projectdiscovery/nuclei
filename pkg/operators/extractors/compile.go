@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/antchfx/xpath"
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
@@ -84,6 +85,12 @@ func (e *Extractor) CompileExtractors() error {
 		}
 		_ = cache.DSL().Set(dslExp, compiled)
 		e.dslCompiled = append(e.dslCompiled, compiled)
+	}
+
+	for _, query := range e.XPath {
+		if _, err := xpath.Compile(query); err != nil {
+			return fmt.Errorf("could not compile xpath %q: %w", query, err)
+		}
 	}
 
 	if e.CaseInsensitive {
