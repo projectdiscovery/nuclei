@@ -58,7 +58,7 @@ func NewBlockingSPMHandler[T comparable](ctx context.Context, size int, maxResul
 		maxResults:  maxResults,
 	}
 	s.internalWg.Add(1)
-	go s.run(ctx)
+	go s.run(ctx1)
 	return s
 }
 
@@ -77,7 +77,7 @@ func NewNonBlockingSPMHandler[T comparable](ctx context.Context, maxResults int,
 		maxResults:  maxResults,
 	}
 	s.internalWg.Add(1)
-	go s.run(ctx)
+	go s.run(ctx1)
 	return s
 }
 
