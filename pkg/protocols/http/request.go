@@ -432,8 +432,12 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 
 		// resize check point - nop if there are no changes
-		if shouldFollowGlobal && spmHandler.Size() != request.options.Options.PayloadConcurrency {
-			if err := spmHandler.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
+		desiredWorkers := request.options.Options.PayloadConcurrency
+		if protocolstate.IsLowOnMemory() {
+			desiredWorkers = protocolstate.GuardThreadsOrDefault(desiredWorkers)
+		}
+		if shouldFollowGlobal && spmHandler.Size() != desiredWorkers {
+			if err := spmHandler.Resize(input.Context(), desiredWorkers); err != nil {
 				close(tasks)
 				workersWg.Wait()
 				return err
