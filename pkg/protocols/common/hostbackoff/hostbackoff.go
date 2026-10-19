@@ -85,6 +85,9 @@ func (c *Config) applyDefaults() {
 type hostState struct {
 	delay     time.Duration
 	forbidden int
+	// reachable is set once the host has answered. A dial that fails before
+	// then is a closed or filtered port, which is no reason to slow down.
+	reachable bool
 	// next is the earliest start time still free. Concurrent waits reserve
 	// successive slots so a delay paces the host instead of holding a burst
 	// and releasing it together.
@@ -167,6 +170,9 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 
 	state := g.state(host)
 	defer func() { _ = g.hosts.Set(host, state) }()
+	if statusCode > 0 {
+		state.reachable = true
+	}
 
 	if statusCode == http.StatusForbidden {
 		state.forbidden++
@@ -192,9 +198,10 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 }
 
 // ObserveDial feeds one connection attempt back to the governor, for
-// protocols that have no response status to judge. A failed dial slows the
-// host and a successful one counts as recovery. Errors on an established
-// connection are the template's business, not the host asking for less.
+// protocols that have no response status to judge. A failed dial slows a host
+// that accepted connections before, and a successful one counts as recovery.
+// Errors on an established connection are the template's business, not the
+// host asking for less.
 func (g *Governor) ObserveDial(host string, err error) {
 	if g == nil || host == "" {
 		return
@@ -203,10 +210,12 @@ func (g *Governor) ObserveDial(host string, err error) {
 	defer g.mu.Unlock()
 
 	state := g.state(host)
-	if err != nil {
-		g.grow(state, 0)
-	} else {
+	switch {
+	case err == nil:
+		state.reachable = true
 		g.decay(state)
+	case state.reachable:
+		g.grow(state, 0)
 	}
 	_ = g.hosts.Set(host, state)
 }

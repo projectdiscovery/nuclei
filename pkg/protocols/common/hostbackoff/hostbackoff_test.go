@@ -213,6 +213,7 @@ func TestForbiddenStreakSurvivesAMiss(t *testing.T) {
 
 func TestFailedDialBacksOffAndSuccessfulDialDecays(t *testing.T) {
 	g := New(Config{Step: 100 * time.Millisecond, Factor: 2, Decay: 0.5})
+	g.ObserveDial("acme.test:22", nil)
 	g.ObserveDial("acme.test:22", errors.New("connection refused"))
 	g.ObserveDial("acme.test:22", errors.New("connection refused"))
 	require.Equal(t, 200*time.Millisecond, g.Delay("acme.test:22"))
@@ -221,4 +222,21 @@ func TestFailedDialBacksOffAndSuccessfulDialDecays(t *testing.T) {
 	require.Equal(t, 100*time.Millisecond, g.Delay("acme.test:22"))
 	g.ObserveDial("acme.test:22", nil)
 	require.Zero(t, g.Delay("acme.test:22"))
+}
+
+// A port that never accepted is closed or filtered, not pushing back. Slowing
+// it would cost every template aimed at it a growing wait for nothing.
+func TestDialFailureOnNeverReachedHostIsIgnored(t *testing.T) {
+	g := New(Config{Step: 100 * time.Millisecond})
+	for i := 0; i < 3; i++ {
+		g.ObserveDial("acme.test:22", errors.New("connection refused"))
+	}
+	require.Zero(t, g.Delay("acme.test:22"))
+}
+
+func TestResponseMarksHostReachableForDials(t *testing.T) {
+	g := New(Config{Step: 100 * time.Millisecond})
+	g.Observe("acme.test:443", http.StatusNotFound, 0, nil)
+	g.ObserveDial("acme.test:443", errors.New("connection refused"))
+	require.Equal(t, 100*time.Millisecond, g.Delay("acme.test:443"))
 }
