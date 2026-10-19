@@ -55,6 +55,10 @@ type Options struct {
 	Timeout       time.Duration
 	DisableCookie bool
 	Options       *types.Options
+	// OnNavigationResponse receives the response to the initial URL once the
+	// actions ran, even when they failed: the browser fails a navigation on
+	// an error status with an empty body, and that status still matters.
+	OnNavigationResponse func(*http.Response)
 }
 
 // Run runs a list of actions by creating a new page in the browser.
@@ -192,6 +196,11 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	}
 
 	data, err := createdPage.ExecuteActions(ctx, actions)
+	if options.OnNavigationResponse != nil {
+		if resp := createdPage.NavigationResponse(); resp != nil {
+			options.OnNavigationResponse(resp)
+		}
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -215,24 +224,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
-	// The first item of history data will contain the very first request from the browser
-	// we assume it's the one matching the initial URL
-	createdPage.mutex.RLock()
-	var firstHistoryItem HistoryData
-	hasHistory := len(createdPage.History) > 0
-	if hasHistory {
-		firstHistoryItem = createdPage.History[0]
-	}
-	createdPage.mutex.RUnlock()
-
-	if hasHistory {
-		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
-			data["header"] = utils.HeadersToString(resp.Header)
-			data["status_code"] = fmt.Sprint(resp.StatusCode)
-			defer func() {
-				_ = resp.Body.Close()
-			}()
-		}
+	if resp := createdPage.NavigationResponse(); resp != nil {
+		data["header"] = utils.HeadersToString(resp.Header)
+		data["status_code"] = fmt.Sprint(resp.StatusCode)
 	}
 
 	successfulPageCreation = true // avoid closing the page in case of success in deferred function
@@ -280,6 +274,26 @@ func (p *Page) URL() string {
 		return ""
 	}
 	return info.URL
+}
+
+// NavigationResponse returns the response to the page's initial URL, nil when
+// none was recorded. The first history item holds the very first request from
+// the browser, which is assumed to be the one for the initial URL.
+func (p *Page) NavigationResponse() *http.Response {
+	p.mutex.RLock()
+	if len(p.History) == 0 {
+		p.mutex.RUnlock()
+		return nil
+	}
+	raw := p.History[0].RawResponse
+	p.mutex.RUnlock()
+
+	resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(raw)), nil)
+	if err != nil {
+		return nil
+	}
+	_ = resp.Body.Close()
+	return resp
 }
 
 // DumpHistory returns the full page navigation history
