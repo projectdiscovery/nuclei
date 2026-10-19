@@ -122,13 +122,26 @@ func (request *Request) waitHostBackoff(ctx context.Context, host string) error 
 	return request.options.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(host))
 }
 
+type httpRateLimitWaitObserver interface {
+	ObserveHTTPRateLimitWait(time.Duration)
+}
+
+type httpRequestTimingObserver interface {
+	ObserveHTTPRequest(time.Duration, int, error)
+}
+
 // rateLimitTake first honours any backoff the host earned by signalling it is
 // overloaded, so a blocking target is paced regardless of which limiter is in play.
 func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
-	if err := request.waitHostBackoff(ctx, hostname); err != nil {
-		return err
+	started := time.Now()
+	err := request.waitHostBackoff(ctx, hostname)
+	if err == nil {
+		err = request.options.RateLimitTakeContext(ctx, hostname)
 	}
-	return request.options.RateLimitTakeContext(ctx, hostname)
+	if observer, ok := request.options.Progress.(httpRateLimitWaitObserver); ok {
+		observer.ObserveHTTPRateLimitWait(time.Since(started))
+	}
+	return err
 }
 
 // stopWithHandler ends when parent ends or the handler stops, so a backoff
@@ -679,14 +692,16 @@ executionLoop:
 			// a copy and using it to check for host errors etc
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
+			if generatedHttpRequest.customCancelFunction != nil {
+				defer generatedHttpRequest.customCancelFunction()
+			}
+			if request.isUnresponsiveAddress(updatedInput) {
+				return false, true, nil, nil
+			}
 
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
-			}
-
-			if generatedHttpRequest.customCancelFunction != nil {
-				defer generatedHttpRequest.customCancelFunction()
 			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
@@ -1247,6 +1262,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// Record before dump or the dialer lookup can return and drop the outcome.
 	if sent {
 		request.observeHostBackoff(backoffKey, resp, err)
+		if observer, ok := request.options.Progress.(httpRequestTimingObserver); ok {
+			statusCode := 0
+			if resp != nil {
+				statusCode = resp.StatusCode
+			}
+			observer.ObserveHTTPRequest(time.Since(timeStart), statusCode, err)
+		}
 	}
 	// use request url as matched url if empty
 	if formedURL == "" {
