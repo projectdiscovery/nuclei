@@ -3,6 +3,7 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"reflect"
 	"sync/atomic"
 
@@ -239,6 +240,20 @@ func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string)
 		return e.RateLimiter.TakeContext(ctx)
 	}
 	return nil
+}
+
+// HostBackoffWait pauses for the delay address has earned with HostBackoff.
+func (e *ExecutorOptions) HostBackoffWait(ctx context.Context, address string) error {
+	return e.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(address))
+}
+
+// HostBackoffObserveDial reports a connection attempt to address to HostBackoff.
+func (e *ExecutorOptions) HostBackoffObserveDial(address string, err error) {
+	// a canceled dial is the scan stopping, not the host asking for less traffic
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	e.HostBackoff.ObserveDial(hostratelimit.NormalizeHostPort(address), err)
 }
 
 // GetThreadsForNPayloadRequests returns the number of threads to use as default for
