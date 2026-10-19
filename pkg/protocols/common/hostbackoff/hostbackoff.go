@@ -85,6 +85,9 @@ func (c *Config) applyDefaults() {
 type hostState struct {
 	delay     time.Duration
 	forbidden int
+	// reachable is set once the host has answered. A dial that fails before
+	// then is a closed or filtered port, which is no reason to slow down.
+	reachable bool
 	// next is the earliest start time still free. Concurrent waits reserve
 	// successive slots so a delay paces the host instead of holding a burst
 	// and releasing it together.
@@ -165,11 +168,11 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	state, lookupErr := g.hosts.GetIFPresent(host)
-	if lookupErr != nil || state == nil {
-		state = &hostState{}
-	}
+	state := g.state(host)
 	defer func() { _ = g.hosts.Set(host, state) }()
+	if statusCode > 0 {
+		state.reachable = true
+	}
 
 	if statusCode == http.StatusForbidden {
 		state.forbidden++
@@ -187,15 +190,48 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 		// recovered. A 404 or 500 is what most templates get back, and treating
 		// it as healthy would wipe the delay on the next probe.
 		if healthyStatus(statusCode) {
-			state.delay = time.Duration(float64(state.delay) * g.cfg.Decay)
-			if state.delay < g.cfg.Step {
-				state.delay = 0
-				state.next = time.Time{}
-			}
+			g.decay(state)
 		}
 		return
 	}
+	g.grow(state, retryAfter)
+}
 
+// ObserveDial feeds one connection attempt back to the governor, for
+// protocols that have no response status to judge. A failed dial slows a host
+// that accepted connections before, and a successful one counts as recovery.
+// Errors on an established connection are the template's business, not the
+// host asking for less.
+func (g *Governor) ObserveDial(host string, err error) {
+	if g == nil || host == "" {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	state := g.state(host)
+	switch {
+	case err == nil:
+		state.reachable = true
+		g.decay(state)
+	case state.reachable:
+		g.grow(state, 0)
+	default:
+		// A port that never accepted is closed or filtered. Storing it would
+		// fill the cache and evict hosts that actually have a delay.
+		return
+	}
+	_ = g.hosts.Set(host, state)
+}
+
+func (g *Governor) state(host string) *hostState {
+	if state, err := g.hosts.GetIFPresent(host); err == nil && state != nil {
+		return state
+	}
+	return &hostState{}
+}
+
+func (g *Governor) grow(state *hostState, retryAfter time.Duration) {
 	next := state.delay
 	if next <= 0 {
 		next = g.cfg.Step
@@ -211,6 +247,14 @@ func (g *Governor) Observe(host string, statusCode int, retryAfter time.Duration
 		next = g.cfg.Max
 	}
 	state.delay = next
+}
+
+func (g *Governor) decay(state *hostState) {
+	state.delay = time.Duration(float64(state.delay) * g.cfg.Decay)
+	if state.delay < g.cfg.Step {
+		state.delay = 0
+		state.next = time.Time{}
+	}
 }
 
 // isBlocking reports whether a response means the host wants less traffic.
