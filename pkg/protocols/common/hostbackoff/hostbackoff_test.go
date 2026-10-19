@@ -210,3 +210,15 @@ func TestForbiddenStreakSurvivesAMiss(t *testing.T) {
 	g.Observe("acme.test", http.StatusForbidden, 0, nil)
 	require.Equal(t, 100*time.Millisecond, g.Delay("acme.test"))
 }
+
+func TestFailedDialBacksOffAndSuccessfulDialDecays(t *testing.T) {
+	g := New(Config{Step: 100 * time.Millisecond, Factor: 2, Decay: 0.5})
+	g.ObserveDial("acme.test:22", errors.New("connection refused"))
+	g.ObserveDial("acme.test:22", errors.New("connection refused"))
+	require.Equal(t, 200*time.Millisecond, g.Delay("acme.test:22"))
+
+	g.ObserveDial("acme.test:22", nil)
+	require.Equal(t, 100*time.Millisecond, g.Delay("acme.test:22"))
+	g.ObserveDial("acme.test:22", nil)
+	require.Zero(t, g.Delay("acme.test:22"))
+}

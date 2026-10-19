@@ -255,6 +255,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	addressToDial = parsedAddress.String()
 
+	if err := requestOptions.HostBackoffWait(target.Context(), addressToDial); err != nil {
+		return err
+	}
 	if err := requestOptions.RateLimitTakeContext(target.Context(), addressToDial); err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -265,6 +268,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
 	handshakeDuration := time.Since(timeStart)
+	requestOptions.HostBackoffObserveDial(addressToDial, err)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)

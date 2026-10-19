@@ -326,6 +326,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return nil
 	}
 
+	if err := request.options.HostBackoffWait(input.Context(), actualAddress); err != nil {
+		return err
+	}
 	if err := request.options.RateLimitTakeContext(input.Context(), actualAddress); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -337,6 +340,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	} else {
 		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
+	request.options.HostBackoffObserveDial(actualAddress, err)
 	// adds it to unresponsive address list if applicable
 	request.markHostError(updatedTarget, err)
 	if err != nil {
