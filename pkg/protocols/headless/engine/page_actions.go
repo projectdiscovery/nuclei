@@ -247,7 +247,9 @@ func (p *Page) WaitVisible(act *Action, out ActionData) error {
 }
 
 func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
+	p.mutex.RLock()
 	page := *p
+	p.mutex.RUnlock()
 	page.page = page.Page().Sleeper(func() utils.Sleeper {
 		return createBackOffSleeper(pollTimeout, timeout)
 	})
@@ -255,7 +257,9 @@ func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
 }
 
 func (p *Page) Timeout(timeout time.Duration) *Page {
+	p.mutex.RLock()
 	page := *p
+	p.mutex.RUnlock()
 	page.page = page.Page().Timeout(timeout)
 	return &page
 }
