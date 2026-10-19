@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -575,8 +576,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	}
 
 	if !r.request.Unsafe {
-		userAgent := useragent.PickRandom()
-		httputil.SetHeader(req, "User-Agent", userAgent.Raw)
+		httputil.SetHeader(req, "User-Agent", r.userAgent())
 	}
 
 	// Only set these headers on non-raw requests
@@ -620,4 +620,32 @@ func (r *requestGenerator) renderText(text string, values map[string]interface{}
 	r.interactshURLs = result.InteractURLs
 
 	return result.Text, nil
+}
+
+// StableUserAgent is one Chrome user agent, chosen once per process. A random
+// user agent per request makes otherwise identical requests differ, so the
+// scan-scoped response cache can never reuse them. Whenever that cache is
+// active we send one constant user agent instead, which also makes scans
+// reproducible. The tech-filter fingerprint probe sends the same one, so the
+// response it seeds is reachable by the templates that follow.
+var StableUserAgent = sync.OnceValue(func() string {
+	if agents, err := useragent.PickWithFilters(1, useragent.Chrome); err == nil && len(agents) > 0 {
+		return agents[0].Raw
+	}
+	return useragent.PickRandom().Raw
+})
+
+// userAgent returns the user agent for one request.
+func (r *requestGenerator) userAgent() string {
+	if r.request == nil || r.request.options == nil || r.request.options.Options == nil {
+		return useragent.PickRandom().Raw
+	}
+	// Follow whether the response cache is active, not one flag: -tech-filter
+	// enables the same cache, and a random user agent per request would keep it
+	// from ever hitting.
+	opts := r.request.options.Options
+	if opts.ResponseCache || opts.TechFilter {
+		return StableUserAgent()
+	}
+	return useragent.PickRandom().Raw
 }
