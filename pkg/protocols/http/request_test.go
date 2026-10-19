@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/memguardian"
@@ -1378,6 +1379,61 @@ func TestPayloadConcurrencyIsGuardedOnceUnderMemoryPressure(t *testing.T) {
 	require.Equal(t, int32(8), total.Load())
 	require.Equal(t, int32(8), matched.Load())
 	require.Greater(t, maximum.Load(), int32(4))
+}
+
+func TestDefaultPayloadConcurrencyRespectsMemoryPressure(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.RestrictLocalNetworkAccess = false
+	options.PayloadConcurrency = 25
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	require.NotNil(t, memguardian.DefaultMemGuardian)
+	previousWarning := memguardian.DefaultMemGuardian.Warning.Swap(true)
+	t.Cleanup(func() { memguardian.DefaultMemGuardian.Warning.Store(previousWarning) })
+
+	var active atomic.Int32
+	var maximum atomic.Int32
+	var total atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		current := active.Add(1)
+		for previous := maximum.Load(); current > previous && !maximum.CompareAndSwap(previous, current); previous = maximum.Load() {
+		}
+		time.Sleep(40 * time.Millisecond)
+		active.Add(-1)
+		total.Add(1)
+		writer.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID:      "default-payload-concurrency-under-memory-pressure",
+		Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:    []string{"{{BaseURL}}/test?payload={{v}}"},
+		Threads: options.PayloadConcurrency,
+		Payloads: map[string]interface{}{
+			"v": []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"},
+		},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+			DSL:  []string{"status_code == 200"},
+		}}},
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOptions.RateLimiter = nil
+	require.NoError(t, request.Compile(executerOptions))
+	require.NoError(t, request.ExecuteWithResults(
+		contextargs.NewWithInput(t.Context(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	))
+	require.Equal(t, int32(16), total.Load())
+	require.LessOrEqual(t, maximum.Load(), int32(protocolstate.GuardThreadsOrDefault(options.PayloadConcurrency)))
+	require.Greater(t, maximum.Load(), int32(1))
 }
 
 type timingProgressObserver struct {
