@@ -116,10 +116,10 @@ func (request *Request) observeHostBackoff(host string, resp *http.Response, err
 
 // waitHostBackoff pauses for the delay this host has already earned.
 func (request *Request) waitHostBackoff(ctx context.Context, host string) error {
-	if request.options == nil || request.options.HostBackoff == nil {
+	if request.options == nil {
 		return nil
 	}
-	return request.options.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(host))
+	return request.options.HostBackoffWait(ctx, host)
 }
 
 type httpRateLimitWaitObserver interface {
