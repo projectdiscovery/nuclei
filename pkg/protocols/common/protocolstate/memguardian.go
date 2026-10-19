@@ -110,7 +110,7 @@ func IsLowOnMemory() bool {
 // GuardThreads on caller
 func GuardThreadsOrDefault(current int) int {
 	if MaxThreadsOnLowMemory > 0 {
-		return MaxThreadsOnLowMemory
+		return min(current, MaxThreadsOnLowMemory)
 	}
 
 	fraction := int(current / 5)
