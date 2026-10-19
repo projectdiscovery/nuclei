@@ -21,7 +21,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
@@ -565,10 +564,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			stats.Increment(SetThreadToCountZero)
 			request.Threads = 0
 		} else {
-			// specifically for http requests high concurrency and threads will lead to memory exhaustion, hence reduce the maximum parallelism
-			if protocolstate.IsLowOnMemory() {
-				request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
-			}
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
 	}
