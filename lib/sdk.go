@@ -319,6 +319,10 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 		return ErrNoTemplatesAvailable
 	}
 
+	// Per-scan state is reset in place, so a response cached by an earlier scan
+	// of this engine is never served to this one.
+	e.executerOpts.ResetScanState()
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {

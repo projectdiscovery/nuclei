@@ -40,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
@@ -1173,6 +1174,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				fromCache = false
 			}
 		}
+		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
+		// over a network round-trip for identical safe GET/HEAD requests.
+		if resp == nil && request.options.HTTPResponseCache != nil && request.usesResponseCache(generatedRequest) &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) {
+			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {
+				if cached := request.options.HTTPResponseCache.Get(key, request.options.TemplateID, generatedRequest.request.Request); cached != nil {
+					resp = cached
+					fromCache = true
+					err = nil
+				}
+			}
+		}
 		if resp == nil || (request.Analyzer != nil && cookieFuzzing) {
 			connConfig := request.connConfiguration
 			if input.CookieJar != nil && !request.DisableCookie {
@@ -1227,6 +1242,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			ticket, releaseDeadline, admitErr := request.admitToEndpoint(input.Context(), generatedRequest)
+			if admitErr != nil {
+				return admitErr
+			}
+			defer releaseDeadline()
 			resp, err = executingClient.Do(generatedRequest.request)
 			sent = true
 
@@ -1241,6 +1261,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				httpsCorrectionTracker.Evict(httpsCorrectionURL)
 				resp, err = executingClient.Do(generatedRequest.request)
 			}
+			request.releaseEndpoint(ticket, generatedRequest, resp, err)
 		}
 	}
 	// A project-file hit never sets sent, so a stored response cannot move the delay.
@@ -1371,6 +1392,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
+		if request.options.HTTPResponseCache != nil && !fromCache && request.usesResponseCache(generatedRequest) &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) &&
+			!httprespcache.ResponseSetsCookie(resp) &&
+			httprespcache.StoredStatus(resp.StatusCode) &&
+			httprespcache.ReplayableEncoding(resp.Header, respChain.BodyBytes()) &&
+			!isHTTPToHTTPSMismatch(resp.StatusCode, respChain.BodyString()) {
+			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {
+				request.options.HTTPResponseCache.Set(key, request.options.TemplateID, resp, respChain.BodyBytes())
+			}
+		}
 	})
 
 	// evaluate responses continuously until first redirect request in reverse order
@@ -1391,7 +1424,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message) so
 		// later requests to the same host:port are auto-upgraded to https.
-		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
+		if isHTTPToHTTPSMismatch(statusCode, bodyStr) {
 			var requestURL string
 			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 				requestURL = generatedRequest.request.Request.URL.String()
@@ -1767,4 +1800,39 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
+}
+
+// followsRedirects reports whether this request's client follows redirects,
+// resolving the policy the same way httpclientpool does: the template setting,
+// overridden by the global follow flags, cancelled by -disable-redirects.
+//
+// The scan response cache must stay out of such requests. A redirect chain is
+// several responses, and a cache entry is one: serving it would hide the chain
+// from matchers that walk it. The cache key also does not carry the redirect
+// policy, so a followed and an unfollowed request for the same URL would
+// otherwise share one entry and each see the other's response.
+func (request *Request) followsRedirects() bool {
+	if request.options == nil || request.options.Options == nil {
+		return true // unknown policy: stay out of the cache
+	}
+	opts := request.options.Options
+	if opts.DisableRedirects {
+		return false
+	}
+	if opts.ShouldFollowHTTPRedirects() {
+		return true
+	}
+	return request.connConfiguration == nil ||
+		request.connConfiguration.RedirectFlow != httpclientpool.DontFollowRedirect
+}
+
+// usesResponseCache reports whether this request may be served from, or stored
+// in, the scan response cache. A template's own disable-http-cache opts out,
+// race requests must all reach the server, and redirect-following requests
+// carry a chain the cache cannot represent.
+func (request *Request) usesResponseCache(req *generatedRequest) bool {
+	if request.DisableHTTPCache || request.followsRedirects() {
+		return false
+	}
+	return req == nil || req.original == nil || !req.original.Race
 }
