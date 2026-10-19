@@ -547,12 +547,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
-		// Due to a known issue (https://github.com/projectdiscovery/nuclei/issues/5015),
-		// dynamic extractors cannot be used with payloads. To address this,
-		// execution is handled by the standard engine without concurrency,
-		// achieved by setting the thread count to 0.
-
-		// this limitation will be removed once we have a better way to handle dynamic extractors with payloads
+		// Multi-request matchers and dynamic extractors depend on ordered responses
+		// across a payload iteration, so they use the standard engine.
 		hasMultipleRequests := false
 		if len(request.Raw)+len(request.Path) > 1 {
 			hasMultipleRequests = true
@@ -565,7 +561,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				break
 			}
 		}
-		if hasNamedInternalExtractor && hasMultipleRequests {
+		if hasMultipleRequests && (hasNamedInternalExtractor || request.NeedsRequestCondition()) {
 			stats.Increment(SetThreadToCountZero)
 			request.Threads = 0
 		} else {
@@ -622,7 +618,7 @@ const (
 )
 
 func init() {
-	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
+	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates with payloads and dependent requests")
 }
 
 // UpdateOptions replaces this request's options with a new copy
