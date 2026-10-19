@@ -133,11 +133,11 @@ type httpRequestTimingObserver interface {
 // rateLimitTake first honours any backoff the host earned by signalling it is
 // overloaded, so a blocking target is paced regardless of which limiter is in play.
 func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
-	started := time.Now()
-	err := request.waitHostBackoff(ctx, hostname)
-	if err == nil {
-		err = request.options.RateLimitTakeContext(ctx, hostname)
+	if err := request.waitHostBackoff(ctx, hostname); err != nil {
+		return err
 	}
+	started := time.Now()
+	err := request.options.RateLimitTakeContext(ctx, hostname)
 	if observer, ok := request.options.Progress.(httpRateLimitWaitObserver); ok {
 		observer.ObserveHTTPRateLimitWait(time.Since(started))
 	}

@@ -22,7 +22,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -1305,12 +1307,14 @@ type timingProgressObserver struct {
 	requestError    error
 	requestCount    int
 	rateWaitCount   int
+	rateWait        time.Duration
 }
 
-func (o *timingProgressObserver) ObserveHTTPRateLimitWait(time.Duration) {
+func (o *timingProgressObserver) ObserveHTTPRateLimitWait(duration time.Duration) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.rateWaitCount++
+	o.rateWait = duration
 }
 
 func (o *timingProgressObserver) ObserveHTTPRequest(duration time.Duration, status int, err error) {
@@ -1365,6 +1369,39 @@ func TestHTTPExecutionObservesRequestTiming(t *testing.T) {
 	require.Equal(t, http.StatusTeapot, observer.requestStatus)
 	require.NoError(t, observer.requestError)
 	require.GreaterOrEqual(t, observer.requestDuration, 20*time.Millisecond)
+}
+
+func TestHTTPRateLimitWaitExcludesHostBackoff(t *testing.T) {
+	backoff := hostbackoff.New(hostbackoff.Config{Step: 200 * time.Millisecond, Max: 200 * time.Millisecond})
+	observer := &timingProgressObserver{}
+	request := &Request{options: &protocols.ExecutorOptions{HostBackoff: backoff, Progress: observer}}
+	target := "https://example.com/path"
+	request.observeHostBackoff(target, &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{}}, nil)
+
+	started := time.Now()
+	require.NoError(t, request.rateLimitTake(t.Context(), target))
+	elapsed := time.Since(started)
+
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	require.Equal(t, 1, observer.rateWaitCount)
+	require.GreaterOrEqual(t, elapsed, 150*time.Millisecond)
+	require.Less(t, observer.rateWait, elapsed/2)
+}
+
+func TestHTTPRateLimitWaitNotObservedWhenBackoffCanceled(t *testing.T) {
+	backoff := hostbackoff.New(hostbackoff.Config{Step: time.Second, Max: time.Second})
+	observer := &timingProgressObserver{}
+	request := &Request{options: &protocols.ExecutorOptions{HostBackoff: backoff, Progress: observer}}
+	target := "https://example.com/path"
+	request.observeHostBackoff(target, &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{}}, nil)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	require.ErrorIs(t, request.rateLimitTake(ctx, target), context.Canceled)
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	require.Zero(t, observer.rateWaitCount)
 }
 
 func TestSerialHTTPUnresponsiveHostSkipsBeforeRateLimit(t *testing.T) {
