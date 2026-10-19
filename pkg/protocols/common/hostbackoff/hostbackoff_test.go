@@ -232,6 +232,12 @@ func TestDialFailureOnNeverReachedHostIsIgnored(t *testing.T) {
 		g.ObserveDial("acme.test:22", errors.New("connection refused"))
 	}
 	require.Zero(t, g.Delay("acme.test:22"))
+	_, err := g.hosts.GetIFPresent("acme.test:22")
+	require.Error(t, err, "a port that never accepted must not take a cache slot")
+
+	g.ObserveDial("ok.test:22", nil)
+	_, err = g.hosts.GetIFPresent("ok.test:22")
+	require.NoError(t, err, "a port that accepted is tracked so a later refusal can slow it")
 }
 
 func TestResponseMarksHostReachableForDials(t *testing.T) {

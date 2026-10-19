@@ -216,6 +216,10 @@ func (g *Governor) ObserveDial(host string, err error) {
 		g.decay(state)
 	case state.reachable:
 		g.grow(state, 0)
+	default:
+		// A port that never accepted is closed or filtered. Storing it would
+		// fill the cache and evict hosts that actually have a delay.
+		return
 	}
 	_ = g.hosts.Set(host, state)
 }

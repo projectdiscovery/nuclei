@@ -69,7 +69,11 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			request.dialer, _ = networkclientpool.Get(request.options.Options, &networkclientpool.Configuration{})
 		}
 
+		if err := request.options.HostBackoffWait(target.Context(), addr); err != nil {
+			return nil, err
+		}
 		conn, err := request.dialer.Dial(target.Context(), "tcp", addr)
+		request.options.HostBackoffObserveDial(addr, err)
 		if err != nil {
 			errs = append(errs, err)
 			continue
