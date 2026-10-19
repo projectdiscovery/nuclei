@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
@@ -1294,6 +1295,121 @@ func TestExecuteParallelHTTP_StopAtFirstMatchCancelsQueuedRateLimitWaiters(t *te
 	)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), requests.Load())
+}
+
+type timingProgressObserver struct {
+	progress.Progress
+	mu              sync.Mutex
+	requestDuration time.Duration
+	requestStatus   int
+	requestError    error
+	requestCount    int
+	rateWaitCount   int
+}
+
+func (o *timingProgressObserver) ObserveHTTPRateLimitWait(time.Duration) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.rateWaitCount++
+}
+
+func (o *timingProgressObserver) ObserveHTTPRequest(duration time.Duration, status int, err error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.requestDuration = duration
+	o.requestStatus = status
+	o.requestError = err
+	o.requestCount++
+}
+
+func TestHTTPExecutionObservesRequestTiming(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.RestrictLocalNetworkAccess = false
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		time.Sleep(20 * time.Millisecond)
+		writer.WriteHeader(http.StatusTeapot)
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID:     "http-timing-observer",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Type:   matchers.MatcherTypeHolder{MatcherType: matchers.StatusMatcher},
+			Status: []int{http.StatusTeapot},
+		}}},
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	observer := &timingProgressObserver{Progress: executerOptions.Progress}
+	executerOptions.Progress = observer
+	require.NoError(t, request.Compile(executerOptions))
+	require.NoError(t, request.ExecuteWithResults(
+		contextargs.NewWithInput(t.Context(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	))
+
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	require.Equal(t, 1, observer.rateWaitCount)
+	require.Equal(t, 1, observer.requestCount)
+	require.Equal(t, http.StatusTeapot, observer.requestStatus)
+	require.NoError(t, observer.requestError)
+	require.GreaterOrEqual(t, observer.requestDuration, 20*time.Millisecond)
+}
+
+func TestSerialHTTPUnresponsiveHostSkipsBeforeRateLimit(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.RateLimit = 1
+	options.RateLimitDuration = 2 * time.Second
+	options.RestrictLocalNetworkAccess = false
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		writer.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID:     "serial-skip-before-rate-limit",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOptions.HostErrorsCache = &fakeHostErrorsCache{}
+	observer := &timingProgressObserver{Progress: executerOptions.Progress}
+	executerOptions.Progress = observer
+	executerOptions.RateLimiter = ratelimit.New(context.Background(), 1, 2*time.Second)
+	t.Cleanup(executerOptions.RateLimiter.Stop)
+	require.NoError(t, executerOptions.RateLimiter.TakeContext(t.Context()))
+	require.NoError(t, request.Compile(executerOptions))
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	err := request.ExecuteWithResults(contextargs.NewWithInput(ctx, server.URL), make(output.InternalEvent), make(output.InternalEvent), func(*output.InternalWrappedEvent) {})
+	require.NoError(t, err)
+	require.Less(t, time.Since(started), 250*time.Millisecond)
+	require.Zero(t, requests.Load())
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	require.Zero(t, observer.rateWaitCount)
 }
 
 func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
