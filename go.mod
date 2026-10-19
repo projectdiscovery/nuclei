@@ -102,7 +102,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.4.1
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
-	github.com/projectdiscovery/utils v0.11.10-0.20261017183053-ac02d12acdf3
+	github.com/projectdiscovery/utils v0.11.10-0.20261019085724-c5c64e928d17
 	github.com/projectdiscovery/wappalyzergo v0.3.4
 	github.com/projectdiscovery/yamldoc-go v1.0.7
 	github.com/redis/go-redis/v9 v9.19.0

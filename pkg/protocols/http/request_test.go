@@ -24,6 +24,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"io"
 )
 
 func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
@@ -1561,4 +1563,99 @@ func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
 	t.Logf("request returned %s after its context was cancelled", cancellationDelay.Round(time.Millisecond))
 	require.ErrorIs(t, err, context.Canceled)
 	require.Less(t, cancellationDelay, 250*time.Millisecond)
+}
+
+func TestDumpedRequestKeepsBodyServerDidNotRead(t *testing.T) {
+	// The server answers in full, then holds the connection without reading
+	// the body, so the transport is still writing it when the response arrives.
+	release := make(chan struct{})
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "2")
+		_, _ = w.Write([]byte("ok"))
+		w.(http.Flusher).Flush()
+		<-release
+	}))
+	defer target.Close()
+	defer close(release)
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "dump-body",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	body := strings.Repeat("A", 4<<20)
+	requests := []*Request{
+		{
+			ID:     "post",
+			Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+			Path:   []string{"{{BaseURL}}/"},
+			Body:   body,
+		},
+		{
+			ID:  "get",
+			Raw: []string{"GET / HTTP/1.1\nHost: {{Hostname}}\n\n" + body},
+		},
+		{
+			ID:  "chunked",
+			Raw: []string{"POST / HTTP/1.1\nHost: {{Hostname}}\nTransfer-Encoding: chunked\n\n" + body},
+		},
+	}
+	for _, request := range requests {
+		require.NoError(t, request.Compile(executerOpts))
+		// how much the transport has written when the response lands varies, so
+		// a few rounds make a lost body show up reliably
+		for range 3 {
+			var dumped string
+			input := contextargs.NewWithInput(context.Background(), target.URL)
+			err := request.ExecuteWithResults(input, output.InternalEvent{}, output.InternalEvent{}, func(event *output.InternalWrappedEvent) {
+				dumped, _ = event.InternalEvent["request"].(string)
+			})
+			require.NoError(t, err)
+			require.True(t, strings.HasSuffix(dumped, "\r\n\r\n"+body), "%s recorded request lost its body: %d of %d bytes", request.ID, len(dumped), len(body))
+		}
+	}
+}
+
+func TestReuseRequestBodyKeepsExcludedEncoding(t *testing.T) {
+	body := []byte("original")
+	for _, tc := range []struct {
+		name          string
+		method        string
+		header        string
+		contentLength int64
+		wantLength    int64
+	}{
+		{name: "post", method: http.MethodPost, contentLength: 1, wantLength: int64(len(body))},
+		{name: "get", method: http.MethodGet, contentLength: 3, wantLength: 3},
+		{name: "head", method: http.MethodHead, contentLength: 0, wantLength: 0},
+		{name: "chunked", method: http.MethodPost, header: "chunked", contentLength: -1, wantLength: -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := retryablehttp.NewRequest(tc.method, "https://example.com/", body)
+			require.NoError(t, err)
+			req.ContentLength = tc.contentLength
+			if tc.header != "" {
+				req.Header.Set("Transfer-Encoding", tc.header)
+			}
+
+			require.NoError(t, reuseRequestBody(req))
+			require.Equal(t, tc.wantLength, req.ContentLength)
+			if tc.header != "" {
+				require.Equal(t, tc.header, req.Header.Get("Transfer-Encoding"))
+			}
+
+			got, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			require.Equal(t, body, got)
+			fresh, err := req.GetBody()
+			require.NoError(t, err)
+			got, err = io.ReadAll(fresh)
+			require.NoError(t, err)
+			require.Equal(t, body, got)
+		})
+	}
 }
