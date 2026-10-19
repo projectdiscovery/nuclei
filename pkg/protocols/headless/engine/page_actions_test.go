@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/stretchr/testify/require"
 
@@ -152,6 +153,26 @@ func TestLocatorInteractshTracking(t *testing.T) {
 		require.Equal(t, 2, source.calls)
 		require.Len(t, page.InteractshURLs, 2)
 	})
+}
+
+func TestSleeperConcurrentHistoryUpdate(t *testing.T) {
+	page := &Page{page: &rod.Page{}, mutex: &sync.RWMutex{}}
+	start := make(chan struct{})
+	var done sync.WaitGroup
+	done.Add(1)
+	go func() {
+		defer done.Done()
+		<-start
+		for range 10000 {
+			page.addToHistory(HistoryData{})
+		}
+	}()
+
+	close(start)
+	for range 10000 {
+		page.Sleeper(time.Millisecond, time.Second)
+	}
+	done.Wait()
 }
 
 func TestActionNavigate(t *testing.T) {
