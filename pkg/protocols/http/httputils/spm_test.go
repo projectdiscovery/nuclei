@@ -36,3 +36,44 @@ func TestCancelStopsResultReceiver(t *testing.T) {
 		})
 	}
 }
+
+func TestCancelPreservesQueuedResults(t *testing.T) {
+	constructors := map[string]func() *StopAtFirstMatchHandler[int]{
+		"blocking": func() *StopAtFirstMatchHandler[int] {
+			return NewBlockingSPMHandler[int](context.Background(), 1, 2, false)
+		},
+		"nonblocking": func() *StopAtFirstMatchHandler[int] {
+			return NewNonBlockingSPMHandler[int](context.Background(), 2, false)
+		},
+	}
+
+	for name, construct := range constructors {
+		t.Run(name, func(t *testing.T) {
+			for range 25 {
+				handler := construct()
+				entered := make(chan struct{})
+				release := make(chan struct{})
+				handler.SetOnResultCallback(func(value int) {
+					if value == 1 {
+						close(entered)
+						<-release
+					}
+				})
+				handler.ResultChan <- 1
+				<-entered
+				handler.ResultChan <- 2
+				handler.Cancel()
+				close(release)
+				handler.Wait()
+
+				found := make(map[int]bool)
+				for _, result := range handler.CombinedResults() {
+					found[result] = true
+				}
+				if !found[1] || !found[2] {
+					t.Fatalf("queued results lost after cancellation: %v", found)
+				}
+			}
+		})
+	}
+}

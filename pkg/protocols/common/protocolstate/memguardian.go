@@ -72,7 +72,7 @@ func refreshMemoryWarning() error {
 		if err != nil {
 			return err
 		}
-		warning = warning || usedBytes >= uint64(maxBytes)
+		warning = warning || maxBytes > 0 && usedBytes >= uint64(maxBytes)
 	}
 	memguardian.DefaultMemGuardian.Warning.Store(warning)
 	return nil
