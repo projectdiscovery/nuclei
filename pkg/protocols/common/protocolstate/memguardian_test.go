@@ -156,4 +156,7 @@ func TestActiveMemGuardianUpdatesLowMemoryWarning(t *testing.T) {
 	memguardian.DefaultMaxUsedRamRatio = 100
 	require.NoError(t, refreshMemoryWarning())
 	require.False(t, IsLowOnMemory())
+	t.Setenv(memguardian.MemGuardianMaxUsedMemoryENV, "0")
+	require.NoError(t, refreshMemoryWarning())
+	require.False(t, IsLowOnMemory())
 }
