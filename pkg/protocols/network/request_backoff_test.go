@@ -184,3 +184,38 @@ func TestMultiPortProbeFailureBacksOffPreviouslyOpenPort(t *testing.T) {
 	require.Equal(t, step, g.Delay(closedAddr), "a probe that fails on a port that accepted before slows it")
 	require.Zero(t, g.Delay(otherAddr), "a port that never accepted stays unpaced")
 }
+
+func TestTLSHandshakeFailureDoesNotBackOff(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = listener.Close() })
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			_, _ = conn.Write([]byte("not tls"))
+			_ = conn.Close()
+		}
+	}()
+	address := listener.Addr().String()
+
+	const step = 100 * time.Millisecond
+	g := hostbackoff.New(hostbackoff.Config{Step: step})
+	g.ObserveDial(address, nil)
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "network-host-backoff"})
+	executerOpts.HostBackoff = g
+
+	request := &Request{ID: "network-host-backoff", Address: []string{"tls://" + address}, ReadSize: 2}
+	require.NoError(t, request.Compile(executerOpts))
+
+	err = execute(request, address)
+	require.Error(t, err)
+	require.Zero(t, g.Delay(address), "a TLS handshake failure after TCP connected stays with the template: %v", err)
+}
