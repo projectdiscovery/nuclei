@@ -160,3 +160,12 @@ func TestActiveMemGuardianUpdatesLowMemoryWarning(t *testing.T) {
 	require.NoError(t, refreshMemoryWarning())
 	require.False(t, IsLowOnMemory())
 }
+
+func TestGuardThreadsNeverIncreasesConcurrency(t *testing.T) {
+	previous := MaxThreadsOnLowMemory
+	MaxThreadsOnLowMemory = 5
+	t.Cleanup(func() { MaxThreadsOnLowMemory = previous })
+
+	require.Equal(t, 2, GuardThreadsOrDefault(2))
+	require.Equal(t, 5, GuardThreadsOrDefault(25))
+}
