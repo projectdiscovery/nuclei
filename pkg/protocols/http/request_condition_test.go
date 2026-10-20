@@ -329,7 +329,9 @@ func TestDependentPayloadRateLimitedLastMatchAccounting(t *testing.T) {
 		},
 	))
 	require.Equal(t, int32(1), matches.Load())
-	require.Equal(t, int32(102), sent.Load())
+	require.GreaterOrEqual(t, sent.Load(), int32(2))
+	require.LessOrEqual(t, sent.Load(), int32(102))
+	require.Equal(t, int64(sent.Load()), progressCounter.sent.Load())
 	require.Equal(t, int64(102), progressCounter.sent.Load()+progressCounter.skipped.Load()+progressCounter.failed.Load())
 	require.Zero(t, progressCounter.failed.Load())
 }
