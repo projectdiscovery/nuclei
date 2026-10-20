@@ -99,10 +99,10 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.116
 	github.com/projectdiscovery/retryablehttp-go v1.3.31
 	github.com/projectdiscovery/sarif v0.1.0
-	github.com/projectdiscovery/tlsx v1.4.1
+	github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
-	github.com/projectdiscovery/utils v0.11.10-0.20261019085724-c5c64e928d17
+	github.com/projectdiscovery/utils v0.11.11-0.20261020211236-cde16c1381ec
 	github.com/projectdiscovery/wappalyzergo v0.3.5
 	github.com/projectdiscovery/yamldoc-go v1.0.7
 	github.com/redis/go-redis/v9 v9.19.0
@@ -418,7 +418,7 @@ require (
 	github.com/vmihailenco/tagparser v0.1.2 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/vulncheck-oss/go-exploit v1.51.0 // indirect
-	github.com/weppos/publicsuffix-go v0.50.4-0.20260821095816-b0fdb5c2d345 // indirect
+	github.com/weppos/publicsuffix-go v0.50.4-0.20260918082853-3c3d7dc4a0cb // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
@@ -439,8 +439,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zcalusic/sysinfo v1.1.3 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
-	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
-	github.com/zmap/zcrypto v0.0.0-20260906180147-3ed30b1e9340 // indirect
+	github.com/zmap/zcrypto v0.0.0-20261015050653-aa1de3126e87 // indirect
 	go.etcd.io/bbolt v1.4.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.44.0 // indirect
@@ -471,9 +470,6 @@ require (
 	mellium.im/sasl v0.3.2 // indirect
 	software.sslmate.com/src/go-pkcs12 v0.7.2 // indirect
 )
-
-// fastdialer 0.5.26 selects a zcrypto that no longer has GetHeartbleedLog or NextProtoNeg.
-replace github.com/zmap/zcrypto => github.com/zmap/zcrypto v0.0.0-20240803002437-3a861682ac77
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
