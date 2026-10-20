@@ -122,7 +122,8 @@ type Request struct {
 	// examples:
 	//   - name: Send requests using 10 concurrent threads
 	//     value: 10
-	Threads int `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=threads for sending requests,description=Threads specifies number of threads to use sending requests. This enables Connection Pooling"`
+	Threads        int `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=threads for sending requests,description=Threads specifies number of threads to use sending requests. This enables Connection Pooling"`
+	PayloadThreads int `yaml:"payload-threads,omitempty" json:"payload-threads,omitempty" jsonschema:"title=dependent payload concurrency,description=Opt-in concurrency across independent payload groups while preserving request order inside each group"`
 	// description: |
 	//   MaxSize is the maximum size of http response body to read in bytes.
 	// examples:
@@ -138,14 +139,15 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
-	connConfiguration *httpclientpool.Configuration
-	totalRequests     int
-	customHeaders     map[string]string
-	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	rawhttpClient     *rawhttp.Client
-	replayClient      *http.Client // set when -replay-proxy is given
-	dialer            *fastdialer.Dialer
+	options                 *protocols.ExecutorOptions
+	connConfiguration       *httpclientpool.Configuration
+	totalRequests           int
+	customHeaders           map[string]string
+	generator               *generators.PayloadGenerator // optional, only enabled when using payloads
+	dependentPayloadThreads int
+	rawhttpClient           *rawhttp.Client
+	replayClient            *http.Client // set when -replay-proxy is given
+	dialer                  *fastdialer.Dialer
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -520,6 +522,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		delete(request.Payloads, payload)
 	}
 
+	request.dependentPayloadThreads = 0
 	if len(request.Payloads) > 0 {
 		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType, request.options.Options)
 		if err != nil {
@@ -561,11 +564,19 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			}
 		}
 		if hasMultipleRequests && (hasNamedInternalExtractor || request.NeedsRequestCondition()) {
-			stats.Increment(SetThreadToCountZero)
+			if !hasNamedInternalExtractor && request.NeedsRequestCondition() && request.PayloadThreads > 0 && request.canRunDependentPayloadsConcurrently() {
+				request.dependentPayloadThreads = request.PayloadThreads
+			}
+			if request.dependentPayloadThreads == 0 {
+				stats.Increment(SetThreadToCountZero)
+			}
 			request.Threads = 0
 		} else {
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
+	}
+	if request.PayloadThreads > 0 && request.dependentPayloadThreads == 0 {
+		return errors.New("payload-threads requires multiple raw requests, indexed response conditions, and independent payload groups without iterate-all, interactsh, or @once")
 	}
 
 	// Avoid reusing client-side HTTP proxy connections for the legacy non-threaded spray path.
@@ -632,7 +643,7 @@ func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.Exe
 	if request == nil || options == nil || options.Options == nil || options.Options.AliveHttpProxy == "" {
 		return false
 	}
-	return request.Threads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
+	return request.Threads <= 0 && request.dependentPayloadThreads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
 }
 
 // AnalyzeConnectionReuse determines if a request can safely reuse connections.

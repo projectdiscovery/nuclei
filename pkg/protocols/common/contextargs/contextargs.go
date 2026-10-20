@@ -256,6 +256,12 @@ func (ctx *Context) Clone() *Context {
 	return newCtx
 }
 
+func (ctx *Context) CloneWithContext(parent context.Context) *Context {
+	cloned := ctx.Clone()
+	cloned.ctx = parent
+	return cloned
+}
+
 // resolvePortList converts a list of port strings (numeric or service names) to numeric port strings.
 func resolvePortList(ports []string) []string {
 	resolved := make([]string, 0, len(ports))

@@ -7,6 +7,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCloneWithContextPreservesInputWithoutSharingMutableState(t *testing.T) {
+	parent := NewWithInput(context.Background(), "https://example.com")
+	parent.Set("shared", "original")
+	childCtx, cancel := context.WithCancel(context.Background())
+	child := parent.CloneWithContext(childCtx)
+
+	require.Equal(t, parent.MetaInput.Input, child.MetaInput.Input)
+	childValue, ok := child.Get("shared")
+	require.True(t, ok)
+	require.Equal(t, "original", childValue)
+	child.Set("shared", "changed")
+	parentValue, ok := parent.Get("shared")
+	require.True(t, ok)
+	require.Equal(t, "original", parentValue)
+	cancel()
+	require.ErrorIs(t, child.Context().Err(), context.Canceled)
+	require.NoError(t, parent.Context().Err())
+}
+
 // TestUseNetworkPort is the behavior matrix for UseNetworkPort.
 //
 // The contract (see issue #7323):
