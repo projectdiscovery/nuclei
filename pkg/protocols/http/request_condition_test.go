@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/memguardian"
 )
 
@@ -206,6 +207,131 @@ func TestIndexedResponsePayloadThreadsKeepPairsOrdered(t *testing.T) {
 	require.Zero(t, outOfOrder.Load())
 	require.Equal(t, int32(2), maximumFirstActive.Load())
 	require.Len(t, firstDone, 2)
+}
+
+func TestDependentPayloadRateLimitWaitDoesNotExpireHTTPTimeout(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.RestrictLocalNetworkAccess = false
+	options.PerHostRateLimit = true
+	options.RateLimit = 1
+	options.RateLimitDuration = 80 * time.Millisecond
+	options.SetTimeouts(&types.Timeouts{HttpTimeout: 50 * time.Millisecond})
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	var sent atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		sent.Add(1)
+		writer.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	request := &Request{
+		ID: "dependent-payload-rate-wait",
+		Raw: []string{
+			"GET /first?probe={{probe}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /second?probe={{probe}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		PayloadThreads: 2,
+		Payloads: map[string]interface{}{
+			"probe": []string{"one", "two"},
+		},
+		Operators: operatorsWithMatchers(&matcherpkg.Matcher{
+			Type: matcherpkg.MatcherTypeHolder{MatcherType: matcherpkg.DSLMatcher},
+			DSL:  []string{"status_code_1 == 200 && status_code_2 == 200"},
+		}),
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOptions.RateLimiter = nil
+	require.NoError(t, request.Compile(executerOptions))
+
+	var matches atomic.Int32
+	require.NoError(t, request.ExecuteWithResults(
+		contextargs.NewWithInput(t.Context(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				matches.Add(1)
+			}
+		},
+	))
+	require.Equal(t, int32(4), sent.Load())
+	require.Equal(t, int32(2), matches.Load())
+}
+
+func TestDependentPayloadRateLimitedLastMatchAccounting(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.RestrictLocalNetworkAccess = false
+	options.PerHostRateLimit = true
+	options.RateLimit = 1
+	options.RateLimitDuration = 20 * time.Millisecond
+	options.SetTimeouts(&types.Timeouts{HttpTimeout: 15 * time.Millisecond})
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	var sent atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		sent.Add(1)
+		if request.URL.Path == "/first" {
+			writer.WriteHeader(http.StatusCreated)
+			return
+		}
+		if request.URL.Query().Get("probe") == "key-50" {
+			writer.WriteHeader(http.StatusOK)
+			return
+		}
+		writer.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	keys := make([]string, 51)
+	for i := range keys {
+		keys[i] = fmt.Sprintf("key-%d", i)
+	}
+	request := &Request{
+		ID: "dependent-payload-last-match",
+		Raw: []string{
+			"GET /first?probe={{probe}} HTTP/1.1\nHost: {{Hostname}}",
+			"GET /second?probe={{probe}} HTTP/1.1\nHost: {{Hostname}}",
+		},
+		PayloadThreads:   10,
+		StopAtFirstMatch: true,
+		Payloads:         map[string]interface{}{"probe": keys},
+		Operators: operatorsWithMatchers(&matcherpkg.Matcher{
+			Type: matcherpkg.MatcherTypeHolder{MatcherType: matcherpkg.DSLMatcher},
+			DSL:  []string{"status_code_1 == 201 && status_code_2 == 200"},
+		}),
+	}
+	executerOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOptions.RateLimiter = nil
+	progressCounter := &payloadRequestProgress{Progress: executerOptions.Progress}
+	executerOptions.Progress = progressCounter
+	require.NoError(t, request.Compile(executerOptions))
+
+	var matches atomic.Int32
+	require.NoError(t, request.ExecuteWithResults(
+		contextargs.NewWithInput(t.Context(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				matches.Add(1)
+			}
+		},
+	))
+	require.Equal(t, int32(1), matches.Load())
+	require.Equal(t, int32(102), sent.Load())
+	require.Equal(t, int64(102), progressCounter.sent.Load()+progressCounter.skipped.Load()+progressCounter.failed.Load())
+	require.Zero(t, progressCounter.failed.Load())
 }
 
 func TestIndexedResponsePayloadThreadsStopAfterFirstMatch(t *testing.T) {

@@ -669,6 +669,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 }
 
 func (request *Request) executeSequentialHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback, generator *requestGenerator, accounted *atomic.Int64, stopOnMatch *atomic.Bool) error {
+	var recordedCurrent bool
 	countAccounted := func(count int64) {
 		if accounted != nil {
 			accounted.Add(count)
@@ -679,12 +680,21 @@ func (request *Request) executeSequentialHTTP(input *contextargs.Context, dynami
 		request.options.Progress.SetRequests(uint64(count))
 	}
 	recordSent := func() {
+		recordedCurrent = true
 		countAccounted(1)
 		request.options.Progress.IncrementRequests()
 	}
 	recordFailed := func() {
+		recordedCurrent = true
 		countAccounted(1)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+	}
+	recordStopped := func() {
+		remaining := int64(generator.Remaining())
+		if !recordedCurrent {
+			remaining++
+		}
+		recordSkipped(remaining)
 	}
 
 	initialPrevious := cloneInternalEvent(previous)
@@ -703,13 +713,11 @@ func (request *Request) executeSequentialHTTP(input *contextargs.Context, dynami
 executionLoop:
 	for {
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
+			recordedCurrent = false
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
-			defer cancel()
-
-			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctx, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
 					return false, true, nil, nil
@@ -732,6 +740,12 @@ executionLoop:
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
+			}
+			if generatedHttpRequest.request != nil && generatedHttpRequest.customCancelFunction == nil {
+				// Rate admission must not consume the network request's timeout.
+				timedCtx, cancel := context.WithTimeoutCause(generatedHttpRequest.request.Context(), request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
+				defer cancel()
+				generatedHttpRequest.request.WithContext(timedCtx)
 			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
@@ -847,7 +861,7 @@ executionLoop:
 					break executionLoop
 				}
 				if stop {
-					recordSkipped(int64(generator.Remaining() + 1))
+					recordStopped()
 					break executionLoop
 				}
 				if skipBranch {
@@ -890,7 +904,7 @@ executionLoop:
 				break executionLoop
 			}
 			if stop {
-				recordSkipped(int64(generator.Remaining() + 1))
+				recordStopped()
 				break executionLoop
 			}
 			if skipBranch {
