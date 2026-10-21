@@ -2,7 +2,10 @@ package runner
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -422,13 +425,7 @@ func New(options *types.Options) (*Runner, error) {
 		opts.HTTPClient = httpclient
 	}
 	if opts.HTTPClient == nil {
-		httpOpts := retryablehttp.DefaultOptionsSingle
-		httpOpts.Timeout = 20 * time.Second // for stability reasons
-		if options.Timeout > 20 {
-			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
-		}
-		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
-		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+		opts.HTTPClient = newInteractshHTTPClient(options)
 	}
 
 	interactshClient, err := interactsh.New(opts)
@@ -1234,4 +1231,32 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 func init() {
 	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
 	EnableCloudUpload = env.GetEnvOrDefault("ENABLE_CLOUD_UPLOAD", false)
+}
+
+func newInteractshHTTPClient(options *types.Options) *retryablehttp.Client {
+	httpOpts := retryablehttp.DefaultOptionsSingle
+	httpOpts.Timeout = 20 * time.Second // for stability reasons
+	if options.Timeout > 20 {
+		httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
+	}
+	if dialers := protocolstate.GetDialersWithId(options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
+		transport := &http.Transport{
+			DialContext: dialers.Fastdialer.Dial,
+			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialers.Fastdialer.DialTLS(ctx, network, addr)
+			},
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     30 * time.Second,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+		httpOpts.HttpClient = &http.Client{
+			Transport: transport,
+			Timeout:   httpOpts.Timeout,
+		}
+	}
+	// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+	return retryablehttp.NewClient(httpOpts)
 }

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -142,4 +144,26 @@ func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
 	require.Equal(t, "value", testStruct.A)
 	require.Equal(t, "2", testStruct.Struct.B)
 	require.Equal(t, "true", testStruct.Struct.C)
+}
+
+func TestNewInteractshHTTPClient(t *testing.T) {
+	options := &types.Options{
+		ExecutionId: "test-interactsh-client-dialer",
+		Timeout:     35,
+	}
+	err := protocolstate.Init(options)
+	require.NoError(t, err)
+
+	client := newInteractshHTTPClient(options)
+	require.NotNil(t, client)
+	require.NotNil(t, client.HTTPClient)
+
+	transport, ok := client.HTTPClient.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.NotNil(t, transport.DialContext)
+	require.NotNil(t, transport.DialTLSContext)
+
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	require.NotNil(t, dialers)
+	require.NotNil(t, dialers.Fastdialer)
 }
