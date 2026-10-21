@@ -1,7 +1,9 @@
 package network
 
 import (
+	"crypto/tls"
 	"encoding/hex"
+	stderrors "errors"
 	"fmt"
 	"maps"
 	"net"
@@ -69,7 +71,11 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			request.dialer, _ = networkclientpool.Get(request.options.Options, &networkclientpool.Configuration{})
 		}
 
+		if err := request.options.HostBackoffWait(target.Context(), addr); err != nil {
+			return nil, err
+		}
 		conn, err := request.dialer.Dial(target.Context(), "tcp", addr)
+		request.options.HostBackoffObserveDial(addr, err)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -326,6 +332,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return nil
 	}
 
+	if err := request.options.HostBackoffWait(input.Context(), actualAddress); err != nil {
+		return err
+	}
 	if err := request.options.RateLimitTakeContext(input.Context(), actualAddress); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -337,6 +346,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	} else {
 		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
+	// DialTLS fails the handshake after TCP has connected. Backoff follows the
+	// TCP result; the request still returns the handshake error.
+	request.options.HostBackoffObserveDial(actualAddress, tcpDialError(err))
 	// adds it to unresponsive address list if applicable
 	request.markHostError(updatedTarget, err)
 	if err != nil {
@@ -548,6 +560,23 @@ func displayCompactHexView(event *output.InternalWrappedEvent, response string, 
 		tempOperatorResult := &operators.Result{Matches: map[string][]string{"matchesInHex": allMatches}}
 		gologger.Print().Msgf("\nCompact HEX view:\n%s", responsehighlighter.Highlight(tempOperatorResult, hex.EncodeToString([]byte(response)), noColor, false))
 	}
+}
+
+// tcpDialError reports a failure to open TCP. A TLS handshake error means the
+// port already accepted the connection.
+func tcpDialError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var record tls.RecordHeaderError
+	if stderrors.As(err, &record) {
+		return nil
+	}
+	message := err.Error()
+	if strings.Contains(message, "tls:") || strings.Contains(message, "tls handshake") {
+		return nil
+	}
+	return err
 }
 
 // getAddress returns the address of the host to make request to

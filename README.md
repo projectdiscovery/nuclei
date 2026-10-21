@@ -294,6 +294,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
    -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
+   -host-backoff                      slow down a host that starts blocking (429, repeated 403s, connection failures)
+   -host-backoff-max value            maximum delay applied to a host that is blocking (default 30s)
    -per-host-rate-limit               enable per-host rate limiting (global rate limit becomes unlimited when enabled)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
@@ -337,6 +339,7 @@ DEBUG:
    -dresp, -debug-resp        show all received responses
    -p, -proxy string[]        list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal       proxy all internal requests
+   -rp, -replay-proxy string  http/socks5 proxy to re-send requests that produced a finding through (e.g. burp)
    -ldf, -list-dsl-function   list all supported DSL function signatures
    -tlog, -trace-log string   file to write sent requests trace log
    -elog, -error-log string   file to write sent requests error log

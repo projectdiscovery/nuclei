@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"maps"
@@ -33,6 +34,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -47,7 +50,6 @@ import (
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
-	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	unitutils "github.com/projectdiscovery/utils/unit"
@@ -74,6 +76,78 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol
 }
 
+// hostBackoffKey is the identity shared by the pre-request wait and the
+// post-response observation. It keeps the scheme, or an explicit port, so
+// NormalizeHostPort does not record an https target under port 80.
+func hostBackoffKey(req *generatedRequest, input *contextargs.Context) string {
+	if req != nil {
+		if key := req.URL(); key != "" {
+			return key
+		}
+		if req.request != nil && req.request.Request != nil && req.request.Request.URL != nil {
+			return req.request.Request.URL.String()
+		}
+	}
+	if input != nil && input.MetaInput != nil {
+		return input.MetaInput.Input
+	}
+	return ""
+}
+
+// observeHostBackoff reports one request outcome to the per-host governor.
+func (request *Request) observeHostBackoff(host string, resp *http.Response, err error) {
+	if request.options == nil || request.options.HostBackoff == nil {
+		return
+	}
+	// A cancelled sibling, or a scan that is stopping, is not the host asking
+	// for less traffic. A real status on the response is still worth recording.
+	if resp == nil && err != nil && stderrors.Is(err, context.Canceled) {
+		return
+	}
+	statusCode := 0
+	var retryAfter time.Duration
+	if resp != nil {
+		statusCode = resp.StatusCode
+		retryAfter = hostbackoff.RetryAfter(resp.Header.Get("Retry-After"))
+	}
+	request.options.HostBackoff.Observe(hostratelimit.NormalizeHostPort(host), statusCode, retryAfter, err)
+}
+
+// waitHostBackoff pauses for the delay this host has already earned.
+func (request *Request) waitHostBackoff(ctx context.Context, host string) error {
+	if request.options == nil {
+		return nil
+	}
+	return request.options.HostBackoffWait(ctx, host)
+}
+
+// rateLimitTake first honours any backoff the host earned by signalling it is
+// overloaded, so a blocking target is paced regardless of which limiter is in play.
+func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
+	if err := request.waitHostBackoff(ctx, hostname); err != nil {
+		return err
+	}
+	return request.options.RateLimitTakeContext(ctx, hostname)
+}
+
+// stopWithHandler ends when parent ends or the handler stops, so a backoff
+// wait does not outlive stop-at-first-match.
+func stopWithHandler[T comparable](parent context.Context, handler *httputils.StopAtFirstMatchHandler[T]) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(parent)
+	if handler == nil {
+		return ctx, cancel
+	}
+	if handler.Context().Err() != nil {
+		cancel()
+		return ctx, func() {}
+	}
+	stop := context.AfterFunc(handler.Context(), cancel)
+	return ctx, func() {
+		stop()
+		cancel()
+	}
+}
+
 // executeRaceRequest executes race condition request for a URL
 func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	reqURL := input.MetaInput.Input
@@ -93,6 +167,11 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		return err
 	}
 	request.setCustomHeaders(requestForDump)
+	// Auth is applied again on each raced request. The dump is what replay
+	// sends, so it has to include the same headers.
+	if !request.SkipSecretFile {
+		requestForDump.ApplyAuth(request.options.AuthProvider)
+	}
 	dumpedRequest, err := dump(requestForDump, reqURL)
 	if err != nil {
 		return err
@@ -166,8 +245,20 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 				// stop sending more requests condition is met
 				return
 			}
+			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
+			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			cancelWait()
+			if err != nil || spmHandler.FoundFirstMatch() || spmHandler.Cancelled() {
+				if err != nil {
+					select {
+					case <-spmHandler.Done():
+					case spmHandler.ResultChan <- err:
+					}
+				}
+				return
+			}
 
-			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
+			err = request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
@@ -256,15 +347,12 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					spmHandler.Release()
 					continue
 				}
-				// Extract hostname for per-host rate limiting (use full URL - normalization happens in rateLimitTake)
-				hostname := t.updatedInput.MetaInput.Input
-				if t.req != nil && t.req.URL() != "" {
-					hostname = t.req.URL()
-				} else if t.req != nil && t.req.request != nil && t.req.request.Request != nil && t.req.request.Request.URL != nil {
-					// Extract from request URL if available
-					hostname = t.req.request.Request.URL.String()
-				}
-				if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
+				// Full URL, so https and an explicit port stay on the same key the observation uses.
+				// The handler context ends the wait when stop-at-first-match fires.
+				waitCtx, cancelWait := stopWithHandler(ctx, spmHandler)
+				err := request.rateLimitTake(waitCtx, hostBackoffKey(t.req, t.updatedInput))
+				cancelWait()
+				if err != nil {
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
@@ -283,7 +371,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				}
 				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
-				err := request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+				err = request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 						requestData := &interactsh.RequestData{
 							MakeResultFunc: request.MakeResultEvent,
@@ -504,7 +592,19 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 				// skip if first match is found
 				return
 			}
-			err := request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
+			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
+			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			cancelWait()
+			if err != nil || spmHandler.FoundFirstMatch() || spmHandler.Cancelled() {
+				if err != nil {
+					select {
+					case <-spmHandler.Done():
+					case spmHandler.ResultChan <- err:
+					}
+				}
+				return
+			}
+			err = request.executeRequest(requestInput, httpRequest, previous, false, wrappedCallback, 0)
 			select {
 			case <-spmHandler.Done():
 				return
@@ -579,13 +679,8 @@ executionLoop:
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
-			// Extract hostname for per-host rate limiting (use generated request URL - normalization happens in rateLimitTake)
-			hostname := input.MetaInput.Input
-			if generatedHttpRequest.URL() != "" {
-				// Use the generated URL directly - the normalization function will extract host:port correctly
-				hostname = generatedHttpRequest.URL()
-			}
-			if err := request.options.RateLimitTakeContext(ctx, hostname); err != nil {
+			// Full URL, so https and an explicit port stay on the same key the observation uses.
+			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
 			}
 
@@ -886,6 +981,25 @@ func extractorAppliesToRequest(part string, requestIndex int) bool {
 
 const drainReqSize = int64(8 * unitutils.Kilo)
 
+// reuseRequestBody reads the body once and installs GetBody copies. The
+// post-send dump reads one while the transport may still be writing another.
+// GET, HEAD, and chunked requests keep their existing content length.
+func reuseRequestBody(req *retryablehttp.Request) error {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+	keepLength := stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) || req.Header.Get("Transfer-Encoding") == "chunked"
+	contentLength := req.ContentLength
+	if err = req.SetBody(body); err != nil {
+		return err
+	}
+	if keepLength {
+		req.ContentLength = contentLength
+	}
+	return nil
+}
+
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
 	// Check if hosts keep erroring
@@ -901,6 +1015,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.validateNFixEvent(input, generatedRequest, err, event)
 		processEvent(event)
 	}
+
+	// Captured before auth, scheme correction, or the error path can rewrite
+	// the URL. The caller waited on this same key.
+	backoffKey := hostBackoffKey(generatedRequest, input)
 
 	request.setCustomHeaders(generatedRequest)
 	fuzzed := &generatedRequest.fuzzGeneratedRequest
@@ -921,20 +1039,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !generatedRequest.original.Race {
 
-		// change encoding type to content-length unless transfer-encoding header is manually set
-		if generatedRequest.request != nil && !stringsutil.EqualFoldAny(generatedRequest.request.Method, http.MethodGet, http.MethodHead) && generatedRequest.request.Body != nil && generatedRequest.request.Header.Get("Transfer-Encoding") != "chunked" {
-			var newReqBody *reader.ReusableReadCloser
-			newReqBody, ok := generatedRequest.request.Body.(*reader.ReusableReadCloser)
-			if !ok {
-				newReqBody, err = reader.NewReusableReadCloser(generatedRequest.request.Body)
-			}
-			if err == nil {
-				// update the request body with the reusable reader
-				generatedRequest.request.SetBodyReader(newReqBody)
-				// get content length
-				length, _ := io.Copy(io.Discard, newReqBody)
-				generatedRequest.request.ContentLength = length
-			} else {
+		// Buffer every body so the post-send dump reads its own copy. GET, HEAD,
+		// and chunked requests keep the content length they already had.
+		if generatedRequest.request != nil && generatedRequest.request.Body != nil {
+			if err = reuseRequestBody(generatedRequest.request); err != nil {
 				// log error and continue
 				gologger.Verbose().Msgf("[%v] Could not read request body while forcing transfer encoding: %s\n", request.options.TemplateID, err)
 				err = nil
@@ -985,6 +1093,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var formedURL string
 	var hostname string
+	var sent bool
 	timeStart := time.Now()
 	if generatedRequest.original.Pipeline {
 		// if request is a pipeline request, use the pipelined client
@@ -994,8 +1103,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				hostname = parsed.Host
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
+			sent = true
 		} else if generatedRequest.request != nil {
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
+			sent = true
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
 		// if request is a unsafe request, use the rawhttp client
@@ -1039,6 +1150,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			Body:    io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)),
 			Options: &options,
 		})
+		sent = true
 	} else {
 		//** For Normal requests **//
 		// Use the dial target (URL.Host) rather than the optional Host-header
@@ -1121,6 +1233,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 
 			resp, err = executingClient.Do(generatedRequest.request)
+			sent = true
 
 			// If we forced http->https from a previous detection and the corrected
 			// request failed (e.g. a false positive where the port actually speaks
@@ -1134,6 +1247,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				resp, err = executingClient.Do(generatedRequest.request)
 			}
 		}
+	}
+	// A project-file hit never sets sent, so a stored response cannot move the delay.
+	// Record before dump or the dialer lookup can return and drop the outcome.
+	if sent {
+		request.observeHostBackoff(backoffKey, resp, err)
 	}
 	// use request url as matched url if empty
 	if formedURL == "" {
@@ -1240,6 +1358,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// we only intend to log/save the final redirected response
 	// i.e why we have to use sync.Once to ensure it's only done once
 	var errx error
+	// Race skips the dumps above because the body is already waiting on the
+	// gate. executeRaceRequest stored those bytes for DSL use.
+	if generatedRequest.original != nil && generatedRequest.original.Race && len(dumpedRequest) == 0 {
+		if raw, ok := previousEvent["request"].(string); ok {
+			dumpedRequest = []byte(raw)
+		}
+	}
+	// One executed request is replayed once, even when several responses in
+	// the redirect chain match.
+	replayed := false
+
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
@@ -1390,8 +1519,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			event.UsesInteractsh = true
 		}
 
+		globalMatched := false
 		if request.options.GlobalMatchers.HasMatchers() {
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
+				globalMatched = true
 				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
 			})
 		}
@@ -1401,6 +1532,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
+
+		localMatched := event.OperatorsResult != nil && event.OperatorsResult.Matched
+		if !replayed && (localMatched || globalMatched) {
+			replayed = true
+			request.replayRequest(dumpedRequest, formedURL)
+		}
 
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
 			request.options.FuzzStatsDB.RecordResultEvent(fuzzStats.FuzzingEvent{

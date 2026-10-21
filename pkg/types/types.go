@@ -103,6 +103,8 @@ type Options struct {
 	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
+	// ReplayProxy re-sends the requests that produced a finding through this proxy
+	ReplayProxy string
 	// AliveProxy is the alive proxy to use
 	AliveHttpProxy string
 	// AliveSocksProxy is the alive socks proxy to use
@@ -209,6 +211,12 @@ type Options struct {
 	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
 	// before running templates. Disabled by default.
 	PreflightPortScan bool
+	// HostBackoff slows a host down when it signals it is being overloaded
+	// (429, a run of 403s, or transport failures) instead of scanning it at full
+	// rate until it blocks the scanner. Opt-in, since it changes scan pacing.
+	HostBackoff bool
+	// HostBackoffMax caps the per-host backoff delay.
+	HostBackoffMax time.Duration
 	// MaxURLsPerPattern caps how many targets sharing one structural shape
 	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
 	// target: dropping one means never scanning it.
@@ -621,6 +629,7 @@ func (options *Options) Copy() *Options {
 		Resume:                         options.Resume,
 		Output:                         options.Output,
 		ProxyInternal:                  options.ProxyInternal,
+		ReplayProxy:                    options.ReplayProxy,
 		ListDslSignatures:              options.ListDslSignatures,
 		Proxy:                          options.Proxy,
 		AliveHttpProxy:                 options.AliveHttpProxy,

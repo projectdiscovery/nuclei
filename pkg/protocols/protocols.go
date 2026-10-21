@@ -3,6 +3,7 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -30,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
@@ -115,6 +117,9 @@ type ExecutorOptions struct {
 	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HostBackoff paces a host that signals it is being overloaded, so a scan
+	// slows down for it instead of being blocked outright. Nil disables it.
+	HostBackoff *hostbackoff.Governor
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -234,6 +239,20 @@ func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string)
 		return e.RateLimiter.TakeContext(ctx)
 	}
 	return nil
+}
+
+// HostBackoffWait pauses for the delay address has earned with HostBackoff.
+func (e *ExecutorOptions) HostBackoffWait(ctx context.Context, address string) error {
+	return e.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(address))
+}
+
+// HostBackoffObserveDial reports a connection attempt to address to HostBackoff.
+func (e *ExecutorOptions) HostBackoffObserveDial(address string, err error) {
+	// a canceled dial is the scan stopping, not the host asking for less traffic
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	e.HostBackoff.ObserveDial(hostratelimit.NormalizeHostPort(address), err)
 }
 
 // GetThreadsForNPayloadRequests returns the number of threads to use as default for
@@ -378,6 +397,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Interactsh:                   e.Interactsh,
 		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
+		HostBackoff:                  e.HostBackoff,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -606,6 +626,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Interactsh = n.Interactsh
 	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
+	e.HostBackoff = n.HostBackoff
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB
