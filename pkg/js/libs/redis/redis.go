@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -30,11 +31,7 @@ func getServerInfo(ctx context.Context, executionId string, host string, port in
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	client := newClient(fmt.Sprintf("%s:%d", host, port), "")
 	defer func() {
 		_ = client.Close()
 	}()
@@ -72,11 +69,7 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
-	})
+	client := newClient(fmt.Sprintf("%s:%d", host, port), password)
 	defer func() {
 		_ = client.Close()
 	}()
@@ -112,11 +105,7 @@ func getServerInfoAuth(ctx context.Context, executionId string, host string, por
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
-	})
+	client := newClient(fmt.Sprintf("%s:%d", host, port), password)
 	defer func() {
 		_ = client.Close()
 	}()
@@ -187,11 +176,7 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password,
-		DB:       0, // use default DB
-	})
+	client := newClient(fmt.Sprintf("%s:%d", host, port), password)
 	defer func() {
 		_ = client.Close()
 	}()
@@ -260,4 +245,49 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	}
 
 	return infoCmd.Val(), nil
+}
+
+// maxReadBytes bounds what one connection may read. go-redis reads a reply line until "\n" with
+// no length limit, so a port that streams bytes without one was buffered for as long as it kept
+// sending. The replies these calls expect, INFO included, are a few kilobytes.
+const maxReadBytes = 16 << 20
+
+var errReadLimit = fmt.Errorf("redis: reply exceeds %d bytes", maxReadBytes)
+
+// newClient is redis.NewClient on the default dialer, with each connection's reads capped at
+// maxReadBytes.
+func newClient(addr, password string) *redis.Client {
+	opts := &redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       0,
+	}
+	dial := redis.NewDialer(opts)
+	opts.Dialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		conn, err := dial(ctx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+		return &limitedConn{Conn: conn, remaining: maxReadBytes}, nil
+	}
+
+	return redis.NewClient(opts)
+}
+
+// limitedConn fails reads once remaining is spent.
+type limitedConn struct {
+	net.Conn
+	remaining int64
+}
+
+func (c *limitedConn) Read(b []byte) (int, error) {
+	if c.remaining <= 0 {
+		return 0, errReadLimit
+	}
+	if int64(len(b)) > c.remaining {
+		b = b[:c.remaining]
+	}
+	n, err := c.Conn.Read(b)
+	c.remaining -= int64(n)
+	return n, err
 }
