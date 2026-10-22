@@ -181,6 +181,49 @@ func TestClusterbombRandomOrder(t *testing.T) {
 	require.ElementsMatch(t, sequential, random, "random clusterbomb must cover the same combinations as the sequential one")
 }
 
+// TestRandomOrderDisabledByDefault guards that the flag is strictly opt-in: a
+// generator built without it keeps the sequential path (no shuffled order).
+func TestRandomOrderDisabledByDefault(t *testing.T) {
+	payloads := map[string]interface{}{"username": []string{"admin", "root"}, "password": []string{"a", "b"}}
+	catalogInstance := disk.NewCatalog("")
+
+	sequentialGen, err := New(payloads, ClusterBombAttack, "", catalogInstance, "", getOptions(false))
+	require.Nil(t, err, "could not create generator")
+	require.Nil(t, sequentialGen.NewIterator().order, "random order must be off unless requested")
+
+	randomGen, err := New(payloads, ClusterBombAttack, "", catalogInstance, "", randomOptions())
+	require.Nil(t, err, "could not create generator")
+	require.NotNil(t, randomGen.NewIterator().order, "random order must be on when requested")
+}
+
+// TestRandomOrderTotalsAndReset checks that the random path reports the same
+// Total and Remaining as the sequential one, that Reset replays the same order,
+// and that a single-combination set is handled.
+func TestRandomOrderTotalsAndReset(t *testing.T) {
+	catalogInstance := disk.NewCatalog("")
+
+	generator, err := New(map[string]interface{}{"username": []string{"admin", "root", "guest"}, "password": []string{"a", "b"}}, ClusterBombAttack, "", catalogInstance, "", randomOptions())
+	require.Nil(t, err, "could not create generator")
+
+	iterator := generator.NewIterator()
+	require.Equal(t, 6, iterator.Total(), "Total must count every combination regardless of order")
+	require.Equal(t, 6, iterator.Remaining(), "Remaining must start at the combination total")
+
+	first := collect(iterator)
+	require.Len(t, first, 6, "every combination must be produced once")
+	require.Equal(t, 0, iterator.Remaining(), "no combinations may remain once drained")
+
+	iterator.Reset()
+	require.Equal(t, 6, iterator.Remaining(), "Reset must restore the full count")
+	second := collect(iterator)
+	require.Equal(t, first, second, "Reset must replay the same random order")
+
+	// a single-combination set must still yield exactly that combination
+	single, err := New(map[string]interface{}{"username": []string{"only"}}, BatteringRamAttack, "", catalogInstance, "", randomOptions())
+	require.Nil(t, err, "could not create generator")
+	require.Equal(t, []string{"username=only"}, collect(single.NewIterator()))
+}
+
 func TestParsePayloadsWithAggression(t *testing.T) {
 	testPayload := `linux_path:
   low:
