@@ -344,6 +344,9 @@ type Options struct {
 	SourceIP string
 	// AttackType overrides template level attack-type configuration
 	AttackType string
+	// PayloadRandomOrder iterates payload combinations in a random order
+	// instead of the sequential order of the payload sets
+	PayloadRandomOrder bool
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
@@ -734,6 +737,7 @@ func (options *Options) Copy() *Options {
 		Interface:                      options.Interface,
 		SourceIP:                       options.SourceIP,
 		AttackType:                     options.AttackType,
+		PayloadRandomOrder:             options.PayloadRandomOrder,
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
 		HealthCheck:                    options.HealthCheck,

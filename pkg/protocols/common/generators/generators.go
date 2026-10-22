@@ -4,6 +4,7 @@ package generators
 
 import (
 	"maps"
+	"math/rand"
 
 	"github.com/pkg/errors"
 
@@ -129,6 +130,10 @@ type Iterator struct {
 	msbIterator int
 	total       int
 	payloads    []*payloadIterator
+	// order, when non-nil, holds a shuffled permutation of the combination
+	// indices [0,total) to visit. It is set when payloads are iterated in a
+	// random order instead of the sequential order of the payload sets.
+	order []int
 }
 
 // NewIterator creates a new iterator for the payloads generator
@@ -143,6 +148,9 @@ func (g *PayloadGenerator) NewIterator() *Iterator {
 		payloads: payloads,
 	}
 	iterator.total = iterator.Total()
+	if g.options != nil && g.options.PayloadRandomOrder && iterator.total > 0 {
+		iterator.order = rand.Perm(iterator.total)
+	}
 	return iterator
 }
 
@@ -187,6 +195,9 @@ func (i *Iterator) Total() int {
 
 // Value returns the next value for an iterator
 func (i *Iterator) Value() (map[string]interface{}, bool) {
+	if i.order != nil {
+		return i.randomValue()
+	}
 	switch i.Type {
 	case BatteringRamAttack:
 		return i.batteringRamValue()
@@ -196,6 +207,50 @@ func (i *Iterator) Value() (map[string]interface{}, bool) {
 		return i.clusterbombValue()
 	default:
 		return i.batteringRamValue()
+	}
+}
+
+// randomValue returns the combination at the next index of the shuffled order.
+// It visits every combination exactly once, like the sequential iteration, but
+// in a random order.
+func (i *Iterator) randomValue() (map[string]interface{}, bool) {
+	if i.position >= len(i.order) {
+		return nil, false
+	}
+	values := i.valueAt(i.order[i.position])
+	i.position++
+	return values, true
+}
+
+// valueAt returns the combination of payloads at the given combination index,
+// counted the same way Total counts combinations for the attack type.
+func (i *Iterator) valueAt(index int) map[string]interface{} {
+	switch i.Type {
+	case PitchForkAttack:
+		values := make(map[string]interface{}, len(i.payloads))
+		for _, p := range i.payloads {
+			values[p.name] = p.values[index]
+		}
+		return values
+	case ClusterBombAttack:
+		values := make(map[string]interface{}, len(i.payloads))
+		remaining := index
+		for _, p := range i.payloads {
+			size := len(p.values)
+			values[p.name] = p.values[remaining%size]
+			remaining /= size
+		}
+		return values
+	default: // BatteringRamAttack
+		values := make(map[string]interface{}, 1)
+		for _, p := range i.payloads {
+			if index < len(p.values) {
+				values[p.name] = p.values[index]
+				break
+			}
+			index -= len(p.values)
+		}
+		return values
 	}
 }
 
