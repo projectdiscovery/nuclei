@@ -189,11 +189,11 @@ func TestRandomOrderDisabledByDefault(t *testing.T) {
 
 	sequentialGen, err := New(payloads, ClusterBombAttack, "", catalogInstance, "", getOptions(false))
 	require.Nil(t, err, "could not create generator")
-	require.Nil(t, sequentialGen.NewIterator().order, "random order must be off unless requested")
+	require.Nil(t, sequentialGen.NewIterator().perm, "random order must be off unless requested")
 
 	randomGen, err := New(payloads, ClusterBombAttack, "", catalogInstance, "", randomOptions())
 	require.Nil(t, err, "could not create generator")
-	require.NotNil(t, randomGen.NewIterator().order, "random order must be on when requested")
+	require.NotNil(t, randomGen.NewIterator().perm, "random order must be on when requested")
 }
 
 // TestRandomOrderTotalsAndReset checks that the random path reports the same
@@ -222,6 +222,63 @@ func TestRandomOrderTotalsAndReset(t *testing.T) {
 	single, err := New(map[string]interface{}{"username": []string{"only"}}, BatteringRamAttack, "", catalogInstance, "", randomOptions())
 	require.Nil(t, err, "could not create generator")
 	require.Equal(t, []string{"username=only"}, collect(single.NewIterator()))
+}
+
+// TestRandomOrderCoversLargeAwkwardTotals exercises the on-demand permutation
+// on totals that are not powers of two and larger than the tiny cases above, so
+// the Feistel cycle-walking is driven hard. Every combination must still appear
+// exactly once, with no index allocated up front.
+func TestRandomOrderCoversLargeAwkwardTotals(t *testing.T) {
+	catalogInstance := disk.NewCatalog("")
+
+	build := func(n int, prefix string) []string {
+		out := make([]string, n)
+		for i := range out {
+			out[i] = fmt.Sprintf("%s%d", prefix, i)
+		}
+		return out
+	}
+
+	testCases := []struct {
+		name     string
+		payloads map[string]interface{}
+		attack   AttackType
+		total    int
+	}{
+		{"batteringram-50", map[string]interface{}{"u": build(50, "u")}, BatteringRamAttack, 50},
+		{"clusterbomb-12x13", map[string]interface{}{"u": build(12, "u"), "p": build(13, "p")}, ClusterBombAttack, 156},
+		{"clusterbomb-7x11x13", map[string]interface{}{"u": build(7, "u"), "p": build(11, "p"), "h": build(13, "h")}, ClusterBombAttack, 1001},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			randomGen, err := New(testCase.payloads, testCase.attack, "", catalogInstance, "", randomOptions())
+			require.Nil(t, err, "could not create generator")
+			random := collect(randomGen.NewIterator())
+
+			sequentialGen, err := New(testCase.payloads, testCase.attack, "", catalogInstance, "", getOptions(false))
+			require.Nil(t, err, "could not create generator")
+			sequential := collect(sequentialGen.NewIterator())
+
+			require.Len(t, random, testCase.total, "random order must produce every combination")
+			require.Len(t, uniq(random), testCase.total, "random order must not repeat a combination")
+			require.ElementsMatch(t, sequential, random, "random order must cover the same combinations as the sequential one")
+		})
+	}
+}
+
+// uniq returns the distinct values of in, preserving nothing but membership.
+func uniq(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, v := range in {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
 }
 
 func TestParsePayloadsWithAggression(t *testing.T) {

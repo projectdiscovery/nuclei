@@ -130,10 +130,11 @@ type Iterator struct {
 	msbIterator int
 	total       int
 	payloads    []*payloadIterator
-	// order, when non-nil, holds a shuffled permutation of the combination
-	// indices [0,total) to visit. It is set when payloads are iterated in a
-	// random order instead of the sequential order of the payload sets.
-	order []int
+	// perm, when non-nil, maps the visit position to a shuffled combination
+	// index in [0,total). It is set when payloads are iterated in a random
+	// order instead of the sequential order of the payload sets, and uses
+	// O(1) memory instead of materialising the whole index space.
+	perm *randomPermutation
 }
 
 // NewIterator creates a new iterator for the payloads generator
@@ -148,8 +149,8 @@ func (g *PayloadGenerator) NewIterator() *Iterator {
 		payloads: payloads,
 	}
 	iterator.total = iterator.Total()
-	if g.options != nil && g.options.PayloadRandomOrder && iterator.total > 0 {
-		iterator.order = rand.Perm(iterator.total)
+	if g.options != nil && g.options.PayloadRandomOrder && iterator.total > 1 {
+		iterator.perm = newRandomPermutation(iterator.total)
 	}
 	return iterator
 }
@@ -195,7 +196,7 @@ func (i *Iterator) Total() int {
 
 // Value returns the next value for an iterator
 func (i *Iterator) Value() (map[string]interface{}, bool) {
-	if i.order != nil {
+	if i.perm != nil {
 		return i.randomValue()
 	}
 	switch i.Type {
@@ -214,10 +215,10 @@ func (i *Iterator) Value() (map[string]interface{}, bool) {
 // It visits every combination exactly once, like the sequential iteration, but
 // in a random order.
 func (i *Iterator) randomValue() (map[string]interface{}, bool) {
-	if i.position >= len(i.order) {
+	if i.position >= i.total {
 		return nil, false
 	}
-	values := i.valueAt(i.order[i.position])
+	values := i.valueAt(i.perm.at(i.position))
 	i.position++
 	return values, true
 }
@@ -252,6 +253,75 @@ func (i *Iterator) valueAt(index int) map[string]interface{} {
 		}
 		return values
 	}
+}
+
+// randomPermutation is a pseudo-random permutation of the combination indices
+// [0,total). It yields every index exactly once in a shuffled order using O(1)
+// memory, so the whole index space is never materialised. The permutation is a
+// small Feistel network over the smallest power-of-two domain that covers the
+// range, restricted to [0,total) by cycle-walking. It is seeded once per
+// iterator, so walking the same positions again (after Reset) replays the same
+// order.
+type randomPermutation struct {
+	total int
+	half  uint
+	mask  uint64
+	key   uint64
+}
+
+// newRandomPermutation seeds a permutation of [0,total). The caller guarantees
+// total > 1.
+func newRandomPermutation(total int) *randomPermutation {
+	bits := uint(0)
+	for bits < 62 && uint64(1)<<bits < uint64(total) {
+		bits++
+	}
+	if bits%2 != 0 {
+		// a balanced Feistel needs an even bit width for its two halves
+		bits++
+	}
+	return &randomPermutation{
+		total: total,
+		half:  bits / 2,
+		mask:  uint64(1)<<(bits/2) - 1,
+		key:   rand.Uint64(),
+	}
+}
+
+// at returns the combination index visited at the given position. As position
+// runs over [0,total) the results are a permutation of [0,total).
+func (p *randomPermutation) at(position int) int {
+	x := uint64(position)
+	for {
+		x = p.encrypt(x)
+		if x < uint64(p.total) {
+			return int(x)
+		}
+	}
+}
+
+// encrypt applies the Feistel network, a bijection over the power-of-two
+// domain, so every input maps to a distinct output.
+func (p *randomPermutation) encrypt(x uint64) uint64 {
+	left := x >> p.half & p.mask
+	right := x & p.mask
+	for round := uint64(0); round < 4; round++ {
+		left, right = right, left^(p.round(round, right)&p.mask)
+	}
+	return left<<p.half | right
+}
+
+// round is the Feistel round function: a keyed mix of the round number and the
+// right half. Its output quality only affects how shuffled the order looks, not
+// that every index is visited once.
+func (p *randomPermutation) round(round, right uint64) uint64 {
+	h := right ^ (p.key + round*0x9e3779b97f4a7c15)
+	h ^= h >> 30
+	h *= 0xbf58476d1ce4e5b9
+	h ^= h >> 27
+	h *= 0x94d049bb133111eb
+	h ^= h >> 31
+	return h
 }
 
 // batteringRamValue returns a list of all payloads for the iterator
