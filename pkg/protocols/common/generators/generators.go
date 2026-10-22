@@ -273,7 +273,7 @@ type randomPermutation struct {
 // total > 1.
 func newRandomPermutation(total int) *randomPermutation {
 	bits := uint(0)
-	for bits < 62 && uint64(1)<<bits < uint64(total) {
+	for bits < 63 && uint64(1)<<bits < uint64(total) {
 		bits++
 	}
 	if bits%2 != 0 {
