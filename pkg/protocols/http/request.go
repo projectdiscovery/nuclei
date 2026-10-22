@@ -21,7 +21,6 @@ import (
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
@@ -162,7 +161,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 	if !ok {
 		return nil
 	}
-	ctx := request.newContext(input)
+	ctx := input.Context()
 	requestForDump, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 	if err != nil {
 		return err
@@ -196,7 +195,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		if !ok {
 			break
 		}
-		ctx := request.newContext(input)
+		ctx := input.Context()
 		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			return err
@@ -439,7 +438,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			break
 		}
 
-		ctx := request.newContext(input)
+		ctx := input.Context()
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == types.ErrNoMoreRequests {
@@ -570,7 +569,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			break
 		}
 
-		ctx := request.newContext(input)
+		ctx := input.Context()
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
@@ -662,7 +661,7 @@ executionLoop:
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			ctx := request.newContext(input)
+			ctx := input.Context()
 			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
 			defer cancel()
 
@@ -1186,7 +1185,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				connConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			httpclient, clientErr := httpclientpool.Get(request.options.Options, connConfig, hostname)
+			// a pinned target gets its own client, so a keep-alive connection
+			// to one ip never serves a request pinned to another
+			poolKey := hostname
+			if input.MetaInput.CustomIP != "" {
+				poolKey += "@" + input.MetaInput.CustomIP
+			}
+			httpclient, clientErr := httpclientpool.Get(request.options.Options, connConfig, poolKey)
 			if clientErr != nil {
 				return errors.Wrap(clientErr, "could not get http client")
 			}
@@ -1736,13 +1741,6 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 			delete(m, fieldName)
 		}
 	}
-}
-
-func (request *Request) newContext(input *contextargs.Context) context.Context {
-	if input.MetaInput.CustomIP != "" {
-		return context.WithValue(input.Context(), fastdialer.IP, input.MetaInput.CustomIP)
-	}
-	return input.Context()
 }
 
 // recordHostResult updates the host-errors cache with the outcome of a request.

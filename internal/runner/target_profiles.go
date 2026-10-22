@@ -15,3 +15,11 @@ func (r *Runner) targetProfiles() *targetprofile.Registry {
 	}
 	return provider.TargetProfiles()
 }
+
+// hasPinnedTargets reports whether a target line pinned a target to an ip.
+func (r *Runner) hasPinnedTargets() bool {
+	provider, ok := r.inputProvider.(interface {
+		PinnedTargets() bool
+	})
+	return ok && provider.PinnedTargets()
+}

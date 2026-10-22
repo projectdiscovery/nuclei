@@ -473,3 +473,5 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
+
+replace github.com/projectdiscovery/fastdialer => github.com/projectdiscovery/fastdialer v0.5.26-0.20261013195407-11ed52b6df6c

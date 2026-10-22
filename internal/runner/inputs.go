@@ -71,7 +71,10 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		go func(input *contextargs.MetaInput) {
 			defer swg.Done()
 
-			if result := utils.ProbeURL(input.Input, httpxClient); result != "" {
+			// a pinned target is probed through its ip; a target pinned to
+			// several ips keeps one probe result for all of them
+			ctx := contextargs.WithCustomIP(context.Background(), input)
+			if result := utils.ProbeURLWithContext(ctx, input.Input, httpxClient); result != "" {
 				count.Add(1)
 				_ = hm.Set(input.Input, []byte(result))
 			}

@@ -750,6 +750,14 @@ func (r *Runner) RunEnumeration() error {
 		}
 		loaderConfig.TargetFilter = profiles.LoadFilter()
 	}
+	if r.hasPinnedTargets() {
+		switch {
+		case r.options.AutomaticScan:
+			return errors.New("targets pinned to an ip cannot be combined with automatic scan")
+		case r.options.AliveHttpProxy != "" || r.options.AliveSocksProxy != "":
+			return errors.New("targets pinned to an ip cannot be combined with a proxy, as the proxy resolves the host itself")
+		}
+	}
 	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
 		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true

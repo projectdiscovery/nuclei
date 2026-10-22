@@ -482,7 +482,11 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	if input.MetaInput.CustomIP != "" {
+		outputEvent["ip"] = input.MetaInput.CustomIP
+	} else {
+		outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
 	}
