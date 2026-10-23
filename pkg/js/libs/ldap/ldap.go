@@ -1,6 +1,7 @@
 package ldap
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -143,6 +144,10 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 		}
 		c.nj.HandleError(err, "failed to connect to ldap server")
 	}
+	// go-ldap waits for a reply with no timeout, and an interrupt cannot stop the runtime
+	// inside that read: a server that accepts and never answers would keep the goroutine,
+	// and everything the abandoned runtime references, alive for the life of the process.
+	context.AfterFunc(dialCtx, func() { _ = conn.Close() })
 	c.conn = ldap.NewConn(conn, u.Scheme == "ldaps")
 	if u.Scheme != "ldaps" && c.cfg.Upgrade {
 		serverName := u.Hostname()
