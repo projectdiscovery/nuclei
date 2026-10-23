@@ -530,6 +530,16 @@ Description of the template.
 
 You can go in-depth here on what the template actually does.
 
+Description, impact and remediation may hold {{placeholders}} filled for
+each finding: named extractors, payloads, variables and DSL helpers
+(network helpers excluded), and the result fields host, port, ip, url,
+scheme, path, matched-at, matcher-name and extractor-name, which win over
+values of the same name. Use join(", ", name) for an extractor with
+several values, and brackets for a hyphenated name inside a helper:
+to_upper([matcher-name]). Unknown placeholders stay as written, and so
+does a field whose expression fails. Global matcher templates match on
+other templates' responses, so only the result fields fill their text.
+
 
 
 Examples:
@@ -541,6 +551,10 @@ description: Bower is a package manager which stores package information in the 
 
 ```yaml
 description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations
+```
+
+```yaml
+description: Redis {{version}} on {{host}}:{{port}} accepts the default password
 ```
 
 
@@ -558,6 +572,8 @@ description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS
 Impact of the template.
 
 You can go in-depth here on impact of the template.
+
+Supports the same placeholders as description.
 
 
 
@@ -664,6 +680,8 @@ Classification contains classification information about the template.
 Remediation steps for the template.
 
 You can go in-depth here on how to mitigate the problem found by this template.
+
+Supports the same placeholders as description.
 
 
 
