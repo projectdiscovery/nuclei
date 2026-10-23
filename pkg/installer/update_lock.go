@@ -20,6 +20,9 @@ var (
 	templatesUpdateLockTimeout      = 10 * time.Minute
 	templatesUpdateLockStaleAfter   = 15 * time.Minute
 	templatesUpdateLockPollInterval = 250 * time.Millisecond
+	// removeTemplatesUpdateLock is os.Remove except in tests that simulate a
+	// lock disappearing, or refusing to disappear, between Stat and Remove.
+	removeTemplatesUpdateLock = os.Remove
 )
 
 // withTemplatesUpdateLock serializes template install/update of templatesDir
@@ -56,14 +59,14 @@ func withTemplatesUpdateLock(templatesDir string, fn func() error) error {
 				continue
 			}
 			if time.Now().After(deadline) {
-				return errkit.Wrapf(err, "timed out waiting for nuclei templates update lock at %s (could not stat lock: %v); remove it manually if it is stale, or rerun with -duc/-disable-update-check to skip the automatic template update", lockPath, statErr)
+				return errkit.Wrapf(statErr, "timed out waiting for nuclei templates update lock at %s (could not stat lock); remove it manually if it is stale, or rerun with -duc/-disable-update-check to skip the automatic template update", lockPath)
 			}
 			time.Sleep(templatesUpdateLockPollInterval)
 			continue
 		}
 
 		if age := time.Since(info.ModTime()); age > templatesUpdateLockStaleAfter {
-			if rmErr := os.Remove(lockPath); rmErr != nil {
+			if rmErr := removeTemplatesUpdateLock(lockPath); rmErr != nil && !os.IsNotExist(rmErr) {
 				// The classic multi-user hang: the lock lives in the shared
 				// os.TempDir(), which has the sticky bit, so a lock file
 				// created by another user cannot be unlinked (EPERM) by this

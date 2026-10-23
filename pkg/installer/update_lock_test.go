@@ -99,3 +99,55 @@ func TestWithTemplatesUpdateLockFreshLockTimesOutWithHelpfulMessage(t *testing.T
 	require.Contains(t, err.Error(), lockPath)
 	require.Contains(t, err.Error(), "-duc")
 }
+
+func TestWithTemplatesUpdateLockStaleLockAlreadyRemoved(t *testing.T) {
+	previous := removeTemplatesUpdateLock
+	t.Cleanup(func() { removeTemplatesUpdateLock = previous })
+	removeTemplatesUpdateLock = func(path string) error {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		// Another process removed the stale lock after we stat-ed it.
+		return os.ErrNotExist
+	}
+
+	dir := t.TempDir()
+	lockPath := templatesUpdateLockPath(dir)
+	require.NoError(t, os.WriteFile(lockPath, []byte("1234\n"), 0o600))
+	stale := time.Now().Add(-1 * time.Hour)
+	require.NoError(t, os.Chtimes(lockPath, stale, stale))
+	t.Cleanup(func() { _ = os.Remove(lockPath) })
+
+	ran := false
+	require.NoError(t, withTemplatesUpdateLock(dir, func() error {
+		ran = true
+		return nil
+	}))
+	require.True(t, ran, "a lock another process already removed must be taken, not treated as a failure")
+}
+
+func TestWithTemplatesUpdateLockUnremovableStaleLockFailsFast(t *testing.T) {
+	previous := removeTemplatesUpdateLock
+	t.Cleanup(func() { removeTemplatesUpdateLock = previous })
+	removeTemplatesUpdateLock = func(string) error { return os.ErrPermission }
+
+	dir := t.TempDir()
+	lockPath := templatesUpdateLockPath(dir)
+	require.NoError(t, os.WriteFile(lockPath, []byte("1234\n"), 0o600))
+	stale := time.Now().Add(-1 * time.Hour)
+	require.NoError(t, os.Chtimes(lockPath, stale, stale))
+	t.Cleanup(func() { _ = os.Remove(lockPath) })
+
+	ran := false
+	start := time.Now()
+	err := withTemplatesUpdateLock(dir, func() error {
+		ran = true
+		return nil
+	})
+	require.Error(t, err)
+	require.False(t, ran)
+	require.Less(t, time.Since(start), 2*time.Second)
+	require.ErrorIs(t, err, os.ErrPermission)
+	require.Contains(t, err.Error(), "could not be removed")
+	require.Contains(t, err.Error(), lockPath)
+}
