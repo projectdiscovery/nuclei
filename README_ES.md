@@ -110,7 +110,7 @@ Consulta la [**`documentación completa de Nuclei aquí`**](https://docs.project
 
 ### Instalación
 
-`nuclei` requiere **go >= 1.24.2** para instalarse correctamente. Ejecuta el siguiente comando para obtener el repositorio:
+`nuclei` requiere **go >= 1.27.3** para instalarse correctamente. Ejecuta el siguiente comando para obtener el repositorio:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
