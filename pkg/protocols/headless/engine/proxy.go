@@ -242,7 +242,7 @@ func (p *headlessProxy) handleConnect(clientConn net.Conn, clientReader *bufio.R
 		_, err := io.Copy(clientConn, destConn)
 		errc <- err
 	}()
-	_ = <-errc
+	<-errc
 }
 
 func (p *headlessProxy) handleHTTP(clientConn net.Conn, clientReader *bufio.Reader, req *http.Request, host string) {
@@ -273,5 +273,5 @@ func (p *headlessProxy) handleHTTP(clientConn net.Conn, clientReader *bufio.Read
 		_, err := io.Copy(clientConn, destConn)
 		errc <- err
 	}()
-	_ = <-errc
+	<-errc
 }
