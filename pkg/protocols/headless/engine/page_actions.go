@@ -230,7 +230,9 @@ func (p *Page) WaitVisible(act *Action, out ActionData) error {
 }
 
 func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
+	p.mutex.RLock()
 	page := *p
+	p.mutex.RUnlock()
 	page.page = page.Page().Sleeper(func() utils.Sleeper {
 		return createBackOffSleeper(pollTimeout, timeout)
 	})
@@ -238,7 +240,9 @@ func (p *Page) Sleeper(pollTimeout, timeout time.Duration) *Page {
 }
 
 func (p *Page) Timeout(timeout time.Duration) *Page {
+	p.mutex.RLock()
 	page := *p
+	p.mutex.RUnlock()
 	page.page = page.Page().Timeout(timeout)
 	return &page
 }
@@ -732,6 +736,18 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 
 // WaitPageLifecycleEvent waits for specified page lifecycle event name
 func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.PageLifecycleEventName) error {
+	if event == proto.PageLifecycleEventNameLoad {
+		dur, err := getTimeout(p, act)
+		if err != nil {
+			return err
+		}
+		if err := p.page.Timeout(dur).WaitLoad(); err != nil {
+			return err
+		}
+		p.updateLastNavigatedURL()
+		return nil
+	}
+
 	fn, err := getNavigationFunc(p, act, event)
 	if err != nil {
 		return err

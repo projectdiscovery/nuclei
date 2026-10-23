@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/utils/env"
 	httputil "github.com/projectdiscovery/utils/http"
@@ -16,6 +17,7 @@ var (
 	MaxBytesBufferAllocOnLowMemory = env.GetEnvOrDefault("MEMGUARDIAN_ALLOC", 0)
 	memTimer                       *time.Ticker
 	cancelFunc                     context.CancelFunc
+	memWatcherDone                 chan struct{}
 	muGlobalChange                 sync.Mutex
 )
 
@@ -25,12 +27,18 @@ func StartActiveMemGuardian(ctx context.Context) {
 	if memguardian.DefaultMemGuardian == nil || memTimer != nil {
 		return
 	}
+	if err := refreshMemoryWarning(); err != nil {
+		gologger.Warning().Msgf("could not check memory pressure: %s", err)
+	}
 
 	memTimer = time.NewTicker(memguardian.DefaultInterval)
 	ctx, cancelFunc = context.WithCancel(ctx)
+	memWatcherDone = make(chan struct{})
 
 	ticker := memTimer
+	done := memWatcherDone
 	go func(t *time.Ticker) {
+		defer close(done)
 		if t == nil {
 			return
 		}
@@ -39,6 +47,9 @@ func StartActiveMemGuardian(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-t.C:
+				if err := refreshMemoryWarning(); err != nil {
+					gologger.Warning().Msgf("could not check memory pressure: %s", err)
+				}
 				if IsLowOnMemory() {
 					_ = GlobalGuardBytesBufferAlloc()
 				} else {
@@ -47,6 +58,24 @@ func StartActiveMemGuardian(ctx context.Context) {
 			}
 		}
 	}(ticker)
+}
+
+func refreshMemoryWarning() error {
+	usedRatio, usedBytes, err := memguardian.UsedRam()
+	if err != nil {
+		return err
+	}
+
+	warning := usedRatio >= memguardian.DefaultMaxUsedRamRatio
+	if maxRam := env.GetEnvOrDefault(memguardian.MemGuardianMaxUsedMemoryENV, ""); maxRam != "" {
+		maxBytes, err := units.FromHumanSize(maxRam)
+		if err != nil {
+			return err
+		}
+		warning = warning || maxBytes > 0 && usedBytes >= uint64(maxBytes)
+	}
+	memguardian.DefaultMemGuardian.Warning.Store(warning)
+	return nil
 }
 
 func StopActiveMemGuardian() {
@@ -60,6 +89,10 @@ func StopActiveMemGuardian() {
 	if cancelFunc != nil {
 		cancelFunc()
 		cancelFunc = nil
+	}
+	if memWatcherDone != nil {
+		<-memWatcherDone
+		memWatcherDone = nil
 	}
 	if memTimer != nil {
 		memTimer.Stop()
@@ -77,7 +110,7 @@ func IsLowOnMemory() bool {
 // GuardThreads on caller
 func GuardThreadsOrDefault(current int) int {
 	if MaxThreadsOnLowMemory > 0 {
-		return MaxThreadsOnLowMemory
+		return min(current, MaxThreadsOnLowMemory)
 	}
 
 	fraction := int(current / 5)

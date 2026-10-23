@@ -21,7 +21,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
@@ -123,7 +122,8 @@ type Request struct {
 	// examples:
 	//   - name: Send requests using 10 concurrent threads
 	//     value: 10
-	Threads int `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=threads for sending requests,description=Threads specifies number of threads to use sending requests. This enables Connection Pooling"`
+	Threads        int `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=threads for sending requests,description=Threads specifies number of threads to use sending requests. This enables Connection Pooling"`
+	PayloadThreads int `yaml:"payload-threads,omitempty" json:"payload-threads,omitempty" jsonschema:"title=dependent payload concurrency,description=Opt-in concurrency across independent payload groups while preserving request order inside each group"`
 	// description: |
 	//   MaxSize is the maximum size of http response body to read in bytes.
 	// examples:
@@ -139,14 +139,15 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
-	connConfiguration *httpclientpool.Configuration
-	totalRequests     int
-	customHeaders     map[string]string
-	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
-	rawhttpClient     *rawhttp.Client
-	replayClient      *http.Client // set when -replay-proxy is given
-	dialer            *fastdialer.Dialer
+	options                 *protocols.ExecutorOptions
+	connConfiguration       *httpclientpool.Configuration
+	totalRequests           int
+	customHeaders           map[string]string
+	generator               *generators.PayloadGenerator // optional, only enabled when using payloads
+	dependentPayloadThreads int
+	rawhttpClient           *rawhttp.Client
+	replayClient            *http.Client // set when -replay-proxy is given
+	dialer                  *fastdialer.Dialer
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -521,6 +522,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		delete(request.Payloads, payload)
 	}
 
+	request.dependentPayloadThreads = 0
 	if len(request.Payloads) > 0 {
 		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType, request.options.Options)
 		if err != nil {
@@ -547,12 +549,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
-		// Due to a known issue (https://github.com/projectdiscovery/nuclei/issues/5015),
-		// dynamic extractors cannot be used with payloads. To address this,
-		// execution is handled by the standard engine without concurrency,
-		// achieved by setting the thread count to 0.
-
-		// this limitation will be removed once we have a better way to handle dynamic extractors with payloads
+		// Multi-request matchers and dynamic extractors depend on ordered responses
+		// across a payload iteration, so they use the standard engine.
 		hasMultipleRequests := false
 		if len(request.Raw)+len(request.Path) > 1 {
 			hasMultipleRequests = true
@@ -565,16 +563,20 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				break
 			}
 		}
-		if hasNamedInternalExtractor && hasMultipleRequests {
-			stats.Increment(SetThreadToCountZero)
+		if hasMultipleRequests && (hasNamedInternalExtractor || request.NeedsRequestCondition()) {
+			if !hasNamedInternalExtractor && request.NeedsRequestCondition() && request.PayloadThreads > 0 && request.canRunDependentPayloadsConcurrently() {
+				request.dependentPayloadThreads = request.PayloadThreads
+			}
+			if request.dependentPayloadThreads == 0 {
+				stats.Increment(SetThreadToCountZero)
+			}
 			request.Threads = 0
 		} else {
-			// specifically for http requests high concurrency and threads will lead to memory exhaustion, hence reduce the maximum parallelism
-			if protocolstate.IsLowOnMemory() {
-				request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
-			}
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
+	}
+	if request.PayloadThreads > 0 && request.dependentPayloadThreads == 0 {
+		return errors.New("payload-threads requires multiple raw requests, indexed response conditions, and independent payload groups without iterate-all, interactsh, or @once")
 	}
 
 	// Avoid reusing client-side HTTP proxy connections for the legacy non-threaded spray path.
@@ -622,7 +624,7 @@ const (
 )
 
 func init() {
-	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
+	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates with payloads and dependent requests")
 }
 
 // UpdateOptions replaces this request's options with a new copy
@@ -641,7 +643,7 @@ func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.Exe
 	if request == nil || options == nil || options.Options == nil || options.Options.AliveHttpProxy == "" {
 		return false
 	}
-	return request.Threads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
+	return request.Threads <= 0 && request.dependentPayloadThreads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
 }
 
 // AnalyzeConnectionReuse determines if a request can safely reuse connections.

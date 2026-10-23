@@ -58,7 +58,7 @@ func NewBlockingSPMHandler[T comparable](ctx context.Context, size int, maxResul
 		maxResults:  maxResults,
 	}
 	s.internalWg.Add(1)
-	go s.run(ctx)
+	go s.run(ctx1)
 	return s
 }
 
@@ -77,7 +77,7 @@ func NewNonBlockingSPMHandler[T comparable](ctx context.Context, maxResults int,
 		maxResults:  maxResults,
 	}
 	s.internalWg.Add(1)
-	go s.run(ctx)
+	go s.run(ctx1)
 	return s
 }
 
@@ -132,15 +132,17 @@ func (h *StopAtFirstMatchHandler[T]) run(ctx context.Context) {
 			if !ok {
 				return
 			}
-			if h.onResult != nil {
-				h.onResult(val)
-			}
-			if len(h.results) >= h.maxResults {
-				// skip or do not store the result
-				continue
-			}
-			h.results[val] = struct{}{}
+			h.recordResult(val)
 		}
+	}
+}
+
+func (h *StopAtFirstMatchHandler[T]) recordResult(val T) {
+	if h.onResult != nil {
+		h.onResult(val)
+	}
+	if len(h.results) < h.maxResults {
+		h.results[val] = struct{}{}
 	}
 }
 
@@ -210,6 +212,9 @@ func (h *StopAtFirstMatchHandler[T]) Wait() {
 	// after waiting it closes the error channel
 	close(h.ResultChan)
 	h.internalWg.Wait()
+	for val := range h.ResultChan {
+		h.recordResult(val)
+	}
 }
 
 // CombinedResults returns the combined results

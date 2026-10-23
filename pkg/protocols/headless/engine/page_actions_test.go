@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testheadless"
@@ -151,6 +153,26 @@ func TestLocatorInteractshTracking(t *testing.T) {
 		require.Equal(t, 2, source.calls)
 		require.Len(t, page.InteractshURLs, 2)
 	})
+}
+
+func TestSleeperConcurrentHistoryUpdate(t *testing.T) {
+	page := &Page{page: &rod.Page{}, mutex: &sync.RWMutex{}}
+	start := make(chan struct{})
+	var done sync.WaitGroup
+	done.Add(1)
+	go func() {
+		defer done.Done()
+		<-start
+		for range 10000 {
+			page.addToHistory(HistoryData{})
+		}
+	}()
+
+	close(start)
+	for range 10000 {
+		page.Sleeper(time.Millisecond, time.Second)
+	}
+	done.Wait()
 }
 
 func TestActionNavigate(t *testing.T) {
@@ -639,6 +661,47 @@ func TestActionWaitLoad(t *testing.T) {
 		style, attributeErr := el.Attribute("style")
 		require.Nil(t, attributeErr)
 		require.Equal(t, "color: red;", *style, "could not get color")
+	})
+}
+
+func TestActionWaitLoadAfterPageAlreadyLoaded(t *testing.T) {
+	actions := []*Action{{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}}}
+	testHeadlessSimpleResponse(t, "<html><body>ready</body></html>", actions, 10*time.Second, func(page *Page, err error, _ ActionData) {
+		require.NoError(t, err)
+		require.NoError(t, page.Page().WaitLoad())
+
+		wait := &Action{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}, Data: map[string]string{"timeout": "2s"}}
+		started := time.Now()
+		require.NoError(t, page.WaitPageLifecycleEvent(wait, nil, proto.PageLifecycleEventNameLoad))
+		require.Less(t, time.Since(started), 1500*time.Millisecond, "a completed load must not consume the full wait timeout")
+	})
+}
+
+func TestActionWaitLoadWaitsForPendingResource(t *testing.T) {
+	resourceDone := make(chan struct{})
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+	testHeadless(t, actions, 10*time.Second, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/slow.js" {
+			w.Header().Set("Content-Type", "text/javascript")
+			time.Sleep(300 * time.Millisecond)
+			_, _ = fmt.Fprint(w, "window.resourceLoaded = true")
+			close(resourceDone)
+			return
+		}
+		_, _ = fmt.Fprint(w, `<html><script src="/slow.js"></script></html>`)
+	}, func(page *Page, err error, _ ActionData) {
+		require.NoError(t, err)
+		select {
+		case <-resourceDone:
+		default:
+			t.Fatal("waitload returned before the pending resource completed")
+		}
+		loaded, evalErr := page.Page().Eval(`() => window.resourceLoaded`)
+		require.NoError(t, evalErr)
+		require.True(t, loaded.Value.Bool())
 	})
 }
 

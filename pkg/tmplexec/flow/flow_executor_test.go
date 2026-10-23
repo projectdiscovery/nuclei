@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
@@ -21,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/stretchr/testify/require"
 )
@@ -287,6 +287,10 @@ func newMultiPayloadServer() *httptest.Server {
 // survive across multiple pitchfork payload iterations (generator restarts).
 func TestFlowMultiPayloadIteration(t *testing.T) {
 	setup()
+	options := executerOpts.Options
+	previousConcurrency := options.PayloadConcurrency
+	options.PayloadConcurrency = 2
+	t.Cleanup(func() { options.PayloadConcurrency = previousConcurrency })
 	ts := newMultiPayloadServer()
 	defer ts.Close()
 
@@ -295,12 +299,31 @@ func TestFlowMultiPayloadIteration(t *testing.T) {
 
 	err = tmpl.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
+	require.Zero(t, tmpl.RequestsHTTP[0].Threads, "request-condition payloads require ordered execution")
 
 	input := contextargs.NewWithInput(context.Background(), ts.URL)
 	ctx := scan.NewScanContext(context.Background(), input)
 	gotresults, err := tmpl.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults, "expected match with flow + multi payload iteration")
+}
+
+func TestIndependentMultiPayloadRequestsRemainParallel(t *testing.T) {
+	setup()
+	options := executerOpts.Options
+	previousConcurrency := options.PayloadConcurrency
+	options.PayloadConcurrency = 2
+	t.Cleanup(func() { options.PayloadConcurrency = previousConcurrency })
+
+	tmpl, err := templates.Parse("testcases/flow-multi-payload-iteration.yaml", nil, executerOpts)
+	require.NoError(t, err)
+	for _, matcher := range tmpl.RequestsHTTP[0].Matchers {
+		matcher.Part = "body"
+	}
+	require.False(t, tmpl.RequestsHTTP[0].NeedsRequestCondition())
+
+	require.NoError(t, tmpl.Executer.Compile())
+	require.Positive(t, tmpl.RequestsHTTP[0].Threads)
 }
 
 // TestFlowRequestConditionWithPayloads is the same as above but with

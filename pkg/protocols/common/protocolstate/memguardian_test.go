@@ -127,3 +127,45 @@ func TestMemGuardianReset(t *testing.T) {
 	StopActiveMemGuardian()
 	time.Sleep(10 * time.Millisecond) // Allow cleanup
 }
+
+func TestActiveMemGuardianUpdatesLowMemoryWarning(t *testing.T) {
+	StopActiveMemGuardian()
+	t.Setenv(memguardian.MemGuardianMaxUsedMemoryENV, "")
+	original := memguardian.DefaultMemGuardian
+	originalInterval := memguardian.DefaultInterval
+	originalRatio := memguardian.DefaultMaxUsedRamRatio
+	memguardian.DefaultInterval = 5 * time.Millisecond
+	memguardian.DefaultMaxUsedRamRatio = 1
+	guardian, err := memguardian.New(
+		memguardian.WitInterval(memguardian.DefaultInterval),
+		memguardian.WithMaxRamRatioWarning(1),
+	)
+	require.NoError(t, err)
+	memguardian.DefaultMemGuardian = guardian
+	t.Cleanup(func() {
+		StopActiveMemGuardian()
+		guardian.Close()
+		memguardian.DefaultMemGuardian = original
+		memguardian.DefaultInterval = originalInterval
+		memguardian.DefaultMaxUsedRamRatio = originalRatio
+	})
+
+	StartActiveMemGuardian(context.Background())
+	require.Eventually(t, IsLowOnMemory, 100*time.Millisecond, 5*time.Millisecond)
+	StopActiveMemGuardian()
+	memguardian.DefaultMaxUsedRamRatio = 100
+	require.NoError(t, refreshMemoryWarning())
+	require.False(t, IsLowOnMemory())
+	t.Setenv(memguardian.MemGuardianMaxUsedMemoryENV, "0")
+	require.NoError(t, refreshMemoryWarning())
+	require.False(t, IsLowOnMemory())
+}
+
+func TestGuardThreadsNeverIncreasesConcurrency(t *testing.T) {
+	previous := MaxThreadsOnLowMemory
+	MaxThreadsOnLowMemory = 5
+	t.Cleanup(func() { MaxThreadsOnLowMemory = previous })
+
+	require.Equal(t, 2, GuardThreadsOrDefault(2))
+	require.Equal(t, 5, GuardThreadsOrDefault(25))
+}

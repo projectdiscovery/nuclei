@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
+	"golang.org/x/sync/semaphore"
 	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -122,13 +123,26 @@ func (request *Request) waitHostBackoff(ctx context.Context, host string) error 
 	return request.options.HostBackoffWait(ctx, host)
 }
 
+type httpRateLimitWaitObserver interface {
+	ObserveHTTPRateLimitWait(time.Duration)
+}
+
+type httpRequestTimingObserver interface {
+	ObserveHTTPRequest(time.Duration, int, error)
+}
+
 // rateLimitTake first honours any backoff the host earned by signalling it is
 // overloaded, so a blocking target is paced regardless of which limiter is in play.
 func (request *Request) rateLimitTake(ctx context.Context, hostname string) error {
 	if err := request.waitHostBackoff(ctx, hostname); err != nil {
 		return err
 	}
-	return request.options.RateLimitTakeContext(ctx, hostname)
+	started := time.Now()
+	err := request.options.RateLimitTakeContext(ctx, hostname)
+	if observer, ok := request.options.Progress.(httpRateLimitWaitObserver); ok {
+		observer.ObserveHTTPRateLimitWait(time.Since(started))
+	}
+	return err
 }
 
 // stopWithHandler ends when parent ends or the handler stops, so a backoff
@@ -419,8 +433,12 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 
 		// resize check point - nop if there are no changes
-		if shouldFollowGlobal && spmHandler.Size() != request.options.Options.PayloadConcurrency {
-			if err := spmHandler.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
+		desiredWorkers := request.options.Options.PayloadConcurrency
+		if protocolstate.IsLowOnMemory() {
+			desiredWorkers = protocolstate.GuardThreadsOrDefault(desiredWorkers)
+		}
+		if shouldFollowGlobal && spmHandler.Size() != desiredWorkers {
+			if err := spmHandler.Resize(input.Context(), desiredWorkers); err != nil {
 				close(tasks)
 				workersWg.Wait()
 				return err
@@ -644,29 +662,62 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if request.Threads > 0 && (len(request.Payloads) > 0 || request.Race) {
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
+	if request.dependentPayloadThreads > 0 {
+		return request.executeDependentPayloads(input, dynamicValues, previous, callback)
+	}
+	return request.executeSequentialHTTP(input, dynamicValues, previous, callback, request.newGenerator(false), nil, nil)
+}
 
-	generator := request.newGenerator(false)
+func (request *Request) executeSequentialHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback, generator *requestGenerator, accounted *atomic.Int64, stopOnMatch *atomic.Bool) error {
+	var recordedCurrent bool
+	countAccounted := func(count int64) {
+		if accounted != nil {
+			accounted.Add(count)
+		}
+	}
+	recordSkipped := func(count int64) {
+		countAccounted(count)
+		request.options.Progress.SetRequests(uint64(count))
+	}
+	recordSent := func() {
+		recordedCurrent = true
+		countAccounted(1)
+		request.options.Progress.IncrementRequests()
+	}
+	recordFailed := func() {
+		recordedCurrent = true
+		countAccounted(1)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+	}
+	recordStopped := func() {
+		remaining := int64(generator.Remaining())
+		if !recordedCurrent {
+			remaining++
+		}
+		recordSkipped(remaining)
+	}
 
+	initialPrevious := cloneInternalEvent(previous)
 	initialContext := dynamicValueContext{
 		values:   generators.CopyMap(dynamicValues),
-		previous: cloneInternalEvent(previous),
+		previous: cloneInternalEvent(initialPrevious),
 	}
 	dynamicValueContexts := []dynamicValueContext{initialContext}
 	if request.IterateAll {
 		dynamicValueContexts = expandDynamicValueContexts(initialContext, generators.MergeMapsMany(dynamicValues), true)
 	}
+	oncePrevious := make(output.InternalEvent)
+	lastRequestIndex := 0
 	var requestErr error
 
 executionLoop:
 	for {
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
+			recordedCurrent = false
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
-			defer cancel()
-
-			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctx, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
 					return false, true, nil, nil
@@ -679,14 +730,22 @@ executionLoop:
 			// a copy and using it to check for host errors etc
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
+			if generatedHttpRequest.customCancelFunction != nil {
+				defer generatedHttpRequest.customCancelFunction()
+			}
+			if request.isUnresponsiveAddress(updatedInput) {
+				return false, true, nil, nil
+			}
 
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
 			}
-
-			if generatedHttpRequest.customCancelFunction != nil {
-				defer generatedHttpRequest.customCancelFunction()
+			if generatedHttpRequest.request != nil && generatedHttpRequest.customCancelFunction == nil {
+				// Rate admission must not consume the network request's timeout.
+				timedCtx, cancel := context.WithTimeoutCause(generatedHttpRequest.request.Context(), request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
+				defer cancel()
+				generatedHttpRequest.request.WithContext(timedCtx)
 			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
@@ -737,6 +796,9 @@ executionLoop:
 			if errors.Is(execReqErr, ErrMissingVars) {
 				return true, false, nil, nil
 			}
+			if stopOnMatch != nil && stopOnMatch.Load() && errors.Is(execReqErr, context.Canceled) {
+				return false, true, nil, nil
+			}
 
 			request.recordHostResult(updatedInput, execReqErr)
 			if execReqErr != nil {
@@ -744,9 +806,9 @@ executionLoop:
 				reqKitErr.Msgf("got err while executing %v", generatedHttpRequest.URL())
 
 				requestErr = reqKitErr
-				request.options.Progress.IncrementFailedRequestsBy(1)
+				recordFailed()
 			} else {
-				request.options.Progress.IncrementRequests()
+				recordSent()
 			}
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
@@ -761,6 +823,13 @@ executionLoop:
 		if !ok {
 			break
 		}
+		if generator.payloadIterator != nil && generator.currentIndex <= lastRequestIndex {
+			for i := range dynamicValueContexts {
+				dynamicValueContexts[i].previous = cloneInternalEvent(initialPrevious)
+				maps.Copy(dynamicValueContexts[i].previous, oncePrevious)
+			}
+		}
+		lastRequestIndex = generator.currentIndex
 
 		select {
 		case <-input.Context().Done():
@@ -788,11 +857,11 @@ executionLoop:
 					if requestErr == nil {
 						requestErr = gotErr
 					}
-					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+					recordSkipped(int64(generator.Remaining() + 1))
 					break executionLoop
 				}
 				if stop {
-					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+					recordStopped()
 					break executionLoop
 				}
 				if skipBranch {
@@ -807,6 +876,7 @@ executionLoop:
 				dynamicValueContexts = nil
 				continue
 			}
+			maps.Copy(oncePrevious, oncePreviousDelta)
 
 			nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
 			for _, branch := range dynamicValueContexts {
@@ -830,11 +900,11 @@ executionLoop:
 				if requestErr == nil {
 					requestErr = gotErr
 				}
-				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+				recordSkipped(int64(generator.Remaining() + 1))
 				break executionLoop
 			}
 			if stop {
-				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
+				recordStopped()
 				break executionLoop
 			}
 			if skipBranch {
@@ -845,6 +915,119 @@ executionLoop:
 		dynamicValueContexts = nextDynamicValueContexts
 	}
 	return requestErr
+}
+
+func (request *Request) canRunDependentPayloadsConcurrently() bool {
+	if request.IterateAll || request.Race || request.Pipeline || len(request.Fuzzing) > 0 || len(request.Raw) < 2 || interactsh.HasMatchers(request.CompiledOperators) {
+		return false
+	}
+	for _, raw := range request.Raw {
+		if interactsh.HasMarkers(raw) {
+			return false
+		}
+		if mark, hasMark := parseFlowAnnotations(raw); hasMark && mark == Once {
+			return false
+		}
+	}
+	return true
+}
+
+func (request *Request) executeDependentPayloads(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	workers := min(request.dependentPayloadThreads, defaultMaxWorkers)
+	if request.options.Options.PayloadConcurrency > 0 {
+		workers = min(workers, request.options.Options.PayloadConcurrency)
+	}
+	workerCtx, cancel := context.WithCancel(input.Context())
+	defer cancel()
+	permits := semaphore.NewWeighted(int64(workers))
+
+	shouldStop := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch
+	var found atomic.Bool
+	var callbackMu sync.Mutex
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		callbackMu.Lock()
+		defer callbackMu.Unlock()
+		if shouldStop && found.Load() {
+			return
+		}
+		callback(event)
+		if shouldStop && event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			found.Store(true)
+			cancel()
+		}
+	}
+
+	tasks := make(chan map[string]interface{}, workers)
+	var workersWG sync.WaitGroup
+	var errorsMu sync.Mutex
+	var executionErrors []error
+	var accounted atomic.Int64
+	for i := 0; i < workers; i++ {
+		workersWG.Add(1)
+		go func() {
+			defer workersWG.Done()
+			for payloads := range tasks {
+				if workerCtx.Err() != nil {
+					return
+				}
+				weight := int64(1)
+				if protocolstate.IsLowOnMemory() {
+					allowed := max(1, protocolstate.GuardThreadsOrDefault(workers))
+					weight = int64((workers + allowed - 1) / allowed)
+				}
+				if err := permits.Acquire(workerCtx, weight); err != nil {
+					return
+				}
+				generator := &requestGenerator{
+					request:         request,
+					options:         request.options,
+					currentPayloads: payloads,
+					onceFlow:        make(map[string]struct{}),
+				}
+				groupInput := input.CloneWithContext(workerCtx)
+				err := request.executeSequentialHTTP(groupInput, dynamicValues, previous, wrappedCallback, generator, &accounted, &found)
+				permits.Release(weight)
+				if err != nil {
+					if found.Load() && errors.Is(err, context.Canceled) {
+						continue
+					}
+					errorsMu.Lock()
+					executionErrors = append(executionErrors, err)
+					errorsMu.Unlock()
+				}
+			}
+		}()
+	}
+
+	iterator := request.generator.NewIterator()
+enqueue:
+	for {
+		payloads, ok := iterator.Value()
+		if !ok {
+			break
+		}
+		select {
+		case <-workerCtx.Done():
+			break enqueue
+		case tasks <- payloads:
+		}
+	}
+	close(tasks)
+	workersWG.Wait()
+	missing := int64(request.Requests()) - accounted.Load()
+	if missing < 0 {
+		return fmt.Errorf("dependent payload request accounting exceeded planned requests by %d", -missing)
+	}
+	if missing > 0 {
+		request.options.Progress.SetRequests(uint64(missing))
+	}
+	if found.Load() {
+		return nil
+	}
+	if err := input.Context().Err(); err != nil {
+		return err
+	}
+	return multierr.Combine(executionErrors...)
 }
 
 type dynamicValueContext struct {
@@ -1247,6 +1430,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// Record before dump or the dialer lookup can return and drop the outcome.
 	if sent {
 		request.observeHostBackoff(backoffKey, resp, err)
+		if observer, ok := request.options.Progress.(httpRequestTimingObserver); ok {
+			statusCode := 0
+			if resp != nil {
+				statusCode = resp.StatusCode
+			}
+			observer.ObserveHTTPRequest(time.Since(timeStart), statusCode, err)
+		}
 	}
 	// use request url as matched url if empty
 	if formedURL == "" {
