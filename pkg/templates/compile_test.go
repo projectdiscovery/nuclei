@@ -725,3 +725,81 @@ func TestWrongWorkflow(t *testing.T) {
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "workflows cannot have other protocols")
 }
+
+// A cache hit rebuilds the template's options from the caller's, so every option
+// derived from the template itself has to be carried back over. Anything that
+// compiles an executer from those options reads Flow; without it, every step
+// runs regardless of the flow expression and the last step's matcher alone
+// decides whether the template reports.
+func TestParseCompiledCachePreservesTemplateDerivedOptions(t *testing.T) {
+	setup()
+
+	path := filepath.Join(t.TempDir(), "flow-cache.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(`id: flow-cache
+info:
+  name: Flow cache
+  author: pdteam
+  severity: info
+stop-at-first-match: true
+flow: http(1) && http(2)
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/precondition"
+    matchers:
+      - type: status
+        status: [200]
+        internal: true
+  - method: GET
+    path:
+      - "{{BaseURL}}/check"
+    matchers:
+      - type: status
+        status: [404]
+`), 0o600))
+
+	first, second := parseTwiceFromCompiledCache(t, path)
+
+	require.NotEmpty(t, first.Options.Flow)
+	require.Equal(t, first.Options.Flow, second.Options.Flow)
+	require.True(t, second.Options.StopAtFirstMatch)
+	require.NotZero(t, second.Options.ProtocolType)
+	require.Equal(t, first.Options.ProtocolType, second.Options.ProtocolType)
+	// A flow template orders its own steps, so it is never multi-protocol.
+	require.False(t, second.Options.IsMultiProtocol)
+}
+
+// IsMultiProtocol is set while compiling the template's requests, and Cluster
+// reads it to keep multi-protocol templates out of clusters.
+func TestParseCompiledCachePreservesMultiProtocol(t *testing.T) {
+	setup()
+
+	first, second := parseTwiceFromCompiledCache(t, "tests/multiproto.yaml")
+
+	require.True(t, first.Options.IsMultiProtocol)
+	require.True(t, second.Options.IsMultiProtocol)
+}
+
+// parseTwiceFromCompiledCache parses path twice on one parser and asserts the
+// second parse was served from the compiled cache.
+func parseTwiceFromCompiledCache(t *testing.T, path string) (first, second *templates.Template) {
+	t.Helper()
+
+	parser := templates.NewParser()
+	options := executerOpts.Copy()
+	options.Parser = parser
+
+	first, err := templates.Parse(path, nil, options)
+	require.NoError(t, err)
+	cached, err := parser.CompiledCache().Get(path)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+
+	second, err = templates.Parse(path, nil, options.Copy())
+	require.NoError(t, err)
+	after, err := parser.CompiledCache().Get(path)
+	require.NoError(t, err)
+	require.Same(t, cached, after, "second parse must be served from the compiled cache")
+
+	return first, second
+}
