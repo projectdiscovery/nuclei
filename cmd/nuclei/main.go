@@ -389,7 +389,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.CallbackVar(func() { resetRequested = true }, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),
-		flagSet.StringVarP(&options.HttpApiToken, "http-api-token", "hat", "", "http api endpoint token (optional)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",

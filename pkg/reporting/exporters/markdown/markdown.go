@@ -43,12 +43,12 @@ func New(options *Options) (*Exporter, error) {
 		}
 		directory = dir
 	}
-	_ = os.MkdirAll(directory, 0750)
+	_ = os.MkdirAll(directory, 0755)
 
 	// index generation header
 	dataHeader := util.CreateTableHeader("Hostname/IP", "Finding", "Severity")
 
-	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0600)
+	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func New(options *Options) (*Exporter, error) {
 // Export exports a passed result event to markdown
 func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	// index file generation
-	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0600)
+	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(format.CreateReportDescription(event, util.MarkdownFormatter{}, exporter.options.OmitRaw))
 	data := dataBuilder.Bytes()
 
-	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0600)
+	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0644)
 }
 
 func createFileName(event *output.ResultEvent) string {
@@ -123,9 +123,9 @@ func createFileName(event *output.ResultEvent) string {
 		operatorName = event.ExtractorName
 	}
 
-	// Keep the UUID and extension at the end of the filename. Truncating the
-	// fully assembled name would remove both for long template IDs or hosts,
-	// causing unrelated findings to overwrite the same report file.
+	// Keep the UUID and extension outside the truncated prefix. Cutting the
+	// assembled name drops them when the template id or host is long, so
+	// different findings overwrite one report.
 	uniqueSuffix := "-" + uuid.NewString()
 	if operatorName != "" {
 		operatorBudget := maxFilenameLength - len(uniqueSuffix) - len(extension) - 1
@@ -166,7 +166,7 @@ func truncateFilename(filename string, maxBytes int) string {
 		return filename
 	}
 	filename = filename[:maxBytes]
-	for !utf8.ValidString(filename) {
+	for len(filename) > 0 && !utf8.ValidString(filename) {
 		filename = filename[:len(filename)-1]
 	}
 	return filename
