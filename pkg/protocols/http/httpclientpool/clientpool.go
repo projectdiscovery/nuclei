@@ -27,7 +27,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -395,21 +394,9 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	transportKey := transportHash(host, disableKeepAlives, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost, responseHeaderTimeout)
 
 	createTransport := func() (http.RoundTripper, error) {
-		// Set the base TLS configuration definition
-		tlsConfig := &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS10,
-			ClientSessionCache: sharedTLSSessionCache,
-		}
-
-		if options.SNI != "" {
-			tlsConfig.ServerName = options.SNI
-		}
-
-		tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+		tlsConfig, err := NewTLSConfig(options)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create client certificate")
+			return nil, err
 		}
 
 		transport := &http.Transport{
@@ -719,67 +706,6 @@ func isURLEncoded(s string) bool {
 	return decoded != s
 }
 
-// GetPerHostRateLimiter gets or creates a rate limiter for a specific host
-// Returns nil if per-host rate limiting is not enabled
-func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.Limiter, error) {
-	if !options.PerHostRateLimit {
-		return nil, nil
-	}
-
-	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
-	if dialers == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
-	}
-
-	dialers.Lock()
-	if dialers.PerHostRateLimitPool == nil {
-		poolSize := options.PerHostRateLimitPoolSize
-		if poolSize == 0 {
-			poolSize = 1024
-		} else if poolSize < 0 {
-			// expirable.LRU uses zero as its unbounded mode. This is useful for
-			// scan-persistent embedders that must never refresh a host budget
-			// merely because many other hosts were visited.
-			poolSize = 0
-		}
-		// Keep entries for the entire scan duration - no TTL-based eviction during scan
-		// so all hosts are tracked throughout the entire scan, even for very long scans
-		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(poolSize, 24*time.Hour, 24*time.Hour, options)
-	}
-	poolAny := dialers.PerHostRateLimitPool
-	dialers.Unlock()
-
-	pool, ok := poolAny.(*PerHostRateLimitPool)
-	if !ok || pool == nil {
-		return nil, nil
-	}
-
-	return pool.GetOrCreate(hostname)
-}
-
-// RecordPerHostRateLimitRequest records a request for pps stats calculation
-func RecordPerHostRateLimitRequest(options *types.Options, hostname string) {
-	if !options.PerHostRateLimit || hostname == "" {
-		return
-	}
-
-	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
-	if dialers == nil {
-		return
-	}
-
-	dialers.Lock()
-	poolAny := dialers.PerHostRateLimitPool
-	dialers.Unlock()
-
-	pool, ok := poolAny.(*PerHostRateLimitPool)
-	if !ok || pool == nil {
-		return
-	}
-
-	pool.RecordRequest(hostname)
-}
-
 // GetHTTPToHTTPSPortTracker gets or creates the HTTP-to-HTTPS port tracker
 func GetHTTPToHTTPSPortTracker(options *types.Options) *HTTPToHTTPSPortTracker {
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
@@ -814,4 +740,27 @@ func RecordHTTPToHTTPSPortMismatch(options *types.Options, hostname string) {
 	}
 
 	tracker.RecordHTTPToHTTPSPort(hostname)
+}
+
+// NewTLSConfig returns the TLS configuration HTTP requests to scan targets use,
+// honoring -sni and client certificates.
+func NewTLSConfig(options *types.Options) (*tls.Config, error) {
+	tlsConfig := &tls.Config{
+		Renegotiation: tls.RenegotiateOnceAsClient,
+		// Scan targets present untrusted certificates. This is the same configuration the HTTP client used inline.
+		InsecureSkipVerify: true, // codeql[go/disabled-certificate-check]
+		// Keep the scan client's existing minimum so older targets still connect.
+		MinVersion:         tls.VersionTLS10, // codeql[go/insecure-tls]
+		ClientSessionCache: sharedTLSSessionCache,
+	}
+
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
+	}
+
+	tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create client certificate")
+	}
+	return tlsConfig, nil
 }
