@@ -241,6 +241,13 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		Operators:     operators,
 	}
 
+	// Seed the audit map before extractors may trigger MergeMaps below. That
+	// merge builds a new outer map and only shallow-copies values, so a map
+	// created on first write after the merge would live on the local copy and
+	// never reach the caller's InternalEvent. Seeding first keeps one shared
+	// inner map for MatchLLM and AttachLLMAudits.
+	seedLLMAuditMap(data, operators.Matchers)
+
 	// state variable to check if all extractors are internal
 	var allInternalExtractors = true
 
@@ -426,6 +433,29 @@ func (operators *Operators) ExecuteInternalExtractors(data map[string]interface{
 		}
 	}
 	return dynamicValues
+}
+
+// seedLLMAuditMap puts an empty audit map on data before Execute may replace
+// that map with MergeMaps. MatchLLM writes into the shared inner map; the
+// caller's InternalEvent keeps the same reference and AttachLLMAudits can read it.
+func seedLLMAuditMap(data map[string]interface{}, matchersList []*matchers.Matcher) {
+	if data == nil {
+		return
+	}
+	var needsSeed bool
+	for _, matcher := range matchersList {
+		if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+			needsSeed = true
+			break
+		}
+	}
+	if !needsSeed {
+		return
+	}
+	if _, ok := data[matchers.AuditEventKey].(map[string]*matchers.LLMAudit); ok {
+		return
+	}
+	data[matchers.AuditEventKey] = make(map[string]*matchers.LLMAudit)
 }
 
 // IsEmpty determines if the operator has matchers or extractors
