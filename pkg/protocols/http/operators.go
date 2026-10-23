@@ -13,8 +13,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -48,125 +46,9 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.LLMMatcher:
-		inputs, ok := resolveLLMInputs(matcher.Inputs, data)
-		if !ok {
-			return false, []string{}
-		}
-		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item, inputs, request.llmPromptValues(data))
-		// The audit rides on the per-response event data until the result event
-		// is built; matchers are shared across concurrent requests, so it cannot
-		// be parked on the matcher itself.
-		if audit != nil {
-			recordLLMAudit(data, matcher, audit)
-		}
-		return matcher.ResultWithMatchedSnippet(isMatch, snippets)
+		return protocols.MatchLLM(data, matcher, item, request.options)
 	}
 	return false, []string{}
-}
-
-// resolveLLMInputs resolves the responses an inputs matcher compares. Unlike
-// the prompt, these are corpora: they are framed as data, so resolving them
-// from the whole event, response values included, is what the field is for.
-// It returns false when a placeholder has no value yet, which happens on the
-// responses before the last one: sending the literal placeholder would spend a
-// model call on a question that cannot be answered.
-func resolveLLMInputs(inputs []string, data map[string]interface{}) ([]string, bool) {
-	if len(inputs) == 0 {
-		return nil, true
-	}
-	resolved := make([]string, 0, len(inputs))
-	for _, input := range inputs {
-		value, ok := resolveLLMInput(input, data)
-		if !ok {
-			return nil, false
-		}
-		resolved = append(resolved, value)
-	}
-	return resolved, true
-}
-
-// resolveLLMInput interpolates only the placeholders written in the input
-// template. Response text is left opaque, so a body that happens to contain
-// "{{" or "§" is not treated as an unresolved marker and is not scanned for
-// further substitutions.
-func resolveLLMInput(input string, data map[string]interface{}) (string, bool) {
-	values := make(map[string]interface{})
-	for _, key := range llmInputPlaceholders(input) {
-		value, ok := data[key]
-		if !ok {
-			return "", false
-		}
-		values[key] = value
-	}
-	return replacer.Replace(input, values), true
-}
-
-func llmInputPlaceholders(input string) []string {
-	keys := collectMarkers(input, marker.ParenthesisOpen, marker.ParenthesisClose)
-	return append(keys, collectMarkers(input, marker.General, marker.General)...)
-}
-
-func collectMarkers(input, open, close string) []string {
-	var keys []string
-	for start := 0; start < len(input); {
-		from := strings.Index(input[start:], open)
-		if from < 0 {
-			break
-		}
-		from += start + len(open)
-		to := strings.Index(input[from:], close)
-		if to < 0 {
-			break
-		}
-		if key := input[from : from+to]; key != "" {
-			keys = append(keys, key)
-		}
-		start = from + to + len(close)
-	}
-	return keys
-}
-
-// targetValueKeys are the target-derived values an llm prompt may interpolate.
-var targetValueKeys = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port", "Scheme", "Path", "Input", "Type"}
-
-// llmPromptValues returns the values an llm prompt may interpolate: the
-// template variables, -var and constants the operator declared, plus the
-// target. Declared values come from those maps, not the merged response
-// event, so a colliding body, header, or extractor cannot overwrite them.
-// Placeholders inside declared strings are resolved against the target only.
-//
-// Response derived values (body, headers, extracted fields) are deliberately
-// excluded. They are attacker influenced, and putting them in the instruction
-// is what framing the response keeps them out of.
-func (request *Request) llmPromptValues(data map[string]interface{}) map[string]interface{} {
-	values := make(map[string]interface{})
-	if request.options == nil {
-		return values
-	}
-
-	targets := make(map[string]interface{})
-	for _, key := range targetValueKeys {
-		if value, ok := data[key]; ok {
-			targets[key] = value
-		}
-	}
-
-	declared := func(src map[string]interface{}) {
-		for name, value := range src {
-			if str, ok := value.(string); ok {
-				values[name] = replacer.Replace(str, targets)
-			} else {
-				values[name] = value
-			}
-		}
-	}
-	declared(request.options.Variables.GetAll())
-	declared(request.options.Constants)
-	if request.options.Options != nil {
-		declared(request.options.Options.Vars.AsMap())
-	}
-	maps.Copy(values, targets)
-	return values
 }
 
 func getStatusCode(data map[string]interface{}) (int, bool) {
@@ -199,7 +81,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSLWithOptions(data, request.options.GetOptions())
 	case extractors.LLMExtractor:
-		return extractor.ExtractLLM(item, request.llmPromptValues(data))
+		return protocols.ExtractLLM(data, extractor, item, request.options)
 	}
 	return nil
 }
@@ -243,13 +125,6 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["host"] = host
 	data["type"] = request.Type().String()
 	data["matched"] = matched
-	if request.hasLLMOperators {
-		// Seeded here rather than on first write: Execute replaces the data map
-		// with a merged copy when dynamic values exist, and only a reference
-		// that already existed is shared with the event the result is built
-		// from.
-		data[llmAuditKey] = make(map[string]*matchers.LLMAudit)
-	}
 	request.setHashOrDefault(data, "request", rawReq)
 	request.setHashOrDefault(data, "response", rawResp)
 	data["status_code"] = resp.StatusCode
@@ -282,15 +157,7 @@ func (request *Request) setHashOrDefault(data output.InternalEvent, k string, v 
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	results := protocols.MakeDefaultResultEvent(request, wrapped)
-	// Done here, not in MakeResultEventItem: the matcher name each result
-	// belongs to is only assigned once the default builder has split them.
-	for _, result := range results {
-		if audit := llmAuditFor(wrapped.InternalEvent, result.MatcherName); audit != nil {
-			result.LLM = audit
-		}
-	}
-	return results
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
@@ -354,34 +221,4 @@ func (request *Request) truncateResponse(response interface{}) string {
 		return responseString[:request.options.Options.ResponseSaveSize]
 	}
 	return responseString
-}
-
-// llmAuditKey holds the per-response llm audits inside the event data. It is
-// read back when the result event is built and never copied into output.
-const llmAuditKey = "__llm_audit"
-
-// recordLLMAudit stores an audit under the matcher's name, so a response with
-// several llm matchers keeps them apart.
-func recordLLMAudit(data map[string]interface{}, matcher *matchers.Matcher, audit *matchers.LLMAudit) {
-	if audits, ok := data[llmAuditKey].(map[string]*matchers.LLMAudit); ok {
-		audits[matcher.Name] = audit
-	}
-}
-
-// llmAuditFor returns the audit belonging to the named matcher, falling back to
-// the only audit present when the event carries no matcher name.
-func llmAuditFor(data map[string]interface{}, matcherName string) *matchers.LLMAudit {
-	audits, ok := data[llmAuditKey].(map[string]*matchers.LLMAudit)
-	if !ok || len(audits) == 0 {
-		return nil
-	}
-	if audit, ok := audits[matcherName]; ok {
-		return audit
-	}
-	if len(audits) == 1 {
-		for _, audit := range audits {
-			return audit
-		}
-	}
-	return nil
 }

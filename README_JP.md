@@ -110,7 +110,7 @@ Nuclei の完全な[**`ドキュメントはこちら`**](https://docs.projectdi
 
 ### インストール
 
-`nuclei` のインストールには **go >= 1.24.2** が必要です。以下のコマンドを実行してリポジトリを取得してください:
+`nuclei` のインストールには **go >= 1.27.3** が必要です。以下のコマンドを実行してリポジトリを取得してください:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
