@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/nuclei/v3
 
-go 1.27.1
+go 1.27.3
 
 require (
 	carvel.dev/ytt v0.52.0

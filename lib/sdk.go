@@ -151,6 +151,9 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 	if !e.templatesLoaded {
 		_ = e.LoadAllTemplates()
 	}
+	if e.store == nil {
+		return nil
+	}
 	return e.store.Templates()
 }
 
@@ -158,6 +161,9 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 	if !e.templatesLoaded {
 		_ = e.LoadAllTemplates()
+	}
+	if e.store == nil {
+		return nil
 	}
 	return e.store.Workflows()
 }
@@ -297,9 +303,11 @@ func (e *NucleiEngine) Close() {
 // enable matcher-status option if you expect this callback to be called for all results regardless if it matched or not
 func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...func(event *output.ResultEvent)) error {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			return err
+		}
 	}
-	if len(e.store.Templates()) == 0 && len(e.store.Workflows()) == 0 {
+	if e.store == nil || (len(e.store.Templates()) == 0 && len(e.store.Workflows()) == 0) {
 		return ErrNoTemplatesAvailable
 	}
 	if e.inputProvider.Count() == 0 {

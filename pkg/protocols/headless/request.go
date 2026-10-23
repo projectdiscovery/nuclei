@@ -3,6 +3,7 @@ package headless
 import (
 	"fmt"
 	"maps"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -19,6 +20,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -139,16 +142,25 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
+	backoffKey := hostratelimit.NormalizeHostPort(input.MetaInput.Input)
 	options := &engine.Options{
 		Timeout:       pageTimeout,
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
+		// only the navigation's status speaks for the host: a failed step or
+		// a subresource from another origin does not
+		OnNavigationResponse: func(resp *http.Response) {
+			request.options.HostBackoff.Observe(backoffKey, resp.StatusCode, hostbackoff.RetryAfter(resp.Header.Get("Retry-After")), nil)
+		},
 	}
 
 	if !options.DisableCookie && input.CookieJar == nil {
 		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
+	if err := request.options.HostBackoff.Wait(input.Context(), backoffKey); err != nil {
+		return err
+	}
 	// limited as one request per run of the steps, the unit progress counts
 	if err := request.options.RateLimitTakeContext(input.Context(), input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)

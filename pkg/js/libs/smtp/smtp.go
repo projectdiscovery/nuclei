@@ -1,6 +1,7 @@
 package smtp
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -9,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/projectdiscovery/goja"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 
@@ -147,6 +148,9 @@ func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
 	defer func() {
 		_ = conn.Close()
 	}()
+	// net/smtp reads with no deadline, and an interrupt cannot stop the runtime inside that
+	// read: closing on cancel is what keeps a server that never answers from pinning it.
+	defer context.AfterFunc(c.nj.Context(), func() { _ = conn.Close() })()
 	client, err := smtp.NewClient(&limitedConn{Conn: conn, remaining: maxReadBytes}, c.host)
 	if err != nil {
 		return false, err
@@ -211,8 +215,8 @@ func (c *Client) SendMail(msg *SMTPMessage) (bool, error) {
 	return true, nil
 }
 
-// sendMail is smtp.SendMail over the execution's dialer: smtp.SendMail dials on its own, so
-// nothing could bound what it reads.
+// sendMail is smtp.SendMail over the execution's dialer. smtp.SendMail dials on its own,
+// past the network policy, so nothing could bound what it reads or close it on cancel.
 func (c *Client) sendMail(auth smtp.Auth, msg *SMTPMessage) error {
 	executionId := c.nj.ExecutionId()
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -227,6 +231,7 @@ func (c *Client) sendMail(auth smtp.Auth, msg *SMTPMessage) error {
 	defer func() {
 		_ = conn.Close()
 	}()
+	defer context.AfterFunc(c.nj.Context(), func() { _ = conn.Close() })()
 
 	client, err := smtp.NewClient(&limitedConn{Conn: conn, remaining: maxReadBytes}, c.host)
 	if err != nil {
