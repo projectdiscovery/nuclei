@@ -118,7 +118,7 @@ func updateLockOwner(info os.FileInfo) (uid, gid uint64, ok bool) {
 		return 0, 0, false
 	}
 	v := reflect.ValueOf(sys)
-	if v.Kind() == reflect.Ptr && !v.IsNil() {
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
