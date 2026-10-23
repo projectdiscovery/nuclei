@@ -1,7 +1,6 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	stderrors "errors"
@@ -680,14 +679,16 @@ executionLoop:
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
-			// Full URL, so https and an explicit port stay on the same key the observation uses.
-			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
-				return false, true, nil, err
-			}
-
-			if generatedHttpRequest.customCancelFunction != nil {
-				defer generatedHttpRequest.customCancelFunction()
-			}
+		// Full URL, so https and an explicit port stay on the same key the observation uses.
+		if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
+			return false, true, nil, err
+		}
+		if generatedHttpRequest.customCancelFunction != nil {
+			defer generatedHttpRequest.customCancelFunction()
+		}
+		if generatedHttpRequest.request != nil && generatedHttpRequest.customCancelFunction == nil {
+			generatedHttpRequest.startRequestTimeout = true
+		}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
 			if input.MetaInput.Input == "" {
@@ -986,6 +987,18 @@ const drainReqSize = int64(8 * unitutils.Kilo)
 // post-send dump reads one while the transport may still be writing another.
 // GET, HEAD, and chunked requests keep their existing content length.
 func reuseRequestBody(req *retryablehttp.Request) error {
+	if body, ok := req.Body.(*replayableStreamBody); ok && req.GetBody != nil {
+		if !stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) && req.Header.Get("Transfer-Encoding") != "chunked" {
+			req.ContentLength = body.source.Len()
+		}
+		return nil
+	}
+	if body, ok := req.Body.(*replayableStringBody); ok && req.GetBody != nil {
+		if !stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) && req.Header.Get("Transfer-Encoding") != "chunked" {
+			req.ContentLength = int64(len(body.value))
+		}
+		return nil
+	}
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
@@ -1232,6 +1245,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			if generatedRequest.startRequestTimeout {
+				timedCtx, cancel := context.WithTimeoutCause(generatedRequest.request.Context(), request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
+				defer cancel()
+				generatedRequest.request.WithContext(timedCtx)
+			}
 			resp, err = executingClient.Do(generatedRequest.request)
 			sent = true
 
@@ -1326,13 +1344,26 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
-		bodyBytes, _ := generatedRequest.request.BodyBytes()
-		// Use a clone to avoid a race condition with the http transport
 		req := resp.Request.Clone(resp.Request.Context())
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, err := http2curl.GetCurlCommand(req)
-		if err == nil && command != nil {
-			curlCommand = command.String()
+		if generatedRequest.request.GetBody != nil {
+			body, bodyErr := generatedRequest.request.GetBody()
+			if bodyErr != nil {
+				gologger.Warning().Msgf("[%s] Could not replay request body for curl command: %s", request.options.TemplateID, bodyErr)
+			} else {
+				req.Body = body
+				command, commandErr := http2curl.GetCurlCommand(req)
+				if closeErr := body.Close(); closeErr != nil {
+					gologger.Warning().Msgf("[%s] Could not close replayed request body: %s", request.options.TemplateID, closeErr)
+				}
+				if commandErr == nil && command != nil {
+					curlCommand = command.String()
+				}
+			}
+		} else if req.Body == nil {
+			command, commandErr := http2curl.GetCurlCommand(req)
+			if commandErr == nil && command != nil {
+				curlCommand = command.String()
+			}
 		}
 	}
 

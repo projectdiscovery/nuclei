@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -252,6 +253,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	defer func() {
 		// remove set builtin
 		_ = runtime.GlobalObject().Delete("set")
+		_ = runtime.GlobalObject().Delete("replayBody")
 		_ = runtime.GlobalObject().Delete("template")
 		for proto := range f.protoFunctions {
 			_ = runtime.GlobalObject().Delete(proto)
@@ -280,6 +282,9 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(types.ToString(varName), varValue)
 		return goja.Null()
 	}); err != nil {
+		return err
+	}
+	if err := registerReplayBody(runtime); err != nil {
 		return err
 	}
 	// also register functions that allow executing protocols from js
@@ -313,6 +318,44 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}
 
 	return nil
+}
+
+func registerReplayBody(runtime *goja.Runtime) error {
+	return runtime.Set("replayBody", func(call goja.FunctionCall) goja.Value {
+		parts, ok := call.Argument(0).Export().([]interface{})
+		if !ok {
+			panic(runtime.NewTypeError("replayBody expects an array of [pattern, count] pairs"))
+		}
+		trimTail := call.Argument(1).ToFloat()
+		if math.IsNaN(trimTail) || trimTail < 0 || trimTail >= float64(math.MaxInt64) || math.Trunc(trimTail) != trimTail {
+			panic(runtime.NewTypeError("replayBody tail trim must be a nonnegative integer"))
+		}
+		replayParts := make([]httpbody.ReplayPart, 0, len(parts))
+		for _, part := range parts {
+			pair, ok := part.([]interface{})
+			if !ok || len(pair) != 2 {
+				panic(runtime.NewTypeError("replayBody parts must be [pattern, count] pairs"))
+			}
+			pattern, ok := pair[0].(string)
+			if !ok {
+				panic(runtime.NewTypeError("replayBody pattern must be a string"))
+			}
+			count, ok := pair[1].(int64)
+			if !ok {
+				value, floatOK := pair[1].(float64)
+				if !floatOK || math.IsNaN(value) || value < 0 || value >= float64(math.MaxInt64) || math.Trunc(value) != value {
+					panic(runtime.NewTypeError("replayBody count must be a nonnegative integer"))
+				}
+				count = int64(value)
+			}
+			replayParts = append(replayParts, httpbody.ReplayPart{Pattern: pattern, Count: count})
+		}
+		body, bodyErr := httpbody.NewReplayBody(replayParts, int64(trimTail))
+		if bodyErr != nil {
+			panic(runtime.NewTypeError(bodyErr.Error()))
+		}
+		return runtime.ToValue(body)
+	})
 }
 
 // reconcileProgress settles progress, whose total assumed each request runs

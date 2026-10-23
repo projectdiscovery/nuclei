@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/useragent"
 
 	"github.com/projectdiscovery/gologger"
@@ -83,6 +82,7 @@ type generatedRequest struct {
 	dynamicValues        map[string]interface{}
 	interactshURLs       []string
 	customCancelFunction context.CancelFunc
+	startRequestTimeout  bool
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
@@ -233,14 +233,18 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// Note: If possible any changes to current logic (i.e evaluate -> then parse URL)
 	// should be avoided since it is dependent on `urlutil` core logic
 
-	// Evaluate (replace) variable with final values
-	reqData, err = r.renderText(reqData, finalVars)
+	var replayBody *ReplayBody
+	if isRawRequest {
+		reqData, replayBody, err = r.renderRawRequest(reqData, finalVars)
+	} else {
+		reqData, err = r.renderText(reqData, finalVars)
+	}
 	if err != nil {
 		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 	}
 
 	if isRawRequest {
-		return r.generateRawRequest(ctx, reqData, parsed, finalVars, payloads)
+		return r.generateRawRequest(ctx, reqData, parsed, finalVars, payloads, replayBody)
 	}
 
 	reqURL, err := urlutil.ParseAbsoluteURL(reqData, true)
@@ -312,7 +316,13 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 	// default signer vars < variables < cli vars < dynamic values < payload < constants
 
 	// evaluate request
-	data, err := r.renderText(data, values)
+	var replayBody *ReplayBody
+	var err error
+	if isRawRequest {
+		data, replayBody, err = r.renderRawRequest(data, values)
+	} else {
+		data, err = r.renderText(data, values)
+	}
 	if err != nil {
 		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 	}
@@ -357,12 +367,16 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 		)
 
 		// Evaluate (replace) variable with final values
-		data, err = r.renderText(data, values)
+		if replayBody == nil {
+			data, replayBody, err = r.renderRawRequest(data, values)
+		} else {
+			data, err = r.renderText(data, values)
+		}
 		if err != nil {
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
 
-		return r.generateRawRequest(ctx, data, parsed, values, payloads)
+		return r.generateRawRequest(ctx, data, parsed, values, payloads, replayBody)
 	}
 	if err := expressions.ContainsUnresolvedVariables(data); err != nil && !r.request.SkipVariablesCheck {
 		// early exit: if there are any unresolved variables in `path` after evaluation
@@ -407,7 +421,7 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 // generateRawRequest generates Raw Request from request data from template and variables
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
-func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}, replayBody *ReplayBody) (*generatedRequest, error) {
 	var rawRequestData *raw.Request
 	var err error
 
@@ -419,6 +433,9 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	}
 	if err != nil {
 		return nil, errkit.Wrap(err, "failed to parse raw request")
+	}
+	if replayBody != nil && r.request.Unsafe {
+		return nil, fmt.Errorf("replayable body is not supported for unsafe raw requests")
 	}
 
 	// Unsafe option uses rawhttp library
@@ -474,14 +491,27 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to create request with url %v got %v", rawRequestData.FullURL, err)
 	}
-	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, rawRequestData.Data)
+	var requestBody interface{}
+	if replayBody == nil && rawRequestData.Data == "" {
+		requestBody = ""
+	}
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, requestBody)
 	if err != nil {
 		return nil, err
 	}
+	if replayBody != nil {
+		setReplayBody(req, replayBody)
+	} else if rawRequestData.Data != "" {
+		setReplayableStringBody(req, rawRequestData.Data)
+	}
 
 	// force transfer encoding if conditions are met
-	if len(rawRequestData.Data) > 0 && req.Header.Get("Transfer-Encoding") != "chunked" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodGet, http.MethodHead) {
-		req.ContentLength = int64(len(rawRequestData.Data))
+	if (len(rawRequestData.Data) > 0 || replayBody != nil) && req.Header.Get("Transfer-Encoding") != "chunked" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodGet, http.MethodHead) {
+		if replayBody != nil {
+			req.ContentLength = replayBody.Len()
+		} else {
+			req.ContentLength = int64(len(rawRequestData.Data))
+		}
 	}
 
 	// override the body with a new one that will be used to read the request body in parallel threads
@@ -564,13 +594,15 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 	// Check if the user requested a request body
 	if r.request.Body != "" {
-		body, err := r.renderText(r.request.Body, values)
-		if err != nil {
-			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
-		}
+		if replayBody, ok := replayBodyPlaceholder(r.request.Body, values); ok {
+			setReplayBody(req, replayBody)
+		} else {
+			body, err := r.renderText(r.request.Body, values)
+			if err != nil {
+				return nil, errkit.Wrap(err, "could not evaluate helper expressions")
+			}
 
-		if err := req.SetBodyString(body); err != nil {
-			return nil, errors.Wrap(err, "failed to set request body")
+			setReplayableStringBody(req, body)
 		}
 	}
 
@@ -620,4 +652,33 @@ func (r *requestGenerator) renderText(text string, values map[string]interface{}
 	r.interactshURLs = result.InteractURLs
 
 	return result.Text, nil
+}
+
+func (r *requestGenerator) renderRawRequest(text string, values map[string]interface{}) (string, *ReplayBody, error) {
+	separator := strings.Index(text, "\r\n\r\n")
+	separatorLength := 4
+	lineSeparator := strings.Index(text, "\n\n")
+	if lineSeparator >= 0 && (separator < 0 || lineSeparator < separator) {
+		separator = lineSeparator
+		separatorLength = 2
+	}
+	if separator >= 0 {
+		bodyText := text[separator+separatorLength:]
+		multipart := false
+		for _, line := range strings.Split(text[:separator], "\n") {
+			if strings.Contains(line, "Content-Type") && strings.Contains(line, "multipart/") {
+				multipart = true
+				break
+			}
+		}
+		if !multipart {
+			bodyText = strings.TrimSuffix(bodyText, "\r\n")
+		}
+		if body, ok := replayBodyPlaceholder(bodyText, values); ok {
+			rendered, err := r.renderText(text[:separator+separatorLength], values)
+			return rendered, body, err
+		}
+	}
+	rendered, err := r.renderText(text, values)
+	return rendered, nil, err
 }
