@@ -181,3 +181,85 @@ func readRESPCommand(rd *bufio.Reader) (string, error) {
 
 	return command, nil
 }
+
+func TestLengthTooLarge(t *testing.T) {
+	tests := []struct {
+		line string
+		want bool
+	}{
+		{line: fmt.Sprintf("$%d\r\n", maxReadBytes), want: false},
+		{line: fmt.Sprintf("$%d\r\n", maxReadBytes+1), want: true},
+		{line: "$-1\r\n", want: false},
+		{line: "+OK\r\n", want: false},
+		{line: fmt.Sprintf("*%d\r\n", maxAggregate), want: false},
+		{line: fmt.Sprintf("*%d\r\n", maxAggregate+1), want: true},
+		{line: "$999999999999999999999\r\n", want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.line, func(t *testing.T) {
+			require.Equal(t, tt.want, lengthTooLarge([]byte(tt.line)))
+		})
+	}
+}
+
+// A short RESP length header used to make go-redis allocate the declared size before reading
+// any of the payload, so the byte cap never applied.
+func TestGetServerInfoAuthRejectsAHugeDeclaredLength(t *testing.T) {
+	// The declared size is large enough to show up in the heap and small enough to survive a
+	// missing check. The allowed growth stays under that allocation.
+	tests := []struct {
+		name   string
+		header string
+		limit  int64
+	}{
+		// The handshake reads a map. A bulk length has to be one of its values, or go-redis
+		// rejects the header as the wrong type before allocating it.
+		{name: "bulk string", header: fmt.Sprintf("%%1\r\n$1\r\nk\r\n$%d\r\n", 32<<20), limit: 16 << 20},
+		{name: "array", header: fmt.Sprintf("*%d\r\n", 8<<20), limit: 64 << 20},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				_ = listener.Close()
+			})
+
+			go func() {
+				conn, err := listener.Accept()
+				if err != nil {
+					return
+				}
+				defer func() {
+					_ = conn.Close()
+				}()
+				_, _ = conn.Write([]byte(tt.header))
+				_, _ = conn.Read(make([]byte, 1))
+			}()
+
+			executionID := "redis-" + strings.ReplaceAll(t.Name(), "/", "-")
+			require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID}))
+			t.Cleanup(func() {
+				protocolstate.Close(executionID)
+			})
+
+			addr, ok := listener.Addr().(*net.TCPAddr)
+			require.True(t, ok)
+
+			var before runtime.MemStats
+			runtime.ReadMemStats(&before)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_, err = getServerInfoAuth(ctx, executionID, "127.0.0.1", addr.Port, "")
+
+			var after runtime.MemStats
+			runtime.ReadMemStats(&after)
+			require.Error(t, err)
+			// TotalAlloc counts the slice go-redis makes from the length header even when that
+			// slice is freed before the call returns.
+			growth := int64(after.TotalAlloc - before.TotalAlloc)
+			require.Less(t, growth, tt.limit, "allocated %d MiB reading one reply", growth>>20)
+		})
+	}
+}
