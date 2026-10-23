@@ -1241,6 +1241,10 @@ func newInteractshHTTPClient(options *types.Options) *retryablehttp.Client {
 	}
 	if dialers := protocolstate.GetDialersWithId(options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
 		transport := &http.Transport{
+			// Keep ambient HTTP_PROXY and HTTPS_PROXY. Nuclei only exports
+			// HTTP_PROXY when -pi is set, and that path uses the pooled client,
+			// so -proxy without -pi still dials the interactsh server directly.
+			Proxy:       http.ProxyFromEnvironment,
 			DialContext: dialers.Fastdialer.Dial,
 			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return dialers.Fastdialer.DialTLS(ctx, network, addr)
