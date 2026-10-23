@@ -3,6 +3,7 @@ package redis
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -337,7 +338,19 @@ func (c *limitedConn) fill() error {
 			}
 		}
 		if err != nil {
+			// A read deadline belongs to one call. go-redis peeks for push notifications
+			// with a few microseconds of deadline, and on Windows that peek always runs.
+			// Keeping the timeout fails the command that follows.
+			if timeoutErr(err) {
+				if len(c.pending) > 0 {
+					return nil
+				}
+				return err
+			}
 			c.err = err
+			if len(c.pending) > 0 {
+				return nil
+			}
 			return err
 		}
 		if n == 0 {
@@ -401,4 +414,9 @@ func lengthTooLarge(line []byte) bool {
 		return true
 	}
 	return n > limit
+}
+
+func timeoutErr(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }

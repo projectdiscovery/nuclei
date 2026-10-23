@@ -263,3 +263,47 @@ func TestGetServerInfoAuthRejectsAHugeDeclaredLength(t *testing.T) {
 		})
 	}
 }
+
+// go-redis peeks for push notifications with a microseconds-long deadline. On Windows that
+// peek always runs, and the timeout has to stay on that one read.
+func TestLimitedConnDeadlineIsNotSticky(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = listener.Close()
+	})
+
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		accepted <- conn
+	}()
+
+	client, err := net.Dial("tcp", listener.Addr().String())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+	server := <-accepted
+	t.Cleanup(func() {
+		_ = server.Close()
+	})
+
+	lc := &limitedConn{Conn: client, remaining: maxReadBytes}
+	require.NoError(t, lc.SetReadDeadline(time.Now().Add(-time.Second)))
+	_, err = lc.Read(make([]byte, 8))
+	var netErr net.Error
+	require.ErrorAs(t, err, &netErr)
+	require.True(t, netErr.Timeout())
+
+	_, err = server.Write([]byte("+PONG\r\n"))
+	require.NoError(t, err)
+	require.NoError(t, lc.SetReadDeadline(time.Time{}))
+	buf := make([]byte, 16)
+	n, err := lc.Read(buf)
+	require.NoError(t, err)
+	require.Equal(t, "+PONG\r\n", string(buf[:n]))
+}
