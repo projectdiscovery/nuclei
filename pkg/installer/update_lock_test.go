@@ -3,11 +3,23 @@ package installer
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+// errkit quotes the error chain, so a Windows path's backslashes are escaped
+// in Error() even though the message itself contains the real path.
+func requireErrorContainsPath(t *testing.T, err error, path string) {
+	t.Helper()
+	rendered := err.Error()
+	if strings.Contains(rendered, path) || strings.Contains(rendered, strings.ReplaceAll(path, `\`, `\\`)) {
+		return
+	}
+	require.Contains(t, rendered, path)
+}
 
 func TestTemplatesUpdateLockPath(t *testing.T) {
 	t.Run("same directory, same lock", func(t *testing.T) {
@@ -96,7 +108,7 @@ func TestWithTemplatesUpdateLockFreshLockTimesOutWithHelpfulMessage(t *testing.T
 	require.Error(t, err)
 	require.Less(t, elapsed, 10*time.Second, "must fail fast instead of hanging")
 	require.Contains(t, err.Error(), "timed out waiting for nuclei templates update lock")
-	require.Contains(t, err.Error(), lockPath)
+	requireErrorContainsPath(t, err, lockPath)
 	require.Contains(t, err.Error(), "-duc")
 }
 
@@ -149,5 +161,5 @@ func TestWithTemplatesUpdateLockUnremovableStaleLockFailsFast(t *testing.T) {
 	require.Less(t, time.Since(start), 2*time.Second)
 	require.ErrorIs(t, err, os.ErrPermission)
 	require.Contains(t, err.Error(), "could not be removed")
-	require.Contains(t, err.Error(), lockPath)
+	requireErrorContainsPath(t, err, lockPath)
 }
