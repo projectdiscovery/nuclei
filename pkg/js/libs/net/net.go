@@ -177,18 +177,21 @@ func Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid proxy URL %s: %w", redactProxyURL(proxyURL), err)
 		}
-		// Enforce the network policy on the tunneled target. Direct dials go
-		// through Fastdialer, which validates the destination itself, but the
-		// proxy path only dials the proxy through Fastdialer and tunnels the
-		// target inside an HTTP CONNECT, so the target would otherwise skip the
-		// deny-list (-exclude-hosts / -restrict-local-network-access) checks.
-		// Split the port off first. IsHostAllowed only does that for a single
-		// colon, so an address like [::1]:80 would skip the IP deny list.
-		if !protocolstate.IsHostAllowed(executionId, dialTargetHost(address)) {
-			return nil, fmt.Errorf("host %s is not allowed by network policy", address)
-		}
 		switch parsed.Scheme {
 		case "http", "https":
+			// Enforce the network policy on the tunneled target. Direct dials go
+			// through Fastdialer, which validates the destination itself, but the
+			// proxy path only dials the proxy through Fastdialer and tunnels the
+			// target inside an HTTP CONNECT, so the target would otherwise skip the
+			// deny-list (-exclude-hosts / -restrict-local-network-access) checks.
+			// Split the port off first. IsHostAllowed only does that for a single
+			// colon, so an address like [::1]:80 would skip the IP deny list.
+			// Do this only for schemes that actually tunnel. IsHostAllowed resolves
+			// hostnames, and an earlier check would hide "unsupported proxy scheme"
+			// behind a DNS failure.
+			if !protocolstate.IsHostAllowed(executionId, dialTargetHost(address)) {
+				return nil, fmt.Errorf("host %s is not allowed by network policy", address)
+			}
 			return dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, getTimeoutFromContext(ctx))
 		default:
 			return nil, fmt.Errorf("unsupported proxy scheme %q in %s (expected http or https)", parsed.Scheme, redactProxyURL(proxyURL))
