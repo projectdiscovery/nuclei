@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/projectdiscovery/goja"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 
@@ -151,7 +151,7 @@ func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
 	// net/smtp reads with no deadline, and an interrupt cannot stop the runtime inside that
 	// read: closing on cancel is what keeps a server that never answers from pinning it.
 	defer context.AfterFunc(c.nj.Context(), func() { _ = conn.Close() })()
-	client, err := smtp.NewClient(conn, c.host)
+	client, err := smtp.NewClient(&limitedConn{Conn: conn, remaining: maxReadBytes}, c.host)
 	if err != nil {
 		return false, err
 	}
@@ -215,8 +215,8 @@ func (c *Client) SendMail(msg *SMTPMessage) (bool, error) {
 	return true, nil
 }
 
-// sendMail is smtp.SendMail over the execution's dialer: smtp.SendMail dials on its own,
-// past the network policy, and nothing could close that connection on cancel.
+// sendMail is smtp.SendMail over the execution's dialer. smtp.SendMail dials on its own,
+// past the network policy, so nothing could bound what it reads or close it on cancel.
 func (c *Client) sendMail(auth smtp.Auth, msg *SMTPMessage) error {
 	executionId := c.nj.ExecutionId()
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -233,7 +233,7 @@ func (c *Client) sendMail(auth smtp.Auth, msg *SMTPMessage) error {
 	}()
 	defer context.AfterFunc(c.nj.Context(), func() { _ = conn.Close() })()
 
-	client, err := smtp.NewClient(conn, c.host)
+	client, err := smtp.NewClient(&limitedConn{Conn: conn, remaining: maxReadBytes}, c.host)
 	if err != nil {
 		return err
 	}
@@ -269,4 +269,29 @@ func (c *Client) sendMail(auth smtp.Auth, msg *SMTPMessage) error {
 		return err
 	}
 	return client.Quit()
+}
+
+// maxReadBytes bounds what one connection may read. net/smtp reads replies through
+// net/textproto, which buffers a line until "\n" with no limit; a whole dialogue, TLS
+// handshake included, fits in tens of kilobytes.
+const maxReadBytes = 1 << 20
+
+var errReadLimit = fmt.Errorf("smtp: server sent more than %d bytes", maxReadBytes)
+
+// limitedConn fails reads once remaining is spent.
+type limitedConn struct {
+	net.Conn
+	remaining int64
+}
+
+func (c *limitedConn) Read(b []byte) (int, error) {
+	if c.remaining <= 0 {
+		return 0, errReadLimit
+	}
+	if int64(len(b)) > c.remaining {
+		b = b[:c.remaining]
+	}
+	n, err := c.Conn.Read(b)
+	c.remaining -= int64(n)
+	return n, err
 }
