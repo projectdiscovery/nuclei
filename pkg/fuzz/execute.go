@@ -76,6 +76,8 @@ type GeneratedRequest struct {
 
 	// Key is the key for the request
 	Key string
+	// FuzzedKeys contains the keys under test, including multiple mode.
+	FuzzedKeys []string
 	// Value is the value for the request
 	Value string
 	// OriginalValue is the original value for the request
@@ -414,6 +416,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 
 		// if mode is multiple now build and execute it
 		if rule.modeType == multipleModeType {
+			var fuzzedKeys []string
 			rule.Fuzz.KV.Iterate(func(key, value string) bool {
 				var evaluated string
 				var err error
@@ -428,6 +431,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 				if err := ruleComponent.SetValue(key, evaluated); err != nil {
 					return true
 				}
+				fuzzedKeys = append(fuzzedKeys, key)
 
 				return true
 			})
@@ -441,7 +445,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 				return err
 			}
 
-			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", ""); gotErr != nil {
+			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", "", fuzzedKeys...); gotErr != nil {
 				return gotErr
 			}
 		}

@@ -91,3 +91,50 @@ func TestCompileExtractorsRejectsMisappliedAttribute(t *testing.T) {
 		require.NoError(t, extractor.CompileExtractors())
 	})
 }
+
+func TestCompileExtractorsRejectsInvalidXPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		xpath   string
+		wantErr string
+	}{
+		{
+			name:    "unclosed bracket",
+			xpath:   "//a[",
+			wantErr: `could not compile xpath "//a[":`,
+		},
+		{
+			name:    "undefined function",
+			xpath:   "unknown-function()",
+			wantErr: `could not compile xpath "unknown-function()":`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &Extractor{
+				Type:  ExtractorTypeHolder{ExtractorType: XPathExtractor},
+				XPath: []string{tt.xpath},
+			}
+			err := e.CompileExtractors()
+			require.Error(t, err)
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestCompileExtractorsAcceptsValidXPath(t *testing.T) {
+	e := &Extractor{
+		Type:  ExtractorTypeHolder{ExtractorType: XPathExtractor},
+		XPath: []string{"//a", "/html/body/div/p[2]/a"},
+	}
+	require.NoError(t, e.CompileExtractors())
+}
+
+func TestCompileExtractorsIgnoresXPathOnOtherTypes(t *testing.T) {
+	e := &Extractor{
+		Type:  ExtractorTypeHolder{ExtractorType: RegexExtractor},
+		Regex: []string{"a"},
+		XPath: []string{"//a["},
+	}
+	require.NoError(t, e.CompileExtractors())
+}

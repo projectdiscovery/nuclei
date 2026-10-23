@@ -325,6 +325,32 @@ func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
 	require.NotContains(t, got.request.String(), "{{interactsh-url}}")
 }
 
+func TestMakeSelfContainedRequestPrefersDynamicValueOverTemplateContext(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:            "testing-self-contained-dynamic-value",
+		Name:          "testing",
+		SelfContained: true,
+		Path:          []string{"http://example.com/{{token}}"},
+		Method:        HTTPMethodTypeHolder{MethodType: HTTPGet},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), "")
+	executerOpts.GetTemplateCtx(input.MetaInput).Set("token", "stale")
+	generator := request.newGenerator(false)
+	inputData, payloads, ok := generator.nextValue()
+	require.True(t, ok)
+	generated, err := generator.Make(context.Background(), input, inputData, payloads, map[string]interface{}{"token": "current"})
+	require.NoError(t, err)
+	require.Equal(t, "http://example.com/current", generated.request.String())
+}
+
 func TestMakeSelfContainedRequestDoesNotAllocateRuntimeInteractshMarkerFromPayload(t *testing.T) {
 	options := testutils.DefaultOptions
 
