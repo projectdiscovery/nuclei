@@ -51,7 +51,6 @@ import (
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
-	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	unitutils "github.com/projectdiscovery/utils/unit"
@@ -117,10 +116,10 @@ func (request *Request) observeHostBackoff(host string, resp *http.Response, err
 
 // waitHostBackoff pauses for the delay this host has already earned.
 func (request *Request) waitHostBackoff(ctx context.Context, host string) error {
-	if request.options == nil || request.options.HostBackoff == nil {
+	if request.options == nil {
 		return nil
 	}
-	return request.options.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(host))
+	return request.options.HostBackoffWait(ctx, host)
 }
 
 // rateLimitTake first honours any backoff the host earned by signalling it is
@@ -983,6 +982,25 @@ func extractorAppliesToRequest(part string, requestIndex int) bool {
 
 const drainReqSize = int64(8 * unitutils.Kilo)
 
+// reuseRequestBody reads the body once and installs GetBody copies. The
+// post-send dump reads one while the transport may still be writing another.
+// GET, HEAD, and chunked requests keep their existing content length.
+func reuseRequestBody(req *retryablehttp.Request) error {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+	keepLength := stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) || req.Header.Get("Transfer-Encoding") == "chunked"
+	contentLength := req.ContentLength
+	if err = req.SetBody(body); err != nil {
+		return err
+	}
+	if keepLength {
+		req.ContentLength = contentLength
+	}
+	return nil
+}
+
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
 	// Check if hosts keep erroring
@@ -1022,20 +1040,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !generatedRequest.original.Race {
 
-		// change encoding type to content-length unless transfer-encoding header is manually set
-		if generatedRequest.request != nil && !stringsutil.EqualFoldAny(generatedRequest.request.Method, http.MethodGet, http.MethodHead) && generatedRequest.request.Body != nil && generatedRequest.request.Header.Get("Transfer-Encoding") != "chunked" {
-			var newReqBody *reader.ReusableReadCloser
-			newReqBody, ok := generatedRequest.request.Body.(*reader.ReusableReadCloser)
-			if !ok {
-				newReqBody, err = reader.NewReusableReadCloser(generatedRequest.request.Body)
-			}
-			if err == nil {
-				// update the request body with the reusable reader
-				generatedRequest.request.SetBodyReader(newReqBody)
-				// get content length
-				length, _ := io.Copy(io.Discard, newReqBody)
-				generatedRequest.request.ContentLength = length
-			} else {
+		// Buffer every body so the post-send dump reads its own copy. GET, HEAD,
+		// and chunked requests keep the content length they already had.
+		if generatedRequest.request != nil && generatedRequest.request.Body != nil {
+			if err = reuseRequestBody(generatedRequest.request); err != nil {
 				// log error and continue
 				gologger.Verbose().Msgf("[%v] Could not read request body while forcing transfer encoding: %s\n", request.options.TemplateID, err)
 				err = nil

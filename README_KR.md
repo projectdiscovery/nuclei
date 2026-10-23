@@ -110,7 +110,7 @@ Nuclei 전체 [**`문서를 여기에서`**](https://docs.projectdiscovery.io/to
 
 ### 설치
 
-`nuclei` 설치에는 **go >= 1.24.2** 가 필요합니다. 다음 명령어를 실행하여 저장소를 가져옵니다:
+`nuclei` 설치에는 **go >= 1.27.3** 가 필요합니다. 다음 명령어를 실행하여 저장소를 가져옵니다:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
