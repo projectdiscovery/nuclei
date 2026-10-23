@@ -29,3 +29,23 @@ func TestValidate(t *testing.T) {
 	err = m.Validate()
 	require.NotNil(t, err, "Invalid XPath query was correctly validated")
 }
+
+func TestValidateRequiresValues(t *testing.T) {
+	for _, matcherType := range GetSupportedMatcherTypes() {
+		t.Run(matcherType.String(), func(t *testing.T) {
+			m := &Matcher{matcherType: matcherType}
+			require.ErrorContains(t, m.Validate(), "requires at least one")
+		})
+	}
+}
+
+func TestValidateLLMInputs(t *testing.T) {
+	compile := func(inputs []string) error {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: LLMMatcher}, Prompt: "compare", Inputs: inputs}
+		return m.CompileMatchers()
+	}
+
+	require.NoError(t, compile([]string{"{{body_1}}", "{{body_2}}"}))
+	require.ErrorContains(t, compile([]string{"{{body_1}}"}), "at least two entries")
+	require.ErrorContains(t, compile([]string{"{{body_1}}", "  "}), "cannot be blank")
+}

@@ -75,3 +75,15 @@ func (m *Manager) validateURL(URL string) (bool, error) {
 	}
 	return inScopeMatched, nil
 }
+
+// IsExplicitlyOutOfScope reports whether the URL matches an out-of-scope rule.
+// It exists for decisions that can only see a host, such as whether to decrypt
+// a CONNECT tunnel, where in-scope rules carrying a path can never match.
+func (m *Manager) IsExplicitlyOutOfScope(URL *url.URL) bool {
+	for _, item := range m.outOfScope {
+		if item.MatchString(URL.String()) {
+			return true
+		}
+	}
+	return false
+}

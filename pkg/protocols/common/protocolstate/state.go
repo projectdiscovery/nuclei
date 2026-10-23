@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/networkpolicy"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -165,7 +166,6 @@ func initDialers(options *types.Options) error {
 			forward = &net.Dialer{
 				Timeout:   opts.DialerTimeout,
 				KeepAlive: opts.DialerKeepAlive,
-				DualStack: true,
 			}
 		}
 		dialer, err := proxy.FromURL(proxyURL, forward)
@@ -329,6 +329,7 @@ func Close(executionId string) {
 	dialers.Delete(executionId)
 
 	if dialers.IsEmpty() {
+		httpcache.Close()
 		StopActiveMemGuardian()
 	}
 }

@@ -44,6 +44,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtelnet"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtsch"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libvnc"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libwebsocket"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libwmi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,6 +9,27 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 )
+
+func TestSetTemplateThreadsLimiterRejectsPartialPairs(t *testing.T) {
+	options := &Options{}
+	acquire := func(context.Context) error { return nil }
+	release := func() {}
+
+	options.SetTemplateThreadsLimiter(acquire, nil)
+	if options.templateThreadAcquire != nil || options.templateThreadRelease != nil {
+		t.Fatal("acquire-only limiter must be disabled")
+	}
+
+	options.SetTemplateThreadsLimiter(nil, release)
+	if options.templateThreadAcquire != nil || options.templateThreadRelease != nil {
+		t.Fatal("release-only limiter must be disabled")
+	}
+
+	options.SetTemplateThreadsLimiter(acquire, release)
+	if options.templateThreadAcquire == nil || options.templateThreadRelease == nil {
+		t.Fatal("complete limiter pair must be retained")
+	}
+}
 
 func TestGetValidAbsPathAllowsExpectedHelperPaths(t *testing.T) {
 	home := t.TempDir()

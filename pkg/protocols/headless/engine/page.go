@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,6 +41,7 @@ type Page struct {
 	payloads           map[string]interface{}
 	variables          map[string]interface{}
 	lastActionNavigate *Action
+	cancel             context.CancelFunc
 }
 
 // HistoryData contains the page request/response pairs
@@ -53,24 +55,50 @@ type Options struct {
 	Timeout       time.Duration
 	DisableCookie bool
 	Options       *types.Options
+	// OnNavigationResponse receives the response to the initial URL once the
+	// actions ran, even when they failed: the browser fails a navigation on
+	// an error status with an empty body, and that status still matters.
+	OnNavigationResponse func(*http.Response)
 }
 
 // Run runs a list of actions by creating a new page in the browser.
 func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (ActionData, *Page, error) {
-	page, err := i.engine.Page(proto.TargetCreateTarget{})
-	if err != nil {
+	if err := ctx.Context().Err(); err != nil {
 		return nil, nil, err
 	}
-	page = page.Timeout(options.Timeout)
+
+	pageContext := ctx.Context()
+	cancelPage := func() {}
+	if options.Timeout > 0 {
+		pageContext, cancelPage = context.WithTimeout(pageContext, options.Timeout)
+	}
+	page, err := i.engine.Context(pageContext).Page(proto.TargetCreateTarget{})
+	if err != nil {
+		cancelPage()
+		return nil, nil, err
+	}
+	page = page.Context(pageContext)
+	createdPage := &Page{
+		options:  options,
+		page:     page,
+		ctx:      ctx,
+		instance: i,
+		mutex:    &sync.RWMutex{},
+		cancel:   cancelPage,
+	}
+	successfulPageCreation := false
+	defer func() {
+		if !successfulPageCreation {
+			createdPage.Close()
+		}
+	}()
 
 	if err = i.browser.applyDefaultHeaders(page); err != nil {
-		_ = page.Close()
 		return nil, nil, err
 	}
 
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
-			_ = page.Close()
 			return nil, nil, userAgentErr
 		}
 	}
@@ -82,7 +110,6 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	target := ctx.MetaInput.Input
 	input, err := urlutil.Parse(target)
 	if err != nil {
-		_ = page.Close()
 		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
 	}
 
@@ -94,24 +121,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(variables))
 	}
 
-	createdPage := &Page{
-		options:   options,
-		page:      page,
-		ctx:       ctx,
-		instance:  i,
-		mutex:     &sync.RWMutex{},
-		payloads:  payloads,
-		variables: variables,
-		inputURL:  input,
-	}
-
-	successfulPageCreation := false
-	defer func() {
-		if !successfulPageCreation {
-			// to avoid leaking pages in case of errors
-			createdPage.Close()
-		}
-	}()
+	createdPage.payloads = payloads
+	createdPage.variables = variables
+	createdPage.inputURL = input
 
 	httpclient, err := i.browser.getHTTPClient()
 	if err != nil {
@@ -184,6 +196,11 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	}
 
 	data, err := createdPage.ExecuteActions(ctx, actions)
+	if options.OnNavigationResponse != nil {
+		if resp := createdPage.NavigationResponse(); resp != nil {
+			options.OnNavigationResponse(resp)
+		}
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -207,24 +224,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
-	// The first item of history data will contain the very first request from the browser
-	// we assume it's the one matching the initial URL
-	createdPage.mutex.RLock()
-	var firstHistoryItem HistoryData
-	hasHistory := len(createdPage.History) > 0
-	if hasHistory {
-		firstHistoryItem = createdPage.History[0]
-	}
-	createdPage.mutex.RUnlock()
-
-	if hasHistory {
-		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstHistoryItem.RawResponse)), nil); err == nil {
-			data["header"] = utils.HeadersToString(resp.Header)
-			data["status_code"] = fmt.Sprint(resp.StatusCode)
-			defer func() {
-				_ = resp.Body.Close()
-			}()
-		}
+	if resp := createdPage.FirstResponse(); resp != nil {
+		data["header"] = utils.HeadersToString(resp.Header)
+		data["status_code"] = fmt.Sprint(resp.StatusCode)
 	}
 
 	successfulPageCreation = true // avoid closing the page in case of success in deferred function
@@ -233,13 +235,26 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 
 // Close closes a browser page
 func (p *Page) Close() {
+	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	defer cancelCleanup()
+	p.close(cleanupCtx)
+}
+
+func (p *Page) close(cleanupCtx context.Context) {
 	if p.hijackRouter != nil {
 		_ = p.hijackRouter.Stop()
 	}
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	_ = p.page.Close()
+	if p.page.GetContext().Err() != nil {
+		_, _ = proto.TargetCloseTarget{TargetID: p.page.TargetID}.Call(p.page.Browser().Context(cleanupCtx))
+	} else {
+		_ = p.page.Context(cleanupCtx).Close()
+	}
+	if p.cancel != nil {
+		p.cancel()
+	}
 }
 
 // Page returns the current page for the actions
@@ -259,6 +274,122 @@ func (p *Page) URL() string {
 		return ""
 	}
 	return info.URL
+}
+
+// FirstResponse returns the response to the very first request from the
+// browser, which is assumed to be the one for the initial URL. It is nil when
+// none was recorded.
+func (p *Page) FirstResponse() *http.Response {
+	p.mutex.RLock()
+	if len(p.History) == 0 {
+		p.mutex.RUnlock()
+		return nil
+	}
+	raw := p.History[0].RawResponse
+	p.mutex.RUnlock()
+	return parseHistoryResponse(raw)
+}
+
+// NavigationResponse returns the response that ended the initial navigation,
+// nil when none was recorded. Redirect hops are separate history items, so it
+// follows Location from the first item to the response that was not a redirect.
+func (p *Page) NavigationResponse() *http.Response {
+	p.mutex.RLock()
+	history := slices.Clone(p.History)
+	p.mutex.RUnlock()
+	return navigationResponse(history)
+}
+
+// maxNavigationRedirects matches the redirect limit of Chromium.
+const maxNavigationRedirects = 20
+
+func navigationResponse(history []HistoryData) *http.Response {
+	if len(history) == 0 {
+		return nil
+	}
+	resp := parseHistoryResponse(history[0].RawResponse)
+	current := historyRequestURL(history[0].RawRequest)
+	next := 1
+	for hop := 0; resp != nil && current != nil && hop < maxNavigationRedirects; hop++ {
+		if resp.StatusCode < 300 || resp.StatusCode > 399 {
+			break
+		}
+		location := resp.Header.Get("Location")
+		if location == "" {
+			break
+		}
+		target, err := current.Parse(location)
+		if err != nil {
+			break
+		}
+		found := false
+		for i := next; i < len(history); i++ {
+			candidate := historyRequestURL(history[i].RawRequest)
+			if candidate == nil || !sameResource(candidate, target) {
+				continue
+			}
+			hopResp := parseHistoryResponse(history[i].RawResponse)
+			if hopResp == nil {
+				break
+			}
+			resp, current, next, found = hopResp, candidate, i+1, true
+			break
+		}
+		if !found {
+			break
+		}
+	}
+	return resp
+}
+
+func parseHistoryResponse(raw string) *http.Response {
+	resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(raw)), nil)
+	if err != nil {
+		return nil
+	}
+	_ = resp.Body.Close()
+	return resp
+}
+
+// historyRequestURL reads the target of a recorded request. The native hijack
+// records an absolute URL on the request line. The rod router records a path
+// and a Host header.
+func historyRequestURL(raw string) *url.URL {
+	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
+	fields := strings.Fields(lines[0])
+	if len(fields) < 2 {
+		return nil
+	}
+	target, err := url.Parse(fields[1])
+	if err != nil {
+		return nil
+	}
+	if target.Host != "" {
+		return target
+	}
+	for _, line := range lines[1:] {
+		if line == "" {
+			break
+		}
+		name, value, ok := strings.Cut(line, ":")
+		if ok && strings.EqualFold(strings.TrimSpace(name), "Host") {
+			target.Host = strings.TrimSpace(value)
+			return target
+		}
+	}
+	return nil
+}
+
+// sameResource ignores the scheme, so an http to https redirect still matches
+// when the recorded request has no scheme.
+func sameResource(a, b *url.URL) bool {
+	pathOf := func(u *url.URL) string {
+		if u.EscapedPath() == "" {
+			return "/"
+		}
+		return u.EscapedPath()
+	}
+	return strings.EqualFold(a.Host, b.Host) && pathOf(a) == pathOf(b) && a.RawQuery == b.RawQuery
 }
 
 // DumpHistory returns the full page navigation history
