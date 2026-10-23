@@ -174,6 +174,7 @@ func TestNewInteractshHTTPClient(t *testing.T) {
 	require.NotNil(t, transport.Proxy)
 	require.NotNil(t, transport.DialContext)
 	require.NotNil(t, transport.DialTLSContext)
+	require.NotNil(t, transport.TLSClientConfig, "INTERACTSH_TLS_VERIFY edits this config")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

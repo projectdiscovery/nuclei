@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -1240,21 +1239,14 @@ func newInteractshHTTPClient(options *types.Options) *retryablehttp.Client {
 		httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
 	}
 	if dialers := protocolstate.GetDialersWithId(options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
-		transport := &http.Transport{
-			// Keep ambient HTTP_PROXY and HTTPS_PROXY. Nuclei only exports
-			// HTTP_PROXY when -pi is set, and that path uses the pooled client,
-			// so -proxy without -pi still dials the interactsh server directly.
-			Proxy:       http.ProxyFromEnvironment,
-			DialContext: dialers.Fastdialer.Dial,
-			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return dialers.Fastdialer.DialTLS(ctx, network, addr)
-			},
-			MaxIdleConns:        100,
-			MaxIdleConnsPerHost: 10,
-			IdleConnTimeout:     30 * time.Second,
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+		// The pooled default keeps ProxyFromEnvironment and the TLS config that
+		// INTERACTSH_TLS_VERIFY edits. Nuclei only exports HTTP_PROXY when -pi
+		// is set, and that path uses the pooled client, so -proxy without -pi
+		// still dials the interactsh server directly.
+		transport := retryablehttp.DefaultReusePooledTransport()
+		transport.DialContext = dialers.Fastdialer.Dial
+		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialers.Fastdialer.DialTLS(ctx, network, addr)
 		}
 		httpOpts.HttpClient = &http.Client{
 			Transport: transport,
