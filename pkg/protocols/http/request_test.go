@@ -2,7 +2,10 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,7 +28,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"io"
 )
 
 func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
@@ -1540,6 +1542,39 @@ func TestOutputIP(t *testing.T) {
 	}
 }
 
+func TestLooksLikeHTTPToHTTPSMismatch(t *testing.T) {
+	t.Run("matches genuine nginx/openresty mismatch page", func(t *testing.T) {
+		body := `<html>
+<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>
+<body>
+<center><h1>400 Bad Request</h1></center>
+<center>The plain HTTP request was sent to HTTPS port</center>
+<hr><center>nginx/1.31.6</center>
+</body>
+</html>`
+		resp := &http.Response{StatusCode: 400, Body: io.NopCloser(strings.NewReader(body))}
+		require.True(t, looksLikeHTTPToHTTPSMismatch(resp))
+	})
+
+	t.Run("does not match an unrelated 400 and leaves the body intact", func(t *testing.T) {
+		body := "<html><body>400 Bad Request - unrelated app error</body></html>"
+		resp := &http.Response{StatusCode: 400, Body: io.NopCloser(strings.NewReader(body))}
+		require.False(t, looksLikeHTTPToHTTPSMismatch(resp))
+
+		// downstream readers (matchers, dumps, project cache) must still see
+		// the full, untouched body after a non-matching peek
+		remaining, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, body, string(remaining))
+	})
+
+	t.Run("ignores non-400 status codes even if the text is present", func(t *testing.T) {
+		body := "The plain HTTP request was sent to HTTPS port"
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}
+		require.False(t, looksLikeHTTPToHTTPSMismatch(resp))
+	})
+}
+
 func TestPerHostRateLimitHonorsRequestContextCancellation(t *testing.T) {
 	options := testutils.DefaultOptions.Copy()
 	options.ExecutionId = t.Name()
@@ -1783,4 +1818,260 @@ func TestHTTPResponseReadSizeHonoursTemplateMaxSize(t *testing.T) {
 			require.Equal(t, tc.expectedLen, receivedBodyLen)
 		})
 	}
+}
+
+const httpToHTTPSPage = "<html><title>400 The plain HTTP request was sent to HTTPS port</title><center>The plain HTTP request was sent to HTTPS port</center></html>"
+
+// servePlainOrTLS accepts HTTP and TLS on one port. A plaintext request is
+// answered by plain, and a TLS handshake by secure. Nuclei's client skips
+// certificate verification, so the httptest certificate is enough.
+func servePlainOrTLS(t *testing.T, plain, secure http.Handler) (string, *atomic.Int32) {
+	t.Helper()
+	certServer := httptest.NewTLSServer(http.NewServeMux())
+	t.Cleanup(certServer.Close)
+	require.NotEmpty(t, certServer.TLS.Certificates)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	var opened []net.Conn
+	var openedMu sync.Mutex
+	t.Cleanup(func() {
+		_ = ln.Close()
+		openedMu.Lock()
+		defer openedMu.Unlock()
+		for _, conn := range opened {
+			_ = conn.Close()
+		}
+	})
+
+	tlsHits := &atomic.Int32{}
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{certServer.TLS.Certificates[0]}}
+	go func() {
+		for {
+			conn, acceptErr := ln.Accept()
+			if acceptErr != nil {
+				return
+			}
+			openedMu.Lock()
+			opened = append(opened, conn)
+			openedMu.Unlock()
+			go func(conn net.Conn) {
+				_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+				var first [1]byte
+				if _, readErr := io.ReadFull(conn, first[:]); readErr != nil {
+					return
+				}
+				peeked := &prefixConn{Conn: conn, prefix: append([]byte(nil), first[:]...)}
+				_ = peeked.SetReadDeadline(time.Time{})
+				if first[0] == 0x16 {
+					tlsHits.Add(1)
+					tlsConn := tls.Server(peeked, tlsConfig)
+					if handshakeErr := tlsConn.Handshake(); handshakeErr != nil {
+						return
+					}
+					serveOne(tlsConn, secure)
+					return
+				}
+				serveOne(peeked, plain)
+			}(conn)
+		}
+	}()
+	return "http://" + ln.Addr().String(), tlsHits
+}
+
+func mismatchPage() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, httpToHTTPSPage)
+	})
+}
+
+type prefixConn struct {
+	net.Conn
+	prefix []byte
+}
+
+func (c *prefixConn) Read(p []byte) (int, error) {
+	if len(c.prefix) > 0 {
+		n := copy(p, c.prefix)
+		c.prefix = c.prefix[n:]
+		return n, nil
+	}
+	return c.Conn.Read(p)
+}
+
+type oneShotListener struct {
+	conn net.Conn
+	ch   chan net.Conn
+}
+
+func serveOne(conn net.Conn, handler http.Handler) {
+	ch := make(chan net.Conn, 1)
+	ch <- conn
+	close(ch)
+	_ = (&http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       50 * time.Millisecond,
+	}).Serve(&oneShotListener{conn: conn, ch: ch})
+}
+
+func (l *oneShotListener) Accept() (net.Conn, error) {
+	conn, ok := <-l.ch
+	if !ok {
+		return nil, io.EOF
+	}
+	return conn, nil
+}
+
+func (l *oneShotListener) Close() error { return nil }
+
+func (l *oneShotListener) Addr() net.Addr { return l.conn.LocalAddr() }
+
+func TestHTTPToHTTPSMismatchRetriesOverTLS(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	testutils.Init(options)
+
+	const page = "cpanel-login-ok"
+	target, tlsHits := servePlainOrTLS(t, mismatchPage(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+		_, _ = io.WriteString(w, page)
+	}))
+	request := &Request{
+		ID:     "http-to-https-self-heal",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{page},
+		}}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), target),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				matched = true
+			}
+		},
+	)
+	require.NoError(t, err)
+	require.True(t, matched, "the discovering request must be retried over TLS and matched")
+	require.Equal(t, int32(1), tlsHits.Load())
+}
+
+func TestHTTPToHTTPSMismatchReplaysPostBody(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	testutils.Init(options)
+
+	const payload = "user=root&pass=secret"
+	const page = "cpanel-login-ok"
+	var gotMu sync.Mutex
+	var gotBody string
+	var gotLength int64
+	target, tlsHits := servePlainOrTLS(t, mismatchPage(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, readErr := io.ReadAll(r.Body)
+		gotMu.Lock()
+		if readErr == nil {
+			gotBody = string(body)
+			gotLength = r.ContentLength
+		}
+		gotMu.Unlock()
+		w.Header().Set("Connection", "close")
+		_, _ = io.WriteString(w, page)
+	}))
+
+	request := &Request{
+		ID:     "http-to-https-post-body",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Path:   []string{"{{BaseURL}}/login"},
+		Body:   payload,
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{page},
+		}}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), target),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				matched = true
+			}
+		},
+	)
+	require.NoError(t, err)
+	require.True(t, matched)
+	require.Equal(t, int32(1), tlsHits.Load())
+	gotMu.Lock()
+	defer gotMu.Unlock()
+	require.Equal(t, payload, gotBody)
+	require.Equal(t, int64(len(payload)), gotLength)
+}
+
+func TestHTTPToHTTPSUnrelated400IsNotRetried(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	testutils.Init(options)
+
+	target, tlsHits := servePlainOrTLS(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, "unrelated application error")
+	}), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+		_, _ = io.WriteString(w, "should-not-run")
+	}))
+
+	request := &Request{
+		ID:     "http-to-https-unrelated-400",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}/"},
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"unrelated application error"},
+		}}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(context.Background(), target),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				matched = true
+			}
+		},
+	)
+	require.NoError(t, err)
+	require.True(t, matched, "an ordinary 400 is still a response the matcher can see")
+	require.Equal(t, int32(0), tlsHits.Load())
 }
