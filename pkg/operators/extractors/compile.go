@@ -25,6 +25,11 @@ func (e *Extractor) CompileExtractors() error {
 		return fmt.Errorf("regex extractor group must be >= 0, got %d", e.RegexGroup)
 	}
 
+	// group is only read by regex extractors, but published templates set it on
+	// json and kval extractors, including CVE-2024-3848. Rejecting it fails
+	// template validation, so it stays ignored outside regex.
+	// attribute on the wrong type is rejected by validateTypeSpecificFields.
+
 	var requiredField string
 	var valueCount int
 	switch e.extractorType {
