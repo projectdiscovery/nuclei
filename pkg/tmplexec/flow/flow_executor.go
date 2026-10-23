@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	httpbody "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 
@@ -220,6 +221,17 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		return ctx.Context().Err()
 	default:
 	}
+	size, declared, err := declaredRequestBodySize(f.options.TemplateInfo.Metadata)
+	if err != nil {
+		return fmt.Errorf("template %s: %w", f.options.TemplateID, err)
+	}
+	if declared {
+		release, err := httpbody.AdmitDeclaredBody(ctx.Context(), size)
+		if err != nil {
+			return err
+		}
+		defer release()
+	}
 
 	f.ctx.Input = ctx.Input
 	// -----Load all types of variables-----
@@ -288,7 +300,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	runtime.SetContextValue("executionId", f.options.Options.ExecutionId)
 
 	// pass flow and execute the js vm and handle errors
-	_, err := runtime.RunProgram(f.program)
+	_, err = runtime.RunProgram(f.program)
 	f.reconcileProgress()
 	if err != nil {
 		ctx.LogError(err)
