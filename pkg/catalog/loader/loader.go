@@ -36,6 +36,8 @@ import (
 )
 
 const (
+	httpPrefix  = "http://"
+	httpsPrefix = "https://"
 	AuthStoreId = "auth_store"
 )
 
@@ -202,7 +204,7 @@ func New(cfg *Config) (*Store, error) {
 	var templatesFinal []string
 	for _, template := range cfg.Templates {
 		// TODO: Add and replace this with urlutil.IsURL() helper
-		if urlutil.IsURL(template) {
+		if stringsutil.HasPrefixAny(template, httpPrefix, httpsPrefix) {
 			cfg.TemplateURLs = append(cfg.TemplateURLs, template)
 		} else {
 			templatesFinal = append(templatesFinal, template)
@@ -301,7 +303,7 @@ func handleTemplatesEditorURLs(input string) string {
 // and should not be used anywhere else like loading and executing templates
 // there is no sandbox restriction here
 func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error) {
-	if urlutil.IsURL(uri) && remote {
+	if stringsutil.HasPrefixAny(uri, httpPrefix, httpsPrefix) && remote {
 		uri = handleTemplatesEditorURLs(uri)
 
 		remoteTemplates, _, err := getRemoteTemplatesAndWorkflows([]string{uri}, nil, store.config.RemoteTemplateDomainList)

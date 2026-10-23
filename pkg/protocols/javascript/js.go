@@ -434,10 +434,9 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			results["error"] = outError.Error()
 
 			// generate and return failed event
-			data, err := request.generateEventData(input, results, hostPort)
-			if err != nil {
-				gologger.Error().Err(err).Msg("failed to generate event data for failed pre-condition")
-				data = make(map[string]interface{})
+			data, genErr := request.generateEventData(input, results, hostPort)
+			if genErr != nil {
+				return genErr
 			}
 			data = generators.MergeMaps(data, payloadValues)
 			event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
@@ -683,10 +682,9 @@ func (request *Request) executeRequestWithPayloads(
 
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
-	data, err := request.generateEventData(input, values, hostPort)
-	if err != nil {
-		gologger.Error().Err(err).Msg("failed to generate event data")
-		data = make(map[string]interface{})
+	data, genErr := request.generateEventData(input, values, hostPort)
+	if genErr != nil {
+		return genErr
 	}
 
 	// add and get values from templatectx
@@ -793,7 +791,7 @@ func (request *Request) generateEventData(input *contextargs.Context, values map
 			}
 		}
 	}
-	return data
+	return data, nil
 }
 
 func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, []string, error) {
