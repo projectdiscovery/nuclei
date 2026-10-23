@@ -3,6 +3,7 @@ package engine
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"sync/atomic"
@@ -153,7 +154,8 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 	require.NoError(t, err)
 
 	buf := make([]byte, 1024)
-	n, _ := clientConn3.Read(buf)
+	n, err := reader3.Read(buf)
+	require.NoError(t, err)
 	require.Contains(t, string(buf[:n]), "200 OK")
 	require.Equal(t, int32(1), allowedHits.Load())
 }
@@ -324,4 +326,104 @@ func TestHeadlessProxy_IPv4MappedIPv6WithUpstreamProxy(t *testing.T) {
 	require.Zero(t, upstreamHits.Load(), "upstream proxy must not be reached for denied mapped literals")
 }
 
+func TestHeadlessProxy_ConnectKeepsBufferedBytes(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer func() { _ = ln.Close() }()
 
+	got := make(chan string, 1)
+	go func() {
+		conn, acceptErr := ln.Accept()
+		if acceptErr != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
+		buf := make([]byte, 4)
+		n, _ := io.ReadFull(conn, buf)
+		got <- string(buf[:n])
+		_, _ = conn.Write([]byte("PONG"))
+	}()
+
+	port := ln.Addr().(*net.TCPAddr).Port
+	proxy := startHeadlessProxy(t, nil)
+	conn, err := net.Dial("tcp", proxy.Addr())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	payload := fmt.Sprintf("CONNECT 127.0.0.1:%d HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n\r\nPING", port, port)
+	_, err = conn.Write([]byte(payload))
+	require.NoError(t, err)
+
+	reader := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(reader, nil)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	select {
+	case body := <-got:
+		require.Equal(t, "PING", body, "bytes sent with CONNECT must reach the target")
+	case <-time.After(3 * time.Second):
+		t.Fatal("target did not receive the bytes sent with CONNECT")
+	}
+
+	reply := make([]byte, 4)
+	_, err = reader.Read(reply)
+	require.NoError(t, err)
+	require.Equal(t, "PONG", string(reply))
+}
+
+func TestHeadlessProxy_RefusesNameResolvingToExcludedIP(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer func() { _ = ln.Close() }()
+
+	var hits atomic.Int32
+	go func() {
+		for {
+			conn, acceptErr := ln.Accept()
+			if acceptErr != nil {
+				return
+			}
+			hits.Add(1)
+			_ = conn.Close()
+		}
+	}()
+
+	port := ln.Addr().(*net.TCPAddr).Port
+	proxy := startHeadlessProxy(t, []string{"127.0.0.1"})
+
+	conn, err := net.Dial("tcp", proxy.Addr())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	req := fmt.Sprintf("CONNECT localhost:%d HTTP/1.1\r\nHost: localhost:%d\r\n\r\n", port, port)
+	_, err = conn.Write([]byte(req))
+	require.NoError(t, err)
+
+	reader := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(reader, nil)
+	require.NoError(t, err)
+	require.NotEqual(t, http.StatusOK, resp.StatusCode)
+	require.Zero(t, hits.Load(), "a name that resolves to an excluded address must not be dialed")
+}
+
+func startHeadlessProxy(t *testing.T, deny []string) *headlessProxy {
+	t.Helper()
+	execID := fmt.Sprintf("test-proxy-%d", time.Now().UnixNano())
+	opts := &types.Options{
+		ExecutionId:    execID,
+		ExcludeTargets: deny,
+	}
+	np, err := networkpolicy.New(networkpolicy.Options{DenyList: deny})
+	require.NoError(t, err)
+	_ = protocolstate.Init(opts)
+	if existing := protocolstate.GetDialersWithId(execID); existing != nil {
+		existing.NetworkPolicy = np
+		existing.ExcludeTargets = deny
+	}
+	proxy, err := newHeadlessProxy(opts)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = proxy.Close() })
+	return proxy
+}

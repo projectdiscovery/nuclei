@@ -20,9 +20,9 @@ import (
 // and enforces network policy on all network traffic initiated by the headless browser,
 // including WebSocket handshakes (which bypass CDP request blocking in Chromium).
 type headlessProxy struct {
-	listener net.Listener
-	options  *types.Options
-	closed   chan struct{}
+	listener  net.Listener
+	options   *types.Options
+	closed    chan struct{}
 	closeOnce sync.Once
 }
 
@@ -125,9 +125,10 @@ func (p *headlessProxy) handleConn(clientConn net.Conn) {
 		return
 	}
 
-	// Handle CONNECT tunnel (for HTTPS and WebSocket handshakes)
+	// Handle CONNECT tunnel (for HTTPS and WebSocket handshakes).
+	// Keep the buffered reader: the client hello is often already in it.
 	if req.Method == http.MethodConnect {
-		p.handleConnect(clientConn, host)
+		p.handleConnect(clientConn, reader, host)
 		return
 	}
 
@@ -153,19 +154,32 @@ func (p *headlessProxy) dialTarget(target string) (net.Conn, error) {
 		return nil, fmt.Errorf("target %s blocked by network policy", target)
 	}
 
-	// If hostname is a domain name (not an IP literal), resolve and validate all IPs
-	if ip := net.ParseIP(canonHost); ip == nil {
-		if ips, err := net.LookupIP(canonHost); err == nil {
-			for _, resolvedIP := range ips {
-				canonIP := protocolstate.CanonicalizeHost(resolvedIP.String())
-				if !protocolstate.IsHostAllowed(executionId, canonIP) {
-					return nil, fmt.Errorf("target %s resolves to blocked IP %s", target, canonIP)
-				}
+	// Dial an address that was just checked. A later lookup of the name can
+	// return a different, excluded address. A resolution failure refuses the
+	// dial instead of connecting to whatever the name means a moment later.
+	dialHost := canonHost
+	if net.ParseIP(canonHost) == nil {
+		ips, err := net.LookupIP(canonHost)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s: %w", canonHost, err)
+		}
+		var chosen net.IP
+		for _, resolvedIP := range ips {
+			canonIP := protocolstate.CanonicalizeHost(resolvedIP.String())
+			if !protocolstate.IsHostAllowed(executionId, canonIP) {
+				return nil, fmt.Errorf("target %s resolves to blocked IP %s", target, canonIP)
+			}
+			if chosen == nil {
+				chosen = resolvedIP
 			}
 		}
+		if chosen == nil {
+			return nil, fmt.Errorf("resolve %s: no addresses", canonHost)
+		}
+		dialHost = chosen.String()
 	}
 
-	dialAddr := net.JoinHostPort(canonHost, port)
+	dialAddr := net.JoinHostPort(dialHost, port)
 
 	// If upstream proxy is configured, route through it after validation
 	if p.options != nil && p.options.AliveHttpProxy != "" {
@@ -203,7 +217,7 @@ func (p *headlessProxy) dialTarget(target string) (net.Conn, error) {
 	return net.DialTimeout("tcp", dialAddr, 10*time.Second)
 }
 
-func (p *headlessProxy) handleConnect(clientConn net.Conn, target string) {
+func (p *headlessProxy) handleConnect(clientConn net.Conn, clientReader *bufio.Reader, target string) {
 	destConn, err := p.dialTarget(target)
 	if err != nil {
 		_, _ = clientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
@@ -217,10 +231,11 @@ func (p *headlessProxy) handleConnect(clientConn net.Conn, target string) {
 		return
 	}
 
-	// Tunnel traffic bidirectionally
+	// Tunnel traffic bidirectionally. clientReader carries bytes already
+	// read with the CONNECT request.
 	errc := make(chan error, 2)
 	go func() {
-		_, err := io.Copy(destConn, clientConn)
+		_, err := io.Copy(destConn, clientReader)
 		errc <- err
 	}()
 	go func() {
