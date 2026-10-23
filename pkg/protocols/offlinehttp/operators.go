@@ -20,7 +20,8 @@ import (
 // Match matches a generic data response again a given matcher
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := getMatchPart(matcher.Part, data)
-	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
+	// an llm matcher with inputs compares whole responses instead of one part
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher && len(matcher.Inputs) == 0 {
 		return false, []string{}
 	}
 
@@ -34,15 +35,17 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, nil))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(item, nil, request.options.GetOptions()))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data)), []string{}
+		return matcher.Result(matcher.MatchDSLWithOptions(data, request.options.GetOptions())), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
+	case matchers.LLMMatcher:
+		return protocols.MatchLLM(data, matcher, item, request.options)
 	}
 	return false, []string{}
 }
@@ -71,7 +74,9 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.DSLExtractor:
-		return extractor.ExtractDSL(data)
+		return extractor.ExtractDSLWithOptions(data, request.options.GetOptions())
+	case extractors.LLMExtractor:
+		return protocols.ExtractLLM(data, extractor, item, request.options)
 	}
 	return nil
 }

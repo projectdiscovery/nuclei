@@ -131,6 +131,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errkit.Newf("could not compile operators got %v", err)
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 
@@ -280,11 +283,12 @@ func (request *Request) Requests() int {
 	if request.PreCondition != "" {
 		pre_conditions = 1
 	}
+	perPort := 1 + pre_conditions
 	if request.generator != nil {
-		payloadRequests := request.generator.NewIterator().Total()
-		return payloadRequests + pre_conditions
+		perPort = request.generator.NewIterator().Total() + pre_conditions
 	}
-	return 1 + pre_conditions
+	// ExecuteWithResults runs the whole request once per port
+	return perPort * max(1, len(request.getPorts()))
 }
 
 // GetID returns the ID for the request if any.
@@ -413,13 +417,25 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			},
 		)
 
+		request.options.Progress.IncrementRequests()
+
 		// if precondition was successful
 		if err == nil && result.GetSuccess() {
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				request.options.Progress.IncrementRequests()
 				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
 			}
 		} else {
+			// Requests() already counted the requests this run now skips
+			skipped := 1
+			if request.generator != nil {
+				skipped = request.generator.NewIterator().Total()
+			}
+			if err != nil {
+				request.options.Progress.IncrementFailedRequestsBy(int64(skipped))
+			} else {
+				request.options.Progress.SetRequests(uint64(skipped))
+			}
+
 			var outError error
 
 			// if js code failed to execute
@@ -472,6 +488,7 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         payloadValues,
 				Values:       generators.MergeMaps(value, payloadValues),
@@ -566,6 +583,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         payloadValues,
 				Values:       generators.MergeMaps(value, payloadValues),
@@ -643,6 +661,12 @@ func (request *Request) executeRequestWithPayloads(
 		argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
 	} else {
 		argsCopy.TemplateCtx = map[string]interface{}{}
+	}
+
+	// a script's network calls are not visible here, so like progress it is
+	// limited as one request per execution
+	if err := request.options.RateLimitTakeContext(input.Context(), hostPort); err != nil {
+		return err
 	}
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
@@ -821,6 +845,7 @@ mainLoop:
 	for k, v := range request.Args {
 		if vVal, ok := v.(string); ok && strings.Contains(vVal, "{") {
 			result, dataErr := render.Render(render.Input{
+				Options:      request.options.GetOptions(),
 				Text:         vVal,
 				Values:       payloadValues,
 				Interactsh:   request.options.Interactsh,
@@ -869,12 +894,12 @@ func getAddress(toTest string) (string, error) {
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event

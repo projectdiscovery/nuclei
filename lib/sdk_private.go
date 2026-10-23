@@ -44,6 +44,9 @@ import (
 func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
 	mockoutput.WriteCallback = func(event *output.ResultEvent) {
+		if (event.Error != "" || !event.MatcherStatus) && !e.opts.MatcherStatus {
+			return
+		}
 		if len(e.resultCallbacks) > 0 {
 			for _, callback := range e.resultCallbacks {
 				if callback != nil {
@@ -389,7 +392,10 @@ type syncOnce struct {
 	sync.Once
 }
 
-var updateCheckInstance = &syncOnce{}
+var (
+	updateCheckInstance    = &syncOnce{}
+	templateUpdateInstance = &syncOnce{}
+)
 
 // processUpdateCheckResults processes update check results
 func (e *NucleiEngine) processUpdateCheckResults() error {
@@ -398,8 +404,12 @@ func (e *NucleiEngine) processUpdateCheckResults() error {
 		if e.onUpdateAvailableCallback != nil {
 			e.onUpdateAvailableCallback(config.DefaultConfig.LatestNucleiTemplatesVersion)
 		}
-		tm := installer.TemplateManager{}
-		err = tm.UpdateIfOutdated()
 	})
+	if !e.disableTemplatesAutoUpgrade {
+		templateUpdateInstance.Do(func() {
+			tm := installer.TemplateManager{}
+			err = tm.UpdateIfOutdated()
+		})
+	}
 	return err
 }

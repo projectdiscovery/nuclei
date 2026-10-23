@@ -273,6 +273,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.BoolVarP(&options.DisableURLNormalization, "disable-url-normalization", "dun", false, "keep targets exactly as supplied instead of collapsing urls that address the same resource"),
+		flagSet.IntVarP(&options.MaxURLsPerPattern, "max-urls-per-pattern", "mup", 0, "scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)"),
 	)
 
 	flagSet.CreateGroup("target-format", "Target-Format",
@@ -304,6 +306,14 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableSelfContainedTemplates, "enable-self-contained", "esc", false, "enable loading self-contained templates"),
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
+		flagSet.BoolVar(&options.EnableLLM, "llm", false, "enable llm matchers and extractors (semantic matching)"),
+		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together)"),
+		flagSet.StringVar(&options.LLMBaseURL, "llm-base-url", "", "openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)"),
+		flagSet.StringVar(&options.LLMModel, "llm-model", "", "model used for semantic matching"),
+		flagSet.IntVar(&options.LLMTimeout, "llm-timeout", 30, "time in seconds to wait for a single llm call"),
+		flagSet.IntVar(&options.LLMMaxCalls, "llm-max-calls", 5000, "maximum llm calls per scan (0 for unlimited)"),
+		flagSet.IntVar(&options.LLMConcurrency, "llm-concurrency", 4, "maximum concurrent llm calls"),
+		flagSet.BoolVar(&options.LLMCache, "llm-cache", true, "cache llm responses within a scan"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
@@ -422,6 +432,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
 		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "maximum number of requests to send per second"),
+		flagSet.BoolVar(&options.HostBackoff, "host-backoff", false, "slow down a host that starts blocking (429, repeated 403s, connection failures)"),
+		flagSet.DurationVar(&options.HostBackoffMax, "host-backoff-max", 30*time.Second, "maximum delay applied to a host that is blocking"),
 		flagSet.BoolVar(&options.PerHostRateLimit, "per-host-rate-limit", false, "enable per-host rate limiting (global rate limit becomes unlimited when enabled)"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute (DEPRECATED)"),
 		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
@@ -472,6 +484,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.DebugResponse, "debug-resp", "dresp", false, "show all received responses"),
 		flagSet.StringSliceVarP(&options.Proxy, "proxy", "p", nil, "list of http/socks5 proxy to use (comma separated or file input)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.ProxyInternal, "proxy-internal", "pi", false, "proxy all internal requests"),
+		flagSet.StringVarP(&options.ReplayProxy, "replay-proxy", "rp", "", "http/socks5 proxy to re-send requests that produced a finding through (e.g. burp)"),
 		flagSet.BoolVarP(&options.ListDslSignatures, "list-dsl-function", "ldf", false, "list all supported DSL function signatures"),
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),

@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -67,7 +68,7 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 		// workflow requests are not counted as they can be conditional
 		// templateList count is user requested templates count (before clustering)
 		// totalReqAfterClustering is total requests count after clustering
-		e.executerOpts.Progress.Init(target.Count(), len(templatesList), int64(totalReqAfterClustering))
+		e.executerOpts.Progress.Init(target.Count(), len(templatesList), e.expectedRequests(finalTemplates, target, totalReqAfterClustering))
 	}
 
 	if stringsutil.EqualFoldAny(e.options.ScanStrategy, scanstrategy.Auto.String(), "") {
@@ -179,13 +180,41 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 	return results
 }
 
+// expectedRequests counts only the template and target pairs that per-target
+// profiles select, so progress reflects the requests that will be sent.
+func (e *Engine) expectedRequests(templatesList []*templates.Template, target provider.InputProvider, unscoped int) int64 {
+	scope := e.executerOpts.TargetScope
+	if scope == nil {
+		return int64(unscoped)
+	}
+	targets := make(map[protocols.TemplateSelection]int64)
+	target.Iterate(func(value *contextargs.MetaInput) bool {
+		targets[scope.For(value)]++
+		return true
+	})
+	var total int64
+	for selection, count := range targets {
+		total += count * int64(getSelectedRequestCount(templatesList, selection))
+	}
+	return total
+}
+
 // returns total requests count
 func getRequestCount(templates []*templates.Template) int {
+	return getSelectedRequestCount(templates, nil)
+}
+
+// getSelectedRequestCount returns the requests of the templates selection
+// selects; a nil selection selects every template.
+func getSelectedRequestCount(templates []*templates.Template, selection protocols.TemplateSelection) int {
 	count := 0
 	for _, template := range templates {
 		// ignore requests in workflows as total requests in workflow
 		// depends on what templates will be called in workflow
 		if len(template.Workflows) > 0 {
+			continue
+		}
+		if selection != nil && !template.SelectedBy(selection) {
 			continue
 		}
 		count += template.TotalRequests

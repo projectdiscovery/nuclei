@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/antchfx/xpath"
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/cache"
@@ -37,9 +38,15 @@ func (e *Extractor) CompileExtractors() error {
 		requiredField, valueCount = "xpath", len(e.XPath)
 	case DSLExtractor:
 		requiredField, valueCount = "dsl", len(e.DSL)
+	case LLMExtractor:
+		requiredField, valueCount = "schema", len(e.Schema)
 	}
 	if valueCount == 0 {
 		return fmt.Errorf("%s extractor requires at least one %s value", e.extractorType, requiredField)
+	}
+
+	if err := e.validateTypeSpecificFields(); err != nil {
+		return err
 	}
 
 	// Compile the regexes
@@ -82,6 +89,16 @@ func (e *Extractor) CompileExtractors() error {
 		}
 		_ = cache.DSL().Set(dslExp, compiled)
 		e.dslCompiled = append(e.dslCompiled, compiled)
+	}
+
+	// Matchers only validate XPath for an XPath matcher. Other extractor types
+	// may carry a stray xpath value and should not fail on it.
+	if e.extractorType == XPathExtractor {
+		for _, query := range e.XPath {
+			if _, err := xpath.Compile(query); err != nil {
+				return fmt.Errorf("could not compile xpath %q: %w", query, err)
+			}
+		}
 	}
 
 	if e.CaseInsensitive {
