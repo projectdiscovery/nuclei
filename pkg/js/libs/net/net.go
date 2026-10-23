@@ -146,6 +146,16 @@ func (c *bufferedConn) Read(b []byte) (int, error) {
 	return c.reader.Read(b)
 }
 
+// dialTargetHost returns the host portion of a dial address. Addresses that
+// are already a bare host are returned unchanged.
+func dialTargetHost(address string) string {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return address
+	}
+	return host
+}
+
 // Dial opens a connection using the execution dialer.
 // When an HTTP(S) proxy is present in context, TCP dials use HTTP CONNECT.
 // Misconfigured proxies return an error instead of silently dialing direct.
@@ -172,7 +182,9 @@ func Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
 		// proxy path only dials the proxy through Fastdialer and tunnels the
 		// target inside an HTTP CONNECT, so the target would otherwise skip the
 		// deny-list (-exclude-hosts / -restrict-local-network-access) checks.
-		if !protocolstate.IsHostAllowed(executionId, address) {
+		// Split the port off first. IsHostAllowed only does that for a single
+		// colon, so an address like [::1]:80 would skip the IP deny list.
+		if !protocolstate.IsHostAllowed(executionId, dialTargetHost(address)) {
 			return nil, fmt.Errorf("host %s is not allowed by network policy", address)
 		}
 		switch parsed.Scheme {

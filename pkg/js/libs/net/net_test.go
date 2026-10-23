@@ -290,6 +290,42 @@ func TestDial(t *testing.T) {
 		}
 	})
 
+	t.Run("proxy path enforces network policy on an ipv6 target", func(t *testing.T) {
+		proxyLn, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		defer func() { _ = proxyLn.Close() }()
+
+		proxyHit := make(chan struct{}, 1)
+		go func() {
+			conn, err := proxyLn.Accept()
+			if err != nil {
+				return
+			}
+			defer func() { _ = conn.Close() }()
+			proxyHit <- struct{}{}
+		}()
+
+		opts := &types.Options{
+			ExecutionId:    "net-dial-policy-v6-" + t.Name(),
+			ExcludeTargets: []string{"::1"},
+		}
+		require.NoError(t, protocolstate.Init(opts))
+		t.Cleanup(func() { protocolstate.Close(opts.ExecutionId) })
+
+		ctx := context.WithValue(context.Background(), "executionId", opts.ExecutionId) // nolint: staticcheck
+		ctx = context.WithValue(ctx, "proxyURL", "http://"+proxyLn.Addr().String())     // nolint: staticcheck
+
+		_, err = Dial(ctx, "tcp", "[::1]:9999")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not allowed by network policy")
+
+		select {
+		case <-proxyHit:
+			t.Fatal("proxy was contacted for a deny-listed ipv6 target")
+		default:
+		}
+	})
+
 	t.Run("open through local http proxy", func(t *testing.T) {
 		target, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
