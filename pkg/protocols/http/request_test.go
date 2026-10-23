@@ -1661,6 +1661,11 @@ func TestReuseRequestBodyKeepsExcludedEncoding(t *testing.T) {
 }
 
 func TestHTTPResponseReadSizeHonoursTemplateMaxSize(t *testing.T) {
+	previous := testutils.DefaultOptions.ResponseReadSize
+	t.Cleanup(func() {
+		testutils.DefaultOptions.ResponseReadSize = previous
+	})
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = w.Write([]byte(strings.Repeat("A", 2000)))
@@ -1696,6 +1701,18 @@ func TestHTTPResponseReadSizeHonoursTemplateMaxSize(t *testing.T) {
 			templateMaxSize:        0,
 			globalResponseReadSize: 600,
 			expectedLen:            600,
+		},
+		{
+			name:                   "negative response-size-read keeps template max-size",
+			templateMaxSize:        500,
+			globalResponseReadSize: -1,
+			expectedLen:            500,
+		},
+		{
+			name:                   "negative response-size-read keeps the default limit",
+			templateMaxSize:        0,
+			globalResponseReadSize: -1,
+			expectedLen:            2000,
 		},
 	}
 

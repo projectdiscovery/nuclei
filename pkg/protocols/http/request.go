@@ -1774,7 +1774,7 @@ func (request *Request) getEffectiveReadLimit() int {
 	if request.MaxSize > 0 {
 		maxBodylimit = request.MaxSize
 	}
-	if request.options.Options.ResponseReadSize != 0 {
+	if request.options.Options.ResponseReadSize > 0 {
 		if request.MaxSize > 0 {
 			maxBodylimit = min(request.MaxSize, request.options.Options.ResponseReadSize)
 		} else {
@@ -1783,4 +1783,3 @@ func (request *Request) getEffectiveReadLimit() int {
 	}
 	return maxBodylimit
 }
-
