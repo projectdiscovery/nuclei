@@ -80,3 +80,19 @@ func TestCompileExtractorsRejectsInvalidXPath(t *testing.T) {
 	}
 }
 
+func TestCompileExtractorsAcceptsValidXPath(t *testing.T) {
+	e := &Extractor{
+		Type:  ExtractorTypeHolder{ExtractorType: XPathExtractor},
+		XPath: []string{"//a", "/html/body/div/p[2]/a"},
+	}
+	require.NoError(t, e.CompileExtractors())
+}
+
+func TestCompileExtractorsIgnoresXPathOnOtherTypes(t *testing.T) {
+	e := &Extractor{
+		Type:  ExtractorTypeHolder{ExtractorType: RegexExtractor},
+		Regex: []string{"a"},
+		XPath: []string{"//a["},
+	}
+	require.NoError(t, e.CompileExtractors())
+}

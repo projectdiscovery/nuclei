@@ -87,9 +87,13 @@ func (e *Extractor) CompileExtractors() error {
 		e.dslCompiled = append(e.dslCompiled, compiled)
 	}
 
-	for _, query := range e.XPath {
-		if _, err := xpath.Compile(query); err != nil {
-			return fmt.Errorf("could not compile xpath %q: %w", query, err)
+	// Matchers only validate XPath for an XPath matcher. Other extractor types
+	// may carry a stray xpath value and should not fail on it.
+	if e.extractorType == XPathExtractor {
+		for _, query := range e.XPath {
+			if _, err := xpath.Compile(query); err != nil {
+				return fmt.Errorf("could not compile xpath %q: %w", query, err)
+			}
 		}
 	}
 
