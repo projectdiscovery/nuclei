@@ -125,5 +125,58 @@ func TestRunReportsNavigationResponseWhenActionsFail(t *testing.T) {
 }
 
 func TestNavigationResponseIsNilWithoutHistory(t *testing.T) {
-	require.Nil(t, (&Page{mutex: &sync.RWMutex{}}).NavigationResponse())
+	page := &Page{mutex: &sync.RWMutex{}}
+	require.Nil(t, page.NavigationResponse())
+	require.Nil(t, page.FirstResponse())
+}
+
+func TestNavigationResponseFollowsRedirects(t *testing.T) {
+	tests := []struct {
+		name    string
+		history []HistoryData
+		status  int
+	}{
+		{
+			name: "native absolute request line",
+			history: []HistoryData{
+				{RawRequest: "GET https://example.com/ HTTP/1.1\n", RawResponse: "HTTP/1.1 302 Found\nLocation: /login?next=1\n\n"},
+				{RawRequest: "GET https://example.com/style.css HTTP/1.1\n", RawResponse: "HTTP/1.1 200 OK\n\n"},
+				{RawRequest: "GET https://example.com/login?next=1 HTTP/1.1\n", RawResponse: "HTTP/1.1 429 Too Many Requests\nRetry-After: 7\n\n"},
+			},
+			status: http.StatusTooManyRequests,
+		},
+		{
+			name: "router path and host header across schemes",
+			history: []HistoryData{
+				{RawRequest: "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n", RawResponse: "HTTP/1.1 301 Moved Permanently\nLocation: https://example.com/home\n\n"},
+				{RawRequest: "GET /home HTTP/1.1\r\nHost: example.com\r\n\r\n", RawResponse: "HTTP/1.1 503 Service Unavailable\n\n"},
+			},
+			status: http.StatusServiceUnavailable,
+		},
+		{
+			name: "redirect target never recorded",
+			history: []HistoryData{
+				{RawRequest: "GET https://example.com/ HTTP/1.1\n", RawResponse: "HTTP/1.1 302 Found\nLocation: https://other.example/\n\n"},
+				{RawRequest: "GET https://example.com/app.js HTTP/1.1\n", RawResponse: "HTTP/1.1 429 Too Many Requests\n\n"},
+			},
+			status: http.StatusFound,
+		},
+		{
+			name: "no redirect keeps the first response",
+			history: []HistoryData{
+				{RawRequest: "GET https://example.com/ HTTP/1.1\n", RawResponse: "HTTP/1.1 200 OK\n\n"},
+				{RawRequest: "GET https://example.com/api HTTP/1.1\n", RawResponse: "HTTP/1.1 429 Too Many Requests\n\n"},
+			},
+			status: http.StatusOK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			page := &Page{mutex: &sync.RWMutex{}, History: tt.history}
+			resp := page.NavigationResponse()
+			require.NotNil(t, resp)
+			require.Equal(t, tt.status, resp.StatusCode)
+			require.Equal(t, parseHistoryResponse(tt.history[0].RawResponse).StatusCode, page.FirstResponse().StatusCode)
+		})
+	}
 }

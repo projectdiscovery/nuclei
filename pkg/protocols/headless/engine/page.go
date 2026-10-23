@@ -224,7 +224,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
-	if resp := createdPage.NavigationResponse(); resp != nil {
+	if resp := createdPage.FirstResponse(); resp != nil {
 		data["header"] = utils.HeadersToString(resp.Header)
 		data["status_code"] = fmt.Sprint(resp.StatusCode)
 	}
@@ -276,10 +276,10 @@ func (p *Page) URL() string {
 	return info.URL
 }
 
-// NavigationResponse returns the response to the page's initial URL, nil when
-// none was recorded. The first history item holds the very first request from
-// the browser, which is assumed to be the one for the initial URL.
-func (p *Page) NavigationResponse() *http.Response {
+// FirstResponse returns the response to the very first request from the
+// browser, which is assumed to be the one for the initial URL. It is nil when
+// none was recorded.
+func (p *Page) FirstResponse() *http.Response {
 	p.mutex.RLock()
 	if len(p.History) == 0 {
 		p.mutex.RUnlock()
@@ -287,13 +287,109 @@ func (p *Page) NavigationResponse() *http.Response {
 	}
 	raw := p.History[0].RawResponse
 	p.mutex.RUnlock()
+	return parseHistoryResponse(raw)
+}
 
+// NavigationResponse returns the response that ended the initial navigation,
+// nil when none was recorded. Redirect hops are separate history items, so it
+// follows Location from the first item to the response that was not a redirect.
+func (p *Page) NavigationResponse() *http.Response {
+	p.mutex.RLock()
+	history := slices.Clone(p.History)
+	p.mutex.RUnlock()
+	return navigationResponse(history)
+}
+
+// maxNavigationRedirects matches the redirect limit of Chromium.
+const maxNavigationRedirects = 20
+
+func navigationResponse(history []HistoryData) *http.Response {
+	if len(history) == 0 {
+		return nil
+	}
+	resp := parseHistoryResponse(history[0].RawResponse)
+	current := historyRequestURL(history[0].RawRequest)
+	next := 1
+	for hop := 0; resp != nil && current != nil && hop < maxNavigationRedirects; hop++ {
+		if resp.StatusCode < 300 || resp.StatusCode > 399 {
+			break
+		}
+		location := resp.Header.Get("Location")
+		if location == "" {
+			break
+		}
+		target, err := current.Parse(location)
+		if err != nil {
+			break
+		}
+		found := false
+		for i := next; i < len(history); i++ {
+			candidate := historyRequestURL(history[i].RawRequest)
+			if candidate == nil || !sameResource(candidate, target) {
+				continue
+			}
+			hopResp := parseHistoryResponse(history[i].RawResponse)
+			if hopResp == nil {
+				break
+			}
+			resp, current, next, found = hopResp, candidate, i+1, true
+			break
+		}
+		if !found {
+			break
+		}
+	}
+	return resp
+}
+
+func parseHistoryResponse(raw string) *http.Response {
 	resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(raw)), nil)
 	if err != nil {
 		return nil
 	}
 	_ = resp.Body.Close()
 	return resp
+}
+
+// historyRequestURL reads the target of a recorded request. The native hijack
+// records an absolute URL on the request line. The rod router records a path
+// and a Host header.
+func historyRequestURL(raw string) *url.URL {
+	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
+	fields := strings.Fields(lines[0])
+	if len(fields) < 2 {
+		return nil
+	}
+	target, err := url.Parse(fields[1])
+	if err != nil {
+		return nil
+	}
+	if target.Host != "" {
+		return target
+	}
+	for _, line := range lines[1:] {
+		if line == "" {
+			break
+		}
+		name, value, ok := strings.Cut(line, ":")
+		if ok && strings.EqualFold(strings.TrimSpace(name), "Host") {
+			target.Host = strings.TrimSpace(value)
+			return target
+		}
+	}
+	return nil
+}
+
+// sameResource ignores the scheme, so an http to https redirect still matches
+// when the recorded request has no scheme.
+func sameResource(a, b *url.URL) bool {
+	pathOf := func(u *url.URL) string {
+		if u.EscapedPath() == "" {
+			return "/"
+		}
+		return u.EscapedPath()
+	}
+	return strings.EqualFold(a.Host, b.Host) && pathOf(a) == pathOf(b) && a.RawQuery == b.RawQuery
 }
 
 // DumpHistory returns the full page navigation history
