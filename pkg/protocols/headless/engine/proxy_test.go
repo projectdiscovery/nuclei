@@ -155,8 +155,12 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 
 	buf := make([]byte, 1024)
 	n, err := reader3.Read(buf)
-	require.NoError(t, err)
+	// Windows can return the tunneled bytes and a connection-abort error
+	// once the target closes and the proxy tears the tunnel down.
 	require.Contains(t, string(buf[:n]), "200 OK")
+	if n == 0 {
+		require.NoError(t, err)
+	}
 	require.Equal(t, int32(1), allowedHits.Load())
 }
 
