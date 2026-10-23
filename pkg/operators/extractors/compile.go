@@ -28,9 +28,7 @@ func (e *Extractor) CompileExtractors() error {
 	// group is only read by regex extractors, but published templates set it on
 	// json and kval extractors, including CVE-2024-3848. Rejecting it fails
 	// template validation, so it stays ignored outside regex.
-	if e.Attribute != "" && e.GetType() != XPathExtractor {
-		return fmt.Errorf("attribute is supported only for 'xpath' extractors (not '%s')", e.Type)
-	}
+	// attribute on the wrong type is rejected by validateTypeSpecificFields.
 
 	var requiredField string
 	var valueCount int
