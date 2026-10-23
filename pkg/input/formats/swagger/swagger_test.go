@@ -2,6 +2,7 @@ package swagger
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -38,4 +39,52 @@ func TestSwaggerAPIParser(t *testing.T) {
 		"https://localhost/v1/users/1?test=asc",
 	}
 	require.ElementsMatch(t, gotMethodsToURLs, expectedURLs, "could not get swagger urls")
+}
+
+func TestSwaggerParseNullEntries(t *testing.T) {
+	// Each spec has a null map value or list item that decodes to a nil
+	// pointer and used to panic inside openapi2conv.ToV3.
+	specs := map[string]string{
+		"null-path-item": `
+swagger: "2.0"
+info: {title: t, version: "1"}
+host: localhost
+paths:
+  /x:
+`,
+		"null-parameter": `
+swagger: "2.0"
+info: {title: t, version: "1"}
+host: localhost
+paths:
+  /x:
+    get:
+      parameters:
+        -
+      responses: {"200": {description: ok}}
+`,
+		"null-response": `
+swagger: "2.0"
+info: {title: t, version: "1"}
+host: localhost
+paths:
+  /x:
+    get:
+      responses: {"200": }
+`,
+	}
+
+	for name, spec := range specs {
+		t.Run(name, func(t *testing.T) {
+			var count int
+			err := New().Parse(strings.NewReader(spec), func(request *types.RequestResponse) bool {
+				count++
+				return false
+			}, "spec.yaml")
+			require.NoError(t, err)
+			if name != "null-path-item" {
+				require.Equal(t, 1, count, "the operation should still produce a request")
+			}
+		})
+	}
 }

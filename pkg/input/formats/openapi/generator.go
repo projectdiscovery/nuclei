@@ -49,6 +49,11 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 	}
 
 	for _, serverURL := range schema.Servers {
+		// A null entry in the `servers:` list decodes to a nil *Server, so skip
+		// it rather than dereferencing it.
+		if serverURL == nil {
+			continue
+		}
 		pathURL := serverURL.URL
 		// Split the server URL into baseURL and serverPath
 		u, err := url.Parse(pathURL)
@@ -268,6 +273,11 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 
 	if opts.op.RequestBody != nil {
 		for content, value := range opts.op.RequestBody.Value.Content {
+			// A null media-type entry (e.g. `content: {application/json: }`)
+			// decodes to a nil *MediaType, so skip it before dereferencing.
+			if value == nil {
+				continue
+			}
 			cloned := req.Clone(req.Context())
 
 			var val interface{}
