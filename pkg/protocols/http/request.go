@@ -51,6 +51,7 @@ import (
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
 	httpUtils "github.com/projectdiscovery/utils/http"
+	iputil "github.com/projectdiscovery/utils/ip"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	unitutils "github.com/projectdiscovery/utils/unit"
@@ -982,6 +983,30 @@ func extractorAppliesToRequest(part string, requestIndex int) bool {
 
 const drainReqSize = int64(8 * unitutils.Kilo)
 
+// httpToHTTPSMismatchSignature is the response text servers such as nginx/openresty
+// emit when a plaintext HTTP request lands on a TLS-only (https) port.
+const httpToHTTPSMismatchSignature = "The plain HTTP request was sent to HTTPS port"
+
+// looksLikeHTTPToHTTPSMismatch reports whether resp is the specific "plain HTTP
+// request sent to an HTTPS-only port" error page. It peeks a bounded prefix of
+// the body to check, and - when the signature does not match - restores that
+// prefix onto resp.Body so downstream readers (matchers, dumps, project cache)
+// still see the complete, untouched response.
+func looksLikeHTTPToHTTPSMismatch(resp *http.Response) bool {
+	if resp == nil || resp.StatusCode != 400 || resp.Body == nil {
+		return false
+	}
+	peeked, _ := io.ReadAll(io.LimitReader(resp.Body, drainReqSize))
+	if bytes.Contains(peeked, []byte(httpToHTTPSMismatchSignature)) {
+		return true
+	}
+	resp.Body = struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(bytes.NewReader(peeked), resp.Body), resp.Body}
+	return false
+}
+
 // reuseRequestBody reads the body once and installs GetBody copies. The
 // post-send dump reads one while the transport may still be writing another.
 // GET, HEAD, and chunked requests keep their existing content length.
@@ -999,6 +1024,19 @@ func reuseRequestBody(req *retryablehttp.Request) error {
 		req.ContentLength = contentLength
 	}
 	return nil
+}
+
+// rewindRequestBody installs a fresh body for a follow-up send. The first
+// attempt has already read the original reader to EOF.
+func rewindRequestBody(req *retryablehttp.Request) {
+	if req == nil || req.GetBody == nil {
+		return
+	}
+	body, err := req.GetBody()
+	if err != nil {
+		return
+	}
+	req.Body = body
 }
 
 // executeRequest executes the actual generated request and returns error if occurred
@@ -1110,6 +1148,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 			sent = true
 		} else if generatedRequest.request != nil {
+			if generatedRequest.request.URL != nil {
+				hostname = generatedRequest.request.URL.Host
+			}
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 			sent = true
 		}
@@ -1234,15 +1275,47 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			resp, err = executingClient.Do(generatedRequest.request)
 			sent = true
 
-			// If we forced http->https from a previous detection and the corrected
-			// request failed (e.g. a false positive where the port actually speaks
-			// plain HTTP), revert to the original scheme, evict the bad entry so
-			// other templates hitting the same host:port are not affected, and retry
+			// Self-heal: if this is the request that *first* discovers the
+			// host:port is https-only (no prior detection, so the pre-emptive
+			// check above didn't already correct the scheme), retry it over
+			// https immediately instead of handing the guaranteed-wrong 400 to
+			// the matchers. Without this, whichever request happens to be the
+			// first (or one of several racing concurrently) to hit a given
+			// host:port is always sacrificed, even though the tracker now
+			// knows better for every other request.
+			if err == nil && httpsCorrectionTracker == nil &&
+				generatedRequest.request != nil && generatedRequest.request.Scheme == "http" &&
+				generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil &&
+				looksLikeHTTPToHTTPSMismatch(resp) {
+
+				_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
+				_ = resp.Body.Close()
+
+				requestURL := generatedRequest.request.Request.URL.String()
+				generatedRequest.request.Scheme = "https"
+
+				if tracker := httpclientpool.GetHTTPToHTTPSPortTracker(request.options.Options); tracker != nil {
+					tracker.RecordHTTPToHTTPSPort(requestURL)
+					tracker.RecordCorrection()
+					httpsCorrectionTracker = tracker
+					httpsCorrectionURL = requestURL
+				}
+
+				rewindRequestBody(generatedRequest.request)
+				resp, err = executingClient.Do(generatedRequest.request)
+			}
+
+			// If we forced http->https (either from a previous detection or the
+			// immediate self-heal above) and the corrected request failed (e.g.
+			// a false positive where the port actually speaks plain HTTP),
+			// revert to the original scheme, evict the bad entry so other
+			// templates hitting the same host:port are not affected, and retry
 			// once. This keeps the optimization while preventing a single
 			// wrong detection from silently dropping findings at scale.
 			if err != nil && httpsCorrectionTracker != nil && generatedRequest.request != nil && generatedRequest.request.Scheme == "https" {
 				generatedRequest.request.Scheme = "http"
 				httpsCorrectionTracker.Evict(httpsCorrectionURL)
+				rewindRequestBody(generatedRequest.request)
 				resp, err = executingClient.Do(generatedRequest.request)
 			}
 		}
@@ -1285,6 +1358,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if dialers == nil {
 		return fmt.Errorf("dialers not found for execution id %s", request.options.Options.ExecutionId)
 	}
+	var getDialedIP func(string) string
+	if dialers.Fastdialer != nil {
+		getDialedIP = dialers.Fastdialer.GetDialedIP
+	}
+	targetHost := hostname
 
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
@@ -1303,10 +1381,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			hostname = hostname[:i]
 		}
 
-		if input.MetaInput.CustomIP != "" {
-			outputEvent["ip"] = input.MetaInput.CustomIP
-		} else {
-			outputEvent["ip"] = dialers.Fastdialer.GetDialedIP(hostname)
+		outputEvent["ip"] = outputIP(input.MetaInput.CustomIP, targetHost, hostname, getDialedIP)
+		if input.MetaInput.CustomIP == "" {
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -1388,8 +1464,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		statusCode := respChain.Response().StatusCode
 
 		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message) so
-		// later requests to the same host:port are auto-upgraded to https.
-		if statusCode == 400 && strings.Contains(bodyStr, "The plain HTTP request was sent to HTTPS port") {
+		// later requests to the same host:port are auto-upgraded to https. For the
+		// standard net/http path this is normally already handled by the
+		// immediate self-heal above; this remains the only detection point for
+		// pipeline/unsafe (rawhttp) requests, which bypass that retry.
+		if statusCode == 400 && strings.Contains(bodyStr, httpToHTTPSMismatchSignature) {
 			var requestURL string
 			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 				requestURL = generatedRequest.request.Request.URL.String()
@@ -1466,14 +1545,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			hostname = hostname[:i]
 		}
 		outputEvent["curl-command"] = curlCommand
-		if input.MetaInput.CustomIP != "" {
-			outputEvent["ip"] = input.MetaInput.CustomIP
-		} else {
-			dialer := dialers.Fastdialer
-			if dialer != nil {
-				outputEvent["ip"] = dialer.GetDialedIP(hostname)
-			}
-
+		outputEvent["ip"] = outputIP(input.MetaInput.CustomIP, targetHost, hostname, getDialedIP)
+		if input.MetaInput.CustomIP == "" {
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -1602,6 +1675,28 @@ func (request *Request) getHTTPClientForHost(host string) *retryablehttp.Client 
 		client, _ = httpclientpool.Get(request.options.Options, request.connConfiguration, "")
 	}
 	return client
+}
+
+// outputIP returns the ip for the output event. host is the request host as
+// sent and hostname is host with the port stripped.
+func outputIP(customIP, host, hostname string, getDialedIP func(string) string) string {
+	if customIP != "" {
+		return customIP
+	}
+	if getDialedIP != nil {
+		if ip := getDialedIP(hostname); ip != "" {
+			return ip
+		}
+	}
+	// proxies bypass fastdialer's dial history, so fall back to an IP literal host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	if iputil.IsIP(host) {
+		return host
+	}
+	return ""
 }
 
 // addCNameIfAvailable adds the cname to the event if available
