@@ -139,3 +139,94 @@ func writeTestFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 		t.Fatalf("write test file: %v", err)
 	}
 }
+
+func TestReloadTemplateVersion(t *testing.T) {
+	newConfig := func(t *testing.T, templatesDir string) *Config {
+		t.Helper()
+		cfg := &Config{stateDir: t.TempDir()}
+		cfg.setTemplatesDir(templatesDir)
+		return cfg
+	}
+
+	t.Run("adopts the version another process installed", func(t *testing.T) {
+		templatesDir := t.TempDir()
+		cfg := newConfig(t, templatesDir)
+		other := &Config{stateDir: cfg.stateDir, TemplateVersion: "v2.0.0"}
+		other.setTemplatesDir(templatesDir)
+		if err := other.WriteTemplatesConfig(); err != nil {
+			t.Fatalf("write templates state: %v", err)
+		}
+
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v2.0.0" {
+			t.Fatalf("template version = %q, want v2.0.0", cfg.TemplateVersion)
+		}
+	})
+
+	t.Run("ignores state of another templates directory", func(t *testing.T) {
+		cfg := newConfig(t, t.TempDir())
+		cfg.TemplateVersion = "v1.0.0"
+		other := &Config{stateDir: cfg.stateDir, TemplateVersion: "v2.0.0"}
+		other.setTemplatesDir(t.TempDir())
+		if err := other.WriteTemplatesConfig(); err != nil {
+			t.Fatalf("write templates state: %v", err)
+		}
+
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v1.0.0" {
+			t.Fatalf("template version = %q, want v1.0.0", cfg.TemplateVersion)
+		}
+	})
+
+	t.Run("keeps the loaded version without state", func(t *testing.T) {
+		cfg := newConfig(t, t.TempDir())
+		cfg.TemplateVersion = "v1.0.0"
+
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v1.0.0" {
+			t.Fatalf("template version = %q, want v1.0.0", cfg.TemplateVersion)
+		}
+	})
+
+	t.Run("adopts the version written through the other name of a symlink", func(t *testing.T) {
+		templatesDir := t.TempDir()
+		link := filepath.Join(t.TempDir(), "templates-link")
+		if err := os.Symlink(templatesDir, link); err != nil {
+			t.Skipf("symlinks are unavailable: %v", err)
+		}
+
+		cfg := newConfig(t, link)
+		other := &Config{stateDir: cfg.stateDir, TemplateVersion: "v2.0.0"}
+		other.setTemplatesDir(templatesDir)
+		if err := other.WriteTemplatesConfig(); err != nil {
+			t.Fatalf("write templates state: %v", err)
+		}
+
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v2.0.0" {
+			t.Fatalf("template version = %q, want v2.0.0", cfg.TemplateVersion)
+		}
+
+		cfg.TemplateVersion = "v1.0.0"
+		cfg.setTemplatesDir(templatesDir)
+		writer := &Config{stateDir: cfg.stateDir, TemplateVersion: "v3.0.0"}
+		writer.setTemplatesDir(link)
+		if err := writer.WriteTemplatesConfig(); err != nil {
+			t.Fatalf("write templates state through the link: %v", err)
+		}
+		if err := cfg.ReloadTemplateVersion(); err != nil {
+			t.Fatalf("reload templates version: %v", err)
+		}
+		if cfg.TemplateVersion != "v3.0.0" {
+			t.Fatalf("template version = %q, want v3.0.0", cfg.TemplateVersion)
+		}
+	})
+}

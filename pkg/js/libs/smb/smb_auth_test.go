@@ -46,8 +46,14 @@ func TestAuthenticateSessionStatus(t *testing.T) {
 				assert.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID}))
 				t.Cleanup(func() { protocolstate.Close(executionID) })
 				port, done := serveAuthentication(t, tc.flags, tc.status)
+				// production runs carry the js execution timeout in their context;
+				// without one a stalled exchange holds the package until go
+				// test's 1h timeout instead of failing this test
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
 				if javascript {
 					vm := goja.New()
+					vm.SetContext(ctx)
 					new(require.Registry).Enable(vm)
 					vm.SetContextValue("executionId", executionID)
 					assert.NoError(t, vm.Set("port", port))
@@ -65,7 +71,7 @@ func TestAuthenticateSessionStatus(t *testing.T) {
 						assert.Equal(t, []interface{}{tc.want.Success, tc.want.IsGuest, tc.want.IsNullSession}, value.Export())
 					}
 				} else {
-					ctx := context.WithValue(context.Background(), "executionId", executionID) //nolint:staticcheck
+					ctx := context.WithValue(ctx, "executionId", executionID) //nolint:staticcheck
 					result, err := (&smb.SMBClient{}).Authenticate(ctx, "127.0.0.1", port, tc.user, password)
 					if tc.status != 0 {
 						assert.Error(t, err)
