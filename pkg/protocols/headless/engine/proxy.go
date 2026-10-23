@@ -232,17 +232,18 @@ func (p *headlessProxy) handleConnect(clientConn net.Conn, clientReader *bufio.R
 	}
 
 	// Tunnel traffic bidirectionally. clientReader carries bytes already
-	// read with the CONNECT request.
-	errc := make(chan error, 2)
+	// read with the CONNECT request. One direction ending is enough to
+	// tear the tunnel down.
+	done := make(chan struct{}, 2)
 	go func() {
-		_, err := io.Copy(destConn, clientReader)
-		errc <- err
+		_, _ = io.Copy(destConn, clientReader)
+		done <- struct{}{}
 	}()
 	go func() {
-		_, err := io.Copy(clientConn, destConn)
-		errc <- err
+		_, _ = io.Copy(clientConn, destConn)
+		done <- struct{}{}
 	}()
-	<-errc
+	<-done
 }
 
 func (p *headlessProxy) handleHTTP(clientConn net.Conn, clientReader *bufio.Reader, req *http.Request, host string) {
@@ -264,14 +265,14 @@ func (p *headlessProxy) handleHTTP(clientConn net.Conn, clientReader *bufio.Read
 		return
 	}
 
-	errc := make(chan error, 2)
+	done := make(chan struct{}, 2)
 	go func() {
-		_, err := io.Copy(destConn, clientReader)
-		errc <- err
+		_, _ = io.Copy(destConn, clientReader)
+		done <- struct{}{}
 	}()
 	go func() {
-		_, err := io.Copy(clientConn, destConn)
-		errc <- err
+		_, _ = io.Copy(clientConn, destConn)
+		done <- struct{}{}
 	}()
-	<-errc
+	<-done
 }
