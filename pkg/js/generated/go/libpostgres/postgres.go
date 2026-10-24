@@ -19,7 +19,8 @@ func init() {
 			// Var and consts
 
 			// Objects / Classes
-			"PGClient": gojs.GetClassConstructor[lib_postgres.PGClient](&lib_postgres.PGClient{}),
+			"PGClient":         gojs.GetClassConstructor[lib_postgres.PGClient](&lib_postgres.PGClient{}),
+			"PostgresOptions": gojs.GetClassConstructor[lib_postgres.PostgresOptions](&lib_postgres.PostgresOptions{}),
 		},
 	).Register()
 }

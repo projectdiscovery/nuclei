@@ -24,6 +24,9 @@ type pgDial struct {
 }
 
 func (p *pgDial) Dial(network, address string) (net.Conn, error) {
+	if !protocolstate.IsHostAllowed(p.executionId, address) {
+		return nil, protocolstate.ErrHostDenied.Msgf(address)
+	}
 	dialers := protocolstate.GetDialersWithId(p.executionId)
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
@@ -36,6 +39,9 @@ func (p *pgDial) Dial(network, address string) (net.Conn, error) {
 }
 
 func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
+	if !protocolstate.IsHostAllowed(p.executionId, address) {
+		return nil, protocolstate.ErrHostDenied.Msgf(address)
+	}
 	dialers := protocolstate.GetDialersWithId(p.executionId)
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
@@ -50,6 +56,9 @@ func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (ne
 }
 
 func (p *pgDial) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	if !protocolstate.IsHostAllowed(p.executionId, address) {
+		return nil, protocolstate.ErrHostDenied.Msgf(address)
+	}
 	if ctx == nil {
 		ctx = p.ctx
 	}
