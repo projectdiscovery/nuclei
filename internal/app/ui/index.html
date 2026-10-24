@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuclei 桌面版</title>
+<style>
+:root {
+  --bg: #0e1116; --panel: #161b22; --panel2: #1c2330; --border: #2b3442;
+  --fg: #dbe2ea; --muted: #8b98a9; --accent: #3fb68b; --accent-dim: #2c7f62;
+  --critical: #f0483e; --high: #f0883e; --medium: #d9b44a; --low: #58a6ff; --info: #8b98a9;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 14px/1.5 ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.wrap { max-width: 1060px; margin: 0 auto; padding: 20px 16px 60px; }
+header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+header h1 { font-size: 20px; margin: 0; }
+header .ver { color: var(--muted); font-size: 12px; }
+#statusChip {
+  margin-left: auto; padding: 3px 12px; border-radius: 999px; font-size: 12px;
+  background: var(--panel2); color: var(--muted); border: 1px solid var(--border);
+}
+#statusChip.running { color: #ffd77a; border-color: #6b5716; }
+#statusChip.done { color: var(--accent); border-color: var(--accent-dim); }
+#statusChip.error { color: #ff8a80; border-color: #7a3030; }
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; margin-bottom: 16px;
+}
+.card h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.grid { display: grid; grid-template-columns: 1fr 170px; gap: 10px; }
+input[type=text], select {
+  width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; font: inherit;
+}
+input[type=text]:focus, select:focus { outline: none; border-color: var(--accent-dim); }
+.row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 12px; }
+label.ck { display: inline-flex; gap: 6px; align-items: center; color: var(--fg); cursor: pointer; }
+label.ck input { accent-color: var(--accent); }
+button {
+  background: var(--accent-dim); color: #eafff6; border: 1px solid var(--accent);
+  border-radius: 6px; padding: 8px 18px; font: inherit; cursor: pointer;
+}
+button:hover { filter: brightness(1.15); }
+button:disabled { opacity: .5; cursor: default; }
+button.small { padding: 3px 10px; font-size: 12px; }
+button.warn { background: #56323a; border-color: #a04b57; color: #ffd7dc; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-all; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+td a { color: var(--low); text-decoration: none; }
+td a:hover { text-decoration: underline; }
+.sev { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 12px; }
+.sev.critical { background: #4b1d1a; color: #ff9c93; }
+.sev.high { background: #4b3316; color: #ffbf7a; }
+.sev.medium { background: #463d14; color: #ecd36f; }
+.sev.low { background: #17364f; color: #79c0ff; }
+.sev.info, .sev.unknown { background: var(--panel2); color: var(--muted); }
+.empty { color: var(--muted); padding: 14px 4px; }
+.shell { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; background: var(--panel2); }
+.shell .head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.shell .kind { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 7px; }
+.shell .name { font-weight: 600; }
+.shell .ops { display: flex; gap: 8px; }
+.shell .ops input { flex: 1; }
+.shell pre, .results-pre {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px; margin: 8px 0 0; overflow-x: auto; font-size: 12.5px;
+  max-height: 320px; overflow-y: auto; white-space: pre-wrap;
+}
+.extract { color: var(--accent); font-size: 12px; }
+code { color: #c9d1d9; }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⚡ Nuclei 桌面版</h1>
+    <span class="ver">扫描 · 漏洞利用 · 木马管理</span>
+    <span id="statusChip">空闲</span>
+  </header>
+
+  <div class="card">
+    <h2>扫描设置</h2>
+    <div class="grid">
+      <input type="text" id="target" placeholder="目标 URL，例如 http://127.0.0.1:8081/artists.php?id=1">
+      <select id="preset">
+        <option value="lab" selected>内置实验室模板</option>
+        <option value="full">完整 nuclei-templates</option>
+        <option value="custom">自定义模板路径</option>
+      </select>
+    </div>
+    <div class="row">
+      <input type="text" id="path" placeholder="模板文件或目录路径" style="flex:1; display:none;">
+      <input type="text" id="tags" placeholder="标签过滤，如 sqli,rce,redis（仅完整模板库）" style="flex:1;">
+    </div>
+    <div class="row">
+      <label class="ck"><input type="checkbox" id="exploit" checked>漏洞利用（落木马/提权）</label>
+      <label class="ck"><input type="checkbox" id="udf">强制 UDF 提权</label>
+      <label class="ck"><input type="checkbox" id="clean">扫描后清理木马</label>
+      <label class="ck"><input type="checkbox" id="pscan">端口扫描</label>
+      <input type="text" id="ports" placeholder="端口，如 22,80,3306,6379,8081" style="flex:1;">
+      <button id="scanBtn" onclick="startScan()">开始扫描</button>
+    </div>
+    <div class="hint">提示：勾选「端口扫描」时目标填主机（如 http://127.0.0.1），先扫开放端口再逐个扫描。</div>
+  </div>
+
+  <div class="card">
+    <h2>扫描结果</h2>
+    <div id="results"></div>
+  </div>
+
+  <div class="card">
+    <h2>Web 木马</h2>
+    <div id="shells"></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const outputs = {};   // per-shell 命令/目录输出（切换页面会丢失，仅会话内）
+
+async function api(path, body) {
+  const opt = body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined;
+  const r = await fetch(path, opt);
+  const text = await r.text();
+  if (!r.ok) throw new Error(text || ('HTTP ' + r.status));
+  return JSON.parse(text);
+}
+
+function esc(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function startScan() {
+  const req = {
+    target: $('#target').value.trim(),
+    preset: $('#preset').value,
+    path: $('#path').value.trim(),
+    tags: $('#tags').value.trim(),
+    exploit: $('#exploit').checked,
+    udf: $('#udf').checked,
+    clean: $('#clean').checked,
+    pscan: $('#pscan').checked,
+    ports: $('#ports').value.trim(),
+  };
+  if (!req.target) { alert('请输入目标地址'); return; }
+  try { await api('/api/scan', req); } catch (e) { alert(e.message); }
+  poll();
+}
+
+async function shellOp(kind, id, extra) {
+  try {
+    const r = await api('/api/' + kind, Object.assign({ id }, extra || {}));
+    outputs[id] = r.output;
+    if (kind === 'cleanup') delete outputs[id];
+  } catch (e) { outputs[id] = '错误: ' + e.message; }
+  poll();
+}
+
+function cmdOf(id) { return $('#cmd-' + id) ? $('#cmd-' + id).value : ''; }
+function pathOf(id) { return $('#path-' + id) ? $('#path-' + id).value : ''; }
+
+async function poll() {
+  let s;
+  try { s = await api('/api/state'); } catch (e) { return setTimeout(poll, 1500); }
+  render(s);
+  clearTimeout(poll._t);
+  poll._t = setTimeout(poll, s.scan.running ? 600 : 2500);
+}
+
+function render(s) {
+  // 状态徽标
+  const chip = $('#statusChip');
+  if (s.scan.running) { chip.textContent = '扫描中 ' + (s.scan.elapsed || ''); chip.className = 'running'; }
+  else if (s.scan.error) { chip.textContent = '出错: ' + s.scan.error; chip.className = 'error'; chip.title = s.scan.error; }
+  else if (s.scan.elapsed) { chip.textContent = '完成 · ' + s.scan.elapsed; chip.className = 'done'; }
+  else { chip.textContent = '空闲'; chip.className = ''; }
+  $('#scanBtn').disabled = s.scan.running;
+
+  // 结果表
+  const res = $('#results');
+  if (!s.scan.results || !s.scan.results.length) {
+    let msg = '暂无结果，填写目标后点击「开始扫描」';
+    if (s.scan.running) msg = '扫描进行中，等待结果…';
+    else if (s.scan.error) msg = '上次扫描出错：' + s.scan.error;
+    else if (s.scan.elapsed) msg = '扫描完成，未发现匹配漏洞。真实站点请选「完整 nuclei-templates」并填写标签过滤。';
+    res.innerHTML = '<div class="empty">' + esc(msg) + '</div>';
+  } else {
+    let h = '<table><tr><th>严重性</th><th>模板</th><th>URL</th><th>证据</th></tr>';
+    for (const r of s.scan.results) {
+      const sev = (r.severity || 'unknown').toLowerCase();
+      let ev = r.extracted && r.extracted.length ? r.extracted.join('　') : (r.matched || '');
+      h += `<tr><td><span class="sev ${esc(sev)}">${esc(r.severity || '?')}</span></td>` +
+           `<td><code>${esc(r.template)}</code></td>` +
+           `<td><a href="${esc(r.matched || r.url)}" target="_blank">${esc(r.matched || r.url)}</a></td>` +
+           `<td class="extract">${esc(ev)}</td></tr>`;
+    }
+    res.innerHTML = h + '</table>';
+  }
+
+  // 木马面板
+  const sh = $('#shells');
+  if (!s.shells || !s.shells.length) {
+    sh.innerHTML = '<div class="empty">暂无木马：勾选「漏洞利用」扫描后自动部署，可在此直接执行命令、浏览目录。</div>';
+    return;
+  }
+  sh.innerHTML = s.shells.map(t => {
+    const d = t.sh;
+    const out = outputs[t.id] !== undefined ? `<pre>${esc(outputs[t.id])}</pre>` : '';
+    return `<div class="shell">
+      <div class="head">
+        <span class="kind">${esc(d.kind)}</span>
+        <span class="name">${esc(d.name)}</span>
+        <span class="sev ${esc((d.severity || 'info').toLowerCase())}">${esc(d.severity || '')}</span>
+        <a href="${esc(d.url)}" target="_blank" style="color:var(--low)">${esc(d.url)}</a>
+        <span style="margin-left:auto" class="ops">
+          <button class="warn small" onclick="shellOp('cleanup',${t.id})">清理木马</button>
+        </span>
+      </div>
+      <div class="ops">
+        <input type="text" id="cmd-${t.id}" placeholder="执行命令，如 whoami / id"
+               onkeydown="if(event.key==='Enter')shellOp('exec',${t.id},{cmd:cmdOf(${t.id})})">
+        <button class="small" onclick="shellOp('exec',${t.id},{cmd:cmdOf(${t.id})})">执行</button>
+        <input type="text" id="path-${t.id}" placeholder="目录（空为木马所在目录）" style="max-width:220px"
+               onkeydown="if(event.key==='Enter')shellOp('ls',${t.id},{path:pathOf(${t.id})})">
+        <button class="small" onclick="shellOp('ls',${t.id},{path:pathOf(${t.id})})">列目录</button>
+      </div>
+      ${out}
+    </div>`;
+  }).join('');
+  // 恢复输入框内容（重渲染会丢失）
+  for (const t of s.shells) {
+    const c = $('#cmd-' + t.id); if (c && outputs['c' + t.id] !== undefined) c.value = outputs['c' + t.id];
+  }
+}
+
+// 记住上次输入
+$('#target').value = localStorage.getItem('nuclei.target') || '';
+$('#preset').addEventListener('change', () => {
+  $('#path').style.display = $('#preset').value === 'custom' ? '' : 'none';
+});
+new MutationObserver(() => {
+  const c = $('#target'); if (c.value !== localStorage.getItem('nuclei.target')) localStorage.setItem('nuclei.target', c.value);
+}).observe($('#target'), { childList: true });
+$('#target').addEventListener('change', () => localStorage.setItem('nuclei.target', $('#target').value));
+
+poll();
+</script>
+</body>
+</html>
