@@ -113,4 +113,30 @@ func BenchmarkLargeBodyRequestStages(b *testing.B) {
 			}
 		}
 	})
+	b.Run("wholePathStreamedWithProjectScope", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for range b.N {
+			source, err := NewReplayBody([]ReplayPart{{Pattern: "x", Count: 20 << 20}}, 0)
+			if err != nil {
+				b.Fatal(err)
+			}
+			request, err := retryablehttp.NewRequest("POST", "https://example.test/", nil)
+			if err != nil {
+				b.Fatal(err)
+			}
+			setReplayBody(request, source)
+			if err := reuseRequestBody(request); err != nil {
+				b.Fatal(err)
+			}
+			generated := &generatedRequest{request: request}
+			for i := 0; i < 2; i++ {
+				replayBenchmarkDump, err = dump(generated, "https://example.test/")
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+			replayBenchmarkDump = getHTTPProjectCacheScope(replayBenchmarkDump, "https", "example.test")
+		}
+	})
 }

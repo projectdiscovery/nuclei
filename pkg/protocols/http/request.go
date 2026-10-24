@@ -1079,10 +1079,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if dumpError != nil {
 			return dumpError
 		}
-		if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
-			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
-		} else {
-			projectCacheKey = dumpedRequest
+		if request.options.ProjectFile != nil {
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
+			} else {
+				projectCacheKey = dumpedRequest
+			}
 		}
 		dumpedRequestString := string(dumpedRequest)
 
