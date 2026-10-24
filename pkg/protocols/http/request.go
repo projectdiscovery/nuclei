@@ -664,10 +664,7 @@ executionLoop:
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
-			defer cancel()
-
-			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctx, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
 					return false, true, nil, nil
@@ -685,9 +682,11 @@ executionLoop:
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
 			}
-
 			if generatedHttpRequest.customCancelFunction != nil {
 				defer generatedHttpRequest.customCancelFunction()
+			}
+			if generatedHttpRequest.request != nil && generatedHttpRequest.customCancelFunction == nil {
+				generatedHttpRequest.startRequestTimeout = true
 			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
@@ -1011,6 +1010,18 @@ func looksLikeHTTPToHTTPSMismatch(resp *http.Response) bool {
 // post-send dump reads one while the transport may still be writing another.
 // GET, HEAD, and chunked requests keep their existing content length.
 func reuseRequestBody(req *retryablehttp.Request) error {
+	if body, ok := req.Body.(*replayableStreamBody); ok && req.GetBody != nil {
+		if !stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) && req.Header.Get("Transfer-Encoding") != "chunked" {
+			req.ContentLength = body.source.Len()
+		}
+		return nil
+	}
+	if body, ok := req.Body.(*replayableStringBody); ok && req.GetBody != nil {
+		if !stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) && req.Header.Get("Transfer-Encoding") != "chunked" {
+			req.ContentLength = int64(len(body.value))
+		}
+		return nil
+	}
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
@@ -1045,6 +1056,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if request.isUnresponsiveAddress(contextargs.GetCopyIfHostOutdated(input, generatedRequest.URL())) {
 		return fmt.Errorf("hostErrorsCache : host %s is unresponsive", input.MetaInput.Input)
 	}
+	releaseBody, err := admitLargeBody(input.Context(), generatedRequest)
+	if err != nil {
+		return err
+	}
+	defer releaseBody()
 
 	// wrap one more callback for validation and fixing event
 	callback := func(event *output.InternalWrappedEvent) {
@@ -1100,13 +1116,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			return dumpError
 		}
 		maxBodylimit := request.getEffectiveReadLimit()
-		if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
-			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
-		} else {
-			projectCacheKey = dumpedRequest
-		}
-		if maxBodylimit > 0 {
-			projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
+		if request.options.ProjectFile != nil {
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
+			} else {
+				projectCacheKey = dumpedRequest
+			}
+			if maxBodylimit > 0 {
+				projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
+			}
 		}
 		dumpedRequestString := string(dumpedRequest)
 
@@ -1272,6 +1290,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			if generatedRequest.startRequestTimeout {
+				timedCtx, cancel := context.WithTimeoutCause(generatedRequest.request.Context(), request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
+				defer cancel()
+				generatedRequest.request.WithContext(timedCtx)
+			}
 			resp, err = executingClient.Do(generatedRequest.request)
 			sent = true
 
@@ -1401,13 +1424,26 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
-		bodyBytes, _ := generatedRequest.request.BodyBytes()
-		// Use a clone to avoid a race condition with the http transport
 		req := resp.Request.Clone(resp.Request.Context())
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, err := http2curl.GetCurlCommand(req)
-		if err == nil && command != nil {
-			curlCommand = command.String()
+		if generatedRequest.request.GetBody != nil {
+			body, bodyErr := generatedRequest.request.GetBody()
+			if bodyErr != nil {
+				gologger.Warning().Msgf("[%s] Could not replay request body for curl command: %s", request.options.TemplateID, bodyErr)
+			} else {
+				req.Body = body
+				command, commandErr := http2curl.GetCurlCommand(req)
+				if closeErr := body.Close(); closeErr != nil {
+					gologger.Warning().Msgf("[%s] Could not close replayed request body: %s", request.options.TemplateID, closeErr)
+				}
+				if commandErr == nil && command != nil {
+					curlCommand = command.String()
+				}
+			}
+		} else if req.Body == nil {
+			command, commandErr := http2curl.GetCurlCommand(req)
+			if commandErr == nil && command != nil {
+				curlCommand = command.String()
+			}
 		}
 	}
 

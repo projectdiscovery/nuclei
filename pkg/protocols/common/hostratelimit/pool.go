@@ -378,6 +378,7 @@ func (p *PerHostRateLimitPool) Stats() RateLimitPoolStats {
 
 func (p *PerHostRateLimitPool) Close() {
 	p.EvictAll()
+	p.cache.Close()
 }
 
 type RateLimitPoolStats struct {

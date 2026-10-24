@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -12,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	httpbody "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 
@@ -220,6 +222,17 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		return ctx.Context().Err()
 	default:
 	}
+	size, declared, err := declaredRequestBodySize(f.options.TemplateInfo.Metadata)
+	if err != nil {
+		return fmt.Errorf("template %s: %w", f.options.TemplateID, err)
+	}
+	if declared {
+		release, err := httpbody.AdmitDeclaredBody(ctx.Context(), size)
+		if err != nil {
+			return err
+		}
+		defer release()
+	}
 
 	f.ctx.Input = ctx.Input
 	// -----Load all types of variables-----
@@ -240,6 +253,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	defer func() {
 		// remove set builtin
 		_ = runtime.GlobalObject().Delete("set")
+		_ = runtime.GlobalObject().Delete("replayBody")
 		_ = runtime.GlobalObject().Delete("template")
 		for proto := range f.protoFunctions {
 			_ = runtime.GlobalObject().Delete(proto)
@@ -270,6 +284,9 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}); err != nil {
 		return err
 	}
+	if err := registerReplayBody(runtime); err != nil {
+		return err
+	}
 	// also register functions that allow executing protocols from js
 	for proto, fn := range f.protoFunctions {
 		if err := runtime.Set(proto, fn); err != nil {
@@ -288,7 +305,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	runtime.SetContextValue("executionId", f.options.Options.ExecutionId)
 
 	// pass flow and execute the js vm and handle errors
-	_, err := runtime.RunProgram(f.program)
+	_, err = runtime.RunProgram(f.program)
 	f.reconcileProgress()
 	if err != nil {
 		ctx.LogError(err)
@@ -301,6 +318,44 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}
 
 	return nil
+}
+
+func registerReplayBody(runtime *goja.Runtime) error {
+	return runtime.Set("replayBody", func(call goja.FunctionCall) goja.Value {
+		parts, ok := call.Argument(0).Export().([]interface{})
+		if !ok {
+			panic(runtime.NewTypeError("replayBody expects an array of [pattern, count] pairs"))
+		}
+		trimTail := call.Argument(1).ToFloat()
+		if math.IsNaN(trimTail) || trimTail < 0 || trimTail >= float64(math.MaxInt64) || math.Trunc(trimTail) != trimTail {
+			panic(runtime.NewTypeError("replayBody tail trim must be a nonnegative integer"))
+		}
+		replayParts := make([]httpbody.ReplayPart, 0, len(parts))
+		for _, part := range parts {
+			pair, ok := part.([]interface{})
+			if !ok || len(pair) != 2 {
+				panic(runtime.NewTypeError("replayBody parts must be [pattern, count] pairs"))
+			}
+			pattern, ok := pair[0].(string)
+			if !ok {
+				panic(runtime.NewTypeError("replayBody pattern must be a string"))
+			}
+			count, ok := pair[1].(int64)
+			if !ok {
+				value, floatOK := pair[1].(float64)
+				if !floatOK || math.IsNaN(value) || value < 0 || value >= float64(math.MaxInt64) || math.Trunc(value) != value {
+					panic(runtime.NewTypeError("replayBody count must be a nonnegative integer"))
+				}
+				count = int64(value)
+			}
+			replayParts = append(replayParts, httpbody.ReplayPart{Pattern: pattern, Count: count})
+		}
+		body, bodyErr := httpbody.NewReplayBody(replayParts, int64(trimTail))
+		if bodyErr != nil {
+			panic(runtime.NewTypeError(bodyErr.Error()))
+		}
+		return runtime.ToValue(body)
+	})
 }
 
 // reconcileProgress settles progress, whose total assumed each request runs
