@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
 	"testing"
@@ -43,6 +44,52 @@ func TestReplayBodyExactBytesAndIndependentReaders(t *testing.T) {
 			}
 			if err := reader.Close(); err != nil {
 				t.Fatal(err)
+			}
+		}
+	}
+}
+
+func TestReplayBodyArbitraryPatternsAndBufferSizes(t *testing.T) {
+	random := rand.New(rand.NewSource(109618))
+	patterns := []string{"a", "abc", "x:\n", "\x00\xff", "🦊"}
+	for caseIndex := range 200 {
+		parts := make([]ReplayPart, 0, 4)
+		var original strings.Builder
+		for range random.Intn(5) {
+			pattern := patterns[random.Intn(len(patterns))]
+			count := random.Intn(8)
+			parts = append(parts, ReplayPart{Pattern: pattern, Count: int64(count)})
+			original.WriteString(strings.Repeat(pattern, count))
+		}
+		full := original.String()
+		trim := random.Intn(len(full) + 1)
+		want := full[:len(full)-trim]
+		body, err := NewReplayBody(parts, int64(trim))
+		if err != nil {
+			t.Fatalf("case %d: create body: %v", caseIndex, err)
+		}
+		if body.Len() != int64(len(want)) {
+			t.Fatalf("case %d: length = %d, want %d", caseIndex, body.Len(), len(want))
+		}
+		for _, bufferSize := range []int{1, 2, 3, 7, 64} {
+			reader := body.NewReader()
+			buffer := make([]byte, bufferSize)
+			var got bytes.Buffer
+			for {
+				read, readErr := reader.Read(buffer)
+				got.Write(buffer[:read])
+				if readErr == io.EOF {
+					break
+				}
+				if readErr != nil || read == 0 {
+					t.Fatalf("case %d, buffer %d: read %d bytes: %v", caseIndex, bufferSize, read, readErr)
+				}
+			}
+			if err := reader.Close(); err != nil {
+				t.Fatalf("case %d, buffer %d: close reader: %v", caseIndex, bufferSize, err)
+			}
+			if got.String() != want {
+				t.Fatalf("case %d, buffer %d: replay differs", caseIndex, bufferSize)
 			}
 		}
 	}
