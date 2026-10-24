@@ -53,7 +53,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/graphql-go/graphql v0.8.1
 	github.com/h2non/filetype v1.1.3
-	github.com/hashicorp/golang-lru/v2 v2.0.7
+	github.com/hashicorp/golang-lru/v2 v2.0.8-0.20261012062354-235099c106fc
 	github.com/hdm/jarm-go v0.0.8
 	github.com/invopop/jsonschema v0.13.0
 	github.com/itchyny/gojq v0.12.17

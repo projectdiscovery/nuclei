@@ -9,7 +9,17 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
+	"github.com/tarunKoyalwar/goleak"
 )
+
+func TestPerHostRateLimitPoolCloseStopsExpirationWorker(t *testing.T) {
+	ignoreCurrent := goleak.IgnoreCurrent()
+	for range 20 {
+		pool := NewPerHostRateLimitPool(1, time.Hour, time.Hour, &types.Options{})
+		pool.Close()
+	}
+	goleak.VerifyNone(t, ignoreCurrent)
+}
 
 // TestPerHostRateLimitPoolDoesNotCreateGoroutinePerHost ensures a large target
 // set does not create one fixed-window refill goroutine for every host.
