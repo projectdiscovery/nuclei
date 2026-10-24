@@ -1011,6 +1011,7 @@ Part Definitions:
 - <code>headers_from_response</code> - HTTP response headers in name:value format
 - <code>tls_version</code> - TLS version negotiated for the HTTP connection
 - <code>cipher</code> - TLS cipher suite negotiated for the HTTP connection
+- <code>key_exchange</code> - TLS key exchange group negotiated for the HTTP connection
 - <code>sni</code> - SNI value used in the TLS handshake
 - <code>subject_cn</code> - Leaf certificate subject common name
 - <code>subject_dn</code> - Leaf certificate subject distinguished name
