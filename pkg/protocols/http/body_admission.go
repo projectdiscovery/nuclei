@@ -35,12 +35,19 @@ func newBodyAdmission(totalMemory uint64) *bodyAdmission {
 }
 
 func systemBodyAdmission() *bodyAdmission {
+	availableMemory := uint64(4 << 30)
 	info, err := memguardian.GetSysInfo()
 	if err != nil {
 		gologger.Warning().Msgf("could not read memory limit for large HTTP body admission: %s", err)
-		return newBodyAdmission(4 << 30)
+	} else {
+		availableMemory = info.TotalRam()
 	}
-	return newBodyAdmission(info.TotalRam())
+	if limit, limitErr := cgroupMemoryLimit("/proc/self/cgroup", "/sys/fs/cgroup"); limitErr != nil {
+		gologger.Warning().Msgf("could not read cgroup memory limit for large HTTP body admission: %s", limitErr)
+	} else if limit > 0 && limit < availableMemory {
+		availableMemory = limit
+	}
+	return newBodyAdmission(availableMemory)
 }
 
 func bodySize(req *generatedRequest) int64 {
