@@ -275,6 +275,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// CSVExport is the file to export CSV output format to
+	CSVExport string
 	// PDFExport is the file to export PDF output format to
 	PDFExport string
 	// Redact redacts given keys in
@@ -705,6 +707,7 @@ func (options *Options) Copy() *Options {
 		OmitTemplate:                   options.OmitTemplate,
 		JSONExport:                     options.JSONExport,
 		JSONLExport:                    options.JSONLExport,
+		CSVExport:                      options.CSVExport,
 		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
 		EnableProgressBar:              options.EnableProgressBar,
