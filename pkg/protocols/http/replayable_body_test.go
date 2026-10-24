@@ -171,7 +171,11 @@ func TestReplayableStringBodyRetryAndRedirect(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer response.Body.Close()
+			t.Cleanup(func() {
+				if err := response.Body.Close(); err != nil {
+					t.Errorf("close replay response: %v", err)
+				}
+			})
 			if response.StatusCode != http.StatusOK || received != 2 {
 				t.Fatalf("got status %d and %d deliveries", response.StatusCode, received)
 			}
