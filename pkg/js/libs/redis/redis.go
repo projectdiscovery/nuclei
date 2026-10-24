@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/redis/go-redis/v9"
 
@@ -31,9 +32,10 @@ func getServerInfo(ctx context.Context, executionId string, host string, port in
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Addr:          fmt.Sprintf("%s:%d", host, port),
+		Password:      "", // no password set
+		DB:            0,  // use default DB
+		DialerRetries: dialAttempts,
 	})
 	defer func() {
 		_ = client.Close()
@@ -73,9 +75,10 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
+		Addr:          fmt.Sprintf("%s:%d", host, port),
+		Password:      password, // no password set
+		DB:            0,        // use default DB
+		DialerRetries: dialAttempts,
 	})
 	defer func() {
 		_ = client.Close()
@@ -113,9 +116,10 @@ func getServerInfoAuth(ctx context.Context, executionId string, host string, por
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password, // no password set
-		DB:       0,        // use default DB
+		Addr:          fmt.Sprintf("%s:%d", host, port),
+		Password:      password, // no password set
+		DB:            0,        // use default DB
+		DialerRetries: dialAttempts,
 	})
 	defer func() {
 		_ = client.Close()
@@ -188,9 +192,10 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: password,
-		DB:       0, // use default DB
+		Addr:          fmt.Sprintf("%s:%d", host, port),
+		Password:      password,
+		DB:            0, // use default DB
+		DialerRetries: dialAttempts,
 	})
 	defer func() {
 		_ = client.Close()
@@ -260,4 +265,21 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	}
 
 	return infoCmd.Val(), nil
+}
+
+// dialAttempts replaces go-redis's default of 5. The extra attempts run in a goroutine that
+// ignores the caller's context, so they kept dialing a filtered port for ~25s after the
+// template had given up on it.
+const dialAttempts = 1
+
+func init() {
+	redis.SetLogger(warningLogger{})
+}
+
+// warningLogger hands go-redis's logs to gologger as warnings. Its default logger writes them
+// straight to stderr, where a failed dial against the scanned host reads as an error.
+type warningLogger struct{}
+
+func (warningLogger) Printf(_ context.Context, format string, v ...interface{}) {
+	gologger.Warning().Msgf(format, v...)
 }
