@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -223,7 +225,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
-	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
+	if options.ProxyInternal && (options.AliveHttpProxy != "" || options.AliveSocksProxy != "") {
 		var err error
 
 		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{}, "")
@@ -422,13 +424,7 @@ func New(options *types.Options) (*Runner, error) {
 		opts.HTTPClient = httpclient
 	}
 	if opts.HTTPClient == nil {
-		httpOpts := retryablehttp.DefaultOptionsSingle
-		httpOpts.Timeout = 20 * time.Second // for stability reasons
-		if options.Timeout > 20 {
-			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
-		}
-		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
-		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+		opts.HTTPClient = newInteractshHTTPClient(options)
 	}
 
 	interactshClient, err := interactsh.New(opts)
@@ -1234,4 +1230,29 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 func init() {
 	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
 	EnableCloudUpload = env.GetEnvOrDefault("ENABLE_CLOUD_UPLOAD", false)
+}
+
+func newInteractshHTTPClient(options *types.Options) *retryablehttp.Client {
+	httpOpts := retryablehttp.DefaultOptionsSingle
+	httpOpts.Timeout = 20 * time.Second // for stability reasons
+	if options.Timeout > 20 {
+		httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
+	}
+	if dialers := protocolstate.GetDialersWithId(options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
+		// The pooled default keeps ProxyFromEnvironment and the TLS config that
+		// INTERACTSH_TLS_VERIFY edits. Nuclei only exports HTTP_PROXY when -pi
+		// is set, and that path uses the pooled client, so -proxy without -pi
+		// still dials the interactsh server directly.
+		transport := retryablehttp.DefaultReusePooledTransport()
+		transport.DialContext = dialers.Fastdialer.Dial
+		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialers.Fastdialer.DialTLS(ctx, network, addr)
+		}
+		httpOpts.HttpClient = &http.Client{
+			Transport: transport,
+			Timeout:   httpOpts.Timeout,
+		}
+	}
+	// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+	return retryablehttp.NewClient(httpOpts)
 }
