@@ -1,6 +1,7 @@
 package matchers
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/govaluate"
@@ -433,6 +434,208 @@ func TestMatchWords_CaseInsensitive_DynamicValue(t *testing.T) {
 	isMatched, matched := m.MatchWords("visit example.com now", map[string]interface{}{"host": "Example.COM"})
 	require.True(t, isMatched, "Could not match case-insensitive dynamic word against lowercased corpus")
 	require.Equal(t, []string{"example.com"}, matched)
+}
+
+func TestMatchOffset(t *testing.T) {
+	offset0 := 0
+	offset2 := 2
+
+	t.Run("word at start", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Words: []string{"MZ"}, Offset: &offset0}
+		require.NoError(t, m.CompileMatchers())
+		ok, snippets := m.MatchWords("MZ....", nil)
+		require.True(t, ok)
+		require.Equal(t, []string{"MZ"}, snippets)
+		ok, _ = m.MatchWords("xMZ...", nil)
+		require.False(t, ok)
+	})
+
+	t.Run("word at mid offset", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Words: []string{"AB"}, Offset: &offset2}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchWords("xxAByy", nil)
+		require.True(t, ok)
+		ok, _ = m.MatchWords("ABxxxx", nil)
+		require.False(t, ok)
+		ok, _ = m.MatchWords("xx--AB", nil)
+		require.False(t, ok)
+	})
+
+	t.Run("case insensitive word preserves byte offset", func(t *testing.T) {
+		m := &Matcher{
+			Type:            MatcherTypeHolder{MatcherType: WordsMatcher},
+			Words:           []string{"mz"},
+			CaseInsensitive: true,
+			Offset:          &offset2,
+		}
+		require.NoError(t, m.CompileMatchers())
+		ok, snippets := m.MatchWords("İMZ", nil)
+		require.True(t, ok)
+		require.Equal(t, []string{"mz"}, snippets)
+	})
+
+	t.Run("binary at start", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: BinaryMatcher}, Binary: []string{"4d5a"}, Offset: &offset0}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchBinary("MZ....")
+		require.True(t, ok)
+		ok, _ = m.MatchBinary("xMZ...")
+		require.False(t, ok)
+	})
+
+	t.Run("binary at mid offset", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: BinaryMatcher}, Binary: []string{"4d5a"}, Offset: &offset2}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchBinary("xxMZ....")
+		require.True(t, ok)
+		ok, _ = m.MatchBinary("xx--MZ")
+		require.False(t, ok)
+	})
+
+	t.Run("regex must start at offset", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Regex: []string{"MZ"}, Offset: &offset0}
+		require.NoError(t, m.CompileMatchers())
+		ok, snippets := m.MatchRegex("MZPE")
+		require.True(t, ok)
+		require.Equal(t, []string{"MZ"}, snippets)
+		ok, _ = m.MatchRegex("xxMZ")
+		require.False(t, ok)
+	})
+
+	t.Run("regex preserves assertion context", func(t *testing.T) {
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Regex: []string{"^MZ"}, Offset: &offset2}
+		require.NoError(t, m.CompileMatchers())
+		ok, _ := m.MatchRegex("xxMZ")
+		require.False(t, ok)
+	})
+
+	t.Run("negative offset rejected", func(t *testing.T) {
+		neg := -1
+		m := &Matcher{Type: MatcherTypeHolder{MatcherType: WordsMatcher}, Words: []string{"MZ"}, Offset: &neg}
+		require.Error(t, m.CompileMatchers())
+	})
+}
+
+func newOffsetRegexMatcher(t *testing.T, offset int, regexes ...string) *Matcher {
+	t.Helper()
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Regex: regexes, Offset: &offset}
+	require.NoError(t, m.CompileMatchers())
+	return m
+}
+
+func TestMatchRegexOffset(t *testing.T) {
+	tests := []struct {
+		name    string
+		regex   string
+		corpus  string
+		offset  int
+		matched bool
+		snippet string
+	}{
+		{name: "overlapping alternative at offset", regex: "ab|b", corpus: "ab", offset: 1, matched: true, snippet: "b"},
+		{name: "leftmost alternative at offset", regex: "ab|b", corpus: "ab", offset: 0, matched: true, snippet: "ab"},
+		{name: "match before offset is ignored", regex: "ab", corpus: "abab", offset: 1, matched: false},
+		{name: "match after offset is ignored", regex: "b", corpus: "ab", offset: 0, matched: false},
+		{name: "greedy match keeps full span", regex: "a+", corpus: "baaa", offset: 1, matched: true, snippet: "aaa"},
+		{name: "start of text anchor at offset zero", regex: "^MZ", corpus: "MZxx", offset: 0, matched: true, snippet: "MZ"},
+		{name: "start of text anchor mid corpus", regex: "^MZ", corpus: "xxMZ", offset: 2, matched: false},
+		{name: "absolute start anchor mid corpus", regex: `\AMZ`, corpus: "xxMZ", offset: 2, matched: false},
+		{name: "multiline anchor after newline", regex: "(?m)^MZ", corpus: "xx\nMZ", offset: 3, matched: true, snippet: "MZ"},
+		{name: "multiline anchor without newline", regex: "(?m)^MZ", corpus: "xxMZ", offset: 2, matched: false},
+		{name: "word boundary after word character", regex: `\bfoo`, corpus: "xfoo", offset: 1, matched: false},
+		{name: "word boundary after separator", regex: `\bfoo`, corpus: " foo", offset: 1, matched: true, snippet: "foo"},
+		{name: "non word boundary inside word", regex: `\Bar`, corpus: "bar", offset: 1, matched: true, snippet: "ar"},
+		{name: "non word boundary after separator", regex: `\Bar`, corpus: "-ar", offset: 1, matched: false},
+		{name: "end of text anchor honored", regex: "b$", corpus: "ab", offset: 1, matched: true, snippet: "b"},
+		{name: "end of text anchor rejected", regex: "b$", corpus: "abc", offset: 1, matched: false},
+		{name: "case insensitive flag preserved", regex: "(?i)mz", corpus: "xxMZ", offset: 2, matched: true, snippet: "MZ"},
+		{name: "offset inside multi byte rune", regex: "MZ", corpus: "éMZ", offset: 1, matched: false},
+		{name: "offset after multi byte rune", regex: "MZ", corpus: "éMZ", offset: 2, matched: true, snippet: "MZ"},
+		{name: "offset past corpus", regex: "MZ", corpus: "MZ", offset: 5, matched: false},
+		{name: "zero width match at corpus end", regex: "x*", corpus: "ab", offset: 2, matched: true, snippet: ""},
+		{name: "invalid utf8 byte as context", regex: "MZ", corpus: "\xffMZ", offset: 1, matched: true, snippet: "MZ"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m := newOffsetRegexMatcher(t, test.offset, test.regex)
+			ok, snippets := m.MatchRegex(test.corpus)
+			require.Equal(t, test.matched, ok)
+			if test.matched {
+				require.Equal(t, []string{test.snippet}, snippets)
+			}
+		})
+	}
+
+	t.Run("multiple regexes keep their anchored variant", func(t *testing.T) {
+		offset := 1
+		m := &Matcher{
+			Type:      MatcherTypeHolder{MatcherType: RegexMatcher},
+			Regex:     []string{"b", "bc"},
+			Condition: "and",
+			Offset:    &offset,
+		}
+		require.NoError(t, m.CompileMatchers())
+		ok, snippets := m.MatchRegex("abc")
+		require.True(t, ok)
+		require.Equal(t, []string{"b", "bc"}, snippets)
+
+		ok, _ = m.MatchRegex("xbc")
+		require.True(t, ok)
+		ok, _ = m.MatchRegex("bcx")
+		require.False(t, ok)
+	})
+
+	t.Run("anchored variant compiled on demand", func(t *testing.T) {
+		m := newOffsetRegexMatcher(t, 1, "ab|b")
+		m.offsetRegexCompiled = nil
+		ok, snippets := m.MatchRegex("ab")
+		require.True(t, ok)
+		require.Equal(t, []string{"b"}, snippets)
+	})
+
+	t.Run("allocations do not grow with corpus size", func(t *testing.T) {
+		m := newOffsetRegexMatcher(t, 4, "a{3}")
+		small := strings.Repeat("a", 1<<10)
+		large := strings.Repeat("a", 1<<20)
+
+		smallAllocs := testing.AllocsPerRun(20, func() { _, _ = m.MatchRegex(small) })
+		largeAllocs := testing.AllocsPerRun(20, func() { _, _ = m.MatchRegex(large) })
+		require.LessOrEqual(t, largeAllocs, smallAllocs+1, "offset matching should not allocate per corpus match")
+		require.LessOrEqual(t, largeAllocs, float64(8), "offset matching should allocate a constant amount")
+	})
+}
+
+func BenchmarkMatchRegexOffset(b *testing.B) {
+	dense := strings.Repeat("ab", 1<<19)
+
+	benchmarks := []struct {
+		name   string
+		regex  string
+		corpus string
+		offset int
+	}{
+		{name: "match at start of dense corpus", regex: "ab", corpus: dense, offset: 0},
+		{name: "overlapping alternative", regex: "ab|b", corpus: dense, offset: 1},
+		{name: "match near end of dense corpus", regex: "ab", corpus: dense, offset: len(dense) - 2},
+		{name: "no match in dense corpus", regex: "zz", corpus: dense, offset: 3},
+	}
+
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			offset := bm.offset
+			m := &Matcher{Type: MatcherTypeHolder{MatcherType: RegexMatcher}, Regex: []string{bm.regex}, Offset: &offset}
+			if err := m.CompileMatchers(); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _ = m.MatchRegex(bm.corpus)
+			}
+		})
+	}
 }
 
 func TestMatcher_MatchDSL_ErrorHandling(t *testing.T) {
