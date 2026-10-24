@@ -676,16 +676,16 @@ executionLoop:
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
-		// Full URL, so https and an explicit port stay on the same key the observation uses.
-		if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
-			return false, true, nil, err
-		}
-		if generatedHttpRequest.customCancelFunction != nil {
-			defer generatedHttpRequest.customCancelFunction()
-		}
-		if generatedHttpRequest.request != nil && generatedHttpRequest.customCancelFunction == nil {
-			generatedHttpRequest.startRequestTimeout = true
-		}
+			// Full URL, so https and an explicit port stay on the same key the observation uses.
+			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
+				return false, true, nil, err
+			}
+			if generatedHttpRequest.customCancelFunction != nil {
+				defer generatedHttpRequest.customCancelFunction()
+			}
+			if generatedHttpRequest.request != nil && generatedHttpRequest.customCancelFunction == nil {
+				generatedHttpRequest.startRequestTimeout = true
+			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
 			if input.MetaInput.Input == "" {
