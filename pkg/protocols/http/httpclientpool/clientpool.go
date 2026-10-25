@@ -126,6 +126,8 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 	// Compute the host key once (URL is already parsed) so the GotConn hook can
 	// update both the global counters and the per-host bucket from one trace.
 	host := normalizeHost(req.URL)
+	var used atomic.Pointer[desyncConn]
+	var generation atomic.Uint64
 	trace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
 			if info.Reused {
@@ -134,10 +136,34 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 				connStats.New.Add(1)
 			}
 			recordHostConn(host, info.Reused)
+			if tracked, ok := info.Conn.(*desyncConn); ok {
+				generation.Store(tracked.markBusy())
+				used.Store(tracked)
+			}
+		},
+		PutIdleConn: func(err error) {
+			if err != nil {
+				return
+			}
+			if tracked := used.Load(); tracked != nil {
+				tracked.markIdle(generation.Load())
+			}
 		},
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-	return t.base.RoundTrip(req)
+	resp, err := t.base.RoundTrip(req)
+	// A tracked connection is not a *tls.Conn, and that is the only type
+	// net/http reads handshake metadata from, so it leaves resp.TLS nil over
+	// HTTPS. Restore it from the connection that served this exchange, which
+	// is what enrichEventWithTLSMetadata and the DSL fields depend on.
+	if err == nil && resp != nil && resp.TLS == nil {
+		if tracked := used.Load(); tracked != nil {
+			if state, ok := tracked.tlsState(); ok {
+				resp.TLS = &state
+			}
+		}
+	}
+	return resp, err
 }
 
 func (t *connTrackingTransport) CloseIdleConnections() {
@@ -348,6 +374,13 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 		clientKey += ":" + host
 	}
 
+	// A host caught sending unsolicited idle responses gets its own cache
+	// entry, so the keep-alive client already cached for it is not reused.
+	noReuse := IsHostDesynced(options, host)
+	if noReuse {
+		clientKey += ":noreuse"
+	}
+
 	// Fast path: lock-free cache hit.
 	if !hasExplicitJar {
 		if client, ok := pool.GetClient(clientKey); ok {
@@ -374,7 +407,8 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	maxIdleConns := maxIdleConnsPerHost
 	maxConnsPerHost := 0 // unlimited by default; the SPM handler controls concurrency
 
-	disableKeepAlives := configuration.Connection != nil && configuration.Connection.DisableKeepAlive
+	disableKeepAlives := noReuse ||
+		(configuration.Connection != nil && configuration.Connection.DisableKeepAlive)
 
 	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
 	if configuration.ResponseHeaderTimeout != 0 {
@@ -394,27 +428,37 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 	transportKey := transportHash(host, disableKeepAlives, maxIdleConns, maxIdleConnsPerHost, maxConnsPerHost, responseHeaderTimeout)
 
 	createTransport := func() (http.RoundTripper, error) {
-		// Set the base TLS configuration definition
-		tlsConfig := &tls.Config{
-			Renegotiation:      tls.RenegotiateOnceAsClient,
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS10,
-			ClientSessionCache: sharedTLSSessionCache,
-		}
-
-		if options.SNI != "" {
-			tlsConfig.ServerName = options.SNI
-		}
-
-		tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+		tlsConfig, err := NewTLSConfig(options)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not create client certificate")
+			return nil, err
+		}
+
+		// Wrap keep-alive dials so an idle leftover can close the connection
+		// and quarantine the host. Proxies are left alone: CONNECT is performed
+		// by net/http outside a round trip we can mark busy/idle.
+		proxied := options.AliveHttpProxy != "" || options.AliveSocksProxy != ""
+		trackDesync := func(dial func(context.Context, string, string) (net.Conn, error)) func(context.Context, string, string) (net.Conn, error) {
+			if disableKeepAlives || proxied {
+				return dial
+			}
+			return func(ctx context.Context, network, addr string) (net.Conn, error) {
+				conn, err := dial(ctx, network, addr)
+				if err != nil {
+					return conn, err
+				}
+				return newDesyncConn(conn, addr, func(host string) {
+					if dialers.HTTPDesyncHosts != nil {
+						dialers.HTTPDesyncHosts.Store(host, desyncedHostTTL)
+					}
+					countDesyncedResponse()
+				}), nil
+			}
 		}
 
 		transport := &http.Transport{
 			ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-			DialContext:       dialers.Fastdialer.Dial,
-			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			DialContext:       trackDesync(dialers.Fastdialer.Dial),
+			DialTLSContext: trackDesync(func(ctx context.Context, network, addr string) (net.Conn, error) {
 				if options.TlsImpersonate {
 					return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 				}
@@ -422,7 +466,7 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 					return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 				}
 				return dialers.Fastdialer.DialTLS(ctx, network, addr)
-			},
+			}),
 			MaxIdleConns:          maxIdleConns,
 			MaxIdleConnsPerHost:   maxIdleConnsPerHost,
 			MaxConnsPerHost:       maxConnsPerHost,
@@ -752,4 +796,27 @@ func RecordHTTPToHTTPSPortMismatch(options *types.Options, hostname string) {
 	}
 
 	tracker.RecordHTTPToHTTPSPort(hostname)
+}
+
+// NewTLSConfig returns the TLS configuration HTTP requests to scan targets use,
+// honoring -sni and client certificates.
+func NewTLSConfig(options *types.Options) (*tls.Config, error) {
+	tlsConfig := &tls.Config{
+		Renegotiation: tls.RenegotiateOnceAsClient,
+		// Scan targets present untrusted certificates. This is the same configuration the HTTP client used inline.
+		InsecureSkipVerify: true, // codeql[go/disabled-certificate-check]
+		// Keep the scan client's existing minimum so older targets still connect.
+		MinVersion:         tls.VersionTLS10, // codeql[go/insecure-tls]
+		ClientSessionCache: sharedTLSSessionCache,
+	}
+
+	if options.SNI != "" {
+		tlsConfig.ServerName = options.SNI
+	}
+
+	tlsConfig, err := utils.AddConfiguredClientCertToRequest(tlsConfig, options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create client certificate")
+	}
+	return tlsConfig, nil
 }

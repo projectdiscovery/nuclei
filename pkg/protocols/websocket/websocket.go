@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -220,10 +221,20 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		tlsConfig.ServerName = requestOptions.Options.SNI
 	}
 
+	// Dial reports both a refused TCP connection and a rejected HTTP upgrade.
+	// Only the TCP result belongs to host backoff: an upgrade failure means
+	// the port already accepted the connection.
+	var dialed bool
+	var dialErr error
 	websocketDialer := ws.Dialer{
-		Header:    ws.HandshakeHeaderHTTP(header),
-		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
-		NetDial:   request.dialer.Dial,
+		Header:  ws.HandshakeHeaderHTTP(header),
+		Timeout: time.Duration(requestOptions.Options.Timeout) * time.Second,
+		NetDial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			dialed = true
+			conn, err := request.dialer.Dial(ctx, network, address)
+			dialErr = err
+			return conn, err
+		},
 		TLSConfig: tlsConfig,
 	}
 
@@ -255,7 +266,10 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	addressToDial = parsedAddress.String()
 
-	if err := requestOptions.RateLimitTake(addressToDial); err != nil {
+	if err := requestOptions.HostBackoffWait(target.Context(), addressToDial); err != nil {
+		return err
+	}
+	if err := requestOptions.RateLimitTakeContext(target.Context(), addressToDial); err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 
@@ -265,6 +279,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
 	handshakeDuration := time.Since(timeStart)
+	if dialed {
+		requestOptions.HostBackoffObserveDial(addressToDial, dialErr)
+	}
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
