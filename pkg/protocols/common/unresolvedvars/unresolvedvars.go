@@ -21,7 +21,9 @@ func Skip(prog progress.Progress, options *types.Options, templateID, target str
 	if counter, ok := prog.(progress.UnresolvedCounter); ok {
 		counter.IncrementSkippedUnresolved(1)
 	}
+	// The user asked for these lines, so they are logged at info level: the
+	// default log level hides warnings unless -v is set.
 	if options != nil && options.LogUnresolved {
-		gologger.Warning().Msgf("[%s] Could not make request for %s: %v\n", templateID, target, err)
+		gologger.Info().Msgf("[%s] Could not make request for %s: %v\n", templateID, target, err)
 	}
 }
