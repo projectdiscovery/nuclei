@@ -18,6 +18,9 @@ var knownLeaks = []goleak.Option{
 	// net/http transport maintains idle keep-alive connections whose goroutines
 	// exit on idle timeout or explicit close - not real leaks.
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+	// go 1.27 moved the bundled http2 transport out of net/http, which renamed
+	// the same idle connection goroutine
+	goleak.IgnoreAnyFunction("net/http/internal/http2.(*ClientConn).readLoop"),
 	goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
 	goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 	// expirable LRU cache creates a background goroutine for TTL expiration that persists
@@ -28,6 +31,9 @@ var knownLeaks = []goleak.Option{
 	goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
 	goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
 	goleak.IgnoreAnyFunction("github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate.StartActiveMemGuardian.func1"),
+	// NOTE(dwisiswant0): This is an indirect call and not used anywhere, not
+	// even within SOPS (#5841). See `go mod why go.opencensus.io/stats/view`.
+	goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
 }
 
 func TestSimpleNuclei(t *testing.T) {

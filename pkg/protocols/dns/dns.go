@@ -36,7 +36,7 @@ type Request struct {
 	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
 	//   RequestType is the type of DNS request to make.
-	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA,enum=CAA,enum=TLSA,enum=ANY,enum=SRV,enum=RRSIG,enum=NSEC,enum=DNSKEY,enum=NSEC3,enum=NSEC3PARAM"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -159,6 +159,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 	request.class = classToInt(request.Class)
@@ -224,7 +227,7 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 					// Defer resolution to the per-request runtime path.
 					continue
 				}
-				result, err := render.Render(render.Input{Text: resolver, Values: metadata})
+				result, err := render.Render(render.Input{Options: options.GetOptions(), Text: resolver, Values: metadata})
 				if err != nil {
 					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
 				}
@@ -310,6 +313,16 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeANY
 	case "SRV":
 		question = dns.TypeSRV
+	case "RRSIG":
+		question = dns.TypeRRSIG
+	case "NSEC":
+		question = dns.TypeNSEC
+	case "DNSKEY":
+		question = dns.TypeDNSKEY
+	case "NSEC3":
+		question = dns.TypeNSEC3
+	case "NSEC3PARAM":
+		question = dns.TypeNSEC3PARAM
 	}
 	return question
 }
@@ -338,5 +351,14 @@ func classToInt(class string) uint16 {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

@@ -2,8 +2,10 @@ package http
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -126,6 +129,48 @@ Accept-Encoding: gzip`},
 	require.Equal(t, "Basic admin:guest", authorization, "could not get correct authorization headers from raw")
 }
 
+func TestMakeRequestBodiesUseHTTPBody(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-http-body",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	requests := map[string]*Request{
+		"raw": {
+			ID: "testing-http-body",
+			Raw: []string{`POST / HTTP/1.1
+Host: {{Hostname}}
+Content-Type: text/plain
+
+raw-body`},
+		},
+		"model": {
+			ID:     "testing-http-body",
+			Path:   []string{"{{BaseURL}}/"},
+			Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+			Body:   "model-body",
+		},
+	}
+	for name, request := range requests {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, request.Compile(executerOpts))
+			generator := request.newGenerator(false)
+			inputData, payloads, _ := generator.nextValue()
+			req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
+			require.NoError(t, err)
+
+			// Library body setters copy the body several times over.
+			require.IsType(t, &httpbody.Body{}, req.request.Body)
+			body, err := io.ReadAll(req.request.Body)
+			require.NoError(t, err)
+			require.Equal(t, name+"-body", string(body))
+			require.Equal(t, int64(len(body)), req.request.ContentLength)
+		})
+	}
+}
+
 func TestMakeRequestFromRawPayloadExpressions(t *testing.T) {
 	options := testutils.DefaultOptions
 
@@ -198,6 +243,41 @@ Host: {{Hostname}}`},
 	require.Nil(t, parseErr, "could not parse generated unsafe request URL")
 	require.Equal(t, "honey.scanme.sh", parsedURL.Host, "host should be overridden by @Host annotation in unsafe mode")
 	require.Equal(t, "http", parsedURL.Scheme, "scheme should inherit from input when annotation host has no scheme")
+}
+
+func TestUnsafeRawRequestPreservesAbsoluteRequestTarget(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	const requestLine = "GET http://intranet/foo?request=1 HTTP/1.1"
+	request := &Request{
+		ID:     "testing-http-unsafe-absolute-request-target",
+		Name:   "testing",
+		Unsafe: true,
+		Raw: []string{requestLine + `
+Host: {{Hostname}}`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts), "could not compile unsafe raw request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	generated, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "http://example.com/bar?input=1"), inputData, payloads, map[string]interface{}{})
+	require.NoError(t, err, "could not make unsafe raw request")
+	generatedURL, err := urlutil.ParseAbsoluteURL(generated.URL(), true)
+	require.NoError(t, err, "could not parse generated request URL")
+	require.Equal(t, "example.com", generatedURL.Host, "absolute request target must not override the scan target")
+	require.Equal(t, "/foo", generatedURL.Path, "absolute request target path must not merge with the scan target path")
+	require.Equal(t, "1", generatedURL.Params.Get("request"), "generated URL must include the absolute request target query")
+	require.Empty(t, generatedURL.Params.Get("input"), "generated URL must not include the scan target query")
+
+	requestBytes, err := dump(generated, generated.URL(), 0)
+	require.NoError(t, err, "could not dump unsafe raw request")
+	actualRequestLine := strings.TrimSuffix(strings.SplitN(string(requestBytes.data), "\n", 2)[0], "\r")
+	require.Equal(t, requestLine, actualRequestLine, "unsafe raw request line must remain unchanged")
 }
 
 func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
@@ -287,6 +367,32 @@ func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
 	require.Len(t, got.interactshURLs, 1)
 	require.Equal(t, "http://"+got.interactshURLs[0]+"/callback", got.request.String())
 	require.NotContains(t, got.request.String(), "{{interactsh-url}}")
+}
+
+func TestMakeSelfContainedRequestPrefersDynamicValueOverTemplateContext(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:            "testing-self-contained-dynamic-value",
+		Name:          "testing",
+		SelfContained: true,
+		Path:          []string{"http://example.com/{{token}}"},
+		Method:        HTTPMethodTypeHolder{MethodType: HTTPGet},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), "")
+	executerOpts.GetTemplateCtx(input.MetaInput).Set("token", "stale")
+	generator := request.newGenerator(false)
+	inputData, payloads, ok := generator.nextValue()
+	require.True(t, ok)
+	generated, err := generator.Make(context.Background(), input, inputData, payloads, map[string]interface{}{"token": "current"})
+	require.NoError(t, err)
+	require.Equal(t, "http://example.com/current", generated.request.String())
 }
 
 func TestMakeSelfContainedRequestDoesNotAllocateRuntimeInteractshMarkerFromPayload(t *testing.T) {

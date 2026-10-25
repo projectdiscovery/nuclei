@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	metadataindex "github.com/projectdiscovery/nuclei/v3/pkg/catalog/index"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -69,7 +70,7 @@ type NucleiEngine struct {
 
 	// unexported core fields
 	ctx              context.Context
-	interactshClient *interactsh.Client
+	interactshClient interactsh.IClient
 	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
@@ -80,8 +81,12 @@ type NucleiEngine struct {
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
 	parser           *templates.Parser
+	compiledParser   *templates.Parser
 	ownsParser       bool // true when the engine created the parser and may purge it on Close
 	authprovider     authprovider.AuthProvider
+
+	metadataIndex     *metadataindex.Index
+	metadataIndexOnce sync.Once
 
 	// unexported meta options
 	opts           *types.Options
@@ -100,6 +105,24 @@ type NucleiEngine struct {
 	tmpDir string
 }
 
+func (e *NucleiEngine) getMetadataIndex() *metadataindex.Index {
+	e.metadataIndexOnce.Do(func() {
+		metadataIndex, err := metadataindex.NewDefaultIndex()
+		if err != nil {
+			e.Logger.Warning().Msgf("Could not create metadata cache: %v", err)
+
+			return
+		}
+
+		e.metadataIndex = metadataIndex
+		if err := e.metadataIndex.Load(); err != nil {
+			e.Logger.Warning().Msgf("Could not load metadata cache: %v", err)
+		}
+	})
+
+	return e.metadataIndex
+}
+
 // LoadAllTemplates loads all nuclei template based on given options
 func (e *NucleiEngine) LoadAllTemplates() error {
 	workflowLoader, err := workflow.NewLoader(e.executerOpts)
@@ -108,7 +131,11 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 	}
 	e.executerOpts.WorkflowLoader = workflowLoader
 
-	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, e.executerOpts))
+	loaderConfig := loader.NewConfig(e.opts, e.catalog, e.executerOpts)
+	if e.mode == threadSafe {
+		loaderConfig.MetadataIndex = e.getMetadataIndex()
+	}
+	e.store, err = loader.New(loaderConfig)
 	if err != nil {
 		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
@@ -124,6 +151,9 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 	if !e.templatesLoaded {
 		_ = e.LoadAllTemplates()
 	}
+	if e.store == nil {
+		return nil
+	}
 	return e.store.Templates()
 }
 
@@ -131,6 +161,9 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 	if !e.templatesLoaded {
 		_ = e.LoadAllTemplates()
+	}
+	if e.store == nil {
+		return nil
 	}
 	return e.store.Workflows()
 }
@@ -224,7 +257,7 @@ func (e *NucleiEngine) closeInternal() {
 	if e.hostErrCache != nil {
 		e.hostErrCache.Close()
 	}
-	if e.executerOpts.RateLimiter != nil {
+	if e.executerOpts != nil && e.executerOpts.RateLimiter != nil {
 		e.executerOpts.RateLimiter.Stop()
 	}
 	if e.rateLimiter != nil {
@@ -239,16 +272,22 @@ func (e *NucleiEngine) closeInternal() {
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
 	}
+	if e.metadataIndex != nil {
+		if err := e.metadataIndex.Save(); err != nil {
+			e.Logger.Warning().Msgf("Could not save metadata cache: %v", err)
+		}
+	}
 	if e.tmpDir != "" {
 		_ = os.RemoveAll(e.tmpDir)
 	}
 	if e.opts != nil {
 		generators.ClearOptionsPayloadMap(e.opts)
 	}
-	// Purge the template caches (compiled templates are heap-heavy) so a
-	// long-running embedder does not retain them for the process lifetime.
-	// Only do this when the engine created the parser; a caller-supplied
-	// parser is an opt-in shared cache the caller owns.
+	// Purge engine-owned template caches. A caller-supplied parser remains
+	// untouched, while its engine-local compiled cache is always released.
+	if e.compiledParser != nil && e.compiledParser != e.parser {
+		e.compiledParser.CompiledCache().Purge()
+	}
 	if e.ownsParser && e.parser != nil {
 		e.parser.Purge()
 	}
@@ -264,9 +303,11 @@ func (e *NucleiEngine) Close() {
 // enable matcher-status option if you expect this callback to be called for all results regardless if it matched or not
 func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...func(event *output.ResultEvent)) error {
 	if !e.templatesLoaded {
-		_ = e.LoadAllTemplates()
+		if err := e.LoadAllTemplates(); err != nil {
+			return err
+		}
 	}
-	if len(e.store.Templates()) == 0 && len(e.store.Workflows()) == 0 {
+	if e.store == nil || (len(e.store.Templates()) == 0 && len(e.store.Workflows()) == 0) {
 		return ErrNoTemplatesAvailable
 	}
 	if e.inputProvider.Count() == 0 {
@@ -345,6 +386,10 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 		}
 	}
 	if err := e.init(ctx); err != nil {
+		// init may already own interactsh, a browser, a temp dir, and
+		// reporting. Close is safe on a partial engine: executerOpts is
+		// checked, and protocolinit.Close is a no-op before Init.
+		e.Close()
 		return nil, err
 	}
 	return e, nil

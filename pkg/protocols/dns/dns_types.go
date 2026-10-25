@@ -39,24 +39,39 @@ const (
 	ANY
 	// name:SRV
 	SRV
+	// name:RRSIG
+	RRSIG
+	// name:NSEC
+	NSEC
+	// name:DNSKEY
+	DNSKEY
+	// name:NSEC3
+	NSEC3
+	// name:NSEC3PARAM
+	NSEC3PARAM
 	limit
 )
 
 // DNSRequestTypeMapping is a table for conversion of method from string.
 var DNSRequestTypeMapping = map[DNSRequestType]string{
-	A:     "A",
-	NS:    "NS",
-	DS:    "DS",
-	CNAME: "CNAME",
-	SOA:   "SOA",
-	PTR:   "PTR",
-	MX:    "MX",
-	TXT:   "TXT",
-	AAAA:  "AAAA",
-	CAA:   "CAA",
-	TLSA:  "TLSA",
-	ANY:   "ANY",
-	SRV:   "SRV",
+	A:          "A",
+	NS:         "NS",
+	DS:         "DS",
+	CNAME:      "CNAME",
+	SOA:        "SOA",
+	PTR:        "PTR",
+	MX:         "MX",
+	TXT:        "TXT",
+	AAAA:       "AAAA",
+	CAA:        "CAA",
+	TLSA:       "TLSA",
+	ANY:        "ANY",
+	SRV:        "SRV",
+	RRSIG:      "RRSIG",
+	NSEC:       "NSEC",
+	DNSKEY:     "DNSKEY",
+	NSEC3:      "NSEC3",
+	NSEC3PARAM: "NSEC3PARAM",
 }
 
 // GetSupportedDNSRequestTypes returns list of supported types
