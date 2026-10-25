@@ -71,11 +71,12 @@ func (h *Helper) TransformPinned(input, ip string, protocol templateTypes.Protoc
 
 // ProbeKey returns the key of the HTTP probe result of input in InputsHTTP.
 // A target pinned to an ip is probed through that ip, so each ip has its own.
+// The separator cannot occur in an input, which may hold an "@" of its own.
 func ProbeKey(input, ip string) string {
 	if ip == "" {
 		return input
 	}
-	return input + "@" + ip
+	return input + "\x00" + ip
 }
 
 type inputType int

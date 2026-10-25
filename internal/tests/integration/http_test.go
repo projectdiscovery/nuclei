@@ -85,6 +85,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/custom-attack-type.yaml", TestCase: &customAttackType{}},
 	{Path: "protocols/http/get-all-ips.yaml", TestCase: &scanAllIPS{}},
 	{Path: "protocols/http/target-line-ip.yaml", TestCase: &httpTargetLineIP{}},
+	{Path: "protocols/http/target-line-ip-pipeline.yaml", TestCase: &httpTargetLineIP{}},
 	{Path: "protocols/http/get-without-scheme.yaml", TestCase: &httpGetWithoutScheme{}},
 	{Path: "protocols/http/cl-body-without-header.yaml", TestCase: &httpCLBodyWithoutHeader{}},
 	{Path: "protocols/http/cl-body-with-header.yaml", TestCase: &httpCLBodyWithHeader{}},

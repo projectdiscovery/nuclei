@@ -23,6 +23,7 @@ func TestTransformPinned(t *testing.T) {
 	require.Equal(t, "http://app.test", helper.TransformPinned("app.test", "", templateTypes.HTTPProtocol), "an unpinned input")
 	require.Equal(t, "app.test", helper.TransformPinned("app.test", "127.0.0.3", templateTypes.HTTPProtocol), "an ip without a probe of its own does not take the unpinned result")
 	require.Equal(t, "app.test", helper.TransformPinned("app.test", "127.0.0.2", templateTypes.DNSProtocol), "a protocol that is not probed")
+	require.NotEqual(t, ProbeKey("u.example@192.0.2.10", ""), ProbeKey("u.example", "192.0.2.10"), "an input holding an @ does not collide with a pinned one")
 }
 
 func TestConvertInputToType(t *testing.T) {

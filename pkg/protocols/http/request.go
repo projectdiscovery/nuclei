@@ -510,7 +510,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	if dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
 		fd := dialers.Fastdialer
 		pipeOptions.Dialer = func(addr string) (net.Conn, error) {
-			return fd.Dial(context.Background(), "tcp", addr)
+			// the input context carries the pinned ip of the target, if any
+			return fd.Dial(input.Context(), "tcp", addr)
 		}
 	}
 	if request.PipelineConcurrentConnections > 0 {
