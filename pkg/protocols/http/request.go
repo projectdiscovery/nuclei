@@ -1906,7 +1906,7 @@ func (request *Request) needsFullResponse(generatedRequest *generatedRequest) bo
 	if request.CompiledOperators != nil && request.CompiledOperators.NeedsResponse() {
 		return true
 	}
-	if request.Operators.NeedsResponse() {
+	if request.NeedsResponse() {
 		return true
 	}
 	for _, filter := range request.FuzzPreCondition {
