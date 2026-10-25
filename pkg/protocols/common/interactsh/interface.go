@@ -18,4 +18,5 @@ type IClient interface {
 	RequestEvent(interactshURLs []string, data *RequestData)
 	GetHostname() string
 	SetInteractionCallback(cb func(interaction *server.Interaction, foundRequest *RequestData))
+	NewRequestScope() *RequestScope
 }
