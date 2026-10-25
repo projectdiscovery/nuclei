@@ -55,7 +55,22 @@ type fetchState struct {
 	// owner is the goroutine running the fetch callback. Nested Fetch/GetStrategies
 	// on that goroutine must not wait on the write lock (it would deadlock).
 	owner atomic.Int64
+	// answered is set once a response that is not a reauth status code is seen
+	// for the current session. It is reset on every successful login.
+	answered atomic.Bool
+	// statusReauths counts consecutive status-triggered re-authentications whose
+	// session never got a response other than a reauth status code. Past
+	// maxStatusReauths the session is kept, so an app that rejects every
+	// request does not get one login per request (account lockout, WAF).
+	statusReauths int
+	// reauthCapLogged is set once the cap warning was printed for the current
+	// streak, so it is printed once and not on every response.
+	reauthCapLogged bool
 }
+
+// maxStatusReauths caps consecutive re-authentications triggered by reauth
+// status codes when the fresh session still gets only reauth status codes.
+const maxStatusReauths = 2
 
 var (
 	_ json.Unmarshaler = &Dynamic{}
@@ -514,8 +529,16 @@ func (d *Dynamic) MarkStale() {
 // non-zero and different from the current session generation, the signal is
 // ignored (a late 401 from an older session must not invalidate a fresher one).
 // Pass 0 when the generation is unknown (legacy callers).
+//
+// Re-authentication is capped: when maxStatusReauths consecutive fresh
+// sessions got only reauth status codes, the login evidently does not change
+// the response, so the session is kept until a request gets another status.
 func (d *Dynamic) NotifyResponse(statusCode int, generation uint64) bool {
-	if d.fetchState == nil || !d.shouldReauthOnStatus(statusCode) {
+	if d.fetchState == nil || len(d.ReauthStatusCodes) == 0 {
+		return false
+	}
+	if !d.shouldReauthOnStatus(statusCode) {
+		d.recordAnswer(generation)
 		return false
 	}
 	d.fetchState.mu.Lock()
@@ -526,8 +549,37 @@ func (d *Dynamic) NotifyResponse(statusCode int, generation uint64) bool {
 	if generation != 0 && generation != d.fetchState.generation {
 		return false
 	}
+	if d.fetchState.stale {
+		return true
+	}
+	if d.fetchState.answered.Load() {
+		d.fetchState.statusReauths = 0
+		d.fetchState.reauthCapLogged = false
+	}
+	if d.fetchState.statusReauths >= maxStatusReauths {
+		if !d.fetchState.reauthCapLogged {
+			d.fetchState.reauthCapLogged = true
+			gologger.Warning().Msgf("dynamic secret: %d re-authentications in a row did not change the %d response; not re-authenticating again until a request gets another status", maxStatusReauths, statusCode)
+		}
+		return false
+	}
+	d.fetchState.statusReauths++
 	d.fetchState.stale = true
 	return true
+}
+
+// recordAnswer notes that the session for generation got a response that is
+// not a reauth status code, which re-arms status-triggered re-authentication.
+func (d *Dynamic) recordAnswer(generation uint64) {
+	if d.fetchState.answered.Load() {
+		return
+	}
+	// stored under the read lock so a concurrent login cannot reset it in between
+	d.fetchState.mu.RLock()
+	defer d.fetchState.mu.RUnlock()
+	if d.fetchState.fetched && (generation == 0 || generation == d.fetchState.generation) {
+		d.fetchState.answered.Store(true)
+	}
 }
 
 // WebStorage returns the browser web storage (localStorage/sessionStorage)
@@ -575,6 +627,7 @@ func (d *Dynamic) runFetchLocked() {
 	d.fetchState.stale = false
 	d.fetchState.fetchedAt = time.Now()
 	d.fetchState.generation++
+	d.fetchState.answered.Store(false)
 }
 
 // isExpiredLocked reports whether the session needs re-authentication. The

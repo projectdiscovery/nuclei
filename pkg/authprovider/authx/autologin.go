@@ -35,6 +35,10 @@ type AutoLoginConfig struct {
 	// TokenRegex, when set, extracts a bearer token (first capture group) from
 	// the final response body for token-based logins that don't set a cookie.
 	TokenRegex string `json:"token-regex" yaml:"token-regex"`
+	// AllowCrossOriginAction lets the HTTP engine submit the credentials to a
+	// login form whose action is on a different origin than LoginURL (e.g. an
+	// SSO provider). Such a form is refused by default.
+	AllowCrossOriginAction bool `json:"allow-cross-origin-action" yaml:"allow-cross-origin-action"`
 
 	// Headless drives a real browser for the login instead of the HTTP engine,
 	// enabling JS-rendered / SPA / multi-step / SSO login pages.
@@ -116,21 +120,22 @@ func (d *Dynamic) SetAutoLoginCallback(rt *AutoLoginRuntimeOptions) {
 			return errkit.New("auto-login callback invoked without auto-login config")
 		}
 		cfg := autologin.Config{
-			LoginURL:           d.AutoLogin.LoginURL,
-			Username:           d.AutoLogin.Username,
-			Password:           d.AutoLogin.Password,
-			UsernameField:      d.AutoLogin.UsernameField,
-			PasswordField:      d.AutoLogin.PasswordField,
-			TokenRegex:         d.AutoLogin.TokenRegex,
-			ExtraFields:        kvSliceToMap(d.AutoLogin.ExtraFields),
-			Headless:           d.AutoLogin.Headless,
-			ShowBrowser:        d.AutoLogin.ShowBrowser || rt.ShowBrowser,
-			UseInstalledChrome: d.AutoLogin.UseInstalledChrome || rt.UseInstalledChrome,
-			Proxy:              firstNonEmpty(d.AutoLogin.Proxy, rt.Proxy),
-			CDPEndpoint:        rt.CDPEndpoint,
-			UserAgent:          rt.UserAgent,
-			CustomHeaders:      rt.CustomHeaders,
-			Steps:              d.AutoLogin.Steps,
+			LoginURL:               d.AutoLogin.LoginURL,
+			Username:               d.AutoLogin.Username,
+			Password:               d.AutoLogin.Password,
+			UsernameField:          d.AutoLogin.UsernameField,
+			PasswordField:          d.AutoLogin.PasswordField,
+			TokenRegex:             d.AutoLogin.TokenRegex,
+			ExtraFields:            kvSliceToMap(d.AutoLogin.ExtraFields),
+			AllowCrossOriginAction: d.AutoLogin.AllowCrossOriginAction,
+			Headless:               d.AutoLogin.Headless,
+			ShowBrowser:            d.AutoLogin.ShowBrowser || rt.ShowBrowser,
+			UseInstalledChrome:     d.AutoLogin.UseInstalledChrome || rt.UseInstalledChrome,
+			Proxy:                  firstNonEmpty(d.AutoLogin.Proxy, rt.Proxy),
+			CDPEndpoint:            rt.CDPEndpoint,
+			UserAgent:              rt.UserAgent,
+			CustomHeaders:          rt.CustomHeaders,
+			Steps:                  d.AutoLogin.Steps,
 		}
 		var (
 			session *autologin.Session

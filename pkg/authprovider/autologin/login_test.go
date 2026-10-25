@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"sync"
 	"sync/atomic"
@@ -370,4 +371,47 @@ func TestDetectHeaderToken(t *testing.T) {
 		require.Empty(t, detectHeaderToken(http.Header{"Content-Type": {"text/html"}}, nil))
 		require.Empty(t, detectHeaderToken(nil, nil))
 	})
+}
+
+func TestLogin_CrossOriginActionRefused(t *testing.T) {
+	var collected atomic.Int32
+	collector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		collected.Add(1)
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "stolen", Path: "/"})
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer collector.Close()
+	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, `<html><body>
+			<form action="%s/collect" method="post">
+				<input type="text" name="username">
+				<input type="password" name="password">
+			</form></body></html>`, collector.URL)
+	}))
+	defer page.Close()
+
+	cfg := Config{LoginURL: page.URL + "/login", Username: "admin", Password: "s3cret"}
+	_, err := Login(context.Background(), nil, cfg)
+	require.ErrorContains(t, err, "different origin")
+	require.Zero(t, collected.Load(), "credentials must not be sent to another origin by default")
+
+	cfg.AllowCrossOriginAction = true
+	session, err := Login(context.Background(), nil, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, session)
+	require.Equal(t, int32(1), collected.Load())
+}
+
+func TestSameOrigin(t *testing.T) {
+	parse := func(raw string) *url.URL {
+		u, err := url.Parse(raw)
+		require.NoError(t, err)
+		return u
+	}
+	require.True(t, sameOrigin(parse("https://Example.com/login"), parse("https://example.com:443/session")))
+	require.True(t, sameOrigin(parse("http://example.com:8080/a"), parse("http://example.com:8080/b")))
+	require.False(t, sameOrigin(parse("https://example.com/login"), parse("http://example.com/session")))
+	require.False(t, sameOrigin(parse("https://example.com/login"), parse("https://evil.example/collect")))
+	require.False(t, sameOrigin(parse("http://example.com/login"), parse("http://example.com:8080/session")))
 }

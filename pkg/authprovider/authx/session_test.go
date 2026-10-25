@@ -275,3 +275,23 @@ func TestSessionConcurrentApplyDuringReauth(t *testing.T) {
 
 	require.Greater(t, calls.Load(), int32(1), "re-authentication should have happened multiple times")
 }
+
+func TestSessionNotifyResponseCapsUnproductiveReauth(t *testing.T) {
+	var calls atomic.Int32
+	d := newDynamicWithToken(t, &calls)
+	d.ReauthStatusCodes = []int{401}
+
+	// the login succeeds but every request still gets 401
+	for range 10 {
+		applyHeader(t, d)
+		d.NotifyResponse(401, 0)
+	}
+	require.Equal(t, int32(1+maxStatusReauths), calls.Load(), "re-authentication must stop when it does not change the response")
+	require.False(t, d.IsExpired())
+
+	// a request that gets another status re-arms status-triggered re-auth
+	require.False(t, d.NotifyResponse(200, 0))
+	require.True(t, d.NotifyResponse(401, 0))
+	applyHeader(t, d)
+	require.Equal(t, int32(2+maxStatusReauths), calls.Load())
+}

@@ -156,10 +156,17 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		createdPage.hijackRouter = hijackRouter
 		go hijackRouter.Run()
 	} else {
+		// Auth headers can only be added before the request is sent, so an
+		// authenticated scan pauses at request stage too. Other scans keep the
+		// single response-stage pause.
+		stage := proto.FetchRequestStageResponse
+		if options.AuthProvider != nil {
+			stage = proto.FetchRequestStageRequest
+		}
 		hijackRouter := NewHijack(page)
 		hijackRouter.SetPattern(&proto.FetchRequestPattern{
 			URLPattern:   "*",
-			RequestStage: proto.FetchRequestStageRequest,
+			RequestStage: stage,
 		})
 		createdPage.hijackNative = hijackRouter
 		hijackRouterHandler := hijackRouter.Start(createdPage.routingRuleHandlerNative)

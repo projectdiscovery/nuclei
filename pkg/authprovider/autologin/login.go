@@ -46,6 +46,11 @@ type Config struct {
 	// ExtraFields are additional form values submitted verbatim; they override
 	// any detected field of the same name (e.g. a fixed TOTP or tenant id).
 	ExtraFields map[string]string
+	// AllowCrossOriginAction lets the HTTP engine submit the credentials to a
+	// form action on a different origin than LoginURL (e.g. an SSO provider).
+	// By default such a form is refused: the login page belongs to a scan
+	// target and could send the credentials anywhere.
+	AllowCrossOriginAction bool
 	// TokenRegex, when set, is applied to the final response body (and, for the
 	// HTTP engine, response headers) to extract a bearer/session token (first
 	// capture group). This enables token-based logins that return the token in
@@ -173,6 +178,12 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 	form, err := DetectLoginForm(pageBody, loginURL)
 	if err != nil {
 		return nil, err
+	}
+	if actionURL, perr := url.Parse(form.Action); perr == nil && !sameOrigin(loginURL, actionURL) {
+		if !cfg.AllowCrossOriginAction {
+			return nil, errkit.Newf("auto-login: login form at %s submits to a different origin (%s); set allow-cross-origin-action to send the credentials there", loginURL.Redacted(), actionURL.Redacted())
+		}
+		gologger.Warning().Msgf("auto-login: login form at %s submits the credentials to a different origin (%s)", loginURL.Redacted(), actionURL.Redacted())
 	}
 
 	// 3. Build the submission values: detected hidden/default fields first, then
@@ -357,6 +368,30 @@ func renderCookieHeader(cookies []*http.Cookie) string {
 		parts = append(parts, c.Name+"="+c.Value)
 	}
 	return strings.Join(parts, "; ")
+}
+
+// sameOrigin reports whether a and b share scheme, host and port, with the
+// default port of the scheme applied when one is missing.
+func sameOrigin(a, b *url.URL) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	return strings.EqualFold(a.Scheme, b.Scheme) &&
+		strings.EqualFold(a.Hostname(), b.Hostname()) &&
+		originPort(a) == originPort(b)
+}
+
+func originPort(u *url.URL) string {
+	if port := u.Port(); port != "" {
+		return port
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "https":
+		return "443"
+	case "http":
+		return "80"
+	}
+	return ""
 }
 
 // doRequest issues a request and returns only the body (used for the GET page).
