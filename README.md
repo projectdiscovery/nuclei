@@ -252,6 +252,7 @@ CONFIGURATIONS:
    -sip, -source-ip string               source ip address to use for network scan
    -rsr, -response-size-read int         max response size to read in bytes
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
+   -rqss, -request-size-save int         max request body size to save in bytes (0 to save the whole body) (default 32768)
    -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
    -tlsi, -tls-impersonate               enable experimental client hello (ja3) tls randomization
    -hae, -http-api-endpoint string       experimental http api endpoint

@@ -356,6 +356,9 @@ type Options struct {
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
+	// RequestSaveSize is the maximum size of request body kept in request
+	// dumps (output, debug and matcher input). 0 keeps the whole body.
+	RequestSaveSize int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -745,6 +748,7 @@ func (options *Options) Copy() *Options {
 		AttackType:                     options.AttackType,
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
+		RequestSaveSize:                options.RequestSaveSize,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
 		DisableStdin:                   options.DisableStdin,
@@ -934,6 +938,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		RequestSaveSize:            32 * unitutils.Kilo,
 		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
 	}

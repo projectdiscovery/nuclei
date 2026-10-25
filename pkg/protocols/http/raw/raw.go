@@ -199,7 +199,8 @@ func readRawRequest(request string, unsafe bool) (*Request, error) {
 	}
 
 	// parse raw request
-	reader := bufio.NewReader(strings.NewReader(request))
+	source := strings.NewReader(request)
+	reader := bufio.NewReader(source)
 read_line:
 	s, err := reader.ReadString('\n')
 	if err != nil {
@@ -281,12 +282,9 @@ read_line:
 		}
 	}
 
-	// Set the request body
-	b, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("could not read request body: %w", err)
-	}
-	rawRequest.Data = string(b)
+	// Set the request body. It is sliced from the request rather than read
+	// from the reader, which would copy a large body twice.
+	rawRequest.Data = request[len(request)-source.Len()-reader.Buffered():]
 	if !multiPartRequest {
 		rawRequest.Data = strings.TrimSuffix(rawRequest.Data, "\r\n")
 	}
