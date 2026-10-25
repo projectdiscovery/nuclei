@@ -176,7 +176,7 @@ TEMPLATES:
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
    -llm                                   enable llm matchers and extractors (semantic matching)
-   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter) (default "openai")
    -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
    -llm-model string                      model used for semantic matching
    -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
