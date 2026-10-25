@@ -76,7 +76,7 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.15
 	github.com/projectdiscovery/clistats v0.1.7
 	github.com/projectdiscovery/dsl v0.8.24
-	github.com/projectdiscovery/fastdialer v0.5.26
+	github.com/projectdiscovery/fastdialer v0.6.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/goflags v0.2.1
@@ -92,7 +92,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.4.1
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.55
+	github.com/projectdiscovery/networkpolicy v0.1.56
 	github.com/projectdiscovery/ratelimit v0.0.94
 	github.com/projectdiscovery/rawhttp v0.2.0
 	github.com/projectdiscovery/rdap v0.9.0

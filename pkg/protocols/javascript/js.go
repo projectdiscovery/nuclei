@@ -665,11 +665,19 @@ func (request *Request) executeRequestWithPayloads(
 
 	// a script's network calls are not visible here, so like progress it is
 	// limited as one request per execution
+	if err := request.options.HostBackoffWait(input.Context(), hostPort); err != nil {
+		return err
+	}
 	if err := request.options.RateLimitTakeContext(input.Context(), hostPort); err != nil {
 		return err
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
+	ctx := input.Context()
+	if request.options.HostBackoff != nil {
+		// the script's own dials are the only signal: report them as they happen
+		ctx = protocolstate.WithDialObserver(ctx, request.options.HostBackoffObserveDial)
+	}
+	results, err := request.options.JsCompiler.ExecuteWithOptions(ctx, request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),

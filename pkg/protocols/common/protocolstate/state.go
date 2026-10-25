@@ -91,6 +91,7 @@ func Init(options *types.Options) error {
 func initDialers(options *types.Options) error {
 	opts := fastdialer.DefaultOptions
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
+	opts.OnDialResult = reportDialResult
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}
