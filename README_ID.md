@@ -110,7 +110,7 @@ Telusuri [**`dokumentasi Nuclei lengkap di sini`**](https://docs.projectdiscover
 
 ### Instalasi
 
-`nuclei` memerlukan **go >= 1.24.2** agar dapat diinstal dengan sukses. Jalankan perintah berikut untuk mengambil repo:
+`nuclei` memerlukan **go >= 1.27.3** agar dapat diinstal dengan sukses. Jalankan perintah berikut untuk mengambil repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
