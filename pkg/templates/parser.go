@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -31,6 +33,8 @@ type Parser struct {
 	// This cache contains references to heap objects and should be purged when
 	// no longer needed.
 	compiledTemplatesCache *Cache
+
+	compiledTemplatesLoadGroup singleflight.Group
 
 	sync.Mutex
 }
