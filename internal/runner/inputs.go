@@ -93,18 +93,19 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 
 	// Start progress only after enqueue so we know the total; ticker runs during Wait.
-	if stop := r.startHTTPXProbeProgress(probeTotal, &probed, &alive); stop != nil {
-		defer stop()
-	}
-
+	stop := r.startHTTPXProbeProgress(probeTotal, &probed, &alive)
 	swg.Wait()
+	if stop != nil {
+		stop()
+	}
 
 	r.Logger.Info().Msgf("Found %d URL from httpx", alive.Load())
 	return hm, nil
 }
 
 // startHTTPXProbeProgress optionally logs probe progress for large input sets
-// when -stats is enabled. Returns a stop func, or nil when progress is inactive.
+// when -stats is enabled. Returns a stop func that waits for the ticker goroutine
+// to exit, or nil when progress is inactive.
 func (r *Runner) startHTTPXProbeProgress(probeTotal int, probed, alive *atomic.Int32) func() {
 	if probeTotal < httpxProbeProgressMinTargets || !r.options.EnableProgressBar {
 		return nil
@@ -117,13 +118,15 @@ func (r *Runner) startHTTPXProbeProgress(probeTotal int, probed, alive *atomic.I
 
 	r.Logger.Info().Msgf("httpx probe progress enabled for %d hosts (interval %s)", probeTotal, interval)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	exited := make(chan struct{})
 	ticker := time.NewTicker(interval)
 	go func() {
+		defer close(exited)
 		defer ticker.Stop()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-done:
 				return
 			case <-ticker.C:
 				r.Logger.Info().Msgf(
@@ -133,5 +136,8 @@ func (r *Runner) startHTTPXProbeProgress(probeTotal int, probed, alive *atomic.I
 			}
 		}
 	}()
-	return cancel
+	return func() {
+		close(done)
+		<-exited
+	}
 }
