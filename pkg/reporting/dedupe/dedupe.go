@@ -6,7 +6,10 @@ package dedupe
 
 import (
 	"crypto/sha1"
+	"encoding/binary"
 	"os"
+	"slices"
+	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -20,6 +23,7 @@ import (
 type Storage struct {
 	temporary string
 	storage   *leveldb.DB
+	mu        sync.Mutex
 }
 
 // New creates a new duplicate detecting storage for nuclei scan events.
@@ -71,35 +75,56 @@ func (s *Storage) Close() {
 }
 
 // Index indexes an item in storage and returns true if the item
-// was unique.
+// was unique. Concurrent checks and inserts are serialized.
 func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 	hasher := sha1.New()
-	if result.TemplateID != "" {
-		_, _ = hasher.Write(conversion.Bytes(result.TemplateID))
+
+	// Lengths preserve field and collection boundaries, including empty values.
+	writeLength := func(length int) {
+		var buf [8]byte
+		binary.LittleEndian.PutUint64(buf[:], uint64(length))
+		_, _ = hasher.Write(buf[:])
 	}
-	if result.MatcherName != "" {
-		_, _ = hasher.Write(conversion.Bytes(result.MatcherName))
+
+	writeString := func(value string) {
+		writeLength(len(value))
+		_, _ = hasher.Write(conversion.Bytes(value))
 	}
-	if result.ExtractorName != "" {
-		_, _ = hasher.Write(conversion.Bytes(result.ExtractorName))
+
+	for _, value := range []string{
+		result.TemplateID, result.MatcherName, result.ExtractorName, result.Type,
+		result.Host, result.Port, result.Scheme, result.URL, result.Matched,
+	} {
+		writeString(value)
 	}
-	if result.Type != "" {
-		_, _ = hasher.Write(conversion.Bytes(result.Type))
-	}
-	if result.Host != "" {
-		_, _ = hasher.Write(conversion.Bytes(result.Host))
-	}
-	if result.Matched != "" {
-		_, _ = hasher.Write(conversion.Bytes(result.Matched))
-	}
+
+	writeLength(len(result.ExtractedResults))
+
 	for _, v := range result.ExtractedResults {
-		_, _ = hasher.Write(conversion.Bytes(v))
+		writeString(v)
 	}
-	for k, v := range result.Metadata {
-		_, _ = hasher.Write(conversion.Bytes(k))
-		_, _ = hasher.Write(conversion.Bytes(types.ToString(v)))
+
+	writeLength(len(result.Metadata))
+
+	keys := make([]string, 0, len(result.Metadata))
+	for k := range result.Metadata {
+		keys = append(keys, k)
 	}
-	hash := hasher.Sum(nil)
+
+	slices.Sort(keys)
+	for _, k := range keys {
+		writeString(k)
+		writeString(types.ToString(result.Metadata[k]))
+	}
+
+	// Version 2 keys cannot reuse legacy hashes that omitted the input origin.
+	key := make([]byte, 1, 1+sha1.Size)
+	key[0] = 2
+	hash := hasher.Sum(key)
+
+	// LevelDB synchronizes individual operations, not this check and insert.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	exists, err := s.storage.Has(hash, nil)
 	if err != nil {
@@ -107,8 +132,10 @@ func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 		// since we don't want to lose an issue considering it a dupe.
 		return true, err
 	}
+
 	if !exists {
 		return true, s.storage.Put(hash, nil, nil)
 	}
+	
 	return false, err
 }

@@ -267,6 +267,9 @@ func (r *Runner) ArgsResults(debug bool, args ...string) ([]string, error) {
 	output, err := r.runCommand(false, "", func(cmd *exec.Cmd) {
 		cmd.Args = append(cmd.Args[:1], append(append([]string{}, args...), r.ExtraArgs...)...)
 		cmd.Env = r.buildEnv(nil)
+		if r.DisableAutoUpdate {
+			cmd.Args = append(cmd.Args, "-duc")
+		}
 		if debug {
 			cmd.Args = append(cmd.Args, "-debug")
 			cmd.Stderr = os.Stderr
@@ -330,6 +333,10 @@ func (r *Runner) LoadedTemplates(binaryPath string, debug bool, args []string) (
 	}
 
 	if err != nil {
+		out := strings.TrimSpace(string(data))
+		if out != "" {
+			return "", fmt.Errorf("%w: %s", err, out)
+		}
 		return "", err
 	}
 

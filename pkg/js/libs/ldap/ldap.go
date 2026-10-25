@@ -1,6 +1,7 @@
 package ldap
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/projectdiscovery/goja"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
@@ -92,7 +94,8 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	executionId := c.nj.ExecutionId()
 	dialers := protocolstate.GetDialersWithId(executionId)
 	if dialers == nil {
-		panic("dialers with executionId " + executionId + " not found")
+		gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+		return nil
 	}
 
 	dialCtx := c.nj.Context()
@@ -143,6 +146,10 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 		}
 		c.nj.HandleError(err, "failed to connect to ldap server")
 	}
+	// go-ldap waits for a reply with no timeout, and an interrupt cannot stop the runtime
+	// inside that read: a server that accepts and never answers would keep the goroutine,
+	// and everything the abandoned runtime references, alive for the life of the process.
+	context.AfterFunc(dialCtx, func() { _ = conn.Close() })
 	c.conn = ldap.NewConn(conn, u.Scheme == "ldaps")
 	if u.Scheme != "ldaps" && c.cfg.Upgrade {
 		serverName := u.Hostname()

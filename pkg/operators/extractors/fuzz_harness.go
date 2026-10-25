@@ -210,7 +210,38 @@ func (candidate *fuzzExtractorCandidate) build() (*Extractor, bool) {
 		extractor.Regex = append([]string(nil), candidate.values...)
 	}
 
+	// The fuzzer picks a group index independently of the patterns it picks,
+	// so it routinely asks for a group the pattern cannot produce (its own
+	// defaults include the group-less `https?://[^\s"']+`). CompileExtractors
+	// now rejects that, which is correct for real templates but would make the
+	// harness fail on inputs it deliberately generates. Clamp to what the
+	// narrowest pattern actually captures so the fuzzer keeps exercising
+	// extraction rather than dying at compile time.
+	if extractor.RegexGroup > 0 {
+		extractor.RegexGroup = clampFuzzRegexGroup(extractor.Regex, extractor.RegexGroup)
+	}
+
 	return extractor, len(candidate.values) > 0
+}
+
+func clampFuzzRegexGroup(patterns []string, group int) int {
+	minGroups := -1
+	for _, pattern := range patterns {
+		compiled, err := regexp.Compile(pattern)
+		if err != nil {
+			continue
+		}
+		if groups := compiled.NumSubexp(); minGroups < 0 || groups < minGroups {
+			minGroups = groups
+		}
+	}
+	if minGroups < 0 {
+		return 0
+	}
+	if group > minGroups {
+		return minGroups
+	}
+	return group
 }
 
 func exerciseFuzzExtractor(extractor *Extractor) {

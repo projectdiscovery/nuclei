@@ -1,14 +1,17 @@
 package smtp
 
 import (
+	"context"
+	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/smtp"
 	"strconv"
 	"time"
 
-	"github.com/projectdiscovery/goja"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 
@@ -145,7 +148,10 @@ func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
 	defer func() {
 		_ = conn.Close()
 	}()
-	client, err := smtp.NewClient(conn, c.host)
+	// net/smtp reads with no deadline, and an interrupt cannot stop the runtime inside that
+	// read: closing on cancel is what keeps a server that never answers from pinning it.
+	defer context.AfterFunc(c.nj.Context(), func() { _ = conn.Close() })()
+	client, err := smtp.NewClient(&limitedConn{Conn: conn, remaining: maxReadBytes}, c.host)
 	if err != nil {
 		return false, err
 	}
@@ -203,10 +209,89 @@ func (c *Client) SendMail(msg *SMTPMessage) (bool, error) {
 		auth = smtp.PlainAuth("", msg.user, msg.pass, c.host)
 	}
 
-	// send mail
-	addr := net.JoinHostPort(c.host, c.port)
-	if err := smtp.SendMail(addr, auth, msg.from, msg.to, []byte(msg.String())); err != nil {
+	if err := c.sendMail(auth, msg); err != nil {
 		c.nj.Throw("failed to send mail with message(%s) got %v", msg.String(), err)
 	}
 	return true, nil
+}
+
+// sendMail is smtp.SendMail over the execution's dialer. smtp.SendMail dials on its own,
+// past the network policy, so nothing could bound what it reads or close it on cancel.
+func (c *Client) sendMail(auth smtp.Auth, msg *SMTPMessage) error {
+	executionId := c.nj.ExecutionId()
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(c.nj.Context(), "tcp", net.JoinHostPort(c.host, c.port))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+	defer context.AfterFunc(c.nj.Context(), func() { _ = conn.Close() })()
+
+	client, err := smtp.NewClient(&limitedConn{Conn: conn, remaining: maxReadBytes}, c.host)
+	if err != nil {
+		return err
+	}
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(&tls.Config{ServerName: c.host}); err != nil {
+			return err
+		}
+	}
+	if auth != nil {
+		if ok, _ := client.Extension("AUTH"); !ok {
+			return errors.New("smtp: server doesn't support AUTH")
+		}
+		if err := client.Auth(auth); err != nil {
+			return err
+		}
+	}
+	if err := client.Mail(msg.from); err != nil {
+		return err
+	}
+	for _, to := range msg.to {
+		if err := client.Rcpt(to); err != nil {
+			return err
+		}
+	}
+	wc, err := client.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := wc.Write([]byte(msg.String())); err != nil {
+		return err
+	}
+	if err := wc.Close(); err != nil {
+		return err
+	}
+	return client.Quit()
+}
+
+// maxReadBytes bounds what one connection may read. net/smtp reads replies through
+// net/textproto, which buffers a line until "\n" with no limit; a whole dialogue, TLS
+// handshake included, fits in tens of kilobytes.
+const maxReadBytes = 1 << 20
+
+var errReadLimit = fmt.Errorf("smtp: server sent more than %d bytes", maxReadBytes)
+
+// limitedConn fails reads once remaining is spent.
+type limitedConn struct {
+	net.Conn
+	remaining int64
+}
+
+func (c *limitedConn) Read(b []byte) (int, error) {
+	if c.remaining <= 0 {
+		return 0, errReadLimit
+	}
+	if int64(len(b)) > c.remaining {
+		b = b[:c.remaining]
+	}
+	n, err := c.Conn.Read(b)
+	c.remaining -= int64(n)
+	return n, err
 }

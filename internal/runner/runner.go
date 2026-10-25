@@ -3,9 +3,12 @@ package runner
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -46,6 +49,7 @@ import (
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
@@ -54,6 +58,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -83,7 +88,7 @@ var (
 // Runner is a client for running the enumeration process.
 type Runner struct {
 	output             output.Writer
-	interactsh         *interactsh.Client
+	interactsh         interactsh.IClient
 	options            *types.Options
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog
@@ -109,6 +114,7 @@ type Runner struct {
 	httpApiEndpoint *httpapi.Server
 	fuzzStats       *fuzzStats.Tracker
 	dastServer      *server.DASTServer
+	llmClient       llmclient.Client
 }
 
 // New creates a new client for running the enumeration process.
@@ -121,6 +127,12 @@ func New(options *types.Options) (*Runner, error) {
 	if err := config.DefaultConfig.InitializationError(); err != nil && !options.HealthCheck {
 		return nil, fmt.Errorf("initialize nuclei configuration: %w", err)
 	}
+
+	llmClient, err := configureLLM(options)
+	if err != nil {
+		return nil, fmt.Errorf("configure llm: %w", err)
+	}
+	runner.llmClient = llmClient
 
 	if options.HealthCheck {
 		runner.Logger.Print().Msgf("%s\n", DoHealthCheck(options))
@@ -151,7 +163,9 @@ func New(options *types.Options) (*Runner, error) {
 		tm := &installer.TemplateManager{
 			CustomTemplates:        ctm,
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
+			Channel:                options.UpdateTemplatesChannel,
 		}
+		templatesVersion := config.DefaultConfig.TemplateVersion
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
@@ -168,7 +182,12 @@ func New(options *types.Options) (*Runner, error) {
 		if options.UpdateTemplates {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
-			if !config.DefaultConfig.NeedsTemplateUpdate() {
+			noUpdates := !config.DefaultConfig.NeedsTemplateUpdate()
+			if tm.Channel == installer.TemplatesChannelLatest {
+				// the latest channel updates without a new release
+				noUpdates = config.DefaultConfig.TemplateVersion == templatesVersion
+			}
+			if noUpdates {
 				runner.Logger.Info().Msgf("No new updates found for nuclei templates")
 			}
 
@@ -213,7 +232,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
-	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
+	if options.ProxyInternal && (options.AliveHttpProxy != "" || options.AliveSocksProxy != "") {
 		var err error
 
 		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{}, "")
@@ -412,13 +431,7 @@ func New(options *types.Options) (*Runner, error) {
 		opts.HTTPClient = httpclient
 	}
 	if opts.HTTPClient == nil {
-		httpOpts := retryablehttp.DefaultOptionsSingle
-		httpOpts.Timeout = 20 * time.Second // for stability reasons
-		if options.Timeout > 20 {
-			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
-		}
-		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
-		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+		opts.HTTPClient = newInteractshHTTPClient(options)
 	}
 
 	interactshClient, err := interactsh.New(opts)
@@ -657,6 +670,7 @@ func (r *Runner) RunEnumeration() error {
 	executorOpts := &protocols.ExecutorOptions{
 		Output:              r.output,
 		Options:             r.options,
+		LLMClient:           r.llmClient,
 		Progress:            r.progress,
 		Catalog:             r.catalog,
 		IssuesClient:        r.issuesClient,
@@ -717,6 +731,10 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.HostErrorsCache = cache
 	}
 
+	if r.options.HostBackoff {
+		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: r.options.HostBackoffMax})
+	}
+
 	executorEngine := core.New(r.options)
 	executorEngine.SetExecuterOptions(executorOpts)
 
@@ -728,6 +746,18 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
+	profiles := r.targetProfiles()
+	if profiles != nil {
+		if r.options.AutomaticScan {
+			return errors.New("per-target profiles cannot be combined with automatic scan")
+		}
+		loaderConfig.TargetFilter = profiles.LoadFilter()
+	}
+	if r.hasPinnedTargets() {
+		if err := pinnedTargetConflict(r.options); err != nil {
+			return err
+		}
+	}
 	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
 		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true
@@ -771,6 +801,15 @@ func (r *Runner) RunEnumeration() error {
 	}
 	if err := store.Load(); err != nil {
 		return err
+	}
+	// Each template is parsed once per scan, so the compiled cache only holds
+	// pre-compilation snapshots that nothing reads after loading.
+	if parser, ok := r.parser.(*templates.Parser); ok {
+		parser.PurgeCompiled()
+	}
+	if profiles != nil {
+		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
+		executorOpts.TargetScope = profiles
 	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
@@ -966,7 +1005,7 @@ func (r *Runner) executeSmartWorkflowInput(executorOpts *protocols.ExecutorOptio
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
-	if err := service.Execute(); err != nil {
+	if err := service.Execute(context.Background()); err != nil {
 		return nil, errors.Wrap(err, "could not execute automatic scan")
 	}
 	result := &atomic.Bool{}
@@ -1208,4 +1247,29 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 func init() {
 	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
 	EnableCloudUpload = env.GetEnvOrDefault("ENABLE_CLOUD_UPLOAD", false)
+}
+
+func newInteractshHTTPClient(options *types.Options) *retryablehttp.Client {
+	httpOpts := retryablehttp.DefaultOptionsSingle
+	httpOpts.Timeout = 20 * time.Second // for stability reasons
+	if options.Timeout > 20 {
+		httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
+	}
+	if dialers := protocolstate.GetDialersWithId(options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
+		// The pooled default keeps ProxyFromEnvironment and the TLS config that
+		// INTERACTSH_TLS_VERIFY edits. Nuclei only exports HTTP_PROXY when -pi
+		// is set, and that path uses the pooled client, so -proxy without -pi
+		// still dials the interactsh server directly.
+		transport := retryablehttp.DefaultReusePooledTransport()
+		transport.DialContext = dialers.Fastdialer.Dial
+		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialers.Fastdialer.DialTLS(ctx, network, addr)
+		}
+		httpOpts.HttpClient = &http.Client{
+			Transport: transport,
+			Timeout:   httpOpts.Timeout,
+		}
+	}
+	// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+	return retryablehttp.NewClient(httpOpts)
 }
