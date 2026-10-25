@@ -10,8 +10,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/projectdiscovery/goja"
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	jsnet "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/net"
@@ -156,7 +156,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			executionId := ctx.Value("executionId").(string)
 			dialer := protocolstate.GetDialersWithId(executionId)
 			if dialer == nil {
-				panic("dialers with executionId " + executionId + " not found")
+				return false, errkit.New("dialers with executionId %s not found", executionId)
 			}
 
 			conn, err := dialer.Fastdialer.Dial(ctx, "udp", net.JoinHostPort(host, port))

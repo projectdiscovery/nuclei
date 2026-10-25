@@ -110,7 +110,7 @@ Acesse a [**`documentação completa do Nuclei aqui`**](https://docs.projectdisc
 
 ### Instalação
 
-O `nuclei` requer **go >= 1.24.2** para instalar com sucesso. Execute o seguinte comando para obter o repositório:
+O `nuclei` requer **go >= 1.27.3** para instalar com sucesso. Execute o seguinte comando para obter o repositório:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -173,6 +173,14 @@ TEMPLATES:
    -esc, -enable-self-contained           enable loading self-contained templates
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
+   -llm                                   enable llm matchers and extractors (semantic matching)
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
+   -llm-model string                      model used for semantic matching
+   -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
+   -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
+   -llm-concurrency int                   maximum concurrent llm calls (default 4)
+   -llm-cache                             cache llm responses within a scan (default true)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)

@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -104,6 +105,10 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 		cache.SetVerbose(opts.Options.Verbose)
 
 		executorOpts.HostErrorsCache = cache
+	}
+
+	if opts.Options.HostBackoff {
+		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: opts.Options.HostBackoffMax})
 	}
 
 	executorEngine := core.New(opts.Options)

@@ -110,7 +110,7 @@ Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.
 
 ### Installation
 
-`nuclei` requires **go >= 1.24.2** to install successfully. Run the following command to get the repo:
+`nuclei` requires **go >= 1.27.3** to install successfully. Run the following command to get the repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -145,6 +145,8 @@ TARGET:
    -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
+   -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
+   -mup, -max-urls-per-pattern int   scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)
 
 TARGET-FORMAT:
    -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
@@ -173,6 +175,14 @@ TEMPLATES:
    -esc, -enable-self-contained           enable loading self-contained templates
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
+   -llm                                   enable llm matchers and extractors (semantic matching)
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
+   -llm-model string                      model used for semantic matching
+   -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
+   -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
+   -llm-concurrency int                   maximum concurrent llm calls (default 4)
+   -llm-cache                             cache llm responses within a scan (default true)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -284,6 +294,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
    -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
+   -host-backoff                      slow down a host that starts blocking (429, repeated 403s, connection failures)
+   -host-backoff-max value            maximum delay applied to a host that is blocking (default 30s)
    -per-host-rate-limit               enable per-host rate limiting (global rate limit becomes unlimited when enabled)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
@@ -327,6 +339,7 @@ DEBUG:
    -dresp, -debug-resp        show all received responses
    -p, -proxy string[]        list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal       proxy all internal requests
+   -rp, -replay-proxy string  http/socks5 proxy to re-send requests that produced a finding through (e.g. burp)
    -ldf, -list-dsl-function   list all supported DSL function signatures
    -tlog, -trace-log string   file to write sent requests trace log
    -elog, -error-log string   file to write sent requests error log

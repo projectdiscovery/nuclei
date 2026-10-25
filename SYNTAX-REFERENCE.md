@@ -2481,6 +2481,136 @@ xpath:
 
 <div class="dd">
 
+<code>prompt</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Prompt is the natural-language question for an llm matcher. The model
+judges the selected response part and returns a verdict; the matcher
+fires when the verdict equals Expect with at least MinConfidence.
+
+{{...}} placeholders are interpolated from the template variables,
+-var and target. Response derived values are not interpolated, since
+the response is attacker controlled.
+
+
+
+Examples:
+
+
+```yaml
+prompt: Is this a working admin login form rather than a marketing page?
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>expect</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Expect is the verdict that counts as a match for an llm matcher.
+Defaults to "yes".
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>options</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Options restricts the model to a fixed set of verdicts for an llm
+matcher. Defaults to yes/no.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>min-confidence</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+MinConfidence is the minimum confidence (0-1) an llm verdict needs to
+count as a match. Defaults to 0.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>inputs</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Inputs compares several responses instead of a single part, for
+checks that are about the difference between responses (blind
+boolean injection, user enumeration, IDOR). Each entry is resolved
+against the runtime values, so {{body_1}} and {{body_2}} work with
+req-condition, and each response is framed separately for the model.
+Part is ignored when Inputs is set.
+
+
+
+Examples:
+
+
+```yaml
+inputs:
+    - '{{body_1}}'
+    - '{{body_2}}'
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>max-input-tokens</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+MaxInputTokens caps how much of the response part is sent to the model
+   for an llm matcher, as an approximate token count.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>allow-sole</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+AllowSole permits an llm matcher to be the only matcher on a high or
+critical template. Without it such a template is rejected, so a model is
+never the sole arbiter of a severe finding by accident.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>encoding</code>  <i>string</i>
 
 </div>
@@ -2600,6 +2730,8 @@ Enum Values:
   - <code>dsl</code>
 
   - <code>xpath</code>
+
+  - <code>llm</code>
 </div>
 
 <hr />

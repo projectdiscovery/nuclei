@@ -110,7 +110,7 @@ _针对安全团队和企业，我们提供了构建在 Nuclei OSS 之上的云�
 
 ### 安装
 
-`nuclei` 需要 **go >= 1.24.2** 才能成功安装。运行以下命令获取仓库：
+`nuclei` 需要 **go >= 1.27.3** 才能成功安装。运行以下命令获取仓库：
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -173,6 +173,14 @@ TEMPLATES:
    -esc, -enable-self-contained           enable loading self-contained templates
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
+   -llm                                   enable llm matchers and extractors (semantic matching)
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
+   -llm-model string                      model used for semantic matching
+   -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
+   -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
+   -llm-concurrency int                   maximum concurrent llm calls (default 4)
+   -llm-cache                             cache llm responses within a scan (default true)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
