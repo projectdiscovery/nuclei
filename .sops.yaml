@@ -1,0 +1,4 @@
+# SOPS Creation Rules for Secret File (ref: https://docs.projectdiscovery.io/tools/nuclei/authenticated-scans)
+
+creation_rules:
+  - encrypted_regex: ^(password|username|token|value|key|raw)$

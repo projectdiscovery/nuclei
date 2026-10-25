@@ -1,0 +1,36 @@
+id: websocket-duration
+
+info:
+  name: WebSocket Duration
+  author: pdteam
+  severity: info
+
+flow: websocket("duration_ws")
+
+websocket:
+  - id: duration_ws
+    address: "{{Scheme}}://{{Hostname}}"
+    inputs:
+      - data: hello
+      - data: status
+    matchers:
+      - type: dsl
+        condition: and
+        dsl:
+          - "duration > 0 && duration < 60"
+          - "duration_1 > 0 && duration_1 < 60"
+          - "duration_2 > 0 && duration_2 < 60"
+          - "duration == duration_2"
+          - "duration_ws_duration > 0 && duration_ws_duration < 60"
+          - "duration_ws_duration_1 > 0 && duration_ws_duration_1 < 60"
+          - "duration_ws_duration_2 > 0 && duration_ws_duration_2 < 60"
+          - "duration_ws_duration == duration"
+          - "duration_ws_duration_1 == duration_1"
+          - "duration_ws_duration_2 == duration_2"
+      - type: word
+        part: response
+        words:
+          - world
+          - ready
+        condition: and
+    matchers-condition: and

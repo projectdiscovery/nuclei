@@ -809,20 +809,76 @@ func TestActionSleep(t *testing.T) {
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
 		require.Nil(t, err, "could not run page actions")
 		require.True(t, page.Page().MustElement("button").MustVisible(), "could not get button")
+		require.Len(t, page.ActionDurations, 2)
+		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.GreaterOrEqual(t, page.ActionDurations[1], 2*time.Second)
+	})
+}
+
+func TestActionWaitEventDuration(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitEvent}, Data: map[string]string{"event": "Page.loadEventFired", "max-duration": "5s"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	// a slow subresource delays the load event, so the wait is long enough to
+	// measure on platforms with a coarse monotonic clock such as Windows
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/slow" {
+			time.Sleep(300 * time.Millisecond)
+			return
+		}
+		_, _ = fmt.Fprintln(w, `<html><body>loaded<img src="/slow"></body></html>`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+		require.Len(t, page.ActionDurations, 2)
+		require.GreaterOrEqual(t, page.ActionDurations[0], 100*time.Millisecond)
+		require.Greater(t, page.ActionDurations[1], time.Duration(0))
+	})
+}
+
+func TestActionWaitEventSeesEventFiredBeforeWaiting(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	testHeadlessSimpleResponse(t, `<html><body>loaded</body></html>`, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+
+		wait, err := page.WaitEvent(&Action{
+			ActionType: ActionTypeHolder{ActionType: ActionWaitEvent},
+			Data:       map[string]string{"event": "Page.loadEventFired", "max-duration": "3s"},
+		}, out)
+		require.Nil(t, err)
+
+		// the load event fires before the wait starts, as it can for a fast
+		// page during the navigation that precedes the deferred wait
+		require.Nil(t, page.page.Reload())
+		require.Nil(t, page.page.WaitLoad())
+		require.Nil(t, wait(), "an event fired after the wait-event action must not be missed")
 	})
 }
 
 func TestActionWaitVisible(t *testing.T) {
-	response := `
+	// responseWithDelay renders a button that becomes visible after appearDelayMs.
+	// Each subtest uses its own delay so the page timing and the action timeout
+	// never race at the same boundary, which previously caused flaky failures on
+	// slower runners (e.g. windows CI) where navigation/startup overhead shifted
+	// the moment the wait actually began.
+	responseWithDelay := func(appearDelayMs int) string {
+		return fmt.Sprintf(`
 		<html>
 			<head>
 				<title>Nuclei Test Page</title>
 			</head>
 			<button style="display:none" id="test">Wait for me!</button>
 			<script>
-				setTimeout(() => document.querySelector('#test').style.display = '', 1000);
+				setTimeout(() => document.querySelector('#test').style.display = '', %d);
 			</script>
-		</html>`
+		</html>`, appearDelayMs)
+	}
 
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
@@ -830,7 +886,9 @@ func TestActionWaitVisible(t *testing.T) {
 	}
 
 	t.Run("wait for an element being visible", func(t *testing.T) {
-		testHeadlessSimpleResponse(t, response, actions, 2*time.Second, func(page *Page, err error, out ActionData) {
+		// element appears quickly (500ms) and the wait has a generous timeout (5s),
+		// so it reliably becomes visible before the action times out.
+		testHeadlessSimpleResponse(t, responseWithDelay(500), actions, 5*time.Second, func(page *Page, err error, out ActionData) {
 			require.Nil(t, err, "could not run page actions")
 
 			page.Page().MustElement("button").MustVisible()
@@ -838,8 +896,9 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 
 	t.Run("timeout because of element not visible", func(t *testing.T) {
-		// increased timeout from time.Second/2 to time.Second due to random fails (probably due to overhead and system)
-		testHeadlessSimpleResponse(t, response, actions, time.Second, func(page *Page, err error, out ActionData) {
+		// element only appears after 10s while the wait times out at 1s, leaving a
+		// wide margin so the timeout reliably fires before the element is shown.
+		testHeadlessSimpleResponse(t, responseWithDelay(10000), actions, time.Second, func(page *Page, err error, out ActionData) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
 		})
@@ -917,6 +976,30 @@ func testHeadlessSimpleResponse(t *testing.T, response string, actions []*Action
 	}, assert)
 }
 
+// sharedBrowser is launched once for the package. Every test used to start and
+// tear down its own chromium, which dominated the suite: a launch also spawns a
+// second chromium to validate the binary, so 30-odd tests cost 60-odd cold
+// starts. NewInstance below is the real isolation boundary between tests, so
+// sharing the browser costs no coverage.
+var sharedBrowser *Browser
+
+func TestMain(m *testing.M) {
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create browser: %v\n", err)
+		os.Exit(1)
+	}
+	sharedBrowser = browser
+
+	code := m.Run()
+
+	browser.Close()
+	os.Exit(code)
+}
+
 func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handler func(w http.ResponseWriter, r *http.Request), assert func(page *Page, pageErr error, extractedData ActionData)) {
 	t.Helper()
 
@@ -927,17 +1010,14 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	_ = protocolstate.Init(opts)
 
-	browser, err := New(&types.Options{
-		ShowBrowser:        false,
-		UseInstalledChrome: testheadless.HeadlessLocal,
-	})
-	require.Nil(t, err, "could not create browser")
-	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	instance, err := sharedBrowser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
 	defer func() {
 		_ = instance.Close()
+		// A debug action sets these on the browser rather than the page, so with
+		// a shared browser they would leak into every later test.
+		sharedBrowser.engine.SlowMotion(0)
+		sharedBrowser.engine.Trace(false)
 	}()
 
 	ts := httptest.NewServer(http.HandlerFunc(handler))
@@ -953,6 +1033,49 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	if page != nil {
 		page.Close()
 	}
+}
+
+func TestHeadlessRunHonorsParentCancellation(t *testing.T) {
+	opts := &types.Options{AllowLocalFileAccess: true}
+	require.NoError(t, protocolstate.Init(opts))
+
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	require.NoError(t, err)
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.NoError(t, err)
+	defer func() { _ = instance.Close() }()
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, request *http.Request) {
+		requestStarted <- struct{}{}
+		<-request.Context().Done()
+	}))
+	defer server.Close()
+
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-requestStarted
+		cancel()
+	}()
+
+	input := contextargs.NewWithInput(parent, server.URL)
+	actions := []*Action{{
+		ActionType: ActionTypeHolder{ActionType: ActionNavigate},
+		Data:       map[string]string{"url": "{{BaseURL}}"},
+	}}
+
+	startedAt := time.Now()
+	_, page, err := instance.Run(input, actions, nil, &Options{Timeout: 5 * time.Second, Options: opts})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, page)
+	require.Less(t, time.Since(startedAt), 2*time.Second)
 }
 
 func TestContainsAnyModificationActionType(t *testing.T) {

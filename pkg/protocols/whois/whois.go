@@ -14,9 +14,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -72,6 +72,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 	return nil
@@ -84,7 +87,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -122,7 +125,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
 	rdapReq.Server = request.parsedServerURL
+	if err := request.options.RateLimitTakeContext(input.Context(), query); err != nil {
+		return errors.Wrap(err, "could not take rate limit")
+	}
+	timeStart := time.Now()
 	res, err := request.client.Do(rdapReq)
+	duration := time.Since(timeStart)
 	if err != nil {
 		return errors.Wrap(err, "could not make whois request")
 	}
@@ -150,6 +158,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["type"] = request.Type().String()
 	data["host"] = query
 	data["response"] = jsonDataString
+	data["duration"] = duration.Seconds()
 
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
@@ -169,12 +178,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
@@ -207,6 +216,16 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	return data
 }
 
+// RequestPartDefinitions contains a mapping of request part definitions and their
+// description. Multiple definitions are separated by commas.
+// Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
+var RequestPartDefinitions = map[string]string{
+	"type":     "Type is the type of request made",
+	"host":     "Host is the input to the template",
+	"response": "WHOIS response data",
+	"duration": "Protocol operation duration in seconds",
+}
+
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WHOISProtocol
@@ -214,5 +233,14 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

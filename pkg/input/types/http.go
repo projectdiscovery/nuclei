@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/useragent"
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -59,6 +60,14 @@ func (rr *RequestResponse) Clone() *RequestResponse {
 // BuildRequest builds a retryablehttp request from the request response
 func (rr *RequestResponse) BuildRequest() (*retryablehttp.Request, error) {
 	rr.once.Do(func() {
+		// Request is optional: UnmarshalJSON only populates it when a "request"
+		// key is present, so an entry carrying just a "url" leaves it nil.
+		// Dereferencing it below would panic with a nil pointer instead of
+		// surfacing a usable error, taking the whole scan down.
+		if rr.Request == nil {
+			rr.reqErr = fmt.Errorf("could not create request: no request in request response")
+			return
+		}
 		urlx := rr.URL.Clone()
 		var body io.Reader = nil
 		if rr.Request.Body != "" {
@@ -103,16 +112,27 @@ func (rr *RequestResponse) ID() string {
 func (rr *RequestResponse) MarshalJSON() ([]byte, error) {
 	m := make(map[string]interface{})
 	m["url"] = rr.URL.String()
-	reqBin, err := json.Marshal(rr.Request)
-	if err != nil {
-		return nil, err
+	// Request and Response are optional (UnmarshalJSON only reads the keys when
+	// present), so nil pointers omit their keys instead of emitting "null".
+	//
+	// The pre-marshaled bytes must be wrapped as json.Message: encoding/json
+	// (and sonic) encode a bare []byte as a base64 *string*, which this type's
+	// own UnmarshalJSON — expecting a JSON object — cannot decode, breaking the
+	// json.JSONCodec round-trip contract asserted above.
+	if rr.Request != nil {
+		reqBin, err := json.Marshal(rr.Request)
+		if err != nil {
+			return nil, err
+		}
+		m["request"] = json.Message(reqBin)
 	}
-	m["request"] = reqBin
-	respBin, err := json.Marshal(rr.Response)
-	if err != nil {
-		return nil, err
+	if rr.Response != nil {
+		respBin, err := json.Marshal(rr.Response)
+		if err != nil {
+			return nil, err
+		}
+		m["response"] = json.Message(respBin)
 	}
-	m["response"] = respBin
 	return json.Marshal(m)
 }
 
@@ -231,24 +251,24 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	method := parts[0]
 	rr.Request.Method = method
 
-	// parse relative url
-	urlx, err := urlutil.ParseRawRelativePath(parts[1], true)
+	// the request target is normally an origin-form path, but proxy captures and
+	// .http files use the absolute form, which already carries the authority
+	var urlx *urlutil.URL
+	target := parts[1]
+	if stringsutil.HasPrefixAnyI(target, urlutil.HTTP+urlutil.SchemeSeparator, urlutil.HTTPS+urlutil.SchemeSeparator) {
+		// urlutil.ParseAbsoluteURL only accepts lowercase schemes; preserve the
+		// remainder of the request target unchanged.
+		if scheme, rest, ok := strings.Cut(target, urlutil.SchemeSeparator); ok {
+			target = strings.ToLower(scheme) + urlutil.SchemeSeparator + rest
+		}
+		urlx, err = urlutil.ParseAbsoluteURL(target, true)
+	} else {
+		urlx, err = urlutil.ParseRawRelativePath(target, true)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url: %s", err)
 	}
 	rr.URL = *urlx
-
-	// parse host line
-	hostLine, err := protoReader.ReadLine()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read host line: %s", err)
-	}
-	sep := strings.Index(hostLine, ":")
-	if sep <= 0 || sep >= len(hostLine)-1 {
-		return nil, fmt.Errorf("invalid host line: %s", hostLine)
-	}
-	hostLine = hostLine[sep+2:]
-	rr.URL.Host = hostLine
 
 	// parse headers
 	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()
@@ -261,11 +281,23 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 			// end of headers next is body
 			break
 		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
+		key, value, found := strings.Cut(line, ":")
+		if !found || key == "" {
 			return nil, fmt.Errorf("invalid header line: %s", line)
 		}
-		rr.Request.Headers.Set(parts[0], parts[1][1:])
+		value = strings.TrimSpace(value)
+		// Host carries the authority rather than request metadata, and callers
+		// read it off the URL: retryablehttp derives the wire Host from there,
+		// and keeping it in the header map would expose it to header fuzzing as
+		// if it were an ordinary header.
+		if strings.EqualFold(key, "Host") {
+			// an absolute request target takes precedence over the Host header
+			if rr.URL.Host == "" {
+				rr.URL.Host = value
+			}
+			continue
+		}
+		rr.Request.Headers.Set(key, value)
 	}
 
 	// parse body

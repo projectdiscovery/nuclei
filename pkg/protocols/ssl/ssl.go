@@ -146,7 +146,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	tlsxOptions := &clients.Options{
-		AllCiphers:        true,
 		ScanMode:          request.ScanMode,
 		Expired:           true,
 		SelfSigned:        true,
@@ -180,6 +179,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errkit.Newf("could not compile operators got %v", err)
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 	return nil
@@ -197,7 +199,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -232,7 +234,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		gologger.Debug().Msgf("SSL Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
-	result, dataErr := render.Render(render.Input{Text: request.Address, Values: payloadValues})
+	result, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: request.Address, Values: payloadValues})
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -254,7 +256,19 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = host
 	}
 
+	if err := request.options.HostBackoffWait(input.Context(), addressToDial); err != nil {
+		return err
+	}
+	if err := request.options.RateLimitTakeContext(input.Context(), addressToDial); err != nil {
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		return errkit.Wrap(err, "could not take rate limit")
+	}
+
+	timeStart := time.Now()
 	response, err := request.tlsx.Connect(host, hostIp, port)
+	duration := time.Since(timeStart)
+	request.options.HostBackoffObserveDial(addressToDial, err)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -283,6 +297,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["response"] = jsonDataString
 	data["host"] = input.MetaInput.Input
 	data["matched"] = addressToDial
+	data["duration"] = duration.Seconds()
 	if input.MetaInput.CustomIP != "" {
 		data["ip"] = hostIp
 	} else {
@@ -292,6 +307,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
+	request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, "duration", data["duration"])
 
 	// if response is not struct compatible, error out
 	if !structs.IsStruct(response) {
@@ -363,6 +379,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":          "Matched is the input which was matched upon",
 	"type":             "Type is the type of request made",
 	"timestamp":        "Timestamp is the time when the request was made",
+	"duration":         "Protocol operation duration in seconds",
 	"response":         "JSON SSL protocol handshake details",
 	"cipher":           "Cipher is the encryption algorithm used",
 	"domains":          "Domains are the list of domain names in the certificate",
@@ -371,6 +388,7 @@ var RequestPartDefinitions = map[string]string{
 	"issuer_cn":        "Issuer CN is the common name of the certificate issuer",
 	"issuer_dn":        "Issuer DN is the distinguished name of the certificate issuer",
 	"issuer_org":       "Issuer organization is the organization of the certificate issuer",
+	"key_exchange":     "Key exchange is the TLS key exchange group negotiated in the handshake",
 	"not_after":        "Timestamp after which the remote cert expires",
 	"not_before":       "Timestamp before which the certificate is not valid",
 	"probe_status":     "Probe status indicates if the probe was successful",
@@ -388,12 +406,12 @@ var RequestPartDefinitions = map[string]string{
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
@@ -446,5 +464,14 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

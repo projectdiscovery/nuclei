@@ -1,14 +1,12 @@
 package burp
 
 import (
-	"encoding/base64"
 	"io"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
-	"github.com/projectdiscovery/utils/conversion"
 	burpxml "github.com/projectdiscovery/utils/parsers/burp/xml"
 )
 
@@ -42,17 +40,28 @@ func (j *BurpFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallba
 	}
 
 	for _, item := range items.Items {
-		binx, err := base64.StdEncoding.DecodeString(item.Request.Raw)
-		if err != nil {
-			return errors.Wrap(err, "could not decode base64")
+		// Prefer decoded Body from burpxml; fall back to Raw. Do not TrimSpace the
+		// payload — trailing blank lines mark end-of-headers for HTTP parsers.
+		reqRaw := item.Request.Body
+		if strings.TrimSpace(reqRaw) == "" {
+			reqRaw = item.Request.Raw
 		}
-		if strings.TrimSpace(conversion.String(binx)) == "" {
+		if strings.TrimSpace(reqRaw) == "" {
 			continue
 		}
-		rawRequest, err := types.ParseRawRequestWithURL(conversion.String(binx), item.URL)
+		rawRequest, err := types.ParseRawRequestWithURL(reqRaw, item.URL)
 		if err != nil {
 			return errors.Wrap(err, "could not parse raw request")
 		}
+
+		respRaw := item.Response.Body
+		if strings.TrimSpace(respRaw) == "" {
+			respRaw = item.Response.Raw
+		}
+		if strings.TrimSpace(respRaw) != "" {
+			rawRequest.Response = &types.HttpResponse{Raw: respRaw}
+		}
+
 		resultsCb(rawRequest)
 	}
 	return nil

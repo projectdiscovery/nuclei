@@ -3,6 +3,7 @@ package headless
 import (
 	"fmt"
 	"maps"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -19,6 +20,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -92,6 +95,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         vars,
 				Values:       generators.MergeMaps(value, vars),
@@ -132,40 +136,61 @@ func extractBaseURLFromActions(steps []*engine.Action) (string, error) {
 }
 
 func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
-	instance, err := request.options.Browser.NewInstance()
-	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldNotGetHtmlElement)
-	}
-	defer func() {
-		_ = instance.Close()
-	}()
-
-	instance.SetInteractsh(request.options.Interactsh)
-
+	pageTimeout := time.Duration(request.options.Options.PageTimeout) * time.Second
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
+	backoffKey := hostratelimit.NormalizeHostPort(input.MetaInput.Input)
 	options := &engine.Options{
-		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
+		Timeout:       pageTimeout,
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
+		// only the navigation's status speaks for the host: a failed step or
+		// a subresource from another origin does not
+		OnNavigationResponse: func(resp *http.Response) {
+			request.options.HostBackoff.Observe(backoffKey, resp.StatusCode, hostbackoff.RetryAfter(resp.Header.Get("Retry-After")), nil)
+		},
 	}
 
 	if !options.DisableCookie && input.CookieJar == nil {
 		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
-	out, page, err := instance.Run(input, request.Steps, payloads, options)
+	if err := request.options.HostBackoff.Wait(input.Context(), backoffKey); err != nil {
+		return err
+	}
+	// limited as one request per run of the steps, the unit progress counts
+	if err := request.options.RateLimitTakeContext(input.Context(), input.MetaInput.Input); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not take rate limit")
+	}
+
+	instance, err := request.options.Browser.NewInstanceWithContext(input.Context(), pageTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
-	defer page.Close()
+	var page *engine.Page
+	defer func() {
+		if closeErr := instance.CloseWithPage(page); closeErr != nil {
+			gologger.Warning().Msgf("Could not close headless browser instance: %s", closeErr)
+		}
+	}()
+	instance.SetInteractsh(request.options.Interactsh)
+
+	timeStart := time.Now()
+	out, createdPage, err := instance.Run(input, request.Steps, payloads, options)
+	runDuration := time.Since(timeStart)
+	if err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
+	}
+	page = createdPage
 
 	page.InteractshURLs = append(interactshURLs, page.InteractshURLs...)
 
@@ -209,6 +234,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	statusCode := out.GetOrDefault("status_code", "").(string)
 
 	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	addHeadlessDurationFields(outputEvent, page.ActionDurations, runDuration)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
@@ -224,7 +250,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		request.options.Interactsh.RequestEvent(page.InteractshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(page.InteractshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,
@@ -242,6 +268,18 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return types.ErrNoMoreRequests
 	}
 	return nil
+}
+
+func addHeadlessDurationFields(event output.InternalEvent, actionDurations []time.Duration, runDuration time.Duration) {
+	if len(actionDurations) == 0 {
+		event["duration"] = runDuration.Seconds()
+		return
+	}
+	for i, duration := range actionDurations {
+		seconds := duration.Seconds()
+		event[fmt.Sprintf("duration_%d", i+1)] = seconds
+		event["duration"] = seconds
+	}
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecutorOptions, responseBody string, input string) {

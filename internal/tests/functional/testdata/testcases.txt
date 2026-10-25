@@ -24,7 +24,10 @@
 {{binary}} -tags cve -exclude-templates http/cves/2020/
 {{binary}} -tags cve -exclude-templates http/cves/2020/CVE-2020-9757.yaml
 {{binary}} -tags cve -exclude-templates http/cves/2020/CVE-2020-9757.yaml -exclude-templates http/cves/2021/
-{{binary}} -tags cve -include-tags dos,fuzz
+# Skipped until the next nuclei release ships #7536: release still force-includes
+# via -include-tags (bypassing -tags), so release/current load counts diverge by design.
+# Covered by pkg/catalog/index filter unit tests in the meantime.
+# {{binary}} -tags cve -include-tags dos,fuzz
 {{binary}} -tags cve -ntv 8.8.8,8.8.9
 {{binary}} -tags cve -severity high
 {{binary}} -tags cve,dos,fuzz

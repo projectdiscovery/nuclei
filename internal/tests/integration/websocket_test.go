@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gobwas/ws/wsutil"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
@@ -32,6 +33,37 @@ func TestWebSocket(t *testing.T) {
 		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/websocket/basic.yaml", strings.ReplaceAll(server.URL, "http", "ws"), suite.debug)
 		if err != nil {
 			t.Fatalf("basic websocket request failed: %v", err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("Duration", func(t *testing.T) {
+		connHandler := func(conn net.Conn) {
+			for {
+				msg, op, err := wsutil.ReadClientData(conn)
+				if err != nil {
+					return
+				}
+				switch string(msg) {
+				case "hello":
+					time.Sleep(integrationDurationObservationDelay)
+					_ = wsutil.WriteServerMessage(conn, op, []byte("world"))
+				case "status":
+					time.Sleep(integrationDurationObservationDelay)
+					_ = wsutil.WriteServerMessage(conn, op, []byte("ready"))
+				default:
+					return
+				}
+			}
+		}
+		server := testutils.NewWebsocketServer("", connHandler, func(origin string) bool { return true })
+		defer server.Close()
+
+		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/websocket/duration.yaml", strings.ReplaceAll(server.URL, "http", "ws"), suite.debug)
+		if err != nil {
+			t.Fatalf("duration websocket request failed: %v", err)
 		}
 		if err := expectResultsCount(results, 1); err != nil {
 			t.Fatal(err)
