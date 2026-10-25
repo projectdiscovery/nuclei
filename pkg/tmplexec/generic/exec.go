@@ -54,7 +54,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 		inputItem := ctx.Input.Clone()
 		if g.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(ctx.Input.MetaInput, req.Type()) {
-			if inputItem.MetaInput.Input = g.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+			if inputItem.MetaInput.Input = g.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 				return nil
 			}
 		}

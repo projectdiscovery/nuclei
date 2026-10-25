@@ -753,6 +753,11 @@ func (r *Runner) RunEnumeration() error {
 		}
 		loaderConfig.TargetFilter = profiles.LoadFilter()
 	}
+	if r.hasPinnedTargets() {
+		if err := pinnedTargetConflict(r.options); err != nil {
+			return err
+		}
+	}
 	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
 		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true

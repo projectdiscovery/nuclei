@@ -342,9 +342,11 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 	defer func() { finish(err == nil) }()
 	finished := e.templateExecutionStarted(template, value.Input)
 	defer func() { finished(ctx.Err()) }()
-	ctxArgs := contextargs.New(ctx)
+	// every protocol dials the target's host through its pinned ip, if any
+	pinnedCtx := contextargs.WithCustomIP(ctx, value)
+	ctxArgs := contextargs.New(pinnedCtx)
 	ctxArgs.MetaInput = value
-	scanCtx := scan.NewScanContext(ctx, ctxArgs)
+	scanCtx := scan.NewScanContext(pinnedCtx, ctxArgs)
 
 	switch template.Type() {
 	case types.WorkflowProtocol:
