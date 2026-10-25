@@ -131,11 +131,6 @@ func fingerprintMySQL(ctx context.Context, executionId string, host string, port
 		// host is not valid according to network policy
 		return info, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return MySQLInfo{}, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
 	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return info, err

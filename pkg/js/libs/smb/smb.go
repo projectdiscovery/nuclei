@@ -91,7 +91,10 @@ type (
 // log(to_json(info));
 // ```
 func (c *SMBClient) ConnectSMBInfoMode(ctx context.Context, host string, port int) (*smb.SMBLog, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return nil, fmt.Errorf("smb: missing executionId in context")
+	}
 	return memoizedconnectSMBInfoMode(ctx, executionId, host, port)
 }
 
@@ -100,10 +103,6 @@ func connectSMBInfoMode(ctx context.Context, executionId string, host string, po
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
-	}
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	dialSMBInfo := func(ctx context.Context) (net.Conn, error) {
@@ -148,7 +147,10 @@ func connectSMBInfoMode(ctx context.Context, executionId string, host string, po
 // log(to_json(metadata));
 // ```
 func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int) (*plugins.ServiceSMB, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return nil, fmt.Errorf("smb: missing executionId in context")
+	}
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
@@ -203,7 +205,10 @@ func (c *SMBClient) Authenticate(ctx context.Context, host string, port int, use
 //
 // ```
 func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user, password string) ([]string, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return nil, fmt.Errorf("smb: missing executionId in context")
+	}
 	return memoizedlistShares(ctx, executionId, host, port, user, password)
 }
 
@@ -218,7 +223,10 @@ func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user,
 // for (const e of entries) { log(e.Name + (e.IsDir ? '/' : '')); }
 // ```
 func (c *SMBClient) ListDir(ctx context.Context, host string, port int, user, password, share, dir string) ([]ShareEntry, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return nil, fmt.Errorf("smb: missing executionId in context")
+	}
 	return memoizedlistDir(ctx, executionId, host, port, user, password, share, dir)
 }
 
@@ -232,7 +240,10 @@ func (c *SMBClient) ListDir(ctx context.Context, host string, port int, user, pa
 // log(body);
 // ```
 func (c *SMBClient) ReadFile(ctx context.Context, host string, port int, user, password, share, filePath string) (string, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return "", fmt.Errorf("smb: missing executionId in context")
+	}
 	return memoizedreadFile(ctx, executionId, host, port, user, password, share, filePath)
 }
 
@@ -246,7 +257,10 @@ func (c *SMBClient) ReadFile(ctx context.Context, host string, port int, user, p
 // for (const e of tree) { log(e.Name); }
 // ```
 func (c *SMBClient) ListTree(ctx context.Context, host string, port int, user, password, share, dir string) ([]ShareEntry, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return nil, fmt.Errorf("smb: missing executionId in context")
+	}
 	return memoizedlistTree(ctx, executionId, host, port, user, password, share, dir)
 }
 

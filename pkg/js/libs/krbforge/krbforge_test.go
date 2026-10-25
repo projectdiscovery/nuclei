@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/goja"
@@ -19,7 +20,10 @@ func TestCreateTicketDefaultOutput(t *testing.T) {
 			t.Run(fmt.Sprintf("golden=%v/%s", golden, location), func(t *testing.T) {
 				templatesDir := setTemplateDir(t)
 				cwd := templatesDir
-				if location != "sandbox" {
+				switch location {
+				case "outside denied":
+					cwd = outsideAllowedDir(t)
+				case "outside allowed":
 					cwd = t.TempDir()
 				}
 				t.Chdir(cwd)
@@ -107,7 +111,7 @@ func TestCreateTicketRejectsDefaultOutputSymlink(t *testing.T) {
 	t.Chdir(cwd)
 	executionID := t.Name()
 	setLocalFileAccess(executionID, false)
-	outside := filepath.Join(t.TempDir(), "ticket.ccache")
+	outside := filepath.Join(outsideAllowedDir(t), "ticket.ccache")
 	require.NoError(t, os.WriteFile(outside, []byte("unchanged"), 0600))
 	if err := os.Symlink(outside, filepath.Join(cwd, "Administrator.ccache")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
@@ -142,7 +146,7 @@ func TestCreateTicketRejectsDefaultOutputHardLink(t *testing.T) {
 
 func TestCreateGoldenTicketDeniesDefaultOutputFromRuntime(t *testing.T) {
 	setTemplateDir(t)
-	cwd := t.TempDir()
+	cwd := outsideAllowedDir(t)
 	t.Chdir(cwd)
 	executionID := t.Name()
 	setLocalFileAccess(executionID, false)
@@ -175,6 +179,27 @@ func TestBuildConfigPreservesIdentity(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, req.Username, cfg.Username)
 	require.Equal(t, req.Domain, cfg.Domain)
+}
+
+// outsideAllowedDir returns a new directory outside the file allowlist. The
+// temp dir is always allowlisted, so t.TempDir() cannot be used for this.
+func outsideAllowedDir(t *testing.T) string {
+	t.Helper()
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		t.Skip("no home directory to create a path outside the allowlist")
+	}
+	absHome, err := filepath.Abs(home)
+	require.NoError(t, err)
+	absTemp, err := filepath.Abs(os.TempDir())
+	require.NoError(t, err)
+	if absHome == absTemp || strings.HasPrefix(absHome+string(os.PathSeparator), absTemp+string(os.PathSeparator)) {
+		t.Skip("$HOME is under the temp root, so it is already allowlisted")
+	}
+	dir, err := os.MkdirTemp(home, "nuclei-krbforge-outside-*")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
 }
 
 func setTemplateDir(t *testing.T) string {

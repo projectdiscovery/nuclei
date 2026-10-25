@@ -104,8 +104,8 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 	}
 
 	dialers, ok := dialers.Get(options.ExecutionId)
-	if !ok {
-		return true
+	if !ok || dialers == nil {
+		return false
 	}
 
 	np := dialers.NetworkPolicy

@@ -14,10 +14,13 @@ func TestJSLibsDoNotDialFastdialerDirectly(t *testing.T) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if d.IsDir() {
+			if path != root && d.Name() == "guard" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
-		if strings.Contains(path, string(filepath.Join("guard"))) {
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
 		data, err := os.ReadFile(path)

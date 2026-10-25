@@ -219,12 +219,7 @@ func (c *Client) SendMail(msg *SMTPMessage) (bool, error) {
 // past the network policy, so nothing could bound what it reads or close it on cancel.
 func (c *Client) sendMail(auth smtp.Auth, msg *SMTPMessage) error {
 	executionId := c.nj.ExecutionId()
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
-	conn, err := dialer.Fastdialer.Dial(c.nj.Context(), "tcp", net.JoinHostPort(c.host, c.port))
+	conn, err := protocolstate.DialAllowedWithExecutionID(c.nj.Context(), executionId, "tcp", net.JoinHostPort(c.host, c.port))
 	if err != nil {
 		return err
 	}

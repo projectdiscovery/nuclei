@@ -2,7 +2,6 @@ package pop3
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -42,10 +41,9 @@ func IsPOP3(ctx context.Context, host string, port int) (IsPOP3Response, error) 
 // @memo
 func isPoP3(ctx context.Context, executionId string, host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
-
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return IsPOP3Response{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		// host is not valid according to network policy
+		return resp, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	timeout := 5 * time.Second
