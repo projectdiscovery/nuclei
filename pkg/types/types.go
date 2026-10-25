@@ -356,8 +356,8 @@ type Options struct {
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
-	// RequestSaveSize is the maximum size of request body kept in request
-	// dumps (output, debug and matcher input). 0 keeps the whole body.
+	// RequestSaveSize is the maximum request body kept in saved output and
+	// debug dumps. Matchers see the full request. 0 keeps the whole body.
 	RequestSaveSize int
 	// Health Check
 	HealthCheck bool

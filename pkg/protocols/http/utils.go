@@ -101,6 +101,26 @@ func appendTruncationMarker(data []byte, truncated int) []byte {
 	return fmt.Appendf(data, "\n...[truncated %d bytes]", truncated)
 }
 
+// capDumpBody keeps at most maxBody bytes of the body in an already built
+// request dump. maxBody <= 0 keeps the dump unchanged. Saved output and debug
+// use it. Matchers keep the full dump.
+func capDumpBody(dump []byte, maxBody int) []byte {
+	if maxBody <= 0 {
+		return dump
+	}
+	idx := bytes.Index(dump, headerTerminator)
+	if idx < 0 {
+		return dump
+	}
+	headerEnd := idx + len(headerTerminator)
+	bodyLen := len(dump) - headerEnd
+	if bodyLen <= maxBody {
+		return dump
+	}
+	capped := append([]byte(nil), dump[:headerEnd+maxBody]...)
+	return appendTruncationMarker(capped, bodyLen-maxBody)
+}
+
 var headerTerminator = []byte("\r\n\r\n")
 
 // cappedWriter keeps the request line and headers in full and at most

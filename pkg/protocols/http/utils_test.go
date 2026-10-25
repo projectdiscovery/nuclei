@@ -95,6 +95,13 @@ func TestDumpRequestTruncatesLargeBody(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, full.truncated)
 	require.True(t, strings.HasSuffix(string(full.data), body))
+
+	capped := capDumpBody(full.data, 100)
+	_, rest, found = strings.Cut(string(capped), "\r\n\r\n")
+	require.True(t, found)
+	require.Equal(t, strings.Repeat("A", 100)+"\n...[truncated 1048476 bytes]", rest)
+	require.Equal(t, full.data, capDumpBody(full.data, 0))
+	require.Equal(t, full.data, capDumpBody(full.data, len(body)))
 }
 
 func TestDumpRawRequestTruncatesLargeBody(t *testing.T) {

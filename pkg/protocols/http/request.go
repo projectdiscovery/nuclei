@@ -175,19 +175,20 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 	if !request.SkipSecretFile {
 		requestForDump.ApplyAuth(request.options.AuthProvider)
 	}
-	dumpedRequest, err := dump(requestForDump, reqURL, request.options.Options.RequestSaveSize)
+	dumpedRequest, err := dump(requestForDump, reqURL, 0)
 	if err != nil {
 		return err
 	}
 	dumpedRequestString := convUtil.String(dumpedRequest.data)
+	savedRequest := convUtil.String(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize))
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Msg(msg)
-			gologger.Print().Msgf("%s", dumpedRequestString)
+			gologger.Print().Msgf("%s", savedRequest)
 		}
 		if request.options.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
+			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, savedRequest))
 		}
 	}
 	previous["request"] = dumpedRequestString
@@ -1347,14 +1348,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// converts whitespace and other chars that cannot be printed to url encoded values
 	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
-	// Dump the requests containing all headers
-	if !generatedRequest.original.Race {
+	// Dump the requests containing all headers. A race reuses the full dump
+	// stored on previous["request"]; the pre-send dump is capped.
+	if generatedRequest.original != nil && generatedRequest.original.Race {
+		if full, ok := previousEvent["request"].(string); ok && full != "" {
+			dumpedRequest.data = []byte(full)
+			dumpedRequest.truncated = 0
+		}
+	} else {
 		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input, request.options.Options.RequestSaveSize)
+		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input, 0)
 		if dumpError != nil {
 			return dumpError
 		}
-		dumpedRequestString := convUtil.String(dumpedRequest.data)
+		dumpedRequestString := convUtil.String(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize))
 		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
@@ -1643,7 +1650,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
-				RawRequest:    string(dumpedRequest.data),
+				RawRequest:    string(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize)),
 				RawResponse:   fullResponseStr,
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
