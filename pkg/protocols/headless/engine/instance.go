@@ -132,7 +132,7 @@ func (i *Instance) close(ctx context.Context) error {
 }
 
 // SetInteractsh client
-func (i *Instance) SetInteractsh(interactsh *interactsh.Client) {
+func (i *Instance) SetInteractsh(interactsh interactsh.IClient) {
 	i.interactsh = interactsh
 }
 

@@ -88,7 +88,7 @@ var (
 // Runner is a client for running the enumeration process.
 type Runner struct {
 	output             output.Writer
-	interactsh         *interactsh.Client
+	interactsh         interactsh.IClient
 	options            *types.Options
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog
@@ -163,7 +163,9 @@ func New(options *types.Options) (*Runner, error) {
 		tm := &installer.TemplateManager{
 			CustomTemplates:        ctm,
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
+			Channel:                options.UpdateTemplatesChannel,
 		}
+		templatesVersion := config.DefaultConfig.TemplateVersion
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
@@ -180,7 +182,12 @@ func New(options *types.Options) (*Runner, error) {
 		if options.UpdateTemplates {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
-			if !config.DefaultConfig.NeedsTemplateUpdate() {
+			noUpdates := !config.DefaultConfig.NeedsTemplateUpdate()
+			if tm.Channel == installer.TemplatesChannelLatest {
+				// the latest channel updates without a new release
+				noUpdates = config.DefaultConfig.TemplateVersion == templatesVersion
+			}
+			if noUpdates {
 				runner.Logger.Info().Msgf("No new updates found for nuclei templates")
 			}
 

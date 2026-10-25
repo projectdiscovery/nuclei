@@ -38,7 +38,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -1488,11 +1490,23 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// Cache response strings once per Fill() to avoid repeated allocs.
 		// NOTE(dwisiswant0): These are valid until Previous() (which reloads
 		// the buffer).
-		fullResponseStr := respChain.FullResponseString()
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
 		statusCode := respChain.Response().StatusCode
+
+		needsFullResponse := request.needsFullResponse(generatedRequest)
+		var fullResponseStr string
+		var fullResponseOnce sync.Once
+		getFullResponse := func() string {
+			fullResponseOnce.Do(func() {
+				fullResponseStr = respChain.FullResponseString()
+			})
+			return fullResponseStr
+		}
+		if needsFullResponse {
+			fullResponseStr = getFullResponse()
+		}
 
 		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message) so
 		// later requests to the same host:port are auto-upgraded to https. For the
@@ -1610,6 +1624,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+			if internalWrappedEvent.InternalEvent["response"] == "" || internalWrappedEvent.InternalEvent["response"] == nil {
+				internalWrappedEvent.InternalEvent["response"] = getFullResponse()
+			}
 		})
 
 		if hasInteractMatchers {
@@ -1620,6 +1637,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.GlobalMatchers.HasMatchers() {
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
 				globalMatched = true
+				if event["response"] == "" || event["response"] == nil {
+					event["response"] = getFullResponse()
+				}
 				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
 			})
 		}
@@ -1651,7 +1671,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
 				RawRequest:    string(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize)),
-				RawResponse:   fullResponseStr,
+				RawResponse:   getFullResponse(),
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
 		}
@@ -1791,6 +1811,7 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 // setCustomHeaders sets the custom headers for generated request
 func (request *Request) setCustomHeaders(req *generatedRequest) {
 	for k, v := range request.customHeaders {
+		v = request.evaluateCustomHeaderValue(req, v)
 		if req.rawRequest != nil {
 			req.rawRequest.Headers[k] = v
 		} else {
@@ -1806,6 +1827,31 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 			req.request.Header[kk] = []string{vv}
 		}
 	}
+}
+
+// evaluateCustomHeaderValue resolves helper expressions inside a global custom
+// header value. It runs once per generated request, so helpers such as
+// rand_user_agent() yield a fresh value per request instead of being frozen at
+// compile time. A bad expression degrades the header instead of failing the
+// scan.
+func (request *Request) evaluateCustomHeaderValue(req *generatedRequest, value string) string {
+	values := generators.MergeMaps(req.dynamicValues, req.meta)
+	return evaluateCustomHeaderExpressions(request.options.TemplateID, value, values)
+}
+
+// evaluateCustomHeaderExpressions resolves helper expressions in a global custom
+// header string. Unsafe raw requests splice the -H line straight into the
+// request bytes, so they resolve it here instead of in setCustomHeaders.
+func evaluateCustomHeaderExpressions(templateID, value string, values map[string]interface{}) string {
+	if !strings.Contains(value, marker.ParenthesisOpen) {
+		return value
+	}
+	evaluated, err := expressions.Evaluate(value, values)
+	if err != nil {
+		gologger.Debug().Msgf("[%s] could not evaluate custom header value %q: %s", templateID, value, err)
+		return value
+	}
+	return evaluated
 }
 
 const CRLF = "\r\n"
@@ -1894,6 +1940,44 @@ func (request *Request) recordHostResultAndCancelIfUnresponsive(input *contextar
 func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 	if request.options.HostErrorsCache != nil {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
+	}
+	return false
+}
+
+// needsFullResponse returns true if operators, debug flags, or stats require the full HTTP response.
+func (request *Request) needsFullResponse(generatedRequest *generatedRequest) bool {
+	if request.options != nil && request.options.Options != nil {
+		cliOptions := request.options.Options
+		if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse || cliOptions.HTTPStats {
+			return true
+		}
+	}
+	if vardump.EnableVarDump {
+		return true
+	}
+	if request.options != nil && request.options.FuzzStatsDB != nil && generatedRequest != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
+		return true
+	}
+	if request.options != nil && (request.options.IsMultiProtocol || request.options.Flow != "") {
+		return true
+	}
+	// request-condition history copies the event, so later requests can read response_N
+	if request.NeedsRequestCondition() {
+		return true
+	}
+	if request.CompiledOperators != nil && request.CompiledOperators.NeedsResponse() {
+		return true
+	}
+	if request.NeedsResponse() {
+		return true
+	}
+	for _, filter := range request.FuzzPreCondition {
+		if filter.NeedsResponse() {
+			return true
+		}
+	}
+	if request.options != nil && request.options.GlobalMatchers != nil && request.options.GlobalMatchers.NeedsResponse() {
+		return true
 	}
 	return false
 }
