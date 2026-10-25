@@ -32,14 +32,20 @@ var reservedResponseKeys = map[string]struct{}{
 // (same normalization as the HTTP protocol).
 // Header names are lowercased with "-" replaced by "_", e.g. Content-Type -> content_type.
 // Cookie names are lowercased as-is.
-// A header wins over a cookie of the same name. Headers that normalize to the
-// same name are applied in sorted order, so the result is deterministic. Keys
-// already in data and reserved protocol keys are never overwritten.
-func addResponseVariables(data map[string]interface{}, resp *http.Response) {
+// browserCookies are the cookies the browser holds for the page, as the
+// browser does not report Set-Cookie in intercepted response headers. A
+// Set-Cookie of the response wins over a browser cookie, and a header wins
+// over a cookie of the same name. Headers that normalize to the same name are
+// applied in sorted order, so the result is deterministic. Keys already in
+// data and reserved protocol keys are never overwritten.
+func addResponseVariables(data map[string]interface{}, resp *http.Response, browserCookies []*http.Cookie) {
 	if resp == nil {
 		return
 	}
 	vars := make(map[string]string)
+	for _, cookie := range browserCookies {
+		vars[strings.ToLower(cookie.Name)] = cookie.Value
+	}
 	for _, cookie := range resp.Cookies() {
 		vars[strings.ToLower(cookie.Name)] = cookie.Value
 	}

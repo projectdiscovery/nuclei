@@ -16,7 +16,7 @@ func TestAddResponseVariables(t *testing.T) {
 	resp.Header.Add("Set-Cookie", "theme=dark; Path=/")
 
 	data := make(map[string]interface{})
-	addResponseVariables(data, resp)
+	addResponseVariables(data, resp, nil)
 
 	require.Equal(t, "text/plain; charset=utf-8", data["content_type"])
 	require.Equal(t, "a b", data["x_custom"])
@@ -27,7 +27,7 @@ func TestAddResponseVariables(t *testing.T) {
 
 func TestAddResponseVariablesNil(t *testing.T) {
 	data := make(map[string]interface{})
-	addResponseVariables(data, nil)
+	addResponseVariables(data, nil, nil)
 	require.Empty(t, data)
 }
 
@@ -50,7 +50,7 @@ func TestAddResponseVariablesCollisions(t *testing.T) {
 		"status_code": "200",
 		"x_action":    "from action",
 	}
-	addResponseVariables(data, resp)
+	addResponseVariables(data, resp, nil)
 
 	require.Equal(t, "real headers", data["header"])
 	require.Equal(t, "200", data["status_code"])
@@ -60,4 +60,21 @@ func TestAddResponseVariablesCollisions(t *testing.T) {
 	require.NotContains(t, data, "duration_1")
 	require.Equal(t, "header", data["x_token"])
 	require.Equal(t, "underscore", data["x_dup"])
+}
+
+func TestAddResponseVariablesBrowserCookies(t *testing.T) {
+	resp := &http.Response{Header: make(http.Header)}
+	resp.Header.Add("Set-Cookie", "theme=dark; Path=/")
+	browserCookies := []*http.Cookie{
+		{Name: "SessID", Value: "abc"},
+		{Name: "theme", Value: "light"},
+		{Name: "data", Value: "spoofed"},
+	}
+
+	data := make(map[string]interface{})
+	addResponseVariables(data, resp, browserCookies)
+
+	require.Equal(t, "abc", data["sessid"])
+	require.Equal(t, "dark", data["theme"])
+	require.NotContains(t, data, "data")
 }

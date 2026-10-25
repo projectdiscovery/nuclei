@@ -212,23 +212,26 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		return nil, nil, err
 	}
 
-	if !options.DisableCookie {
-		// at the end of actions pull out updated cookies from the browser and inject them into the shared cookie jar
-		if cookies, err := page.Cookies([]string{URL.String()}); !options.DisableCookie && err == nil && len(cookies) > 0 {
-			var httpCookies []*http.Cookie
-			for _, cookie := range cookies {
-				httpCookie := &http.Cookie{
-					Name:     cookie.Name,
-					Value:    cookie.Value,
-					Domain:   cookie.Domain,
-					Path:     cookie.Path,
-					HttpOnly: cookie.HTTPOnly,
-					Secure:   cookie.Secure,
-				}
-				httpCookies = append(httpCookies, httpCookie)
+	// at the end of actions pull out the cookies from the browser. They are
+	// exposed as DSL variables, since the browser does not report Set-Cookie
+	// in the intercepted response headers, and they are injected into the
+	// shared cookie jar unless cookie reuse is disabled.
+	var httpCookies []*http.Cookie
+	if cookies, err := page.Cookies([]string{URL.String()}); err == nil {
+		for _, cookie := range cookies {
+			httpCookie := &http.Cookie{
+				Name:     cookie.Name,
+				Value:    cookie.Value,
+				Domain:   cookie.Domain,
+				Path:     cookie.Path,
+				HttpOnly: cookie.HTTPOnly,
+				Secure:   cookie.Secure,
 			}
-			ctx.CookieJar.SetCookies(URL, httpCookies)
+			httpCookies = append(httpCookies, httpCookie)
 		}
+	}
+	if !options.DisableCookie && len(httpCookies) > 0 {
+		ctx.CookieJar.SetCookies(URL, httpCookies)
 	}
 
 	if resp := createdPage.FirstResponse(); resp != nil {
@@ -236,7 +239,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		data["header"] = headers
 		data["all_headers"] = headers
 		data["status_code"] = fmt.Sprint(resp.StatusCode)
-		addResponseVariables(data, resp)
+		addResponseVariables(data, resp, httpCookies)
 	}
 
 	successfulPageCreation = true // avoid closing the page in case of success in deferred function
