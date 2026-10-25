@@ -4,8 +4,26 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
+	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTransformPinned(t *testing.T) {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err, "could not create hybrid map")
+	defer func() {
+		_ = hm.Close()
+	}()
+	helper := &Helper{InputsHTTP: hm}
+
+	_ = hm.Set(ProbeKey("app.test", ""), []byte("http://app.test"))
+	_ = hm.Set(ProbeKey("app.test", "127.0.0.2"), []byte("https://app.test"))
+
+	require.Equal(t, "https://app.test", helper.TransformPinned("app.test", "127.0.0.2", templateTypes.HTTPProtocol), "the probe made through the pinned ip")
+	require.Equal(t, "http://app.test", helper.TransformPinned("app.test", "", templateTypes.HTTPProtocol), "an unpinned input")
+	require.Equal(t, "http://app.test", helper.TransformPinned("app.test", "127.0.0.3", templateTypes.HTTPProtocol), "an ip without a probe of its own")
+	require.Equal(t, "app.test", helper.TransformPinned("app.test", "127.0.0.2", templateTypes.DNSProtocol), "a protocol that is not probed")
+}
 
 func TestConvertInputToType(t *testing.T) {
 	helper := &Helper{}

@@ -284,7 +284,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
-		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(ctx.Input.MetaInput.Input, e.templateType); ctx.Input.MetaInput.Input == "" {
+		if inputItem.MetaInput.Input = e.options.InputHelper.TransformPinned(ctx.Input.MetaInput.Input, ctx.Input.MetaInput.CustomIP, e.templateType); ctx.Input.MetaInput.Input == "" {
 			return false, nil
 		}
 	}
@@ -377,7 +377,7 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
-		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(ctx.Input.MetaInput.Input, e.templateType); ctx.Input.MetaInput.Input == "" {
+		if inputItem.MetaInput.Input = e.options.InputHelper.TransformPinned(ctx.Input.MetaInput.Input, ctx.Input.MetaInput.CustomIP, e.templateType); ctx.Input.MetaInput.Input == "" {
 			return nil, nil
 		}
 	}
