@@ -46,6 +46,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchXPath(types.ToString(item))), []string{}
 	case matchers.ErrorMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
+	case matchers.LLMMatcher:
+		return protocols.MatchLLM(data, matcher, types.ToString(item), request.options)
 	}
 	return false, []string{}
 }
@@ -64,6 +66,8 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 		return extractor.ExtractKval(data)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSLWithOptions(data, request.options.GetOptions())
+	case extractors.LLMExtractor:
+		return protocols.ExtractLLM(data, extractor, types.ToString(item), request.options)
 	}
 	return nil
 }

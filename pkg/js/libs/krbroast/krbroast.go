@@ -14,7 +14,7 @@ package krbroast
 import (
 	"fmt"
 
-	gpkrb "github.com/Mzack9999/goimpacket/pkg/kerberos"
+	gpkrb "github.com/projectdiscovery/goimpacket/pkg/kerberos"
 	"github.com/projectdiscovery/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/dcerpc"

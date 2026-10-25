@@ -109,6 +109,9 @@ func (matcher *Matcher) NeedsPart() bool {
 	switch matcher.GetType() {
 	case DSLMatcher, ErrorMatcher:
 		return false
+	case LLMMatcher:
+		// an llm matcher with inputs compares whole responses instead of one part
+		return len(matcher.Inputs) == 0
 	default:
 		return true
 	}

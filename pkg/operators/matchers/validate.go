@@ -61,10 +61,11 @@ func (matcher *Matcher) Validate() error {
 		expectedFields = append(commonExpectedFields, "Errors", "CaseInsensitive")
 	case LLMMatcher:
 		requiredField, valueCount = "prompt", len(matcher.Prompt)
-		expectedFields = append(commonExpectedFields, "Prompt", "Expect", "Options", "MinConfidence", "MaxInputTokens", "AllowSole", "Part")
+		expectedFields = append(commonExpectedFields, "Prompt", "Expect", "Options", "MinConfidence", "MaxInputTokens", "AllowSole", "Part", "Inputs")
 		if err := matcher.validateLLM(); err != nil {
 			return err
 		}
+
 	}
 
 	if err = checkFields(matcher, matcherMap, expectedFields...); err != nil {
@@ -134,6 +135,18 @@ func (matcher *Matcher) validateLLM() error {
 	}
 	if matcher.MaxInputTokens < 0 {
 		return fmt.Errorf("llm matcher max-input-tokens cannot be negative, got %d", matcher.MaxInputTokens)
+	}
+	if len(matcher.Inputs) > 0 {
+		// one input is a single response, which is what part already does; the
+		// comparison only means something from two responses on
+		if len(matcher.Inputs) < 2 {
+			return fmt.Errorf("llm matcher inputs needs at least two entries, got %d", len(matcher.Inputs))
+		}
+		for index, input := range matcher.Inputs {
+			if strings.TrimSpace(input) == "" {
+				return fmt.Errorf("llm matcher inputs entry %d cannot be blank", index)
+			}
+		}
 	}
 	return nil
 }
