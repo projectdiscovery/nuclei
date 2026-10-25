@@ -3,6 +3,7 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -30,7 +31,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
@@ -108,12 +111,15 @@ type ExecutorOptions struct {
 	// Browser is a browser engine for running headless templates
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
-	Interactsh *interactsh.Client
+	Interactsh interactsh.IClient
 	// InteractshScope isolates delayed callbacks and cleanup for one execution
 	// when Interactsh is shared by concurrent engines.
 	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HostBackoff paces a host that signals it is being overloaded, so a scan
+	// slows down for it instead of being blocked outright. Nil disables it.
+	HostBackoff *hostbackoff.Governor
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -199,7 +205,28 @@ func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interac
 // todo: centralizing components is not feasible with current clogged architecture
 // a possible approach could be an internal event bus with pub-subs? This would be less invasive than
 // reworking dep injection from scratch
-func (e *ExecutorOptions) RateLimitTake() {
+// RateLimitTake waits for the rate limit of a request to host: that host's own
+// limiter when per-host rate limiting is on, since the global limiter is then
+// unlimited, and the global limiter otherwise or when host is unknown.
+func (e *ExecutorOptions) RateLimitTake(host string) error {
+	return e.RateLimitTakeContext(context.Background(), host)
+}
+
+// RateLimitTakeContext waits for admission or returns when ctx is canceled.
+func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string) error {
+	if e.Options != nil && e.Options.PerHostRateLimit && host != "" {
+		limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, host)
+		if err != nil {
+			return err
+		}
+		if limiter != nil {
+			if err := limiter.Wait(ctx); err != nil {
+				return err
+			}
+			hostratelimit.RecordPerHostRateLimitRequest(e.Options, host)
+			return nil
+		}
+	}
 	// The code below can race and there isn't a great way to fix this without adding an idempotent
 	// function to the rate limiter implementation. For now, stick with whatever rate is already set.
 	/*
@@ -209,8 +236,23 @@ func (e *ExecutorOptions) RateLimitTake() {
 		}
 	*/
 	if e.RateLimiter != nil {
-		e.RateLimiter.Take()
+		return e.RateLimiter.TakeContext(ctx)
 	}
+	return nil
+}
+
+// HostBackoffWait pauses for the delay address has earned with HostBackoff.
+func (e *ExecutorOptions) HostBackoffWait(ctx context.Context, address string) error {
+	return e.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(address))
+}
+
+// HostBackoffObserveDial reports a connection attempt to address to HostBackoff.
+func (e *ExecutorOptions) HostBackoffObserveDial(address string, err error) {
+	// a canceled dial is the scan stopping, not the host asking for less traffic
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	e.HostBackoff.ObserveDial(hostratelimit.NormalizeHostPort(address), err)
 }
 
 // GetThreadsForNPayloadRequests returns the number of threads to use as default for
@@ -353,8 +395,9 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
-		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
+		InteractshScope:              e.InteractshScope,
+		HostBackoff:                  e.HostBackoff,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -450,7 +493,10 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 		data := request.MakeResultEventItem(wrapped)
 		results = append(results, data)
 	}
-	return results
+	// Every protocol builds its results here, so attaching the llm audit at this
+	// one point keeps the verdict on findings from all of them rather than only
+	// the protocol that remembers to ask. It is a no-op when no llm operator ran.
+	return AttachLLMAudits(results, wrapped.InternalEvent)
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
@@ -522,6 +568,38 @@ func MakeDefaultMatchFuncWithOptions(data map[string]interface{}, matcher *match
 	return false, nil
 }
 
+// MakeDefaultMatchFuncWithExecutorOptions matches using the current scan's DSL
+// policy. It is the entry point a protocol uses when it may carry llm
+// operators, which need the declared values that *types.Options alone does not
+// hold.
+func MakeDefaultMatchFuncWithExecutorOptions(data map[string]interface{}, matcher *matchers.Matcher, e *ExecutorOptions) (bool, []string) {
+	if matcher.GetType() == matchers.LLMMatcher {
+		return MatchLLM(data, matcher, defaultOperatorPart(data, matcher.Part), e)
+	}
+	return MakeDefaultMatchFuncWithOptions(data, matcher, e.GetOptions())
+}
+
+// MakeDefaultExtractFuncWithExecutorOptions is the extractor counterpart of
+// MakeDefaultMatchFuncWithExecutorOptions.
+func MakeDefaultExtractFuncWithExecutorOptions(data map[string]interface{}, extractor *extractors.Extractor, e *ExecutorOptions) map[string]struct{} {
+	if extractor.GetType() == extractors.LLMExtractor {
+		return ExtractLLM(data, extractor, defaultOperatorPart(data, extractor.Part), e)
+	}
+	return MakeDefaultExtractFuncWithOptions(data, extractor, e.GetOptions())
+}
+
+// defaultOperatorPart resolves an operator part against a protocol event whose
+// payload is named "response", matching the default builders above. An llm
+// operator is not rejected when the part is missing: with inputs it compares
+// whole responses instead, and without them an empty corpus is the honest
+// thing to ask about.
+func defaultOperatorPart(data map[string]interface{}, part string) string {
+	if part == "" {
+		part = "response"
+	}
+	return types.ToString(data[part])
+}
+
 func (e *ExecutorOptions) EncodeTemplate() string {
 	if !e.Options.OmitTemplate && len(e.RawTemplate) <= MaxTemplateFileSizeForEncoding {
 		return base64.StdEncoding.EncodeToString(e.RawTemplate)
@@ -548,6 +626,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Interactsh = n.Interactsh
 	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
+	e.HostBackoff = n.HostBackoff
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB

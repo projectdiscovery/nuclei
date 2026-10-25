@@ -2552,13 +2552,43 @@ count as a match. Defaults to 0.
 
 <div class="dd">
 
+<code>inputs</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Inputs compares several responses instead of a single part, for
+checks that are about the difference between responses (blind
+boolean injection, user enumeration, IDOR). Each entry is resolved
+against the runtime values, so {{body_1}} and {{body_2}} work with
+req-condition, and each response is framed separately for the model.
+Part is ignored when Inputs is set.
+
+
+
+Examples:
+
+
+```yaml
+inputs:
+    - '{{body_1}}'
+    - '{{body_2}}'
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>max-input-tokens</code>  <i>int</i>
 
 </div>
 <div class="dt">
 
 MaxInputTokens caps how much of the response part is sent to the model
-for an llm matcher, as an approximate token count.
+   for an llm matcher, as an approximate token count.
 
 </div>
 

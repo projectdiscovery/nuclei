@@ -236,6 +236,53 @@ username=admin&password=login`, parseURL(t, "https://test.com"), false, false)
 	require.Equal(t, "username=admin&password=login", request.Data, "Could not parse request data correctly")
 }
 
+func TestParseRawRequestVersionlessRequestLine(t *testing.T) {
+	// A two-field request line omits the path, so the second field is the
+	// version. Testing it with a substring match also claimed any path that
+	// happens to contain "HTTP", and the path was dropped.
+	request, err := ParseRawRequest("GET /HTTPProxy\r\nHost: example.com\r\n\r\n", true)
+	require.Nil(t, err, "could not parse request")
+	require.Equal(t, "/HTTPProxy", request.Path, "a path containing HTTP is not a version token")
+
+	request, err = ParseRawRequest("GET /api/HTTPHandler\r\nHost: example.com\r\n\r\n", true)
+	require.Nil(t, err, "could not parse request")
+	require.Equal(t, "/api/HTTPHandler", request.Path, "a path containing HTTP is not a version token")
+
+	// The case the branch exists for still works. ParseRawRequest is for
+	// self-contained templates and rejects an empty path, so this one is read
+	// at the layer where the behaviour lives.
+	raw, err := readRawRequest("GET HTTP/1.1\r\nHost: example.com\r\n\r\n", true)
+	require.Nil(t, err, "could not read request")
+	require.Equal(t, "GET", raw.Method, "Could not parse method correctly")
+	require.Empty(t, raw.Path, "a request line carrying only a version leaves the path to the input URL")
+}
+
+func TestParseRawRequestHeaderWithoutColon(t *testing.T) {
+	request, err := ParseRawRequest("GET /admin HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer s3cr3t\r\nX-Forwarded-For\r\n\r\n", false)
+	require.Nil(t, err, "could not parse request")
+	require.Equal(t, "Bearer s3cr3t", request.Headers["Authorization"], "the header before the malformed one should keep its value")
+	require.Empty(t, request.Headers["X-Forwarded-For"], "a header line without a colon should not inherit the previous value")
+
+	// A malformed line in the middle should not disturb the header after it.
+	request, err = ParseRawRequest("GET / HTTP/1.1\r\nHost: example.com\r\nX-Junk\r\nAccept: */*\r\n\r\n", false)
+	require.Nil(t, err, "could not parse request")
+	require.Empty(t, request.Headers["X-Junk"], "a header line without a colon should not inherit the previous value")
+	require.Equal(t, "*/*", request.Headers["Accept"], "the header after the malformed one should be parsed normally")
+}
+
+func TestParseRawRequestHeaderBlockEndingAtEOF(t *testing.T) {
+	// The header block ends at EOF with no blank line after the last header.
+	// The empty read used to fall through and be stored as a header named "",
+	// which rawhttp writes as a bare CRLF, ending the header block early and
+	// pushing every header after it into the body.
+	request, err := ParseRawRequest("GET /admin HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer s3cr3t\r\n", false)
+	require.Nil(t, err, "could not parse request")
+	require.NotContains(t, request.Headers, "", "an empty line at EOF should not become a header")
+	require.Len(t, request.Headers, 2, "only the two real headers belong in the map")
+	require.Equal(t, "example.com", request.Headers["Host"], "Could not parse host correctly")
+	require.Equal(t, "Bearer s3cr3t", request.Headers["Authorization"], "Could not parse authorization correctly")
+}
+
 func TestParseUnsafeRequestWithPath(t *testing.T) {
 	request, err := Parse(`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
