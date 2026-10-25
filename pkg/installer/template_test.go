@@ -83,6 +83,59 @@ func TestUpdateIfOutdatedSkipsReleaseInstalledWhileWaiting(t *testing.T) {
 	require.Equal(t, "v2.0.0", cfg.TemplateVersion)
 }
 
+// TestUpdateIfOutdatedLatestChannel checks that the latest channel updates when
+// the head moves, even though the release stays the same.
+func TestUpdateIfOutdatedLatestChannel(t *testing.T) {
+	HideProgressBar = true
+
+	cfg := &config.Config{Logger: gologger.DefaultLogger}
+	cfg.SetConfigDir(t.TempDir())
+	cfg.SetTemplatesDir(filepath.Join(t.TempDir(), "templates"))
+	previousConfig := config.DefaultConfig
+	config.DefaultConfig = cfg
+	t.Cleanup(func() { config.DefaultConfig = previousConfig })
+
+	installed := fakeTemplateRelease{version: "v1.0.0+aaaaaaa", files: map[string]string{
+		"http/old.yaml": "id: old",
+	}}
+	tm := &TemplateManager{Channel: TemplatesChannelLatest, fetchLatestRelease: installed.fetch}
+	require.NoError(t, tm.FreshInstallIfNotExists())
+	require.Equal(t, "v1.0.0+aaaaaaa", cfg.TemplateVersion)
+
+	// the version check reports the release the installed commit is based on,
+	// so the stable check alone would never update
+	cfg.LatestNucleiTemplatesVersion = "v1.0.0"
+	require.False(t, cfg.NeedsTemplateUpdate())
+
+	t.Run("updates when the head moves", func(t *testing.T) {
+		head := fakeTemplateRelease{version: "v1.0.0+bbbbbbb", files: map[string]string{
+			"http/old.yaml": "id: old",
+			"http/new.yaml": "id: new",
+		}}
+		tm := &TemplateManager{Channel: TemplatesChannelLatest, fetchLatestRelease: head.fetch}
+		require.NoError(t, tm.UpdateIfOutdated())
+		require.Equal(t, "v1.0.0+bbbbbbb", cfg.TemplateVersion)
+		require.FileExists(t, filepath.Join(cfg.TemplatesDirectory, "http", "new.yaml"))
+	})
+
+	t.Run("skips the download when already at the head", func(t *testing.T) {
+		head := installedTemplateRelease{fakeTemplateRelease: fakeTemplateRelease{version: "v1.0.0+bbbbbbb"}, t: t}
+		tm := &TemplateManager{Channel: TemplatesChannelLatest, fetchLatestRelease: func() (templateRelease, error) {
+			return head, nil
+		}}
+		require.NoError(t, tm.UpdateIfOutdated())
+		require.Equal(t, "v1.0.0+bbbbbbb", cfg.TemplateVersion)
+	})
+
+	t.Run("returns the error when the head can't be fetched", func(t *testing.T) {
+		tm := &TemplateManager{Channel: TemplatesChannelLatest, fetchLatestRelease: func() (templateRelease, error) {
+			return nil, errors.New("rate limited")
+		}}
+		require.ErrorContains(t, tm.UpdateIfOutdated(), "rate limited")
+		require.Equal(t, "v1.0.0+bbbbbbb", cfg.TemplateVersion)
+	})
+}
+
 func TestIsOutdatedVersion(t *testing.T) {
 	testCases := []struct {
 		current  string
