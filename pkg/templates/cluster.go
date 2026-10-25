@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -12,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -246,9 +248,39 @@ func (e *ClusterExecuter) Requests() int {
 	return count
 }
 
+// SelectedBy reports whether selection selects the template. A cluster is
+// selected when any of its members is.
+func (template *Template) SelectedBy(selection protocols.TemplateSelection) bool {
+	if cluster, ok := template.Executer.(*ClusterExecuter); ok {
+		return slices.ContainsFunc(cluster.operators, func(operator *clusteredOperator) bool {
+			return selection.Allows(operator.templatePath)
+		})
+	}
+	return selection.Allows(template.Path)
+}
+
+// operatorsFor returns the members selected for input by per-target profiles.
+func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clusteredOperator {
+	if e.options.TargetScope == nil {
+		return e.operators
+	}
+	selection := e.options.TargetScope.For(input)
+	if selection == nil {
+		return e.operators
+	}
+	return slices.DeleteFunc(slices.Clone(e.operators), func(operator *clusteredOperator) bool {
+		return !selection.Allows(operator.templatePath)
+	})
+}
+
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	var results bool
+
+	clusterOperators := e.operatorsFor(ctx.Input.MetaInput)
+	if len(clusterOperators) == 0 {
+		return false, nil
+	}
 
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
@@ -270,7 +302,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		if event.InternalEvent == nil {
 			event.InternalEvent = make(map[string]interface{})
 		}
-		for _, operator := range e.operators {
+		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
@@ -297,7 +329,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
 		// Parse URL fields from the input
 		fields := protocolUtils.GetJsonFieldsFromURL(ctx.Input.MetaInput.Input)
-		for _, operator := range e.operators {
+		for _, operator := range clusterOperators {
 			errMsg := ""
 			if err != nil {
 				errMsg = err.Error()
@@ -336,6 +368,10 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	clusterOperators := e.operatorsFor(ctx.Input.MetaInput)
+	if len(clusterOperators) == 0 {
+		return nil, nil
+	}
 	scanCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
 	dynamicValues := make(map[string]interface{})
 
@@ -346,7 +382,7 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 		}
 	}
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
-		for _, operator := range e.operators {
+		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)

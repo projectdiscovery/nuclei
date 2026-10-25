@@ -1,6 +1,6 @@
 module nuclei-tools
 
-go 1.26.1
+go 1.26.8
 
 tool (
 	github.com/dvyukov/go-fuzz/go-fuzz

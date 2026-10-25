@@ -16,6 +16,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -138,7 +139,11 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
+	options *protocols.ExecutorOptions
+	// hasLLMOperators reports whether any matcher on this request is an llm
+	// matcher, so the audit map is only allocated for responses that can
+	// produce one.
+	hasLLMOperators   bool
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
@@ -438,6 +443,19 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
+		// http is the only protocol that evaluates llm operators today; the
+		// template compiler rejects them elsewhere.
+		for _, matcher := range compiled.Matchers {
+			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+				matcher.SetLLMClient(options.LLMClient)
+				request.hasLLMOperators = true
+			}
+		}
+		for _, extractor := range compiled.Extractors {
+			if extractor != nil && extractor.GetType() == extractors.LLMExtractor {
+				extractor.SetLLMClient(options.LLMClient)
+			}
+		}
 		request.CompiledOperators = compiled
 	}
 
@@ -636,11 +654,19 @@ func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.Exe
 // user enables it, since the pooled transport sets custom dial hooks). It only
 // affects the time_delay analyzer decision below.
 func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
-	// Priority 0: race and pipeline requests need dedicated connections. Race
-	// uses a one-shot synced body gate that breaks if a connection is reused and
-	// the body is re-read, and reusing a single keep-alive connection would also
-	// serialize the requests and defeat the race.
-	if r.Race || r.Pipeline {
+	// Priority 0: race requests need dedicated connections. Race uses a one-shot
+	// synced body gate that breaks if a connection is reused and the body is
+	// re-read, and reusing a single keep-alive connection would also serialize
+	// the requests and defeat the race.
+	//
+	// Pipelined requests are deliberately not listed here: they never go through
+	// the pooled client, they are sent over rawhttp's pipeline client, which owns
+	// its connections. Marking them unsafe adds "Connection: close" to every
+	// pipelined request, so the server hangs up after the first response, the
+	// remaining pipelined requests fail and the pipeline client is left with
+	// goroutines that never retire. Templates that really want a close are still
+	// caught by the explicit header checks below.
+	if r.Race {
 		return ReuseUnsafe
 	}
 

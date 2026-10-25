@@ -173,6 +173,14 @@ TEMPLATES:
    -esc, -enable-self-contained           enable loading self-contained templates
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
+   -llm                                   enable llm matchers and extractors (semantic matching)
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
+   -llm-model string                      model used for semantic matching
+   -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
+   -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
+   -llm-concurrency int                   maximum concurrent llm calls (default 4)
+   -llm-cache                             cache llm responses within a scan (default true)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -282,10 +290,12 @@ UNCOVER:
    -ur, -uncover-ratelimit int    override ratelimit of engines with unknown ratelimit (default 60 req/min) (default 60)
 
 RATE-LIMIT:
-   -rl, -rate-limit int               maximum number of requests to send per second (default 150)
-   -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
+   -rl, -rate-limit int               maximum number of requests to send per second (ignored when -rate-limit-host is set) (default 150)
+   -rld, -rate-limit-duration value   rate-limit interval/window for -rate-limit (default 1s)
    -per-host-rate-limit               enable per-host rate limiting (global rate limit becomes unlimited when enabled)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
+   -rlh, -rate-limit-host int         maximum number of requests to send per host per rate-limit-host-duration (0 = disabled, takes priority over -rate-limit)
+   -rlhd, -rate-limit-host-duration value  refill interval for the per-host rate limit bucket (default 1s)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
    -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
    -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)

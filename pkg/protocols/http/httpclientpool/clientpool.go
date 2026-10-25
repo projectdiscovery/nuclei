@@ -576,8 +576,23 @@ const defaultMaxRedirects = 10
 
 type checkRedirectFunc func(req *http.Request, via []*http.Request) error
 
+type redirectCallbackContextKey struct{}
+
+// WithRedirectCallback returns a context that invokes callback with the
+// destination host immediately before each allowed redirect is followed.
+func WithRedirectCallback(ctx context.Context, callback func(context.Context, string) error) context.Context {
+	return context.WithValue(ctx, redirectCallbackContextKey{}, callback)
+}
+
+// RateLimitHostKey returns the case-insensitive host:port key used to scope
+// host rate limits. Explicit ports are preserved as separate buckets.
+func RateLimitHostKey(host string) string {
+	return strings.ToLower(host)
+}
+
 func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRedirectFunc {
 	return func(req *http.Request, via []*http.Request) error {
+		var err error
 		switch redirectType {
 		case DontFollowRedirect:
 			return http.ErrUseLastResponse
@@ -592,15 +607,23 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 			if newHost != oldHost {
 				return http.ErrUseLastResponse
 			}
-			return checkMaxRedirects(req, via, maxRedirects)
+			err = checkMaxRedirects(req, via, maxRedirects)
 		case FollowAllRedirect:
-			return checkMaxRedirects(req, via, maxRedirects)
+			err = checkMaxRedirects(req, via, maxRedirects)
 		case FollowSameSchemeRedirect:
 			previousScheme := via[len(via)-1].URL.Scheme
 			if req.URL.Scheme != previousScheme {
 				return http.ErrUseLastResponse
 			}
-			return checkMaxRedirects(req, via, maxRedirects)
+			err = checkMaxRedirects(req, via, maxRedirects)
+		}
+		if err != nil {
+			return err
+		}
+		if callback, ok := req.Context().Value(redirectCallbackContextKey{}).(func(context.Context, string) error); ok && callback != nil {
+			if err := callback(req.Context(), RateLimitHostKey(req.URL.Host)); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -674,9 +697,18 @@ func GetPerHostRateLimiter(options *types.Options, hostname string) (*ratelimit.
 
 	dialers.Lock()
 	if dialers.PerHostRateLimitPool == nil {
+		poolSize := options.PerHostRateLimitPoolSize
+		if poolSize == 0 {
+			poolSize = 1024
+		} else if poolSize < 0 {
+			// expirable.LRU uses zero as its unbounded mode. This is useful for
+			// scan-persistent embedders that must never refresh a host budget
+			// merely because many other hosts were visited.
+			poolSize = 0
+		}
 		// Keep entries for the entire scan duration - no TTL-based eviction during scan
 		// so all hosts are tracked throughout the entire scan, even for very long scans
-		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(1024, 24*time.Hour, 24*time.Hour, options)
+		dialers.PerHostRateLimitPool = NewPerHostRateLimitPool(poolSize, 24*time.Hour, 24*time.Hour, options)
 	}
 	poolAny := dialers.PerHostRateLimitPool
 	dialers.Unlock()
