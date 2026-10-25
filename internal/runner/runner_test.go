@@ -1,13 +1,18 @@
 package runner
 
 import (
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -142,4 +147,53 @@ func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
 	require.Equal(t, "value", testStruct.A)
 	require.Equal(t, "2", testStruct.Struct.B)
 	require.Equal(t, "true", testStruct.Struct.C)
+}
+
+func TestNewInteractshHTTPClient(t *testing.T) {
+	// ProxyFromEnvironment reads the environment once per process. Set it
+	// before the first request. NO_PROXY keeps the local dial direct.
+	for _, key := range []string{"HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy", "https_proxy", "no_proxy"} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+	t.Setenv("NO_PROXY", "127.0.0.1,localhost")
+
+	options := &types.Options{
+		ExecutionId: "test-interactsh-client-dialer",
+		Timeout:     35,
+	}
+	require.NoError(t, protocolstate.Init(options))
+	t.Cleanup(func() { protocolstate.Close(options.ExecutionId) })
+
+	client := newInteractshHTTPClient(options)
+	require.NotNil(t, client)
+	require.Equal(t, 35*time.Second, client.HTTPClient.Timeout)
+
+	transport, ok := client.HTTPClient.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.NotNil(t, transport.Proxy)
+	require.NotNil(t, transport.DialContext)
+	require.NotNil(t, transport.DialTLSContext)
+	require.NotNil(t, transport.TLSClientConfig, "INTERACTSH_TLS_VERIFY edits this config")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	resp, err := client.HTTPClient.Get(srv.URL)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+	require.NoError(t, resp.Body.Close())
+
+	host := srv.Listener.Addr().(*net.TCPAddr).IP.String()
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	require.Equal(t, host, dialers.Fastdialer.GetDialedIP(host))
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	require.NoError(t, err)
+	proxyURL, err := transport.Proxy(req)
+	require.NoError(t, err)
+	require.NotNil(t, proxyURL)
+	require.Equal(t, "http://127.0.0.1:9", proxyURL.String())
 }

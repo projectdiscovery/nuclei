@@ -5,6 +5,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/stretchr/testify/require"
 )
 
@@ -132,4 +133,49 @@ func TestExecuteRunsLLMExtractorWhenTemplateHasNoMatchers(t *testing.T) {
 	_, ok := ops.Execute(map[string]interface{}{}, counter.matchFunc(false, false), counter.extractFunc(), false)
 	require.True(t, ok)
 	require.Equal(t, 1, counter.llmExtracts, "extraction is the point when there are no matchers")
+}
+
+// An internal extractor forces MergeMaps to a new outer map. The audit map must
+// already be seeded on the caller's event so MatchLLM and AttachLLMAudits share
+// the same inner map through that shallow copy.
+func TestExecuteKeepsLLMAuditOnCallerEventAcrossDynamicMerge(t *testing.T) {
+	audit := &matchers.LLMAudit{Verdict: "yes", Confidence: 0.9}
+	ops := &Operators{
+		Matchers: []*matchers.Matcher{llmMatcher("stack-trace")},
+		Extractors: []*extractors.Extractor{{
+			Name:     "token",
+			Internal: true,
+			Type:     extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+		}},
+	}
+
+	data := map[string]interface{}{"body": "stack trace"}
+	matchFn := func(d map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+		audits, ok := d[matchers.AuditEventKey].(map[string]*matchers.LLMAudit)
+		require.True(t, ok, "Execute must seed the audit map before matchers run")
+		audits[matcher.Name] = audit
+		return true, []string{"stack"}
+	}
+	extractFn := func(map[string]interface{}, *extractors.Extractor) map[string]struct{} {
+		return map[string]struct{}{"stack": {}}
+	}
+
+	result, ok := ops.Execute(data, matchFn, extractFn, false)
+	require.True(t, ok)
+	require.NotNil(t, result)
+	require.NotEmpty(t, result.DynamicValues, "the internal extractor must force MergeMaps")
+
+	got, ok := data[matchers.AuditEventKey].(map[string]*matchers.LLMAudit)
+	require.True(t, ok, "the caller's InternalEvent must still hold the audit map")
+	require.Same(t, audit, got["stack-trace"])
+}
+
+func TestLLMAuditLostWithoutPreMergeSeed(t *testing.T) {
+	event := map[string]interface{}{"response": "x"}
+	merged := generators.MergeMaps(event, map[string]interface{}{"token": "x"})
+	merged[matchers.AuditEventKey] = map[string]*matchers.LLMAudit{
+		"stack-trace": {Verdict: "yes"},
+	}
+	_, ok := event[matchers.AuditEventKey]
+	require.False(t, ok, "a map created after MergeMaps stays on the merged copy")
 }

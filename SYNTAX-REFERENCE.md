@@ -1011,6 +1011,7 @@ Part Definitions:
 - <code>headers_from_response</code> - HTTP response headers in name:value format
 - <code>tls_version</code> - TLS version negotiated for the HTTP connection
 - <code>cipher</code> - TLS cipher suite negotiated for the HTTP connection
+- <code>key_exchange</code> - TLS key exchange group negotiated for the HTTP connection
 - <code>sni</code> - SNI value used in the TLS handshake
 - <code>subject_cn</code> - Leaf certificate subject common name
 - <code>subject_dn</code> - Leaf certificate subject distinguished name
@@ -2490,6 +2491,10 @@ Prompt is the natural-language question for an llm matcher. The model
 judges the selected response part and returns a verdict; the matcher
 fires when the verdict equals Expect with at least MinConfidence.
 
+{{...}} placeholders are interpolated from the template variables,
+-var and target. Response derived values are not interpolated, since
+the response is attacker controlled.
+
 
 
 Examples:
@@ -2548,13 +2553,43 @@ count as a match. Defaults to 0.
 
 <div class="dd">
 
+<code>inputs</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Inputs compares several responses instead of a single part, for
+checks that are about the difference between responses (blind
+boolean injection, user enumeration, IDOR). Each entry is resolved
+against the runtime values, so {{body_1}} and {{body_2}} work with
+req-condition, and each response is framed separately for the model.
+Part is ignored when Inputs is set.
+
+
+
+Examples:
+
+
+```yaml
+inputs:
+    - '{{body_1}}'
+    - '{{body_2}}'
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>max-input-tokens</code>  <i>int</i>
 
 </div>
 <div class="dt">
 
 MaxInputTokens caps how much of the response part is sent to the model
-for an llm matcher, as an approximate token count.
+   for an llm matcher, as an approximate token count.
 
 </div>
 
@@ -4110,6 +4145,7 @@ Part Definitions:
 - <code>issuer_cn</code> - Issuer CN is the common name of the certificate issuer
 - <code>issuer_dn</code> - Issuer DN is the distinguished name of the certificate issuer
 - <code>issuer_org</code> - Issuer organization is the organization of the certificate issuer
+- <code>key_exchange</code> - Key exchange is the TLS key exchange group negotiated in the handshake
 - <code>not_after</code> - Timestamp after which the remote cert expires
 - <code>not_before</code> - Timestamp before which the certificate is not valid
 - <code>probe_status</code> - Probe status indicates if the probe was successful

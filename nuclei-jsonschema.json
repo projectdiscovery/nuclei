@@ -390,7 +390,7 @@
         "prompt": {
           "type": "string",
           "title": "llm extraction prompt",
-          "description": "Natural language instruction describing what to extract"
+          "description": "Natural language instruction describing what to extract; supports {{...}} interpolation of variables and target values"
         },
         "schema": {
           "$ref": "#/$defs/map[string]string",
@@ -1178,7 +1178,7 @@
         "prompt": {
           "type": "string",
           "title": "llm prompt",
-          "description": "Natural language question the model answers about the response part"
+          "description": "Natural language question the model answers about the response part; supports {{...}} interpolation of variables and target values"
         },
         "expect": {
           "type": "string",
@@ -1197,6 +1197,14 @@
           "type": "number",
           "title": "minimum llm confidence",
           "description": "Minimum confidence between 0 and 1 for an llm verdict to match"
+        },
+        "inputs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "llm inputs to compare",
+          "description": "Responses to compare instead of a single part; each entry supports {{...}} interpolation"
         },
         "max-input-tokens": {
           "type": "integer",
