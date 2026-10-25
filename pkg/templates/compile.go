@@ -216,6 +216,16 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			newBase.TemplateVerifier = tplCopy.Options.TemplateVerifier
 			newBase.Verified = tplCopy.Options.Verified
 			newBase.RawTemplate = tplCopy.Options.RawTemplate
+			// Template-derived options, set by prepareTemplate and compileProtocolRequests.
+			// newBase is the caller's copy, so without these the template's options
+			// carry the caller's values: Cluster reads IsMultiProtocol, and anything
+			// that compiles an executer from these options reads Flow.
+			newBase.Flow = tplCopy.Options.Flow
+			newBase.StopAtFirstMatch = tplCopy.Options.StopAtFirstMatch
+			newBase.ProtocolType = tplCopy.Options.ProtocolType
+			newBase.IsMultiProtocol = tplCopy.Options.IsMultiProtocol
+			// Offline HTTP stores the matcher list here. A caller copy would drop it.
+			newBase.Operators = tplCopy.Options.Operators
 
 			if tplCopy.Options.Variables.Len() > 0 {
 				newBase.Variables = tplCopy.Options.Variables
