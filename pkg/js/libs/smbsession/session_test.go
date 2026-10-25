@@ -136,7 +136,8 @@ func TestListDirContextNilContext(t *testing.T) {
 		".": {{name: "a.txt", size: 1, content: "x"}},
 	})
 	sess := &Session{backend: fake, closed: make(chan struct{})}
-	entries, err := sess.ListDirContext(nil, "backup", ".")
+	var ctx context.Context
+	entries, err := sess.ListDirContext(ctx, "backup", ".")
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
 	require.Equal(t, "a.txt", entries[0].Name)
@@ -147,7 +148,8 @@ func TestListTreeContextNilContext(t *testing.T) {
 		".": {{name: "a.txt", size: 1, content: "x"}},
 	})
 	sess := &Session{backend: fake, closed: make(chan struct{})}
-	entries, err := sess.ListTreeContext(nil, "backup", ".", 1, 100)
+	var ctx context.Context
+	entries, err := sess.ListTreeContext(ctx, "backup", ".", 1, 100)
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
 	require.Equal(t, "a.txt", entries[0].Name)

@@ -21,14 +21,14 @@ func WithExecutionID(ctx context.Context, executionContext *ExecutionContext) co
 	return context.WithValue(ctx, executionIDKey, executionContext)
 }
 
-// HasExecutionID checks if the context has an execution ID
+// HasExecutionContext checks if the context has an execution context.
 func HasExecutionContext(ctx context.Context) bool {
 	_, ok := ctx.Value(executionIDKey).(*ExecutionContext)
 	return ok
 }
 
-// GetExecutionID retrieves the execution ID from the context
-// Returns empty string if no execution ID is set
+// GetExecutionContext retrieves the execution context from the context.
+// It returns nil if no execution context is set.
 func GetExecutionContext(ctx context.Context) *ExecutionContext {
 	if id, ok := ctx.Value(executionIDKey).(*ExecutionContext); ok {
 		return id

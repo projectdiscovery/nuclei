@@ -6,8 +6,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -21,9 +24,21 @@ import (
 // executeAllSelfContained executes all self contained templates that do not use `target`
 func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
 	for _, v := range alltemplates {
+		usesSharedTemplateBudget := v.Type() != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				return
+			}
+		}
 		sg.Add(1)
-		go func(template *templates.Template) {
+		go func(template *templates.Template, sharedBudget bool) {
 			defer sg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
+			finished := e.templateExecutionStarted(template, "")
+			defer func() { finished(ctx.Err()) }()
+			defer e.tasksDone(1)
 			var err error
 			var match bool
 			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
@@ -42,7 +57,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step (self-contained): %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
 			results.CompareAndSwap(false, match)
-		}(v)
+		}(v, usesSharedTemplateBudget)
 	}
 }
 
@@ -143,17 +158,29 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			skip = false
 		}
 
+		// out of scope pairs keep their index so resume positions stay stable
+		inScope := e.inScope(template, scannedValue)
+		if !inScope {
+			skip = true
+		}
+
 		currentInfo.Lock()
 		currentInfo.InFlight[index] = struct{}{}
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
+		hostDown := inScope && e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(template.Type().String(), contextargs.NewWithMetaInput(ctx, scannedValue))
+		// in-scope pairs that never reach executeTemplateOnInput are done here:
+		// those done by the resumed scan and those of an unresponsive host
+		if inScope && (skip || hostDown) {
+			e.tasksDone(1)
+		}
+		if hostDown {
 			skipEvent := &output.ResultEvent{
 				TemplateID:    template.ID,
 				TemplatePath:  template.Path,
 				Info:          template.Info,
-				Type:          e.executerOpts.ProtocolType.String(),
+				Type:          template.Type().String(),
 				Host:          scannedValue.Input,
 				MatcherStatus: false,
 				Error:         "host was skipped as it was found unresponsive",
@@ -192,22 +219,26 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	wp := e.GetWorkPool()
 	defer wp.Wait()
 
-	for _, tpl := range alltemplates {
+	for i, tpl := range alltemplates {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 		}
 
+		if !e.inScope(tpl, target) {
+			continue
+		}
+
 		// Check whether the target has already been marked as permanently
 		// unresponsive by HostErrorsCache before spawning another goroutine.
 		if e.executerOpts.HostErrorsCache != nil &&
-			e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, target)) {
+			e.executerOpts.HostErrorsCache.Check(tpl.Type().String(), contextargs.NewWithMetaInput(ctx, target)) {
 			skipEvent := &output.ResultEvent{
 				TemplateID:    tpl.ID,
 				TemplatePath:  tpl.Path,
 				Info:          tpl.Info,
-				Type:          e.executerOpts.ProtocolType.String(),
+				Type:          tpl.Type().String(),
 				Host:          target.Input,
 				MatcherStatus: false,
 				Error:         "host was skipped as it was found unresponsive",
@@ -218,6 +249,8 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			} else if e.executerOpts.Output != nil {
 				_ = e.executerOpts.Output.Write(skipEvent)
 			}
+			// the remaining templates are skipped for this target as well
+			e.tasksDone(int64(getSelectedCount(alltemplates[i:], e.selectionFor(target))))
 			break
 		}
 
@@ -233,21 +266,82 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		if err := sg.AddWithContext(ctx); err != nil {
 			return
 		}
-
-		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
+		usesSharedTemplateBudget := tpl.Type() != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				sg.Done()
+				return
+			}
+		}
+		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup, sharedBudget bool) {
 			defer wg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
 
 			match, err := e.executeTemplateOnInput(ctx, template, value)
 			if err != nil {
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", template.ID, value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
-		}(tpl, target, sg)
+		}(tpl, target, sg, usesSharedTemplateBudget)
+	}
+}
+
+// inScope reports whether per-target profiles select template for input.
+func (e *Engine) inScope(template *templates.Template, input *contextargs.MetaInput) bool {
+	selection := e.selectionFor(input)
+	return selection == nil || template.SelectedBy(selection)
+}
+
+// selectionFor returns the templates per-target profiles select for input; nil
+// selects every template.
+func (e *Engine) selectionFor(input *contextargs.MetaInput) protocols.TemplateSelection {
+	if e.executerOpts.TargetScope == nil {
+		return nil
+	}
+	return e.executerOpts.TargetScope.For(input)
+}
+
+// taskTracker returns the progress when it counts tasks, nil otherwise.
+func (e *Engine) taskTracker() progress.TaskTracker {
+	if e.executerOpts == nil {
+		return nil
+	}
+	tracker, _ := e.executerOpts.Progress.(progress.TaskTracker)
+	return tracker
+}
+
+// addTaskTotal adds count tasks to the total when the progress counts tasks.
+func (e *Engine) addTaskTotal(count int64) {
+	if tracker := e.taskTracker(); tracker != nil {
+		tracker.AddToTaskTotal(count)
+	}
+}
+
+// tasksDone marks count tasks as done when the progress counts tasks.
+func (e *Engine) tasksDone(count int64) {
+	if tracker := e.taskTracker(); tracker != nil {
+		tracker.IncrementTasksBy(count)
 	}
 }
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error
-func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (bool, error) {
+func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (matched bool, err error) {
+	// a pair skipped as a repeat of its origin is done as well
+	defer e.tasksDone(1)
+	// A template fixed to the target's origin makes the same requests for every
+	// target that shares one, which a crawled list produces by the hundred.
+	// Running it once per origin sends exactly the same traffic, minus the
+	// repeats. The reservation is kept only when execution succeeds, so a
+	// failed attempt leaves the origin free for a later target.
+	finish, run := e.claimOriginScoped(template, value)
+	if !run {
+		return false, nil
+	}
+	defer func() { finish(err == nil) }()
+	finished := e.templateExecutionStarted(template, value.Input)
+	defer func() { finished(ctx.Err()) }()
 	ctxArgs := contextargs.New(ctx)
 	ctxArgs.MetaInput = value
 	scanCtx := scan.NewScanContext(ctx, ctxArgs)
@@ -257,9 +351,9 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 		return e.executeWorkflow(scanCtx, template.CompiledWorkflow), nil
 	default:
 		if e.Callback != nil {
-			results, err := template.Executer.ExecuteWithResults(scanCtx)
-			if err != nil {
-				return false, err
+			results, execErr := template.Executer.ExecuteWithResults(scanCtx)
+			if execErr != nil {
+				return false, execErr
 			}
 			for _, result := range results {
 				e.Callback(result)
@@ -267,5 +361,62 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 			return len(results) > 0, nil
 		}
 		return template.Executer.Execute(scanCtx)
+	}
+}
+
+// originAttempt is one origin-scoped execution. done is set only after a
+// successful run. While inflight is set, other callers wait, then retry if
+// that attempt failed.
+type originAttempt struct {
+	mu       sync.Mutex
+	cond     *sync.Cond
+	inflight bool
+	done     bool
+}
+
+func newOriginAttempt() *originAttempt {
+	attempt := &originAttempt{}
+	attempt.cond = sync.NewCond(&attempt.mu)
+	return attempt
+}
+
+// claimOriginScoped reports whether this caller should execute an origin-scoped
+// template. finish(true) records a successful run. finish(false) releases the
+// claim so a later target, including one that waited, can try again. Templates
+// whose requests depend on the target path always run. CustomIP is part of the
+// key so each address selected for one URL is tested on its own.
+func (e *Engine) claimOriginScoped(template *templates.Template, value *contextargs.MetaInput) (finish func(bool), run bool) {
+	noop := func(bool) {}
+	if template == nil || value == nil || !template.IsOriginScoped() {
+		return noop, true
+	}
+	origin := normalize.Origin(value.Input)
+	if origin == "" {
+		return noop, true
+	}
+	key := template.ID + "\x00" + origin + "\x00" + value.CustomIP
+	actual, _ := e.originScoped.LoadOrStore(key, newOriginAttempt())
+	slot := actual.(*originAttempt)
+
+	slot.mu.Lock()
+	for {
+		if slot.done {
+			slot.mu.Unlock()
+			return noop, false
+		}
+		if !slot.inflight {
+			slot.inflight = true
+			slot.mu.Unlock()
+			return func(success bool) {
+				slot.mu.Lock()
+				slot.inflight = false
+				if success {
+					slot.done = true
+				}
+				slot.cond.Broadcast()
+				slot.mu.Unlock()
+			}, true
+		}
+		slot.cond.Wait()
 	}
 }

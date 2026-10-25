@@ -39,25 +39,30 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 		}
 		tmpls = append(tmpls, data...)
 	}
-	opts.Templates = tmpls
-	opts.Workflows = nil
-	opts.RemoteTemplateDomainList = nil
-	opts.TemplateURLs = nil
-	opts.WorkflowURLs = nil
-	opts.ExcludedTemplates = nil
-	opts.Tags = nil
-	opts.ExcludeTags = nil
-	opts.IncludeTemplates = nil
-	opts.Authors = nil
-	opts.Severities = nil
-	opts.ExcludeSeverities = nil
-	opts.IncludeTags = nil
-	opts.IncludeIds = nil
-	opts.ExcludeIds = nil
-	opts.Protocols = nil
-	opts.ExcludeProtocols = nil
-	opts.IncludeConditions = nil
-	cfg := loader.NewConfig(opts, catalog, execOpts)
+	// The auth store only wants the secret-file templates. Copy first so
+	// this scoping cannot clear Templates, ExcludeTags, or the other filters
+	// on the caller's options. The CLI already copies; the SDK passes the
+	// engine options directly.
+	scoped := opts.Copy()
+	scoped.Templates = tmpls
+	scoped.Workflows = nil
+	scoped.RemoteTemplateDomainList = nil
+	scoped.TemplateURLs = nil
+	scoped.WorkflowURLs = nil
+	scoped.ExcludedTemplates = nil
+	scoped.Tags = nil
+	scoped.ExcludeTags = nil
+	scoped.IncludeTemplates = nil
+	scoped.Authors = nil
+	scoped.Severities = nil
+	scoped.ExcludeSeverities = nil
+	scoped.IncludeTags = nil
+	scoped.IncludeIds = nil
+	scoped.ExcludeIds = nil
+	scoped.Protocols = nil
+	scoped.ExcludeProtocols = nil
+	scoped.IncludeConditions = nil
+	cfg := loader.NewConfig(scoped, catalog, execOpts)
 	cfg.StoreId = loader.AuthStoreId
 	store, err := loader.New(cfg)
 	if err != nil {

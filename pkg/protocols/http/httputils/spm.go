@@ -144,6 +144,11 @@ func (h *StopAtFirstMatchHandler[T]) run(ctx context.Context) {
 	}
 }
 
+// Context is canceled when the handler stops.
+func (h *StopAtFirstMatchHandler[T]) Context() context.Context {
+	return h.ctx
+}
+
 // Done returns a channel with the context done signal when stop at first match is detected
 func (h *StopAtFirstMatchHandler[T]) Done() <-chan struct{} {
 	return h.ctx.Done()

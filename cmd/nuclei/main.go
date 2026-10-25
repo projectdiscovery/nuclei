@@ -244,6 +244,8 @@ func main() {
 	}
 }
 
+// readConfig defines the cli flags and loads them from the command line and
+// config files.
 func readConfig() *goflags.FlagSet {
 	var selectedFiles configuration.Selection
 	// when true updates nuclei binary to latest version
@@ -273,6 +275,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.BoolVarP(&options.DisableURLNormalization, "disable-url-normalization", "dun", false, "keep targets exactly as supplied instead of collapsing urls that address the same resource"),
+		flagSet.IntVarP(&options.MaxURLsPerPattern, "max-urls-per-pattern", "mup", 0, "scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)"),
 	)
 
 	flagSet.CreateGroup("target-format", "Target-Format",
@@ -304,6 +308,14 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableSelfContainedTemplates, "enable-self-contained", "esc", false, "enable loading self-contained templates"),
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
+		flagSet.BoolVar(&options.EnableLLM, "llm", false, "enable llm matchers and extractors (semantic matching)"),
+		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together)"),
+		flagSet.StringVar(&options.LLMBaseURL, "llm-base-url", "", "openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)"),
+		flagSet.StringVar(&options.LLMModel, "llm-model", "", "model used for semantic matching"),
+		flagSet.IntVar(&options.LLMTimeout, "llm-timeout", 30, "time in seconds to wait for a single llm call"),
+		flagSet.IntVar(&options.LLMMaxCalls, "llm-max-calls", 5000, "maximum llm calls per scan (0 for unlimited)"),
+		flagSet.IntVar(&options.LLMConcurrency, "llm-concurrency", 4, "maximum concurrent llm calls"),
+		flagSet.BoolVar(&options.LLMCache, "llm-cache", true, "cache llm responses within a scan"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
@@ -369,10 +381,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default"), //nolint:all
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
 		flagSet.DurationVarP(&options.DialerKeepAlive, "dialer-keep-alive", "dka", 0, "keep-alive duration for network requests."),
-		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows file (payload) access anywhere on the system"),
+		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allow all templates in the run to read any file on the system (not just payloads)"),
 		flagSet.BoolVarP(&options.RestrictLocalNetworkAccess, "restrict-local-network-access", "lna", false, "blocks connections to the local / private network"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
+		flagSet.BoolVarP(&options.PayloadRandomOrder, "payload-random-order", "pro", false, "iterate payload combinations in a random order instead of sequentially"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 0, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", unitutils.Mega, "max response size to read in bytes"),
@@ -400,6 +413,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.DASTReport, "dast-report", "dtr", false, "write dast scan report to file"),
 		flagSet.StringVarP(&options.DASTServerToken, "dast-server-token", "dtst", "", "dast server token (optional)"),
 		flagSet.StringVarP(&options.DASTServerAddress, "dast-server-address", "dtsa", "localhost:9055", "dast server address"),
+		flagSet.BoolVarP(&options.DASTProxy, "dast-proxy", "dtp", false, "enable intercepting dast proxy (CA/stats on -dtsa; POST /fuzz needs -dast-server)"),
+		flagSet.StringVarP(&options.DASTProxyAddress, "dast-proxy-address", "dtpa", "127.0.0.1:9056", "dast proxy listen address"),
+		flagSet.StringVarP(&options.DASTProxyAuth, "dast-proxy-auth", "dtpau", "", "dast proxy basic auth in user:pass format (required for non-loopback address)"),
 		flagSet.BoolVarP(&options.DisplayFuzzPoints, "display-fuzz-points", "dfp", false, "display fuzz points in the output for debugging"),
 		flagSet.IntVar(&options.FuzzParamFrequency, "fuzz-param-frequency", 10, "frequency of uninteresting parameters for fuzzing before skipping"),
 		flagSet.StringVarP(&options.FuzzAggressionLevel, "fuzz-aggression", "fa", "low", "fuzzing aggression level controls payload count for fuzz (low, medium, high)"),
@@ -419,6 +435,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
 		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "maximum number of requests to send per second"),
+		flagSet.BoolVar(&options.HostBackoff, "host-backoff", false, "slow down a host that starts blocking (429, repeated 403s, connection failures)"),
+		flagSet.DurationVar(&options.HostBackoffMax, "host-backoff-max", 30*time.Second, "maximum delay applied to a host that is blocking"),
 		flagSet.BoolVar(&options.PerHostRateLimit, "per-host-rate-limit", false, "enable per-host rate limiting (global rate limit becomes unlimited when enabled)"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute (DEPRECATED)"),
 		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
@@ -450,6 +468,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.PreflightPortScan, "preflight-portscan", false, "run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
+		flagSet.BoolVar(&options.EnableHTTPCache, "http-cache", false, "enable HTTP cache (RFC 9111) for HTTP requests"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",
@@ -468,6 +487,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.DebugResponse, "debug-resp", "dresp", false, "show all received responses"),
 		flagSet.StringSliceVarP(&options.Proxy, "proxy", "p", nil, "list of http/socks5 proxy to use (comma separated or file input)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.ProxyInternal, "proxy-internal", "pi", false, "proxy all internal requests"),
+		flagSet.StringVarP(&options.ReplayProxy, "replay-proxy", "rp", "", "http/socks5 proxy to re-send requests that produced a finding through (e.g. burp)"),
 		flagSet.BoolVarP(&options.ListDslSignatures, "list-dsl-function", "ldf", false, "list all supported DSL function signatures"),
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
@@ -486,6 +506,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("update", "Update",
 		flagSet.BoolVarP(&updateNucleiBinary, "update", "up", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
+		flagSet.StringVarP(&options.UpdateTemplatesChannel, "update-templates-channel", "utc", installer.TemplatesChannelStable, "nuclei-templates update channel (stable, latest)"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.BoolVarP(&disableUpdateCheck, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)

@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"net/url"
 	"testing"
 
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -23,4 +24,21 @@ func TestManagerValidate(t *testing.T) {
 		require.False(t, validated, "could not get correct out-scope validation")
 	})
 
+}
+
+func TestManagerIsExplicitlyOutOfScope(t *testing.T) {
+	manager, err := NewManager(
+		[]string{`^https://app\.example\.com/api/`},
+		[]string{`^https://telemetry\.example\.com/`},
+	)
+	require.NoError(t, err)
+
+	excluded, err := url.Parse("https://telemetry.example.com/")
+	require.NoError(t, err)
+	require.True(t, manager.IsExplicitlyOutOfScope(excluded))
+
+	// Not matching an in-scope rule is not the same as being excluded.
+	unlisted, err := url.Parse("https://app.example.com/")
+	require.NoError(t, err)
+	require.False(t, manager.IsExplicitlyOutOfScope(unlisted))
 }
