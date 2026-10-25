@@ -41,7 +41,7 @@ export class MySQLClient {
     * const isMySQL = mysql.IsMySQL('acme.com', 3306);
     * ```
     */
-    public IsMySQL(host: string, port: number): boolean | null {
+    public IsMySQL(ctx: any, host: string, port: number): boolean | null {
         return null;
     }
     
@@ -58,7 +58,7 @@ export class MySQLClient {
     * const connected = client.Connect('acme.com', 3306, 'username', 'password');
     * ```
     */
-    public Connect(host: string, port: number, username: string): boolean | null {
+    public Connect(ctx: any, host: string, port: number, username: string): boolean | null {
         return null;
     }
     
@@ -72,7 +72,7 @@ export class MySQLClient {
     * log(to_json(info));
     * ```
     */
-    public FingerprintMySQL(host: string, port: number): MySQLInfo | null {
+    public FingerprintMySQL(ctx: any, host: string, port: number): MySQLInfo | null {
         return null;
     }
     
@@ -88,7 +88,7 @@ export class MySQLClient {
     * const connected = client.ConnectWithDSN('username:password@tcp(acme.com:3306)/');
     * ```
     */
-    public ConnectWithDSN(dsn: string): boolean | null {
+    public ConnectWithDSN(ctx: any, dsn: string): boolean | null {
         return null;
     }
     
@@ -106,7 +106,7 @@ export class MySQLClient {
     * log(to_json(result));
     * ```
     */
-    public ExecuteQueryWithOpts(opts: MySQLOptions, query: string): SQLResult | null | null {
+    public ExecuteQueryWithOpts(ctx: any, opts: MySQLOptions, query: string): SQLResult | null | null {
         return null;
     }
     
@@ -121,7 +121,7 @@ export class MySQLClient {
     * log(to_json(result));
     * ```
     */
-    public ExecuteQuery(host: string, port: number, username: string): SQLResult | null | null {
+    public ExecuteQuery(ctx: any, host: string, port: number, username: string): SQLResult | null | null {
         return null;
     }
     
@@ -136,11 +136,46 @@ export class MySQLClient {
     * log(to_json(result));
     * ```
     */
-    public ExecuteQueryOnDB(host: string, port: number, username: string): SQLResult | null | null {
+    public ExecuteQueryOnDB(ctx: any, host: string, port: number, username: string): SQLResult | null | null {
         return null;
     }
     
 
+}
+
+
+
+/**
+ */
+export interface HandshakeInfo {
+    
+    PacketType?: string,
+    
+    ProtocolVersion?: number,
+    
+    Version?: string,
+    
+    ThreadID?: number,
+    
+    CapabilityFlags?: number,
+    
+    Capabilities?: string[],
+    
+    CharacterSet?: number,
+    
+    StatusFlags?: number,
+    
+    Status?: string[],
+    
+    AuthPluginDataLen?: number,
+    
+    Salt?: string,
+    
+    AuthPluginName?: string,
+    
+    ErrorMessage?: string,
+    
+    ErrorCode?: number,
 }
 
 
@@ -165,7 +200,25 @@ export interface MySQLInfo {
     
     Version?: string,
     
-    Debug?: ServiceMySQL,
+    ProtocolVersion?: number,
+    
+    ThreadID?: number,
+    
+    CapabilityFlags?: number,
+    
+    Capabilities?: string[],
+    
+    CharacterSet?: number,
+    
+    StatusFlags?: number,
+    
+    Status?: string[],
+    
+    Salt?: string,
+    
+    AuthPluginName?: string,
+    
+    Debug?: HandshakeInfo,
     
     Raw?: string,
 }
@@ -212,19 +265,5 @@ export interface SQLResult {
     Count?: number,
     
     Columns?: string[],
-}
-
-
-
-/**
- * ServiceMySQL Interface
- */
-export interface ServiceMySQL {
-    
-    PacketType?: string,
-    
-    ErrorMessage?: string,
-    
-    ErrorCode?: number,
 }
 

@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
+	"github.com/adrg/xdg"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
@@ -29,10 +32,39 @@ func TestNewIndex(t *testing.T) {
 	})
 
 	t.Run("with default directory", func(t *testing.T) {
+		oldConfig := config.DefaultConfig
+		oldCacheHome := xdg.CacheHome
+		cacheHome := t.TempDir()
+		xdg.CacheHome = cacheHome
+		config.DefaultConfig = &config.Config{}
+		t.Cleanup(func() {
+			config.DefaultConfig = oldConfig
+			xdg.CacheHome = oldCacheHome
+		})
+
 		cache, err := NewDefaultIndex()
 		require.NoError(t, err, "Failed to create cache with default directory")
 		require.NotNil(t, cache, "Cache should not be nil")
+		require.Equal(t, filepath.Join(cacheHome, config.BinaryName, IndexFileName), cache.cacheFile)
 	})
+
+	t.Run("creates private directory", func(t *testing.T) {
+		cacheDir := filepath.Join(t.TempDir(), "cache")
+		_, err := NewIndex(cacheDir)
+		require.NoError(t, err)
+		info, err := os.Stat(cacheDir)
+		require.NoError(t, err)
+		if runtime.GOOS != "windows" {
+			require.Equal(t, os.FileMode(0o700), info.Mode().Perm())
+		}
+	})
+}
+
+func TestMetadataIsValidatedForRejectsUnknownMode(t *testing.T) {
+	metadata := &Metadata{Validation: ValidationMode(255)}
+
+	require.False(t, metadata.IsValidatedFor(false))
+	require.False(t, metadata.IsValidatedFor(true))
 }
 
 func TestCacheBasicOperations(t *testing.T) {
@@ -118,6 +150,9 @@ func TestCachePersistence(t *testing.T) {
 		stat, err := os.Stat(cacheFile)
 		require.NoError(t, err, "Cache file should exist")
 		require.Greater(t, stat.Size(), int64(0), "Cache file should not be empty")
+		if runtime.GOOS != "windows" {
+			require.Equal(t, os.FileMode(0o600), stat.Mode().Perm())
+		}
 
 		// Create new cache and load
 		cache2, err := NewIndex(tmpDir)
@@ -164,6 +199,143 @@ func TestCachePersistence(t *testing.T) {
 	})
 }
 
+func TestCacheSaveSkipsUnchangedIndex(t *testing.T) {
+	tmpDir := t.TempDir()
+	cache, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+
+	cache.Set("/tmp/unchanged.yaml", &Metadata{
+		ID:       "unchanged",
+		FilePath: "/tmp/unchanged.yaml",
+	})
+	require.NoError(t, cache.Save())
+
+	cacheFile := filepath.Join(tmpDir, IndexFileName)
+	oldTime := time.Unix(1, 0)
+	require.NoError(t, os.Chtimes(cacheFile, oldTime, oldTime))
+
+	require.NoError(t, cache.Save())
+
+	stat, err := os.Stat(cacheFile)
+	require.NoError(t, err)
+	require.Equal(t, oldTime, stat.ModTime(), "unchanged cache should not be rewritten")
+}
+
+func TestCacheLoadRejectsModifiedIndex(t *testing.T) {
+	tmpDir := t.TempDir()
+	persisted, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	persisted.Set("/tmp/persisted.yaml", &Metadata{ID: "persisted", FilePath: "/tmp/persisted.yaml"})
+	require.NoError(t, persisted.Save())
+
+	cache, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	cache.Set("/tmp/unsaved.yaml", &Metadata{ID: "unsaved", FilePath: "/tmp/unsaved.yaml"})
+
+	require.Error(t, cache.Load())
+	require.True(t, cache.Has("/tmp/unsaved.yaml"), "rejected load must preserve unsaved entries")
+}
+
+func TestCacheGetSynchronouslyInvalidatesStaleEntry(t *testing.T) {
+	tmpDir := t.TempDir()
+	templatePath := filepath.Join(tmpDir, "stale.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte("id: stale"), 0o600))
+
+	cache, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	cache.Set(templatePath, &Metadata{
+		ID:       "stale",
+		FilePath: templatePath,
+		ModTime:  time.Unix(1, 0),
+	})
+
+	metadata, found := cache.Get(templatePath)
+	require.False(t, found)
+	require.Nil(t, metadata)
+	require.False(t, cache.Has(templatePath), "Get must finish stale-entry invalidation before returning")
+}
+
+func TestCacheMetadataIsDefensivelyCopied(t *testing.T) {
+	tmpDir := t.TempDir()
+	templatePath := filepath.Join(tmpDir, "metadata.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte("id: metadata"), 0o600))
+	info, err := os.Stat(templatePath)
+	require.NoError(t, err)
+
+	cache, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	input := &Metadata{
+		ID:       "original",
+		FilePath: templatePath,
+		ModTime:  info.ModTime(),
+		Authors:  []string{"original-author"},
+		Tags:     []string{"original-tag"},
+	}
+	cache.Set(templatePath, input)
+
+	input.ID = "mutated-input"
+	input.Authors[0] = "mutated-input-author"
+	input.Tags[0] = "mutated-input-tag"
+	require.NoError(t, cache.Save())
+
+	fromGet, found := cache.Get(templatePath)
+	require.True(t, found)
+	fromGet.ID = "mutated-get"
+	fromGet.Authors[0] = "mutated-get-author"
+
+	fromGetAll := cache.GetAll()
+	fromGetAll[templatePath].ID = "mutated-get-all"
+	fromGetAll[templatePath].Tags[0] = "mutated-get-all-tag"
+	require.NoError(t, cache.Save())
+
+	loaded, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	require.NoError(t, loaded.Load())
+	metadata := loaded.GetAll()[templatePath]
+	require.Equal(t, "original", metadata.ID)
+	require.Equal(t, []string{"original-author"}, metadata.Authors)
+	require.Equal(t, []string{"original-tag"}, metadata.Tags)
+}
+
+func TestCacheClearPersistsEmptyIndexWithoutLoad(t *testing.T) {
+	tmpDir := t.TempDir()
+	persisted, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	persisted.Set("/tmp/persisted.yaml", &Metadata{ID: "persisted", FilePath: "/tmp/persisted.yaml"})
+	require.NoError(t, persisted.Save())
+
+	cache, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	cache.Clear()
+	require.NoError(t, cache.Save())
+
+	loaded, err := NewIndex(tmpDir)
+	require.NoError(t, err)
+	require.NoError(t, loaded.Load())
+	require.Equal(t, 0, loaded.Size())
+}
+
+func TestFilterFuncCanMutateIndex(t *testing.T) {
+	cache, err := NewIndex(t.TempDir())
+	require.NoError(t, err)
+	cache.Set("/tmp/original.yaml", &Metadata{ID: "original", FilePath: "/tmp/original.yaml"})
+
+	done := make(chan []string, 1)
+	go func() {
+		done <- cache.FilterFunc(func(*Metadata) bool {
+			cache.Set("/tmp/from-callback.yaml", &Metadata{ID: "callback", FilePath: "/tmp/from-callback.yaml"})
+			return true
+		})
+	}()
+
+	select {
+	case paths := <-done:
+		require.Equal(t, []string{"/tmp/original.yaml"}, paths)
+	case <-time.After(time.Second):
+		t.Fatal("FilterFunc deadlocked when its callback mutated the index")
+	}
+}
+
 func TestIndexVersionMismatch(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -182,7 +354,10 @@ func TestIndexVersionMismatch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Manually modify version and save again
+	cache1.mu.Lock()
 	cache1.version = 999
+	cache1.dirty = true
+	cache1.mu.Unlock()
 	err = cache1.Save()
 	require.NoError(t, err)
 
@@ -472,6 +647,19 @@ func TestCacheConcurrency(t *testing.T) {
 			<-done
 		}
 	})
+
+	t.Run("Concurrent Save", func(t *testing.T) {
+		errs := make(chan error, 10)
+		for range 10 {
+			go func() {
+				errs <- cache.Save()
+			}()
+		}
+
+		for range 10 {
+			require.NoError(t, <-errs)
+		}
+	})
 }
 
 func TestCacheSize(t *testing.T) {
@@ -717,6 +905,7 @@ func TestNewMetadataFromTemplate(t *testing.T) {
 			SeverityHolder: severity.Holder{
 				Severity: severity.Low,
 			},
+			Metadata: map[string]any{"product": " Tomcat "},
 		},
 		Verified:         true,
 		TemplateVerifier: "verifier",
@@ -734,4 +923,5 @@ func TestNewMetadataFromTemplate(t *testing.T) {
 	require.Equal(t, tmpl.Type().String(), metadata.ProtocolType)
 	require.Equal(t, tmpl.Verified, metadata.Verified)
 	require.Equal(t, tmpl.TemplateVerifier, metadata.TemplateVerifier)
+	require.Equal(t, "tomcat", metadata.Product)
 }

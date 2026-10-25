@@ -22,8 +22,15 @@ const (
 )
 
 type mockSignableTemplate struct {
-	imports []string
-	hasCode bool
+	imports       []string
+	hasCode       bool
+	hasJavascript bool
+}
+
+type snapshotSignableTemplate struct {
+	imports        []string
+	importContents [][]byte
+	captured       bool
 }
 
 func (m *mockSignableTemplate) GetFileImports() []string {
@@ -32,6 +39,22 @@ func (m *mockSignableTemplate) GetFileImports() []string {
 
 func (m *mockSignableTemplate) HasCodeProtocol() bool {
 	return m.hasCode
+}
+
+func (m *mockSignableTemplate) HasJavascriptRequest(...int) bool {
+	return m.hasJavascript
+}
+
+func (m *snapshotSignableTemplate) GetFileImports() []string {
+	return m.imports
+}
+
+func (m *snapshotSignableTemplate) GetFileImportContents() ([][]byte, bool) {
+	return m.importContents, m.captured
+}
+
+func (m *snapshotSignableTemplate) HasCodeProtocol() bool {
+	return false
 }
 
 var signer, _ = NewTemplateSignerFromFiles(testCertFile, testKeyFile)
@@ -174,4 +197,41 @@ func TestTemplateSignerSignAndVerify(t *testing.T) {
 			assert.Equal(t, tt.wantVerified, verified, "Unexpected verification result")
 		})
 	}
+}
+
+func TestTemplateSignerUsesImportedContentSnapshot(t *testing.T) {
+	importPath := filepath.Join(t.TempDir(), "import.js")
+	require.NoError(t, os.WriteFile(importPath, []byte("disk content before signing"), 0o600))
+
+	tmpl := &snapshotSignableTemplate{
+		imports:        []string{importPath},
+		importContents: [][]byte{[]byte("loaded content")},
+		captured:       true,
+	}
+	templateData := []byte("id: imported-content-snapshot")
+	signature, err := signer.Sign(templateData, tmpl)
+	require.NoError(t, err)
+
+	require.NoError(t, os.WriteFile(importPath, []byte("disk content after signing"), 0o600))
+	signedData := append(templateData, []byte("\n"+signature)...)
+	verified, err := signer.Verify(signedData, tmpl)
+	require.NoError(t, err)
+	require.True(t, verified)
+}
+
+func TestTemplateSignerRejectsMismatchedImportedContentSnapshot(t *testing.T) {
+	importPath := filepath.Join(t.TempDir(), "import.js")
+	require.NoError(t, os.WriteFile(importPath, []byte("disk content"), 0o600))
+
+	tmpl := &snapshotSignableTemplate{imports: []string{importPath}, captured: true}
+	_, err := signer.Sign([]byte("id: incomplete-import-snapshot"), tmpl)
+	require.ErrorContains(t, err, "imported-file content count does not match imported-file path count")
+}
+
+func TestTemplateSignerRejectsResigningJavascriptWithForeignSigner(t *testing.T) {
+	tmpl := &mockSignableTemplate{hasJavascript: true}
+	templateData := []byte("id: javascript-template\n# digest: 00:foreign-signer")
+
+	_, err := signer.Sign(templateData, tmpl)
+	require.ErrorContains(t, err, "re-signing executable templates are not allowed")
 }

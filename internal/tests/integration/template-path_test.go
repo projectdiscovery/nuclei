@@ -5,25 +5,24 @@ package integration_test
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 )
 
-func getTemplatePath() string {
-	return config.DefaultConfig.TemplatesDirectory
-}
-
-var templatesPathTestCases = []integrationCase{
-	//template folder path issue
-	{Path: "protocols/http/get.yaml", TestCase: &folderPathTemplateTest{}},
-	//cwd
-	{Path: "./dns/detect-dangling-cname.yaml", TestCase: &cwdTemplateTest{}},
-	//relative path
-	{Path: "dns/dns-saas-service-detection.yaml", TestCase: &relativePathTemplateTest{}},
-	//absolute path
-	{Path: fmt.Sprintf("%v/dns/dns-saas-service-detection.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
+func templatesPathTestCases() []integrationCase {
+	return []integrationCase{
+		//template folder path issue
+		{Path: "protocols/http/get.yaml", TestCase: &folderPathTemplateTest{}},
+		//cwd
+		{Path: "./dns/detect-dangling-cname.yaml", TestCase: &cwdTemplateTest{}},
+		//relative path
+		{Path: "dns/dns-saas-service-detection.yaml", TestCase: &relativePathTemplateTest{}},
+		//absolute path
+		{Path: filepath.Join(config.DefaultConfig.TemplatesDirectory, "dns", "dns-saas-service-detection.yaml"), TestCase: &absolutePathTemplateTest{}},
+	}
 }
 
 type cwdTemplateTest struct{}

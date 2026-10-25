@@ -421,7 +421,7 @@ func TestVariablesEvaluateWithInteractshDynamicOverrideIsData(t *testing.T) {
 func TestRenderVariableValueWithInteractshKeepsURLsOnRenderError(t *testing.T) {
 	source := &variableTestURLSource{}
 
-	result, urls := renderVariableValueWithInteractsh("{{interactsh-url}} {{md5(missing)}}", nil, source, nil)
+	result, urls := renderVariableValueWithInteractsh("{{interactsh-url}} {{md5(missing)}}", nil, source, nil, nil)
 
 	require.Equal(t, 1, source.calls)
 	require.Len(t, urls, 1)

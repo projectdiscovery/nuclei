@@ -89,7 +89,7 @@ func generateCommonsCollections40Payload(cmd string) []byte {
 	return buffer.Bytes()
 }
 
-// generateCommonsCollections440PPayload generates commons-collections 3.1
+// generateCommonsCollections31Payload generates commons-collections 3.1
 // deserialization payload for a command.
 func generateCommonsCollections31Payload(cmd string) []byte {
 	buffer := &bytes.Buffer{}
