@@ -6,6 +6,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 )
 
 // defaultHTTPToHTTPSTrackerSize bounds how many host:port entries the tracker
@@ -67,7 +68,7 @@ func (t *HTTPToHTTPSPortTracker) RecordHTTPToHTTPSPort(hostPort string) {
 		return
 	}
 
-	normalizedHostPort := normalizeHostPort(hostPort)
+	normalizedHostPort := hostratelimit.NormalizeHostPort(hostPort)
 	if normalizedHostPort == "" {
 		return
 	}
@@ -93,7 +94,7 @@ func (t *HTTPToHTTPSPortTracker) RequiresHTTPS(hostPort string) bool {
 		return false
 	}
 
-	normalizedHostPort := normalizeHostPort(hostPort)
+	normalizedHostPort := hostratelimit.NormalizeHostPort(hostPort)
 	if normalizedHostPort == "" {
 		return false
 	}
@@ -119,7 +120,7 @@ func (t *HTTPToHTTPSPortTracker) Evict(hostPort string) {
 		return
 	}
 
-	normalizedHostPort := normalizeHostPort(hostPort)
+	normalizedHostPort := hostratelimit.NormalizeHostPort(hostPort)
 	if normalizedHostPort == "" {
 		return
 	}

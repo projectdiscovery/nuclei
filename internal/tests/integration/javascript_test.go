@@ -5,10 +5,12 @@ package integration_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-pg/pg/v10"
@@ -16,6 +18,7 @@ import (
 	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	osutils "github.com/projectdiscovery/utils/os"
 	"github.com/projectdiscovery/utils/reader"
 	"go.uber.org/multierr"
@@ -34,13 +37,21 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/redis-lua-script.yaml", TestCase: &javascriptRedisLuaScript{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
+	{Path: "protocols/javascript/target-line-ip.yaml", TestCase: &javascriptTargetLineIP{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
 	{Path: "protocols/javascript/grpc-health.yaml", TestCase: &javascriptGRPCHealth{}},
 	{Path: "protocols/javascript/grpc-denied.yaml", TestCase: &javascriptGRPCDenied{}},
+	{Path: "protocols/javascript/websocket-echo.yaml", TestCase: &javascriptWebSocketEcho{}},
+	{Path: "protocols/javascript/websocket-denied.yaml", TestCase: &javascriptWebSocketDenied{}},
+	{Path: "protocols/javascript/http-get.yaml", TestCase: &javascriptHTTPGet{}},
+	{Path: "protocols/javascript/http-client-flow.yaml", TestCase: &javascriptHTTPClientFlow{}},
+	{Path: "protocols/javascript/http-denied.yaml", TestCase: &javascriptHTTPDenied{}},
 	{Path: "protocols/javascript/rsync-test.yaml", TestCase: &javascriptRsyncTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/mysql-connect.yaml", TestCase: &javascriptMySQLConnect{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/mysql-fingerprint.yaml", TestCase: &javascriptMySQLFingerprint{}, DisableOn: javascriptDockerDisabled, Serial: true},
+	{Path: "protocols/javascript/mssql-fingerprint.yaml", TestCase: &javascriptMSSQLFingerprint{}},
 	{Path: "protocols/javascript/multi-ports.yaml", TestCase: &javascriptMultiPortsSSH{}},
 	{Path: "protocols/javascript/no-port-args.yaml", TestCase: &javascriptNoPortArgs{}},
 	{Path: "protocols/javascript/telnet-auth-test.yaml", TestCase: &javascriptTelnetAuthTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
@@ -174,6 +185,57 @@ func (j *javascriptMySQLConnect) Execute(filePath string) error {
 			"MYSQL_ROOT_PASSWORD=secret",
 		},
 	}, javascriptDatabaseReadyTimeout, 0, mysqlReadyCheck("root", "secret")))
+}
+
+type javascriptMySQLFingerprint struct{}
+
+// Execute fingerprints multiple MySQL/MariaDB server versions and asserts the
+// extended handshake fields (protocol, version, salt, capabilities, auth plugin).
+func (j *javascriptMySQLFingerprint) Execute(filePath string) error {
+	cases := []struct {
+		name       string
+		repository string
+		tag        string
+		env        []string
+	}{
+		{
+			name:       "mysql-5.7",
+			repository: "mysql",
+			tag:        "5.7",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mysql-8.0",
+			repository: "mysql",
+			tag:        "8.0",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mysql-8.4",
+			repository: "mysql",
+			tag:        "8.4",
+			env:        []string{"MYSQL_ROOT_PASSWORD=secret"},
+		},
+		{
+			name:       "mariadb-11.4",
+			repository: "mariadb",
+			tag:        "11.4",
+			env:        []string{"MARIADB_ROOT_PASSWORD=secret"},
+		},
+	}
+
+	var errs []error
+	for _, tc := range cases {
+		err := runJavascriptDockerCase(filePath, newJavascriptDockerSpec("3306/tcp", &dockertest.RunOptions{
+			Repository: tc.repository,
+			Tag:        tc.tag,
+			Env:        tc.env,
+		}, javascriptDatabaseReadyTimeout, 0, mysqlReadyCheck("root", "secret")))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", tc.name, err))
+		}
+	}
+	return multierr.Combine(errs...)
 }
 
 type javascriptMultiPortsSSH struct{}
@@ -407,6 +469,87 @@ func (j *networkMultiStep) Execute(filePath string) error {
 		return expectResultsCount(results, 3)
 	}
 	return expectResultsCount(results, 1)
+}
+
+// target lines pin a hostname that does not resolve, so the javascript
+// connection reaches a server only through the pinned ip
+type javascriptTargetLineIP struct{}
+
+func (j *javascriptTargetLineIP) Execute(filePath string) error {
+	serve := func(addr, banner string) (net.Listener, error) {
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		go func() {
+			for {
+				conn, err := listener.Accept()
+				if err != nil {
+					return
+				}
+				_, _ = conn.Write([]byte(banner))
+				_ = conn.Close()
+			}
+		}()
+		return listener, nil
+	}
+
+	one, err := serve("127.0.0.1:0", "one")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = one.Close() }()
+	_, port, err := net.SplitHostPort(one.Addr().String())
+	if err != nil {
+		return err
+	}
+
+	want := map[string]string{"127.0.0.1": "one"}
+	// the same host pinned to a second ip, where 127.0.0.2 is available
+	if two, err := serve(net.JoinHostPort("127.0.0.2", port), "two"); err == nil {
+		defer func() { _ = two.Close() }()
+		want["127.0.0.2"] = "two"
+	}
+
+	lines := make([]string, 0, len(want))
+	for ip := range want {
+		lines = append(lines, fmt.Sprintf(`{"target": "pinned.test:%s", "ip": %q}`, port, ip))
+	}
+	targets, err := os.CreateTemp("", "target-lines-*.txt")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(targets.Name()) }()
+	if _, err := targets.WriteString(strings.Join(lines, "\n")); err != nil {
+		return err
+	}
+	_ = targets.Close()
+
+	if err := ensureSignedIntegrationTemplates(); err != nil {
+		return err
+	}
+	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, getEnvValues(), "-t", filePath, "-l", targets.Name(), "-jsonl")
+	if err != nil {
+		return err
+	}
+
+	got := make(map[string]string)
+	for _, result := range results {
+		var event output.ResultEvent
+		if !strings.HasPrefix(result, "{") || json.Unmarshal([]byte(result), &event) != nil {
+			continue
+		}
+		got[event.IP] = strings.Join(event.ExtractedResults, ",")
+	}
+	if len(got) != len(want) {
+		return fmt.Errorf("got results for %d ips, want %d: %v", len(got), len(want), got)
+	}
+	for ip, banner := range want {
+		if got[ip] != banner {
+			return fmt.Errorf("ip %s answered %q, want %q", ip, got[ip], banner)
+		}
+	}
+	return nil
 }
 
 func runJavascriptDockerCase(filePath string, spec javascriptDockerSpec, expectedNumbers ...int) error {

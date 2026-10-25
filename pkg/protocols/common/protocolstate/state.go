@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/networkpolicy"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -90,6 +91,7 @@ func Init(options *types.Options) error {
 func initDialers(options *types.Options) error {
 	opts := fastdialer.DefaultOptions
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
+	opts.OnDialResult = reportDialResult
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}
@@ -165,7 +167,6 @@ func initDialers(options *types.Options) error {
 			forward = &net.Dialer{
 				Timeout:   opts.DialerTimeout,
 				KeepAlive: opts.DialerKeepAlive,
-				DualStack: true,
 			}
 		}
 		dialer, err := proxy.FromURL(proxyURL, forward)
@@ -216,6 +217,7 @@ func initDialers(options *types.Options) error {
 		Fastdialer:                 dialer,
 		NetworkPolicy:              networkPolicy,
 		HTTPClientPool:             httpClientPool,
+		HTTPDesyncHosts:            NewExpiringSet(time.Minute),
 		LocalFileAccessAllowed:     options.AllowLocalFileAccess,
 		RestrictLocalNetworkAccess: options.RestrictLocalNetworkAccess,
 		ExcludeTargets:             options.ExcludeTargets,
@@ -329,6 +331,7 @@ func Close(executionId string) {
 	dialers.Delete(executionId)
 
 	if dialers.IsEmpty() {
+		httpcache.Close()
 		StopActiveMemGuardian()
 	}
 }

@@ -56,6 +56,7 @@ func requireDurationField(t *testing.T, event output.InternalEvent, key string) 
 
 	value, ok := event[key].(float64)
 	require.Truef(t, ok, "expected %s to be a float64 duration", key)
-	require.Greater(t, value, float64(0))
+	// Local mocks can finish within one timer tick (esp. on Windows), so 0s is valid.
+	require.GreaterOrEqual(t, value, float64(0))
 	require.Less(t, value, float64(60))
 }

@@ -25,6 +25,7 @@ type Browser struct {
 	engine         *rod.Browser
 	options        *types.Options
 	launcher       *launcher.Launcher
+	proxy          *headlessProxy
 
 	// use getHTTPClient to get the http client
 	httpClient     *http.Client
@@ -34,6 +35,7 @@ type Browser struct {
 // New creates a new nuclei headless browser module
 func New(options *types.Options) (*Browser, error) {
 	var launcherURL, dataStore string
+	var proxyServer *headlessProxy
 	var err error
 
 	chromeLauncher := launcher.New()
@@ -82,9 +84,13 @@ func New(options *types.Options) (*Browser, error) {
 		} else {
 			chromeLauncher = chromeLauncher.Headless(true)
 		}
-		if options.AliveHttpProxy != "" {
-			chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
+		proxyServer, err = newHeadlessProxy(options)
+		if err != nil {
+			return nil, err
 		}
+		chromeLauncher = chromeLauncher.
+			Proxy(proxyServer.Addr()).
+			Set("proxy-bypass-list", "<-loopback>")
 
 		for k, v := range options.ParseHeadlessOptionalArguments() {
 			chromeLauncher.Set(flags.Flag(k), v)
@@ -100,6 +106,9 @@ func New(options *types.Options) (*Browser, error) {
 
 	browser := rod.New().ControlURL(launcherURL)
 	if browserErr := browser.Connect(); browserErr != nil {
+		if proxyServer != nil {
+			_ = proxyServer.Close()
+		}
 		return nil, browserErr
 	}
 	defaultHeaders := make(map[string]string)
@@ -129,6 +138,7 @@ func New(options *types.Options) (*Browser, error) {
 		options:        options,
 		httpClientOnce: &sync.Once{},
 		launcher:       chromeLauncher,
+		proxy:          proxyServer,
 	}
 	return engine, nil
 }
@@ -186,6 +196,9 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 //
 // When connected over CDP, it does NOT close the browsers.
 func (b *Browser) Close() {
+	if b.proxy != nil {
+		_ = b.proxy.Close()
+	}
 	if b.options.CDPEndpoint != "" {
 		return
 	}
