@@ -21,7 +21,7 @@ func TestTransformPinned(t *testing.T) {
 
 	require.Equal(t, "https://app.test", helper.TransformPinned("app.test", "127.0.0.2", templateTypes.HTTPProtocol), "the probe made through the pinned ip")
 	require.Equal(t, "http://app.test", helper.TransformPinned("app.test", "", templateTypes.HTTPProtocol), "an unpinned input")
-	require.Equal(t, "http://app.test", helper.TransformPinned("app.test", "127.0.0.3", templateTypes.HTTPProtocol), "an ip without a probe of its own")
+	require.Equal(t, "app.test", helper.TransformPinned("app.test", "127.0.0.3", templateTypes.HTTPProtocol), "an ip without a probe of its own does not take the unpinned result")
 	require.Equal(t, "app.test", helper.TransformPinned("app.test", "127.0.0.2", templateTypes.DNSProtocol), "a protocol that is not probed")
 }
 
