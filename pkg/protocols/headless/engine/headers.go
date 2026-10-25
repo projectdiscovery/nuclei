@@ -1,23 +1,59 @@
 package engine
 
 import (
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 )
+
+// reservedResponseKeys are the event fields that the headless protocol owns.
+// A response header or cookie that normalizes to one of them is dropped, so a
+// target cannot spoof them (the HTTP protocol also lets its own fields win).
+var reservedResponseKeys = map[string]struct{}{
+	"template-id":   {},
+	"template-info": {},
+	"template-path": {},
+	"host":          {},
+	"matched":       {},
+	"type":          {},
+	"req":           {},
+	"resp":          {},
+	"body":          {},
+	"data":          {},
+	"header":        {},
+	"all_headers":   {},
+	"status_code":   {},
+	"history":       {},
+	"duration":      {},
+}
 
 // addResponseVariables exposes response headers and cookies as DSL variables
 // (same normalization as the HTTP protocol).
 // Header names are lowercased with "-" replaced by "_", e.g. Content-Type -> content_type.
 // Cookie names are lowercased as-is.
+// A header wins over a cookie of the same name. Headers that normalize to the
+// same name are applied in sorted order, so the result is deterministic. Keys
+// already in data and reserved protocol keys are never overwritten.
 func addResponseVariables(data map[string]interface{}, resp *http.Response) {
 	if resp == nil {
 		return
 	}
+	vars := make(map[string]string)
 	for _, cookie := range resp.Cookies() {
-		data[strings.ToLower(cookie.Name)] = cookie.Value
+		vars[strings.ToLower(cookie.Name)] = cookie.Value
 	}
-	for k, v := range resp.Header {
-		k = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(k), "-", "_"))
-		data[k] = strings.Join(v, " ")
+	for _, name := range slices.Sorted(maps.Keys(resp.Header)) {
+		k := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), "-", "_"))
+		vars[k] = strings.Join(resp.Header[name], " ")
+	}
+	for k, v := range vars {
+		if _, ok := reservedResponseKeys[k]; ok || strings.HasPrefix(k, "duration_") {
+			continue
+		}
+		if _, ok := data[k]; ok {
+			continue
+		}
+		data[k] = v
 	}
 }
