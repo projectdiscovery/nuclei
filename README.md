@@ -111,7 +111,7 @@ Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.
 
 ### Installation
 
-`nuclei` requires **go >= 1.24.2** to install successfully. Run the following command to get the repo:
+`nuclei` requires **go >= 1.27.3** to install successfully. Run the following command to get the repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -146,6 +146,8 @@ TARGET:
    -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
+   -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
+   -mup, -max-urls-per-pattern int   scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)
 
 TARGET-FORMAT:
    -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
@@ -256,6 +258,7 @@ CONFIGURATIONS:
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
+   -pro, -payload-random-order           iterate payload combinations in a random order instead of sequentially
    -sip, -source-ip string               source ip address to use for network scan
    -rsr, -response-size-read int         max response size to read in bytes
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
@@ -301,6 +304,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
    -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
+   -host-backoff                      slow down a host that starts blocking (429, repeated 403s, connection failures)
+   -host-backoff-max value            maximum delay applied to a host that is blocking (default 30s)
    -per-host-rate-limit               enable per-host rate limiting (global rate limit becomes unlimited when enabled)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
@@ -344,6 +349,7 @@ DEBUG:
    -dresp, -debug-resp        show all received responses
    -p, -proxy string[]        list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal       proxy all internal requests
+   -rp, -replay-proxy string  http/socks5 proxy to re-send requests that produced a finding through (e.g. burp)
    -ldf, -list-dsl-function   list all supported DSL function signatures
    -tlog, -trace-log string   file to write sent requests trace log
    -elog, -error-log string   file to write sent requests error log
@@ -359,10 +365,11 @@ DEBUG:
    -hc, -health-check         run diagnostic check up
 
 UPDATE:
-   -up, -update                      update nuclei engine to the latest released version
-   -ut, -update-templates            update nuclei-templates to latest released version
-   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
-   -duc, -disable-update-check       disable automatic nuclei/templates update check
+   -up, -update                            update nuclei engine to the latest released version
+   -ut, -update-templates                  update nuclei-templates to latest released version
+   -utc, -update-templates-channel string  nuclei-templates update channel (stable, latest) (default "stable")
+   -ud, -update-template-dir string        custom directory to install / update nuclei-templates
+   -duc, -disable-update-check             disable automatic nuclei/templates update check
 
 HONEYPOT:
    -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration

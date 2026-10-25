@@ -110,7 +110,7 @@ Nuclei の完全な[**`ドキュメントはこちら`**](https://docs.projectdi
 
 ### インストール
 
-`nuclei` のインストールには **go >= 1.24.2** が必要です。以下のコマンドを実行してリポジトリを取得してください:
+`nuclei` のインストールには **go >= 1.27.3** が必要です。以下のコマンドを実行してリポジトリを取得してください:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -358,10 +358,11 @@ DEBUG:
    -hc, -health-check         run diagnostic check up
 
 UPDATE:
-   -up, -update                      update nuclei engine to the latest released version
-   -ut, -update-templates            update nuclei-templates to latest released version
-   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
-   -duc, -disable-update-check       disable automatic nuclei/templates update check
+   -up, -update                            update nuclei engine to the latest released version
+   -ut, -update-templates                  update nuclei-templates to latest released version
+   -utc, -update-templates-channel string  nuclei-templates update channel (stable, latest) (default "stable")
+   -ud, -update-template-dir string        custom directory to install / update nuclei-templates
+   -duc, -disable-update-check             disable automatic nuclei/templates update check
 
 HONEYPOT:
    -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration

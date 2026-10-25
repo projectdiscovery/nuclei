@@ -103,6 +103,8 @@ type Options struct {
 	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
+	// ReplayProxy re-sends the requests that produced a finding through this proxy
+	ReplayProxy string
 	// AliveProxy is the alive proxy to use
 	AliveHttpProxy string
 	// AliveSocksProxy is the alive socks proxy to use
@@ -209,6 +211,20 @@ type Options struct {
 	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
 	// before running templates. Disabled by default.
 	PreflightPortScan bool
+	// HostBackoff slows a host down when it signals it is being overloaded
+	// (429, a run of 403s, or transport failures) instead of scanning it at full
+	// rate until it blocks the scanner. Opt-in, since it changes scan pacing.
+	HostBackoff bool
+	// HostBackoffMax caps the per-host backoff delay.
+	HostBackoffMax time.Duration
+	// MaxURLsPerPattern caps how many targets sharing one structural shape
+	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
+	// target: dropping one means never scanning it.
+	MaxURLsPerPattern int
+	// DisableURLNormalization keeps every target exactly as supplied, instead of
+	// collapsing URLs that address the same resource (host case, fragment,
+	// default port, trailing slash, tracking parameters) before deduplication.
+	DisableURLNormalization bool
 	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.
@@ -244,6 +260,8 @@ type Options struct {
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
+	// UpdateTemplatesChannel is the nuclei-templates update channel (stable or latest)
+	UpdateTemplatesChannel string
 	// JSON writes json line output to files
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
@@ -336,6 +354,9 @@ type Options struct {
 	SourceIP string
 	// AttackType overrides template level attack-type configuration
 	AttackType string
+	// PayloadRandomOrder iterates payload combinations in a random order
+	// instead of the sequential order of the payload sets
+	PayloadRandomOrder bool
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
@@ -596,6 +617,7 @@ func (options *Options) ReleaseTemplateThread() {
 	}
 }
 
+// Copy returns a copy of the options.
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
 		Tags:                           options.Tags,
@@ -629,6 +651,7 @@ func (options *Options) Copy() *Options {
 		Resume:                         options.Resume,
 		Output:                         options.Output,
 		ProxyInternal:                  options.ProxyInternal,
+		ReplayProxy:                    options.ReplayProxy,
 		ListDslSignatures:              options.ListDslSignatures,
 		Proxy:                          options.Proxy,
 		AliveHttpProxy:                 options.AliveHttpProxy,
@@ -697,6 +720,7 @@ func (options *Options) Copy() *Options {
 		VarDumpLimit:                   options.VarDumpLimit,
 		NoColor:                        options.NoColor,
 		UpdateTemplates:                options.UpdateTemplates,
+		UpdateTemplatesChannel:         options.UpdateTemplatesChannel,
 		JSONL:                          options.JSONL,
 		JSONRequests:                   options.JSONRequests,
 		OmitRawRequests:                options.OmitRawRequests,
@@ -742,6 +766,7 @@ func (options *Options) Copy() *Options {
 		Interface:                      options.Interface,
 		SourceIP:                       options.SourceIP,
 		AttackType:                     options.AttackType,
+		PayloadRandomOrder:             options.PayloadRandomOrder,
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
 		HealthCheck:                    options.HealthCheck,

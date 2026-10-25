@@ -110,7 +110,7 @@ Nuclei 전체 [**`문서를 여기에서`**](https://docs.projectdiscovery.io/to
 
 ### 설치
 
-`nuclei` 설치에는 **go >= 1.24.2** 가 필요합니다. 다음 명령어를 실행하여 저장소를 가져옵니다:
+`nuclei` 설치에는 **go >= 1.27.3** 가 필요합니다. 다음 명령어를 실행하여 저장소를 가져옵니다:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -358,10 +358,11 @@ DEBUG:
    -hc, -health-check         run diagnostic check up
 
 UPDATE:
-   -up, -update                      update nuclei engine to the latest released version
-   -ut, -update-templates            update nuclei-templates to latest released version
-   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
-   -duc, -disable-update-check       disable automatic nuclei/templates update check
+   -up, -update                            update nuclei engine to the latest released version
+   -ut, -update-templates                  update nuclei-templates to latest released version
+   -utc, -update-templates-channel string  nuclei-templates update channel (stable, latest) (default "stable")
+   -ud, -update-template-dir string        custom directory to install / update nuclei-templates
+   -duc, -disable-update-check             disable automatic nuclei/templates update check
 
 HONEYPOT:
    -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration
