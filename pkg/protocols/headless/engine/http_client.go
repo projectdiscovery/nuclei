@@ -89,13 +89,15 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 	// causing "malformed HTTP response" errors. We use http2.Transport directly
 	// with utls dialing to properly handle h2 connections (see #6360).
 	if options.TlsImpersonate {
-		roundTripper = &http2.Transport{
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+		// utls conns are not *tls.Conn, so http.Transport speaks HTTP/1 on an h2 session.
+		// http2.Transport is deprecated in x/net 0.59, and it is still the dial that keeps h2. See #6360.
+		roundTripper = &http2.Transport{ //nolint:staticcheck // SA1019
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) { //nolint:staticcheck // SA1019
 				return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 			},
-			TLSClientConfig:    tlsConfig,
-			AllowHTTP:          false,
-			DisableCompression: false,
+			TLSClientConfig:    tlsConfig, //nolint:staticcheck // SA1019
+			AllowHTTP:          false,     //nolint:staticcheck // SA1019
+			DisableCompression: false,     //nolint:staticcheck // SA1019
 		}
 	}
 
@@ -113,4 +115,3 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 
 	return httpclient, nil
 }
-

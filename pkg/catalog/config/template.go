@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
@@ -30,6 +31,13 @@ const (
 // GetKnownConfigFiles returns known config files.
 func GetKnownConfigFiles() []string {
 	return knownConfigFiles
+}
+
+// IsKnownConfigFile returns true if the base name of fpath is exactly one of
+// the known config files. Names that only contain one of them, such as
+// "cves.json.yaml", are not considered config files.
+func IsKnownConfigFile(fpath string) bool {
+	return slices.Contains(knownConfigFiles, filepath.Base(filepath.FromSlash(fpath)))
 }
 
 // GetKnownMiscDirectories returns known misc directories with trailing slashes.
@@ -78,7 +86,7 @@ func IsTemplateWithRoot(fpath, rootDir string) bool {
 	fname := filepath.Base(fpath)
 	fext := strings.ToLower(filepath.Ext(fpath))
 
-	if stringsutil.ContainsAny(fname, GetKnownConfigFiles()...) {
+	if IsKnownConfigFile(fname) {
 		return false
 	}
 

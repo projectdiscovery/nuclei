@@ -988,7 +988,7 @@ func init() {
 			FieldName: "pre-condition",
 		},
 	}
-	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 22)
+	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 23)
 	MATCHERSMatcherDoc.Fields[0].Name = "type"
 	MATCHERSMatcherDoc.Fields[0].Type = "MatcherTypeHolder"
 	MATCHERSMatcherDoc.Fields[0].Note = ""
@@ -1105,47 +1105,54 @@ func init() {
 	MATCHERSMatcherDoc.Fields[15].Note = ""
 	MATCHERSMatcherDoc.Fields[15].Description = "MinConfidence is the minimum confidence (0-1) an llm verdict needs to\ncount as a match. Defaults to 0."
 	MATCHERSMatcherDoc.Fields[15].Comments[encoder.LineComment] = "MinConfidence is the minimum confidence (0-1) an llm verdict needs to"
-	MATCHERSMatcherDoc.Fields[16].Name = "max-input-tokens"
-	MATCHERSMatcherDoc.Fields[16].Type = "int"
+	MATCHERSMatcherDoc.Fields[16].Name = "inputs"
+	MATCHERSMatcherDoc.Fields[16].Type = "[]string"
 	MATCHERSMatcherDoc.Fields[16].Note = ""
-	MATCHERSMatcherDoc.Fields[16].Description = "MaxInputTokens caps how much of the response part is sent to the model\nfor an llm matcher, as an approximate token count."
-	MATCHERSMatcherDoc.Fields[16].Comments[encoder.LineComment] = "MaxInputTokens caps how much of the response part is sent to the model"
-	MATCHERSMatcherDoc.Fields[17].Name = "allow-sole"
-	MATCHERSMatcherDoc.Fields[17].Type = "bool"
+	MATCHERSMatcherDoc.Fields[16].Description = "Inputs compares several responses instead of a single part, for\nchecks that are about the difference between responses (blind\nboolean injection, user enumeration, IDOR). Each entry is resolved\nagainst the runtime values, so {{body_1}} and {{body_2}} work with\nreq-condition, and each response is framed separately for the model.\nPart is ignored when Inputs is set."
+	MATCHERSMatcherDoc.Fields[16].Comments[encoder.LineComment] = "Inputs compares several responses instead of a single part, for"
+
+	MATCHERSMatcherDoc.Fields[16].AddExample("", []string{"{{body_1}}", "{{body_2}}"})
+	MATCHERSMatcherDoc.Fields[17].Name = "max-input-tokens"
+	MATCHERSMatcherDoc.Fields[17].Type = "int"
 	MATCHERSMatcherDoc.Fields[17].Note = ""
-	MATCHERSMatcherDoc.Fields[17].Description = "AllowSole permits an llm matcher to be the only matcher on a high or\ncritical template. Without it such a template is rejected, so a model is\nnever the sole arbiter of a severe finding by accident."
-	MATCHERSMatcherDoc.Fields[17].Comments[encoder.LineComment] = "AllowSole permits an llm matcher to be the only matcher on a high or"
-	MATCHERSMatcherDoc.Fields[18].Name = "encoding"
-	MATCHERSMatcherDoc.Fields[18].Type = "string"
+	MATCHERSMatcherDoc.Fields[17].Description = "MaxInputTokens caps how much of the response part is sent to the model\n   for an llm matcher, as an approximate token count."
+	MATCHERSMatcherDoc.Fields[17].Comments[encoder.LineComment] = "   MaxInputTokens caps how much of the response part is sent to the model"
+	MATCHERSMatcherDoc.Fields[18].Name = "allow-sole"
+	MATCHERSMatcherDoc.Fields[18].Type = "bool"
 	MATCHERSMatcherDoc.Fields[18].Note = ""
-	MATCHERSMatcherDoc.Fields[18].Description = "Encoding specifies the encoding for the words field if any."
-	MATCHERSMatcherDoc.Fields[18].Comments[encoder.LineComment] = "Encoding specifies the encoding for the words field if any."
-	MATCHERSMatcherDoc.Fields[18].Values = []string{
+	MATCHERSMatcherDoc.Fields[18].Description = "AllowSole permits an llm matcher to be the only matcher on a high or\ncritical template. Without it such a template is rejected, so a model is\nnever the sole arbiter of a severe finding by accident."
+	MATCHERSMatcherDoc.Fields[18].Comments[encoder.LineComment] = "AllowSole permits an llm matcher to be the only matcher on a high or"
+	MATCHERSMatcherDoc.Fields[19].Name = "encoding"
+	MATCHERSMatcherDoc.Fields[19].Type = "string"
+	MATCHERSMatcherDoc.Fields[19].Note = ""
+	MATCHERSMatcherDoc.Fields[19].Description = "Encoding specifies the encoding for the words field if any."
+	MATCHERSMatcherDoc.Fields[19].Comments[encoder.LineComment] = "Encoding specifies the encoding for the words field if any."
+	MATCHERSMatcherDoc.Fields[19].Values = []string{
 		"hex",
 	}
-	MATCHERSMatcherDoc.Fields[19].Name = "case-insensitive"
-	MATCHERSMatcherDoc.Fields[19].Type = "bool"
-	MATCHERSMatcherDoc.Fields[19].Note = ""
-	MATCHERSMatcherDoc.Fields[19].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
-	MATCHERSMatcherDoc.Fields[19].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
-	MATCHERSMatcherDoc.Fields[19].Values = []string{
-		"false",
-		"true",
-	}
-	MATCHERSMatcherDoc.Fields[20].Name = "match-all"
+	MATCHERSMatcherDoc.Fields[20].Name = "case-insensitive"
 	MATCHERSMatcherDoc.Fields[20].Type = "bool"
 	MATCHERSMatcherDoc.Fields[20].Note = ""
-	MATCHERSMatcherDoc.Fields[20].Description = "MatchAll enables matching for all matcher values. Default is false."
-	MATCHERSMatcherDoc.Fields[20].Comments[encoder.LineComment] = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[20].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[20].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
 	MATCHERSMatcherDoc.Fields[20].Values = []string{
 		"false",
 		"true",
 	}
-	MATCHERSMatcherDoc.Fields[21].Name = "internal"
+	MATCHERSMatcherDoc.Fields[21].Name = "match-all"
 	MATCHERSMatcherDoc.Fields[21].Type = "bool"
 	MATCHERSMatcherDoc.Fields[21].Note = ""
-	MATCHERSMatcherDoc.Fields[21].Description = "description: |\n  Internal when true hides the matcher from output. Default is false.\n It is meant to be used in multiprotocol / flow templates to create internal matcher condition without printing it in output.\n or other similar use cases.\n values:\n   - false\n   - true"
-	MATCHERSMatcherDoc.Fields[21].Comments[encoder.LineComment] = " description: |"
+	MATCHERSMatcherDoc.Fields[21].Description = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[21].Comments[encoder.LineComment] = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[21].Values = []string{
+		"false",
+		"true",
+	}
+	MATCHERSMatcherDoc.Fields[22].Name = "internal"
+	MATCHERSMatcherDoc.Fields[22].Type = "bool"
+	MATCHERSMatcherDoc.Fields[22].Note = ""
+	MATCHERSMatcherDoc.Fields[22].Description = "description: |\n  Internal when true hides the matcher from output. Default is false.\n It is meant to be used in multiprotocol / flow templates to create internal matcher condition without printing it in output.\n or other similar use cases.\n values:\n   - false\n   - true"
+	MATCHERSMatcherDoc.Fields[22].Comments[encoder.LineComment] = " description: |"
 
 	MatcherTypeHolderDoc.Type = "MatcherTypeHolder"
 	MatcherTypeHolderDoc.Comments[encoder.LineComment] = " MatcherTypeHolder is used to hold internal type of the matcher"
